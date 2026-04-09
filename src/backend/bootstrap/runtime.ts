@@ -63,7 +63,9 @@ function getBillingProviderMode(): BillingProviderMode {
 
 function getAgentTransportMode(): AgentTransportMode {
   if (process.env.AGENT_TRANSPORT === 'livekit') return 'livekit';
-  return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' || process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini'
+  return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' ||
+    process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini' ||
+    process.env.AGENT_RUNTIME_MODE === 'livekit_openai'
     ? 'livekit'
     : 'mock';
 }
@@ -73,6 +75,7 @@ function getAgentVoiceProviderMode(): AgentVoiceProviderMode {
   if (configured === 'gemini_live' || configured === 'openai_realtime' || configured === 'none') {
     return configured;
   }
+  if (process.env.AGENT_RUNTIME_MODE === 'livekit_openai') return 'openai_realtime';
   return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' || process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini'
     ? 'gemini_live'
     : 'none';
