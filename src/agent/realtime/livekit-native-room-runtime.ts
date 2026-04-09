@@ -400,18 +400,19 @@ export async function runLiveKitNativeGeminiRuntime(
       outputAudioTranscription: {}, // Enable output transcription
     });
 
-    // Create the agent with tools
+    // Create the agent with tools (llm goes on AgentSession, not Agent)
     const agent = new agentVoice.Agent({
       instructions,
-      llm: realtimeModel,
       tools: toolContext,
     });
 
     // Initialize @livekit/agents internal logger (required before AgentSession)
     initializeLogger({ pretty: false, level: 'warn' });
 
-    // Create session
-    const session = new agentVoice.AgentSession({});
+    // Create session — llm must be here for AgentSession to set up RoomIO audio routing
+    const session = new agentVoice.AgentSession({
+      llm: realtimeModel,
+    });
 
     // ── Transcript events ────────────────────────────────────────────────────
     let firstUserSpeechAtMs: number | null = null;
