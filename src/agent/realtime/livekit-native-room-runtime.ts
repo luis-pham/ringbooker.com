@@ -23,7 +23,7 @@ import {
 } from '@google/genai';
 import { beta } from '@livekit/agents-plugin-google';
 import { voice as agentVoice, llm, initializeLogger } from '@livekit/agents';
-import { Room, RoomEvent } from '@livekit/rtc-node';
+import { Room, RoomEvent, TrackKind } from '@livekit/rtc-node';
 
 import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
 import { REALTIME_TOOL_DEFINITIONS } from '@/src/agent/realtime/shared-tool-definitions';
@@ -530,7 +530,7 @@ export async function runLiveKitNativeGeminiRuntime(
     // ── Emit initial greeting when caller audio is connected ──────────────────
     let initialGreetingSent = false;
     room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
-      if (track.kind === 'audio' && !initialGreetingSent) {
+      if (track.kind === TrackKind.KIND_AUDIO && !initialGreetingSent) {
         initialGreetingSent = true;
         log.info({ participantIdentity: participant.identity }, 'livekit_native_triggering_initial_greeting');
         setTimeout(() => {
