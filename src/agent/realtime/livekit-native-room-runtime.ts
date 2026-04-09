@@ -503,8 +503,19 @@ export async function runLiveKitNativeGeminiRuntime(
     // resolve so worker doesn't hang.
     room.once(RoomEvent.Disconnected, () => resolveSessionClose());
 
+    // ── Diagnostic: log local track subscription events ─────────────────────
+    room.on(RoomEvent.LocalTrackSubscribed, (track) => {
+      log.info({ trackName: track.name, trackSid: track.sid }, 'livekit_native_local_track_subscribed');
+    });
+
     // ── Start session (non-blocking setup) ───────────────────────────────────
     await session.start({ agent, room });
+
+    // ── Trigger initial greeting (creates active generation so audio isn't discarded) ──
+    // Without this, Gemini may send audio before currentGeneration is set in the
+    // Google plugin, causing "received server content but no active generation" and
+    // silently discarding the greeting audio.
+    session.generateReply();
 
     // ── Timeout guard ────────────────────────────────────────────────────────
     const timeoutHandle = setTimeout(() => {
