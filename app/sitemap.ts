@@ -28,7 +28,14 @@ const routes = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const runtime = getBackendRuntime();
-  const cmsPosts = runtime.blogPostsRepository ? await runtime.blogPostsRepository.listPublished({ limit: 200 }) : [];
+  let cmsPosts: Awaited<ReturnType<NonNullable<typeof runtime.blogPostsRepository>['listPublished']>> = [];
+  if (runtime.blogPostsRepository) {
+    try {
+      cmsPosts = await runtime.blogPostsRepository.listPublished({ limit: 200 });
+    } catch {
+      cmsPosts = [];
+    }
+  }
   const cmsRoutes = cmsPosts.map((post) => `/blog/${post.slug}`);
   const allRoutes = [...new Set([...routes, ...cmsRoutes])];
 
