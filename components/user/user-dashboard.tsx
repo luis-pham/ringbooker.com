@@ -250,6 +250,8 @@ const scripts: string[] = [
 
 ];
 
+export const userDashboardStyles = styles;
+export const userDashboardScripts = scripts;
 export const templateTitle = "Your salon, in one glance.";
 
 export function UserDashboardTemplate() {
