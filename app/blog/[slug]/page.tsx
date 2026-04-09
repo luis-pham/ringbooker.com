@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { MDXRemote } from 'next-mdx-remote/rsc';
 import { PostStatus } from '@prisma/client';
+import sanitizeHtml from 'sanitize-html';
 
 import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { ShareButtons } from '@/components/blog/ShareButtons';
@@ -18,25 +18,6 @@ type RouteProps = { params: Promise<RouteParams> };
 export const revalidate = 3600;
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function textFromChildren(children: React.ReactNode): string {
-  if (typeof children === 'string' || typeof children === 'number') return String(children);
-  if (Array.isArray(children)) return children.map((item) => textFromChildren(item)).join(' ');
-  if (children && typeof children === 'object' && 'props' in children) {
-    const node = children as { props?: { children?: React.ReactNode } };
-    return textFromChildren(node.props?.children ?? '');
-  }
-  return '';
-}
 
 export async function generateStaticParams() {
   if (!hasDatabaseUrl) return [];
@@ -68,51 +49,6 @@ export async function generateMetadata({ params }: RouteProps): Promise<Metadata
   };
 }
 
-function Callout({
-  variant = 'info',
-  children,
-}: {
-  variant?: 'info' | 'warning' | 'success';
-  children: React.ReactNode;
-}) {
-  const variantClasses =
-    variant === 'warning'
-      ? 'border-orange-500 bg-orange-50 text-orange-700'
-      : variant === 'success'
-        ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
-        : 'border-brand-purple bg-violet-50 text-violet-700';
-  return (
-    <div className={`my-7 rounded-r-xl border-l-4 px-5 py-4 font-sans ${variantClasses}`}>
-      <p className="m-0 text-[15px] font-semibold leading-7">{children}</p>
-    </div>
-  );
-}
-
-function StatBlock({ stats }: { stats: Array<{ num: string; label: string }> }) {
-  return (
-    <div className="my-8 grid overflow-hidden rounded-2xl border border-gray-200 md:grid-cols-3">
-      {stats.map((item, index) => (
-        <div
-          key={`${item.num}-${item.label}-${index}`}
-          className={['px-5 py-5 text-center', index < stats.length - 1 ? 'border-b border-gray-200 md:border-b-0 md:border-r' : ''].join(' ')}
-        >
-          <div className="text-[34px] font-extrabold leading-none tracking-tight text-violet-700">{item.num}</div>
-          <div className="mt-1.5 text-xs leading-5 text-gray-500">{item.label}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PullQuote({ quote, cite }: { quote: string; cite: string }) {
-  return (
-    <blockquote className="my-9 border-y-2 border-brand-purple px-6 py-7 text-center">
-      <p className="font-serif text-[22px] italic leading-[1.55] text-gray-900">{quote}</p>
-      <cite className="mt-3 block font-sans text-[13px] font-semibold not-italic text-gray-400">{cite}</cite>
-    </blockquote>
-  );
-}
-
 function formatDate(value: Date | null | undefined): string {
   if (!value) return 'Recently';
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(value);
@@ -141,56 +77,37 @@ export default async function BlogPostPage({ params }: RouteProps) {
         .filter((item): item is { num: string; label: string } => Boolean(item))
     : [];
 
-  const mdxComponents: Record<string, React.ComponentType<any>> = {
-    h2: ({ children, id, ...props }: React.ComponentPropsWithoutRef<'h2'>) => {
-      const finalId = id ?? slugify(textFromChildren(children));
-      return (
-        <h2
-          id={finalId}
-          className="mb-4 mt-11 font-sans text-[clamp(20px,2.2vw,25px)] font-extrabold tracking-tight text-gray-900"
-          {...props}
-        >
-          {children}
-        </h2>
-      );
+  const safeArticleHtml = sanitizeHtml(post.content, {
+    allowedTags: [
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'p',
+      'ul',
+      'ol',
+      'li',
+      'strong',
+      'em',
+      'blockquote',
+      'pre',
+      'code',
+      'a',
+      'br',
+      'hr',
+    ],
+    allowedAttributes: {
+      h1: ['id'],
+      h2: ['id'],
+      h3: ['id'],
+      h4: ['id'],
+      a: ['href', 'target', 'rel'],
     },
-    h3: ({ children, id, ...props }: React.ComponentPropsWithoutRef<'h3'>) => {
-      const finalId = id ?? slugify(textFromChildren(children));
-      return (
-        <h3 id={finalId} className="mb-2 mt-8 font-sans text-[18px] font-bold text-gray-900" {...props}>
-          {children}
-        </h3>
-      );
+    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+    transformTags: {
+      a: sanitizeHtml.simpleTransform('a', { rel: 'nofollow noopener noreferrer' }),
     },
-    p: ({ children, ...props }: React.ComponentPropsWithoutRef<'p'>) => (
-      <p className="mb-6" {...props}>
-        {children}
-      </p>
-    ),
-    ul: ({ children, ...props }: React.ComponentPropsWithoutRef<'ul'>) => (
-      <ul className="mb-6 list-disc pl-6" {...props}>
-        {children}
-      </ul>
-    ),
-    ol: ({ children, ...props }: React.ComponentPropsWithoutRef<'ol'>) => (
-      <ol className="mb-6 list-decimal pl-6" {...props}>
-        {children}
-      </ol>
-    ),
-    li: ({ children, ...props }: React.ComponentPropsWithoutRef<'li'>) => (
-      <li className="mb-2" {...props}>
-        {children}
-      </li>
-    ),
-    strong: ({ children, ...props }: React.ComponentPropsWithoutRef<'strong'>) => (
-      <strong className="font-bold text-gray-900" {...props}>
-        {children}
-      </strong>
-    ),
-    Callout,
-    StatBlock,
-    PullQuote,
-  };
+  });
 
   return (
     <>
@@ -281,7 +198,10 @@ export default async function BlogPostPage({ params }: RouteProps) {
 
       <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-14 px-6 pb-20 pt-12 md:px-12 lg:grid-cols-[1fr_320px]">
         <article className="article-body font-serif text-[17.5px] leading-[1.82] text-gray-700">
-          <MDXRemote source={post.content} components={mdxComponents} />
+          <div
+            className="prose prose-lg max-w-none prose-headings:font-sans prose-headings:font-extrabold prose-headings:tracking-tight prose-h2:mt-11 prose-h2:mb-4 prose-h2:text-[clamp(20px,2.2vw,25px)] prose-h3:mt-8 prose-h3:mb-2 prose-h3:text-[18px] prose-p:mb-6 prose-ul:mb-6 prose-ol:mb-6 prose-li:mb-2 prose-a:text-brand-purple prose-strong:text-gray-900"
+            dangerouslySetInnerHTML={{ __html: safeArticleHtml }}
+          />
 
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-8 font-sans">
             <div className="flex flex-wrap gap-2">
