@@ -263,6 +263,8 @@ export async function runLiveKitRoomRuntime(
   let resampledOutputSamples = 0;
   let modelCaptureTotalMs = 0;
   let modelCaptureSamples = 0;
+  let outputCaptureAvailable = true;
+  let outputCaptureFailureLogged = false;
   let lastModelAudioAtMs: number | null = null;
   let lastDetectedUserSpeechEndAtMs: number | null = null;
   let userSpeechEndTimer: ReturnType<typeof setTimeout> | null = null;
@@ -368,6 +370,7 @@ export async function runLiveKitRoomRuntime(
       onUserTranscript: options?.onUserTranscript,
       onAssistantTranscript: options?.onAssistantTranscript,
       onModelAudioPcm: async ({ pcm16, sampleRate }) => {
+        if (!outputCaptureAvailable) return;
         const nowMs = Date.now();
         const modelTurnStartGapMs = 240;
         const isNewModelTurn = !lastModelAudioAtMs || nowMs - lastModelAudioAtMs >= modelTurnStartGapMs;
@@ -396,9 +399,27 @@ export async function runLiveKitRoomRuntime(
         }
 
         const captureStart = performance.now();
-        await agentAudioSource.captureFrame(
-          new AudioFrame(pcmForOutput, outputSampleRate, outputChannels, pcmForOutput.length),
-        );
+        try {
+          await agentAudioSource.captureFrame(
+            new AudioFrame(pcmForOutput, outputSampleRate, outputChannels, pcmForOutput.length),
+          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (message.includes('InvalidState')) {
+            outputCaptureAvailable = false;
+          }
+          if (!outputCaptureFailureLogged) {
+            outputCaptureFailureLogged = true;
+            log.warn(
+              {
+                roomName: input.roomName,
+                err: error,
+              },
+              'livekit_output_capture_failed',
+            );
+          }
+          return;
+        }
         const captureElapsedMs = performance.now() - captureStart;
         modelCaptureTotalMs += captureElapsedMs;
         modelCaptureSamples += 1;
