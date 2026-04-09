@@ -109,12 +109,6 @@ export function UserCallsLive() {
       .catch(() => setError('network_error'));
   }, []);
 
-  useEffect(() => {
-    if (!activeCall && calls.length > 0) {
-      setActiveCall(calls[0] ?? null);
-    }
-  }, [activeCall, calls]);
-
   const metrics = useMemo(() => {
     return {
       total: calls.length,
