@@ -22,7 +22,7 @@ import {
   ThinkingLevel,
 } from '@google/genai';
 import { beta } from '@livekit/agents-plugin-google';
-import { voice as agentVoice, llm } from '@livekit/agents';
+import { voice as agentVoice, llm, initializeLogger } from '@livekit/agents';
 import { Room, RoomEvent } from '@livekit/rtc-node';
 
 import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
@@ -406,6 +406,9 @@ export async function runLiveKitNativeGeminiRuntime(
       llm: realtimeModel,
       tools: toolContext,
     });
+
+    // Initialize @livekit/agents internal logger (required before AgentSession)
+    initializeLogger({ pretty: false, level: 'warn' });
 
     // Create session
     const session = new agentVoice.AgentSession({});
