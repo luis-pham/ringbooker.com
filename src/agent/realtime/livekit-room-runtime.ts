@@ -428,7 +428,7 @@ export async function runLiveKitRoomRuntime(
       bridge.sendUserText(text);
     });
 
-    room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _publication, participant) => {
+    const attachInboundAudioTrack = (track: RemoteTrack, participant: { identity: string }) => {
       if (!bridge) return;
       const activeBridge = bridge;
       if (participant.identity === room.localParticipant?.identity) return;
@@ -495,6 +495,10 @@ export async function runLiveKitRoomRuntime(
           });
         }
       })();
+    };
+
+    room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _publication, participant) => {
+      attachInboundAudioTrack(track, participant);
     });
 
     room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
@@ -507,6 +511,16 @@ export async function runLiveKitRoomRuntime(
         // best effort cleanup
       });
     });
+
+    // Auto-subscribe can complete before TrackSubscribed handler attaches.
+    // Attach readers for already-subscribed remote audio tracks as a safety net.
+    for (const participant of room.remoteParticipants.values()) {
+      for (const publication of participant.trackPublications.values()) {
+        const subscribedTrack = publication.track;
+        if (!subscribedTrack) continue;
+        attachInboundAudioTrack(subscribedTrack, participant);
+      }
+    }
 
     const result = await waitForDisconnectOrTimeout(room, timeoutMs);
     if (result === 'timeout') {
