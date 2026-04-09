@@ -681,8 +681,6 @@ export async function runLiveKitRoomRuntime(
         },
         'realtime_voice_bridge_unavailable',
       );
-    } else {
-      bridge.sendUserText('System: The phone call has just connected. Please warmly greet the caller and introduce yourself.');
     }
 
     room.on(RoomEvent.ChatMessage, (message, participant) => {
@@ -697,8 +695,18 @@ export async function runLiveKitRoomRuntime(
       bridge.sendUserText(text);
     });
 
+    let initialGreetingSent = false;
     const attachInboundAudioTrack = (track: RemoteTrack, participant: { identity: string }) => {
       if (!bridge) return;
+      
+      if (!initialGreetingSent) {
+        initialGreetingSent = true;
+        // Trì hoãn một chút để đảm bảo luồng RTP (âm thanh) của user đã ổn định trước khi AI lên tiếng
+        setTimeout(() => {
+          bridge.sendUserText('System: The phone call has just connected. Please warmly greet the caller and introduce yourself.');
+        }, 500);
+      }
+      
       const activeBridge = bridge;
       if (participant.identity === room.localParticipant?.identity) return;
       if (track.kind !== TrackKind.KIND_AUDIO) return;
