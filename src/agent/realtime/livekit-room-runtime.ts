@@ -272,6 +272,12 @@ function isLiveKitOutputInvalidState(error: unknown): boolean {
   return message.includes('InvalidState');
 }
 
+function resolveAudioSourceQueueMs(): number {
+  const raw = Number(process.env.AGENT_LIVEKIT_AUDIO_SOURCE_QUEUE_MS ?? 1500);
+  if (!Number.isFinite(raw)) return 1500;
+  return Math.max(250, Math.min(4000, Math.round(raw)));
+}
+
 export async function runLiveKitRoomRuntime(
   input: RealtimeDispatchInput,
   options?: {
@@ -296,7 +302,8 @@ export async function runLiveKitRoomRuntime(
   let bridge: Awaited<ReturnType<typeof createRealtimeVoiceBridge>> = null;
   const outputSampleRate = Number(process.env.AGENT_GEMINI_OUTPUT_SAMPLE_RATE ?? 24000);
   const outputChannels = 1;
-  let agentAudioSource = new AudioSource(outputSampleRate, outputChannels);
+  const audioSourceQueueMs = resolveAudioSourceQueueMs();
+  let agentAudioSource = new AudioSource(outputSampleRate, outputChannels, audioSourceQueueMs);
   let agentAudioTrack = LocalAudioTrack.createAudioTrack('rb.agent.audio', agentAudioSource);
   let agentAudioPublication: LocalTrackPublication | null = null;
   const inputStreams = new Map<string, ReadableStreamDefaultReader<AudioFrame>>();
@@ -378,7 +385,7 @@ export async function runLiveKitRoomRuntime(
         // best effort cleanup
       });
 
-      agentAudioSource = new AudioSource(outputSampleRate, outputChannels);
+      agentAudioSource = new AudioSource(outputSampleRate, outputChannels, audioSourceQueueMs);
       agentAudioTrack = LocalAudioTrack.createAudioTrack('rb.agent.audio', agentAudioSource);
       agentAudioPublication = await localParticipant.publishTrack(agentAudioTrack, publishOptions);
       outputCaptureAvailable = true;
