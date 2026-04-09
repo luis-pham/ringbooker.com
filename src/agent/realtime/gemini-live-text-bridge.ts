@@ -171,6 +171,12 @@ function compactToolOutput(value: unknown): unknown {
   };
 }
 
+function resolveMinOutputAudioSamples(sampleRate: number): number {
+  const raw = Number(process.env.AGENT_GEMINI_MIN_OUTPUT_PCM_SAMPLES ?? Math.round(sampleRate / 100));
+  if (!Number.isFinite(raw) || raw < 1) return Math.round(sampleRate / 100);
+  return Math.floor(raw);
+}
+
 export async function createGeminiLiveVoiceBridge(
   params: CreateRealtimeVoiceBridgeParams,
 ): Promise<RealtimeVoiceBridge | null> {
@@ -316,6 +322,7 @@ export async function createGeminiLiveVoiceBridge(
           if (!params.onModelAudioPcm) continue;
           const mergedBytes = concatUint8Arrays(audioChunks);
           const pcm16 = bytesToInt16(mergedBytes);
+          const pcmMaxAbs = maxPcmMagnitude(pcm16);
           if (audioChunkDiagnosticsLogged < 8) {
             audioChunkDiagnosticsLogged += 1;
             log.info(
@@ -326,11 +333,13 @@ export async function createGeminiLiveVoiceBridge(
                 base64Chars: audioBase64LengthsByRate.get(sampleRate) ?? 0,
                 byteLength: mergedBytes.byteLength,
                 pcmSamples: pcm16.length,
-                pcmMaxAbs: maxPcmMagnitude(pcm16),
+                pcmMaxAbs,
               },
               'gemini_live_audio_chunk_received',
             );
           }
+          const minOutputSamples = resolveMinOutputAudioSamples(sampleRate);
+          if (pcm16.length < minOutputSamples && pcmMaxAbs === 0) continue;
           if (pcm16.length <= 0) continue;
           void params.onModelAudioPcm({
             pcm16,

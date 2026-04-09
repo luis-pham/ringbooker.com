@@ -191,6 +191,49 @@ function createUplinkAudioChunker(params: {
   };
 }
 
+function createPcmChunkBuffer(params: { sampleRate: number; targetChunkMs: number }) {
+  const { sampleRate, targetChunkMs } = params;
+  const targetSamples = Math.max(1, Math.round((sampleRate * targetChunkMs) / 1000));
+  let pending = new Int16Array(0);
+
+  return {
+    push(input: Int16Array): Int16Array[] {
+      if (input.length <= 0) return [];
+      const merged = new Int16Array(pending.length + input.length);
+      merged.set(pending);
+      merged.set(input, pending.length);
+      pending = merged;
+
+      const chunks: Int16Array[] = [];
+      while (pending.length >= targetSamples) {
+        chunks.push(pending.slice(0, targetSamples));
+        pending = pending.slice(targetSamples);
+      }
+      return chunks;
+    },
+    flush(): Int16Array[] {
+      if (pending.length <= 0) return [];
+      const chunks = [pending];
+      pending = new Int16Array(0);
+      return chunks;
+    },
+  };
+}
+
+function resolveDownlinkChunkMs(voiceProvider: string): number {
+  const lowLatencyPreferred = parseBoolean(process.env.AGENT_REALTIME_LOW_LATENCY_PREFERRED, true);
+  const defaultChunkMs = lowLatencyPreferred ? 20 : 40;
+  const providerOverride =
+    voiceProvider === 'openai_realtime'
+      ? process.env.AGENT_OPENAI_DOWNLINK_CHUNK_MS
+      : voiceProvider === 'gemini_live'
+        ? process.env.AGENT_GEMINI_DOWNLINK_CHUNK_MS
+        : undefined;
+  const raw = Number(providerOverride ?? process.env.AGENT_REALTIME_DOWNLINK_CHUNK_MS ?? defaultChunkMs);
+  if (!Number.isFinite(raw)) return defaultChunkMs;
+  return Math.max(10, Math.min(120, raw));
+}
+
 function toMonoPcm(frame: AudioFrame): Int16Array {
   const channels = Math.max(1, frame.channels);
   if (channels === 1) return frame.data;
@@ -295,6 +338,10 @@ export async function runLiveKitRoomRuntime(
   });
   const publishOptions = new TrackPublishOptions();
   publishOptions.source = TrackSource.SOURCE_MICROPHONE;
+  const downlinkChunkBuffer = createPcmChunkBuffer({
+    sampleRate: outputSampleRate,
+    targetChunkMs: resolveDownlinkChunkMs(currentVoiceProvider),
+  });
 
   const recreateAgentAudioOutput = async (reason: string, error?: unknown): Promise<boolean> => {
     if (outputTrackRecovery) {
@@ -518,70 +565,74 @@ export async function runLiveKitRoomRuntime(
           pcmForOutput = resampled;
         }
 
-        const captureFrame = async () =>
-          await agentAudioSource.captureFrame(
-            new AudioFrame(pcmForOutput, outputSampleRate, outputChannels, pcmForOutput.length),
-          );
+        const framesToCapture = downlinkChunkBuffer.push(pcmForOutput);
+        for (const frameChunk of framesToCapture) {
+          const captureFrame = async () =>
+            await agentAudioSource.captureFrame(
+              new AudioFrame(frameChunk, outputSampleRate, outputChannels, frameChunk.length),
+            );
 
-        const captureStart = performance.now();
-        try {
-          await captureFrame();
-        } catch (error) {
-          if (isLiveKitOutputInvalidState(error)) {
-            outputCaptureAvailable = false;
-            if (!outputCaptureFailureLogged) {
-              outputCaptureFailureLogged = true;
-              log.warn(
-                {
-                  roomName: input.roomName,
-                  err: error,
-                },
-                'livekit_output_capture_failed',
-              );
-            }
+          const captureStart = performance.now();
+          try {
+            await captureFrame();
+          } catch (error) {
+            if (isLiveKitOutputInvalidState(error)) {
+              outputCaptureAvailable = false;
+              if (!outputCaptureFailureLogged) {
+                outputCaptureFailureLogged = true;
+                log.warn(
+                  {
+                    roomName: input.roomName,
+                    err: error,
+                  },
+                  'livekit_output_capture_failed',
+                );
+              }
 
-            const recovered = await recreateAgentAudioOutput('capture_frame_invalid_state', error).catch((recoveryError) => {
-              log.error(
-                {
-                  roomName: input.roomName,
-                  err: recoveryError,
-                },
-                'livekit_output_track_recovery_failed',
-              );
-              return false;
-            });
-            if (!recovered) return;
+              const recovered = await recreateAgentAudioOutput('capture_frame_invalid_state', error).catch((recoveryError) => {
+                log.error(
+                  {
+                    roomName: input.roomName,
+                    err: recoveryError,
+                  },
+                  'livekit_output_track_recovery_failed',
+                );
+                return false;
+              });
+              if (!recovered) return;
 
-            try {
-              await captureFrame();
-            } catch (retryError) {
-              outputCaptureAvailable = !isLiveKitOutputInvalidState(retryError);
-              log.warn(
-                {
-                  roomName: input.roomName,
-                  err: retryError,
-                },
-                'livekit_output_capture_retry_failed',
-              );
+              try {
+                await captureFrame();
+              } catch (retryError) {
+                outputCaptureAvailable = !isLiveKitOutputInvalidState(retryError);
+                log.warn(
+                  {
+                    roomName: input.roomName,
+                    err: retryError,
+                  },
+                  'livekit_output_capture_retry_failed',
+                );
+                return;
+              }
+            } else {
+              if (!outputCaptureFailureLogged) {
+                outputCaptureFailureLogged = true;
+                log.warn(
+                  {
+                    roomName: input.roomName,
+                    err: error,
+                  },
+                  'livekit_output_capture_failed',
+                );
+              }
               return;
             }
-          } else {
-            if (!outputCaptureFailureLogged) {
-              outputCaptureFailureLogged = true;
-              log.warn(
-                {
-                  roomName: input.roomName,
-                  err: error,
-                },
-                'livekit_output_capture_failed',
-              );
-            }
-            return;
           }
+          const captureElapsedMs = performance.now() - captureStart;
+          modelCaptureTotalMs += captureElapsedMs;
+          modelCaptureSamples += 1;
+          recordFrameMetrics(modelToCallerMetrics, Date.now(), frameChunk.length);
         }
-        const captureElapsedMs = performance.now() - captureStart;
-        modelCaptureTotalMs += captureElapsedMs;
-        modelCaptureSamples += 1;
         lastModelAudioAtMs = nowMs;
         if (!firstModelAudioPlaybackAtMs) {
           firstModelAudioPlaybackAtMs = nowMs;
@@ -613,7 +664,6 @@ export async function runLiveKitRoomRuntime(
             });
           }
         }
-        recordFrameMetrics(modelToCallerMetrics, nowMs, pcmForOutput.length);
       },
     });
 
