@@ -1,0 +1,71 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RingBooker logo">
+  <defs>
+    <linearGradient id="rbPhone" x1="260" y1="280" x2="760" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6B2AAF"/>
+      <stop offset="1" stop-color="#5B1E9C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- outer circle with opening at lower-left -->
+  <path
+    d="M517 172
+       C703 172 858 323 861 510
+       C864 685 742 832 603 856
+       C528 870 467 842 424 796"
+    stroke="#662DA8"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M424 796
+       C318 697 241 587 200 476
+       C145 329 259 208 409 181"
+    stroke="#662DA8"
+    stroke-width="14"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- signal waves -->
+  <path
+    d="M442 340 C548 334 642 394 683 486 C695 513 701 543 701 573"
+    stroke="#662DA8"
+    stroke-width="38"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M442 418 C514 413 579 451 612 514 C621 531 626 552 626 572"
+    stroke="#662DA8"
+    stroke-width="38"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- phone handset -->
+  <path
+    fill-rule="evenodd"
+    clip-rule="evenodd"
+    d="M318 362
+       C300 376 287 401 287 425
+       C287 467 308 527 346 587
+       C409 688 522 772 635 813
+       C680 829 719 831 747 818
+       L794 776
+       C810 762 811 737 798 722
+       L690 603
+       C677 588 654 586 638 598
+       L596 628
+       C587 634 575 637 564 634
+       C504 620 418 545 385 486
+       C379 475 380 463 387 454
+       L416 415
+       C428 399 426 376 411 363
+       L296 260
+       C282 248 262 247 247 259
+       L318 362 Z"
+    fill="url(#rbPhone)"
+    transform="rotate(-8 512 512)"
+  />
+</svg>

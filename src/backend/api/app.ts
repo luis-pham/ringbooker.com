@@ -1,0 +1,3564 @@
+import { Hono } from 'hono';
+import type { Context } from 'hono';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { z } from 'zod';
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+
+import type { RealtimeAgentRuntime } from '@/src/agent/realtime/types';
+import { handleRealtimeDispatch, parseRealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
+import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
+import { createInboundAgentSession } from '@/src/agent/runtime/session';
+import {
+  CAPABILITY_MIN_PLAN,
+  CAPABILITY_LABELS,
+  getShopPlanCapabilities,
+  type ShopSettingCapability,
+} from '@/src/backend/domain/shop-plan-capabilities';
+import type {
+  BillingProvider,
+  BillingSubscriptionStatus,
+  BlogPostStatus,
+  ContactRequestStatus,
+  JobType,
+  Shop,
+} from '@/src/backend/domain/types';
+import type {
+  BlogPostsRepository,
+  BookingsRepository,
+  BillingCustomersRepository,
+  BillingSubscriptionsRepository,
+  CallbacksRepository,
+  CallLogsRepository,
+  JobsRepository,
+  MissedCallsRepository,
+  ProviderEventsRepository,
+  ShopsRepository,
+  AuthUsersRepository,
+  ContactRequestsRepository,
+} from '@/src/backend/ports/repositories';
+import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
+import type { TelephonyService } from '@/src/backend/services/telephony/types';
+import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
+import type { EmailService } from '@/src/backend/services/email/types';
+import { getEnv } from '@/src/backend/config/env';
+import { logger } from '@/src/backend/observability/logger';
+import { trackApiStatusForAlerts } from '@/src/backend/observability/security-alerts';
+import { getMetricsSnapshot, incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
+import {
+  ADMIN_SESSION_COOKIE,
+  USER_SESSION_COOKIE,
+  signSessionToken,
+  verifySessionToken,
+} from '@/src/backend/security/session';
+import { securityAudit } from '@/src/backend/security/audit-log';
+import { signDemoPreviewToken, verifyDemoPreviewToken } from '@/src/backend/security/demo-preview';
+import { hashPassword, verifyPassword } from '@/src/backend/security/password';
+import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
+import { verifyTurnstileToken } from '@/src/backend/security/turnstile';
+import { handlePaddleWebhook } from '@/src/backend/webhooks/paddle';
+import { handleTelnyxWebhook } from '@/src/backend/webhooks/telnyx';
+import {
+  encodeSquareConnectionCredentials,
+  parseSquareConnectionCredentials,
+  squareAuthorizeUrl,
+  squareExchangeAuthorizationCode,
+  squareFetchConnectionOptions,
+  type CalendarConnectionProviderId,
+  type SquareConnectionCredentials,
+} from '@/src/backend/services/calendar/provider-connections';
+import { CALENDAR_PROVIDER_CATALOG } from '@/src/backend/services/calendar/provider-catalog';
+
+const jobTypeSchema = z.enum([
+  'realtime_session_dispatch',
+  'appointment_reminder_24h',
+  'appointment_reminder_2h',
+  'missed_call_followup_sms',
+  'callback_outbound_call',
+  'review_request_sms',
+  'post_call_summary',
+]);
+
+const enqueueJobSchema = z.object({
+  shopId: z.string().min(1),
+  type: jobTypeSchema,
+  payload: z.record(z.string(), z.unknown()).default({}),
+  runAtIso: z.string().datetime().optional(),
+  idempotencyKey: z.string().min(1).optional(),
+});
+
+const simulateInboundSchema = z.object({
+  destinationPhone: z.string().min(1),
+  callerPhone: z.string().min(1),
+  tool: z.enum([
+    'check_availability',
+    'create_booking',
+    'reschedule_booking',
+    'get_shop_info',
+    'transfer_to_user',
+    'schedule_callback',
+  ]),
+  params: z.record(z.string(), z.unknown()).default({}),
+  requestId: z.string().min(1).optional(),
+  roomName: z.string().min(1).optional(),
+});
+
+const startInboundSchema = z.object({
+  destinationPhone: z.string().min(1),
+  callerPhone: z.string().min(1),
+  requestId: z.string().min(1).optional(),
+  roomName: z.string().min(1).optional(),
+});
+
+const publicDemoRequestSchema = z.object({
+  shopName: z.string().min(1).max(120),
+  phoneNumber: z.string().min(7).max(32),
+  businessType: z.string().min(1).max(80),
+  staffName: z.string().min(1).max(120).optional(),
+  notes: z.string().max(500).optional(),
+  systemPrompt: z.string().min(1).max(12000).optional(),
+  captchaToken: z.string().min(1),
+  sessionId: z.string().min(8).max(120),
+  website: z.string().max(120).optional(),
+});
+
+const publicContactRequestSchema = z.object({
+  fullName: z.string().min(1).max(120),
+  businessName: z.string().min(1).max(120),
+  email: z.string().email(),
+  phoneNumber: z.string().min(7).max(32),
+  businessType: z.string().min(1).max(80),
+  currentSetup: z.string().min(1).max(120),
+  helpNeed: z.string().min(1).max(1000),
+  bestTime: z.string().min(1).max(140),
+  captchaToken: z.string().min(1),
+  sessionId: z.string().min(8).max(120),
+  website: z.string().max(120).optional(),
+});
+
+const dispatchStatusSchema = z.object({
+  requestId: z.string().min(1),
+  roomName: z.string().min(1),
+  sessionId: z.string().min(1),
+  status: z.enum(['received', 'agent_joined', 'completed', 'failed']),
+  error: z.string().optional(),
+  occurredAt: z.string().datetime().optional(),
+  shopId: z.string().optional(),
+});
+
+const authLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+  remember: z.boolean().optional(),
+});
+
+const signupPhoneSearchSchema = z.object({
+  countryCode: z.string().min(2).max(2).default('US'),
+  locality: z.string().min(1).max(80).optional(),
+  administrativeArea: z.string().min(1).max(80).optional(),
+  limit: z.coerce.number().int().min(1).max(30).optional(),
+});
+
+const userSignupSchema = z.object({
+  shopName: z.string().min(1).max(120).optional(),
+  brandSlug: z
+    .string()
+    .min(1)
+    .max(120)
+    .regex(/^[a-z0-9-]+$/)
+    .optional(),
+  userName: z.string().min(1).max(120).optional(),
+  userPhone: z.string().min(6).max(32).optional(),
+  timezone: z.string().min(1).max(80).default('America/Los_Angeles'),
+  phoneNumber: z.string().min(6).max(32).optional(),
+  email: z.string().email(),
+  password: z.string().min(8).max(128),
+  remember: z.boolean().optional(),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const googleStartQuerySchema = z.object({
+  intent: z.enum(['login', 'signup']).optional(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(20),
+  newPassword: z.string().min(8).max(128),
+});
+
+const userSettingsBaseSchema = z.object({
+  user_name: z.string().min(1).optional(),
+  user_phone: z.string().min(1).optional(),
+  backup_phone: z.string().min(1).nullable().optional(),
+  address: z.string().min(1).nullable().optional(),
+  timezone: z.string().min(1).optional(),
+  cancel_policy: z.string().min(1).optional(),
+  promotions: z.string().min(1).nullable().optional(),
+  booking_url: z.string().url().nullable().optional(),
+});
+
+const serviceItemSchema = z.object({
+  name: z.string().min(1).max(120),
+  duration_min: z.coerce.number().int().min(1).max(600),
+  price: z.coerce.number().min(0).max(10000),
+});
+
+const businessHoursEntrySchema = z.union([
+  z.object({
+    closed: z.literal(true),
+  }),
+  z.object({
+    open: z.string().regex(/^\d{2}:\d{2}$/),
+    close: z.string().regex(/^\d{2}:\d{2}$/),
+  }),
+]);
+
+const userSettingsUpdateSchema = userSettingsBaseSchema.extend({
+  services: z.array(serviceItemSchema).optional(),
+  hours: z.record(z.string(), businessHoursEntrySchema).optional(),
+  ai_voice: z.string().min(1).max(80).nullable().optional(),
+  ai_welcome_message: z.string().min(1).max(240).nullable().optional(),
+  ai_custom_instructions: z.string().min(1).max(2000).nullable().optional(),
+  allow_transfers: z.boolean().optional(),
+  allow_callbacks: z.boolean().optional(),
+  send_reminder_sms: z.boolean().optional(),
+  send_review_request_sms: z.boolean().optional(),
+  send_missed_call_followup_sms: z.boolean().optional(),
+});
+
+const adminShopSettingsUpdateSchema = userSettingsBaseSchema.extend({
+  services: z.array(serviceItemSchema).optional(),
+  hours: z.record(z.string(), businessHoursEntrySchema).optional(),
+});
+
+const adminShopDynamicConfigSchema = z.object({
+  ai_voice: z.string().min(1).max(80).nullable().optional(),
+  ai_welcome_message: z.string().min(1).max(240).nullable().optional(),
+  ai_custom_instructions: z.string().min(1).max(2000).nullable().optional(),
+  allow_transfers: z.boolean().optional(),
+  allow_callbacks: z.boolean().optional(),
+  send_reminder_sms: z.boolean().optional(),
+  send_review_request_sms: z.boolean().optional(),
+  send_missed_call_followup_sms: z.boolean().optional(),
+});
+
+const adminCreateShopSchema = z.object({
+  name: z.string().min(1),
+  brand_slug: z.string().min(1).max(120).regex(/^[a-z0-9-]+$/).optional(),
+  phone_number: z.string().min(6),
+  user_phone: z.string().min(6),
+  user_name: z.string().min(1).nullable().optional(),
+  timezone: z.string().min(1),
+  plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
+  active: z.boolean().optional(),
+});
+
+const adminUpdatePlanSchema = z.object({
+  plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
+  active: z.boolean().optional(),
+});
+
+const adminInviteSchema = z.object({
+  email: z.string().email(),
+  shopId: z.string().uuid().optional(),
+});
+
+const userBillingCheckoutSchema = z.object({
+  plan: z.enum(['starter', 'professional', 'enterprise']),
+  successUrl: z.string().url().optional(),
+  cancelUrl: z.string().url().optional(),
+});
+
+const calendarProviderParamSchema = z.object({
+  provider: z.enum(['square_appointments', 'google_calendar', 'vagaro', 'mindbody', 'booksy']),
+});
+
+const squareConfigureSchema = z.object({
+  locationId: z.string().min(1),
+  serviceVariationId: z.string().min(1),
+  teamMemberId: z.string().min(1).optional(),
+});
+
+const blogPostStatusSchema = z.enum(['draft', 'published', 'archived']);
+
+const blogPostListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  query: z.string().max(120).optional(),
+  status: z.union([blogPostStatusSchema, z.literal('all')]).optional(),
+});
+
+const contactRequestStatusSchema = z.enum(['new', 'contacted', 'qualified', 'closed', 'spam']);
+
+const adminLeadsListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(500).optional(),
+  status: z.union([contactRequestStatusSchema, z.literal('all')]).optional(),
+  query: z.string().max(120).optional(),
+});
+
+const adminLeadStatusUpdateSchema = z.object({
+  status: contactRequestStatusSchema,
+  notes: z.string().max(2000).nullable().optional(),
+});
+
+type SessionRole = 'user' | 'admin';
+
+const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
+  user_name: 'edit_business_profile',
+  user_phone: 'edit_business_profile',
+  backup_phone: 'edit_business_profile',
+  address: 'edit_business_profile',
+  timezone: 'edit_business_profile',
+  booking_url: 'edit_booking_url',
+  cancel_policy: 'edit_cancel_policy',
+  promotions: 'edit_promotions',
+  services: 'edit_services',
+  hours: 'edit_hours',
+  allow_transfers: 'edit_transfer_settings',
+  allow_callbacks: 'edit_callback_settings',
+  send_missed_call_followup_sms: 'edit_missed_call_followup_sms',
+  ai_voice: 'edit_ai_voice',
+  ai_welcome_message: 'edit_ai_greeting',
+  send_reminder_sms: 'edit_reminder_sms',
+  send_review_request_sms: 'edit_review_request_sms',
+  ai_custom_instructions: 'edit_ai_custom_instructions',
+};
+
+function splitUserSettingsPatchByPlan(
+  shop: Shop,
+  patch: Record<string, unknown>,
+): {
+  basicPatch: Partial<
+    Pick<
+      Shop,
+      | 'user_name'
+      | 'user_phone'
+      | 'backup_phone'
+      | 'address'
+      | 'timezone'
+      | 'services'
+      | 'hours'
+      | 'cancel_policy'
+      | 'promotions'
+      | 'booking_url'
+    >
+  >;
+  dynamicPatch: Partial<
+    Pick<
+      Shop,
+      | 'ai_voice'
+      | 'ai_welcome_message'
+      | 'ai_custom_instructions'
+      | 'allow_transfers'
+      | 'allow_callbacks'
+      | 'send_reminder_sms'
+      | 'send_review_request_sms'
+      | 'send_missed_call_followup_sms'
+    >
+  >;
+  disallowedFields: string[];
+} {
+  const capabilities = getShopPlanCapabilities(shop.plan);
+  const basicPatch: Record<string, unknown> = {};
+  const dynamicPatch: Record<string, unknown> = {};
+  const disallowedFields: string[] = [];
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) continue;
+    const capability = USER_SETTING_FIELD_CAPABILITIES[key];
+    if (!capability) continue;
+    if (!capabilities[capability]) {
+      if (JSON.stringify(shop[key as keyof Shop] ?? null) === JSON.stringify(value ?? null)) {
+        continue;
+      }
+      disallowedFields.push(key);
+      continue;
+    }
+
+    if (
+      key === 'ai_voice' ||
+      key === 'ai_welcome_message' ||
+      key === 'ai_custom_instructions' ||
+      key === 'allow_transfers' ||
+      key === 'allow_callbacks' ||
+      key === 'send_reminder_sms' ||
+      key === 'send_review_request_sms' ||
+      key === 'send_missed_call_followup_sms'
+    ) {
+      dynamicPatch[key] = value;
+      continue;
+    }
+
+    basicPatch[key] = value;
+  }
+
+  return {
+    basicPatch: basicPatch as {
+      [K in keyof Pick<
+        Shop,
+        | 'user_name'
+        | 'user_phone'
+        | 'backup_phone'
+        | 'address'
+        | 'timezone'
+        | 'services'
+        | 'hours'
+        | 'cancel_policy'
+        | 'promotions'
+        | 'booking_url'
+      >]?: Shop[K];
+    },
+    dynamicPatch: dynamicPatch as {
+      [K in keyof Pick<
+        Shop,
+        | 'ai_voice'
+        | 'ai_welcome_message'
+        | 'ai_custom_instructions'
+        | 'allow_transfers'
+        | 'allow_callbacks'
+        | 'send_reminder_sms'
+        | 'send_review_request_sms'
+        | 'send_missed_call_followup_sms'
+      >]?: Shop[K];
+    },
+    disallowedFields,
+  };
+}
+
+function ensureInternalAccess(headerValue: string | null): boolean {
+  const internalKey = process.env.BACKEND_INTERNAL_API_KEY;
+  if (!internalKey) return process.env.NODE_ENV !== 'production';
+  return headerValue === internalKey;
+}
+
+function ensureRealtimeDispatchAccess(authHeader: string | null, internalHeader: string | null): boolean {
+  const dispatchToken = process.env.AGENT_DISPATCH_AUTH_TOKEN;
+  if (dispatchToken) {
+    return authHeader === `Bearer ${dispatchToken}`;
+  }
+  return ensureInternalAccess(internalHeader);
+}
+
+function requireLivekitRealtimeInProduction(): boolean {
+  return process.env.NODE_ENV === 'production' && process.env.ALLOW_INSECURE_PROD_RUNTIME !== 'true';
+}
+
+type MetricsSnapshot = ReturnType<typeof getMetricsSnapshot>;
+type SnapshotMetric = MetricsSnapshot['metrics'][number];
+
+function metricLabelsMatch(metric: SnapshotMetric, labels?: Record<string, string>): boolean {
+  if (!labels) return true;
+  return Object.entries(labels).every(([key, value]) => metric.labels[key] === value);
+}
+
+function counterMetricTotal(snapshot: MetricsSnapshot, name: string, labels?: Record<string, string>): number {
+  return snapshot.metrics.reduce((sum, metric) => {
+    if (metric.type !== 'counter') return sum;
+    if (metric.name !== name) return sum;
+    if (!metricLabelsMatch(metric, labels)) return sum;
+    return sum + metric.value;
+  }, 0);
+}
+
+function durationMetricAggregate(
+  snapshot: MetricsSnapshot,
+  name: string,
+  labels?: Record<string, string>,
+): { count: number; avg: number; min: number; max: number } {
+  let count = 0;
+  let sum = 0;
+  let min = Number.POSITIVE_INFINITY;
+  let max = 0;
+  for (const metric of snapshot.metrics) {
+    if (metric.type !== 'duration') continue;
+    if (metric.name !== name) continue;
+    if (!metricLabelsMatch(metric, labels)) continue;
+    count += metric.count;
+    sum += metric.sum;
+    min = Math.min(min, metric.min);
+    max = Math.max(max, metric.max);
+  }
+  return {
+    count,
+    avg: count > 0 ? Number((sum / count).toFixed(2)) : 0,
+    min: Number.isFinite(min) ? Number(min.toFixed(2)) : 0,
+    max: Number(max.toFixed(2)),
+  };
+}
+
+async function readSession(c: Context): Promise<{ role: SessionRole; email: string; shopId?: string } | null> {
+  const userToken = getCookie(c, USER_SESSION_COOKIE);
+  if (userToken) {
+    const verified = await verifySessionToken(userToken);
+    if (verified?.role === 'user') {
+      return { role: 'user', email: verified.email, shopId: verified.shopId };
+    }
+  }
+
+  const adminToken = getCookie(c, ADMIN_SESSION_COOKIE);
+  if (adminToken) {
+    const verified = await verifySessionToken(adminToken);
+    if (verified?.role === 'admin') {
+      return { role: 'admin', email: verified.email };
+    }
+  }
+
+  return null;
+}
+
+async function requireSession(
+  c: Context,
+  role: SessionRole,
+): Promise<{ role: SessionRole; email: string; shopId?: string } | Response> {
+  const session = await readSession(c);
+  if (!session || session.role !== role) {
+    securityAudit({
+      action: 'authz_denied',
+      actorType: session?.role ?? 'public',
+      actorId: session?.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        requiredRole: role,
+        foundRole: session?.role ?? null,
+      },
+    });
+    return c.json({ ok: false, error: 'unauthorized' }, 401);
+  }
+  return session;
+}
+
+async function enforceRateLimit(
+  c: Context,
+  policy: (typeof RATE_LIMIT_POLICIES)[keyof typeof RATE_LIMIT_POLICIES],
+  identitySuffix: string,
+): Promise<Response | null> {
+  const ip = getClientIp({
+    get: (name: string) => c.req.header(name) ?? null,
+  });
+  const identity = `${ip}:${identitySuffix}`;
+  const result = await consumeRateLimit(policy, identity);
+  c.header('X-RateLimit-Limit', String(result.limit));
+  c.header('X-RateLimit-Remaining', String(result.remaining));
+  c.header('Retry-After', String(result.retryAfterSec));
+  if (!result.ok) {
+    securityAudit({
+      action: 'rate_limit_blocked',
+      actorType: 'public',
+      ip,
+      path: c.req.path,
+      details: {
+        policy: policy.name,
+        retryAfterSec: result.retryAfterSec,
+      },
+    });
+    return c.json(
+      {
+        ok: false,
+        error: 'rate_limited',
+      },
+      429,
+    );
+  }
+  return null;
+}
+
+async function enforceRateLimitWithIdentity(
+  c: Context,
+  policy: (typeof RATE_LIMIT_POLICIES)[keyof typeof RATE_LIMIT_POLICIES],
+  identity: string,
+): Promise<Response | null> {
+  const result = await consumeRateLimit(policy, identity);
+  if (!result.ok) {
+    securityAudit({
+      action: 'rate_limit_blocked',
+      actorType: 'public',
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        policy: policy.name,
+        identity,
+        retryAfterSec: result.retryAfterSec,
+      },
+    });
+    return c.json(
+      {
+        ok: false,
+        error: 'rate_limited',
+      },
+      429,
+    );
+  }
+  return null;
+}
+
+function enforceSameOriginForCookieMutation(c: Context): Response | null {
+  const method = c.req.method.toUpperCase();
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return null;
+  const origin = c.req.header('origin') ?? null;
+  if (!origin) return null;
+  const host = c.req.header('host') ?? '';
+  if (!host) return c.json({ ok: false, error: 'forbidden' }, 403);
+  const expectedHttp = `http://${host}`;
+  const expectedHttps = `https://${host}`;
+  if (origin !== expectedHttp && origin !== expectedHttps) {
+    securityAudit({
+      action: 'csrf_blocked',
+      actorType: 'public',
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { origin, expectedHttp, expectedHttps },
+    });
+    return c.json({ ok: false, error: 'forbidden' }, 403);
+  }
+  return null;
+}
+
+function hashPasswordResetToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+function toBrandSlug(input: string): string {
+  const slug = input
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+    .slice(0, 120);
+  return slug || `shop-${randomUUID().slice(0, 8)}`;
+}
+
+function buildDefaultShopNameFromEmail(email: string): string {
+  const local = email.split('@')[0] ?? 'new-shop';
+  const cleaned = local
+    .replace(/[^a-zA-Z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 80);
+  if (!cleaned) return 'New RingBooker Shop';
+  return `${cleaned.replace(/\b\w/g, (letter) => letter.toUpperCase())} Shop`;
+}
+
+function createTemporaryPhoneNumber(): string {
+  const digits = randomUUID().replace(/[^0-9]/g, '').padEnd(10, '0').slice(0, 10);
+  return `+1${digits}`;
+}
+
+function createOAuthFallbackPasswordHash(): string {
+  return hashPassword(`${randomUUID()}${randomBytes(24).toString('hex')}`);
+}
+
+function buildSignupWelcomeEmail(params: {
+  email: string;
+  shopName: string;
+  appBaseUrl: string;
+}): { subject: string; text: string; html: string } {
+  const dashboardUrl = `${params.appBaseUrl.replace(/\/+$/, '')}/user`;
+  const onboardingUrl = `${params.appBaseUrl.replace(/\/+$/, '')}/user/onboarding`;
+  const subject = `Welcome to RingBooker, ${params.shopName}`;
+  const text = [
+    `Hi ${params.email},`,
+    '',
+    `Welcome to RingBooker. Your account for "${params.shopName}" is ready.`,
+    '',
+    `Next step: complete your setup and start taking calls.`,
+    `Dashboard: ${dashboardUrl}`,
+    `Onboarding: ${onboardingUrl}`,
+    '',
+    'Thanks,',
+    'RingBooker Team',
+  ].join('\n');
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+      <h2 style="margin:0 0 12px">Welcome to RingBooker</h2>
+      <p style="margin:0 0 12px">Hi ${params.email},</p>
+      <p style="margin:0 0 12px">Your account for <strong>${params.shopName}</strong> is ready.</p>
+      <p style="margin:0 0 16px">Complete setup and start taking calls.</p>
+      <p style="margin:0 0 8px"><a href="${dashboardUrl}">Open dashboard</a></p>
+      <p style="margin:0 0 8px"><a href="${onboardingUrl}">Complete onboarding</a></p>
+      <p style="margin:16px 0 0">Thanks,<br/>RingBooker Team</p>
+    </div>
+  `;
+  return { subject, text, html };
+}
+
+async function sendSignupWelcomeEmail(params: {
+  emailService?: EmailService;
+  email: string;
+  shopName: string;
+  shopId: string;
+  appBaseUrl: string;
+  idempotencyKey: string;
+}): Promise<void> {
+  if (!params.emailService) return;
+  const message = buildSignupWelcomeEmail({
+    email: params.email,
+    shopName: params.shopName,
+    appBaseUrl: params.appBaseUrl,
+  });
+  try {
+    await params.emailService.sendEmail({
+      to: params.email,
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+      category: 'welcome_signup',
+      idempotencyKey: params.idempotencyKey,
+      shopId: params.shopId,
+    });
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        shopId: params.shopId,
+        email: params.email,
+      },
+      'signup_welcome_email_failed',
+    );
+  }
+}
+
+function getAppBaseUrl(hostHeader: string | null): string {
+  const fromEnv = process.env.APP_BASE_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/+$/, '');
+  if (hostHeader && hostHeader.length > 0) return `http://${hostHeader}`;
+  return 'http://localhost:3000';
+}
+
+function normalizePhone(phone: string | null | undefined): string | null {
+  if (!phone) return null;
+  const normalized = phone.replace(/[^\d+]/g, '');
+  if (!normalized) return null;
+  if (normalized.startsWith('+')) {
+    return normalized.length >= 8 && normalized.length <= 16 ? normalized : null;
+  }
+  if (normalized.length === 10) {
+    return `+1${normalized}`;
+  }
+  if (normalized.length === 11 && normalized.startsWith('1')) {
+    return `+${normalized}`;
+  }
+  return normalized.length >= 8 && normalized.length <= 15 ? `+${normalized}` : null;
+}
+
+function buildPublicDemoSystemPrompt(input: {
+  shopName: string;
+  businessType: string;
+  staffName?: string;
+  notes?: string;
+}) {
+  return [
+    `You are RingBooker AI running a live demo call for a prospect interested in using the product.`,
+    `Treat the prospect's business name as ${input.shopName}.`,
+    `Business type: ${input.businessType}.`,
+    'Handle the call like a real receptionist: booking, rescheduling, pricing, hours, and general questions.',
+    'Auto-detect caller language and adapt naturally between English and Vietnamese when needed.',
+    input.staffName ? `Preferred staff/member to reference when helpful: ${input.staffName}.` : null,
+    input.notes ? `Custom demo notes: ${input.notes}.` : null,
+    'Keep the conversation natural, warm, and short.',
+    'This is a demo call, not a real booking workflow.',
+    'Do not claim an appointment is actually booked or changed.',
+    'Do not use tools, do not collect payment, and do not promise a human will follow up unless explicitly asked.',
+    'If the prospect asks about pricing, availability, reminders, transcript, or booking flow, explain clearly how RingBooker would handle it.',
+    'Use natural American English. Keep most replies to 1-2 short sentences.',
+    'If the caller is silent or confused, briefly explain this is a live RingBooker demo call and ask what they want to test.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+function deriveDemoCallStage(call: {
+  startedAt?: string;
+  endedAt?: string;
+  agentJoined: boolean;
+  transcriptStatus?: string;
+  transcriptText?: string;
+}) {
+  if (call.transcriptStatus === 'failed') return 'failed';
+  if (call.endedAt || call.transcriptStatus === 'completed') return 'completed';
+  if (call.agentJoined || (call.transcriptText && call.transcriptText.trim().length > 0)) return 'live';
+  if (call.startedAt) return 'dialing';
+  return 'queued';
+}
+
+function deriveDemoLiveSignal(call: {
+  demoLiveState?: string;
+  endedAt?: string;
+  transcriptStatus?: string;
+  transcriptText?: string;
+}) {
+  if (call.demoLiveState) return call.demoLiveState;
+  if (call.transcriptStatus === 'failed') return 'failed';
+  if (call.endedAt || call.transcriptStatus === 'completed') return 'completed';
+  if (call.transcriptText && call.transcriptText.trim().length > 0) return 'ai_agent_speaking';
+  return 'preparing';
+}
+
+async function verifyGoogleIdToken(idToken: string): Promise<{
+  email: string;
+  emailVerified: boolean;
+  name?: string;
+  aud: string;
+}> {
+  const tokenInfoUrl = new URL('https://oauth2.googleapis.com/tokeninfo');
+  tokenInfoUrl.searchParams.set('id_token', idToken);
+  const response = await fetch(tokenInfoUrl.toString(), {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`google_tokeninfo_failed:${response.status}`);
+  }
+  const body = (await response.json()) as {
+    email?: string;
+    email_verified?: string;
+    name?: string;
+    aud?: string;
+    exp?: string;
+  };
+  if (!body.email || !body.aud || !body.exp) {
+    throw new Error('google_tokeninfo_invalid_payload');
+  }
+  const expMillis = Number.parseInt(body.exp, 10) * 1000;
+  if (!Number.isFinite(expMillis) || expMillis <= Date.now()) {
+    throw new Error('google_tokeninfo_expired');
+  }
+  return {
+    email: body.email.trim().toLowerCase(),
+    emailVerified: body.email_verified === 'true',
+    name: body.name,
+    aud: body.aud,
+  };
+}
+
+function isShopOnboardingComplete(shop: Shop): boolean {
+  const hasOwnerName = typeof shop.user_name === 'string' && shop.user_name.trim().length > 0;
+  const hasOwnerPhone = typeof shop.user_phone === 'string' && shop.user_phone.trim().length > 0;
+  const hasTimezone = typeof shop.timezone === 'string' && shop.timezone.trim().length > 0;
+  const hasService = Array.isArray(shop.services) && shop.services.length > 0;
+  const hasHours = !!shop.hours && Object.keys(shop.hours).length > 0;
+  return hasOwnerName && hasOwnerPhone && hasTimezone && hasService && hasHours;
+}
+
+function parseCalendarProviderParam(value: string): CalendarConnectionProviderId | null {
+  const parsed = calendarProviderParamSchema.safeParse({ provider: value });
+  return parsed.success ? parsed.data.provider : null;
+}
+
+function buildCalendarSettingsRedirect(params: { appBaseUrl: string; result: 'success' | 'error'; provider: string; message?: string }) {
+  const url = new URL('/user/settings', params.appBaseUrl);
+  url.searchParams.set('calendar_connect', params.result);
+  url.searchParams.set('provider', params.provider);
+  if (params.message) url.searchParams.set('calendar_message', params.message);
+  return url.toString();
+}
+
+function buildSquareCallbackUrl(appBaseUrl: string): string {
+  return `${appBaseUrl.replace(/\/+$/, '')}/api/backend/user/calendar/providers/square_appointments/connect/callback`;
+}
+
+function buildSquareConnectionPayload(current: SquareConnectionCredentials | null, patch: Partial<SquareConnectionCredentials>) {
+  return {
+    provider: 'square_appointments' as const,
+    access_token: patch.access_token ?? current?.access_token,
+    refresh_token: patch.refresh_token ?? current?.refresh_token,
+    expires_at: patch.expires_at ?? current?.expires_at,
+    merchant_id: patch.merchant_id ?? current?.merchant_id,
+    location_id: patch.location_id ?? current?.location_id,
+    service_variation_id: patch.service_variation_id ?? current?.service_variation_id,
+    team_member_id: patch.team_member_id ?? current?.team_member_id,
+  };
+}
+
+export function createBackendApp(deps: {
+  providerEventsRepository: ProviderEventsRepository;
+  jobsRepository?: JobsRepository;
+  bookingsRepository?: BookingsRepository;
+  billingCustomersRepository?: BillingCustomersRepository;
+  billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+  callbacksRepository?: CallbacksRepository;
+  blogPostsRepository?: BlogPostsRepository;
+  contactRequestsRepository?: ContactRequestsRepository;
+  shopsRepository?: ShopsRepository;
+  telephonyService?: TelephonyService;
+  phoneProvisioningService?: PhoneProvisioningService;
+  emailService?: EmailService;
+  callLogsRepository?: CallLogsRepository;
+  missedCallsRepository?: MissedCallsRepository;
+  authUsersRepository?: AuthUsersRepository;
+  billingProvider?: BillingProviderAdapter;
+  basePath?: string;
+  runtimeInfo?: {
+    mode: 'memory' | 'supabase';
+    commProvider: 'noop' | 'telnyx';
+    agentRuntimeMode?: 'mock' | 'livekit_realtime';
+    agentTransportMode?: 'mock' | 'livekit';
+    agentVoiceProviderMode?: 'none' | 'gemini_live' | 'openai_realtime';
+  };
+  realtimeAgentRuntime?: RealtimeAgentRuntime;
+}) {
+  const app = new Hono();
+  const path = (route: string) => `${deps.basePath ?? ''}${route}`;
+
+  app.use('*', async (c, next) => {
+    c.header('X-Frame-Options', 'DENY');
+    c.header('X-Content-Type-Options', 'nosniff');
+    c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    c.header('Cross-Origin-Opener-Policy', 'same-origin');
+    c.header('Cross-Origin-Resource-Policy', 'same-site');
+
+    const start = Date.now();
+    await next();
+    const durationMs = Date.now() - start;
+    logger.info(
+      {
+        method: c.req.method,
+        path: c.req.path,
+        status: c.res.status,
+        durationMs,
+      },
+      'api_request',
+    );
+    trackApiStatusForAlerts(c.res.status, c.req.path);
+    observeDurationMs('api_request_duration_ms', durationMs, {
+      method: c.req.method,
+      status: c.res.status,
+    });
+    incrementMetric('api_requests_total', {
+      method: c.req.method,
+      status: c.res.status,
+    });
+  });
+
+  app.get(path('/health'), (c) => c.json({ ok: true }));
+  app.get(path('/readiness'), (c) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const mode = deps.runtimeInfo?.mode ?? 'memory';
+    const commProvider = deps.runtimeInfo?.commProvider ?? 'noop';
+    const agentRuntimeMode = deps.runtimeInfo?.agentRuntimeMode ?? 'mock';
+    const agentTransportMode = deps.runtimeInfo?.agentTransportMode ?? (agentRuntimeMode === 'livekit_realtime' ? 'livekit' : 'mock');
+    const agentVoiceProviderMode =
+      deps.runtimeInfo?.agentVoiceProviderMode ?? (agentRuntimeMode === 'livekit_realtime' ? 'gemini_live' : 'none');
+    const checks = [
+      {
+        key: 'app_signing_secret',
+        ok: typeof process.env.APP_SIGNING_SECRET === 'string' && process.env.APP_SIGNING_SECRET.length >= 32,
+      },
+      {
+        key: 'app_encryption_key',
+        ok: typeof process.env.APP_ENCRYPTION_KEY === 'string' && process.env.APP_ENCRYPTION_KEY.length >= 32,
+      },
+      ...(isProduction
+        ? [
+            {
+              key: 'turnstile_secret_key',
+              ok: typeof process.env.TURNSTILE_SECRET_KEY === 'string' && process.env.TURNSTILE_SECRET_KEY.length > 0,
+            },
+            {
+              key: 'backend_internal_api_key',
+              ok: typeof process.env.BACKEND_INTERNAL_API_KEY === 'string' && process.env.BACKEND_INTERNAL_API_KEY.length >= 16,
+            },
+            {
+              key: 'production_repository_mode_supabase',
+              ok: mode === 'supabase',
+            },
+            {
+              key: 'production_comm_provider_telnyx',
+              ok: commProvider === 'telnyx',
+            },
+            {
+              key: 'production_agent_runtime_livekit_realtime',
+              ok: agentRuntimeMode === 'livekit_realtime',
+            },
+          ]
+        : []),
+      ...(mode === 'supabase'
+        ? [
+            {
+              key: 'supabase_url',
+              ok: typeof process.env.SUPABASE_URL === 'string' && process.env.SUPABASE_URL.length > 0,
+            },
+            {
+              key: 'supabase_service_key',
+              ok: typeof process.env.SUPABASE_SERVICE_KEY === 'string' && process.env.SUPABASE_SERVICE_KEY.length > 0,
+            },
+          ]
+        : []),
+      ...(commProvider === 'telnyx'
+        ? [
+            {
+              key: 'telnyx_api_key',
+              ok: typeof process.env.TELNYX_API_KEY === 'string' && process.env.TELNYX_API_KEY.length > 0,
+            },
+            {
+              key: 'telnyx_app_id',
+              ok: typeof process.env.TELNYX_APP_ID === 'string' && process.env.TELNYX_APP_ID.length > 0,
+            },
+            {
+              key: 'telnyx_messaging_profile',
+              ok: typeof process.env.TELNYX_MESSAGING_PROFILE === 'string' && process.env.TELNYX_MESSAGING_PROFILE.length > 0,
+            },
+            {
+              key: 'telnyx_webhook_public_key',
+              ok:
+                typeof process.env.TELNYX_WEBHOOK_PUBLIC_KEY === 'string' &&
+                process.env.TELNYX_WEBHOOK_PUBLIC_KEY.length > 0,
+            },
+          ]
+        : []),
+      ...(agentTransportMode === 'livekit'
+        ? [
+            {
+              key: 'livekit_url',
+              ok: typeof process.env.LIVEKIT_URL === 'string' && process.env.LIVEKIT_URL.length > 0,
+            },
+            {
+              key: 'livekit_api_key',
+              ok: typeof process.env.LIVEKIT_API_KEY === 'string' && process.env.LIVEKIT_API_KEY.length > 0,
+            },
+            {
+              key: 'livekit_api_secret',
+              ok: typeof process.env.LIVEKIT_API_SECRET === 'string' && process.env.LIVEKIT_API_SECRET.length > 0,
+            },
+          ]
+        : []),
+      ...(agentVoiceProviderMode === 'gemini_live'
+        ? [
+            {
+              key: 'google_ai_api_key',
+              ok: typeof process.env.GOOGLE_AI_API_KEY === 'string' && process.env.GOOGLE_AI_API_KEY.length > 0,
+            },
+          ]
+        : []),
+      ...(agentVoiceProviderMode === 'openai_realtime'
+        ? [
+            {
+              key: 'openai_api_key',
+              ok: typeof process.env.OPENAI_API_KEY === 'string' && process.env.OPENAI_API_KEY.length > 0,
+            },
+          ]
+        : []),
+      ...(process.env.EMAIL_PROVIDER === 'resend'
+        ? [
+            {
+              key: 'email_from_address',
+              ok: typeof process.env.EMAIL_FROM_ADDRESS === 'string' && process.env.EMAIL_FROM_ADDRESS.length > 0,
+            },
+            {
+              key: 'resend_api_key',
+              ok: typeof process.env.RESEND_API_KEY === 'string' && process.env.RESEND_API_KEY.length > 0,
+            },
+          ]
+        : []),
+    ];
+    const ok = checks.every((check) => check.ok);
+    return c.json(
+      {
+        ok,
+        mode,
+        commProvider,
+        agentRuntimeMode,
+        checks,
+      },
+      ok ? 200 : 503,
+    );
+  });
+
+  app.post(path('/webhooks/telnyx'), (c) =>
+    (async () => {
+      const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_telnyx, 'webhook_telnyx');
+      if (limited) return limited;
+      return handleTelnyxWebhook(c, {
+      providerEventsRepository: deps.providerEventsRepository,
+      jobsRepository: deps.jobsRepository,
+      callbacksRepository: deps.callbacksRepository,
+      shopsRepository: deps.shopsRepository,
+      callLogsRepository: deps.callLogsRepository,
+      missedCallsRepository: deps.missedCallsRepository,
+      });
+    })(),
+  );
+
+  app.post(path('/webhooks/paddle'), (c) =>
+    (async () => {
+      const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_paddle, 'webhook_paddle');
+      if (limited) return limited;
+      return handlePaddleWebhook(c, {
+      providerEventsRepository: deps.providerEventsRepository,
+      billingProvider: deps.billingProvider,
+      });
+    })(),
+  );
+
+  app.get(path('/runtime'), (c) => {
+    if (!ensureInternalAccess(c.req.header('x-backend-key') ?? null)) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'internal_key_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+    return c.json({
+      ok: true,
+      mode: deps.runtimeInfo?.mode ?? 'memory',
+      commProvider: deps.runtimeInfo?.commProvider ?? 'noop',
+      agentRuntimeMode: deps.runtimeInfo?.agentRuntimeMode ?? 'mock',
+      agentTransportMode: deps.runtimeInfo?.agentTransportMode ?? 'mock',
+      agentVoiceProviderMode: deps.runtimeInfo?.agentVoiceProviderMode ?? 'none',
+      agentVoiceModel: process.env.AGENT_VOICE_MODEL ?? process.env.AGENT_GEMINI_MODEL ?? null,
+    });
+  });
+
+  app.get(path('/metrics'), (c) => {
+    if (!ensureInternalAccess(c.req.header('x-backend-key') ?? null)) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'internal_key_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+    return c.json({
+      ok: true,
+      ...getMetricsSnapshot(),
+    });
+  });
+
+  app.get(path('/public/blog/posts'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_status, 'public_blog_posts');
+    if (limited) return limited;
+    if (!deps.blogPostsRepository) return c.json({ ok: false, error: 'blog_repository_unavailable' }, 500);
+    const parsed = blogPostListQuerySchema.safeParse({
+      limit: c.req.query('limit'),
+      query: c.req.query('query'),
+    });
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_query' }, 400);
+    const posts = await deps.blogPostsRepository.listPublished({
+      limit: parsed.data.limit,
+      query: parsed.data.query,
+    });
+    return c.json({ ok: true, posts });
+  });
+
+  app.get(path('/public/blog/posts/:slug'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_status, 'public_blog_post_detail');
+    if (limited) return limited;
+    if (!deps.blogPostsRepository) return c.json({ ok: false, error: 'blog_repository_unavailable' }, 500);
+    const slug = c.req.param('slug');
+    if (!slug) return c.json({ ok: false, error: 'invalid_slug' }, 400);
+    const post = await deps.blogPostsRepository.findBySlug(slug);
+    if (!post) return c.json({ ok: false, error: 'not_found' }, 404);
+    return c.json({ ok: true, post });
+  });
+
+  app.post(path('/public/contact/request'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_contact_request, 'public_contact_request');
+    if (limited) return limited;
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = publicContactRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    if (parsed.data.website && parsed.data.website.trim().length > 0) {
+      securityAudit({
+        action: 'public_contact_honeypot_triggered',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+      });
+      return c.json({ ok: false, error: 'invalid_request' }, 400);
+    }
+
+    const normalizedEmail = parsed.data.email.trim().toLowerCase();
+    const sessionLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_contact_request_session,
+      `public_contact_request_session:${parsed.data.sessionId}`,
+    );
+    if (sessionLimited) return sessionLimited;
+
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    const emailDailyLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_contact_request_email_daily,
+      `public_contact_request_email_daily:${normalizedEmail}`,
+    );
+    if (emailDailyLimited) return emailDailyLimited;
+
+    const ipEmailLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_contact_request_ip_email,
+      `public_contact_request_ip_email:${ip}:${normalizedEmail}`,
+    );
+    if (ipEmailLimited) return ipEmailLimited;
+
+    const captcha = await verifyTurnstileToken({
+      token: parsed.data.captchaToken,
+      ip,
+    });
+    if (!captcha.ok) {
+      securityAudit({
+        action: 'public_contact_captcha_failed',
+        actorType: 'public',
+        ip,
+        path: c.req.path,
+        details: { reason: captcha.reason },
+      });
+      return c.json({ ok: false, error: 'captcha_failed' }, 403);
+    }
+
+    const normalizedPhone = normalizePhone(parsed.data.phoneNumber);
+    if (!normalizedPhone) {
+      return c.json({ ok: false, error: 'invalid_phone' }, 400);
+    }
+
+    const requestId = `contact-${randomUUID()}`;
+    const receivedAt = new Date().toISOString();
+
+    if (deps.contactRequestsRepository) {
+      try {
+        await deps.contactRequestsRepository.create({
+          requestId,
+          fullName: parsed.data.fullName,
+          businessName: parsed.data.businessName,
+          email: normalizedEmail,
+          phoneNumber: normalizedPhone,
+          businessType: parsed.data.businessType,
+          currentSetup: parsed.data.currentSetup,
+          helpNeed: parsed.data.helpNeed,
+          bestTime: parsed.data.bestTime,
+          source: 'marketing_contact_form',
+          ip,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            err: error,
+            requestId,
+          },
+          'public_contact_persist_failed',
+        );
+      }
+    }
+
+    const salesTo = process.env.CONTACT_SALES_EMAIL?.trim() || process.env.EMAIL_FROM_ADDRESS?.trim() || '';
+    if (deps.emailService && salesTo) {
+      const subject = `New Contact Request — ${parsed.data.businessName}`;
+      const lines = [
+        `Request ID: ${requestId}`,
+        `Received At: ${receivedAt}`,
+        `Name: ${parsed.data.fullName}`,
+        `Business: ${parsed.data.businessName}`,
+        `Email: ${normalizedEmail}`,
+        `Phone: ${normalizedPhone}`,
+        `Business Type: ${parsed.data.businessType}`,
+        `Current Setup: ${parsed.data.currentSetup}`,
+        `Best Time: ${parsed.data.bestTime}`,
+        '',
+        'Help Request:',
+        parsed.data.helpNeed,
+      ];
+      try {
+        await deps.emailService.sendEmail({
+          to: salesTo,
+          subject,
+          text: lines.join('\n'),
+          html: `
+            <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+              <h2 style="margin:0 0 12px">New Contact Request</h2>
+              <p style="margin:0 0 8px"><strong>Request ID:</strong> ${requestId}</p>
+              <p style="margin:0 0 8px"><strong>Received At:</strong> ${receivedAt}</p>
+              <p style="margin:0 0 8px"><strong>Name:</strong> ${parsed.data.fullName}</p>
+              <p style="margin:0 0 8px"><strong>Business:</strong> ${parsed.data.businessName}</p>
+              <p style="margin:0 0 8px"><strong>Email:</strong> ${normalizedEmail}</p>
+              <p style="margin:0 0 8px"><strong>Phone:</strong> ${normalizedPhone}</p>
+              <p style="margin:0 0 8px"><strong>Business Type:</strong> ${parsed.data.businessType}</p>
+              <p style="margin:0 0 8px"><strong>Current Setup:</strong> ${parsed.data.currentSetup}</p>
+              <p style="margin:0 0 8px"><strong>Best Time:</strong> ${parsed.data.bestTime}</p>
+              <p style="margin:12px 0 4px"><strong>Help Request:</strong></p>
+              <p style="margin:0;white-space:pre-wrap">${parsed.data.helpNeed}</p>
+            </div>
+          `,
+          category: 'contact_request',
+          idempotencyKey: `public_contact:${requestId}`,
+          replyTo: normalizedEmail,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            err: error,
+            requestId,
+            salesTo,
+          },
+          'public_contact_email_send_failed',
+        );
+      }
+    }
+
+    securityAudit({
+      action: 'public_contact_requested',
+      actorType: 'public',
+      ip,
+      path: c.req.path,
+      details: {
+        requestId,
+        businessType: parsed.data.businessType,
+        currentSetup: parsed.data.currentSetup,
+      },
+    });
+
+    return c.json({
+      ok: true,
+      requestId,
+      message: 'request_received',
+    });
+  });
+
+  app.post(path('/public/demo/request'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_request, 'public_demo_request');
+    if (limited) return limited;
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = publicDemoRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    if (parsed.data.website && parsed.data.website.trim().length > 0) {
+      securityAudit({
+        action: 'public_demo_honeypot_triggered',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+      });
+      return c.json({ ok: false, error: 'invalid_request' }, 400);
+    }
+
+    const sessionLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_demo_request_session,
+      `public_demo_request_session:${parsed.data.sessionId}`,
+    );
+    if (sessionLimited) return sessionLimited;
+
+    const normalizedPhone = normalizePhone(parsed.data.phoneNumber);
+    if (!normalizedPhone) {
+      return c.json({ ok: false, error: 'invalid_phone' }, 400);
+    }
+
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    const phoneShortLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_demo_request_phone_short,
+      `public_demo_request_phone_short:${normalizedPhone}`,
+    );
+    if (phoneShortLimited) return phoneShortLimited;
+
+    const phoneDailyLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_demo_request_phone_daily,
+      `public_demo_request_phone_daily:${normalizedPhone}`,
+    );
+    if (phoneDailyLimited) return phoneDailyLimited;
+
+    const ipPhoneLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_demo_request_ip_phone,
+      `public_demo_request_ip_phone:${ip}:${normalizedPhone}`,
+    );
+    if (ipPhoneLimited) return ipPhoneLimited;
+
+    const captcha = await verifyTurnstileToken({
+      token: parsed.data.captchaToken,
+      ip,
+    });
+    if (!captcha.ok) {
+      securityAudit({
+        action: 'public_demo_captcha_failed',
+        actorType: 'public',
+        ip,
+        path: c.req.path,
+        details: { reason: captcha.reason },
+      });
+      return c.json({ ok: false, error: 'captcha_failed' }, 403);
+    }
+
+    if (!deps.shopsRepository || !deps.telephonyService || !deps.realtimeAgentRuntime || !deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'demo_dependencies_unavailable' }, 503);
+    }
+
+    const env = getEnv();
+    const demoShop = await deps.shopsRepository.findById(env.PUBLIC_DEMO_SHOP_ID);
+    if (!demoShop || !demoShop.active) {
+      return c.json({ ok: false, error: 'demo_shop_unavailable' }, 503);
+    }
+
+    const liveDemoConfigured =
+      deps.runtimeInfo?.commProvider === 'telnyx' &&
+      deps.runtimeInfo?.agentTransportMode === 'livekit' &&
+      (deps.runtimeInfo?.agentVoiceProviderMode === 'gemini_live' ||
+        deps.runtimeInfo?.agentVoiceProviderMode === 'openai_realtime');
+    if (!liveDemoConfigured && process.env.NODE_ENV === 'production') {
+      return c.json({ ok: false, error: 'demo_runtime_not_configured' }, 503);
+    }
+
+    const requestId = `demo-${randomUUID()}`;
+    const roomName = `rb-demo-${requestId.slice(-12)}`;
+    const systemPrompt =
+      parsed.data.systemPrompt?.trim() ||
+      buildPublicDemoSystemPrompt({
+        shopName: parsed.data.shopName,
+        businessType: parsed.data.businessType,
+        staffName: parsed.data.staffName,
+        notes: parsed.data.notes,
+      });
+
+    try {
+      const realtime = await deps.realtimeAgentRuntime.startInboundSession({
+        requestId,
+        roomName,
+        shopId: demoShop.id,
+        destinationPhone: demoShop.phone_number,
+        callerPhone: normalizedPhone,
+        systemPrompt,
+      });
+
+      if (requireLivekitRealtimeInProduction() && realtime.mode !== 'livekit_realtime') {
+        logger.error(
+          {
+            requestId,
+            mode: realtime.mode,
+          },
+          'public_demo_realtime_mode_not_allowed_in_production',
+        );
+        return c.json({ ok: false, error: 'demo_runtime_not_configured' }, 503);
+      }
+
+      if (realtime.metadata?.dispatchPayload) {
+        realtime.metadata.dispatchPayload.toolPolicy = {
+          allowedTools: [],
+          blockMessage: 'This live demo explains the flow but does not perform real booking actions.',
+        };
+      }
+
+      await deps.callLogsRepository.createOrUpdateInboundCall({
+        provider: 'marketing_demo',
+        providerCallId: requestId,
+        shopId: demoShop.id,
+        callerPhone: normalizedPhone,
+        destinationPhone: demoShop.phone_number,
+        requestId,
+        roomName,
+        startedAt: new Date(),
+      });
+
+      await dispatchRealtimeSession({
+        requestId,
+        roomName,
+        destinationPhone: demoShop.phone_number,
+        callerPhone: normalizedPhone,
+        systemPrompt,
+        realtime,
+      });
+
+      const outbound = await deps.telephonyService.createOutboundCall({
+        shopId: demoShop.id,
+        to: normalizedPhone,
+        from: demoShop.phone_number,
+        purpose: 'callback',
+        requestId,
+        idempotencyKey: `public_demo:${requestId}`,
+        roomName: realtime.mode === 'livekit_realtime' ? roomName : undefined,
+      });
+
+      const previewToken = await signDemoPreviewToken({
+        requestId,
+        shopId: demoShop.id,
+        callerPhone: normalizedPhone,
+      });
+
+      securityAudit({
+        action: 'public_demo_requested',
+        actorType: 'public',
+        ip,
+        path: c.req.path,
+        details: {
+          requestId,
+          shopId: demoShop.id,
+          businessType: parsed.data.businessType,
+        },
+      });
+
+      return c.json({
+        ok: true,
+        requestId,
+        previewToken,
+        roomName,
+        providerCallId: outbound.providerCallId ?? null,
+        mode: realtime.mode,
+      });
+    } catch (error) {
+      await deps.callLogsRepository.markEndedByProviderCallId({
+        provider: 'marketing_demo',
+        providerCallId: requestId,
+        endedAt: new Date(),
+        outcome: 'error',
+      });
+      await deps.callLogsRepository.updateTranscriptStatusByRequestId({
+        shopId: demoShop.id,
+        requestId,
+        status: 'failed',
+      });
+      logger.error(
+        {
+          err: error,
+          requestId,
+          callerPhone: normalizedPhone,
+        },
+        'public_demo_request_failed',
+      );
+      return c.json({ ok: false, error: 'demo_call_failed' }, 502);
+    }
+  });
+
+  app.get(path('/public/demo/status/:requestId'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_status, 'public_demo_status');
+    if (limited) return limited;
+
+    const requestId = c.req.param('requestId');
+    const token = c.req.query('token') ?? '';
+    if (!requestId || !token) {
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+
+    const verified = await verifyDemoPreviewToken(token);
+    if (!verified || verified.requestId !== requestId) {
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+    if (!deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'demo_dependencies_unavailable' }, 503);
+    }
+
+    const calls = await deps.callLogsRepository.listByShop(verified.shopId, { limit: 200 });
+    const call = calls.find((item) => item.requestId === requestId) ?? null;
+    const stage = call ? deriveDemoCallStage(call) : 'queued';
+
+    return c.json({
+      ok: true,
+      stage,
+      call: call
+        ? {
+            callerPhone: call.callerPhone ?? null,
+            startedAt: call.startedAt ?? null,
+            endedAt: call.endedAt ?? null,
+            outcome: call.outcome ?? null,
+            transcriptStatus: call.transcriptStatus ?? null,
+            transcriptText: call.transcriptText ?? null,
+            demoLiveState: deriveDemoLiveSignal(call),
+            roomName: call.roomName ?? null,
+            requestId: call.requestId ?? null,
+            agentJoined: call.agentJoined,
+            humanAnswered: call.humanAnswered,
+          }
+        : null,
+    });
+  });
+
+  app.post(path('/auth/user/signup/phone-search'), async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const parsed = signupPhoneSearchSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+    const limited = await enforceRateLimit(
+      c,
+      RATE_LIMIT_POLICIES.auth_signup_phone_search,
+      `signup_phone_search:${parsed.data.countryCode}:${parsed.data.locality ?? 'all'}`,
+    );
+    if (limited) return limited;
+    if (!deps.phoneProvisioningService) {
+      return c.json({ ok: false, error: 'phone_provisioning_unavailable' }, 503);
+    }
+
+    const numbers = await deps.phoneProvisioningService.searchAvailableNumbers({
+      countryCode: parsed.data.countryCode,
+      locality: parsed.data.locality,
+      administrativeArea: parsed.data.administrativeArea,
+      limit: parsed.data.limit ?? 12,
+    });
+    return c.json({
+      ok: true,
+      numbers,
+    });
+  });
+
+  app.post(path('/auth/user/signup'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const body = await c.req.json().catch(() => null);
+    const parsed = userSignupSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+    const normalizedEmail = parsed.data.email.toLowerCase();
+    const limited = await enforceRateLimit(
+      c,
+      RATE_LIMIT_POLICIES.auth_signup_user,
+      `user_signup:${normalizedEmail}`,
+    );
+    if (limited) return limited;
+    if (!deps.authUsersRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'signup_dependencies_unavailable' }, 500);
+    }
+
+    const existing = await deps.authUsersRepository.findByEmail(normalizedEmail);
+    if (existing) {
+      return c.json({ ok: false, error: 'email_already_exists' }, 409);
+    }
+
+    const requestId = randomUUID();
+    const shopName = parsed.data.shopName?.trim() || buildDefaultShopNameFromEmail(normalizedEmail);
+    let assignedPhoneNumber = createTemporaryPhoneNumber();
+
+    if (parsed.data.phoneNumber && deps.phoneProvisioningService) {
+      const provisioned = await deps.phoneProvisioningService.provisionNumber({
+        phoneNumber: parsed.data.phoneNumber,
+        requestId,
+      });
+      assignedPhoneNumber = provisioned.phoneNumber;
+    } else if (deps.phoneProvisioningService) {
+      try {
+        const suggested = await deps.phoneProvisioningService.searchAvailableNumbers({
+          countryCode: 'US',
+          limit: 1,
+        });
+        const candidate = suggested[0]?.phoneNumber;
+        if (candidate) {
+          const provisioned = await deps.phoneProvisioningService.provisionNumber({
+            phoneNumber: candidate,
+            requestId,
+          });
+          assignedPhoneNumber = provisioned.phoneNumber;
+        }
+      } catch (error) {
+        logger.warn({ err: error, requestId }, 'signup_phone_auto_provision_fallback_to_temporary');
+      }
+    }
+
+    const createdShop = await deps.shopsRepository.create({
+      name: shopName,
+      brand_slug: parsed.data.brandSlug ?? toBrandSlug(shopName),
+      phone_number: assignedPhoneNumber,
+      user_phone: parsed.data.userPhone ?? assignedPhoneNumber,
+      user_name: parsed.data.userName ?? null,
+      timezone: parsed.data.timezone,
+      plan: 'starter',
+      active: true,
+    });
+
+    const authUser = await deps.authUsersRepository.create({
+      email: normalizedEmail,
+      role: 'user',
+      shopId: createdShop.id,
+      passwordHash: hashPassword(parsed.data.password),
+      active: true,
+      mfaEnabled: false,
+    });
+
+    const token = await signSessionToken({
+      role: 'user',
+      email: authUser.email,
+      shopId: authUser.shopId ?? undefined,
+      ttlHours: parsed.data.remember ? 24 * 14 : 24,
+    });
+    setCookie(c, USER_SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: (parsed.data.remember ? 24 * 14 : 24) * 3600,
+    });
+    deleteCookie(c, ADMIN_SESSION_COOKIE, { path: '/' });
+
+    securityAudit({
+      action: 'auth_signup_success',
+      actorType: 'user',
+      actorId: authUser.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId: createdShop.id,
+        phoneNumber: assignedPhoneNumber,
+      },
+    });
+
+    await sendSignupWelcomeEmail({
+      emailService: deps.emailService,
+      email: authUser.email,
+      shopName: createdShop.name,
+      shopId: createdShop.id,
+      appBaseUrl: getAppBaseUrl(c.req.header('host') ?? null),
+      idempotencyKey: `signup-welcome:${authUser.id}`,
+    });
+
+    return c.json(
+      {
+        ok: true,
+        role: 'user',
+        shopId: createdShop.id,
+        onboardingRequired: !isShopOnboardingComplete(createdShop),
+        shop: {
+          id: createdShop.id,
+          name: createdShop.name,
+          phone_number: createdShop.phone_number,
+        },
+      },
+      201,
+    );
+  });
+
+  app.get(path('/auth/user/google/start'), async (c) => {
+    const query = googleStartQuerySchema.safeParse({
+      intent: c.req.query('intent') ?? undefined,
+    });
+    if (!query.success) return c.json({ ok: false, error: 'invalid_query' }, 400);
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_google_user, `auth_google_start:${query.data.intent ?? 'login'}`);
+    if (limited) return limited;
+    const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
+    if (!clientId) {
+      return c.json({ ok: false, error: 'google_oauth_not_configured' }, 503);
+    }
+
+    const oauthState = randomUUID();
+    const intent = query.data.intent ?? 'login';
+    setCookie(c, 'rb_google_oauth_state', oauthState, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: 600,
+    });
+    setCookie(c, 'rb_google_oauth_intent', intent, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: 600,
+    });
+    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
+    const redirectUri = `${appBaseUrl}/api/backend/auth/user/google/callback`;
+    const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    googleAuthUrl.searchParams.set('client_id', clientId);
+    googleAuthUrl.searchParams.set('redirect_uri', redirectUri);
+    googleAuthUrl.searchParams.set('response_type', 'code');
+    googleAuthUrl.searchParams.set('scope', 'openid email profile');
+    googleAuthUrl.searchParams.set('access_type', 'offline');
+    googleAuthUrl.searchParams.set('prompt', 'select_account');
+    googleAuthUrl.searchParams.set('state', oauthState);
+
+    return c.redirect(googleAuthUrl.toString(), 302);
+  });
+
+  app.get(path('/auth/user/google/callback'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_google_user, 'auth_google_callback');
+    if (limited) return limited;
+    if (!deps.authUsersRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'signup_dependencies_unavailable' }, 500);
+    }
+    const state = c.req.query('state');
+    const code = c.req.query('code');
+    const oauthError = c.req.query('error');
+    const oauthStateCookie = getCookie(c, 'rb_google_oauth_state');
+    const oauthIntent = getCookie(c, 'rb_google_oauth_intent') ?? 'login';
+    deleteCookie(c, 'rb_google_oauth_state', { path: '/' });
+    deleteCookie(c, 'rb_google_oauth_intent', { path: '/' });
+
+    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
+    if (oauthError || !code || !state || !oauthStateCookie || state !== oauthStateCookie) {
+      return c.redirect(`${appBaseUrl}/user/login?error=google_oauth_denied`, 302);
+    }
+
+    const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
+    const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET?.trim();
+    if (!clientId || !clientSecret) {
+      return c.redirect(`${appBaseUrl}/user/login?error=google_oauth_not_configured`, 302);
+    }
+    const redirectUri = `${appBaseUrl}/api/backend/auth/user/google/callback`;
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+    if (!tokenResponse.ok) {
+      return c.redirect(`${appBaseUrl}/user/login?error=google_exchange_failed`, 302);
+    }
+    const tokenBody = (await tokenResponse.json()) as { id_token?: string };
+    const idToken = tokenBody.id_token;
+    if (!idToken) {
+      return c.redirect(`${appBaseUrl}/user/login?error=google_missing_id_token`, 302);
+    }
+
+    let googleProfile: Awaited<ReturnType<typeof verifyGoogleIdToken>>;
+    try {
+      googleProfile = await verifyGoogleIdToken(idToken);
+    } catch {
+      return c.redirect(`${appBaseUrl}/user/login?error=google_verify_failed`, 302);
+    }
+    if (!googleProfile.emailVerified) {
+      return c.redirect(`${appBaseUrl}/user/login?error=google_email_not_verified`, 302);
+    }
+    if (googleProfile.aud !== clientId) {
+      return c.redirect(`${appBaseUrl}/user/login?error=google_invalid_audience`, 302);
+    }
+
+    let authUser = await deps.authUsersRepository.findByEmail(googleProfile.email);
+    if (authUser && authUser.role !== 'user') {
+      return c.redirect(`${appBaseUrl}/user/login?error=google_role_conflict`, 302);
+    }
+    if (authUser && !authUser.active) {
+      return c.redirect(`${appBaseUrl}/user/login?error=account_inactive`, 302);
+    }
+
+    let createdViaGoogleSignup = false;
+    let shop: Shop | null = null;
+    if (!authUser) {
+      const requestId = randomUUID();
+      const shopName = buildDefaultShopNameFromEmail(googleProfile.email);
+      let assignedPhoneNumber = createTemporaryPhoneNumber();
+      if (deps.phoneProvisioningService) {
+        try {
+          const suggested = await deps.phoneProvisioningService.searchAvailableNumbers({
+            countryCode: 'US',
+            limit: 1,
+          });
+          const candidate = suggested[0]?.phoneNumber;
+          if (candidate) {
+            const provisioned = await deps.phoneProvisioningService.provisionNumber({
+              phoneNumber: candidate,
+              requestId,
+            });
+            assignedPhoneNumber = provisioned.phoneNumber;
+          }
+        } catch (error) {
+          logger.warn({ err: error, requestId }, 'google_signup_phone_auto_provision_fallback_to_temporary');
+        }
+      }
+      shop = await deps.shopsRepository.create({
+        name: shopName,
+        brand_slug: toBrandSlug(shopName),
+        phone_number: assignedPhoneNumber,
+        user_phone: assignedPhoneNumber,
+        user_name: googleProfile.name?.trim() || null,
+        timezone: process.env.DEFAULT_SHOP_TIMEZONE ?? 'America/Los_Angeles',
+        plan: 'starter',
+        active: true,
+      });
+      authUser = await deps.authUsersRepository.create({
+        email: googleProfile.email,
+        role: 'user',
+        shopId: shop.id,
+        passwordHash: createOAuthFallbackPasswordHash(),
+        active: true,
+        mfaEnabled: false,
+      });
+      createdViaGoogleSignup = true;
+    } else if (authUser.shopId) {
+      shop = await deps.shopsRepository.findById(authUser.shopId);
+    }
+
+    const token = await signSessionToken({
+      role: 'user',
+      email: authUser.email,
+      shopId: authUser.shopId ?? undefined,
+      ttlHours: 24 * 14,
+    });
+    setCookie(c, USER_SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: 24 * 14 * 3600,
+    });
+    deleteCookie(c, ADMIN_SESSION_COOKIE, { path: '/' });
+
+    securityAudit({
+      action: createdViaGoogleSignup ? 'auth_google_signup_success' : 'auth_google_success',
+      actorType: 'user',
+      actorId: googleProfile.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        intent: oauthIntent,
+        shopId: authUser.shopId ?? shop?.id ?? null,
+      },
+    });
+
+    if (createdViaGoogleSignup && shop) {
+      await sendSignupWelcomeEmail({
+        emailService: deps.emailService,
+        email: authUser.email,
+        shopName: shop.name,
+        shopId: shop.id,
+        appBaseUrl,
+        idempotencyKey: `google-signup-welcome:${authUser.id}`,
+      });
+    }
+
+    const onboardingRequired = shop ? !isShopOnboardingComplete(shop) : true;
+    return c.redirect(`${appBaseUrl}${onboardingRequired ? '/user/onboarding' : '/user'}`, 302);
+  });
+
+  app.post(path('/auth/user/login'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const body = await c.req.json().catch(() => null);
+    const parsed = authLoginSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+    const limited = await enforceRateLimit(
+      c,
+      RATE_LIMIT_POLICIES.auth_login_user,
+      `user_login:${parsed.data.email.toLowerCase()}`,
+    );
+    if (limited) return limited;
+
+    if (!deps.authUsersRepository) {
+      return c.json({ ok: false, error: 'auth_repository_unavailable' }, 500);
+    }
+    const authUser = await deps.authUsersRepository.findByEmail(parsed.data.email.toLowerCase());
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    if (!authUser || authUser.role !== 'user' || !authUser.active || !verifyPassword(parsed.data.password, authUser.passwordHash)) {
+      securityAudit({
+        action: 'auth_login_failed',
+        actorType: 'user',
+        actorId: parsed.data.email.toLowerCase(),
+        ip,
+        path: c.req.path,
+      });
+      return c.json({ ok: false, error: 'invalid_credentials' }, 401);
+    }
+
+    const token = await signSessionToken({
+      role: 'user',
+      email: authUser.email,
+      shopId: authUser.shopId ?? undefined,
+      ttlHours: parsed.data.remember ? 24 * 14 : 24,
+    });
+
+    setCookie(c, USER_SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: (parsed.data.remember ? 24 * 14 : 24) * 3600,
+    });
+    deleteCookie(c, ADMIN_SESSION_COOKIE, { path: '/' });
+    securityAudit({
+      action: 'auth_login_success',
+      actorType: 'user',
+      actorId: authUser.email,
+      ip,
+      path: c.req.path,
+    });
+
+    const shop =
+      authUser.shopId && deps.shopsRepository ? await deps.shopsRepository.findById(authUser.shopId) : null;
+
+    return c.json({
+      ok: true,
+      role: 'user',
+      shopId: authUser.shopId ?? undefined,
+      onboardingRequired: shop ? !isShopOnboardingComplete(shop) : false,
+    });
+  });
+
+  app.post(path('/auth/admin/login'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const body = await c.req.json().catch(() => null);
+    const parsed = authLoginSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+    const limited = await enforceRateLimit(
+      c,
+      RATE_LIMIT_POLICIES.auth_login_admin,
+      `admin_login:${parsed.data.email.toLowerCase()}`,
+    );
+    if (limited) return limited;
+
+    if (!deps.authUsersRepository) {
+      return c.json({ ok: false, error: 'auth_repository_unavailable' }, 500);
+    }
+    const authUser = await deps.authUsersRepository.findByEmail(parsed.data.email.toLowerCase());
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    if (!authUser || authUser.role !== 'admin' || !authUser.active || !verifyPassword(parsed.data.password, authUser.passwordHash)) {
+      securityAudit({
+        action: 'auth_login_failed',
+        actorType: 'admin',
+        actorId: parsed.data.email.toLowerCase(),
+        ip,
+        path: c.req.path,
+      });
+      return c.json({ ok: false, error: 'invalid_credentials' }, 401);
+    }
+
+    const token = await signSessionToken({
+      role: 'admin',
+      email: authUser.email,
+      ttlHours: parsed.data.remember ? 24 * 14 : 24,
+    });
+
+    setCookie(c, ADMIN_SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: (parsed.data.remember ? 24 * 14 : 24) * 3600,
+    });
+    deleteCookie(c, USER_SESSION_COOKIE, { path: '/' });
+    securityAudit({
+      action: 'auth_login_success',
+      actorType: 'admin',
+      actorId: authUser.email,
+      ip,
+      path: c.req.path,
+    });
+
+    return c.json({
+      ok: true,
+      role: 'admin',
+    });
+  });
+
+  app.post(path('/auth/user/forgot-password'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_forgot_user, 'auth_forgot_user');
+    if (limited) return limited;
+    const body = await c.req.json().catch(() => null);
+    const parsed = forgotPasswordSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    if (!deps.authUsersRepository) return c.json({ ok: false, error: 'auth_repository_unavailable' }, 500);
+
+    const email = parsed.data.email.toLowerCase();
+    const authUser = await deps.authUsersRepository.findByEmail(email);
+    let resetToken: string | undefined;
+    if (authUser && authUser.role === 'user' && authUser.active) {
+      resetToken = `${randomUUID()}${randomBytes(12).toString('hex')}`;
+      await deps.authUsersRepository.createPasswordResetToken({
+        userId: authUser.id,
+        tokenHash: hashPasswordResetToken(resetToken),
+        expiresAt: new Date(Date.now() + 30 * 60_000),
+      });
+      securityAudit({
+        action: 'auth_password_reset_requested',
+        actorType: 'user',
+        actorId: authUser.email,
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+      });
+    }
+
+    return c.json({
+      ok: true,
+      accepted: true,
+      ...(process.env.NODE_ENV !== 'production' && resetToken ? { resetToken } : {}),
+    });
+  });
+
+  app.post(path('/auth/admin/forgot-password'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_forgot_admin, 'auth_forgot_admin');
+    if (limited) return limited;
+    const body = await c.req.json().catch(() => null);
+    const parsed = forgotPasswordSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    if (!deps.authUsersRepository) return c.json({ ok: false, error: 'auth_repository_unavailable' }, 500);
+
+    const email = parsed.data.email.toLowerCase();
+    const authUser = await deps.authUsersRepository.findByEmail(email);
+    let resetToken: string | undefined;
+    if (authUser && authUser.role === 'admin' && authUser.active) {
+      resetToken = `${randomUUID()}${randomBytes(12).toString('hex')}`;
+      await deps.authUsersRepository.createPasswordResetToken({
+        userId: authUser.id,
+        tokenHash: hashPasswordResetToken(resetToken),
+        expiresAt: new Date(Date.now() + 30 * 60_000),
+      });
+      securityAudit({
+        action: 'auth_password_reset_requested',
+        actorType: 'admin',
+        actorId: authUser.email,
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+      });
+    }
+
+    return c.json({
+      ok: true,
+      accepted: true,
+      ...(process.env.NODE_ENV !== 'production' && resetToken ? { resetToken } : {}),
+    });
+  });
+
+  app.post(path('/auth/reset-password'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_reset_password, 'auth_reset_password');
+    if (limited) return limited;
+    const body = await c.req.json().catch(() => null);
+    const parsed = resetPasswordSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    if (!deps.authUsersRepository) return c.json({ ok: false, error: 'auth_repository_unavailable' }, 500);
+
+    const consumed = await deps.authUsersRepository.consumePasswordResetToken(hashPasswordResetToken(parsed.data.token));
+    if (!consumed) return c.json({ ok: false, error: 'invalid_or_expired_token' }, 400);
+
+    await deps.authUsersRepository.updatePasswordHash(consumed.userId, hashPassword(parsed.data.newPassword));
+    securityAudit({
+      action: 'auth_password_reset_completed',
+      actorType: 'public',
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { userId: consumed.userId },
+    });
+
+    return c.json({ ok: true, updated: true });
+  });
+
+  app.post(path('/auth/logout'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    deleteCookie(c, USER_SESSION_COOKIE, { path: '/' });
+    deleteCookie(c, ADMIN_SESSION_COOKIE, { path: '/' });
+    securityAudit({
+      action: 'auth_logout',
+      actorType: 'public',
+      ip,
+      path: c.req.path,
+    });
+    return c.json({ ok: true });
+  });
+
+  app.get(path('/auth/me'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_session_read, 'auth_me');
+    if (limited) return limited;
+    const session = await readSession(c);
+    if (!session) return c.json({ ok: false, error: 'unauthorized' }, 401);
+    return c.json({
+      ok: true,
+      session,
+    });
+  });
+
+  app.get(path('/user/dashboard'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_dashboard');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.bookingsRepository || !deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const [bookings, calls] = await Promise.all([
+      deps.bookingsRepository.listByShop(shop.id, { limit: 50 }),
+      deps.callLogsRepository.listByShop(shop.id, { limit: 50 }),
+    ]);
+
+    return c.json({
+      ok: true,
+      shop: {
+        id: shop.id,
+        name: shop.name,
+        timezone: shop.timezone,
+        plan: shop.plan,
+        active: shop.active,
+      },
+      onboardingRequired: !isShopOnboardingComplete(shop),
+      metrics: {
+        bookingCount: bookings.length,
+        callCount: calls.length,
+        missedCalls: calls.filter((item) => item.outcome === 'missed').length,
+      },
+    });
+  });
+
+  app.get(path('/user/onboarding-status'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_onboarding_status');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    return c.json({
+      ok: true,
+      onboardingRequired: !isShopOnboardingComplete(shop),
+      shop: {
+        id: shop.id,
+        name: shop.name,
+        user_name: shop.user_name ?? '',
+        user_phone: shop.user_phone ?? '',
+        timezone: shop.timezone,
+        cancel_policy: shop.cancel_policy,
+        services: shop.services,
+        hours: shop.hours,
+      },
+    });
+  });
+
+  app.get(path('/user/bookings'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_bookings');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.bookingsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const bookings = await deps.bookingsRepository.listByShop(shop.id, { limit: 100 });
+    return c.json({ ok: true, bookings });
+  });
+
+  app.get(path('/user/calls'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const calls = await deps.callLogsRepository.listByShop(shop.id, { limit: 100 });
+    return c.json({ ok: true, calls });
+  });
+
+  app.get(path('/user/settings'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_settings_get');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    return c.json({
+      ok: true,
+      shop,
+      capabilities: getShopPlanCapabilities(shop.plan),
+      capabilityLabels: CAPABILITY_LABELS,
+    });
+  });
+
+  app.get(path('/user/calendar/providers'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_providers_get');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const squareCredentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
+    const providers = (Object.keys(CALENDAR_PROVIDER_CATALOG) as Array<keyof typeof CALENDAR_PROVIDER_CATALOG>)
+      .filter((id) => id !== 'manual')
+      .map((id) => {
+        const meta = CALENDAR_PROVIDER_CATALOG[id];
+        if (id === 'square_appointments') {
+          const connected = Boolean(squareCredentials?.access_token && squareCredentials?.refresh_token);
+          const configured = Boolean(squareCredentials?.location_id && squareCredentials?.service_variation_id);
+          return {
+            id,
+            label: meta.label,
+            implemented: meta.implemented,
+            connected,
+            configured,
+            details: connected
+              ? {
+                  merchantId: squareCredentials?.merchant_id ?? null,
+                  locationId: squareCredentials?.location_id ?? null,
+                  serviceVariationId: squareCredentials?.service_variation_id ?? null,
+                  teamMemberId: squareCredentials?.team_member_id ?? null,
+                }
+              : null,
+          };
+        }
+        return {
+          id,
+          label: meta.label,
+          implemented: meta.implemented,
+          connected: false,
+          configured: false,
+          details: null,
+        };
+      });
+
+    return c.json({
+      ok: true,
+      providers,
+    });
+  });
+
+  app.get(path('/user/calendar/providers/:provider/connect/start'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_connect_start');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
+    if (!provider) return c.json({ ok: false, error: 'provider_not_supported' }, 400);
+
+    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
+    if (provider !== 'square_appointments') {
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'provider_not_implemented_yet',
+        }),
+      );
+    }
+
+    const state = randomUUID();
+    setCookie(c, 'rb_calendar_provider_state', state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: 600,
+    });
+    setCookie(c, 'rb_calendar_provider_name', provider, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: 600,
+    });
+    setCookie(c, 'rb_calendar_provider_shop', sessionResult.shopId ?? '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV !== 'development',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: 600,
+    });
+
+    try {
+      const authorizeUrl = squareAuthorizeUrl({
+        state,
+        redirectUri: buildSquareCallbackUrl(appBaseUrl),
+      });
+      return c.redirect(authorizeUrl);
+    } catch (error) {
+      logger.error({ err: error }, 'square_oauth_start_failed');
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'square_oauth_not_configured',
+        }),
+      );
+    }
+  });
+
+  app.get(path('/user/calendar/providers/:provider/connect/callback'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_connect_callback');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+
+    const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
+    const state = c.req.query('state') ?? '';
+    const code = c.req.query('code') ?? '';
+    const oauthError = c.req.query('error') ?? '';
+    const cookieState = getCookie(c, 'rb_calendar_provider_state') ?? '';
+    const cookieProvider = getCookie(c, 'rb_calendar_provider_name') ?? '';
+    const cookieShopId = getCookie(c, 'rb_calendar_provider_shop') ?? '';
+
+    deleteCookie(c, 'rb_calendar_provider_state', { path: '/' });
+    deleteCookie(c, 'rb_calendar_provider_name', { path: '/' });
+    deleteCookie(c, 'rb_calendar_provider_shop', { path: '/' });
+
+    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
+    if (!provider || provider !== cookieProvider || cookieShopId !== (sessionResult.shopId ?? '')) {
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider: provider ?? 'unknown',
+          message: 'invalid_oauth_context',
+        }),
+      );
+    }
+
+    if (oauthError) {
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: oauthError,
+        }),
+      );
+    }
+
+    if (!state || !cookieState || state !== cookieState || !code) {
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'invalid_oauth_state',
+        }),
+      );
+    }
+
+    if (provider !== 'square_appointments') {
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'provider_not_implemented_yet',
+        }),
+      );
+    }
+
+    try {
+      const exchanged = await squareExchangeAuthorizationCode({
+        code,
+        redirectUri: buildSquareCallbackUrl(appBaseUrl),
+      });
+      const existingShop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+      if (!existingShop) {
+        return c.redirect(
+          buildCalendarSettingsRedirect({
+            appBaseUrl,
+            result: 'error',
+            provider,
+            message: 'shop_not_found',
+          }),
+        );
+      }
+      const current = parseSquareConnectionCredentials(existingShop.google_cal_credentials_encrypted);
+      const payload = buildSquareConnectionPayload(current, exchanged);
+
+      const updated = await deps.shopsRepository.updateCalendarConnection(existingShop.id, {
+        google_cal_id: existingShop.google_cal_id ?? null,
+        google_cal_credentials_encrypted: encodeSquareConnectionCredentials(payload),
+      });
+      if (!updated) {
+        return c.redirect(
+          buildCalendarSettingsRedirect({
+            appBaseUrl,
+            result: 'error',
+            provider,
+            message: 'shop_not_found',
+          }),
+        );
+      }
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'success',
+          provider,
+        }),
+      );
+    } catch (error) {
+      logger.error({ err: error, provider }, 'calendar_provider_oauth_callback_failed');
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider,
+          message: 'oauth_exchange_failed',
+        }),
+      );
+    }
+  });
+
+  app.get(path('/user/calendar/providers/:provider/options'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_options');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
+    if (provider !== 'square_appointments') {
+      return c.json({ ok: false, error: 'provider_not_supported' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const credentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
+    if (!credentials?.access_token || !credentials.refresh_token) {
+      return c.json({ ok: false, error: 'provider_not_connected' }, 400);
+    }
+
+    try {
+      const result = await squareFetchConnectionOptions(credentials);
+      if (
+        result.credentials.access_token !== credentials.access_token ||
+        result.credentials.refresh_token !== credentials.refresh_token ||
+        result.credentials.expires_at !== credentials.expires_at
+      ) {
+        const nextPayload = buildSquareConnectionPayload(credentials, result.credentials);
+        await deps.shopsRepository.updateCalendarConnection(shop.id, {
+          google_cal_id: shop.google_cal_id ?? null,
+          google_cal_credentials_encrypted: encodeSquareConnectionCredentials(nextPayload),
+        });
+      }
+      return c.json({
+        ok: true,
+        provider,
+        options: result.options,
+      });
+    } catch (error) {
+      logger.error({ err: error, provider }, 'calendar_provider_options_failed');
+      return c.json({ ok: false, error: 'provider_options_failed' }, 502);
+    }
+  });
+
+  app.post(path('/user/calendar/providers/:provider/configure'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_configure');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
+    if (provider !== 'square_appointments') {
+      return c.json({ ok: false, error: 'provider_not_supported' }, 400);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = squareConfigureSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const credentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
+    if (!credentials?.access_token || !credentials.refresh_token) {
+      return c.json({ ok: false, error: 'provider_not_connected' }, 400);
+    }
+
+    const payload = buildSquareConnectionPayload(credentials, {
+      location_id: parsed.data.locationId,
+      service_variation_id: parsed.data.serviceVariationId,
+      team_member_id: parsed.data.teamMemberId,
+    });
+
+    const updated = await deps.shopsRepository.updateCalendarConnection(shop.id, {
+      google_cal_id: shop.google_cal_id ?? null,
+      google_cal_credentials_encrypted: encodeSquareConnectionCredentials(payload),
+    });
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    return c.json({
+      ok: true,
+      provider,
+      configured: true,
+    });
+  });
+
+  app.post(path('/user/calendar/providers/:provider/disconnect'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_disconnect');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
+    if (!provider) return c.json({ ok: false, error: 'provider_not_supported' }, 400);
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const parsed = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
+    if (provider === 'square_appointments' && parsed?.provider === 'square_appointments') {
+      const updated = await deps.shopsRepository.updateCalendarConnection(shop.id, {
+        google_cal_id: shop.google_cal_id ?? null,
+        google_cal_credentials_encrypted: null,
+      });
+      if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      return c.json({ ok: true, disconnected: true, provider });
+    }
+
+    return c.json({ ok: true, disconnected: false, provider });
+  });
+
+  app.get(path('/user/billing'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_billing_get');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.billingSubscriptionsRepository || !deps.billingCustomersRepository) {
+      return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const [customer, subscription] = await Promise.all([
+      deps.billingCustomersRepository.findByShopId(shop.id),
+      deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id),
+    ]);
+
+    return c.json({
+      ok: true,
+      shop: {
+        id: shop.id,
+        name: shop.name,
+        plan: shop.plan,
+        active: shop.active,
+      },
+      billing: {
+        provider: subscription?.provider ?? customer?.provider ?? deps.billingProvider?.provider ?? 'manual',
+        customer,
+        subscription,
+      },
+    });
+  });
+
+  app.post(path('/user/billing/checkout'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_billing_checkout');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.billingProvider) {
+      return c.json({ ok: false, error: 'billing_provider_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = userBillingCheckoutSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
+    const session = await deps.billingProvider.createCheckoutSession({
+      shop,
+      plan: parsed.data.plan,
+      email: sessionResult.email,
+      successUrl: parsed.data.successUrl ?? `${appBaseUrl}/user/billing?checkout=success`,
+      cancelUrl: parsed.data.cancelUrl ?? `${appBaseUrl}/user/billing?checkout=cancelled`,
+    });
+
+    return c.json({
+      ok: true,
+      provider: session.provider,
+      checkoutUrl: session.checkoutUrl,
+      providerTransactionId: session.providerTransactionId ?? null,
+      providerCustomerId: session.providerCustomerId ?? null,
+    });
+  });
+
+  app.put(path('/user/settings'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_settings_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = userSettingsUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const { basicPatch, dynamicPatch, disallowedFields } = splitUserSettingsPatchByPlan(shop, parsed.data);
+    if (disallowedFields.length > 0) {
+      return c.json(
+        {
+          ok: false,
+          error: 'plan_feature_locked',
+          fields: disallowedFields,
+          requirements: Object.fromEntries(
+            disallowedFields.map((field) => [
+              field,
+              {
+                capability: USER_SETTING_FIELD_CAPABILITIES[field],
+                label: CAPABILITY_LABELS[USER_SETTING_FIELD_CAPABILITIES[field]],
+                minPlan: CAPABILITY_MIN_PLAN[USER_SETTING_FIELD_CAPABILITIES[field]],
+              },
+            ]),
+          ),
+        },
+        403,
+      );
+    }
+
+    const hasBasicPatch = Object.keys(basicPatch).length > 0;
+    const hasDynamicPatch = Object.keys(dynamicPatch).length > 0;
+    if (!hasBasicPatch && !hasDynamicPatch) {
+      return c.json({ ok: false, error: 'no_changes' }, 400);
+    }
+
+    let updated = shop;
+    if (hasBasicPatch) {
+      const basicUpdated = await deps.shopsRepository.updateUserSettings(sessionResult.shopId ?? '', basicPatch);
+      if (!basicUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      updated = basicUpdated;
+    }
+    if (hasDynamicPatch) {
+      const dynamicUpdated = await deps.shopsRepository.updateDynamicConfig(sessionResult.shopId ?? '', dynamicPatch);
+      if (!dynamicUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      updated = dynamicUpdated;
+    }
+
+    return c.json({
+      ok: true,
+      shop: updated,
+      capabilities: getShopPlanCapabilities(updated.plan),
+    });
+  });
+
+  app.get(path('/admin/system-health/metrics'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_system_health_metrics');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.jobsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+
+    const snapshot = getMetricsSnapshot();
+    const jobStatus = await deps.jobsRepository.getStatusCounts();
+    const responseLatency = durationMetricAggregate(snapshot, 'realtime_response_latency_ms');
+    const queueLatency = durationMetricAggregate(snapshot, 'realtime_audio_queue_latency_ms');
+    const jitter = durationMetricAggregate(snapshot, 'realtime_audio_jitter_ms');
+    const toolcallDuration = durationMetricAggregate(snapshot, 'toolcall_duration_ms');
+
+    return c.json({
+      ok: true,
+      generatedAt: snapshot.generatedAt,
+      realtime: {
+        responseLatencyMs: responseLatency,
+        queueLatencyMs: queueLatency,
+        jitterMs: jitter,
+      },
+      toolcalls: {
+        total: counterMetricTotal(snapshot, 'toolcall_total'),
+        queueFailed: counterMetricTotal(snapshot, 'toolcall_queue_failed_total'),
+        durationMs: toolcallDuration,
+      },
+      webhooks: {
+        total: counterMetricTotal(snapshot, 'webhook_requests_total'),
+        processed: counterMetricTotal(snapshot, 'webhook_requests_total', { outcome: 'processed' }),
+        duplicate: counterMetricTotal(snapshot, 'webhook_requests_total', { outcome: 'duplicate' }),
+        invalidSignature: counterMetricTotal(snapshot, 'webhook_signature_invalid_total'),
+        failed: counterMetricTotal(snapshot, 'webhook_requests_total', { outcome: 'failed' }),
+      },
+      jobs: {
+        queued: jobStatus.queued ?? 0,
+        running: jobStatus.running ?? 0,
+        leased: jobStatus.leased ?? 0,
+        completed: counterMetricTotal(snapshot, 'jobs_completed_total'),
+        failed: counterMetricTotal(snapshot, 'jobs_failed_total'),
+        deadLetter: counterMetricTotal(snapshot, 'jobs_dead_letter_total'),
+      },
+      apiStatus: {
+        status401: counterMetricTotal(snapshot, 'api_requests_total', { status: '401' }),
+        status403: counterMetricTotal(snapshot, 'api_requests_total', { status: '403' }),
+        status429: counterMetricTotal(snapshot, 'api_requests_total', { status: '429' }),
+        status5xx:
+          counterMetricTotal(snapshot, 'api_requests_total', { status: '500' }) +
+          counterMetricTotal(snapshot, 'api_requests_total', { status: '502' }) +
+          counterMetricTotal(snapshot, 'api_requests_total', { status: '503' }) +
+          counterMetricTotal(snapshot, 'api_requests_total', { status: '504' }),
+      },
+    });
+  });
+
+  app.get(path('/admin/dashboard'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_dashboard');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+
+    const [shops, calls] = await Promise.all([
+      deps.shopsRepository.list({ limit: 200 }),
+      deps.callLogsRepository.listRecent({ limit: 200 }),
+    ]);
+    return c.json({
+      ok: true,
+      metrics: {
+        shopCount: shops.length,
+        activeShops: shops.filter((shop) => shop.active).length,
+        callCount: calls.length,
+        missedCalls: calls.filter((item) => item.outcome === 'missed').length,
+      },
+    });
+  });
+
+  app.get(path('/admin/shops'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_shops');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shops = await deps.shopsRepository.list({ limit: 300 });
+    const calls = deps.callLogsRepository ? await deps.callLogsRepository.listRecent({ limit: 500 }) : [];
+    const callsByShop = new Map<
+      string,
+      {
+        totalCalls: number;
+        latestCallAt?: string;
+        latestOutcome?: string;
+      }
+    >();
+    for (const call of calls) {
+      const current = callsByShop.get(call.shopId) ?? { totalCalls: 0 };
+      current.totalCalls += 1;
+      if (!current.latestCallAt || (call.startedAt && call.startedAt > current.latestCallAt)) {
+        current.latestCallAt = call.startedAt;
+        current.latestOutcome = call.outcome;
+      }
+      callsByShop.set(call.shopId, current);
+    }
+    return c.json({
+      ok: true,
+      shops: shops.map((shop) => ({
+        ...shop,
+        totalCalls: callsByShop.get(shop.id)?.totalCalls ?? 0,
+      latestCallAt: callsByShop.get(shop.id)?.latestCallAt,
+      latestCallOutcome: callsByShop.get(shop.id)?.latestOutcome,
+    })),
+  });
+  });
+
+  app.get(path('/admin/billing'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_billing_get');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.billingSubscriptionsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
+    }
+
+    const [subscriptions, shops] = await Promise.all([
+      deps.billingSubscriptionsRepository.list({ limit: 500 }),
+      deps.shopsRepository.list({ limit: 500 }),
+    ]);
+    const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
+    const activeStatuses = new Set<BillingSubscriptionStatus>(['active', 'trialing']);
+    const monthlyRecurringRevenue = subscriptions
+      .filter((subscription) => activeStatuses.has(subscription.status))
+      .reduce((sum, subscription) => {
+        const normalized = subscription.interval === 'year' ? subscription.amount / 12 : subscription.amount;
+        return sum + normalized;
+      }, 0);
+
+    return c.json({
+      ok: true,
+      metrics: {
+        subscriptionCount: subscriptions.length,
+        activeSubscriptions: subscriptions.filter((subscription) => activeStatuses.has(subscription.status)).length,
+        pastDueSubscriptions: subscriptions.filter((subscription) => subscription.status === 'past_due').length,
+        mrr: Number(monthlyRecurringRevenue.toFixed(2)),
+      },
+      subscriptions: subscriptions.map((subscription) => ({
+        ...subscription,
+        shopName: shopNameById.get(subscription.shopId) ?? 'Unknown shop',
+      })),
+    });
+  });
+
+  app.post(path('/admin/shops'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_create_shop');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminCreateShopSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const created = await deps.shopsRepository.create(parsed.data);
+    securityAudit({
+      action: 'admin_shop_created',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId: created.id,
+      },
+    });
+    return c.json({ ok: true, shop: created }, 201);
+  });
+
+  app.get(path('/admin/shops/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_shop_detail');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = c.req.param('id');
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const shop = await deps.shopsRepository.findById(shopId);
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const recentCalls = deps.callLogsRepository ? await deps.callLogsRepository.listByShop(shopId, { limit: 20 }) : [];
+    return c.json({ ok: true, shop, recentCalls });
+  });
+
+  app.put(path('/admin/shops/:id/plan'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_plan_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = c.req.param('id');
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminUpdatePlanSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    if (parsed.data.plan === undefined && parsed.data.active === undefined) {
+      return c.json({ ok: false, error: 'empty_patch' }, 400);
+    }
+
+    const updated = await deps.shopsRepository.updatePlanAndActivation(shopId, parsed.data);
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    securityAudit({
+      action: 'admin_shop_plan_updated',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId,
+        plan: parsed.data.plan ?? null,
+        active: parsed.data.active ?? null,
+      },
+    });
+    return c.json({ ok: true, shop: updated });
+  });
+
+  app.put(path('/admin/shops/:id/settings'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_settings_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = c.req.param('id');
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminShopSettingsUpdateSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const updated = await deps.shopsRepository.updateUserSettings(shopId, parsed.data);
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    securityAudit({
+      action: 'admin_shop_settings_updated',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId,
+      },
+    });
+    return c.json({ ok: true, shop: updated });
+  });
+
+  app.put(path('/admin/shops/:id/config'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_config_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = c.req.param('id');
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminShopDynamicConfigSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const updated = await deps.shopsRepository.updateDynamicConfig(shopId, parsed.data);
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    securityAudit({
+      action: 'admin_shop_dynamic_config_updated',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId,
+        keys: Object.keys(parsed.data),
+      },
+    });
+    return c.json({ ok: true, shop: updated });
+  });
+
+  app.get(path('/admin/calls'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_calls');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = c.req.query('shopId')?.trim();
+    const [calls, shops] = await Promise.all([
+      shopId ? deps.callLogsRepository.listByShop(shopId, { limit: 200 }) : deps.callLogsRepository.listRecent({ limit: 200 }),
+      deps.shopsRepository ? deps.shopsRepository.list({ limit: 500 }) : Promise.resolve([]),
+    ]);
+    const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
+    return c.json({
+      ok: true,
+      calls: calls.map((call) => ({
+        ...call,
+        shopName: shopNameById.get(call.shopId) ?? call.shopId,
+      })),
+      filter: {
+        shopId: shopId || null,
+        shopName: shopId ? (shopNameById.get(shopId) ?? null) : null,
+      },
+    });
+  });
+
+  app.get(path('/admin/leads'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_leads');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.contactRequestsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const parsed = adminLeadsListQuerySchema.safeParse({
+      limit: c.req.query('limit'),
+      status: c.req.query('status'),
+      query: c.req.query('query'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+
+    const leads = await deps.contactRequestsRepository.listForAdmin({
+      limit: parsed.data.limit,
+      status: parsed.data.status,
+      query: parsed.data.query,
+    });
+
+    const byStatus = new Map<ContactRequestStatus, number>();
+    for (const lead of leads) {
+      byStatus.set(lead.status, (byStatus.get(lead.status) ?? 0) + 1);
+    }
+
+    return c.json({
+      ok: true,
+      leads,
+      filters: {
+        status: parsed.data.status ?? 'all',
+        query: parsed.data.query ?? '',
+      },
+      metrics: {
+        total: leads.length,
+        new: byStatus.get('new') ?? 0,
+        contacted: byStatus.get('contacted') ?? 0,
+        qualified: byStatus.get('qualified') ?? 0,
+        closed: byStatus.get('closed') ?? 0,
+        spam: byStatus.get('spam') ?? 0,
+      },
+    });
+  });
+
+  app.put(path('/admin/leads/:id/status'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_lead_status_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.contactRequestsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const leadId = c.req.param('id');
+    if (!leadId) return c.json({ ok: false, error: 'invalid_lead_id' }, 400);
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminLeadStatusUpdateSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const updated = await deps.contactRequestsRepository.updateStatus(leadId, {
+      status: parsed.data.status,
+      notes: parsed.data.notes,
+      handledBy: sessionResult.email,
+    });
+    if (!updated) return c.json({ ok: false, error: 'lead_not_found' }, 404);
+
+    securityAudit({
+      action: 'admin_contact_request_status_updated',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        leadId,
+        status: parsed.data.status,
+      },
+    });
+
+    return c.json({ ok: true, lead: updated });
+  });
+
+  app.post(path('/admin/users/invite'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_invite');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.authUsersRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminInviteSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const email = parsed.data.email.toLowerCase();
+    const existing = await deps.authUsersRepository.findByEmail(email);
+    if (existing) {
+      return c.json({ ok: false, error: 'email_already_exists' }, 409);
+    }
+
+    const bootstrapPassword = randomBytes(24).toString('hex');
+    const created = await deps.authUsersRepository.create({
+      email,
+      role: 'admin',
+      shopId: parsed.data.shopId ?? null,
+      passwordHash: hashPassword(bootstrapPassword),
+      active: true,
+      mfaEnabled: false,
+    });
+
+    const resetToken = `${randomUUID()}${randomBytes(12).toString('hex')}`;
+    await deps.authUsersRepository.createPasswordResetToken({
+      userId: created.id,
+      tokenHash: hashPasswordResetToken(resetToken),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60_000),
+    });
+    securityAudit({
+      action: 'admin_user_invited',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        invitedEmail: email,
+        invitedUserId: created.id,
+      },
+    });
+
+    return c.json({
+      ok: true,
+      invited: true,
+      email,
+      role: created.role,
+      ...(process.env.NODE_ENV !== 'production' ? { resetToken } : {}),
+    });
+  });
+
+  app.post(path('/jobs/enqueue'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.jobs_enqueue, 'jobs_enqueue');
+    if (limited) return limited;
+    if (!ensureInternalAccess(c.req.header('x-backend-key') ?? null)) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'internal_key_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+    if (!deps.jobsRepository) {
+      return c.json({ ok: false, error: 'jobs_repository_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = enqueueJobSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    const job = parsed.data;
+    const runAt = job.runAtIso ? new Date(job.runAtIso) : new Date();
+    const idempotencyKey = job.idempotencyKey ?? `manual:${job.type}:${job.shopId}:${randomUUID()}`;
+
+    await deps.jobsRepository.enqueue({
+      shopId: job.shopId,
+      type: job.type as JobType,
+      payload: job.payload,
+      runAt,
+      idempotencyKey,
+    });
+
+    return c.json({
+      ok: true,
+      queued: true,
+      idempotencyKey,
+      runAtIso: runAt.toISOString(),
+    });
+  });
+
+  app.post(path('/agent/simulate-inbound'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.agent_simulate_inbound, 'agent_simulate_inbound');
+    if (limited) return limited;
+    if (!ensureInternalAccess(c.req.header('x-backend-key') ?? null)) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'internal_key_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+    if (
+      !deps.jobsRepository ||
+      !deps.bookingsRepository ||
+      !deps.callbacksRepository ||
+      !deps.shopsRepository ||
+      !deps.telephonyService
+    ) {
+      return c.json({ ok: false, error: 'agent_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = simulateInboundSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+    const phoneScopedLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.agent_simulate_inbound_phone,
+      `agent_simulate_inbound:${parsed.data.destinationPhone}:${parsed.data.callerPhone}`,
+    );
+    if (phoneScopedLimited) return phoneScopedLimited;
+
+    const session = await createInboundAgentSession(
+      {
+        shopsRepository: deps.shopsRepository,
+        jobsRepository: deps.jobsRepository,
+        bookingsRepository: deps.bookingsRepository,
+        callbacksRepository: deps.callbacksRepository,
+        telephonyService: deps.telephonyService,
+        realtimeAgentRuntime: deps.realtimeAgentRuntime ?? {
+          startInboundSession: async (params) => ({
+            mode: 'mock',
+            sessionId: params.requestId,
+            roomName: params.roomName,
+            status: 'simulated',
+          }),
+        },
+      },
+      {
+        destinationPhone: parsed.data.destinationPhone,
+        callerPhone: parsed.data.callerPhone,
+        requestId: parsed.data.requestId,
+        roomName: parsed.data.roomName,
+      },
+    );
+
+    if (!session) {
+      return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    }
+
+    const result = await session.runTool(parsed.data.tool, parsed.data.params);
+    return c.json({
+      ok: true,
+      requestId: session.requestId,
+      roomName: session.roomName,
+      shopId: session.shop.id,
+      prompt: session.systemPrompt,
+      tool: parsed.data.tool,
+      result,
+    });
+  });
+
+  app.post(path('/agent/start-inbound'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.agent_start_inbound, 'agent_start_inbound');
+    if (limited) return limited;
+    if (!ensureInternalAccess(c.req.header('x-backend-key') ?? null)) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'internal_key_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+    if (
+      !deps.jobsRepository ||
+      !deps.bookingsRepository ||
+      !deps.callbacksRepository ||
+      !deps.shopsRepository ||
+      !deps.telephonyService ||
+      !deps.realtimeAgentRuntime
+    ) {
+      return c.json({ ok: false, error: 'agent_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = startInboundSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+    const phoneScopedLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.agent_start_inbound_phone,
+      `agent_start_inbound:${parsed.data.destinationPhone}:${parsed.data.callerPhone}`,
+    );
+    if (phoneScopedLimited) return phoneScopedLimited;
+
+    const session = await createInboundAgentSession(
+      {
+        shopsRepository: deps.shopsRepository,
+        jobsRepository: deps.jobsRepository,
+        bookingsRepository: deps.bookingsRepository,
+        callbacksRepository: deps.callbacksRepository,
+        telephonyService: deps.telephonyService,
+        realtimeAgentRuntime: deps.realtimeAgentRuntime,
+      },
+      {
+        destinationPhone: parsed.data.destinationPhone,
+        callerPhone: parsed.data.callerPhone,
+        requestId: parsed.data.requestId,
+        roomName: parsed.data.roomName,
+      },
+    );
+
+    if (!session) {
+      return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    }
+
+    const realtime = await session.startRealtimeSession();
+    if (requireLivekitRealtimeInProduction() && realtime.mode !== 'livekit_realtime') {
+      logger.error(
+        {
+          requestId: session.requestId,
+          roomName: session.roomName,
+          mode: realtime.mode,
+        },
+        'agent_start_inbound_realtime_mode_not_allowed_in_production',
+      );
+      return c.json({ ok: false, error: 'agent_runtime_not_configured' }, 503);
+    }
+
+    await deps.jobsRepository.enqueue({
+      shopId: session.shop.id,
+      type: 'realtime_session_dispatch',
+      payload: {
+        requestId: session.requestId,
+        roomName: session.roomName,
+        destinationPhone: session.shop.phone_number,
+        callerPhone: session.callerPhone,
+        systemPrompt: session.systemPrompt,
+        realtime,
+      },
+      runAt: new Date(),
+      idempotencyKey: `realtime_dispatch:${session.requestId}`,
+    });
+
+    return c.json({
+      ok: true,
+      requestId: session.requestId,
+      roomName: session.roomName,
+      shopId: session.shop.id,
+      prompt: session.systemPrompt,
+      realtime,
+    });
+  });
+
+  app.post(path('/agent/dispatch'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.agent_dispatch, 'agent_dispatch');
+    if (limited) return limited;
+    if (!ensureRealtimeDispatchAccess(c.req.header('authorization') ?? null, c.req.header('x-backend-key') ?? null)) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'dispatch_auth_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = parseRealtimeDispatchInput(body);
+    if (!parsed) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+    if (requireLivekitRealtimeInProduction() && parsed.realtime.mode !== 'livekit_realtime') {
+      return c.json({ ok: false, error: 'realtime_mode_not_allowed' }, 422);
+    }
+
+    await handleRealtimeDispatch(parsed, { callLogsRepository: deps.callLogsRepository });
+    return c.json({
+      ok: true,
+      accepted: true,
+      requestId: parsed.requestId,
+      roomName: parsed.roomName,
+      mode: parsed.realtime.mode,
+    });
+  });
+
+  app.post(path('/agent/dispatch/status'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.agent_dispatch, 'agent_dispatch_status');
+    if (limited) return limited;
+    if (!ensureRealtimeDispatchAccess(c.req.header('authorization') ?? null, c.req.header('x-backend-key') ?? null)) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'dispatch_auth_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = dispatchStatusSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    if (deps.callLogsRepository && parsed.data.shopId && parsed.data.status === 'agent_joined') {
+      await deps.callLogsRepository.markAgentJoined({
+        shopId: parsed.data.shopId,
+        requestId: parsed.data.requestId,
+        roomName: parsed.data.roomName,
+      });
+    }
+
+    if (
+      deps.callLogsRepository &&
+      parsed.data.shopId &&
+      (parsed.data.status === 'completed' || parsed.data.status === 'failed')
+    ) {
+      await deps.callLogsRepository.updateTranscriptStatusByRequestId({
+        shopId: parsed.data.shopId,
+        requestId: parsed.data.requestId,
+        status: parsed.data.status === 'completed' ? 'completed' : 'failed',
+      });
+
+      if (deps.jobsRepository) {
+        await deps.jobsRepository.enqueue({
+          shopId: parsed.data.shopId,
+          type: 'post_call_summary',
+          payload: {
+            requestId: parsed.data.requestId,
+            status: parsed.data.status,
+            error: parsed.data.error ?? null,
+            occurredAt: parsed.data.occurredAt ?? null,
+          },
+          runAt: new Date(),
+          idempotencyKey: `post_call_summary:${parsed.data.requestId}:${parsed.data.status}`,
+        });
+      }
+    }
+
+    return c.json({
+      ok: true,
+      accepted: true,
+      requestId: parsed.data.requestId,
+      status: parsed.data.status,
+    });
+  });
+
+  app.notFound((c) =>
+    c.json(
+      {
+        ok: false,
+        error: 'route_not_found',
+        path: c.req.path,
+      },
+      404,
+    ),
+  );
+
+  return app;
+}

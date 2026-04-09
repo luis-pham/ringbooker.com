@@ -1,0 +1,275 @@
+import { createBackendApp } from '@/src/backend/api/app';
+import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
+import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
+import { InMemoryBillingCustomersRepository } from '@/src/backend/adapters/memory/billing-customers-repository';
+import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
+import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
+import { InMemoryOutboundMessagesRepository } from '@/src/backend/adapters/memory/outbound-messages-repository';
+import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
+import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
+import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
+import { InMemoryMissedCallsRepository } from '@/src/backend/adapters/memory/missed-calls-repository';
+import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
+import { InMemoryBlogPostsRepository } from '@/src/backend/adapters/memory/blog-posts-repository';
+import { InMemoryContactRequestsRepository } from '@/src/backend/adapters/memory/contact-requests-repository';
+import { NoopEmailService } from '@/src/backend/adapters/noop/email-service';
+import { NoopPhoneProvisioningService } from '@/src/backend/adapters/noop/phone-provisioning-service';
+import { NoopSmsService } from '@/src/backend/adapters/noop/sms-service';
+import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
+import { ResendEmailService } from '@/src/backend/adapters/resend/email-service';
+import { SupabaseJobsRepository } from '@/src/backend/adapters/supabase/jobs-repository';
+import { SupabaseBookingsRepository } from '@/src/backend/adapters/supabase/bookings-repository';
+import { SupabaseBillingCustomersRepository } from '@/src/backend/adapters/supabase/billing-customers-repository';
+import { SupabaseBillingSubscriptionsRepository } from '@/src/backend/adapters/supabase/billing-subscriptions-repository';
+import { SupabaseCallbacksRepository } from '@/src/backend/adapters/supabase/callbacks-repository';
+import { SupabaseOutboundMessagesRepository } from '@/src/backend/adapters/supabase/outbound-messages-repository';
+import { SupabaseProviderEventsRepository } from '@/src/backend/adapters/supabase/provider-events-repository';
+import { SupabaseShopsRepository } from '@/src/backend/adapters/supabase/shops-repository';
+import { SupabaseCallLogsRepository } from '@/src/backend/adapters/supabase/call-logs-repository';
+import { SupabaseMissedCallsRepository } from '@/src/backend/adapters/supabase/missed-calls-repository';
+import { SupabaseAuthUsersRepository } from '@/src/backend/adapters/supabase/auth-users-repository';
+import { SupabaseBlogPostsRepository } from '@/src/backend/adapters/supabase/blog-posts-repository';
+import { SupabaseContactRequestsRepository } from '@/src/backend/adapters/supabase/contact-requests-repository';
+import { TelnyxPhoneProvisioningService } from '@/src/backend/adapters/telnyx/phone-provisioning-service';
+import { TelnyxSmsService } from '@/src/backend/adapters/telnyx/sms-service';
+import { TelnyxTelephonyService } from '@/src/backend/adapters/telnyx/telephony-service';
+import { PaddleBillingProvider } from '@/src/backend/adapters/paddle/billing-provider';
+import { LiveKitRealtimeRuntime } from '@/src/agent/realtime/livekit-gemini-runtime';
+import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
+import { getEnv } from '@/src/backend/config/env';
+import { createSupabaseServiceClient } from '@/src/backend/db/supabase-client';
+
+type BackendRuntime = ReturnType<typeof createBackendRuntime>;
+type BackendRepositoryMode = 'memory' | 'supabase';
+type BackendCommProvider = 'noop' | 'telnyx';
+type BillingProviderMode = 'paddle' | 'manual';
+type AgentRuntimeMode = 'mock' | 'livekit_realtime';
+type AgentTransportMode = 'mock' | 'livekit';
+type AgentVoiceProviderMode = 'none' | 'gemini_live' | 'openai_realtime';
+type BackendEmailProvider = 'noop' | 'resend';
+
+function getRepositoryMode(): BackendRepositoryMode {
+  return process.env.BACKEND_REPOSITORY_MODE === 'supabase' ? 'supabase' : 'memory';
+}
+
+function getCommProvider(): BackendCommProvider {
+  return process.env.BACKEND_COMM_PROVIDER === 'telnyx' ? 'telnyx' : 'noop';
+}
+
+function getBillingProviderMode(): BillingProviderMode {
+  return process.env.BILLING_PROVIDER === 'manual' ? 'manual' : 'paddle';
+}
+
+function getAgentTransportMode(): AgentTransportMode {
+  if (process.env.AGENT_TRANSPORT === 'livekit') return 'livekit';
+  return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' ? 'livekit' : 'mock';
+}
+
+function getAgentVoiceProviderMode(): AgentVoiceProviderMode {
+  const configured = process.env.AGENT_VOICE_PROVIDER;
+  if (configured === 'gemini_live' || configured === 'openai_realtime' || configured === 'none') {
+    return configured;
+  }
+  return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' ? 'gemini_live' : 'none';
+}
+
+function getAgentRuntimeMode(): AgentRuntimeMode {
+  const transport = getAgentTransportMode();
+  const voiceProvider = getAgentVoiceProviderMode();
+  return transport === 'livekit' && voiceProvider !== 'none' ? 'livekit_realtime' : 'mock';
+}
+
+function getEmailProvider(): BackendEmailProvider {
+  return process.env.EMAIL_PROVIDER === 'resend' ? 'resend' : 'noop';
+}
+
+function enforceProductionRuntimeProfile(params: {
+  mode: BackendRepositoryMode;
+  commProvider: BackendCommProvider;
+  agentRuntimeMode: AgentRuntimeMode;
+}) {
+  if (process.env.NODE_ENV !== 'production') return;
+  if (process.env.ENFORCE_PRODUCTION_RUNTIME_PROFILE !== 'true') return;
+  if (process.env.ALLOW_INSECURE_PROD_RUNTIME === 'true') return;
+
+  const violations: string[] = [];
+  if (params.mode !== 'supabase') violations.push(`BACKEND_REPOSITORY_MODE must be supabase (found ${params.mode})`);
+  if (params.commProvider !== 'telnyx') violations.push(`BACKEND_COMM_PROVIDER must be telnyx (found ${params.commProvider})`);
+  if (params.agentRuntimeMode !== 'livekit_realtime') {
+    violations.push(`agent runtime must be livekit_realtime (found ${params.agentRuntimeMode})`);
+  }
+
+  if (violations.length > 0) {
+    throw new Error(`invalid_production_runtime_profile:${violations.join('; ')}`);
+  }
+}
+
+export function createBackendRuntime() {
+  const mode = getRepositoryMode();
+  const commProvider = getCommProvider();
+  const billingProviderMode = getBillingProviderMode();
+  const agentTransportMode = getAgentTransportMode();
+  const agentVoiceProviderMode = getAgentVoiceProviderMode();
+  const agentRuntimeMode = getAgentRuntimeMode();
+  const emailProvider = getEmailProvider();
+  enforceProductionRuntimeProfile({
+    mode,
+    commProvider,
+    agentRuntimeMode,
+  });
+  const repositories =
+    mode === 'supabase'
+      ? (() => {
+          const supabase = createSupabaseServiceClient();
+          return {
+            providerEventsRepository: new SupabaseProviderEventsRepository(supabase),
+            shopsRepository: new SupabaseShopsRepository(supabase),
+            billingCustomersRepository: new SupabaseBillingCustomersRepository(supabase),
+            billingSubscriptionsRepository: new SupabaseBillingSubscriptionsRepository(supabase),
+            jobsRepository: new SupabaseJobsRepository(supabase),
+            bookingsRepository: new SupabaseBookingsRepository(supabase),
+            callbacksRepository: new SupabaseCallbacksRepository(supabase),
+            outboundMessagesRepository: new SupabaseOutboundMessagesRepository(supabase),
+            callLogsRepository: new SupabaseCallLogsRepository(supabase),
+            missedCallsRepository: new SupabaseMissedCallsRepository(supabase),
+            authUsersRepository: new SupabaseAuthUsersRepository(supabase),
+            blogPostsRepository: new SupabaseBlogPostsRepository(supabase),
+            contactRequestsRepository: new SupabaseContactRequestsRepository(supabase),
+          };
+        })()
+      : {
+          providerEventsRepository: new InMemoryProviderEventsRepository(),
+          shopsRepository: new InMemoryShopsRepository(),
+          billingCustomersRepository: new InMemoryBillingCustomersRepository(),
+          billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
+          jobsRepository: new InMemoryJobsRepository(),
+          bookingsRepository: new InMemoryBookingsRepository(),
+          callbacksRepository: new InMemoryCallbacksRepository(),
+          outboundMessagesRepository: new InMemoryOutboundMessagesRepository(),
+          callLogsRepository: new InMemoryCallLogsRepository(),
+          missedCallsRepository: new InMemoryMissedCallsRepository(),
+          authUsersRepository: new InMemoryAuthUsersRepository(),
+          blogPostsRepository: new InMemoryBlogPostsRepository(),
+          contactRequestsRepository: new InMemoryContactRequestsRepository(),
+        };
+  const services =
+    commProvider === 'telnyx'
+      ? {
+          smsService: new TelnyxSmsService(getEnv().TELNYX_API_KEY),
+          telephonyService: new TelnyxTelephonyService(getEnv().TELNYX_API_KEY, getEnv().TELNYX_APP_ID, {
+            livekitUrl: getEnv().LIVEKIT_URL,
+            livekitApiKey: getEnv().LIVEKIT_API_KEY,
+            livekitApiSecret: getEnv().LIVEKIT_API_SECRET,
+            sipOutboundTrunkId: getEnv().LIVEKIT_SIP_OUTBOUND_TRUNK_ID,
+          }),
+          phoneProvisioningService: new TelnyxPhoneProvisioningService(
+            getEnv().TELNYX_API_KEY,
+            getEnv().TELNYX_APP_ID,
+            getEnv().TELNYX_MESSAGING_PROFILE,
+          ),
+        }
+      : {
+          smsService: new NoopSmsService(),
+          telephonyService: new NoopTelephonyService(),
+          phoneProvisioningService: new NoopPhoneProvisioningService(),
+        };
+  const emailService =
+    emailProvider === 'resend'
+      ? (() => {
+          const resendApiKey = getEnv().RESEND_API_KEY;
+          if (!resendApiKey) {
+            throw new Error('resend_api_key_missing');
+          }
+          return new ResendEmailService(resendApiKey, getEnv().EMAIL_FROM_ADDRESS);
+        })()
+      : new NoopEmailService();
+  const realtimeAgentRuntime =
+    agentRuntimeMode === 'livekit_realtime'
+      ? new LiveKitRealtimeRuntime({
+          livekitUrl: getEnv().LIVEKIT_URL,
+          livekitApiKey: getEnv().LIVEKIT_API_KEY,
+          livekitApiSecret: getEnv().LIVEKIT_API_SECRET,
+          voiceProvider: agentVoiceProviderMode === 'none' ? 'gemini_live' : agentVoiceProviderMode,
+          voiceApiKeyConfigured:
+            agentVoiceProviderMode === 'gemini_live'
+              ? Boolean(getEnv().GOOGLE_AI_API_KEY)
+              : agentVoiceProviderMode === 'openai_realtime'
+                ? Boolean(process.env.OPENAI_API_KEY)
+                : false,
+          voiceModel: process.env.AGENT_VOICE_MODEL?.trim() || getEnv().AGENT_GEMINI_MODEL,
+        })
+      : new MockRealtimeAgentRuntime();
+  const billingProvider =
+    billingProviderMode === 'paddle'
+      ? new PaddleBillingProvider({
+          billingCustomersRepository: repositories.billingCustomersRepository,
+          billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+          shopsRepository: repositories.shopsRepository,
+        })
+      : undefined;
+
+  const app = createBackendApp({
+    providerEventsRepository: repositories.providerEventsRepository,
+    jobsRepository: repositories.jobsRepository,
+    bookingsRepository: repositories.bookingsRepository,
+    billingCustomersRepository: repositories.billingCustomersRepository,
+    billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+    callbacksRepository: repositories.callbacksRepository,
+    shopsRepository: repositories.shopsRepository,
+    telephonyService: services.telephonyService,
+    phoneProvisioningService: services.phoneProvisioningService,
+    emailService,
+    realtimeAgentRuntime,
+    callLogsRepository: repositories.callLogsRepository,
+    missedCallsRepository: repositories.missedCallsRepository,
+    authUsersRepository: repositories.authUsersRepository,
+    blogPostsRepository: repositories.blogPostsRepository,
+    contactRequestsRepository: repositories.contactRequestsRepository,
+    billingProvider,
+    basePath: '/api/backend',
+    runtimeInfo: {
+      mode,
+      commProvider,
+      agentRuntimeMode,
+      agentTransportMode,
+      agentVoiceProviderMode,
+    },
+  });
+
+  return {
+    app,
+    mode,
+    commProvider,
+    agentRuntimeMode,
+    agentTransportMode,
+    agentVoiceProviderMode,
+    providerEventsRepository: repositories.providerEventsRepository,
+    shopsRepository: repositories.shopsRepository,
+    billingCustomersRepository: repositories.billingCustomersRepository,
+    billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+    jobsRepository: repositories.jobsRepository,
+    bookingsRepository: repositories.bookingsRepository,
+    callbacksRepository: repositories.callbacksRepository,
+    outboundMessagesRepository: repositories.outboundMessagesRepository,
+    callLogsRepository: repositories.callLogsRepository,
+    missedCallsRepository: repositories.missedCallsRepository,
+    authUsersRepository: repositories.authUsersRepository,
+    blogPostsRepository: repositories.blogPostsRepository,
+    contactRequestsRepository: repositories.contactRequestsRepository,
+    smsService: services.smsService,
+    telephonyService: services.telephonyService,
+    phoneProvisioningService: services.phoneProvisioningService,
+    emailService,
+    billingProvider,
+    realtimeAgentRuntime,
+  };
+}
+
+let runtimeSingleton: BackendRuntime | null = null;
+
+export function getBackendRuntime(): BackendRuntime {
+  if (!runtimeSingleton) {
+    runtimeSingleton = createBackendRuntime();
+  }
+  return runtimeSingleton;
+}

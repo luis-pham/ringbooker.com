@@ -1,0 +1,416 @@
+import type {
+  BlogPost,
+  BlogPostStatus,
+  BillingCustomer,
+  BillingProvider,
+  BillingSubscription,
+  BillingSubscriptionStatus,
+  ContactRequest,
+  ContactRequestStatus,
+  JobStatus,
+  JobType,
+  Shop,
+} from '@/src/backend/domain/types';
+
+export interface ProviderEventRecord {
+  provider: 'telnyx' | 'paddle' | string;
+  providerEventId: string;
+  eventType: string;
+  payload: unknown;
+}
+
+export interface ProviderEventsRepository {
+  hasProcessed(provider: string, providerEventId: string): Promise<boolean>;
+  markProcessed(event: ProviderEventRecord): Promise<void>;
+  markProcessingError(provider: string, providerEventId: string, reason: string): Promise<void>;
+  clearProcessingError(provider: string, providerEventId: string): Promise<void>;
+}
+
+export interface CallLogsRepository {
+  createOrUpdateInboundCall(params: {
+    provider: string;
+    providerCallId: string;
+    shopId: string;
+    callerPhone?: string;
+    destinationPhone?: string;
+    requestId?: string;
+    roomName?: string;
+    startedAt?: Date;
+  }): Promise<void>;
+  markAgentJoined(params: {
+    shopId: string;
+    requestId: string;
+    roomName?: string;
+  }): Promise<void>;
+  appendTranscriptByRequestId(params: {
+    shopId: string;
+    requestId: string;
+    speaker: 'caller' | 'assistant' | 'system';
+    text: string;
+    occurredAt?: Date;
+  }): Promise<void>;
+  updateDemoLiveStateByRequestId(params: {
+    shopId: string;
+    requestId: string;
+    state:
+      | 'preparing'
+      | 'caller_speaking'
+      | 'ai_agent_speaking'
+      | 'thinking'
+      | 'looking_up_info'
+      | 'completed'
+      | 'failed'
+      | null;
+  }): Promise<void>;
+  updateTranscriptStatusByRequestId(params: {
+    shopId: string;
+    requestId: string;
+    status: 'pending' | 'completed' | 'failed';
+  }): Promise<void>;
+  markEndedByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    endedAt: Date;
+    outcome?: string;
+    humanAnswered?: boolean;
+  }): Promise<void>;
+  listByShop(shopId: string, params?: { limit?: number }): Promise<
+    Array<{
+      provider: string;
+      providerCallId: string;
+      shopId: string;
+      callerPhone?: string;
+      destinationPhone?: string;
+      requestId?: string;
+      roomName?: string;
+      startedAt?: string;
+      endedAt?: string;
+      agentJoined: boolean;
+      humanAnswered: boolean;
+      transcriptStatus?: string;
+      transcriptText?: string;
+      demoLiveState?: string;
+      outcome?: string;
+    }>
+  >;
+  listRecent(params?: { limit?: number }): Promise<
+    Array<{
+      provider: string;
+      providerCallId: string;
+      shopId: string;
+      callerPhone?: string;
+      destinationPhone?: string;
+      requestId?: string;
+      roomName?: string;
+      startedAt?: string;
+      endedAt?: string;
+      agentJoined: boolean;
+      humanAnswered: boolean;
+      transcriptStatus?: string;
+      transcriptText?: string;
+      demoLiveState?: string;
+      outcome?: string;
+    }>
+  >;
+}
+
+export interface MissedCallsRepository {
+  createOncePerHour(params: {
+    shopId: string;
+    callerPhone: string;
+    callLogProviderCallId?: string;
+    createdAt?: Date;
+  }): Promise<{ created: boolean }>;
+}
+
+export interface ShopsRepository {
+  findByDestinationPhone(destinationPhone: string): Promise<Shop | null>;
+  findById(shopId: string): Promise<Shop | null>;
+  list(params?: { limit?: number }): Promise<Shop[]>;
+  create(params: {
+    name: string;
+    brand_slug?: string | null;
+    phone_number: string;
+    user_phone: string;
+    user_name?: string | null;
+    timezone: string;
+    plan?: Shop['plan'];
+    active?: boolean;
+  }): Promise<Shop>;
+  updateUserSettings(
+    shopId: string,
+    patch: Partial<
+      Pick<
+        Shop,
+        | 'user_name'
+        | 'user_phone'
+        | 'backup_phone'
+        | 'address'
+        | 'timezone'
+        | 'services'
+        | 'hours'
+        | 'cancel_policy'
+        | 'promotions'
+        | 'booking_url'
+      >
+    >,
+  ): Promise<Shop | null>;
+  updateDynamicConfig(
+    shopId: string,
+    patch: Partial<
+      Pick<
+        Shop,
+        | 'ai_voice'
+        | 'ai_welcome_message'
+        | 'ai_custom_instructions'
+        | 'allow_transfers'
+        | 'allow_callbacks'
+        | 'send_reminder_sms'
+        | 'send_review_request_sms'
+        | 'send_missed_call_followup_sms'
+      >
+    >,
+  ): Promise<Shop | null>;
+  updatePlanAndActivation(
+    shopId: string,
+    patch: {
+      plan?: Shop['plan'];
+      active?: boolean;
+    },
+  ): Promise<Shop | null>;
+  updateCalendarConnection(
+    shopId: string,
+    patch: Pick<Shop, 'google_cal_id' | 'google_cal_credentials_encrypted'>,
+  ): Promise<Shop | null>;
+}
+
+export interface BillingCustomersRepository {
+  findByShopId(shopId: string, provider?: BillingProvider): Promise<BillingCustomer | null>;
+  findByProviderCustomerId(provider: BillingProvider, providerCustomerId: string): Promise<BillingCustomer | null>;
+  upsert(params: {
+    shopId: string;
+    provider: BillingProvider;
+    providerCustomerId: string;
+    email?: string | null;
+  }): Promise<BillingCustomer>;
+}
+
+export interface BillingSubscriptionsRepository {
+  findCurrentByShopId(shopId: string, provider?: BillingProvider): Promise<BillingSubscription | null>;
+  findByProviderSubscriptionId(
+    provider: BillingProvider,
+    providerSubscriptionId: string,
+  ): Promise<BillingSubscription | null>;
+  list(params?: { limit?: number; shopId?: string }): Promise<BillingSubscription[]>;
+  upsert(params: {
+    shopId: string;
+    provider: BillingProvider;
+    providerSubscriptionId: string;
+    providerCustomerId?: string | null;
+    plan: Shop['plan'];
+    status: BillingSubscriptionStatus;
+    interval: 'month' | 'year';
+    currency: string;
+    amount: number;
+    cancelAtPeriodEnd?: boolean;
+    currentPeriodStart?: string | null;
+    currentPeriodEnd?: string | null;
+    trialEndsAt?: string | null;
+    metadata?: Record<string, unknown> | null;
+  }): Promise<BillingSubscription>;
+}
+
+export interface JobsRepository {
+  enqueue(params: {
+    shopId: string;
+    type: JobType;
+    payload: Record<string, unknown>;
+    runAt: Date;
+    idempotencyKey: string;
+  }): Promise<void>;
+  leaseNext(params: {
+    now: Date;
+    leaseSeconds: number;
+    workerId: string;
+  }): Promise<{
+    id: string;
+    shopId: string;
+    type: JobType;
+    payload: Record<string, unknown>;
+    attemptCount: number;
+  } | null>;
+  complete(jobId: string): Promise<void>;
+  fail(jobId: string, params: { retryable: boolean; reason: string; nextRunAt?: Date }): Promise<void>;
+  updateStatus(jobId: string, status: JobStatus): Promise<void>;
+  getStatusCounts(): Promise<Partial<Record<JobStatus, number>>>;
+}
+
+export interface BookingRecord {
+  id: string;
+  shopId: string;
+  customerPhone: string;
+  customerName?: string | null;
+  service: string;
+  datetimeUtc: string;
+  timezone: string;
+  status: string;
+  reminder24hSent: boolean;
+  reminder2hSent: boolean;
+  reviewRequestSent: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BookingsRepository {
+  findById(bookingId: string): Promise<BookingRecord | null>;
+  listByShop(shopId: string, params?: { limit?: number }): Promise<BookingRecord[]>;
+  create(params: {
+    id?: string;
+    shopId: string;
+    customerPhone: string;
+    customerName?: string | null;
+    service: string;
+    datetimeUtc: string;
+    timezone: string;
+    status: string;
+    calendarEventId?: string;
+  }): Promise<BookingRecord>;
+  markReminderSent(bookingId: string, kind: '24h' | '2h'): Promise<void>;
+  markReviewRequestSent(bookingId: string): Promise<void>;
+}
+
+export interface CallbackRecord {
+  id: string;
+  shopId: string;
+  customerPhone: string;
+  customerName?: string | null;
+  reason: string;
+  status: string;
+  attemptCount: number;
+}
+
+export interface CallbacksRepository {
+  create(params: {
+    shopId: string;
+    customerPhone: string;
+    customerName?: string | null;
+    reason: string;
+    requestId?: string;
+  }): Promise<CallbackRecord>;
+  findById(callbackId: string): Promise<CallbackRecord | null>;
+  markAttempt(callbackId: string, params: { nextAttemptAt?: Date }): Promise<void>;
+  markQueued(callbackId: string, params: { nextAttemptAt: Date }): Promise<void>;
+  markCompleted(callbackId: string): Promise<void>;
+  markFailed(callbackId: string): Promise<void>;
+}
+
+export interface OutboundMessagesRepository {
+  create(params: {
+    shopId: string;
+    bookingId?: string;
+    customerPhone: string;
+    category: string;
+    body: string;
+    idempotencyKey: string;
+    status: 'queued' | 'sent' | 'failed';
+    providerMessageId?: string;
+  }): Promise<void>;
+}
+
+export type AuthRole = 'user' | 'admin';
+
+export interface AuthUserRecord {
+  id: string;
+  email: string;
+  role: AuthRole;
+  shopId?: string | null;
+  passwordHash: string;
+  active: boolean;
+  mfaEnabled: boolean;
+}
+
+export interface AuthUsersRepository {
+  findByEmail(email: string): Promise<AuthUserRecord | null>;
+  findById(id: string): Promise<AuthUserRecord | null>;
+  create(params: {
+    email: string;
+    role: AuthRole;
+    shopId?: string | null;
+    passwordHash: string;
+    active?: boolean;
+    mfaEnabled?: boolean;
+  }): Promise<AuthUserRecord>;
+  updatePasswordHash(userId: string, passwordHash: string): Promise<void>;
+  createPasswordResetToken(params: {
+    userId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void>;
+  consumePasswordResetToken(tokenHash: string): Promise<{ userId: string } | null>;
+}
+
+export interface BlogPostsRepository {
+  listPublished(params?: { limit?: number; query?: string }): Promise<BlogPost[]>;
+  listForAdmin(params?: { limit?: number; status?: BlogPostStatus | 'all'; query?: string }): Promise<BlogPost[]>;
+  findBySlug(slug: string, params?: { includeDraft?: boolean }): Promise<BlogPost | null>;
+  findById(id: string): Promise<BlogPost | null>;
+  create(params: {
+    slug: string;
+    title: string;
+    excerpt: string;
+    content: string;
+    status: BlogPostStatus;
+    seoTitle?: string | null;
+    seoDescription?: string | null;
+    coverImageUrl?: string | null;
+    tags?: string[];
+    authorName?: string | null;
+    publishedAt?: string | null;
+  }): Promise<BlogPost>;
+  update(
+    id: string,
+    patch: Partial<{
+      slug: string;
+      title: string;
+      excerpt: string;
+      content: string;
+      status: BlogPostStatus;
+      seoTitle: string | null;
+      seoDescription: string | null;
+      coverImageUrl: string | null;
+      tags: string[];
+      authorName: string | null;
+      publishedAt: string | null;
+    }>,
+  ): Promise<BlogPost | null>;
+  delete(id: string): Promise<boolean>;
+}
+
+export interface ContactRequestsRepository {
+  create(params: {
+    requestId: string;
+    fullName: string;
+    businessName: string;
+    email: string;
+    phoneNumber: string;
+    businessType: string;
+    currentSetup: string;
+    helpNeed: string;
+    bestTime: string;
+    source?: string;
+    ip?: string | null;
+  }): Promise<ContactRequest>;
+  listForAdmin(params?: {
+    limit?: number;
+    status?: ContactRequestStatus | 'all';
+    query?: string;
+  }): Promise<ContactRequest[]>;
+  updateStatus(
+    id: string,
+    params: {
+      status: ContactRequestStatus;
+      notes?: string | null;
+      handledBy?: string | null;
+    },
+  ): Promise<ContactRequest | null>;
+}

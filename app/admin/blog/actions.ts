@@ -1,0 +1,189 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+
+import { prisma } from '@/lib/prisma';
+import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/src/backend/security/session';
+
+import { postSchema, slugify, type PostFormData } from './post-schema';
+
+async function assertAdminSession(): Promise<void> {
+  const token = (await cookies()).get(ADMIN_SESSION_COOKIE)?.value ?? null;
+  if (!token) {
+    throw new Error('unauthorized');
+  }
+  const session = await verifySessionToken(token);
+  if (!session || session.role !== 'admin') {
+    throw new Error('unauthorized');
+  }
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
+}
+
+function normalizeCoverStats(data: PostFormData): Array<{ num: string; label: string }> {
+  return data.coverStats
+    .map((item) => ({ num: item.num.trim(), label: item.label.trim() }))
+    .filter((item) => item.num.length > 0 && item.label.length > 0)
+    .slice(0, 3);
+}
+
+async function ensureAuthorId() {
+  const initials = 'RBA';
+  const author = await prisma.author.upsert({
+    where: { initials },
+    update: {
+      name: 'RingBooker Admin',
+      role: 'Admin',
+    },
+    create: {
+      initials,
+      name: 'RingBooker Admin',
+      role: 'Admin',
+    },
+  });
+  return author.id;
+}
+
+async function upsertTags(tagValues: string[]) {
+  const tags = unique(tagValues);
+  if (tags.length === 0) return [];
+  const records = await Promise.all(
+    tags.map((name) =>
+      prisma.tag.upsert({
+        where: { slug: slugify(name) },
+        update: { name },
+        create: { name, slug: slugify(name) },
+      }),
+    ),
+  );
+  return records;
+}
+
+function revalidateBlogPaths(slug: string) {
+  revalidatePath('/blog');
+  revalidatePath(`/blog/${slug}`);
+  revalidatePath('/admin/blog');
+}
+
+export async function createPost(data: PostFormData): Promise<{ id: string }> {
+  await assertAdminSession();
+  const parsed = postSchema.parse(data);
+
+  const authorId = await ensureAuthorId();
+  const [categories, tags] = await Promise.all([
+    prisma.category.findMany({
+      where: { id: { in: unique(parsed.categoryIds) } },
+      select: { id: true },
+    }),
+    upsertTags(parsed.tags),
+  ]);
+
+  if (categories.length === 0) {
+    throw new Error('at_least_one_category_required');
+  }
+
+  const post = await prisma.post.create({
+    data: {
+      title: parsed.title.trim(),
+      slug: parsed.slug.trim(),
+      excerpt: parsed.excerpt.trim(),
+      content: parsed.content,
+      status: parsed.status,
+      featured: parsed.featured,
+      readTimeMin: parsed.readTimeMin,
+      coverStats: normalizeCoverStats(parsed),
+      authorId,
+      publishedAt: parsed.status === 'PUBLISHED' ? new Date() : null,
+      categories: {
+        create: categories.map((category) => ({ categoryId: category.id })),
+      },
+      tags: {
+        create: tags.map((tag) => ({ tagId: tag.id })),
+      },
+    },
+    select: { id: true, slug: true },
+  });
+
+  revalidateBlogPaths(post.slug);
+  return { id: post.id };
+}
+
+export async function updatePost(id: string, data: PostFormData): Promise<void> {
+  await assertAdminSession();
+  const parsed = postSchema.parse(data);
+  const postId = id.trim();
+  if (!postId) throw new Error('invalid_post_id');
+
+  const [existingPost, categories, tags] = await Promise.all([
+    prisma.post.findUnique({ where: { id: postId }, select: { id: true, slug: true, publishedAt: true } }),
+    prisma.category.findMany({
+      where: { id: { in: unique(parsed.categoryIds) } },
+      select: { id: true },
+    }),
+    upsertTags(parsed.tags),
+  ]);
+
+  if (!existingPost) throw new Error('post_not_found');
+  if (categories.length === 0) throw new Error('at_least_one_category_required');
+
+  await prisma.$transaction([
+    prisma.categoryOnPost.deleteMany({ where: { postId } }),
+    prisma.tagOnPost.deleteMany({ where: { postId } }),
+    prisma.post.update({
+      where: { id: postId },
+      data: {
+        title: parsed.title.trim(),
+        slug: parsed.slug.trim(),
+        excerpt: parsed.excerpt.trim(),
+        content: parsed.content,
+        status: parsed.status,
+        featured: parsed.featured,
+        readTimeMin: parsed.readTimeMin,
+        coverStats: normalizeCoverStats(parsed),
+        publishedAt:
+          parsed.status === 'PUBLISHED' ? existingPost.publishedAt ?? new Date() : parsed.status === 'ARCHIVED' ? null : existingPost.publishedAt,
+        categories: {
+          create: categories.map((category) => ({ categoryId: category.id })),
+        },
+        tags: {
+          create: tags.map((tag) => ({ tagId: tag.id })),
+        },
+      },
+    }),
+  ]);
+
+  revalidateBlogPaths(parsed.slug.trim());
+  if (existingPost.slug !== parsed.slug.trim()) {
+    revalidatePath(`/blog/${existingPost.slug}`);
+  }
+}
+
+export async function deletePost(id: string): Promise<void> {
+  await assertAdminSession();
+  const postId = id.trim();
+  if (!postId) throw new Error('invalid_post_id');
+
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { slug: true } });
+  if (!post) return;
+  await prisma.post.delete({ where: { id: postId } });
+  revalidateBlogPaths(post.slug);
+}
+
+export async function publishPost(id: string): Promise<void> {
+  await assertAdminSession();
+  const postId = id.trim();
+  if (!postId) throw new Error('invalid_post_id');
+  const post = await prisma.post.update({
+    where: { id: postId },
+    data: {
+      status: 'PUBLISHED',
+      publishedAt: new Date(),
+    },
+    select: { slug: true },
+  });
+  revalidateBlogPaths(post.slug);
+}
+

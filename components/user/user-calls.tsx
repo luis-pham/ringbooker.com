@@ -1,0 +1,313 @@
+import { UserLayout } from '@/components/user/user-layout';
+
+export const userCallsStyles: string[] = [
+  String.raw`
+:root{
+  --purple:#8B5CF6;
+  --purple-dark:#7C3AED;
+  --purple-light:#EDE9FE;
+  --purple-ultra:#F5F3FF;
+  --text-dark:#111827;
+  --text-gray:#6B7280;
+  --text-light:#9CA3AF;
+  --bg:#fff;
+  --bg-gray:#F9FAFB;
+  --border:#E5E7EB;
+  --green:#10B981;
+  --orange:#F59E0B;
+  --red:#EF4444;
+  --blue:#3B82F6;
+  --sidebar-width:284px;
+  --r-pill:999px;
+  --r-xl:28px;
+  --r-lg:24px;
+  --r-md:16px;
+  --r-sm:12px;
+  --shadow:0 18px 48px rgba(17,24,39,.06);
+  --shadow-soft:0 8px 24px rgba(17,24,39,.04);
+}
+*{box-sizing:border-box}
+html{scrollbar-gutter:stable;background:linear-gradient(180deg,#faf7ff 0%,#fff 24%,#fff 100%)}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:'Mona Sans Variable',sans-serif;
+  color:var(--text-dark);
+  background:linear-gradient(180deg,#faf7ff 0%,#fff 24%,#fff 100%);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+a{text-decoration:none;color:inherit}
+button,input,select,textarea{font:inherit}
+.app-shell{display:grid;grid-template-columns:var(--sidebar-width) minmax(0,1fr);min-height:100vh}
+.sidebar{
+  position:sticky;top:0;height:100vh;overflow:auto;
+  background:rgba(255,255,255,.86);backdrop-filter:blur(16px);
+  border-right:1px solid rgba(229,231,235,.9);
+  padding:22px 18px 22px;
+}
+.sidebar-inner{display:flex;flex-direction:column;min-height:calc(100vh - 44px)}
+.brand{
+  display:flex;align-items:center;gap:12px;
+  font-weight:800;font-size:20px;letter-spacing:-.02em;
+  margin-bottom:22px;
+}
+.brand-mark{position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-ripple{position:absolute;border-radius:50%;background:var(--purple)}
+.brand-ripple.r3{width:38px;height:38px;opacity:.1}
+.brand-ripple.r2{width:30px;height:30px;opacity:.18}
+.brand-core{
+  position:relative;z-index:1;
+  width:24px;height:24px;border-radius:50%;
+  background:var(--purple);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 24px rgba(139,92,246,.28);
+}
+.brand-core svg{width:13px;height:13px;fill:#fff}
+.workspace{
+  background:linear-gradient(135deg,#f5f3ff,#fff);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:16px 15px;
+  margin-bottom:18px;
+}
+.workspace h3{margin:0 0 4px;font-size:15px;letter-spacing:-.02em}
+.workspace p{margin:0;color:var(--text-gray);font-size:12px;line-height:1.5}
+.nav-section{margin-top:6px}
+.nav-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-light);font-weight:700;padding:0 10px 10px}
+.nav-list{display:flex;flex-direction:column;gap:6px}
+.nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px;border-radius:14px;color:#4b5563;
+  font-weight:650;font-size:14px;transition:all .18s ease;
+}
+.nav-item:hover{background:#f9f7ff;color:var(--text-dark)}
+.nav-item.active{
+  background:linear-gradient(135deg,#f5f3ff,#ede9fe);
+  color:var(--purple-dark);
+  box-shadow:inset 0 0 0 1px rgba(139,92,246,.15);
+}
+.nav-icon{
+  width:34px;height:34px;border-radius:12px;background:#fff;border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.nav-icon svg{width:16px;height:16px;stroke:#6b7280;stroke-width:2;fill:none}
+.nav-item.active .nav-icon{background:var(--purple);border-color:transparent}
+.nav-item.active .nav-icon svg{stroke:#fff}
+.sidebar-spacer{flex:1}
+.sidebar-foot{
+  background:#111827;color:#fff;border-radius:20px;padding:16px;margin-top:18px;
+  box-shadow:var(--shadow-soft);
+}
+.sidebar-foot strong{display:block;font-size:13px}
+.sidebar-foot small{display:block;color:rgba(255,255,255,.65);margin-top:4px;line-height:1.55;font-size:12px}
+
+.main{padding:28px 30px 34px;min-width:0}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:24px}
+.page-title h1{margin:0;font-size:34px;letter-spacing:-1.4px;line-height:1.06}
+.page-title p{margin:8px 0 0;color:var(--text-gray);font-size:14px;line-height:1.6;max-width:760px}
+.top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  padding:12px 18px;border-radius:999px;font-weight:700;font-size:14px;
+  border:1px solid var(--border);background:#fff;color:var(--text-dark);
+  transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-soft)}
+.btn.purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn.dark{background:#111827;color:#fff;border-color:#111827}
+
+.grid{display:grid;gap:18px}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.kpi-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:18px}
+.call-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:18px}
+
+.card,.stat-card{
+  background:#fff;border:1px solid var(--border);
+  border-radius:26px;box-shadow:var(--shadow);padding:22px;min-width:0;
+}
+.card.soft{background:linear-gradient(180deg,#fff 0%,#fcfbff 100%)}
+.card h3{margin:0 0 6px;font-size:18px;letter-spacing:-.3px}
+.card p.sub{margin:0 0 18px;color:var(--text-gray);font-size:13px;line-height:1.6}
+.stat-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.stat-icon{
+  width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:#f5f3ff;
+}
+.stat-icon svg{width:20px;height:20px;stroke:var(--purple-dark);stroke-width:2;fill:none}
+.stat-value{font-size:32px;font-weight:800;letter-spacing:-1px}
+.stat-meta{font-size:13px;color:var(--text-gray);line-height:1.55}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:700}
+.tag.green{background:#ecfdf5;color:#047857}
+.tag.purple{background:#f5f3ff;color:var(--purple-dark)}
+.tag.orange{background:#fff7ed;color:#c2410c}
+.tag.red{background:#fef2f2;color:#b91c1c}
+.badge-right{padding:6px 10px;border-radius:999px;background:#111827;color:#fff;font-size:11px;font-weight:700;white-space:nowrap}
+
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:14px 0;border-bottom:1px solid #f0f1f3;text-align:left;font-size:13.5px;vertical-align:top}
+.table th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light)}
+.table tr:last-child td{border-bottom:none}
+
+.list{display:flex;flex-direction:column;gap:12px}
+.list-item{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 16px;border:1px solid #f0f1f3;border-radius:18px;background:#fff;min-width:0;
+}
+.item-main{display:flex;align-items:center;gap:12px;min-width:0}
+.avatar{
+  width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+  display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--purple-dark);flex-shrink:0;
+}
+.item-main h4{margin:0 0 3px;font-size:14px;letter-spacing:-.02em}
+.item-main p{margin:0;color:var(--text-gray);font-size:12px;line-height:1.5}
+.metric{font-weight:800;font-size:20px;letter-spacing:-.7px}
+.metric-sub{font-size:12px;color:var(--text-gray)}
+.note{
+  padding:14px 16px;border-radius:18px;background:#f9fafb;border:1px solid var(--border);
+  color:var(--text-gray);font-size:13px;line-height:1.6;
+}
+
+.call-live{
+  background:linear-gradient(145deg,#1a0533,#2d1b69 50%,#1a0d3a);
+  color:#fff;position:relative;overflow:hidden;
+}
+.call-live::before{
+  content:'';position:absolute;right:-80px;top:-80px;width:240px;height:240px;border-radius:50%;
+  background:rgba(255,255,255,.06)
+}
+.live-label{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;background:rgba(16,185,129,.14);color:#86efac;font-size:11px;font-weight:700;margin-bottom:12px}
+.dot{width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 6px rgba(34,197,94,.08)}
+.live-name{font-size:24px;font-weight:800;letter-spacing:-.6px;margin:0 0 5px}
+.live-copy{color:rgba(255,255,255,.72);font-size:13px;line-height:1.7}
+.subtitle-box{margin-top:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:14px}
+.subtitle-box .mini{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.48);font-weight:700;margin-bottom:4px}
+.subtitle-box p{margin:0;color:#fff;font-size:13px;line-height:1.6}
+.wave{display:flex;align-items:flex-end;gap:4px;height:56px;margin-top:18px}
+.wave span{width:5px;background:rgba(196,181,253,.92);border-radius:999px;animation:w 1s ease-in-out infinite}
+.wave span:nth-child(odd){animation-delay:.12s}
+.wave span:nth-child(3n){animation-delay:.22s}
+.wave span:nth-child(1){height:24px}.wave span:nth-child(2){height:42px}.wave span:nth-child(3){height:34px}.wave span:nth-child(4){height:50px}.wave span:nth-child(5){height:28px}.wave span:nth-child(6){height:45px}.wave span:nth-child(7){height:20px}.wave span:nth-child(8){height:38px}.wave span:nth-child(9){height:30px}
+@keyframes w{0%,100%{transform:scaleY(.45);opacity:.45}50%{transform:scaleY(1);opacity:1}}
+
+.progress-list{display:flex;flex-direction:column;gap:14px;margin-top:10px}
+.progress-item{display:grid;grid-template-columns:110px 1fr auto;gap:12px;align-items:center;font-size:13px}
+.bar{height:10px;background:#f3f4f6;border-radius:999px;overflow:hidden}
+.bar > span{display:block;height:100%;background:linear-gradient(90deg,#8b5cf6,#a78bfa);border-radius:999px}
+
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.field label{display:block;font-size:12px;font-weight:700;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em}
+.field input,.field textarea,.field select{
+  width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--border);background:#fff;
+  font:inherit;color:var(--text-dark);outline:none;
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:#c4b5fd;box-shadow:0 0 0 4px rgba(139,92,246,.08)}
+.field textarea{min-height:108px;resize:vertical}
+
+.billing-banner{
+  display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:18px;align-items:center;
+  background:linear-gradient(135deg,#111827,#2b3445);color:#fff
+}
+.billing-banner p{color:rgba(255,255,255,.72)}
+.pricing-mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.price-mini{border:1px solid var(--border);border-radius:20px;padding:18px;background:#fff}
+.price-mini.featured{border-color:var(--purple);box-shadow:0 0 0 4px rgba(139,92,246,.08)}
+.price-mini h4{margin:0 0 4px}
+.price-mini .amt{font-size:32px;font-weight:800;letter-spacing:-1px;margin:10px 0 12px}
+.price-mini ul{margin:0;padding-left:18px;color:var(--text-gray);font-size:12.5px;line-height:1.7}
+
+.footer-inline{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:18px;color:var(--text-light);font-size:12px}
+
+@media (max-width:1200px){
+  .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpi-row,.call-grid,.billing-banner,.pricing-mini{grid-template-columns:1fr}
+  .app-shell{grid-template-columns:96px minmax(0,1fr)}
+  .sidebar{padding:18px 12px}
+  .sidebar-inner{min-height:calc(100vh - 36px)}
+  .brand span,.workspace,.nav-item span,.nav-label,.sidebar-foot{display:none}
+  .nav-item{justify-content:center;padding:10px}
+  .nav-icon{margin:0}
+}
+@media (max-width:860px){
+  .main{padding:18px}
+  .grid-2,.grid-3,.grid-4,.form-grid{grid-template-columns:1fr}
+  .topbar{align-items:flex-start;flex-direction:column}
+  .page-title h1{font-size:28px}
+  .app-shell{grid-template-columns:1fr}
+  .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar-inner{min-height:auto}
+  .brand span,.workspace,.nav-item span,.nav-label,.sidebar-foot{display:block}
+  .nav-list{flex-direction:row;flex-wrap:wrap}
+  .nav-item{justify-content:flex-start}
+}
+`,
+];
+
+export const userCallsScripts: string[] = [
+
+];
+
+export const templateTitle = "Calls, transcripts, and missed revenue recovery.";
+
+export function UserCallsTemplate() {
+  return (
+    <UserLayout
+      styles={userCallsStyles}
+      scripts={userCallsScripts}
+      scriptPrefix="user-calls"
+    >
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div className="sidebar-inner">
+            <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><span>RingBooker</span></div>
+            <div className="workspace"><h3>Luxe Hair Studio</h3><p>AI answered 142 calls this week with 76% conversion.</p></div>
+            <div className="nav-section"><div className="nav-label">User Portal</div><div className="nav-list"><a className="nav-item" href="/user"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={4} width={7} height={7} rx="1.5" /><rect x={14} y={4} width={7} height={4} rx="1.5" /><rect x={14} y={11} width={7} height={9} rx="1.5" /><rect x={3} y={14} width={7} height={6} rx="1.5" /></svg></div><span>Overview</span></a><a className="nav-item" href="/user/bookings"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span>Bookings</span></a><a className="nav-item active" href="/user/calls"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span>Calls &amp; Transcripts</span></a><a className="nav-item" href="/user/settings"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1Z" /></svg></div><span>Settings</span></a><a className="nav-item" href="/user/billing"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={14} rx={2} /><path d="M3 10h18" /><path d="M7 15h4" /></svg></div><span>Billing</span></a></div></div>
+            <div className="sidebar-spacer" />
+            <div className="sidebar-foot"><strong>Live call mode.</strong><small>Escalate VIPs or complaints to the user when needed.</small></div>
+          </div>
+        </aside>
+        <main className="main">
+          <div className="topbar">
+            <div className="page-title"><h1>Calls, transcripts, and missed revenue recovery.</h1><p>Review how your AI phone agent handled every caller.</p></div>
+            <div className="top-actions"><a className="btn" href="/user/calls">Export transcripts</a><a className="btn purple" href="/user/calls">Listen to latest call</a></div>
+          </div>
+          <section className="grid grid-3">
+            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">Handled</span></div><div className="stat-value">142</div><div className="stat-meta">Calls answered this week</div></div>
+            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z" /><path d="M4 8l8 6 8-6" /></svg></div><span className="tag purple">Recovered</span></div><div className="stat-value">19</div><div className="stat-meta">Missed calls converted by text back</div></div>
+            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.5-4.5A8 8 0 1 1 21 12Z" /></svg></div><span className="tag orange">Avg 2m 14s</span></div><div className="stat-value">31</div><div className="stat-meta">Calls that became bookings</div></div>
+          </section>
+          <section className="grid grid-2" style={{marginTop: 18}}>
+            <div className="card">
+              <div className="panel-head"><div><h3>Recent calls</h3><p className="sub">A high-level timeline of outcomes.</p></div><span className="badge-right">Telnyx + LiveKit</span></div>
+              <div className="list">
+                <div className="list-item"><div className="item-main"><div className="avatar">EL</div><div><h4>Booked appointment</h4><p>Emma L. · Balayage + Trim · 2m 41s</p></div></div><span className="tag green">Booked</span></div>
+                <div className="list-item"><div className="item-main"><div className="avatar">JT</div><div><h4>Pricing question only</h4><p>Gel extensions price and availability · 1m 12s</p></div></div><span className="tag purple">Info only</span></div>
+                <div className="list-item"><div className="item-main"><div className="avatar">MK</div><div><h4>Caller hung up early</h4><p>Missed-call text sent after 2 minutes</p></div></div><span className="tag orange">Recovered</span></div>
+                <div className="list-item"><div className="item-main"><div className="avatar">AH</div><div><h4>User handoff</h4><p>Complaint about previous service · transferred</p></div></div><span className="tag red">Transferred</span></div>
+              </div>
+            </div>
+            <div className="card soft">
+              <div className="panel-head"><div><h3>Transcript preview</h3><p className="sub">The latest conversation summary.</p></div></div>
+              <div className="note" style={{background: '#fff', borderRadius: 20}}>
+                <strong>Caller:</strong> “Hi, do you have anything for Thursday after work?”<br /><br />
+                <strong>RingBooker:</strong> “Yes — Thursday at 6:00 PM is available for a wash and blowout. Would you like me to book that?”<br /><br />
+                <strong>Caller:</strong> “Yes, with Sophia if possible.”<br /><br />
+                <strong>RingBooker:</strong> “Perfect. I’ve booked you for Thursday at 6:00 PM with Sophia. You’ll receive a confirmation text right away.”
+              </div>
+              <div className="progress-list" style={{marginTop: 18}}>
+                <div className="progress-item"><strong>Booked calls</strong><div className="bar"><span style={{width: '72%'}} /></div><span>31</span></div>
+                <div className="progress-item"><strong>Info-only calls</strong><div className="bar"><span style={{width: '38%'}} /></div><span>26</span></div>
+                <div className="progress-item"><strong>Transferred calls</strong><div className="bar"><span style={{width: '14%'}} /></div><span>4</span></div>
+              </div>
+            </div>
+          </section>
+          <div className="footer-inline"><span>RingBooker user portal concept · aligned to the public landing page styling.</span><span>Mona Sans Variable · Stable layout · Shared design system</span></div>
+        </main>
+      </div>
+
+    </UserLayout>
+  );
+}

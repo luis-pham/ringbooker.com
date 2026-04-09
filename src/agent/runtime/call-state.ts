@@ -1,0 +1,30 @@
+export type AgentCallState =
+  | 'CREATED'
+  | 'ROUTING'
+  | 'AGENT_JOINING'
+  | 'LISTENING'
+  | 'TOOL_CALL_PENDING'
+  | 'SPEAKING'
+  | 'INTERRUPTED'
+  | 'TRANSFER_PENDING'
+  | 'CALLBACK_PENDING'
+  | 'COMPLETED'
+  | 'FAILED';
+
+const transitions: Record<AgentCallState, AgentCallState[]> = {
+  CREATED: ['ROUTING', 'FAILED'],
+  ROUTING: ['AGENT_JOINING', 'FAILED'],
+  AGENT_JOINING: ['LISTENING', 'FAILED'],
+  LISTENING: ['TOOL_CALL_PENDING', 'SPEAKING', 'TRANSFER_PENDING', 'CALLBACK_PENDING', 'COMPLETED', 'FAILED'],
+  TOOL_CALL_PENDING: ['SPEAKING', 'LISTENING', 'TRANSFER_PENDING', 'CALLBACK_PENDING', 'FAILED'],
+  SPEAKING: ['LISTENING', 'INTERRUPTED', 'COMPLETED', 'FAILED'],
+  INTERRUPTED: ['LISTENING', 'TOOL_CALL_PENDING', 'FAILED'],
+  TRANSFER_PENDING: ['COMPLETED', 'CALLBACK_PENDING', 'FAILED'],
+  CALLBACK_PENDING: ['COMPLETED', 'FAILED'],
+  COMPLETED: [],
+  FAILED: [],
+};
+
+export function canTransition(from: AgentCallState, to: AgentCallState): boolean {
+  return transitions[from].includes(to);
+}

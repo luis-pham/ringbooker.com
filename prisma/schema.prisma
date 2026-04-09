@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  title       String
+  excerpt     String
+  content     String     @db.Text
+  coverStats  Json?
+  status      PostStatus @default(DRAFT)
+  publishedAt DateTime?
+  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime   @default(now())
+  readTimeMin Int        @default(5)
+  views       Int        @default(0)
+  featured    Boolean    @default(false)
+
+  authorId String
+  author   Author @relation(fields: [authorId], references: [id], onDelete: Restrict)
+
+  categories  CategoryOnPost[]
+  tags        TagOnPost[]
+  relatedFrom Post[]           @relation("RelatedPosts")
+  relatedTo   Post[]           @relation("RelatedPosts")
+
+  @@index([status, publishedAt])
+  @@index([authorId])
+  @@index([featured])
+}
+
+model Author {
+  id       String  @id @default(cuid())
+  name     String
+  role     String
+  initials String  @unique
+  avatar   String?
+  posts    Post[]
+
+  @@index([name])
+}
+
+model Category {
+  id    String           @id @default(cuid())
+  name  String           @unique
+  slug  String           @unique
+  posts CategoryOnPost[]
+}
+
+model Tag {
+  id    String      @id @default(cuid())
+  name  String      @unique
+  slug  String      @unique
+  posts TagOnPost[]
+}
+
+model CategoryOnPost {
+  postId     String
+  categoryId String
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([postId, categoryId])
+  @@index([categoryId])
+}
+
+model TagOnPost {
+  postId String
+  tagId  String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
