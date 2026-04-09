@@ -282,6 +282,7 @@ export async function runLiveKitRoomRuntime(
   let firstModelAudioChunkLogged = false;
   let firstModelAudioPlaybackAtMs: number | null = null;
   let firstModelAudioPlaybackLogged = false;
+  let participantDisconnectedAtMs: number | null = null;
   let userSpeechEndTimer: ReturnType<typeof setTimeout> | null = null;
   let audioMetricsTimer: ReturnType<typeof setInterval> | null = null;
   const currentVoiceProvider =
@@ -361,6 +362,11 @@ export async function runLiveKitRoomRuntime(
   });
 
   room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+    participantDisconnectedAtMs = Date.now();
+    if (userSpeechEndTimer) {
+      clearTimeout(userSpeechEndTimer);
+      userSpeechEndTimer = null;
+    }
     log.info({ participantIdentity: participant.identity }, 'livekit_worker_participant_disconnected');
   });
 
@@ -465,6 +471,7 @@ export async function runLiveKitRoomRuntime(
                 pcmSamples: pcm16.length,
                 dispatchToFirstModelAudioChunkMs: nowMs - runtimeStartedAtMs,
                 roomConnectedToFirstModelAudioChunkMs: roomConnectedAtMs ? nowMs - roomConnectedAtMs : null,
+                firstUserSpeechToFirstModelAudioChunkMs: firstUserSpeechAtMs ? nowMs - firstUserSpeechAtMs : null,
                 userSpeechEndToFirstModelAudioChunkMs: lastDetectedUserSpeechEndAtMs
                   ? nowMs - lastDetectedUserSpeechEndAtMs
                   : null,
@@ -586,6 +593,7 @@ export async function runLiveKitRoomRuntime(
                 pcmSamples: pcmForOutput.length,
                 dispatchToFirstModelPlaybackMs: nowMs - runtimeStartedAtMs,
                 roomConnectedToFirstModelPlaybackMs: roomConnectedAtMs ? nowMs - roomConnectedAtMs : null,
+                firstUserSpeechToFirstModelPlaybackMs: firstUserSpeechAtMs ? nowMs - firstUserSpeechAtMs : null,
                 firstChunkToFirstPlaybackMs: firstModelAudioChunkAtMs ? nowMs - firstModelAudioChunkAtMs : null,
                 userSpeechEndToFirstPlaybackMs: lastDetectedUserSpeechEndAtMs ? nowMs - lastDetectedUserSpeechEndAtMs : null,
               },
@@ -702,6 +710,10 @@ export async function runLiveKitRoomRuntime(
               userSpeechEndTimer = null;
             }
             userSpeechEndTimer = setTimeout(() => {
+              if (participantDisconnectedAtMs) {
+                userSpeechEndTimer = null;
+                return;
+              }
               lastDetectedUserSpeechEndAtMs = Date.now();
               if (!firstUserSpeechEndLogged) {
                 firstUserSpeechEndLogged = true;
