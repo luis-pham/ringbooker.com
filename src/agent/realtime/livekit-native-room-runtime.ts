@@ -527,6 +527,24 @@ export async function runLiveKitNativeGeminiRuntime(
       }, SUBSCRIPTION_FORCE_RESOLVE_MS);
     });
 
+    // ── Emit initial greeting when caller audio is connected ──────────────────
+    let initialGreetingSent = false;
+    room.on(RoomEvent.TrackSubscribed, (track, _pub, participant) => {
+      if (track.kind === 'audio' && !initialGreetingSent) {
+        initialGreetingSent = true;
+        log.info({ participantIdentity: participant.identity }, 'livekit_native_triggering_initial_greeting');
+        setTimeout(() => {
+          try {
+            session.generateReply({
+              userInput: 'System: The phone call has just connected. Please warmly greet the caller and introduce yourself.',
+            });
+          } catch (e) {
+            log.error({ err: e }, 'livekit_native_failed_to_trigger_initial_greeting');
+          }
+        }, 500);
+      }
+    });
+
     // ── Start session (non-blocking setup) ───────────────────────────────────
     await session.start({ agent, room });
 
