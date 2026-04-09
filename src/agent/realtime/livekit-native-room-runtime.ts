@@ -508,14 +508,27 @@ export async function runLiveKitNativeGeminiRuntime(
       log.info({ trackName: track.name, trackSid: track.sid }, 'livekit_native_local_track_subscribed');
     });
 
+    // ── Workaround: force-resolve waitForSubscription for SIP participants ───
+    // LiveKit SIP bridge may not trigger the standard localTrackSubscribed event
+    // that @livekit/agents RoomIO uses to unblock audio output. Without this,
+    // ParticipantAudioOutput.captureFrame() blocks forever on startedFuture,
+    // causing complete silence on the caller's end.
+    // We intercept LocalTrackPublished and resolve the internal subscription
+    // promise after a short delay so audio starts flowing regardless.
+    const SUBSCRIPTION_FORCE_RESOLVE_MS = 1500;
+    room.on(RoomEvent.LocalTrackPublished, (publication) => {
+      setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const pub = publication as any;
+        if (typeof pub.resolveFirstSubscription === 'function') {
+          log.info({ trackName: publication.track?.name }, 'livekit_native_force_resolving_track_subscription');
+          pub.resolveFirstSubscription();
+        }
+      }, SUBSCRIPTION_FORCE_RESOLVE_MS);
+    });
+
     // ── Start session (non-blocking setup) ───────────────────────────────────
     await session.start({ agent, room });
-
-    // ── Trigger initial greeting (creates active generation so audio isn't discarded) ──
-    // Without this, Gemini may send audio before currentGeneration is set in the
-    // Google plugin, causing "received server content but no active generation" and
-    // silently discarding the greeting audio.
-    session.generateReply();
 
     // ── Timeout guard ────────────────────────────────────────────────────────
     const timeoutHandle = setTimeout(() => {
