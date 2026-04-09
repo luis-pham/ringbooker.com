@@ -248,6 +248,22 @@ button,input,select,textarea{font:inherit}
 .hint-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .hint-copy{font-size:12px;color:var(--text-gray);line-height:1.6}
 .subtle-link{color:var(--purple-dark);font-weight:700}
+.tab-strip{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px;
+}
+.tab-button{
+  display:grid;gap:6px;text-align:left;padding:15px 16px;border-radius:20px;border:1px solid var(--border);
+  background:#fff;color:var(--text-dark);cursor:pointer;transition:.18s ease;min-width:0;
+}
+.tab-button:hover{transform:translateY(-1px);box-shadow:var(--shadow-soft);border-color:#d8ccff}
+.tab-button.active{
+  background:linear-gradient(135deg,#f5f3ff,#ede9fe);
+  border-color:rgba(139,92,246,.35);
+  box-shadow:0 0 0 4px rgba(139,92,246,.08);
+}
+.tab-button strong{font-size:14px;letter-spacing:-.02em}
+.tab-button span{font-size:12px;line-height:1.55;color:var(--text-gray)}
+.tab-button.active span{color:#5b21b6}
 .hours-grid{display:grid;gap:10px}
 .hours-row{
   display:grid;grid-template-columns:96px 112px 112px auto;gap:12px;align-items:center;
@@ -301,6 +317,7 @@ button,input,select,textarea{font:inherit}
 @media (max-width:860px){
   .main{padding:18px}
   .grid-2,.grid-3,.grid-4,.form-grid,.option-grid,.services-grid,.service-controls{grid-template-columns:1fr}
+  .tab-strip{grid-template-columns:1fr}
   .topbar{align-items:flex-start;flex-direction:column}
   .page-title h1{font-size:28px}
   .app-shell{grid-template-columns:1fr}

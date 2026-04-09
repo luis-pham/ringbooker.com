@@ -250,6 +250,8 @@ const scripts: string[] = [
 
 ];
 
+export const userBookingsStyles = styles;
+export const userBookingsScripts = scripts;
 export const templateTitle = "Bookings and calendar flow.";
 
 export function UserBookingsTemplate() {

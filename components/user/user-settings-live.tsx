@@ -118,6 +118,13 @@ type SettingsState = {
   send_missed_call_followup_sms: boolean;
 };
 
+type SettingsTabId =
+  | 'business'
+  | 'services-hours'
+  | 'ai-call-behavior'
+  | 'messaging'
+  | 'integrations';
+
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<(typeof DAY_ORDER)[number], string> = {
   mon: 'Monday',
@@ -221,6 +228,14 @@ const HOURS_PRESETS: Array<{
   },
 ];
 
+const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; description: string }> = [
+  { id: 'business', label: 'Business', description: 'Profile, policy, and promo details.' },
+  { id: 'services-hours', label: 'Services & Hours', description: 'What you offer and when you are open.' },
+  { id: 'ai-call-behavior', label: 'AI Call Behavior', description: 'Voice, greeting, and call handling.' },
+  { id: 'messaging', label: 'Messaging', description: 'Reminders, reviews, and follow-up SMS.' },
+  { id: 'integrations', label: 'Integrations', description: 'Calendar providers and booking targets.' },
+];
+
 const REQUIRED_PLAN_BY_CAPABILITY: Partial<Record<keyof ShopCapabilities, ShopPlan>> = {
   edit_ai_voice: 'professional',
   edit_ai_greeting: 'professional',
@@ -280,6 +295,7 @@ export function UserSettingsLive() {
   const [promoPreset, setPromoPreset] = useState<string>('custom');
   const [greetingPreset, setGreetingPreset] = useState<string>('custom');
   const [hourPreset, setHourPreset] = useState<string>('custom');
+  const [activeTab, setActiveTab] = useState<SettingsTabId>('business');
   const [calendarProviders, setCalendarProviders] = useState<CalendarProviderSummary[]>([]);
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null);
   const [loadingCalendarProviders, setLoadingCalendarProviders] = useState(false);
@@ -574,7 +590,24 @@ export function UserSettingsLive() {
             </div>
           </div>
 
+          <div className="tab-strip" role="tablist" aria-label="Settings tabs">
+            {SETTINGS_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <strong>{tab.label}</strong>
+                <span>{tab.description}</span>
+              </button>
+            ))}
+          </div>
+
           <form id="user-settings-form" onSubmit={onSave} className="section-stack">
+            {activeTab === 'integrations' ? (
             <section className="card">
               <div className="panel-head">
                 <div>
@@ -748,22 +781,9 @@ export function UserSettingsLive() {
                 <div className="note" style={{ marginTop: 14 }}>{calendarStatus}</div>
               ) : null}
             </section>
+            ) : null}
 
-            <section className="card soft">
-              <div className="panel-head">
-                <div>
-                  <h3>What your current plan can control</h3>
-                  <p className="sub">Starter covers operations. Professional opens richer AI behavior and SMS automations. Enterprise unlocks advanced instruction control.</p>
-                </div>
-                <a className="btn" href="/user/billing">Upgrade plan</a>
-              </div>
-              <div className="option-grid">
-                <div className="option-card active"><span className="option-title">Operations</span><span className="option-copy">Profile, services, hours, booking link, transfer and callback routing.</span></div>
-                <div className={`option-card ${shop.plan === 'starter' ? 'locked' : 'active'}`}><span className="option-title">Professional AI</span><span className="option-copy">Voice style, greeting presets, reminder SMS, and review request SMS.</span></div>
-                <div className={`option-card ${shop.plan === 'enterprise' ? 'active' : 'locked'}`}><span className="option-title">Enterprise controls</span><span className="option-copy">Custom instructions for stricter AI behavior and advanced call handling rules.</span></div>
-              </div>
-            </section>
-
+            {activeTab === 'business' ? (
             <section className="grid grid-2">
               <div className="card">
                 <div className="panel-head"><div><h3>Business profile</h3><p className="sub">Keep core shop details accurate so the AI stays grounded in real data.</p></div></div>
@@ -826,7 +846,9 @@ export function UserSettingsLive() {
                 </div>
               </div>
             </section>
+            ) : null}
 
+            {activeTab === 'services-hours' ? (
             <section className="grid grid-2">
               <div className="card">
                 <div className="panel-head"><div><h3>Services</h3><p className="sub">Tap to include common services. Duration and price stay editable in a lightweight way.</p></div></div>
@@ -904,7 +926,9 @@ export function UserSettingsLive() {
                 </div>
               </div>
             </section>
+            ) : null}
 
+            {activeTab === 'ai-call-behavior' ? (
             <section className="grid grid-2">
               <div className="card">
                 <div className="panel-head"><div><h3>Call handling</h3><p className="sub">Starter plan includes practical routing controls for day-to-day salon operations.</p></div></div>
@@ -917,16 +941,22 @@ export function UserSettingsLive() {
                     <div className="switch-copy"><h4>Offer callbacks</h4><p>When the team is busy, the AI can queue a callback instead of losing the lead.</p></div>
                     <div className="switch-stack"><button type="button" className={`switch ${form.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !form.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>
                   </div>
-                  <div className="switch-row">
-                    <div className="switch-copy"><h4>Missed-call follow-up SMS</h4><p>Send a quick text when a caller hangs up before the salon team can connect.</p></div>
-                    <div className="switch-stack"><button type="button" className={`switch ${form.send_missed_call_followup_sms ? 'on' : ''}`} onClick={() => patchState('send_missed_call_followup_sms', !form.send_missed_call_followup_sms)}><span className="sr-only">Toggle missed-call follow-up</span></button></div>
-                  </div>
                 </div>
               </div>
+            </section>
+            ) : null}
 
+            {activeTab === 'messaging' ? (
+            <section className="grid grid-2">
               <div className="card">
-                <div className="panel-head"><div><h3>AI tone and automation</h3><p className="sub">These controls unlock by plan so the shop only sees the level of customization it can really use.</p></div></div>
-                <div className="card-section">
+                <div className="panel-head"><div><h3>SMS automations</h3><p className="sub">Choose which outbound messages RingBooker sends after calls and bookings.</p></div></div>
+                <div className="switch-list">
+                  <div className="switch-row">
+                    <div className="switch-copy"><h4>Missed-call follow-up SMS</h4><p>Send a quick text when a caller hangs up before the salon team can connect.</p></div>
+                    <div className="switch-stack">
+                      <button type="button" className={`switch ${form.send_missed_call_followup_sms ? 'on' : ''}`} onClick={() => patchState('send_missed_call_followup_sms', !form.send_missed_call_followup_sms)} />
+                    </div>
+                  </div>
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Reminder SMS</h4><p>Automatic appointment reminders that reduce no-shows.</p></div>
                     <div className="switch-stack">
@@ -941,7 +971,23 @@ export function UserSettingsLive() {
                       {renderLockCopy('edit_review_request_sms')}
                     </div>
                   </div>
+                </div>
+              </div>
 
+              <div className="card">
+                <div className="panel-head"><div><h3>Messaging notes</h3><p className="sub">Keep your outbound communication intentional and aligned with your plan.</p></div></div>
+                <div className="card-section">
+                  <div className="note">Reminder and review request controls unlock by plan. Missed-call follow-up stays available because it directly protects lost revenue from unanswered calls.</div>
+                </div>
+              </div>
+            </section>
+            ) : null}
+
+            {activeTab === 'ai-call-behavior' ? (
+            <section className="grid grid-2">
+              <div className="card">
+                <div className="panel-head"><div><h3>AI tone and voice</h3><p className="sub">These controls unlock by plan so the shop only sees the level of customization it can really use.</p></div></div>
+                <div className="card-section">
                   <div className="field">
                     <label>Voice style</label>
                     <select value={form.ai_voice} disabled={isLocked('edit_ai_voice')} onChange={(event) => patchState('ai_voice', event.target.value)}>
@@ -989,22 +1035,8 @@ export function UserSettingsLive() {
                 </div>
               </div>
             </section>
-
-            {(shop.plan === 'starter' || shop.plan === 'professional') ? (
-              <section className="card upgrade-panel">
-                <div className="panel-head">
-                  <div>
-                    <h3>Upgrade unlocks more than UI polish</h3>
-                    <p className="sub">The backend already enforces plan-based settings, so upgrading immediately enables the matching automations without a deploy or restart.</p>
-                  </div>
-                  <a className="btn purple" href="/user/billing">Manage plan</a>
-                </div>
-                <div className="option-grid">
-                  {shop.plan === 'starter' ? <div className="option-card active"><span className="option-title">Professional unlocks</span><span className="option-copy">Reminder SMS, review request SMS, voice style control, and greeting presets.</span></div> : null}
-                  <div className="option-card active"><span className="option-title">Enterprise unlocks</span><span className="option-copy">Advanced instructions for tighter AI guardrails and higher-touch call policies.</span></div>
-                </div>
-              </section>
             ) : null}
+
           </form>
 
           <div className="footer-inline">
