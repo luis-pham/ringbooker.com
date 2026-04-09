@@ -681,6 +681,8 @@ export async function runLiveKitRoomRuntime(
         },
         'realtime_voice_bridge_unavailable',
       );
+    } else {
+      bridge.sendUserText('System: The phone call has just connected. Please warmly greet the caller and introduce yourself.');
     }
 
     room.on(RoomEvent.ChatMessage, (message, participant) => {
