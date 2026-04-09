@@ -703,7 +703,7 @@ export async function runLiveKitRoomRuntime(
         initialGreetingSent = true;
         // Trì hoãn một chút để đảm bảo luồng RTP (âm thanh) của user đã ổn định trước khi AI lên tiếng
         setTimeout(() => {
-          bridge.sendUserText('System: The phone call has just connected. Please warmly greet the caller and introduce yourself.');
+          bridge?.sendUserText('System: The phone call has just connected. Please warmly greet the caller and introduce yourself.');
         }, 500);
       }
       
