@@ -34,9 +34,12 @@ function int16ToBase64(input: Int16Array): string {
   return Buffer.from(bytes).toString('base64');
 }
 
-function base64ToInt16(input: string): Int16Array {
+function base64ToBytes(input: string): Uint8Array {
   const buffer = Buffer.from(input, 'base64');
-  const bytes = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+}
+
+function bytesToInt16(bytes: Uint8Array): Int16Array {
   const alignedLength = Math.floor(bytes.byteLength / 2);
   const view = new Int16Array(alignedLength);
   for (let i = 0; i < alignedLength; i += 1) {
@@ -45,6 +48,30 @@ function base64ToInt16(input: string): Int16Array {
     view[i] = (hi << 8) | lo;
   }
   return view;
+}
+
+function base64ToInt16(input: string): Int16Array {
+  return bytesToInt16(base64ToBytes(input));
+}
+
+function concatUint8Arrays(chunks: Uint8Array[]): Uint8Array {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+  const merged = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return merged;
+}
+
+function maxPcmMagnitude(input: Int16Array): number {
+  let max = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    const value = Math.abs(input[i] ?? 0);
+    if (value > max) max = value;
+  }
+  return max;
 }
 
 function parsePcmRateFromMimeType(mimeType: string | undefined): number | null {
@@ -166,6 +193,7 @@ export async function createGeminiLiveVoiceBridge(
   let toolCallQueue = Promise.resolve();
   let lastUserTranscript = '';
   let lastAssistantTranscript = '';
+  let audioChunkDiagnosticsLogged = 0;
   const latencyPreset = parseLatencyPreset(process.env.AGENT_GEMINI_LATENCY_PRESET);
   const presetDefaults =
     latencyPreset === 'ultra_low_latency'
@@ -250,7 +278,11 @@ export async function createGeminiLiveVoiceBridge(
           break;
         }
 
-        const text = event.text?.trim();
+        const assistantTranscriptCandidates = [
+          event.serverContent?.outputTranscription?.text,
+          event.text,
+        ];
+        const text = assistantTranscriptCandidates.map((value) => value?.trim()).find((value) => !!value);
         if (text) {
           if (text !== lastAssistantTranscript && params.onAssistantTranscript) {
             lastAssistantTranscript = text;
@@ -262,13 +294,46 @@ export async function createGeminiLiveVoiceBridge(
         }
 
         const parts = event.serverContent?.modelTurn?.parts ?? [];
+        const audioChunksByRate = new Map<number, Uint8Array[]>();
+        const audioMimeTypesByRate = new Map<number, Set<string>>();
+        const audioBase64LengthsByRate = new Map<number, number>();
         for (const part of parts) {
           const inlineData = part.inlineData;
           const audioBase64 = inlineData?.data;
           const sampleRate = parsePcmRateFromMimeType(inlineData?.mimeType);
           if (!audioBase64 || !sampleRate || !params.onModelAudioPcm) continue;
+          const bytes = base64ToBytes(audioBase64);
+          const chunks = audioChunksByRate.get(sampleRate) ?? [];
+          chunks.push(bytes);
+          audioChunksByRate.set(sampleRate, chunks);
+          const mimeTypes = audioMimeTypesByRate.get(sampleRate) ?? new Set<string>();
+          if (inlineData?.mimeType) mimeTypes.add(inlineData.mimeType);
+          audioMimeTypesByRate.set(sampleRate, mimeTypes);
+          audioBase64LengthsByRate.set(sampleRate, (audioBase64LengthsByRate.get(sampleRate) ?? 0) + audioBase64.length);
+        }
+
+        for (const [sampleRate, audioChunks] of audioChunksByRate.entries()) {
+          if (!params.onModelAudioPcm) continue;
+          const mergedBytes = concatUint8Arrays(audioChunks);
+          const pcm16 = bytesToInt16(mergedBytes);
+          if (audioChunkDiagnosticsLogged < 8) {
+            audioChunkDiagnosticsLogged += 1;
+            log.info(
+              {
+                sampleRate,
+                chunkCount: audioChunks.length,
+                mimeTypes: [...(audioMimeTypesByRate.get(sampleRate) ?? new Set<string>())],
+                base64Chars: audioBase64LengthsByRate.get(sampleRate) ?? 0,
+                byteLength: mergedBytes.byteLength,
+                pcmSamples: pcm16.length,
+                pcmMaxAbs: maxPcmMagnitude(pcm16),
+              },
+              'gemini_live_audio_chunk_received',
+            );
+          }
+          if (pcm16.length <= 0) continue;
           void params.onModelAudioPcm({
-            pcm16: base64ToInt16(audioBase64),
+            pcm16,
             sampleRate,
           });
         }
