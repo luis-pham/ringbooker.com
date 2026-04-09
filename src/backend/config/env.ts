@@ -11,7 +11,7 @@ function createValidatedEnv() {
       BACKEND_REPOSITORY_MODE: z.enum(['memory', 'supabase']).default('memory'),
       BACKEND_COMM_PROVIDER: z.enum(['noop', 'telnyx']).default('noop'),
       BILLING_PROVIDER: z.enum(['paddle', 'manual']).default('paddle'),
-      AGENT_RUNTIME_MODE: z.enum(['mock', 'livekit_gemini']).default('mock'),
+      AGENT_RUNTIME_MODE: z.enum(['mock', 'livekit_gemini', 'livekit_native_gemini']).default('mock'),
       AGENT_TRANSPORT: z.enum(['mock', 'livekit']).default('mock'),
       AGENT_VOICE_PROVIDER: z.enum(['none', 'gemini_live', 'openai_realtime']).default('none'),
       AGENT_VOICE_MODEL: z.string().min(1).default('gemini-3.1-flash-live-preview'),

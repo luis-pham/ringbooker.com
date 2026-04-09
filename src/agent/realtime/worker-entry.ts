@@ -1,6 +1,7 @@
 import { withLogContext } from '@/src/backend/observability/logger';
 import { parseRealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
 import { runLiveKitRoomRuntime } from '@/src/agent/realtime/livekit-room-runtime';
+import { runLiveKitNativeGeminiRuntime } from '@/src/agent/realtime/livekit-native-room-runtime';
 import { createInboundAgentSession, type AgentToolName } from '@/src/agent/runtime/session';
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
 import type { ToolError } from '@/src/backend/domain/types';
@@ -178,23 +179,27 @@ async function main() {
   if (parsed.realtime.mode !== 'livekit_realtime') {
     throw new Error(`unsupported_realtime_mode_for_worker_entry:${parsed.realtime.mode}`);
   }
-  await runLiveKitRoomRuntime(parsed, {
-    onUserTranscript: async (text) => {
+
+  const runtimeMode = process.env.AGENT_RUNTIME_MODE;
+  const useNativeGemini = runtimeMode === 'livekit_native_gemini';
+
+  const runtimeCallbacks = {
+    onUserTranscript: async (text: string) => {
       await updateDemoLiveState('caller_speaking');
       await persistTranscript('caller', text);
       if (!inboundSession) return;
       await inboundSession.prefetchFromUtterance(text);
       await updateDemoLiveState('thinking');
     },
-    onAssistantTranscript: async (text) => {
+    onAssistantTranscript: async (text: string) => {
       await updateDemoLiveState('ai_agent_speaking');
       await persistTranscript('assistant', text);
     },
-    onToolCallStart: ({ name }) => {
+    onToolCallStart: ({ name }: { name: string }) => {
       log.info({ toolName: name }, 'agent_tool_call_started');
       void updateDemoLiveState('looking_up_info');
     },
-    onToolCall: async ({ name, args }) => {
+    onToolCall: async ({ name, args }: { name: string; args: Record<string, unknown>; callId?: string }) => {
       if (!inboundSession) {
         return {
           error: 'Shop not found for this destination number.',
@@ -225,7 +230,14 @@ async function main() {
         await updateDemoLiveState('thinking');
       }
     },
-  });
+  };
+
+  if (useNativeGemini) {
+    log.info({ roomName: parsed.roomName }, 'agent_worker_using_livekit_native_gemini_runtime');
+    await runLiveKitNativeGeminiRuntime(parsed, runtimeCallbacks);
+  } else {
+    await runLiveKitRoomRuntime(parsed, runtimeCallbacks);
+  }
 
   if (inboundSession) {
     log.info(

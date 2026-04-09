@@ -26,6 +26,8 @@
     "@fontsource-variable/mona-sans": "^5.2.8",
     "@google/genai": "^1.48.0",
     "@hookform/resolvers": "^5.2.2",
+    "@livekit/agents": "^1.2.4",
+    "@livekit/agents-plugin-google": "^1.2.4",
     "@livekit/rtc-node": "^0.13.24",
     "@prisma/client": "^6.7.0",
     "@supabase/supabase-js": "^2.101.1",

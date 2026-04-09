@@ -112,6 +112,17 @@ function parseBoolean(value: string | undefined, defaultValue: boolean): boolean
   return defaultValue;
 }
 
+function resolveRequestedGeminiVoice(systemPrompt: string): string | null {
+  const envVoice = process.env.AGENT_GEMINI_VOICE?.trim();
+  if (envVoice) return envVoice;
+
+  const match = systemPrompt.match(/(?:^|\n)VOICE STYLE:\s*([^\n]+)/i);
+  const promptVoice = match?.[1]?.trim();
+  if (!promptVoice) return null;
+  if (promptVoice.toLowerCase() === 'not provided') return null;
+  return promptVoice;
+}
+
 function normalizeWhitespace(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
@@ -195,6 +206,7 @@ export async function createGeminiLiveVoiceBridge(
 
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = compactSystemInstruction(params.dispatch.systemPrompt);
+  const requestedVoice = resolveRequestedGeminiVoice(params.dispatch.systemPrompt);
   const room = params.room;
   let toolCallQueue = Promise.resolve();
   let lastUserTranscript = '';
@@ -237,6 +249,17 @@ export async function createGeminiLiveVoiceBridge(
     model,
     config: {
       responseModalities: [Modality.AUDIO],
+      ...(requestedVoice
+        ? {
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: requestedVoice,
+                },
+              },
+            },
+          }
+        : {}),
       thinkingConfig: {
         thinkingLevel,
       },
@@ -265,7 +288,7 @@ export async function createGeminiLiveVoiceBridge(
     },
     callbacks: {
       onopen: () => {
-        log.info({ model }, 'gemini_live_session_opened');
+        log.info({ model, voice: requestedVoice ?? 'default' }, 'gemini_live_session_opened');
       },
       onmessage: (event) => {
         const userTranscriptCandidates = [

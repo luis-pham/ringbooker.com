@@ -35,6 +35,7 @@ import { TelnyxSmsService } from '@/src/backend/adapters/telnyx/sms-service';
 import { TelnyxTelephonyService } from '@/src/backend/adapters/telnyx/telephony-service';
 import { PaddleBillingProvider } from '@/src/backend/adapters/paddle/billing-provider';
 import { LiveKitRealtimeRuntime } from '@/src/agent/realtime/livekit-gemini-runtime';
+import { LiveKitNativeGeminiRuntime } from '@/src/agent/realtime/livekit-native-gemini-runtime';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 import { getEnv } from '@/src/backend/config/env';
 import { createSupabaseServiceClient } from '@/src/backend/db/supabase-client';
@@ -62,7 +63,9 @@ function getBillingProviderMode(): BillingProviderMode {
 
 function getAgentTransportMode(): AgentTransportMode {
   if (process.env.AGENT_TRANSPORT === 'livekit') return 'livekit';
-  return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' ? 'livekit' : 'mock';
+  return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' || process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini'
+    ? 'livekit'
+    : 'mock';
 }
 
 function getAgentVoiceProviderMode(): AgentVoiceProviderMode {
@@ -70,7 +73,9 @@ function getAgentVoiceProviderMode(): AgentVoiceProviderMode {
   if (configured === 'gemini_live' || configured === 'openai_realtime' || configured === 'none') {
     return configured;
   }
-  return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' ? 'gemini_live' : 'none';
+  return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' || process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini'
+    ? 'gemini_live'
+    : 'none';
 }
 
 function getAgentRuntimeMode(): AgentRuntimeMode {
@@ -185,19 +190,25 @@ export function createBackendRuntime() {
       : new NoopEmailService();
   const realtimeAgentRuntime =
     agentRuntimeMode === 'livekit_realtime'
-      ? new LiveKitRealtimeRuntime({
-          livekitUrl: getEnv().LIVEKIT_URL,
-          livekitApiKey: getEnv().LIVEKIT_API_KEY,
-          livekitApiSecret: getEnv().LIVEKIT_API_SECRET,
-          voiceProvider: agentVoiceProviderMode === 'none' ? 'gemini_live' : agentVoiceProviderMode,
-          voiceApiKeyConfigured:
-            agentVoiceProviderMode === 'gemini_live'
-              ? Boolean(getEnv().GOOGLE_AI_API_KEY)
-              : agentVoiceProviderMode === 'openai_realtime'
-                ? Boolean(process.env.OPENAI_API_KEY)
-                : false,
-          voiceModel: process.env.AGENT_VOICE_MODEL?.trim() || getEnv().AGENT_GEMINI_MODEL,
-        })
+      ? (() => {
+          const sharedConfig = {
+            livekitUrl: getEnv().LIVEKIT_URL,
+            livekitApiKey: getEnv().LIVEKIT_API_KEY,
+            livekitApiSecret: getEnv().LIVEKIT_API_SECRET,
+            voiceProvider: agentVoiceProviderMode === 'none' ? 'gemini_live' : agentVoiceProviderMode,
+            voiceApiKeyConfigured:
+              agentVoiceProviderMode === 'gemini_live'
+                ? Boolean(getEnv().GOOGLE_AI_API_KEY)
+                : agentVoiceProviderMode === 'openai_realtime'
+                  ? Boolean(process.env.OPENAI_API_KEY)
+                  : false,
+            voiceModel: process.env.AGENT_VOICE_MODEL?.trim() || getEnv().AGENT_GEMINI_MODEL,
+          } as const;
+
+          return process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini'
+            ? new LiveKitNativeGeminiRuntime(sharedConfig)
+            : new LiveKitRealtimeRuntime(sharedConfig);
+        })()
       : new MockRealtimeAgentRuntime();
   const billingProvider =
     billingProviderMode === 'paddle'

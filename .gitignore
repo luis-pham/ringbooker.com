@@ -23,6 +23,9 @@ pnpm-debug.log*
 
 # misc
 .DS_Store
+
+# Cursor / Claude local worktrees (nested git repos — do not commit)
+.claude/
 *.pem
 tsconfig.tsbuildinfo
 
