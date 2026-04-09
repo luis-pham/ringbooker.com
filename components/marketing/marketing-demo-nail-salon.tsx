@@ -347,6 +347,8 @@ export function MarketingNailSalonDemoTemplate() {
   const pollTimerRef = useRef<number | null>(null);
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const turnstileRenderedRef = useRef(false);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
+  const [turnstileReady, setTurnstileReady] = useState(!turnstileSiteKey);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const activeCategory = useMemo(
@@ -377,13 +379,32 @@ export function MarketingNailSalonDemoTemplate() {
   }, []);
 
   useEffect(() => {
-    if (!turnstileSiteKey) return;
+    if (!turnstileSiteKey || turnstileReady) return;
+    const timer = window.setInterval(() => {
+      const maybeTurnstile = (window as Window & { turnstile?: unknown }).turnstile;
+      if (maybeTurnstile) {
+        setTurnstileReady(true);
+      }
+    }, 300);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [turnstileReady]);
+
+  useEffect(() => {
+    if (!turnstileSiteKey || !turnstileReady) return;
     const mount = turnstileRef.current;
     if (!mount || turnstileRenderedRef.current) return;
-    const maybeTurnstile = (window as Window & { turnstile?: { render: (el: HTMLElement, options: Record<string, unknown>) => void } })
-      .turnstile;
+    const maybeTurnstile = (
+      window as Window & {
+        turnstile?: {
+          render: (el: HTMLElement, options: Record<string, unknown>) => string;
+          reset: (widgetId: string) => void;
+        };
+      }
+    ).turnstile;
     if (!maybeTurnstile) return;
-    maybeTurnstile.render(mount, {
+    turnstileWidgetIdRef.current = maybeTurnstile.render(mount, {
       sitekey: turnstileSiteKey,
       theme: 'light',
       callback: (token: string) => {
@@ -397,7 +418,7 @@ export function MarketingNailSalonDemoTemplate() {
       },
     });
     turnstileRenderedRef.current = true;
-  }, [stage]);
+  }, [turnstileReady]);
 
   function parseTechnicians(value: string): string[] {
     return value
@@ -525,6 +546,14 @@ export function MarketingNailSalonDemoTemplate() {
       });
       const body = (await response.json()) as DemoApiResponse;
       if (!body.ok || !body.requestId || !body.previewToken) {
+        if (turnstileSiteKey && turnstileWidgetIdRef.current) {
+          (
+            window as Window & {
+              turnstile?: { reset: (widgetId: string) => void };
+            }
+          ).turnstile?.reset(turnstileWidgetIdRef.current);
+          setCaptchaToken(null);
+        }
         setStage('failed');
         setRequestError(body.error ?? 'Unable to start demo call.');
         return;
@@ -538,6 +567,14 @@ export function MarketingNailSalonDemoTemplate() {
       setSummaryText('Live demo requested. We are now calling your number.');
       await pollStatus(nextPreview);
     } catch {
+      if (turnstileSiteKey && turnstileWidgetIdRef.current) {
+        (
+          window as Window & {
+            turnstile?: { reset: (widgetId: string) => void };
+          }
+        ).turnstile?.reset(turnstileWidgetIdRef.current);
+        setCaptchaToken(null);
+      }
       setStage('failed');
       setRequestError('Network error while requesting live demo call.');
     }
@@ -568,7 +605,13 @@ export function MarketingNailSalonDemoTemplate() {
   return (
     <MarketingLayout styles={styles} scriptPrefix="marketing-demo-nail-salon">
       <>
-        {turnstileSiteKey ? <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" /> : null}
+        {turnstileSiteKey ? (
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            strategy="afterInteractive"
+            onLoad={() => setTurnstileReady(true)}
+          />
+        ) : null}
         <MarketingChromeStyles />
         <MarketingHeader active="demo" />
 
