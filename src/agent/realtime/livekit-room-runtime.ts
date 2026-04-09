@@ -224,6 +224,11 @@ function buildToolStatusMessage(toolName: string): string {
   }
 }
 
+function isLiveKitOutputInvalidState(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('InvalidState');
+}
+
 export async function runLiveKitRoomRuntime(
   input: RealtimeDispatchInput,
   options?: {
@@ -244,11 +249,12 @@ export async function runLiveKitRoomRuntime(
 
   const timeoutMs = Number(process.env.AGENT_WORKER_MAX_SESSION_MS ?? 30 * 60 * 1000);
   const room = new Room();
+  const runtimeStartedAtMs = Date.now();
   let bridge: Awaited<ReturnType<typeof createRealtimeVoiceBridge>> = null;
   const outputSampleRate = Number(process.env.AGENT_GEMINI_OUTPUT_SAMPLE_RATE ?? 24000);
   const outputChannels = 1;
-  const agentAudioSource = new AudioSource(outputSampleRate, outputChannels);
-  const agentAudioTrack = LocalAudioTrack.createAudioTrack('rb.agent.audio', agentAudioSource);
+  let agentAudioSource = new AudioSource(outputSampleRate, outputChannels);
+  let agentAudioTrack = LocalAudioTrack.createAudioTrack('rb.agent.audio', agentAudioSource);
   let agentAudioPublication: LocalTrackPublication | null = null;
   const inputStreams = new Map<string, ReadableStreamDefaultReader<AudioFrame>>();
   const metricsIntervalMsRaw = Number(process.env.AGENT_AUDIO_METRICS_INTERVAL_MS ?? 10_000);
@@ -265,8 +271,17 @@ export async function runLiveKitRoomRuntime(
   let modelCaptureSamples = 0;
   let outputCaptureAvailable = true;
   let outputCaptureFailureLogged = false;
+  let outputTrackRecovery: Promise<boolean> | null = null;
   let lastModelAudioAtMs: number | null = null;
   let lastDetectedUserSpeechEndAtMs: number | null = null;
+  let roomConnectedAtMs: number | null = null;
+  let firstUserSpeechAtMs: number | null = null;
+  let firstUserSpeechLogged = false;
+  let firstUserSpeechEndLogged = false;
+  let firstModelAudioChunkAtMs: number | null = null;
+  let firstModelAudioChunkLogged = false;
+  let firstModelAudioPlaybackAtMs: number | null = null;
+  let firstModelAudioPlaybackLogged = false;
   let userSpeechEndTimer: ReturnType<typeof setTimeout> | null = null;
   let audioMetricsTimer: ReturnType<typeof setInterval> | null = null;
   const currentVoiceProvider =
@@ -277,6 +292,69 @@ export async function runLiveKitRoomRuntime(
     callId: input.realtime.sessionId,
     provider: 'livekit',
   });
+  const publishOptions = new TrackPublishOptions();
+  publishOptions.source = TrackSource.SOURCE_MICROPHONE;
+
+  const recreateAgentAudioOutput = async (reason: string, error?: unknown): Promise<boolean> => {
+    if (outputTrackRecovery) {
+      return await outputTrackRecovery;
+    }
+
+    outputTrackRecovery = (async () => {
+      const localParticipant = room.localParticipant;
+      if (!localParticipant) {
+        log.warn({ roomName: input.roomName, reason }, 'livekit_output_recovery_skipped_no_participant');
+        return false;
+      }
+
+      const previousPublication = agentAudioPublication;
+      const previousTrack = agentAudioTrack;
+      const previousSource = agentAudioSource;
+
+      try {
+        previousSource.clearQueue();
+      } catch {
+        // best effort cleanup
+      }
+
+      if (previousPublication?.sid) {
+        await localParticipant.unpublishTrack(previousPublication.sid).catch(() => {
+          // best effort cleanup
+        });
+      }
+
+      await previousTrack.close().catch(() => {
+        // best effort cleanup
+      });
+      await previousSource.close().catch(() => {
+        // best effort cleanup
+      });
+
+      agentAudioSource = new AudioSource(outputSampleRate, outputChannels);
+      agentAudioTrack = LocalAudioTrack.createAudioTrack('rb.agent.audio', agentAudioSource);
+      agentAudioPublication = await localParticipant.publishTrack(agentAudioTrack, publishOptions);
+      outputCaptureAvailable = true;
+      outputCaptureFailureLogged = false;
+
+      log.warn(
+        {
+          roomName: input.roomName,
+          reason,
+          previousTrackSid: previousPublication?.sid ?? null,
+          err: error,
+        },
+        'livekit_output_track_recreated',
+      );
+
+      return true;
+    })();
+
+    try {
+      return await outputTrackRecovery;
+    } finally {
+      outputTrackRecovery = null;
+    }
+  };
 
   room.on(RoomEvent.ParticipantConnected, (participant) => {
     log.info({ participantIdentity: participant.identity }, 'livekit_worker_participant_connected');
@@ -291,15 +369,19 @@ export async function runLiveKitRoomRuntime(
       autoSubscribe: true,
       dynacast: false,
     });
+    roomConnectedAtMs = Date.now();
 
     log.info({ roomName: input.roomName }, 'livekit_worker_connected_to_room');
+    observeDurationMs('realtime_worker_stage_ms', roomConnectedAtMs - runtimeStartedAtMs, {
+      transport: 'livekit',
+      voiceProvider: currentVoiceProvider,
+      stage: 'dispatch_to_room_connected',
+    });
 
     if (!room.localParticipant) {
       throw new Error('livekit_local_participant_not_ready');
     }
 
-    const publishOptions = new TrackPublishOptions();
-    publishOptions.source = TrackSource.SOURCE_MICROPHONE;
     agentAudioPublication = await room.localParticipant.publishTrack(agentAudioTrack, publishOptions);
     audioMetricsTimer = setInterval(() => {
       const queuedDurationMs = Math.round(agentAudioSource.queuedDuration * 1000);
@@ -372,6 +454,37 @@ export async function runLiveKitRoomRuntime(
       onModelAudioPcm: async ({ pcm16, sampleRate }) => {
         if (!outputCaptureAvailable) return;
         const nowMs = Date.now();
+        if (!firstModelAudioChunkAtMs) {
+          firstModelAudioChunkAtMs = nowMs;
+          if (!firstModelAudioChunkLogged) {
+            firstModelAudioChunkLogged = true;
+            log.info(
+              {
+                roomName: input.roomName,
+                sampleRate,
+                pcmSamples: pcm16.length,
+                dispatchToFirstModelAudioChunkMs: nowMs - runtimeStartedAtMs,
+                roomConnectedToFirstModelAudioChunkMs: roomConnectedAtMs ? nowMs - roomConnectedAtMs : null,
+                userSpeechEndToFirstModelAudioChunkMs: lastDetectedUserSpeechEndAtMs
+                  ? nowMs - lastDetectedUserSpeechEndAtMs
+                  : null,
+              },
+              'livekit_first_model_audio_chunk_received',
+            );
+          }
+          observeDurationMs('realtime_worker_stage_ms', nowMs - runtimeStartedAtMs, {
+            transport: 'livekit',
+            voiceProvider: currentVoiceProvider,
+            stage: 'dispatch_to_first_model_audio_chunk',
+          });
+          if (roomConnectedAtMs) {
+            observeDurationMs('realtime_worker_stage_ms', nowMs - roomConnectedAtMs, {
+              transport: 'livekit',
+              voiceProvider: currentVoiceProvider,
+              stage: 'room_connected_to_first_model_audio_chunk',
+            });
+          }
+        }
         const modelTurnStartGapMs = 240;
         const isNewModelTurn = !lastModelAudioAtMs || nowMs - lastModelAudioAtMs >= modelTurnStartGapMs;
         if (isNewModelTurn && lastDetectedUserSpeechEndAtMs) {
@@ -398,32 +511,100 @@ export async function runLiveKitRoomRuntime(
           pcmForOutput = resampled;
         }
 
-        const captureStart = performance.now();
-        try {
+        const captureFrame = async () =>
           await agentAudioSource.captureFrame(
             new AudioFrame(pcmForOutput, outputSampleRate, outputChannels, pcmForOutput.length),
           );
+
+        const captureStart = performance.now();
+        try {
+          await captureFrame();
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          if (message.includes('InvalidState')) {
+          if (isLiveKitOutputInvalidState(error)) {
             outputCaptureAvailable = false;
+            if (!outputCaptureFailureLogged) {
+              outputCaptureFailureLogged = true;
+              log.warn(
+                {
+                  roomName: input.roomName,
+                  err: error,
+                },
+                'livekit_output_capture_failed',
+              );
+            }
+
+            const recovered = await recreateAgentAudioOutput('capture_frame_invalid_state', error).catch((recoveryError) => {
+              log.error(
+                {
+                  roomName: input.roomName,
+                  err: recoveryError,
+                },
+                'livekit_output_track_recovery_failed',
+              );
+              return false;
+            });
+            if (!recovered) return;
+
+            try {
+              await captureFrame();
+            } catch (retryError) {
+              outputCaptureAvailable = !isLiveKitOutputInvalidState(retryError);
+              log.warn(
+                {
+                  roomName: input.roomName,
+                  err: retryError,
+                },
+                'livekit_output_capture_retry_failed',
+              );
+              return;
+            }
+          } else {
+            if (!outputCaptureFailureLogged) {
+              outputCaptureFailureLogged = true;
+              log.warn(
+                {
+                  roomName: input.roomName,
+                  err: error,
+                },
+                'livekit_output_capture_failed',
+              );
+            }
+            return;
           }
-          if (!outputCaptureFailureLogged) {
-            outputCaptureFailureLogged = true;
-            log.warn(
-              {
-                roomName: input.roomName,
-                err: error,
-              },
-              'livekit_output_capture_failed',
-            );
-          }
-          return;
         }
         const captureElapsedMs = performance.now() - captureStart;
         modelCaptureTotalMs += captureElapsedMs;
         modelCaptureSamples += 1;
         lastModelAudioAtMs = nowMs;
+        if (!firstModelAudioPlaybackAtMs) {
+          firstModelAudioPlaybackAtMs = nowMs;
+          if (!firstModelAudioPlaybackLogged) {
+            firstModelAudioPlaybackLogged = true;
+            log.info(
+              {
+                roomName: input.roomName,
+                pcmSamples: pcmForOutput.length,
+                dispatchToFirstModelPlaybackMs: nowMs - runtimeStartedAtMs,
+                roomConnectedToFirstModelPlaybackMs: roomConnectedAtMs ? nowMs - roomConnectedAtMs : null,
+                firstChunkToFirstPlaybackMs: firstModelAudioChunkAtMs ? nowMs - firstModelAudioChunkAtMs : null,
+                userSpeechEndToFirstPlaybackMs: lastDetectedUserSpeechEndAtMs ? nowMs - lastDetectedUserSpeechEndAtMs : null,
+              },
+              'livekit_first_model_audio_played',
+            );
+          }
+          observeDurationMs('realtime_worker_stage_ms', nowMs - runtimeStartedAtMs, {
+            transport: 'livekit',
+            voiceProvider: currentVoiceProvider,
+            stage: 'dispatch_to_first_model_playback',
+          });
+          if (roomConnectedAtMs) {
+            observeDurationMs('realtime_worker_stage_ms', nowMs - roomConnectedAtMs, {
+              transport: 'livekit',
+              voiceProvider: currentVoiceProvider,
+              stage: 'room_connected_to_first_model_playback',
+            });
+          }
+        }
         recordFrameMetrics(modelToCallerMetrics, nowMs, pcmForOutput.length);
       },
     });
@@ -489,12 +670,61 @@ export async function runLiveKitRoomRuntime(
             const mono = toMonoPcm(next.value);
             const nowMs = Date.now();
             recordFrameMetrics(callerToModelMetrics, nowMs, mono.length);
+            if (!firstUserSpeechAtMs) {
+              firstUserSpeechAtMs = nowMs;
+              if (!firstUserSpeechLogged) {
+                firstUserSpeechLogged = true;
+                log.info(
+                  {
+                    participantIdentity: participant.identity,
+                    roomName: input.roomName,
+                    dispatchToFirstUserSpeechMs: nowMs - runtimeStartedAtMs,
+                    roomConnectedToFirstUserSpeechMs: roomConnectedAtMs ? nowMs - roomConnectedAtMs : null,
+                  },
+                  'livekit_first_user_speech_detected',
+                );
+              }
+              observeDurationMs('realtime_worker_stage_ms', nowMs - runtimeStartedAtMs, {
+                transport: 'livekit',
+                voiceProvider: currentVoiceProvider,
+                stage: 'dispatch_to_first_user_speech',
+              });
+              if (roomConnectedAtMs) {
+                observeDurationMs('realtime_worker_stage_ms', nowMs - roomConnectedAtMs, {
+                  transport: 'livekit',
+                  voiceProvider: currentVoiceProvider,
+                  stage: 'room_connected_to_first_user_speech',
+                });
+              }
+            }
             if (userSpeechEndTimer) {
               clearTimeout(userSpeechEndTimer);
               userSpeechEndTimer = null;
             }
             userSpeechEndTimer = setTimeout(() => {
               lastDetectedUserSpeechEndAtMs = Date.now();
+              if (!firstUserSpeechEndLogged) {
+                firstUserSpeechEndLogged = true;
+                log.info(
+                  {
+                    participantIdentity: participant.identity,
+                    roomName: input.roomName,
+                    dispatchToFirstUserSpeechEndMs: lastDetectedUserSpeechEndAtMs - runtimeStartedAtMs,
+                    roomConnectedToFirstUserSpeechEndMs: roomConnectedAtMs
+                      ? lastDetectedUserSpeechEndAtMs - roomConnectedAtMs
+                      : null,
+                    firstUserSpeechToFirstSpeechEndMs: firstUserSpeechAtMs
+                      ? lastDetectedUserSpeechEndAtMs - firstUserSpeechAtMs
+                      : null,
+                  },
+                  'livekit_first_user_speech_ended',
+                );
+              }
+              observeDurationMs('realtime_worker_stage_ms', lastDetectedUserSpeechEndAtMs - runtimeStartedAtMs, {
+                transport: 'livekit',
+                voiceProvider: currentVoiceProvider,
+                stage: 'dispatch_to_first_user_speech_end',
+              });
               userSpeechEndTimer = null;
             }, userSpeechEndHoldMs);
             uplinkChunker.push(mono);
