@@ -184,6 +184,29 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
     });
 
     const session = new agentVoice.AgentSession({ llm });
+    let initialGreetingSent = false;
+
+    const triggerInitialGreeting = (reason: string, participantIdentity?: string | null) => {
+      if (initialGreetingSent) return;
+      initialGreetingSent = true;
+      log.info(
+        {
+          roomName: input.roomName,
+          reason,
+          participantIdentity: participantIdentity ?? null,
+        },
+        'livekit_native_openai_triggering_initial_greeting',
+      );
+      setTimeout(() => {
+        try {
+          session.generateReply({
+            userInput: 'System: The phone call has just connected. Please warmly greet the caller and introduce yourself.',
+          });
+        } catch (error) {
+          log.error({ err: error, reason }, 'livekit_native_openai_failed_to_trigger_initial_greeting');
+        }
+      }, 500);
+    };
 
     let firstUserSpeechAtMs: number | null = null;
     let firstModelAudioAtMs: number | null = null;
@@ -252,6 +275,11 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
 
     room.once(RoomEvent.Disconnected, () => resolveSessionClose());
 
+    room.on(RoomEvent.ParticipantConnected, (participant) => {
+      if (participant.identity === room.localParticipant?.identity) return;
+      log.info({ participantIdentity: participant.identity }, 'livekit_native_openai_participant_connected');
+    });
+
     room.on(RoomEvent.LocalTrackSubscribed, (track) => {
       log.info({ trackName: track.name, trackSid: track.sid }, 'livekit_native_openai_local_track_subscribed');
     });
@@ -268,25 +296,38 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
       }, subscriptionForceResolveMs);
     });
 
-    let initialGreetingSent = false;
     room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
-      if (track.kind !== TrackKind.KIND_AUDIO || initialGreetingSent) return;
-      initialGreetingSent = true;
-      log.info({ participantIdentity: participant.identity }, 'livekit_native_openai_triggering_initial_greeting');
-      setTimeout(() => {
-        try {
-          session.generateReply({
-            userInput: 'System: The phone call has just connected. Please warmly greet the caller and introduce yourself.',
-          });
-        } catch (error) {
-          log.error({ err: error }, 'livekit_native_openai_failed_to_trigger_initial_greeting');
-        }
-      }, 500);
+      if (participant.identity === room.localParticipant?.identity) return;
+      log.info(
+        {
+          participantIdentity: participant.identity,
+          trackKind: track.kind,
+          trackSid: track.sid,
+        },
+        'livekit_native_openai_track_subscribed',
+      );
+      if (track.kind !== TrackKind.KIND_AUDIO) return;
+      triggerInitialGreeting('track_subscribed', participant.identity);
     });
 
     await session.start({ agent, room });
 
     log.info({ roomName: input.roomName }, 'livekit_native_openai_session_started');
+
+    for (const participant of room.remoteParticipants.values()) {
+      if (participant.identity === room.localParticipant?.identity) continue;
+      let hasAudioTrack = false;
+      for (const publication of participant.trackPublications.values()) {
+        if (publication.track?.kind === TrackKind.KIND_AUDIO) {
+          hasAudioTrack = true;
+          break;
+        }
+      }
+      if (hasAudioTrack) {
+        triggerInitialGreeting('post_start_existing_audio_track', participant.identity);
+        break;
+      }
+    }
 
     const timeoutMs = Number(process.env.AGENT_WORKER_MAX_SESSION_MS ?? 30 * 60 * 1000);
     const timeoutHandle = setTimeout(() => {
