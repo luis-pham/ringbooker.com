@@ -512,50 +512,17 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     };
   }
 
+  /** Realtime session is not fully wired during Agent.onEnter; greeting runs after session.start() resolves. */
   class NativeOpenAICallAgent extends agentVoice.Agent {
     constructor() {
       super({
         instructions: compactSystemInstruction(input.systemPrompt),
       });
     }
-
-    override async onEnter(): Promise<void> {
-      log.info({ roomName: input.roomName }, 'livekit_native_openai_agent_on_enter');
-      const greetingHandle = this.session.generateReply({
-        instructions:
-          'Greet the caller now in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.',
-      });
-      log.info(
-        {
-          roomName: input.roomName,
-          speechHandleId: greetingHandle.id,
-        },
-        'livekit_native_openai_initial_greeting_reply_enqueued',
-      );
-      greetingHandle.addDoneCallback((handle) => {
-        log.info(
-          {
-            roomName: input.roomName,
-            speechHandleId: handle.id,
-            interrupted: handle.interrupted,
-            done: handle.done(),
-            chatItemCount: handle.chatItems.length,
-          },
-          'livekit_native_openai_initial_greeting_reply_done',
-        );
-      });
-      setTimeout(() => {
-        if (firstModelAudioAtMs) return;
-        log.warn(
-          {
-            roomName: input.roomName,
-            speechHandleId: greetingHandle.id,
-          },
-          'livekit_native_openai_speech_handle_wait_timeout',
-        );
-      }, 2000);
-    }
   }
+
+  const initialGreetingInstructions =
+    'Greet the caller now in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.';
 
   const agent = new NativeOpenAICallAgent();
 
@@ -564,6 +531,44 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   let answeredParticipantIdentity: string | null = null;
   let firstUserSpeechAtMs: number | null = null;
   let firstModelAudioAtMs: number | null = null;
+
+  const enqueueInitialGreetingAfterSessionReady = (): void => {
+    const greetingHandle = session.generateReply({
+      instructions: initialGreetingInstructions,
+    });
+    log.info(
+      {
+        roomName: input.roomName,
+        speechHandleId: greetingHandle.id,
+        placement: 'after_session_start',
+      },
+      'livekit_native_openai_initial_greeting_reply_enqueued',
+    );
+    greetingHandle.addDoneCallback((handle) => {
+      log.info(
+        {
+          roomName: input.roomName,
+          speechHandleId: handle.id,
+          interrupted: handle.interrupted,
+          done: handle.done(),
+          chatItemCount: handle.chatItems.length,
+        },
+        'livekit_native_openai_initial_greeting_reply_done',
+      );
+    });
+    const waitMs = Math.max(2000, Math.round(parseNumber(process.env.AGENT_OPENAI_GREETING_AUDIO_WAIT_MS, 8000)));
+    setTimeout(() => {
+      if (firstModelAudioAtMs) return;
+      log.warn(
+        {
+          roomName: input.roomName,
+          speechHandleId: greetingHandle.id,
+          waitMs,
+        },
+        'livekit_native_openai_speech_handle_wait_timeout',
+      );
+    }, waitMs);
+  };
 
   let resolveAnsweredParticipant!: (participantIdentity: string) => void;
   const answeredParticipantPromise = new Promise<string>((resolve) => {
@@ -883,6 +888,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       },
       'livekit_native_openai_session_started',
     );
+    enqueueInitialGreetingAfterSessionReady();
   } catch (error) {
     log.error(
       {
