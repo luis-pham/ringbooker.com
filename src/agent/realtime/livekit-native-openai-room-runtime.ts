@@ -60,6 +60,17 @@ function parseNumber(value: string | undefined, defaultValue: number): number {
   return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
+/** For debug logs only; avoid huge payloads in production unless AGENT_OPENAI_LOG_ALL_SERVER_EVENTS. */
+function truncateForLog(value: unknown, maxLen: number): string {
+  try {
+    const s = typeof value === 'string' ? value : JSON.stringify(value);
+    if (s.length <= maxLen) return s;
+    return `${s.slice(0, maxLen)}…`;
+  } catch {
+    return '[unserializable]';
+  }
+}
+
 function resolveLiveKitAgentLogLevel(): 'debug' | 'info' | 'warn' | 'error' {
   const explicit = process.env.AGENT_LIVEKIT_LOG_LEVEL?.trim().toLowerCase();
   if (explicit === 'debug' || explicit === 'info' || explicit === 'warn' || explicit === 'error') {
@@ -181,13 +192,39 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
   const room = new Room();
 
   try {
+    log.info({ roomName: input.roomName, livekitHost: new URL(livekitUrl).host }, 'livekit_native_openai_room_connect_started');
+    const connectBeginMs = Date.now();
     await room.connect(livekitUrl, joinToken, { autoSubscribe: true, dynacast: false });
     const roomConnectedAtMs = Date.now();
+    log.info(
+      {
+        roomName: input.roomName,
+        connectDurationMs: roomConnectedAtMs - connectBeginMs,
+        msSinceRuntimeStart: roomConnectedAtMs - runtimeStartedAtMs,
+      },
+      'livekit_native_openai_room_connect_succeeded',
+    );
     await runLiveKitNativeOpenAIConnectedRoomRuntime(input, room, {
       log,
       runtimeStartedAtMs,
       roomConnectedAtMs,
     });
+  } catch (error) {
+    log.error(
+      {
+        err: error,
+        roomName: input.roomName,
+        livekitHost: (() => {
+          try {
+            return new URL(livekitUrl).host;
+          } catch {
+            return null;
+          }
+        })(),
+      },
+      'livekit_native_openai_room_runtime_failed',
+    );
+    throw error;
   } finally {
     await room.disconnect().catch(() => {});
   }
@@ -215,6 +252,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const turnDetection = buildTurnDetectionConfig();
   const runtimeStartedAtMs = options?.runtimeStartedAtMs ?? Date.now();
   const roomConnectedAtMs = options?.roomConnectedAtMs ?? Date.now();
+  /** First OpenAI server event that indicates model audio stream (delta/done). */
+  let firstOpenAiAudioStreamEventAtMs: number | null = null;
 
   observeDurationMs('realtime_worker_stage_ms', roomConnectedAtMs - runtimeStartedAtMs, {
     transport: 'livekit',
@@ -387,7 +426,36 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           error?: { type?: string; code?: string; message?: string };
         };
         if (!event?.type) return;
-        if (
+
+        if (parseBoolean(process.env.AGENT_OPENAI_LOG_ALL_SERVER_EVENTS, false)) {
+          log.info(
+            {
+              roomName: input.roomName,
+              payload: truncateForLog(payload, 8000),
+            },
+            'livekit_native_openai_server_event_raw',
+          );
+        }
+
+        const isAudioStreamEvent =
+          event.type === 'response.output_audio.delta' ||
+          event.type === 'response.output_audio.done' ||
+          event.type === 'response.audio.delta' ||
+          event.type === 'response.audio.done';
+        if (isAudioStreamEvent && firstOpenAiAudioStreamEventAtMs === null) {
+          firstOpenAiAudioStreamEventAtMs = Date.now();
+          log.info(
+            {
+              roomName: input.roomName,
+              eventType: event.type,
+              msSinceRoomConnected: Date.now() - roomConnectedAtMs,
+              msSinceRuntimeStart: Date.now() - runtimeStartedAtMs,
+            },
+            'livekit_native_openai_first_openai_audio_stream_event',
+          );
+        }
+
+        const isDetailed =
           event.type === 'session.updated' ||
           event.type === 'response.created' ||
           event.type === 'response.done' ||
@@ -402,8 +470,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           event.type === 'response.audio.done' ||
           event.type === 'input_audio_buffer.speech_started' ||
           event.type === 'input_audio_buffer.speech_stopped' ||
-          event.type === 'error'
-        ) {
+          event.type === 'error';
+
+        if (isDetailed) {
           log.info(
             {
               roomName: input.roomName,
@@ -413,6 +482,24 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
               error: event.error ?? null,
             },
             'livekit_native_openai_server_event_received',
+          );
+        } else if (event.error || event.type === 'error' || event.type.includes('error')) {
+          log.error(
+            {
+              roomName: input.roomName,
+              eventType: event.type,
+              error: event.error ?? null,
+              payload: truncateForLog(payload, 2000),
+            },
+            'livekit_native_openai_server_event_error_shape',
+          );
+        } else {
+          log.info(
+            {
+              roomName: input.roomName,
+              eventType: event.type,
+            },
+            'livekit_native_openai_server_event_other',
           );
         }
       });
@@ -678,6 +765,18 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       markParticipantAnswered(participant, 'participant_connected');
     });
 
+  room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      log.info(
+        {
+          roomName: input.roomName,
+          participantIdentity: participant.identity,
+          sipCallStatus: getSipCallStatus(participant),
+          isLocal: participant.identity === room.localParticipant?.identity,
+        },
+        'livekit_native_openai_participant_disconnected',
+      );
+    });
+
   room.on(RoomEvent.ParticipantAttributesChanged, (changedAttributes, participant) => {
       if (participant.identity === room.localParticipant?.identity) return;
       log.info(
@@ -767,16 +866,34 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     'livekit_native_openai_binding_participant_identity',
   );
 
-  await session.start({
-    agent,
-    room,
-    inputOptions: {
-      participantIdentity: boundParticipantIdentity ?? undefined,
-      closeOnDisconnect: true,
-    },
-  });
-
-  log.info({ roomName: input.roomName }, 'livekit_native_openai_session_started');
+  const sessionStartBeginMs = Date.now();
+  try {
+    await session.start({
+      agent,
+      room,
+      inputOptions: {
+        participantIdentity: boundParticipantIdentity ?? undefined,
+        closeOnDisconnect: true,
+      },
+    });
+    log.info(
+      {
+        roomName: input.roomName,
+        sessionStartDurationMs: Date.now() - sessionStartBeginMs,
+      },
+      'livekit_native_openai_session_started',
+    );
+  } catch (error) {
+    log.error(
+      {
+        err: error,
+        roomName: input.roomName,
+        sessionStartDurationMs: Date.now() - sessionStartBeginMs,
+      },
+      'livekit_native_openai_session_start_failed',
+    );
+    throw error;
+  }
 
   const timeoutMs = Number(process.env.AGENT_WORKER_MAX_SESSION_MS ?? 30 * 60 * 1000);
   const timeoutHandle = setTimeout(() => {
