@@ -425,8 +425,6 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           item_id?: string;
           error?: { type?: string; code?: string; message?: string };
         };
-        if (!event?.type) return;
-
         if (parseBoolean(process.env.AGENT_OPENAI_LOG_ALL_SERVER_EVENTS, false)) {
           log.info(
             {
@@ -435,6 +433,13 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             },
             'livekit_native_openai_server_event_raw',
           );
+        }
+        if (!event?.type) {
+          log.warn(
+            { roomName: input.roomName, payload: truncateForLog(payload, 2000) },
+            'livekit_native_openai_server_event_missing_type',
+          );
+          return;
         }
 
         const isAudioStreamEvent =
@@ -507,6 +512,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       realtimeSessionWithEvents.on?.('error', (payload: unknown) => {
         log.error({ err: payload, roomName: input.roomName }, 'livekit_native_openai_realtime_session_error');
       });
+
+      log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_openai_hooks_attached');
 
       return realtimeSession;
     };
