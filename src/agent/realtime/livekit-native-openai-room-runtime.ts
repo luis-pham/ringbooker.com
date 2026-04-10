@@ -107,6 +107,12 @@ type RealtimeEventEmitter = {
   on?: (event: string, listener: (payload: unknown) => void) => void;
 };
 
+type RealtimeSessionLike = RealtimeEventEmitter & {
+  updateInstructions?: (instructions: string) => Promise<unknown>;
+  updateChatCtx?: (chatCtx: unknown) => Promise<unknown>;
+  generateReply?: (instructions?: string) => Promise<unknown>;
+};
+
 function buildTurnDetectionConfig(): {
   type: 'semantic_vad';
   eagerness?: 'auto' | 'low' | 'medium' | 'high';
@@ -247,8 +253,109 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const originalSessionFactory = llmWithSessionFactory.session?.bind(llm);
   if (originalSessionFactory) {
     llmWithSessionFactory.session = () => {
+      log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_session_factory_called');
       const realtimeSession = originalSessionFactory();
-      const realtimeSessionWithEvents = realtimeSession as RealtimeEventEmitter;
+      const realtimeSessionWithEvents = realtimeSession as RealtimeSessionLike;
+
+      log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_session_created');
+
+      const originalUpdateInstructions = realtimeSessionWithEvents.updateInstructions?.bind(realtimeSession);
+      if (originalUpdateInstructions) {
+        realtimeSessionWithEvents.updateInstructions = async (instructions: string) => {
+          log.info(
+            {
+              roomName: input.roomName,
+              instructionLength: instructions.length,
+            },
+            'livekit_native_openai_realtime_update_instructions_started',
+          );
+          try {
+            const result = await originalUpdateInstructions(instructions);
+            log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_update_instructions_finished');
+            return result;
+          } catch (error) {
+            log.error(
+              {
+                err: error,
+                roomName: input.roomName,
+              },
+              'livekit_native_openai_realtime_update_instructions_failed',
+            );
+            throw error;
+          }
+        };
+      }
+
+      const originalUpdateChatCtx = realtimeSessionWithEvents.updateChatCtx?.bind(realtimeSession);
+      if (originalUpdateChatCtx) {
+        realtimeSessionWithEvents.updateChatCtx = async (chatCtx: unknown) => {
+          const itemCount = Array.isArray((chatCtx as { items?: unknown[] } | null | undefined)?.items)
+            ? ((chatCtx as { items?: unknown[] }).items?.length ?? 0)
+            : null;
+          log.info(
+            {
+              roomName: input.roomName,
+              itemCount,
+            },
+            'livekit_native_openai_realtime_update_chat_ctx_started',
+          );
+          try {
+            const result = await originalUpdateChatCtx(chatCtx);
+            log.info(
+              {
+                roomName: input.roomName,
+                itemCount,
+              },
+              'livekit_native_openai_realtime_update_chat_ctx_finished',
+            );
+            return result;
+          } catch (error) {
+            log.error(
+              {
+                err: error,
+                roomName: input.roomName,
+                itemCount,
+              },
+              'livekit_native_openai_realtime_update_chat_ctx_failed',
+            );
+            throw error;
+          }
+        };
+      }
+
+      const originalGenerateReply = realtimeSessionWithEvents.generateReply?.bind(realtimeSession);
+      if (originalGenerateReply) {
+        realtimeSessionWithEvents.generateReply = async (instructions?: string) => {
+          log.info(
+            {
+              roomName: input.roomName,
+              hasInstructions: Boolean(instructions),
+            },
+            'livekit_native_openai_realtime_generate_reply_started',
+          );
+          try {
+            const result = await originalGenerateReply(instructions);
+            log.info(
+              {
+                roomName: input.roomName,
+                hasInstructions: Boolean(instructions),
+              },
+              'livekit_native_openai_realtime_generate_reply_finished',
+            );
+            return result;
+          } catch (error) {
+            log.error(
+              {
+                err: error,
+                roomName: input.roomName,
+                hasInstructions: Boolean(instructions),
+              },
+              'livekit_native_openai_realtime_generate_reply_failed',
+            );
+            throw error;
+          }
+        };
+      }
 
       realtimeSessionWithEvents.on?.('openai_client_event_queued', (payload: unknown) => {
         const event = payload as { type?: string; event_id?: string; response?: { instructions?: string } };
@@ -385,13 +492,10 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           },
           'livekit_native_openai_initial_greeting_say_started',
         );
-        const greetingHandle = session.say(
-          'Hello, this is the booking assistant. How can I help you today?',
-          {
-            allowInterruptions: false,
-            addToChatCtx: true,
-          },
-        );
+        const greetingHandle = session.generateReply({
+          instructions:
+            'Greet the caller now in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.',
+        });
         log.info(
           {
             roomName: input.roomName,
@@ -399,12 +503,12 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             participantIdentity: participantIdentity ?? null,
             speechHandleId: greetingHandle.id,
           },
-          'livekit_native_openai_initial_greeting_say_enqueued',
+          'livekit_native_openai_initial_greeting_reply_enqueued',
         );
         log.info(
           {
             roomName: input.roomName,
-            source: 'say',
+            source: 'generate_reply',
             userInitiated: true,
             speechHandleId: greetingHandle.id,
           },
@@ -446,13 +550,10 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             'livekit_native_openai_initial_greeting_fallback_regenerate_reply',
           );
           try {
-            const fallbackHandle = session.say(
-              'Hello, this is the booking assistant. Can you hear me?',
-              {
-                allowInterruptions: false,
-                addToChatCtx: true,
-              },
-            );
+            const fallbackHandle = session.generateReply({
+              instructions:
+                'The caller has not heard anything yet. Greet the caller right now in one short sentence and ask how you can help.',
+            });
             log.info(
               {
                 roomName: input.roomName,
