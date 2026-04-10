@@ -542,6 +542,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         return Reflect.get(target, prop, receiver);
       },
     }) as typeof rawOpenAiRealtimeModel;
+    log.info({ roomName: input.roomName }, 'livekit_native_openai_llm_proxy_installed');
   } else {
     log.error(
       {
