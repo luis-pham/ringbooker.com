@@ -60,6 +60,14 @@ function parseNumber(value: string | undefined, defaultValue: number): number {
   return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
+function resolveLiveKitAgentLogLevel(): 'debug' | 'info' | 'warn' | 'error' {
+  const explicit = process.env.AGENT_LIVEKIT_LOG_LEVEL?.trim().toLowerCase();
+  if (explicit === 'debug' || explicit === 'info' || explicit === 'warn' || explicit === 'error') {
+    return explicit;
+  }
+  return parseBoolean(process.env.LK_OPENAI_DEBUG, false) ? 'debug' : 'warn';
+}
+
 function getSipCallStatus(participant: {
   attributes?: Record<string, string>;
   info?: { kind?: number };
@@ -214,7 +222,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     'livekit_native_openai_room_connected',
   );
 
-  initializeLogger({ pretty: false, level: 'warn' });
+  initializeLogger({ pretty: false, level: resolveLiveKitAgentLogLevel() });
 
   const openaiPlugin = await importOpenAIPlugin().catch((error) => {
     log.error({ err: error }, 'livekit_native_openai_plugin_load_failed');
