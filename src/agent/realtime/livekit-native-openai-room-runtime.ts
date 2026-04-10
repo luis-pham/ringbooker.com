@@ -220,6 +220,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   let outputReady = false;
   let pendingGreetingReason: string | null = null;
   let pendingGreetingParticipantIdentity: string | null = null;
+  let boundParticipantIdentity: string | null = null;
   let firstUserSpeechAtMs: number | null = null;
   let firstModelAudioAtMs: number | null = null;
 
@@ -243,8 +244,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           'livekit_native_openai_initial_greeting_say_started',
         );
         const greetingHandle = session.generateReply({
-          instructions:
-            'The phone call has just connected. Immediately greet the caller in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.',
+          userInput:
+            'Please greet the caller now in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.',
         });
         log.info(
           {
@@ -292,8 +293,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           );
           try {
             const fallbackHandle = session.generateReply({
-              instructions:
-                'The phone call is already connected and the caller has not heard anything yet. Greet the caller right now in one short sentence and ask how you can help.',
+              userInput:
+                'The caller has not heard anything yet. Greet the caller right now in one short sentence and ask how you can help.',
             });
             log.info(
               {
@@ -458,6 +459,26 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     );
   });
 
+  session.on(agentVoice.AgentSessionEventTypes.MetricsCollected, (ev) => {
+    log.info(
+      {
+        roomName: input.roomName,
+        metrics: ev.metrics,
+      },
+      'livekit_native_openai_metrics_collected',
+    );
+  });
+
+  session.on(agentVoice.AgentSessionEventTypes.SessionUsageUpdated, (ev) => {
+    log.info(
+      {
+        roomName: input.roomName,
+        usage: ev.usage,
+      },
+      'livekit_native_openai_session_usage_updated',
+    );
+  });
+
   let resolveSessionClose!: () => void;
   const sessionClosePromise = new Promise<void>((resolve) => {
     resolveSessionClose = resolve;
@@ -534,10 +555,36 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         'livekit_native_openai_track_subscribed',
       );
       if (track.kind !== TrackKind.KIND_AUDIO) return;
+      if (!boundParticipantIdentity) {
+        boundParticipantIdentity = participant.identity;
+      }
       triggerInitialGreeting('track_subscribed', participant.identity);
     });
 
-  await session.start({ agent, room });
+  if (!boundParticipantIdentity) {
+    for (const participant of room.remoteParticipants.values()) {
+      if (participant.identity === room.localParticipant?.identity) continue;
+      boundParticipantIdentity = participant.identity;
+      break;
+    }
+  }
+
+  log.info(
+    {
+      roomName: input.roomName,
+      participantIdentity: boundParticipantIdentity,
+    },
+    'livekit_native_openai_binding_participant_identity',
+  );
+
+  await session.start({
+    agent,
+    room,
+    inputOptions: {
+      participantIdentity: boundParticipantIdentity ?? undefined,
+      closeOnDisconnect: true,
+    },
+  });
 
   log.info({ roomName: input.roomName }, 'livekit_native_openai_session_started');
 
