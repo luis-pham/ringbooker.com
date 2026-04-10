@@ -199,9 +199,28 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
       );
       setTimeout(() => {
         try {
-          session.generateReply({
-            userInput: 'System: The phone call has just connected. Please warmly greet the caller and introduce yourself.',
-          });
+          log.info(
+            {
+              roomName: input.roomName,
+              reason,
+              participantIdentity: participantIdentity ?? null,
+            },
+            'livekit_native_openai_initial_greeting_say_started',
+          );
+          session.say(
+            'Hello, this is the booking assistant. I am here to help with your appointment today.',
+            {
+              addToChatCtx: true,
+            },
+          );
+          log.info(
+            {
+              roomName: input.roomName,
+              reason,
+              participantIdentity: participantIdentity ?? null,
+            },
+            'livekit_native_openai_initial_greeting_say_enqueued',
+          );
         } catch (error) {
           log.error({ err: error, reason }, 'livekit_native_openai_failed_to_trigger_initial_greeting');
         }
