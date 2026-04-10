@@ -425,15 +425,54 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     };
   }
 
-  const agent = new agentVoice.Agent({
-    instructions: compactSystemInstruction(input.systemPrompt),
-  });
+  class NativeOpenAICallAgent extends agentVoice.Agent {
+    constructor() {
+      super({
+        instructions: compactSystemInstruction(input.systemPrompt),
+      });
+    }
+
+    override async onEnter(): Promise<void> {
+      log.info({ roomName: input.roomName }, 'livekit_native_openai_agent_on_enter');
+      const greetingHandle = this.session.generateReply({
+        instructions:
+          'Greet the caller now in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.',
+      });
+      log.info(
+        {
+          roomName: input.roomName,
+          speechHandleId: greetingHandle.id,
+        },
+        'livekit_native_openai_initial_greeting_reply_enqueued',
+      );
+      greetingHandle.addDoneCallback((handle) => {
+        log.info(
+          {
+            roomName: input.roomName,
+            speechHandleId: handle.id,
+            interrupted: handle.interrupted,
+            done: handle.done(),
+            chatItemCount: handle.chatItems.length,
+          },
+          'livekit_native_openai_initial_greeting_reply_done',
+        );
+      });
+      setTimeout(() => {
+        if (firstModelAudioAtMs) return;
+        log.warn(
+          {
+            roomName: input.roomName,
+            speechHandleId: greetingHandle.id,
+          },
+          'livekit_native_openai_speech_handle_wait_timeout',
+        );
+      }, 2000);
+    }
+  }
+
+  const agent = new NativeOpenAICallAgent();
 
   const session = new agentVoice.AgentSession({ llm });
-  let initialGreetingSent = false;
-  let outputReady = false;
-  let pendingGreetingReason: string | null = null;
-  let pendingGreetingParticipantIdentity: string | null = null;
   let boundParticipantIdentity: string | null = null;
   let answeredParticipantIdentity: string | null = null;
   let firstUserSpeechAtMs: number | null = null;
@@ -471,133 +510,6 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       answeredParticipantResolved = true;
       resolveAnsweredParticipant(participant.identity);
     }
-  };
-
-  const enqueueInitialGreeting = (reason: string, participantIdentity?: string | null) => {
-    log.info(
-      {
-        roomName: input.roomName,
-        reason,
-        participantIdentity: participantIdentity ?? null,
-      },
-      'livekit_native_openai_triggering_initial_greeting',
-    );
-    setTimeout(() => {
-      try {
-        log.info(
-          {
-            roomName: input.roomName,
-            reason,
-            participantIdentity: participantIdentity ?? null,
-          },
-          'livekit_native_openai_initial_greeting_say_started',
-        );
-        const greetingHandle = session.generateReply({
-          instructions:
-            'Greet the caller now in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.',
-        });
-        log.info(
-          {
-            roomName: input.roomName,
-            reason,
-            participantIdentity: participantIdentity ?? null,
-            speechHandleId: greetingHandle.id,
-          },
-          'livekit_native_openai_initial_greeting_reply_enqueued',
-        );
-        log.info(
-          {
-            roomName: input.roomName,
-            source: 'generate_reply',
-            userInitiated: true,
-            speechHandleId: greetingHandle.id,
-          },
-          'livekit_native_openai_speech_created',
-        );
-        setTimeout(() => {
-          if (firstModelAudioAtMs) return;
-          log.warn(
-            {
-              roomName: input.roomName,
-              reason,
-              participantIdentity: participantIdentity ?? null,
-              speechHandleId: greetingHandle.id,
-              outputReady,
-            },
-            'livekit_native_openai_speech_handle_wait_timeout',
-          );
-        }, 2000);
-        greetingHandle.addDoneCallback((handle) => {
-          log.info(
-            {
-              roomName: input.roomName,
-              speechHandleId: handle.id,
-              interrupted: handle.interrupted,
-              done: handle.done(),
-              chatItemCount: handle.chatItems.length,
-            },
-            'livekit_native_openai_initial_greeting_reply_done',
-          );
-        });
-        setTimeout(() => {
-          if (firstModelAudioAtMs) return;
-          log.warn(
-            {
-              roomName: input.roomName,
-              reason,
-              participantIdentity: participantIdentity ?? null,
-            },
-            'livekit_native_openai_initial_greeting_fallback_regenerate_reply',
-          );
-          try {
-            const fallbackHandle = session.generateReply({
-              instructions:
-                'The caller has not heard anything yet. Greet the caller right now in one short sentence and ask how you can help.',
-            });
-            log.info(
-              {
-                roomName: input.roomName,
-                reason,
-                participantIdentity: participantIdentity ?? null,
-                speechHandleId: fallbackHandle.id,
-              },
-              'livekit_native_openai_initial_greeting_fallback_enqueued',
-            );
-          } catch (fallbackError) {
-            log.error(
-              {
-                err: fallbackError,
-                reason,
-                participantIdentity: participantIdentity ?? null,
-              },
-              'livekit_native_openai_initial_greeting_fallback_failed',
-            );
-          }
-        }, 1500);
-      } catch (error) {
-        log.error({ err: error, reason }, 'livekit_native_openai_failed_to_trigger_initial_greeting');
-      }
-    }, 500);
-  };
-
-  const triggerInitialGreeting = (reason: string, participantIdentity?: string | null) => {
-    if (initialGreetingSent) return;
-    if (!outputReady) {
-      pendingGreetingReason = reason;
-      pendingGreetingParticipantIdentity = participantIdentity ?? null;
-      log.info(
-        {
-          roomName: input.roomName,
-          reason,
-          participantIdentity: participantIdentity ?? null,
-        },
-        'livekit_native_openai_initial_greeting_deferred_until_output_ready',
-      );
-      return;
-    }
-
-    initialGreetingSent = true;
-    enqueueInitialGreeting(reason, participantIdentity);
   };
 
   session.on(agentVoice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
@@ -784,7 +696,6 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   room.on(RoomEvent.LocalTrackSubscribed, (track) => {
       log.info({ trackName: track.name, trackSid: track.sid }, 'livekit_native_openai_local_track_subscribed');
       if (track.name !== 'roomio_audio') return;
-      outputReady = true;
       log.info(
         {
           roomName: input.roomName,
@@ -793,24 +704,6 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         },
         'livekit_native_openai_output_ready',
       );
-      if (!initialGreetingSent && pendingGreetingReason) {
-        const deferredReason = pendingGreetingReason;
-        const deferredParticipantIdentity = pendingGreetingParticipantIdentity;
-        pendingGreetingReason = null;
-        pendingGreetingParticipantIdentity = null;
-        initialGreetingSent = true;
-        log.info(
-          {
-            roomName: input.roomName,
-            reason: deferredReason,
-            participantIdentity: deferredParticipantIdentity,
-            trackName: track.name,
-            trackSid: track.sid,
-          },
-          'livekit_native_openai_initial_greeting_released_after_output_ready',
-        );
-        enqueueInitialGreeting(deferredReason, deferredParticipantIdentity);
-      }
     });
 
   const subscriptionForceResolveMs = 1500;
@@ -884,7 +777,6 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   });
 
   log.info({ roomName: input.roomName }, 'livekit_native_openai_session_started');
-  triggerInitialGreeting('call_answered', answeredParticipantIdentity ?? boundParticipantIdentity);
 
   const timeoutMs = Number(process.env.AGENT_WORKER_MAX_SESSION_MS ?? 30 * 60 * 1000);
   const timeoutHandle = setTimeout(() => {
