@@ -144,93 +144,170 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
   try {
     await room.connect(livekitUrl, joinToken, { autoSubscribe: true, dynacast: false });
     const roomConnectedAtMs = Date.now();
-
-    observeDurationMs('realtime_worker_stage_ms', roomConnectedAtMs - runtimeStartedAtMs, {
-      transport: 'livekit',
-      voiceProvider: 'openai_realtime_native',
-      stage: 'dispatch_to_room_connected',
+    await runLiveKitNativeOpenAIConnectedRoomRuntime(input, room, {
+      log,
+      runtimeStartedAtMs,
+      roomConnectedAtMs,
     });
+  } finally {
+    await room.disconnect().catch(() => {});
+  }
+}
 
+export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
+  input: RealtimeDispatchInput,
+  room: Room,
+  options?: {
+    runtimeStartedAtMs?: number;
+    roomConnectedAtMs?: number;
+    log?: ReturnType<typeof withLogContext>;
+  },
+): Promise<void> {
+  const log =
+    options?.log ??
+    withLogContext({
+      requestId: input.requestId,
+      callId: input.realtime.sessionId,
+      provider: 'livekit_native_openai',
+    });
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  const model = resolveOpenAIModel(input);
+  if (!apiKey || !model) throw new Error('missing_openai_api_key_or_model_for_native_runtime');
+  const turnDetection = buildTurnDetectionConfig();
+  const runtimeStartedAtMs = options?.runtimeStartedAtMs ?? Date.now();
+  const roomConnectedAtMs = options?.roomConnectedAtMs ?? Date.now();
+
+  observeDurationMs('realtime_worker_stage_ms', roomConnectedAtMs - runtimeStartedAtMs, {
+    transport: 'livekit',
+    voiceProvider: 'openai_realtime_native',
+    stage: 'dispatch_to_room_connected',
+  });
+
+  log.info(
+    {
+      roomName: input.roomName,
+      model,
+      voice: resolveOpenAIVoice(),
+      turnDetection,
+    },
+    'livekit_native_openai_room_connected',
+  );
+
+  initializeLogger({ pretty: false, level: 'warn' });
+
+  const openaiPlugin = await importOpenAIPlugin().catch((error) => {
+    log.error({ err: error }, 'livekit_native_openai_plugin_load_failed');
+    throw new Error('livekit_native_openai_plugin_missing');
+  });
+
+  const llm = new openaiPlugin.realtime.RealtimeModel({
+    apiKey,
+    model,
+    voice: resolveOpenAIVoice(),
+    instructions: compactSystemInstruction(input.systemPrompt),
+    modalities: ['audio', 'text'],
+    inputAudioFormat: 'pcm16',
+    outputAudioFormat: 'pcm16',
+    turnDetection,
+  });
+
+  const agent = new agentVoice.Agent({
+    instructions: compactSystemInstruction(input.systemPrompt),
+  });
+
+  const session = new agentVoice.AgentSession({ llm });
+  let initialGreetingSent = false;
+  let firstUserSpeechAtMs: number | null = null;
+  let firstModelAudioAtMs: number | null = null;
+
+  const triggerInitialGreeting = (reason: string, participantIdentity?: string | null) => {
+    if (initialGreetingSent) return;
+    initialGreetingSent = true;
     log.info(
       {
         roomName: input.roomName,
-        model,
-        voice: resolveOpenAIVoice(),
-        turnDetection,
+        reason,
+        participantIdentity: participantIdentity ?? null,
       },
-      'livekit_native_openai_room_connected',
+      'livekit_native_openai_triggering_initial_greeting',
     );
-
-    initializeLogger({ pretty: false, level: 'warn' });
-
-    const openaiPlugin = await importOpenAIPlugin().catch((error) => {
-      log.error({ err: error }, 'livekit_native_openai_plugin_load_failed');
-      throw new Error('livekit_native_openai_plugin_missing');
-    });
-
-    const llm = new openaiPlugin.realtime.RealtimeModel({
-      apiKey,
-      model,
-      voice: resolveOpenAIVoice(),
-      instructions: compactSystemInstruction(input.systemPrompt),
-      modalities: ['audio', 'text'],
-      inputAudioFormat: 'pcm16',
-      outputAudioFormat: 'pcm16',
-      turnDetection,
-    });
-
-    const agent = new agentVoice.Agent({
-      instructions: compactSystemInstruction(input.systemPrompt),
-    });
-
-    const session = new agentVoice.AgentSession({ llm });
-    let initialGreetingSent = false;
-
-    const triggerInitialGreeting = (reason: string, participantIdentity?: string | null) => {
-      if (initialGreetingSent) return;
-      initialGreetingSent = true;
-      log.info(
-        {
-          roomName: input.roomName,
-          reason,
-          participantIdentity: participantIdentity ?? null,
-        },
-        'livekit_native_openai_triggering_initial_greeting',
-      );
-      setTimeout(() => {
-        try {
+    setTimeout(() => {
+      try {
+        log.info(
+          {
+            roomName: input.roomName,
+            reason,
+            participantIdentity: participantIdentity ?? null,
+          },
+          'livekit_native_openai_initial_greeting_say_started',
+        );
+        const greetingHandle = session.generateReply({
+          instructions:
+            'The phone call has just connected. Immediately greet the caller in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.',
+        });
+        log.info(
+          {
+            roomName: input.roomName,
+            reason,
+            participantIdentity: participantIdentity ?? null,
+            speechHandleId: greetingHandle.id,
+          },
+          'livekit_native_openai_initial_greeting_reply_enqueued',
+        );
+        greetingHandle.addDoneCallback((handle) => {
           log.info(
+            {
+              roomName: input.roomName,
+              speechHandleId: handle.id,
+              interrupted: handle.interrupted,
+              done: handle.done(),
+              chatItemCount: handle.chatItems.length,
+            },
+            'livekit_native_openai_initial_greeting_reply_done',
+          );
+        });
+        setTimeout(() => {
+          if (firstModelAudioAtMs) return;
+          log.warn(
             {
               roomName: input.roomName,
               reason,
               participantIdentity: participantIdentity ?? null,
             },
-            'livekit_native_openai_initial_greeting_say_started',
+            'livekit_native_openai_initial_greeting_fallback_regenerate_reply',
           );
-          session.say(
-            'Hello, this is the booking assistant. I am here to help with your appointment today.',
-            {
-              addToChatCtx: true,
-            },
-          );
-          log.info(
-            {
-              roomName: input.roomName,
-              reason,
-              participantIdentity: participantIdentity ?? null,
-            },
-            'livekit_native_openai_initial_greeting_say_enqueued',
-          );
-        } catch (error) {
-          log.error({ err: error, reason }, 'livekit_native_openai_failed_to_trigger_initial_greeting');
-        }
-      }, 500);
-    };
+          try {
+            const fallbackHandle = session.generateReply({
+              instructions:
+                'The phone call is already connected and the caller has not heard anything yet. Greet the caller right now in one short sentence and ask how you can help.',
+            });
+            log.info(
+              {
+                roomName: input.roomName,
+                reason,
+                participantIdentity: participantIdentity ?? null,
+                speechHandleId: fallbackHandle.id,
+              },
+              'livekit_native_openai_initial_greeting_fallback_enqueued',
+            );
+          } catch (fallbackError) {
+            log.error(
+              {
+                err: fallbackError,
+                reason,
+                participantIdentity: participantIdentity ?? null,
+              },
+              'livekit_native_openai_initial_greeting_fallback_failed',
+            );
+          }
+        }, 1500);
+      } catch (error) {
+        log.error({ err: error, reason }, 'livekit_native_openai_failed_to_trigger_initial_greeting');
+      }
+    }, 500);
+  };
 
-    let firstUserSpeechAtMs: number | null = null;
-    let firstModelAudioAtMs: number | null = null;
-
-    session.on(agentVoice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
+  session.on(agentVoice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
       if (!ev.isFinal || !ev.transcript) return;
       const nowMs = Date.now();
 
@@ -252,7 +329,7 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
       }
     });
 
-    session.on(agentVoice.AgentSessionEventTypes.ConversationItemAdded, (ev) => {
+  session.on(agentVoice.AgentSessionEventTypes.ConversationItemAdded, (ev) => {
       if (ev.item.role !== 'assistant') return;
       const nowMs = Date.now();
       if (!firstModelAudioAtMs) {
@@ -274,16 +351,16 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
       }
     });
 
-    session.on(agentVoice.AgentSessionEventTypes.Error, (ev) => {
-      log.error({ err: ev.error }, 'livekit_native_openai_session_error');
-    });
+  session.on(agentVoice.AgentSessionEventTypes.Error, (ev) => {
+    log.error({ err: ev.error }, 'livekit_native_openai_session_error');
+  });
 
-    let resolveSessionClose!: () => void;
-    const sessionClosePromise = new Promise<void>((resolve) => {
-      resolveSessionClose = resolve;
-    });
+  let resolveSessionClose!: () => void;
+  const sessionClosePromise = new Promise<void>((resolve) => {
+    resolveSessionClose = resolve;
+  });
 
-    session.once(agentVoice.AgentSessionEventTypes.Close, (ev) => {
+  session.once(agentVoice.AgentSessionEventTypes.Close, (ev) => {
       if (ev.error) {
         log.error({ err: ev.error, reason: ev.reason }, 'livekit_native_openai_session_closed_with_error');
       } else {
@@ -292,19 +369,19 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
       resolveSessionClose();
     });
 
-    room.once(RoomEvent.Disconnected, () => resolveSessionClose());
+  room.once(RoomEvent.Disconnected, () => resolveSessionClose());
 
-    room.on(RoomEvent.ParticipantConnected, (participant) => {
+  room.on(RoomEvent.ParticipantConnected, (participant) => {
       if (participant.identity === room.localParticipant?.identity) return;
       log.info({ participantIdentity: participant.identity }, 'livekit_native_openai_participant_connected');
     });
 
-    room.on(RoomEvent.LocalTrackSubscribed, (track) => {
+  room.on(RoomEvent.LocalTrackSubscribed, (track) => {
       log.info({ trackName: track.name, trackSid: track.sid }, 'livekit_native_openai_local_track_subscribed');
     });
 
-    const subscriptionForceResolveMs = 1500;
-    room.on(RoomEvent.LocalTrackPublished, (publication) => {
+  const subscriptionForceResolveMs = 1500;
+  room.on(RoomEvent.LocalTrackPublished, (publication) => {
       setTimeout(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pub = publication as any;
@@ -315,7 +392,7 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
       }, subscriptionForceResolveMs);
     });
 
-    room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+  room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
       if (participant.identity === room.localParticipant?.identity) return;
       log.info(
         {
@@ -329,11 +406,11 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
       triggerInitialGreeting('track_subscribed', participant.identity);
     });
 
-    await session.start({ agent, room });
+  await session.start({ agent, room });
 
-    log.info({ roomName: input.roomName }, 'livekit_native_openai_session_started');
+  log.info({ roomName: input.roomName }, 'livekit_native_openai_session_started');
 
-    for (const participant of room.remoteParticipants.values()) {
+  for (const participant of room.remoteParticipants.values()) {
       if (participant.identity === room.localParticipant?.identity) continue;
       let hasAudioTrack = false;
       for (const publication of participant.trackPublications.values()) {
@@ -348,21 +425,18 @@ export async function runLiveKitNativeOpenAIRuntime(input: RealtimeDispatchInput
       }
     }
 
-    const timeoutMs = Number(process.env.AGENT_WORKER_MAX_SESSION_MS ?? 30 * 60 * 1000);
-    const timeoutHandle = setTimeout(() => {
+  const timeoutMs = Number(process.env.AGENT_WORKER_MAX_SESSION_MS ?? 30 * 60 * 1000);
+  const timeoutHandle = setTimeout(() => {
       log.warn({ timeoutMs, roomName: input.roomName }, 'livekit_native_openai_session_timeout');
       resolveSessionClose();
       void room.disconnect().catch(() => {});
     }, timeoutMs);
 
-    try {
-      await sessionClosePromise;
-    } finally {
-      clearTimeout(timeoutHandle);
-    }
-
-    log.info({ roomName: input.roomName }, 'livekit_native_openai_session_finished');
+  try {
+    await sessionClosePromise;
   } finally {
-    await room.disconnect().catch(() => {});
+    clearTimeout(timeoutHandle);
   }
+
+  log.info({ roomName: input.roomName }, 'livekit_native_openai_session_finished');
 }

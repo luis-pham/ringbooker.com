@@ -33,6 +33,7 @@ function createValidatedEnv() {
       AGENT_DISPATCH_WEBHOOK_URL: z.string().url().optional(),
       AGENT_DISPATCH_AUTH_TOKEN: z.string().min(1).optional(),
       AGENT_LIVEKIT_AGENT_COMMAND: z.string().min(1).optional(),
+      AGENT_LIVEKIT_NATIVE_OPENAI_AGENT_NAME: z.string().min(1).optional(),
       AGENT_WORKER_MAX_SESSION_MS: z.coerce.number().int().positive().default(30 * 60 * 1000),
       BACKEND_INTERNAL_API_KEY: z.string().min(16).optional(),
 

@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { AgentDispatchClient } from 'livekit-server-sdk';
 
 import { withLogContext } from '@/src/backend/observability/logger';
 import { getEnv } from '@/src/backend/config/env';
@@ -28,8 +29,46 @@ export class LiveKitAgentLaunchError extends Error {
   }
 }
 
+function normalizeLiveKitHttpUrl(url: string): string {
+  if (url.startsWith('https://') || url.startsWith('http://')) return url;
+  if (url.startsWith('wss://')) return `https://${url.slice('wss://'.length)}`;
+  if (url.startsWith('ws://')) return `http://${url.slice('ws://'.length)}`;
+  return `https://${url}`;
+}
+
 export async function launchLiveKitGeminiWorker(payload: LaunchPayload): Promise<{ pid: number }> {
-  const command = getEnv().AGENT_LIVEKIT_AGENT_COMMAND;
+  const env = getEnv();
+  if (process.env.AGENT_RUNTIME_MODE === 'livekit_native_openai') {
+    const agentName = env.AGENT_LIVEKIT_NATIVE_OPENAI_AGENT_NAME ?? 'ringbooker-native-openai';
+    const client = new AgentDispatchClient(
+      normalizeLiveKitHttpUrl(env.LIVEKIT_URL),
+      env.LIVEKIT_API_KEY,
+      env.LIVEKIT_API_SECRET,
+    );
+
+    const log = withLogContext({
+      requestId: payload.requestId,
+      callId: payload.realtime.sessionId,
+      provider: 'livekit_native_openai',
+    });
+
+    const dispatch = await client.createDispatch(payload.roomName, agentName, {
+      metadata: JSON.stringify(payload),
+    });
+
+    log.info(
+      {
+        roomName: payload.roomName,
+        agentName,
+        dispatchId: dispatch.id,
+      },
+      'livekit_native_openai_agent_dispatched',
+    );
+
+    return { pid: process.pid };
+  }
+
+  const command = env.AGENT_LIVEKIT_AGENT_COMMAND;
   if (!command) {
     throw new LiveKitAgentLaunchError('missing_agent_livekit_agent_command', false);
   }

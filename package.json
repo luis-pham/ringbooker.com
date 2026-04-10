@@ -9,6 +9,7 @@
     "lint": "next lint",
     "worker": "tsx src/backend/jobs/worker-entry.ts",
     "agent:worker": "tsx src/agent/realtime/worker-entry.ts",
+    "agent:livekit:native:openai": "tsx src/agent/realtime/livekit-native-openai-agent.ts start",
     "test": "tsx --test src/**/*.test.ts",
     "check:readiness": "node scripts/check-readiness.mjs",
     "check:readiness:openai": "node scripts/check-openai-realtime-readiness.mjs",
