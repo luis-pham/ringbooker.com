@@ -308,6 +308,14 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   };
 
   session.on(agentVoice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
+      log.info(
+        {
+          roomName: input.roomName,
+          transcript: ev.transcript ?? null,
+          isFinal: ev.isFinal,
+        },
+        'livekit_native_openai_user_input_transcribed',
+      );
       if (!ev.isFinal || !ev.transcript) return;
       const nowMs = Date.now();
 
@@ -330,6 +338,18 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     });
 
   session.on(agentVoice.AgentSessionEventTypes.ConversationItemAdded, (ev) => {
+      log.info(
+        {
+          roomName: input.roomName,
+          role: ev.item.role,
+          itemId: 'id' in ev.item ? (ev.item as { id?: string }).id ?? null : null,
+          text:
+            'textContent' in ev.item && typeof (ev.item as { textContent?: string }).textContent === 'string'
+              ? (ev.item as { textContent: string }).textContent.slice(0, 200)
+              : null,
+        },
+        'livekit_native_openai_conversation_item_added',
+      );
       if (ev.item.role !== 'assistant') return;
       const nowMs = Date.now();
       if (!firstModelAudioAtMs) {
@@ -353,6 +373,55 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
   session.on(agentVoice.AgentSessionEventTypes.Error, (ev) => {
     log.error({ err: ev.error }, 'livekit_native_openai_session_error');
+  });
+
+  session.on(agentVoice.AgentSessionEventTypes.SpeechCreated, (ev) => {
+    log.info(
+      {
+        roomName: input.roomName,
+        source: ev.source,
+        userInitiated: ev.userInitiated,
+        speechHandleId: ev.speechHandle.id,
+      },
+      'livekit_native_openai_speech_created',
+    );
+  });
+
+  session.on(agentVoice.AgentSessionEventTypes.UserStateChanged, (ev) => {
+    log.info(
+      {
+        roomName: input.roomName,
+        oldState: ev.oldState,
+        newState: ev.newState,
+      },
+      'livekit_native_openai_user_state_changed',
+    );
+  });
+
+  session.on(agentVoice.AgentSessionEventTypes.AgentStateChanged, (ev) => {
+    log.info(
+      {
+        roomName: input.roomName,
+        oldState: ev.oldState,
+        newState: ev.newState,
+      },
+      'livekit_native_openai_agent_state_changed',
+    );
+  });
+
+  session.on(agentVoice.AgentSessionEventTypes.OverlappingSpeech, (ev) => {
+    log.warn(
+      {
+        roomName: input.roomName,
+        detectedAt: ev.detectedAt,
+        isInterruption: ev.isInterruption,
+        totalDurationInS: ev.totalDurationInS,
+        predictionDurationInS: ev.predictionDurationInS,
+        probability: ev.probability,
+        numRequests: ev.numRequests,
+      },
+      'livekit_native_openai_overlapping_speech',
+    );
   });
 
   let resolveSessionClose!: () => void;
