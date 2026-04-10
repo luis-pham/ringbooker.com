@@ -278,7 +278,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     throw new Error('livekit_native_openai_plugin_missing');
   });
 
-  const llm = new openaiPlugin.realtime.RealtimeModel({
+  const rawOpenAiRealtimeModel = new openaiPlugin.realtime.RealtimeModel({
     apiKey,
     model,
     voice: resolveOpenAIVoice(),
@@ -286,27 +286,25 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     turnDetection,
   });
 
-  const llmWithSessionFactory = llm as unknown as {
+  const llmWithSessionFactory = rawOpenAiRealtimeModel as unknown as {
     session?: () => RealtimeEventEmitter;
   };
-  const originalSessionFactory = llmWithSessionFactory.session?.bind(llm);
+  const openAiBoundSessionFactory = llmWithSessionFactory.session?.bind(rawOpenAiRealtimeModel);
   log.info(
     {
       roomName: input.roomName,
       llmConstructorName:
-        (llm as { constructor?: { name?: string } }).constructor?.name ?? 'unknown',
+        (rawOpenAiRealtimeModel as { constructor?: { name?: string } }).constructor?.name ?? 'unknown',
       typeofSession: typeof llmWithSessionFactory.session,
-      willPatchRealtimeSession: Boolean(originalSessionFactory),
+      willPatchRealtimeSession: Boolean(openAiBoundSessionFactory),
     },
     'livekit_native_openai_llm_constructed',
   );
-  if (originalSessionFactory) {
-    llmWithSessionFactory.session = () => {
-      log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_session_factory_called');
-      const realtimeSession = originalSessionFactory();
-      const realtimeSessionWithEvents = realtimeSession as RealtimeSessionLike;
 
-      log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_session_created');
+  function attachOpenAiRealtimeInstrumentation(realtimeSession: RealtimeEventEmitter): RealtimeEventEmitter {
+    const realtimeSessionWithEvents = realtimeSession as RealtimeSessionLike;
+
+    log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_session_created');
 
       const originalUpdateInstructions = realtimeSessionWithEvents.updateInstructions?.bind(realtimeSession);
       if (originalUpdateInstructions) {
@@ -523,20 +521,38 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         log.error({ err: payload, roomName: input.roomName }, 'livekit_native_openai_realtime_session_error');
       });
 
-      log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_openai_hooks_attached');
+    log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_openai_hooks_attached');
 
-      return realtimeSession;
-    };
+    return realtimeSession;
+  }
+
+  let llm: typeof rawOpenAiRealtimeModel;
+  if (openAiBoundSessionFactory) {
+    llm = new Proxy(rawOpenAiRealtimeModel, {
+      get(target, prop, receiver) {
+        if (prop === 'session') {
+          return () => {
+            log.info(
+              { roomName: input.roomName, sessionEntry: 'proxy' },
+              'livekit_native_openai_realtime_session_factory_called',
+            );
+            return attachOpenAiRealtimeInstrumentation(openAiBoundSessionFactory());
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    }) as typeof rawOpenAiRealtimeModel;
   } else {
     log.error(
       {
         roomName: input.roomName,
         llmConstructorName:
-          (llm as { constructor?: { name?: string } }).constructor?.name ?? 'unknown',
+          (rawOpenAiRealtimeModel as { constructor?: { name?: string } }).constructor?.name ?? 'unknown',
         typeofSession: typeof llmWithSessionFactory.session,
       },
       'livekit_native_openai_realtime_session_method_missing_openai_plugin_mismatch',
     );
+    llm = rawOpenAiRealtimeModel;
   }
 
   /** Realtime session is not fully wired during Agent.onEnter; greeting runs after session.start() resolves. */
