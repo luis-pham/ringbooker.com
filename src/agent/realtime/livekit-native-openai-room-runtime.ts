@@ -217,12 +217,13 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
   const session = new agentVoice.AgentSession({ llm });
   let initialGreetingSent = false;
+  let outputReady = false;
+  let pendingGreetingReason: string | null = null;
+  let pendingGreetingParticipantIdentity: string | null = null;
   let firstUserSpeechAtMs: number | null = null;
   let firstModelAudioAtMs: number | null = null;
 
-  const triggerInitialGreeting = (reason: string, participantIdentity?: string | null) => {
-    if (initialGreetingSent) return;
-    initialGreetingSent = true;
+  const enqueueInitialGreeting = (reason: string, participantIdentity?: string | null) => {
     log.info(
       {
         roomName: input.roomName,
@@ -251,9 +252,22 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             reason,
             participantIdentity: participantIdentity ?? null,
             speechHandleId: greetingHandle.id,
-          },
-          'livekit_native_openai_initial_greeting_reply_enqueued',
-        );
+            },
+            'livekit_native_openai_initial_greeting_reply_enqueued',
+          );
+        setTimeout(() => {
+          if (firstModelAudioAtMs) return;
+          log.warn(
+            {
+              roomName: input.roomName,
+              reason,
+              participantIdentity: participantIdentity ?? null,
+              speechHandleId: greetingHandle.id,
+              outputReady,
+            },
+            'livekit_native_openai_speech_handle_wait_timeout',
+          );
+        }, 2000);
         greetingHandle.addDoneCallback((handle) => {
           log.info(
             {
@@ -305,6 +319,26 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         log.error({ err: error, reason }, 'livekit_native_openai_failed_to_trigger_initial_greeting');
       }
     }, 500);
+  };
+
+  const triggerInitialGreeting = (reason: string, participantIdentity?: string | null) => {
+    if (initialGreetingSent) return;
+    if (!outputReady) {
+      pendingGreetingReason = reason;
+      pendingGreetingParticipantIdentity = participantIdentity ?? null;
+      log.info(
+        {
+          roomName: input.roomName,
+          reason,
+          participantIdentity: participantIdentity ?? null,
+        },
+        'livekit_native_openai_initial_greeting_deferred_until_output_ready',
+      );
+      return;
+    }
+
+    initialGreetingSent = true;
+    enqueueInitialGreeting(reason, participantIdentity);
   };
 
   session.on(agentVoice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
@@ -447,6 +481,34 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
   room.on(RoomEvent.LocalTrackSubscribed, (track) => {
       log.info({ trackName: track.name, trackSid: track.sid }, 'livekit_native_openai_local_track_subscribed');
+      if (track.name !== 'roomio_audio') return;
+      outputReady = true;
+      log.info(
+        {
+          roomName: input.roomName,
+          trackName: track.name,
+          trackSid: track.sid,
+        },
+        'livekit_native_openai_output_ready',
+      );
+      if (!initialGreetingSent && pendingGreetingReason) {
+        const deferredReason = pendingGreetingReason;
+        const deferredParticipantIdentity = pendingGreetingParticipantIdentity;
+        pendingGreetingReason = null;
+        pendingGreetingParticipantIdentity = null;
+        initialGreetingSent = true;
+        log.info(
+          {
+            roomName: input.roomName,
+            reason: deferredReason,
+            participantIdentity: deferredParticipantIdentity,
+            trackName: track.name,
+            trackSid: track.sid,
+          },
+          'livekit_native_openai_initial_greeting_released_after_output_ready',
+        );
+        enqueueInitialGreeting(deferredReason, deferredParticipantIdentity);
+      }
     });
 
   const subscriptionForceResolveMs = 1500;
