@@ -385,19 +385,31 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           },
           'livekit_native_openai_initial_greeting_say_started',
         );
-        const greetingHandle = session.generateReply({
-          userInput:
-            'Please greet the caller now in one short friendly sentence, introduce yourself as the booking assistant, then ask one short follow-up question about how you can help.',
-        });
+        const greetingHandle = session.say(
+          'Hello, this is the booking assistant. How can I help you today?',
+          {
+            allowInterruptions: false,
+            addToChatCtx: true,
+          },
+        );
         log.info(
           {
             roomName: input.roomName,
             reason,
             participantIdentity: participantIdentity ?? null,
             speechHandleId: greetingHandle.id,
-            },
-            'livekit_native_openai_initial_greeting_reply_enqueued',
-          );
+          },
+          'livekit_native_openai_initial_greeting_say_enqueued',
+        );
+        log.info(
+          {
+            roomName: input.roomName,
+            source: 'say',
+            userInitiated: true,
+            speechHandleId: greetingHandle.id,
+          },
+          'livekit_native_openai_speech_created',
+        );
         setTimeout(() => {
           if (firstModelAudioAtMs) return;
           log.warn(
@@ -434,10 +446,13 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             'livekit_native_openai_initial_greeting_fallback_regenerate_reply',
           );
           try {
-            const fallbackHandle = session.generateReply({
-              userInput:
-                'The caller has not heard anything yet. Greet the caller right now in one short sentence and ask how you can help.',
-            });
+            const fallbackHandle = session.say(
+              'Hello, this is the booking assistant. Can you hear me?',
+              {
+                allowInterruptions: false,
+                addToChatCtx: true,
+              },
+            );
             log.info(
               {
                 roomName: input.roomName,
