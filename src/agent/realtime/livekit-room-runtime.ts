@@ -278,6 +278,24 @@ function resolveAudioSourceQueueMs(): number {
   return Math.max(250, Math.min(4000, Math.round(raw)));
 }
 
+function extractInitialGreeting(systemPrompt: string): string {
+  const welcomeLine = systemPrompt
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.startsWith('WELCOME MESSAGE:'));
+  const welcomeMessage = welcomeLine?.slice('WELCOME MESSAGE:'.length).trim();
+  if (welcomeMessage) {
+    return `System: The phone call has just connected. Greet the caller now using this welcome message naturally: "${welcomeMessage}"`;
+  }
+  return 'System: The phone call has just connected. Please warmly greet the caller and introduce yourself.';
+}
+
+function resolveOpenAIFallbackCommitDelayMs(): number {
+  const raw = Number(process.env.AGENT_OPENAI_LOCAL_ENDPOINT_DELAY_MS ?? 220);
+  if (!Number.isFinite(raw)) return 220;
+  return Math.max(0, Math.min(2000, raw));
+}
+
 export async function runLiveKitRoomRuntime(
   input: RealtimeDispatchInput,
   options?: {
@@ -334,6 +352,7 @@ export async function runLiveKitRoomRuntime(
   let firstModelAudioPlaybackLogged = false;
   let participantDisconnectedAtMs: number | null = null;
   let userSpeechEndTimer: ReturnType<typeof setTimeout> | null = null;
+  let openAiTurnCommitTimer: ReturnType<typeof setTimeout> | null = null;
   let audioMetricsTimer: ReturnType<typeof setInterval> | null = null;
   const currentVoiceProvider =
     (input.realtime.metadata as { dispatchPayload?: { llm?: { provider?: string } } } | undefined)?.dispatchPayload?.llm
@@ -345,6 +364,7 @@ export async function runLiveKitRoomRuntime(
   });
   const publishOptions = new TrackPublishOptions();
   publishOptions.source = TrackSource.SOURCE_MICROPHONE;
+  const initialGreetingPrompt = extractInitialGreeting(input.systemPrompt);
   const downlinkChunkBuffer = createPcmChunkBuffer({
     sampleRate: outputSampleRate,
     targetChunkMs: resolveDownlinkChunkMs(currentVoiceProvider),
@@ -546,6 +566,10 @@ export async function runLiveKitRoomRuntime(
             });
           }
         }
+        if (openAiTurnCommitTimer) {
+          clearTimeout(openAiTurnCommitTimer);
+          openAiTurnCommitTimer = null;
+        }
         const modelTurnStartGapMs = 240;
         const isNewModelTurn = !lastModelAudioAtMs || nowMs - lastModelAudioAtMs >= modelTurnStartGapMs;
         if (isNewModelTurn && lastDetectedUserSpeechEndAtMs) {
@@ -696,17 +720,17 @@ export async function runLiveKitRoomRuntime(
     });
 
     let initialGreetingSent = false;
+    const triggerInitialGreeting = () => {
+      if (!bridge || initialGreetingSent) return;
+      initialGreetingSent = true;
+      setTimeout(() => {
+        bridge?.sendUserText(initialGreetingPrompt);
+      }, 300);
+    };
     const attachInboundAudioTrack = (track: RemoteTrack, participant: { identity: string }) => {
       if (!bridge) return;
-      
-      if (!initialGreetingSent) {
-        initialGreetingSent = true;
-        // Trì hoãn một chút để đảm bảo luồng RTP (âm thanh) của user đã ổn định trước khi AI lên tiếng
-        setTimeout(() => {
-          bridge?.sendUserText('System: The phone call has just connected. Please warmly greet the caller and introduce yourself.');
-        }, 500);
-      }
-      
+      triggerInitialGreeting();
+
       const activeBridge = bridge;
       if (participant.identity === room.localParticipant?.identity) return;
       if (track.kind !== TrackKind.KIND_AUDIO) return;
@@ -776,6 +800,10 @@ export async function runLiveKitRoomRuntime(
               clearTimeout(userSpeechEndTimer);
               userSpeechEndTimer = null;
             }
+            if (openAiTurnCommitTimer) {
+              clearTimeout(openAiTurnCommitTimer);
+              openAiTurnCommitTimer = null;
+            }
             userSpeechEndTimer = setTimeout(() => {
               if (participantDisconnectedAtMs) {
                 userSpeechEndTimer = null;
@@ -804,6 +832,13 @@ export async function runLiveKitRoomRuntime(
                 voiceProvider: currentVoiceProvider,
                 stage: 'dispatch_to_first_user_speech_end',
               });
+              if (currentVoiceProvider === 'openai_realtime' && bridge?.commitUserAudioTurn) {
+                openAiTurnCommitTimer = setTimeout(() => {
+                  if (participantDisconnectedAtMs) return;
+                  bridge?.commitUserAudioTurn?.();
+                  openAiTurnCommitTimer = null;
+                }, resolveOpenAIFallbackCommitDelayMs());
+              }
               userSpeechEndTimer = null;
             }, userSpeechEndHoldMs);
             uplinkChunker.push(mono);
@@ -831,6 +866,11 @@ export async function runLiveKitRoomRuntime(
       attachInboundAudioTrack(track, participant);
     });
 
+    room.on(RoomEvent.ParticipantConnected, (participant) => {
+      if (participant.identity === room.localParticipant?.identity) return;
+      triggerInitialGreeting();
+    });
+
     room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
       const streamId = track.sid;
       if (!streamId) return;
@@ -845,6 +885,9 @@ export async function runLiveKitRoomRuntime(
     // Auto-subscribe can complete before TrackSubscribed handler attaches.
     // Attach readers for already-subscribed remote audio tracks as a safety net.
     for (const participant of room.remoteParticipants.values()) {
+      if (participant.identity !== room.localParticipant?.identity) {
+        triggerInitialGreeting();
+      }
       for (const publication of participant.trackPublications.values()) {
         const subscribedTrack = publication.track;
         if (!subscribedTrack) continue;
@@ -862,6 +905,10 @@ export async function runLiveKitRoomRuntime(
     if (userSpeechEndTimer) {
       clearTimeout(userSpeechEndTimer);
       userSpeechEndTimer = null;
+    }
+    if (openAiTurnCommitTimer) {
+      clearTimeout(openAiTurnCommitTimer);
+      openAiTurnCommitTimer = null;
     }
     if (audioMetricsTimer) {
       clearInterval(audioMetricsTimer);

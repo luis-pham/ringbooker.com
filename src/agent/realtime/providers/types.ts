@@ -13,6 +13,7 @@ export type RealtimeVoiceBridge = {
   provider: RealtimeVoiceProvider;
   sendUserText: (text: string) => void;
   sendUserAudioPcm: (params: { pcm16: Int16Array; sampleRate: number }) => void;
+  commitUserAudioTurn?: () => void;
   close: () => void;
 };
 

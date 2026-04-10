@@ -14,6 +14,12 @@ const DEFAULT_OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime';
 
 type OpenAIRealtimeServerEvent =
   | {
+      type: 'response.created' | 'response.done';
+      response?: {
+        id?: string;
+      };
+    }
+  | {
       type: 'conversation.item.input_audio_transcription.completed';
       transcript?: string;
     }
@@ -115,6 +121,18 @@ function parseOpenAIRealtimeUrl(model: string): string {
   return `${base}${separator}model=${encodeURIComponent(model)}`;
 }
 
+function parseTurnDetectionMode(value: string | undefined): 'server_vad' | 'semantic_vad' {
+  return value?.trim().toLowerCase() === 'semantic_vad' ? 'semantic_vad' : 'server_vad';
+}
+
+function parseSemanticVadEagerness(value: string | undefined): 'low' | 'medium' | 'high' | 'auto' {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === 'low' || normalized === 'medium' || normalized === 'high' || normalized === 'auto') {
+    return normalized;
+  }
+  return 'high';
+}
+
 function asString(value: unknown): string | null {
   return typeof value === 'string' ? value : null;
 }
@@ -166,9 +184,11 @@ export async function createOpenAIRealtimeVoiceBridge(
   const inputTranscriptionModel = process.env.AGENT_OPENAI_TRANSCRIPTION_MODEL?.trim() || 'gpt-4o-mini-transcribe';
   const enableInputTranscription = parseBoolean(process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_ENABLED, true);
   const useServerVad = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
+  const turnDetectionMode = parseTurnDetectionMode(process.env.AGENT_OPENAI_TURN_DETECTION);
   const vadSilenceMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 120);
   const vadPrefixMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 120);
-  const vadIdleMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS, 4000);
+  const vadIdleMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_IDLE_TIMEOUT_MS, 5000);
+  const semanticVadEagerness = parseSemanticVadEagerness(process.env.AGENT_OPENAI_SEMANTIC_VAD_EAGERNESS);
   const voice = process.env.AGENT_OPENAI_VOICE?.trim() || 'alloy';
   const websocketUrl = parseOpenAIRealtimeUrl(model);
   const socket = new WebSocket(websocketUrl, {
@@ -184,6 +204,7 @@ export async function createOpenAIRealtimeVoiceBridge(
   let toolCallQueue = Promise.resolve();
   let lastUserTranscript = '';
   let lastAssistantTranscript = '';
+  let responsePending = false;
 
   const sendEvent = (payload: Record<string, unknown>) => {
     if (socket.readyState !== WebSocket.OPEN) return;
@@ -200,6 +221,14 @@ export async function createOpenAIRealtimeVoiceBridge(
     }
 
     switch (event.type) {
+      case 'response.created': {
+        responsePending = true;
+        return;
+      }
+      case 'response.done': {
+        responsePending = false;
+        return;
+      }
       case 'conversation.item.input_audio_transcription.completed': {
         const transcript = asString(event.transcript)?.trim();
         if (!transcript || transcript === lastUserTranscript) return;
@@ -212,6 +241,7 @@ export async function createOpenAIRealtimeVoiceBridge(
       case 'response.output_audio.delta': {
         const delta = asString(event.delta);
         if (!delta || !params.onModelAudioPcm) return;
+        responsePending = false;
         void params.onModelAudioPcm({
           pcm16: base64ToInt16(delta),
           sampleRate: outputSampleRate,
@@ -328,6 +358,7 @@ export async function createOpenAIRealtimeVoiceBridge(
         return;
       }
       case 'error': {
+        responsePending = false;
         log.error({ error: event.error }, 'openai_realtime_session_error');
         return;
       }
@@ -342,6 +373,7 @@ export async function createOpenAIRealtimeVoiceBridge(
 
   socket.on('close', (code, reason) => {
     closed = true;
+    responsePending = false;
     log.info(
       {
         code,
@@ -369,14 +401,21 @@ export async function createOpenAIRealtimeVoiceBridge(
           }
         : {}),
       turn_detection: useServerVad
-        ? {
-            type: 'server_vad',
-            create_response: true,
-            interrupt_response: true,
-            prefix_padding_ms: vadPrefixMs,
-            silence_duration_ms: vadSilenceMs,
-            idle_timeout_ms: vadIdleMs,
-          }
+        ? turnDetectionMode === 'semantic_vad'
+          ? {
+              type: 'semantic_vad',
+              create_response: true,
+              interrupt_response: true,
+              eagerness: semanticVadEagerness,
+            }
+          : {
+              type: 'server_vad',
+              create_response: true,
+              interrupt_response: true,
+              prefix_padding_ms: vadPrefixMs,
+              silence_duration_ms: vadSilenceMs,
+              idle_timeout_ms: vadIdleMs,
+            }
         : null,
       tool_choice: 'auto',
       tools: REALTIME_TOOL_DEFINITIONS.map((tool) => ({
@@ -412,6 +451,16 @@ export async function createOpenAIRealtimeVoiceBridge(
       sendEvent({
         type: 'input_audio_buffer.append',
         audio: int16ToBase64(pcm16),
+      });
+    },
+    commitUserAudioTurn: () => {
+      if (closed || responsePending) return;
+      responsePending = true;
+      sendEvent({
+        type: 'input_audio_buffer.commit',
+      });
+      sendEvent({
+        type: 'response.create',
       });
     },
     close: () => {
