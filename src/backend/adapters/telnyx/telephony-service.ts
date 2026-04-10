@@ -122,6 +122,15 @@ export class TelnyxTelephonyService implements TelephonyService {
 
     if (params.roomName && this.sipClient && this.sipOutboundTrunkId) {
       try {
+        log.info(
+          {
+            purpose: params.purpose,
+            roomName: params.roomName,
+            to: params.to,
+            from: params.from,
+          },
+          'livekit_sip_outbound_call_started',
+        );
         const participant = await this.sipClient.createSipParticipant(this.sipOutboundTrunkId, params.to, params.roomName, {
           fromNumber: params.from,
           participantIdentity: `rb-${params.purpose}-${params.requestId}`,
@@ -132,7 +141,7 @@ export class TelnyxTelephonyService implements TelephonyService {
             rb_request_id: params.requestId,
             rb_call_purpose: params.purpose,
           },
-          waitUntilAnswered: false,
+          waitUntilAnswered: true,
           playDialtone: true,
           ringingTimeout: 45,
           maxCallDuration: 20 * 60,
@@ -149,7 +158,7 @@ export class TelnyxTelephonyService implements TelephonyService {
             roomName: params.roomName,
             participantIdentity: participant.participantIdentity,
           },
-          'livekit_sip_outbound_call_created',
+          'livekit_sip_outbound_call_answered',
         );
 
         return { providerCallId: participant.participantIdentity };
