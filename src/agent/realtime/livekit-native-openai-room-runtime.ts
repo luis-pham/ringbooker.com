@@ -40,11 +40,11 @@ function compactSystemInstruction(raw: string): string {
 function resolveOpenAIModel(input: RealtimeDispatchInput): string | null {
   const fromMetadata = (input.realtime.metadata as { dispatchPayload?: { llm?: { model?: string } } } | undefined)
     ?.dispatchPayload?.llm?.model;
-  return fromMetadata ?? process.env.AGENT_VOICE_MODEL ?? 'gpt-realtime-mini';
+  return fromMetadata ?? process.env.AGENT_VOICE_MODEL ?? 'gpt-realtime';
 }
 
 function resolveOpenAIVoice(): string {
-  return process.env.AGENT_OPENAI_VOICE?.trim() || 'alloy';
+  return process.env.AGENT_OPENAI_VOICE?.trim() || 'marin';
 }
 
 function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
@@ -102,6 +102,10 @@ function importOpenAIPlugin(): Promise<{
     };
   }>;
 }
+
+type RealtimeEventEmitter = {
+  on?: (event: string, listener: (payload: unknown) => void) => void;
+};
 
 function buildTurnDetectionConfig(): {
   type: 'semantic_vad';
@@ -233,78 +237,86 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     apiKey,
     model,
     voice: resolveOpenAIVoice(),
-    instructions: compactSystemInstruction(input.systemPrompt),
     modalities: ['audio', 'text'],
-    inputAudioFormat: 'pcm16',
-    outputAudioFormat: 'pcm16',
     turnDetection,
   });
 
-  // The OpenAI plugin exposes low-level client/server events; logging a curated subset
-  // helps distinguish "speech handle created" from "OpenAI actually generated output".
-  const llmWithEvents = llm as unknown as {
-    on?: (event: string, listener: (payload: unknown) => void) => void;
+  const llmWithSessionFactory = llm as unknown as {
+    session?: () => RealtimeEventEmitter;
   };
+  const originalSessionFactory = llmWithSessionFactory.session?.bind(llm);
+  if (originalSessionFactory) {
+    llmWithSessionFactory.session = () => {
+      const realtimeSession = originalSessionFactory();
+      const realtimeSessionWithEvents = realtimeSession as RealtimeEventEmitter;
 
-  llmWithEvents.on?.('openai_client_event_queued', (payload: unknown) => {
-    const event = payload as { type?: string; event_id?: string; response?: { instructions?: string } };
-    if (!event?.type) return;
-    if (
-      event.type === 'session.update' ||
-      event.type === 'response.create' ||
-      event.type === 'input_audio_buffer.commit' ||
-      event.type === 'input_audio_buffer.clear'
-    ) {
-      log.info(
-        {
-          roomName: input.roomName,
-          eventType: event.type,
-          eventId: event.event_id ?? null,
-          hasInstructions:
-            event.type === 'response.create' ? Boolean(event.response?.instructions) : undefined,
-        },
-        'livekit_native_openai_client_event_queued',
-      );
-    }
-  });
+      realtimeSessionWithEvents.on?.('openai_client_event_queued', (payload: unknown) => {
+        const event = payload as { type?: string; event_id?: string; response?: { instructions?: string } };
+        if (!event?.type) return;
+        if (
+          event.type === 'session.update' ||
+          event.type === 'response.create' ||
+          event.type === 'input_audio_buffer.commit' ||
+          event.type === 'input_audio_buffer.clear'
+        ) {
+          log.info(
+            {
+              roomName: input.roomName,
+              eventType: event.type,
+              eventId: event.event_id ?? null,
+              hasInstructions:
+                event.type === 'response.create' ? Boolean(event.response?.instructions) : undefined,
+            },
+            'livekit_native_openai_client_event_queued',
+          );
+        }
+      });
 
-  llmWithEvents.on?.('openai_server_event_received', (payload: unknown) => {
-    const event = payload as {
-      type?: string;
-      response_id?: string;
-      item_id?: string;
-      error?: { type?: string; code?: string; message?: string };
+      realtimeSessionWithEvents.on?.('openai_server_event_received', (payload: unknown) => {
+        const event = payload as {
+          type?: string;
+          response_id?: string;
+          item_id?: string;
+          error?: { type?: string; code?: string; message?: string };
+        };
+        if (!event?.type) return;
+        if (
+          event.type === 'session.updated' ||
+          event.type === 'response.created' ||
+          event.type === 'response.done' ||
+          event.type === 'response.output_item.added' ||
+          event.type === 'conversation.item.added' ||
+          event.type === 'conversation.item.created' ||
+          event.type === 'conversation.item.input_audio_transcription.completed' ||
+          event.type === 'conversation.item.input_audio_transcription.failed' ||
+          event.type === 'response.output_audio.delta' ||
+          event.type === 'response.output_audio.done' ||
+          event.type === 'response.audio.delta' ||
+          event.type === 'response.audio.done' ||
+          event.type === 'input_audio_buffer.speech_started' ||
+          event.type === 'input_audio_buffer.speech_stopped' ||
+          event.type === 'error'
+        ) {
+          log.info(
+            {
+              roomName: input.roomName,
+              eventType: event.type,
+              responseId: event.response_id ?? null,
+              itemId: event.item_id ?? null,
+              error: event.error ?? null,
+            },
+            'livekit_native_openai_server_event_received',
+          );
+        }
+      });
+
+      realtimeSessionWithEvents.on?.('error', (payload: unknown) => {
+        log.error({ err: payload, roomName: input.roomName }, 'livekit_native_openai_realtime_session_error');
+      });
+
+      return realtimeSession;
     };
-    if (!event?.type) return;
-    if (
-      event.type === 'session.updated' ||
-      event.type === 'response.created' ||
-      event.type === 'response.done' ||
-      event.type === 'response.output_item.added' ||
-      event.type === 'conversation.item.added' ||
-      event.type === 'conversation.item.created' ||
-      event.type === 'conversation.item.input_audio_transcription.completed' ||
-      event.type === 'conversation.item.input_audio_transcription.failed' ||
-      event.type === 'response.output_audio.delta' ||
-      event.type === 'response.output_audio.done' ||
-      event.type === 'response.audio.delta' ||
-      event.type === 'response.audio.done' ||
-      event.type === 'input_audio_buffer.speech_started' ||
-      event.type === 'input_audio_buffer.speech_stopped' ||
-      event.type === 'error'
-    ) {
-      log.info(
-        {
-          roomName: input.roomName,
-          eventType: event.type,
-          responseId: event.response_id ?? null,
-          itemId: event.item_id ?? null,
-          error: event.error ?? null,
-        },
-        'livekit_native_openai_server_event_received',
-      );
-    }
-  });
+  }
 
   const agent = new agentVoice.Agent({
     instructions: compactSystemInstruction(input.systemPrompt),
