@@ -2,6 +2,7 @@ import { withLogContext } from '@/src/backend/observability/logger';
 import { parseRealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
 import { runLiveKitRoomRuntime } from '@/src/agent/realtime/livekit-room-runtime';
 import { runLiveKitNativeGeminiRuntime } from '@/src/agent/realtime/livekit-native-room-runtime';
+import { runLiveKitNativeOpenAIRuntime } from '@/src/agent/realtime/livekit-native-openai-room-runtime';
 import { createInboundAgentSession, type AgentToolName } from '@/src/agent/runtime/session';
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
 import type { ToolError } from '@/src/backend/domain/types';
@@ -182,6 +183,7 @@ async function main() {
 
   const runtimeMode = process.env.AGENT_RUNTIME_MODE;
   const useNativeGemini = runtimeMode === 'livekit_native_gemini';
+  const useNativeOpenAI = runtimeMode === 'livekit_native_openai';
 
   const runtimeCallbacks = {
     onUserTranscript: async (text: string) => {
@@ -235,6 +237,9 @@ async function main() {
   if (useNativeGemini) {
     log.info({ roomName: parsed.roomName }, 'agent_worker_using_livekit_native_gemini_runtime');
     await runLiveKitNativeGeminiRuntime(parsed, runtimeCallbacks);
+  } else if (useNativeOpenAI) {
+    log.info({ roomName: parsed.roomName }, 'agent_worker_using_livekit_native_openai_runtime');
+    await runLiveKitNativeOpenAIRuntime(parsed);
   } else {
     await runLiveKitRoomRuntime(parsed, runtimeCallbacks);
   }

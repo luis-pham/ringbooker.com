@@ -223,10 +223,12 @@ export async function createOpenAIRealtimeVoiceBridge(
     switch (event.type) {
       case 'response.created': {
         responsePending = true;
+        log.info({ responseId: asString((event as { response?: { id?: unknown } }).response?.id) }, 'openai_realtime_response_created');
         return;
       }
       case 'response.done': {
         responsePending = false;
+        log.info({ responseId: asString((event as { response?: { id?: unknown } }).response?.id) }, 'openai_realtime_response_done');
         return;
       }
       case 'conversation.item.input_audio_transcription.completed': {
@@ -434,6 +436,7 @@ export async function createOpenAIRealtimeVoiceBridge(
     sendUserText: (text: string) => {
       const trimmed = text.trim();
       if (!trimmed || closed) return;
+      log.info({ textPreview: trimmed.slice(0, 180) }, 'openai_realtime_send_user_text');
       sendEvent({
         type: 'conversation.item.create',
         item: {

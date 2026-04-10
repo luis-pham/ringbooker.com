@@ -36,6 +36,7 @@ import { TelnyxTelephonyService } from '@/src/backend/adapters/telnyx/telephony-
 import { PaddleBillingProvider } from '@/src/backend/adapters/paddle/billing-provider';
 import { LiveKitRealtimeRuntime } from '@/src/agent/realtime/livekit-gemini-runtime';
 import { LiveKitNativeGeminiRuntime } from '@/src/agent/realtime/livekit-native-gemini-runtime';
+import { LiveKitNativeOpenAIRuntime } from '@/src/agent/realtime/livekit-native-openai-runtime';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 import { getEnv } from '@/src/backend/config/env';
 import { createSupabaseServiceClient } from '@/src/backend/db/supabase-client';
@@ -65,7 +66,8 @@ function getAgentTransportMode(): AgentTransportMode {
   if (process.env.AGENT_TRANSPORT === 'livekit') return 'livekit';
   return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' ||
     process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini' ||
-    process.env.AGENT_RUNTIME_MODE === 'livekit_openai'
+    process.env.AGENT_RUNTIME_MODE === 'livekit_openai' ||
+    process.env.AGENT_RUNTIME_MODE === 'livekit_native_openai'
     ? 'livekit'
     : 'mock';
 }
@@ -75,7 +77,9 @@ function getAgentVoiceProviderMode(): AgentVoiceProviderMode {
   if (configured === 'gemini_live' || configured === 'openai_realtime' || configured === 'none') {
     return configured;
   }
-  if (process.env.AGENT_RUNTIME_MODE === 'livekit_openai') return 'openai_realtime';
+  if (process.env.AGENT_RUNTIME_MODE === 'livekit_openai' || process.env.AGENT_RUNTIME_MODE === 'livekit_native_openai') {
+    return 'openai_realtime';
+  }
   return process.env.AGENT_RUNTIME_MODE === 'livekit_gemini' || process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini'
     ? 'gemini_live'
     : 'none';
@@ -208,9 +212,13 @@ export function createBackendRuntime() {
             voiceModel: process.env.AGENT_VOICE_MODEL?.trim() || getEnv().AGENT_GEMINI_MODEL,
           } as const;
 
-          return process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini'
-            ? new LiveKitNativeGeminiRuntime(sharedConfig)
-            : new LiveKitRealtimeRuntime(sharedConfig);
+          if (process.env.AGENT_RUNTIME_MODE === 'livekit_native_gemini') {
+            return new LiveKitNativeGeminiRuntime(sharedConfig);
+          }
+          if (process.env.AGENT_RUNTIME_MODE === 'livekit_native_openai') {
+            return new LiveKitNativeOpenAIRuntime(sharedConfig);
+          }
+          return new LiveKitRealtimeRuntime(sharedConfig);
         })()
       : new MockRealtimeAgentRuntime();
   const billingProvider =
