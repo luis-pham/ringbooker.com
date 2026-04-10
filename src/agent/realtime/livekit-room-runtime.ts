@@ -723,6 +723,13 @@ export async function runLiveKitRoomRuntime(
     const triggerInitialGreeting = () => {
       if (!bridge || initialGreetingSent) return;
       initialGreetingSent = true;
+      log.info(
+        {
+          roomName: input.roomName,
+          voiceProvider: currentVoiceProvider,
+        },
+        'livekit_initial_greeting_triggered',
+      );
       setTimeout(() => {
         bridge?.sendUserText(initialGreetingPrompt);
       }, 300);
@@ -835,6 +842,13 @@ export async function runLiveKitRoomRuntime(
               if (currentVoiceProvider === 'openai_realtime' && bridge?.commitUserAudioTurn) {
                 openAiTurnCommitTimer = setTimeout(() => {
                   if (participantDisconnectedAtMs) return;
+                  log.info(
+                    {
+                      roomName: input.roomName,
+                      voiceProvider: currentVoiceProvider,
+                    },
+                    'livekit_openai_local_endpoint_commit_triggered',
+                  );
                   bridge?.commitUserAudioTurn?.();
                   openAiTurnCommitTimer = null;
                 }, resolveOpenAIFallbackCommitDelayMs());

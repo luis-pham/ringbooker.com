@@ -456,6 +456,7 @@ export async function createOpenAIRealtimeVoiceBridge(
     commitUserAudioTurn: () => {
       if (closed || responsePending) return;
       responsePending = true;
+      log.info({}, 'openai_realtime_user_audio_turn_committed');
       sendEvent({
         type: 'input_audio_buffer.commit',
       });
