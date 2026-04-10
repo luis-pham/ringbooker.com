@@ -290,6 +290,16 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     session?: () => RealtimeEventEmitter;
   };
   const originalSessionFactory = llmWithSessionFactory.session?.bind(llm);
+  log.info(
+    {
+      roomName: input.roomName,
+      llmConstructorName:
+        (llm as { constructor?: { name?: string } }).constructor?.name ?? 'unknown',
+      typeofSession: typeof llmWithSessionFactory.session,
+      willPatchRealtimeSession: Boolean(originalSessionFactory),
+    },
+    'livekit_native_openai_llm_constructed',
+  );
   if (originalSessionFactory) {
     llmWithSessionFactory.session = () => {
       log.info({ roomName: input.roomName }, 'livekit_native_openai_realtime_session_factory_called');
@@ -517,6 +527,16 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
       return realtimeSession;
     };
+  } else {
+    log.error(
+      {
+        roomName: input.roomName,
+        llmConstructorName:
+          (llm as { constructor?: { name?: string } }).constructor?.name ?? 'unknown',
+        typeofSession: typeof llmWithSessionFactory.session,
+      },
+      'livekit_native_openai_realtime_session_method_missing_openai_plugin_mismatch',
+    );
   }
 
   /** Realtime session is not fully wired during Agent.onEnter; greeting runs after session.start() resolves. */
