@@ -99,10 +99,15 @@ nav{position:sticky;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255
 .plan li::before{content:'✓';color:var(--purple);font-weight:800}
 .band{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .note-box{padding:22px;border-radius:22px;background:#fff;border:1px solid var(--border);box-shadow:var(--shadow)}
+.note-box-spaced{margin-top:18px}
 .note-box h4{font-size:15px;margin-bottom:10px}
 .note-box p,.note-box li{font-size:13.5px;color:var(--text-gray);line-height:1.65}
 .note-box ul{padding-left:18px}
 .formshell{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:28px;box-shadow:var(--shadow)}
+.contact-title-tight{margin-bottom:8px}
+.contact-title-spaced{margin-bottom:10px}
+.contact-honeypot{display:none}
+.contact-form-actions{margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .field{display:flex;flex-direction:column;gap:8px}
 .field label{font-size:14px;font-weight:700;color:var(--text-dark)}
@@ -349,7 +354,7 @@ export function MarketingContactTemplate() {
             <div className="container">
               <div className="grid-2">
                 <div className="formshell">
-                  <h3 style={{ marginBottom: 8 }}>Book a demo</h3>
+                  <h3 className="contact-title-tight">Book a demo</h3>
                   <p className="sub">Submit your business details and our team will follow up with a tailored walkthrough.</p>
                   <form id="contactRequestForm">
                     <div className="form-grid">
@@ -386,10 +391,10 @@ export function MarketingContactTemplate() {
                         />
                       </div>
                       <div className="field full"><label htmlFor="contactBestTime">Best time for a demo</label><input id="contactBestTime" placeholder="Weekdays after 3 PM PST" required /></div>
-                      <div className="field full" style={{ display: 'none' }}><label htmlFor="contactWebsite">Website</label><input id="contactWebsite" autoComplete="off" tabIndex={-1} /></div>
+                      <div className="field full contact-honeypot"><label htmlFor="contactWebsite">Website</label><input id="contactWebsite" autoComplete="off" tabIndex={-1} /></div>
                       <div className="field full"><div id="contactTurnstileMount" /></div>
                     </div>
-                    <div style={{ marginTop: 18, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div className="contact-form-actions">
                       <button id="contactSubmitButton" type="submit" className="btn-dark">Submit request</button>
                       <span className="helper" id="contactHelper">Protected by captcha and multi-layer rate limits.</span>
                     </div>
@@ -397,13 +402,13 @@ export function MarketingContactTemplate() {
                 </div>
 
                 <div className="card">
-                  <h3 style={{ marginBottom: 10 }}>What happens after you submit</h3>
+                  <h3 className="contact-title-spaced">What happens after you submit</h3>
                   <div className="mini-list">
                     <div className="mini-item"><div className="mini-icon">1</div><div><strong>Quick qualification</strong><div className="helper">We review business type, call volume, and setup needs.</div></div></div>
                     <div className="mini-item"><div className="mini-icon">2</div><div><strong>Live walkthrough</strong><div className="helper">We show how RingBooker handles calls, booking, and follow-up.</div></div></div>
                     <div className="mini-item"><div className="mini-icon">3</div><div><strong>Trial or rollout</strong><div className="helper">Start on standard plans or map custom implementation.</div></div></div>
                   </div>
-                  <div className="note-box" style={{ marginTop: 18 }}>
+                  <div className="note-box note-box-spaced">
                     <h4>Good fit right now</h4>
                     <p>Nail shops, hair salons, spas, med spas, and beauty clinics that need stronger call coverage without extra front-desk headcount.</p>
                   </div>

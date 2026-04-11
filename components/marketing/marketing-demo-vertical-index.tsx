@@ -19,6 +19,11 @@ const styles = [
     .demo-card{background:#fff;border:1px solid var(--border);border-radius:26px;padding:22px;box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:270px;transition:.22s;text-decoration:none;color:inherit}
     .demo-card:hover{transform:translateY(-4px);border-color:#DDD6FE;box-shadow:0 22px 54px rgba(124,58,237,.14)}
     .demo-card-mark{width:44px;height:44px;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:900;margin-bottom:16px}
+    .demo-card-mark-nail-salon{background:#7C3AED}
+    .demo-card-mark-hair-salon{background:#B45309}
+    .demo-card-mark-day-spa{background:#0D9488}
+    .demo-card-mark-med-spa{background:#4F46E5}
+    .demo-card-mark-beauty-clinic{background:#A21CAF}
     .demo-card h2{font-size:20px;line-height:1.18;margin:0 0 9px;letter-spacing:-.45px}
     .demo-card p{font-size:13px;line-height:1.6;margin:0 0 16px;text-align:left}
     .prompt-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto}
@@ -52,7 +57,7 @@ export function MarketingDemoVerticalIndexTemplate() {
                 const vertical = DEMO_VERTICALS[slug];
                 return (
                   <Link key={slug} href={`/demo/${slug}`} className="demo-card">
-                    <div className="demo-card-mark" style={{ background: vertical.accent }}>
+                    <div className={`demo-card-mark demo-card-mark-${slug}`}>
                       {vertical.icon}
                     </div>
                     <h2>{vertical.businessType.replace('-', ' ')}</h2>

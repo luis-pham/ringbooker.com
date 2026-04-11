@@ -1,6 +1,7 @@
+import Image from 'next/image';
+
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
-import { HomePricingToggleClient } from '@/components/marketing/home-pricing-toggle-client';
 
 
 const HOME_FAQS = [
@@ -141,7 +142,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 	.leak-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:0 10px 30px rgba(17,24,39,.04)}
 	.leak-icon{font-size:26px;margin-bottom:10px;text-align:center}
-	.leak-card h3{font-size:17px;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px}
+	.leak-card h3{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px;text-align:center}
 	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}
 	.compare-section{padding:88px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
 	.compare-grid{display:grid;gap:0;margin-top:42px;border:1px solid #E5E7EB;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 14px 38px rgba(17,24,39,.05)}
@@ -167,7 +168,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .fc{position:absolute;background:#fff;border-radius:var(--r-md);padding:14px 18px;box-shadow:0 8px 28px rgba(0,0,0,.09);z-index:4;opacity:0}
 .fc-1{top:30px;left:-60px;animation:fc-enter-left .7s cubic-bezier(.22,1,.36,1) .2s forwards,flt 4s ease-in-out 1s infinite}
 .fc-2{top:40px;right:-50px;animation:fc-enter-right .7s cubic-bezier(.22,1,.36,1) .4s forwards,flt 4s ease-in-out 1.3s infinite}
-.fc-3{bottom:100px;left:-80px;animation:fc-enter-left .7s cubic-bezier(.22,1,.36,1) .6s forwards,flt 4s ease-in-out 1.8s infinite}
+.fc-3{bottom:100px;left:-80px;min-width:170px;animation:fc-enter-left .7s cubic-bezier(.22,1,.36,1) .6s forwards,flt 4s ease-in-out 1.8s infinite}
 .fc-4{bottom:120px;right:-60px;animation:fc-enter-right .7s cubic-bezier(.22,1,.36,1) .8s forwards,flt 4s ease-in-out 2.1s infinite}
 @keyframes fc-enter-left{0%{opacity:0;transform:translateX(-40px) translateY(12px)}100%{opacity:1;transform:translateX(0) translateY(0)}}
 @keyframes fc-enter-right{0%{opacity:0;transform:translateX(40px) translateY(12px)}100%{opacity:1;transform:translateX(0) translateY(0)}}
@@ -175,6 +176,9 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .fc-big{font-size:26px;font-weight:800;color:var(--purple)}
 .fc-big.green{color:#10B981}
 .fc-sm{font-size:11px;color:var(--text-gray);margin-top:2px}
+.fc-mini{font-size:11px;color:var(--text-light)}
+.fc-mini-top{margin-bottom:6px}
+.fc-mini-bottom{margin-top:5px}
 .fc-tag{display:inline-flex;align-items:center;gap:5px;background:var(--purple-ultra);color:var(--purple-dark);font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-pill);margin-top:5px}
 .fc-tag.g{background:#D1FAE5;color:#065F46}
 .wv{display:flex;align-items:center;gap:2px;height:24px}
@@ -198,6 +202,9 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 @keyframes glow-pulse{0%,100%{opacity:.7;transform:translate(-50%,-60%) scale(1)}50%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}}
 
 .vc-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1;padding:10px 20px 20px}
+.vc-mini-status{display:flex;justify-content:space-between;width:100%;margin-bottom:16px}
+.vc-mini-time{font-size:14px;font-weight:700;color:#fff}
+.vc-mini-icons{font-size:10px;color:rgba(255,255,255,.6)}
 .vc-label{font-size:11px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
 .vc-name{font-size:18px;font-weight:700;color:#fff;margin-bottom:4px}
 .vc-timer{font-size:14px;color:rgba(255,255,255,.45);margin-bottom:20px;font-variant-numeric:tabular-nums}
@@ -242,7 +249,11 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 
 /* ─── SECTION SHARED ─── */
 .sec-label{font-size:12.5px;font-weight:700;color:var(--purple);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;text-align:center}
+.sec-label-left{text-align:left}
+.sec-label-center{text-align:center}
+.section-label-wrap{text-align:center;margin-bottom:4px}
 .sec-title{font-size:clamp(32px,4vw,48px);font-weight:800;line-height:1.12;letter-spacing:-1.6px;text-align:center;margin-bottom:14px}
+.sec-title-air{margin-bottom:60px}
 .sec-sub{font-size:16px;color:var(--text-gray);text-align:center;margin-bottom:52px;line-height:1.65}
 .emphasis-5min{color:var(--purple-dark);font-weight:800}
 
@@ -260,6 +271,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .deep-section{padding:88px 48px 0}
 .deep-section-confirmation{padding:27px 48px}
 .deep-wrap{padding:0 48px;max-width:1200px;margin:0 auto}
+.deep-wrap-flush{padding:0}
 .deep-s1{padding:40px 0 27px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
 .deep-s1 .d-text h2,.deep-s2-outer .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:16px}
 .deep-s1 .d-text p,.deep-s2-outer .d-text p{font-size:14.5px;color:var(--text-gray);line-height:1.72;margin-bottom:24px}
@@ -283,6 +295,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .linechart-svg-wrap{position:relative;height:140px;margin:0 -1px}
 .linechart-svg-wrap svg{width:100%;height:100%}
 .x-labels{display:flex;justify-content:space-between;padding:10px 28px 20px;font-size:14px;color:var(--text-light);font-weight:500}
+.x-label-active{font-weight:700;color:#111}
 .deep-s2-outer{background:#EDF9F4;border-radius:var(--r-lg);padding:60px 52px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
 .convo-card{background:#fff;border-radius:var(--r-lg);padding:26px 26px 30px;box-shadow:0 4px 24px rgba(0,0,0,.06);position:relative}
 .convo-avatars{display:flex;margin-bottom:20px}
@@ -323,6 +336,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .plan-name{font-size:16.5px;font-weight:700;margin-bottom:5px}
 .plan-desc{font-size:12.5px;color:var(--text-gray);margin-bottom:16px;line-height:1.5}
 .plan-price{font-size:40px;font-weight:800;letter-spacing:-2px;margin-bottom:5px}
+.plan-price-custom{font-size:30px;letter-spacing:-1px}
 .plan-price span{font-size:14px;font-weight:500;color:var(--text-gray);letter-spacing:0}
 .plan-div{height:1px;background:var(--border);margin:16px 0}
 .plan-feats{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:22px;flex:1}
@@ -556,6 +570,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .cta-text p{font-size:14px;color:rgba(255,255,255,.75);line-height:1.65;max-width:380px}
 .cta-actions{display:flex;flex-direction:column;gap:10px;position:relative;z-index:2;min-width:210px}
 .btn-white{background:#fff;color:var(--purple-dark);padding:13px 26px;border-radius:var(--r-pill);font-size:14.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:transform .15s;justify-content:center}
+.btn-white svg{width:16px;height:16px;fill:var(--purple-dark)}
 .btn-white:hover{transform:scale(1.04)}
 .btn-ghost-w{background:rgba(255,255,255,.14);color:#fff;padding:13px 26px;border-radius:var(--r-pill);font-size:14px;font-weight:600;text-decoration:none;text-align:center;border:1px solid rgba(255,255,255,.28);transition:background .2s;display:block}
 .btn-ghost-w:hover{background:rgba(255,255,255,.22)}
@@ -567,6 +582,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .cta-vc-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1;padding:12px 14px 14px}
 .cta-vc-status{display:flex;justify-content:space-between;width:100%;margin-bottom:10px}
 .cta-vc-status span{font-size:10px;color:rgba(255,255,255,.6);font-weight:600}
+.cta-live-badge{font-size:9px;padding:2px 8px;margin-bottom:8px}
 .cta-vc-label{font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
 .cta-vc-name{font-size:14px;font-weight:700;color:#fff;margin-bottom:2px}
 .cta-vc-timer{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:14px}
@@ -611,9 +627,19 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .cta-phone-wrap{display:none}
   nav .nav-links{display:none}
   nav,footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation,.deep-wrap{padding-left:22px;padding-right:22px}
+  nav,.hero-badge,.industry-tag{backdrop-filter:none}
+  .hero-blob,.vc-glow,.vc-ring,.user-image-corners::before,.user-image-corners::after{display:none}
+  .pulse-dot,.wv span,.vc-wave span,.live-dot,.cta-vc-wave span{animation:none}
   .hero-visual{height:480px}
   .phone-frame{width:230px;height:460px}
   .fc{display:none}
+}
+
+@media(max-width:640px){
+  .hero{min-height:auto;padding-top:96px;padding-bottom:36px}
+  .hero-visual{height:420px;margin-top:34px}
+  .phone-frame{width:216px;height:432px;box-shadow:0 26px 48px rgba(0,0,0,.2)}
+  .hero-sub{margin-bottom:26px}
 }
 .legacy-marketing > nav,
 .legacy-marketing > footer,
@@ -652,12 +678,6 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 
 const scripts: string[] = [
   String.raw`
-// Scroll reveal
-const obs = new IntersectionObserver(es => es.forEach(e => {
-  if(e.isIntersecting) e.target.classList.add('vis')
-}), { threshold:.1, rootMargin:'0px 0px -40px 0px' })
-document.querySelectorAll('.reveal').forEach(el => obs.observe(el))
-
 // Pricing toggle
 function setPrice(m) {
   const mo = m === 'monthly'
@@ -675,17 +695,32 @@ window.__ringbookerSetPrice = setPrice
 
 // Voice call timer
 let secs = 24
-setInterval(() => {
+let timerId = null
+const updateVoiceTimer = () => {
   secs++
   const m = String(Math.floor(secs/60)).padStart(2,'0')
   const s = String(secs%60).padStart(2,'0')
   const el = document.getElementById('vc-timer')
   if(el) el.textContent = m + ':' + s
-}, 1000)
+}
+const startVoiceTimer = () => {
+  if (timerId || document.hidden || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  timerId = window.setInterval(updateVoiceTimer, 1000)
+}
+const stopVoiceTimer = () => {
+  if (!timerId) return
+  window.clearInterval(timerId)
+  timerId = null
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopVoiceTimer()
+  else startVoiceTimer()
+})
+startVoiceTimer()
 
 // Waveform trigger
 const wfEl = document.getElementById('wfbig')
-if(wfEl) {
+if(wfEl && 'IntersectionObserver' in window) {
   const wfObs = new IntersectionObserver(es => {
     es.forEach(e => { if(e.isIntersecting) wfEl.classList.add('playing') })
   }, { threshold:.4 })
@@ -855,7 +890,6 @@ export function MarketingHomeTemplate() {
       <>
         <MarketingChromeStyles />
         <MarketingHeader />
-        <HomePricingToggleClient />
         <div className="legacy-marketing">
         {/* NAV */}
         <nav>
@@ -913,10 +947,10 @@ export function MarketingHomeTemplate() {
                 <div className="fc-sm">Busy desk covered</div>
                 <div className="fc-tag g">↩️ Text-back ready</div>
               </div>
-              <div className="fc fc-3" style={{minWidth: 170}}>
-                <div style={{fontSize: 11, color: 'var(--text-light)', marginBottom: 6}}>🎙 AI Phone Agent Active</div>
+              <div className="fc fc-3">
+                <div className="fc-mini fc-mini-top">🎙 AI Phone Agent Active</div>
                 <div className="wv"><span /><span /><span /><span /><span /><span /><span /></div>
-                <div style={{fontSize: 11, color: 'var(--text-light)', marginTop: 5}}>Booking appointment…</div>
+                <div className="fc-mini fc-mini-bottom">Booking appointment…</div>
               </div>
               <div className="fc fc-4">
                 <div className="fc-big">After-hours</div>
@@ -931,9 +965,9 @@ export function MarketingHomeTemplate() {
                     <div className="vc-glow" />
                     <div className="vc-content">
                       {/* Status bar */}
-                      <div style={{display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: 16}}>
-                        <span style={{fontSize: 14, fontWeight: 700, color: '#fff'}}>9:41</span>
-                        <span style={{fontSize: 10, color: 'rgba(255,255,255,.6)'}}>▲⬛</span>
+                      <div className="vc-mini-status">
+                        <span className="vc-mini-time">9:41</span>
+                        <span className="vc-mini-icons">▲⬛</span>
                       </div>
                       {/* Live badge */}
                       <div className="vc-live-badge">
@@ -1055,7 +1089,7 @@ export function MarketingHomeTemplate() {
               <div className="industries-track">
               <a href="/nail-salon" className="industry-card" data-index={0}>
                 <div className="industry-thumb">
-                  <img src="/images/nail.jpeg" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" loading="lazy" />
+                  <Image src="/images/nail.jpeg" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Nail</span>
                 </div>
                 <div className="industry-title">Nail Salon</div>
@@ -1064,7 +1098,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/hair-salon" className="industry-card" data-index={1}>
                 <div className="industry-thumb">
-                  <img src="/images/hair_shop.jpeg" alt="Hair salon stylist performing color treatment — AI receptionist answers overflow calls for hair salon bookings and reschedules" loading="lazy" />
+                  <Image src="/images/hair_shop.jpeg" alt="Hair salon stylist performing color treatment — AI receptionist answers overflow calls for hair salon bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Hair</span>
                 </div>
                 <div className="industry-title">Hair Salon</div>
@@ -1073,7 +1107,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/spa" className="industry-card" data-index={2}>
                 <div className="industry-thumb">
-                  <img src="/images/spa.jpeg" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" loading="lazy" />
+                  <Image src="/images/spa.jpeg" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Spa</span>
                 </div>
                 <div className="industry-title">Spa / Day Spa</div>
@@ -1082,7 +1116,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/med-spa" className="industry-card" data-index={3}>
                 <div className="industry-thumb">
-                  <img src="/images/med_spa.jpeg" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" loading="lazy" />
+                  <Image src="/images/med_spa.jpeg" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Med Spa</span>
                 </div>
                 <div className="industry-title">Med Spa</div>
@@ -1091,7 +1125,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/beauty-clinic" className="industry-card" data-index={4}>
                 <div className="industry-thumb">
-                  <img src="/images/beauty_clinic.jpeg" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" loading="lazy" />
+                  <Image src="/images/beauty_clinic.jpeg" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Clinic</span>
                 </div>
                 <div className="industry-title">Beauty / Aesthetic Clinic</div>
@@ -1188,9 +1222,9 @@ export function MarketingHomeTemplate() {
         </section>
         {/* DEEP SECTION 1 — Line chart */}
         <section className="deep-section">
-          <div style={{textAlign: 'center', marginBottom: 4}}><div className="sec-label">24/7 Availability</div></div>
-          <h2 className="sec-title reveal" style={{marginBottom: 60}}>After-hours and overflow<br />calls still get a clear path.</h2>
-          <div className="deep-wrap" style={{padding: 0}}>
+          <div className="section-label-wrap"><div className="sec-label">24/7 Availability</div></div>
+          <h2 className="sec-title sec-title-air reveal">After-hours and overflow<br />calls still get a clear path.</h2>
+          <div className="deep-wrap deep-wrap-flush">
             <div className="deep-s1 reveal">
               {/* Chart */}
               <div className="chart-wrap">
@@ -1216,7 +1250,7 @@ export function MarketingHomeTemplate() {
                   </svg>
                 </div>
                 <div className="x-labels">
-                  <span>01</span><span>05</span><span>10</span><span style={{fontWeight: 700, color: '#111'}}>15</span><span>20</span>
+                  <span>01</span><span>05</span><span>10</span><span className="x-label-active">15</span><span>20</span>
                 </div>
               </div>
               {/* Text */}
@@ -1234,7 +1268,7 @@ export function MarketingHomeTemplate() {
         </section>
         {/* DEEP SECTION 2 — Confirmation */}
         <section className="deep-section-confirmation">
-          <div className="deep-wrap" style={{padding: 0}}>
+          <div className="deep-wrap deep-wrap-flush">
             <div className="deep-s2-outer reveal">
               <div className="d-text">
                 <h2>Missed callers get a<br />fast way back.</h2>
@@ -1262,7 +1296,7 @@ export function MarketingHomeTemplate() {
         {/* TESTIMONIALS */}
         <section className="testimonials" id="testimonials">
           <div className="test-inner">
-            <div className="sec-label" style={{textAlign: 'center'}}>Real Business Users</div>
+            <div className="sec-label sec-label-center">Real Business Users</div>
             <h2 className="sec-title reveal">Beauty teams that<br />speak volumes.</h2>
             <div className="home-carousel reveal" id="usersCarousel">
               <div className="test-grid home-carousel-track">
@@ -1312,13 +1346,13 @@ export function MarketingHomeTemplate() {
           <div className="user-preview-inner">
             <div className="user-grid">
               <div className="user-copy">
-                <div className="sec-label" style={{textAlign: 'left'}}>Call Context</div>
+                <div className="sec-label sec-label-left">Call Context</div>
                 <h2>Know who called, what they needed, and who needs follow-up.</h2>
                 <p>RingBooker keeps the useful context — call summaries, booking intent, preferred provider notes, and callback needs — without asking your team to manage another booking platform.</p>
               </div>
               <div className="user-shot">
                 <div className="user-shell user-image-corners">
-                  <img src="images/shop_panel.jpg" alt="RingBooker user dashboard preview" className="user-preview-img" />
+                  <Image src="/images/shop_panel.jpg" alt="RingBooker user dashboard preview" className="user-preview-img" width={2982} height={1718} sizes="(max-width: 960px) calc(100vw - 44px), 520px" quality={70} />
                 </div>
               </div>
             </div>
@@ -1327,7 +1361,7 @@ export function MarketingHomeTemplate() {
         {/* PRICING */}
         <section className="pricing" id="pricing">
           <div className="pricing-inner">
-            <div className="sec-label" style={{textAlign: 'center'}}>Pricing</div>
+            <div className="sec-label sec-label-center">Pricing</div>
             <h2 className="sec-title reveal">Start with the coverage you need.</h2>
             <p className="sec-sub reveal">Choose a lightweight phone answering layer now, then upgrade when you want more follow-up, reporting, and team support.</p>
             <div className="price-toggle">
@@ -1369,7 +1403,7 @@ export function MarketingHomeTemplate() {
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Custom</div>
                 <div className="plan-desc">For multi-location teams, higher call volume, or deeper routing and integration needs.</div>
-                <div className="plan-price" style={{fontSize: 30, letterSpacing: '-1px'}}>Custom<span>/contact us</span></div>
+                <div className="plan-price plan-price-custom">Custom<span>/contact us</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Multi-location setup</li>
@@ -1410,7 +1444,7 @@ export function MarketingHomeTemplate() {
               </div>
               <div className="cta-actions">
                 <a href="#pricing" className="btn-white">
-                  <svg viewBox="0 0 24 24" style={{width: 16, height: 16, fill: 'var(--purple-dark)'}}><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
+                  <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
                   Start Free Trial
                 </a>
                 <a href="/demo" className="btn-ghost-w" data-demo-picker>📞 Try Demo Call</a>
@@ -1425,7 +1459,7 @@ export function MarketingHomeTemplate() {
                         <span>9:41</span>
                         <span>▲⬛</span>
                       </div>
-                      <div className="vc-live-badge" style={{fontSize: 9, padding: '2px 8px', marginBottom: 8}}>
+                      <div className="vc-live-badge cta-live-badge">
                         <span className="live-dot" />
                         AI Answering
                       </div>

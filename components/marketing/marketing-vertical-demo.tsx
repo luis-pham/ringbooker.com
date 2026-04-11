@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import Script from 'next/script';
-import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -44,6 +43,11 @@ const styles: string[] = [
   String.raw`
   /* ─── base ─────────────────────────────────────────────── */
   .vd-page{padding-top:80px;background:linear-gradient(160deg,color-mix(in srgb,var(--va) 7%,#fff) 0%,#fff 55%);min-height:100dvh}
+  .vd-theme-nail-salon{--va:#7C3AED}
+  .vd-theme-hair-salon{--va:#B45309}
+  .vd-theme-day-spa{--va:#0D9488}
+  .vd-theme-med-spa{--va:#4F46E5}
+  .vd-theme-beauty-clinic{--va:#A21CAF}
   .vd-wrap{margin:0 auto;padding:18px 20px 56px;display:flex;flex-direction:column}
 
   /* page header (full-width, centered) */
@@ -67,6 +71,7 @@ const styles: string[] = [
 
   /* fields */
   .vd-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+  .vd-field-compact{margin:0}
   .vd-field label{font-size:13px;font-weight:700;color:#374151}
   .vd-field input,.vd-field textarea{width:100%;border:1px solid #E5E7EB;border-radius:13px;padding:11px 13px;font-size:14px;color:#111827;background:#fff;outline:none;transition:border-color .15s;-webkit-appearance:none}
   .vd-field input:focus,.vd-field textarea:focus{border-color:var(--va)}
@@ -93,6 +98,8 @@ const styles: string[] = [
   .vd-svc-name{font-size:13px;font-weight:700;color:#1F2937}
   .vd-svc-dur{font-size:11px;color:#9CA3AF;margin-top:1px}
   .vd-svc-price{width:72px;border:1px solid #E5E7EB;border-radius:9px;padding:7px 8px;text-align:right;font-size:13px;font-weight:700;-webkit-appearance:none}
+  .vd-svc-label{font-size:12px;font-weight:800;color:#6B7280;margin-bottom:8px}
+  .vd-svc-list{display:flex;flex-direction:column;gap:7px}
 
   /* live prompts */
   .vd-prompts-head{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#9CA3AF;margin:16px 0 10px}
@@ -156,6 +163,8 @@ const styles: string[] = [
   .vd-phone{width:min(100%,286px);min-height:500px;margin:0 auto;background:linear-gradient(165deg,#1a0533 0%,#2d1b69 50%,#1a0d3a 100%);border:10px solid #0B0B10;border-radius:42px;padding:22px 18px;position:relative;overflow:hidden;color:#fff;box-shadow:0 34px 70px rgba(17,24,39,.25),0 0 0 1px rgba(255,255,255,.06) inset;display:flex;flex-direction:column}
   .vd-phone::before{content:'';position:absolute;inset:-70px -60px auto auto;width:200px;height:200px;border-radius:50%;background:color-mix(in srgb,var(--va) 35%,transparent)}
   .vd-phone-top{display:flex;justify-content:space-between;color:rgba(255,255,255,.5);font-size:12px;margin-bottom:34px;position:relative}
+  .vd-phone-time{font-weight:700}
+  .vd-phone-icons{font-size:9px}
   .vd-phone-avatar{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--va),color-mix(in srgb,var(--va) 60%,#000));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;margin:0 auto 10px;box-shadow:0 0 0 8px rgba(255,255,255,.07),0 0 32px color-mix(in srgb,var(--va) 40%,transparent);position:relative}
   .vd-phone-name{text-align:center;position:relative;margin-bottom:4px;font-size:17px;font-weight:800}
   .vd-phone-subtitle{color:rgba(255,255,255,.5);font-size:11px;font-weight:700;letter-spacing:.06em;text-align:center;text-transform:uppercase;position:relative;margin-bottom:16px}
@@ -170,6 +179,9 @@ const styles: string[] = [
   .vd-state.ai-answer .vd-state-dot{background:var(--va);box-shadow:0 0 6px color-mix(in srgb,var(--va) 80%,transparent);animation:vdPulse 1.4s infinite}
   .vd-state.ai-answer .vd-state-text{color:#fff}
   .vd-state.ai-answer{border-color:color-mix(in srgb,var(--va) 50%,transparent);background:color-mix(in srgb,var(--va) 15%,transparent)}
+  .vd-state-user-live{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.1)}
+  .vd-state-user-live .vd-state-dot{background:#fff}
+  .vd-state-user-live .vd-state-text{color:#fff}
   /* form card */
   .vd-form-card{border:1px solid #E5E7EB;border-radius:24px;background:#fff;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 
@@ -394,7 +406,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
         <MarketingChromeStyles />
         <MarketingHeader active="demo" />
 
-        <div className="vd-page" style={{ '--va': config.accent } as CSSProperties}>
+        <div className={`vd-page vd-theme-${config.slug}`}>
 
           {/* ══ PAGE HEADER (centered, full-width) ════════════════ */}
           <div className="vd-page-header">
@@ -449,27 +461,27 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   {showAdvanced ? (
                     <div className="vd-adv-body">
                       <div className="vd-2col">
-                        <div className="vd-field" style={{ margin: 0 }}>
+                        <div className="vd-field vd-field-compact">
                           <label htmlFor="vd-city">City / state</label>
                           <input id="vd-city" value={business.city} onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))} />
                         </div>
-                        <div className="vd-field" style={{ margin: 0 }}>
+                        <div className="vd-field vd-field-compact">
                           <label htmlFor="vd-staff">{config.staffLabel}</label>
                           <input id="vd-staff" value={business.staff} placeholder={config.staffPlaceholder} onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))} />
                         </div>
                       </div>
                       <div className="vd-2col">
-                        <div className="vd-field" style={{ margin: 0 }}>
+                        <div className="vd-field vd-field-compact">
                           <label htmlFor="vd-ph">Primary hours</label>
                           <input id="vd-ph" value={business.primaryHours} onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))} />
                         </div>
-                        <div className="vd-field" style={{ margin: 0 }}>
+                        <div className="vd-field vd-field-compact">
                           <label htmlFor="vd-sh">Secondary hours</label>
                           <input id="vd-sh" value={business.secondaryHours} onChange={(e) => setBusiness((c) => ({ ...c, secondaryHours: e.target.value }))} />
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: 12, fontWeight: 800, color: '#6B7280', marginBottom: 8 }}>{config.serviceLabel}</div>
+                        <div className="vd-svc-label">{config.serviceLabel}</div>
                         <div className="vd-tabs">
                           {business.services.map((cat) => (
                             <button key={cat.id} type="button" className={`vd-tab ${selectedCategory === cat.id ? 'on' : ''}`} onClick={() => setSelectedCategory(cat.id)}>
@@ -477,7 +489,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                             </button>
                           ))}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                        <div className="vd-svc-list">
                           {activeCategory?.items.map((item, idx) => (
                             <div className="vd-svc-row" key={`${activeCategory.id}-${item.name}`}>
                               <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
@@ -490,7 +502,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                           ))}
                         </div>
                       </div>
-                      <div className="vd-field" style={{ margin: 0 }}>
+                      <div className="vd-field vd-field-compact">
                         <label htmlFor="vd-notes">Extra context</label>
                         <textarea id="vd-notes" value={business.notes} placeholder={config.safetyNote} onChange={(e) => setBusiness((c) => ({ ...c, notes: e.target.value }))} />
                       </div>
@@ -595,8 +607,8 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
               {/* Phone preview card */}
               <div className="vd-phone">
                 <div className="vd-phone-top">
-                  <span style={{ fontWeight: 700 }}>9:41</span>
-                  <span style={{ fontSize: 9 }}>● ▲ ■</span>
+                  <span className="vd-phone-time">9:41</span>
+                  <span className="vd-phone-icons">● ▲ ■</span>
                 </div>
                 <div className="vd-phone-avatar">{config.icon}</div>
                 <div className="vd-phone-name">{business.businessName || config.defaultBusinessName}</div>
@@ -607,9 +619,9 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                     <span className="vd-state-dot" />
                     <span className="vd-state-text">AI Answering</span>
                   </div>
-                  <div className={`vd-state ${stage === 'live' ? 'ai-answer' : ''}`} style={stage === 'live' ? { borderColor: 'rgba(255,255,255,.25)', background: 'rgba(255,255,255,.1)' } : {}}>
-                    <span className="vd-state-dot" style={stage === 'live' ? { background: '#fff' } : {}} />
-                    <span className="vd-state-text" style={stage === 'live' ? { color: '#fff' } : {}}>User Speaking</span>
+                  <div className={`vd-state ${stage === 'live' ? 'ai-answer vd-state-user-live' : ''}`}>
+                    <span className="vd-state-dot" />
+                    <span className="vd-state-text">User Speaking</span>
                   </div>
                   <div className="vd-state">
                     <span className="vd-state-dot" />

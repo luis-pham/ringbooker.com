@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { siteConfig } from '@/lib/site';
+import { buildAlternates, siteConfig } from '@/lib/site';
+
+const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
 
 export const metadata: Metadata = {
   title: {
@@ -10,6 +12,7 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   keywords: siteConfig.keywords,
   metadataBase: new URL(siteConfig.url),
+  alternates: buildAlternates('/'),
   applicationName: siteConfig.name,
   category: 'business software',
   openGraph: {
@@ -55,10 +58,7 @@ const organizationSchema = {
     url: `${siteConfig.url}/contact`,
     availableLanguage: ['English', 'Vietnamese'],
   },
-  sameAs: [
-    'https://www.linkedin.com/company/ringbooker',
-    'https://twitter.com/ringbooker',
-  ],
+  sameAs: socialProfileUrls,
 };
 
 const websiteSchema = {

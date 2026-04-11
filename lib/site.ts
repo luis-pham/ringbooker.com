@@ -19,7 +19,25 @@ export const siteConfig = {
     'voice AI for salons',
     'RingBooker',
   ],
+  socialLinks: {
+    linkedin: process.env.NEXT_PUBLIC_LINKEDIN_URL?.trim() || 'https://www.linkedin.com/company/ringbooker',
+    twitter: process.env.NEXT_PUBLIC_TWITTER_URL?.trim() || 'https://twitter.com/ringbooker',
+    // Placeholders: add the real profile URLs here or via NEXT_PUBLIC_* env vars when ready.
+    facebook: process.env.NEXT_PUBLIC_FACEBOOK_URL?.trim() || '',
+    instagram: process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim() || '',
+    youtube: process.env.NEXT_PUBLIC_YOUTUBE_URL?.trim() || '',
+  },
 };
+
+export function buildAlternates(path = '/'): Metadata['alternates'] {
+  return {
+    canonical: path,
+    languages: {
+      'en-US': path,
+      'x-default': path,
+    },
+  };
+}
 
 export function buildMetadata({
   title,
@@ -37,7 +55,7 @@ export function buildMetadata({
     description,
     keywords: siteConfig.keywords,
     metadataBase: new URL(siteConfig.url),
-    alternates: { canonical: path },
+    alternates: buildAlternates(path),
     openGraph: {
       title,
       description,

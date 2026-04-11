@@ -1,8 +1,22 @@
-import { DemoPickerModal } from '@/components/marketing/demo-picker-modal';
+import { DemoPickerLazy } from '@/components/marketing/demo-picker-lazy';
+import { siteConfig } from '@/lib/site';
 
 type MarketingHeaderProps = {
   active?: 'demo' | 'pricing' | 'how-it-works' | 'contact';
 };
+
+const socialIconPaths = {
+  twitter:
+    'M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z',
+  linkedin:
+    'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z',
+  instagram:
+    'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z',
+  facebook:
+    'M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.413c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.49 0-1.956.93-1.956 1.886v2.265h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z',
+  youtube:
+    'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.016 3.016 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.016 3.016 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z',
+} as const;
 
 export function MarketingChromeStyles() {
   return (
@@ -30,6 +44,11 @@ export function MarketingChromeStyles() {
 .mk-footer-inner{max-width:1100px;margin:0 auto}
 .mk-footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:50px}
 .mk-footer-brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;margin-bottom:14px}
+.mk-footer-logo{width:34px;height:34px}
+.mk-footer-logo .mk-nav-ripple-3{width:34px;height:34px}
+.mk-footer-logo .mk-nav-ripple-2{width:26px;height:26px}
+.mk-footer-logo .mk-nav-ripple-core{width:21px;height:21px}
+.mk-footer-logo .mk-nav-ripple-core svg{width:11px;height:11px}
 .mk-footer-desc{font-size:13.5px;color:#6B7280;line-height:1.65;margin-bottom:20px}
 .mk-footer-social{display:flex;gap:10px}
 .mk-soc-btn{width:36px;height:36px;border-radius:50%;border:1px solid #E5E7EB;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;text-decoration:none}
@@ -66,6 +85,11 @@ export function MarketingChromeStyles() {
 .dpm-sub{font-size:14px;color:#6B7280;margin-bottom:22px;line-height:1.6}
 .dpm-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:20px}
 .dpm-card{display:flex;flex-direction:column;gap:2px;padding:14px 14px 28px;border-radius:16px;border:1.5px solid color-mix(in srgb,var(--dpm-accent,#8B5CF6) 25%,#E5E7EB);background:color-mix(in srgb,var(--dpm-accent,#8B5CF6) 5%,#fff);text-decoration:none;transition:all .15s;position:relative;overflow:hidden}
+.dpm-card-nail-salon{--dpm-accent:#7C3AED}
+.dpm-card-hair-salon{--dpm-accent:#B45309}
+.dpm-card-day-spa{--dpm-accent:#0D9488}
+.dpm-card-med-spa{--dpm-accent:#4F46E5}
+.dpm-card-beauty-clinic{--dpm-accent:#A21CAF}
 .dpm-card:hover{border-color:var(--dpm-accent,#8B5CF6);background:color-mix(in srgb,var(--dpm-accent,#8B5CF6) 10%,#fff);transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--dpm-accent,#8B5CF6) 15%,transparent)}
 .dpm-icon{font-size:22px;margin-bottom:5px;display:block}
 .dpm-label{font-size:14px;font-weight:800;color:#111827;display:block}
@@ -160,6 +184,14 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
 }
 
 export function MarketingFooter() {
+  const socialLinks = [
+    { label: 'Twitter', href: siteConfig.socialLinks.twitter, icon: socialIconPaths.twitter },
+    { label: 'LinkedIn', href: siteConfig.socialLinks.linkedin, icon: socialIconPaths.linkedin },
+    { label: 'Facebook', href: siteConfig.socialLinks.facebook, icon: socialIconPaths.facebook },
+    { label: 'Instagram', href: siteConfig.socialLinks.instagram, icon: socialIconPaths.instagram },
+    { label: 'YouTube', href: siteConfig.socialLinks.youtube, icon: socialIconPaths.youtube },
+  ].filter((link) => link.href);
+
   return (
     <>
     <footer className="mk-footer">
@@ -167,26 +199,11 @@ export function MarketingFooter() {
         <div className="mk-footer-grid">
           <div>
             <div className="mk-footer-brand">
-              <div
-                className="mk-nav-logo-icon"
-                style={{ position: 'relative', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-              >
-                <div style={{ position: 'absolute', width: 34, height: 34, borderRadius: '50%', background: '#8B5CF6', opacity: '.1' }} />
-                <div style={{ position: 'absolute', width: 26, height: 26, borderRadius: '50%', background: '#8B5CF6', opacity: '.18' }} />
-                <div
-                  style={{
-                    position: 'absolute',
-                    width: 21,
-                    height: 21,
-                    borderRadius: '50%',
-                    background: '#8B5CF6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1,
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" style={{ width: 11, height: 11, fill: '#fff' }}>
+              <div className="mk-nav-logo-icon mk-footer-logo">
+                <div className="mk-nav-ripple mk-nav-ripple-3" />
+                <div className="mk-nav-ripple mk-nav-ripple-2" />
+                <div className="mk-nav-ripple-core">
+                  <svg viewBox="0 0 24 24">
                     <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
                   </svg>
                 </div>
@@ -196,23 +213,24 @@ export function MarketingFooter() {
             <p className="mk-footer-desc">
               AI phone answering service for salons, nail shops, spas, med spas, and appointment-based businesses. Stop losing after-hours and overflow calls to voicemail.
             </p>
-            <div className="mk-footer-social">
-              <a className="mk-soc-btn" href="/contact">
-                <svg viewBox="0 0 24 24">
-                  <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
-                </svg>
-              </a>
-              <a className="mk-soc-btn" href="/contact">
-                <svg viewBox="0 0 24 24">
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
-                </svg>
-              </a>
-              <a className="mk-soc-btn" href="/contact">
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                </svg>
-              </a>
-            </div>
+            {socialLinks.length > 0 ? (
+              <div className="mk-footer-social">
+                {socialLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    className="mk-soc-btn"
+                    href={link.href}
+                    aria-label={`${siteConfig.name} on ${link.label}`}
+                    rel="me noopener noreferrer"
+                    target="_blank"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d={link.icon} />
+                    </svg>
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="mk-footer-col">
             <h4>Product</h4>
@@ -248,7 +266,7 @@ export function MarketingFooter() {
         </div>
       </div>
     </footer>
-    <DemoPickerModal />
+    <DemoPickerLazy />
     </>
   );
 }

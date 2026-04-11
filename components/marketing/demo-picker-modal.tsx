@@ -1,18 +1,17 @@
 'use client';
 
-import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
 
 const VERTICALS = [
-  { icon: '💅', label: 'Nail Salon', sub: 'Booking, pricing, bilingual', href: '/demo/nail-salon', accent: '#7C3AED' },
-  { icon: '✂️', label: 'Hair Salon', sub: 'Stylist match, color, reschedule', href: '/demo/hair-salon', accent: '#B45309' },
-  { icon: '🧖', label: 'Day Spa', sub: 'Couples, packages, after-hours', href: '/demo/day-spa', accent: '#0D9488' },
-  { icon: '💉', label: 'Med Spa', sub: 'Consultation-first, provider handoff', href: '/demo/med-spa', accent: '#4F46E5' },
-  { icon: '✨', label: 'Beauty Clinic', sub: 'Pre-care, session continuity', href: '/demo/beauty-clinic', accent: '#A21CAF' },
+  { icon: '💅', label: 'Nail Salon', sub: 'Booking, pricing, bilingual', href: '/demo/nail-salon', className: 'dpm-card-nail-salon' },
+  { icon: '✂️', label: 'Hair Salon', sub: 'Stylist match, color, reschedule', href: '/demo/hair-salon', className: 'dpm-card-hair-salon' },
+  { icon: '🧖', label: 'Day Spa', sub: 'Couples, packages, after-hours', href: '/demo/day-spa', className: 'dpm-card-day-spa' },
+  { icon: '💉', label: 'Med Spa', sub: 'Consultation-first, provider handoff', href: '/demo/med-spa', className: 'dpm-card-med-spa' },
+  { icon: '✨', label: 'Beauty Clinic', sub: 'Pre-care, session continuity', href: '/demo/beauty-clinic', className: 'dpm-card-beauty-clinic' },
 ];
 
-export function DemoPickerModal() {
-  const [open, setOpen] = useState(false);
+export function DemoPickerModal({ initialOpen = false }: { initialOpen?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -57,8 +56,7 @@ export function DemoPickerModal() {
             <a
               key={v.href}
               href={v.href}
-              className="dpm-card"
-              style={{ '--dpm-accent': v.accent } as CSSProperties}
+              className={`dpm-card ${v.className}`}
             >
               <span className="dpm-icon">{v.icon}</span>
               <span className="dpm-label">{v.label}</span>

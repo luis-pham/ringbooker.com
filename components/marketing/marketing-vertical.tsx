@@ -41,13 +41,13 @@ const SERVICE_BY_VERTICAL: Record<
   },
 };
 
-type Integration = { name: string; status: 'Live now' | 'Soon'; icon: string; bg: string; fg: string };
+type Integration = { name: string; status: 'Live now' | 'Soon'; icon: string; iconClass: string };
 
 const INTEGRATIONS: Integration[] = [
-  { name: 'Square', status: 'Live now', icon: '■', bg: '#000', fg: '#fff' },
-  { name: 'Vagaro', status: 'Soon', icon: 'V', bg: '#0E9488', fg: '#fff' },
-  { name: 'Mindbody', status: 'Soon', icon: 'M', bg: '#0066CC', fg: '#fff' },
-  { name: 'Booksy', status: 'Soon', icon: 'B', bg: '#F97316', fg: '#fff' },
+  { name: 'Square', status: 'Live now', icon: '■', iconClass: 'bg-black text-white' },
+  { name: 'Vagaro', status: 'Soon', icon: 'V', iconClass: 'bg-teal-600 text-white' },
+  { name: 'Mindbody', status: 'Soon', icon: 'M', iconClass: 'bg-blue-600 text-white' },
+  { name: 'Booksy', status: 'Soon', icon: 'B', iconClass: 'bg-orange-500 text-white' },
 ];
 
 const PRIMARY_CTA_CLASS =
@@ -115,16 +115,14 @@ function IntegrationRow() {
       <div className="flex flex-wrap gap-2">
         {INTEGRATIONS.map((item) => (
           <div key={item.name} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-            <div
-              style={{ background: item.bg, color: item.fg, width: 26, height: 26, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, flexShrink: 0 }}
-            >
+            <div className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg text-[12px] font-black ${item.iconClass}`}>
               {item.icon}
             </div>
             <div>
               <div className="text-[12px] font-bold text-slate-700 leading-tight">{item.name}</div>
               {item.status === 'Live now' ? (
                 <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                  <span className="inline-block h-[5px] w-[5px] rounded-full bg-emerald-500" />
                   Live
                 </div>
               ) : (

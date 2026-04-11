@@ -83,6 +83,7 @@ const styles: string[] = [
     .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .field{display:flex;flex-direction:column;gap:8px}
     .field.full{grid-column:1 / -1}
+    .field-honeypot{display:none}
     .field label{font-size:14px;font-weight:700;color:var(--text-dark)}
     .field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:14px;padding:14px 15px;color:var(--text-dark);background:#fff}
     .field textarea{min-height:90px;resize:vertical}
@@ -630,7 +631,7 @@ export function MarketingDemoTemplate() {
                     <label>Notes for the AI</label>
                     <textarea id="notes" defaultValue={"Please greet me as a new customer and offer an evening slot if available."} />
                   </div>
-                  <div className="field full" style={{ display: 'none' }}>
+                  <div className="field full field-honeypot">
                     <label>Website</label>
                     <input id="websiteField" type="text" autoComplete="off" tabIndex={-1} />
                   </div>

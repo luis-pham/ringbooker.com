@@ -66,6 +66,11 @@ const styles: string[] = [
       box-shadow:0 10px 24px rgba(139,92,246,.24);
     }
     .brand-icon svg{width:13px;height:13px;fill:#fff}
+    .brand-icon-sm{width:32px;height:32px}
+    .brand-icon-sm .r3{width:32px;height:32px}
+    .brand-icon-sm .r2{width:24px;height:24px}
+    .brand-icon-sm .core{width:18px;height:18px}
+    .brand-icon-sm svg{width:10px;height:10px}
 
     .login-wrap{
       flex:1;
@@ -367,11 +372,11 @@ export function MarketingLoginTemplate() {
             <div className="footer-grid">
               <div>
                 <div className="footer-brand">
-                  <div className="brand-icon" style={{width: 32, height: 32}}>
-                    <div className="ripple r3" style={{width: 32, height: 32}} />
-                    <div className="ripple r2" style={{width: 24, height: 24}} />
-                    <div className="core" style={{width: 18, height: 18}}>
-                      <svg viewBox="0 0 24 24" style={{width: 10, height: 10}}><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
+                  <div className="brand-icon brand-icon-sm">
+                    <div className="ripple r3" />
+                    <div className="ripple r2" />
+                    <div className="core">
+                      <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
                     </div>
                   </div>
                   RingBooker
