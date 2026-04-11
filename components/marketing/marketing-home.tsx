@@ -253,24 +253,22 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 
 /* ─── DEEP SECTIONS ─── */
 .deep-section{padding:88px 48px 0}
+.deep-section-confirmation{padding:27px 48px}
 .deep-wrap{padding:0 48px;max-width:1200px;margin:0 auto}
 .deep-s1{padding:40px 0 27px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.deep-s1 .d-text h2,.deep-s2-outer .d-text h2,.deep-s3-outer .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:16px}
-.deep-s1 .d-text p,.deep-s2-outer .d-text p,.deep-s3-outer .d-text p{font-size:14.5px;color:var(--text-gray);line-height:1.72;margin-bottom:24px}
+.deep-s1 .d-text h2,.deep-s2-outer .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:16px}
+.deep-s1 .d-text p,.deep-s2-outer .d-text p{font-size:14.5px;color:var(--text-gray);line-height:1.72;margin-bottom:24px}
 .checklist{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:30px}
 .checklist li{display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:var(--text-dark)}
 .ck-ico{width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center}
 .ck-ico svg{display:none}
 .ck-ico::before{font-size:17px;line-height:1}
 .deep-s1 .checklist li:nth-child(1) .ck-ico::before{content:"🌙"}
-.deep-s1 .checklist li:nth-child(2) .ck-ico::before{content:"💲"}
-.deep-s1 .checklist li:nth-child(3) .ck-ico::before{content:"💬"}
+.deep-s1 .checklist li:nth-child(2) .ck-ico::before{content:"☎️"}
+.deep-s1 .checklist li:nth-child(3) .ck-ico::before{content:"🤝"}
 .deep-s2-outer .checklist li:nth-child(1) .ck-ico::before{content:"📲"}
-.deep-s2-outer .checklist li:nth-child(2) .ck-ico::before{content:"⏰"}
-.deep-s2-outer .checklist li:nth-child(3) .ck-ico::before{content:"↩️"}
-.deep-s3-outer .checklist li:nth-child(1) .ck-ico::before{content:"👩‍🎤"}
-.deep-s3-outer .checklist li:nth-child(2) .ck-ico::before{content:"⭐"}
-.deep-s3-outer .checklist li:nth-child(3) .ck-ico::before{content:"🔁"}
+.deep-s2-outer .checklist li:nth-child(2) .ck-ico::before{content:"📝"}
+.deep-s2-outer .checklist li:nth-child(3) .ck-ico::before{content:"🤝"}
 .chart-wrap{background:#fff;border-radius:var(--r-lg);overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06);border:1px solid var(--border)}
 .chart-inner{padding:24px 28px 0}
 .chart-tiny-label{font-size:14px;color:var(--text-gray);font-weight:500;margin-bottom:2px}
@@ -290,14 +288,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .convo-quote{font-size:21px;font-weight:800;color:var(--text-dark);line-height:1.25;margin-bottom:18px}
 .convo-wave{height:50px;width:100%;opacity:.15}
 .convo-wave path{fill:none;stroke:var(--text-dark);stroke-width:1.5px}
-.deep-s3-outer{background:#FEF9EC;border-radius:var(--r-lg);padding:60px 52px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.donut-card{background:#fff;border-radius:var(--r-lg);padding:30px 26px;display:flex;flex-direction:column;align-items:center;box-shadow:0 4px 24px rgba(0,0,0,.05)}
-.donut-label-top{font-size:14px;color:var(--text-gray);font-weight:500;align-self:flex-start;margin-bottom:18px}
-.donut-svg-wrap{position:relative;width:190px;height:190px}
-.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.donut-pct{font-size:38px;font-weight:800;letter-spacing:-1.5px}
-.donut-sub{font-size:14px;color:var(--text-gray);margin-top:2px}
-
 /* ─── TESTIMONIALS ─── */
 .testimonials{padding:88px 48px}
 .test-inner{max-width:1100px;margin:0 auto}
@@ -334,40 +324,24 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .plan-feats li{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--text-dark);line-height:1.45}
 .price-grid .plan-feats li::before{color:inherit;font-weight:700;margin-top:0;flex-shrink:0}
 .price-grid .plan:nth-child(1) .plan-feats li:nth-child(1)::before{content:"📞"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(2)::before{content:"📅"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(3)::before{content:"📶"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(4)::before{content:"☎️"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(5)::before{content:"🔀"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(6)::before{content:"💬"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(7)::before{content:"↩️"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(8)::before{content:"📝"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(9)::before{content:"🇻🇳"}
+.price-grid .plan:nth-child(1) .plan-feats li:nth-child(2)::before{content:"🌙"}
+.price-grid .plan:nth-child(1) .plan-feats li:nth-child(3)::before{content:"↩️"}
+.price-grid .plan:nth-child(1) .plan-feats li:nth-child(4)::before{content:"📝"}
+.price-grid .plan:nth-child(1) .plan-feats li:nth-child(5)::before{content:"🇻🇳"}
 .price-grid .plan:nth-child(2) .plan-feats li:nth-child(1)::before{content:"✅"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(2)::before{content:"⏰"}
+.price-grid .plan:nth-child(2) .plan-feats li:nth-child(2)::before{content:"💬"}
 .price-grid .plan:nth-child(2) .plan-feats li:nth-child(3)::before{content:"🧠"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(4)::before{content:"✂️"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(5)::before{content:"🌐"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(6)::before{content:"📊"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(7)::before{content:"📈"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(8)::before{content:"⚡"}
+.price-grid .plan:nth-child(2) .plan-feats li:nth-child(4)::before{content:"📊"}
+.price-grid .plan:nth-child(2) .plan-feats li:nth-child(5)::before{content:"⚡"}
 .price-grid .plan:nth-child(3) .plan-feats li:nth-child(1)::before{content:"🏬"}
 .price-grid .plan:nth-child(3) .plan-feats li:nth-child(2)::before{content:"🧭"}
 .price-grid .plan:nth-child(3) .plan-feats li:nth-child(3)::before{content:"🔌"}
 .price-grid .plan:nth-child(3) .plan-feats li:nth-child(4)::before{content:"🤝"}
-.price-grid .plan:nth-child(3) .plan-feats li:nth-child(5)::before{content:"📈"}
-.price-grid .plan:nth-child(3) .plan-feats li:nth-child(6)::before{content:"🛠️"}
 .plan-btn{width:100%;padding:12px;border-radius:var(--r-pill);font-size:14px;font-weight:700;text-align:center;display:block;transition:all .2s;cursor:pointer;border:none;font-family:inherit;margin-top:auto}
 .pb-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-dark)}
 .pb-outline:hover{border-color:var(--purple);color:var(--purple)}
 .pb-dark{background:var(--text-dark);color:#fff}
 .pb-dark:hover{background:#1f2937}
-.roi-strip{background:#fff;border-radius:var(--r-lg);padding:26px;margin-top:24px;border:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr)}
-.roi-item{padding:10px 18px;text-align:center}
-.roi-item:not(:last-child){border-right:1px solid var(--border)}
-.roi-num{font-size:23px;font-weight:800;color:var(--purple-dark)}
-.roi-lbl{font-size:14px;color:var(--text-gray);margin-top:4px;line-height:1.4}
-
-
 /* ─── HOW IT WORKS ─── */
 .industries{padding:56px 48px 26px;background:#fff}
 .industries-inner{max-width:1100px;margin:0 auto}
@@ -624,16 +598,14 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 
 /* ─── RESPONSIVE ─── */
 @media(max-width:960px){
-  .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.deep-s3-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
+  .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
   nav .nav-links{display:none}
-  nav,footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-wrap{padding-left:22px;padding-right:22px}
+  nav,footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation,.deep-wrap{padding-left:22px;padding-right:22px}
   .hero-visual{height:480px}
   .phone-frame{width:230px;height:460px}
   .fc{display:none}
-  .roi-strip{grid-template-columns:1fr}
-  .roi-item:not(:last-child){border-right:none;border-bottom:1px solid var(--border)}
 }
 .legacy-marketing > nav,
 .legacy-marketing > footer,
@@ -924,14 +896,14 @@ export function MarketingHomeTemplate() {
             <div className="hero-visual">
               {/* Floating cards */}
               <div className="fc fc-1">
-                <div className="fc-big">62%</div>
-                <div className="fc-sm">Calls missed without AI</div>
-                <div className="fc-tag">📞 Recovered by RingBooker</div>
+                <div className="fc-big">Current #</div>
+                <div className="fc-sm">No number change</div>
+                <div className="fc-tag">☎️ Forward your line</div>
               </div>
               <div className="fc fc-2">
-                <div className="fc-big green">+$3,700</div>
-                <div className="fc-sm">Revenue recovered/mo</div>
-                <div className="fc-tag g">📈 avg beauty business</div>
+                <div className="fc-big green">Overflow</div>
+                <div className="fc-sm">Busy desk covered</div>
+                <div className="fc-tag g">↩️ Text-back ready</div>
               </div>
               <div className="fc fc-3" style={{minWidth: 170}}>
                 <div style={{fontSize: 11, color: 'var(--text-light)', marginBottom: 6}}>🎙 AI Phone Agent Active</div>
@@ -939,9 +911,9 @@ export function MarketingHomeTemplate() {
                 <div style={{fontSize: 11, color: 'var(--text-light)', marginTop: 5}}>Booking appointment…</div>
               </div>
               <div className="fc fc-4">
-                <div className="fc-big">24/7</div>
-                <div className="fc-sm">Always answering</div>
-                <div className="fc-tag">✓ Never offline</div>
+                <div className="fc-big">After-hours</div>
+                <div className="fc-sm">Caller intent captured</div>
+                <div className="fc-tag">✓ Human handoff</div>
               </div>
               {/* PHONE with voice call UI */}
               <div className="phone-wrap">
@@ -1203,16 +1175,16 @@ export function MarketingHomeTemplate() {
         {/* DEEP SECTION 1 — Line chart */}
         <section className="deep-section">
           <div style={{textAlign: 'center', marginBottom: 4}}><div className="sec-label">24/7 Availability</div></div>
-          <h2 className="sec-title reveal" style={{marginBottom: 60}}>Fill your calendar while<br />you do what you do best.</h2>
+          <h2 className="sec-title reveal" style={{marginBottom: 60}}>After-hours and overflow<br />calls still get a clear path.</h2>
           <div className="deep-wrap" style={{padding: 0}}>
             <div className="deep-s1 reveal">
               {/* Chart */}
               <div className="chart-wrap">
                 <div className="chart-inner">
-                  <div className="chart-tiny-label">Bookings Captured.</div>
+                  <div className="chart-tiny-label">Coverage window.</div>
                   <div className="chart-big-row">
-                    <div className="chart-big">5.2K</div>
-                    <div className="chart-badge">↑ +30%</div>
+                    <div className="chart-big">24/7</div>
+                    <div className="chart-badge">Overflow covered</div>
                   </div>
                 </div>
                 <div className="linechart-svg-wrap">
@@ -1226,7 +1198,7 @@ export function MarketingHomeTemplate() {
                     <path d="M0,120 C40,115 60,100 90,85 C120,70 130,40 160,30 C185,22 200,55 230,60 C260,65 270,45 300,50 C330,55 340,30 370,18 C390,10 405,35 430,38 C450,40 460,28 480,22 L480,140 L0,140 Z" fill="url(#lg1)" />
                     <path d="M0,120 C40,115 60,100 90,85 C120,70 130,40 160,30 C185,22 200,55 230,60 C260,65 270,45 300,50 C330,55 340,30 370,18 C390,10 405,35 430,38 C450,40 460,28 480,22" fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" />
                     <circle cx={480} cy={22} r={6} fill="#fff" stroke="#F97316" strokeWidth="2.5" />
-                    <text x={494} y={27} fontSize={11} fill="#374151" fontFamily="Mona Sans Variable, sans-serif" fontWeight={600}>5.2K +30%</text>
+                    <text x={494} y={27} fontSize={11} fill="#374151" fontFamily="Mona Sans Variable, sans-serif" fontWeight={600}>still answered</text>
                   </svg>
                 </div>
                 <div className="x-labels">
@@ -1235,31 +1207,29 @@ export function MarketingHomeTemplate() {
               </div>
               {/* Text */}
               <div className="d-text">
-                <h2>81% of bookings happen<br />outside business hours.</h2>
-                <p>While you're serving a client or sleeping, your phone keeps ringing. RingBooker is always on — answering calls, checking your calendar, and filling your appointment book automatically.</p>
+                <h2>When your team is busy<br />or closed, calls do not stall.</h2>
+                <p>RingBooker covers the moments your front desk cannot: after closing, during services, and when several callers ring at once.</p>
                 <ul className="checklist">
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Books appointments at 2am on weekends</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Answers pricing &amp; services questions instantly</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Sends SMS recap to you after every call</li>
+                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Captures booking intent after hours</li>
+                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Covers overflow while staff are with clients</li>
+                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Flags special cases for a human callback</li>
                 </ul>
-                <a href="/user/signup" className="btn-dark" style={{width: 'fit-content'}}>Get Started Now <svg viewBox="0 0 24 24" style={{width: 15, height: 15, fill: '#fff'}}><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg></a>
               </div>
             </div>
           </div>
         </section>
         {/* DEEP SECTION 2 — Confirmation */}
-        <section style={{padding: '27px 48px'}}>
+        <section className="deep-section-confirmation">
           <div className="deep-wrap" style={{padding: 0}}>
             <div className="deep-s2-outer reveal">
               <div className="d-text">
-                <h2>Every caller gets an instant<br />SMS confirmation.</h2>
-                <p>The moment a booking is confirmed, your client receives a text with their date, time, stylist name, and directions — automatically. No manual work. No follow-up needed.</p>
+                <h2>Missed callers get a<br />fast way back.</h2>
+                <p>If someone hangs up, calls after hours, or reaches you during a busy window, RingBooker can text back and collect enough context for the right follow-up.</p>
                 <ul className="checklist">
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Date, time, stylist, and directions in one SMS</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Automatic reminder 24 hours before appointment</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Missed call recovery — AI texts back anyone who hung up</li>
+                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Texts back callers who hang up or reach voicemail</li>
+                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Captures what they wanted before your team calls back</li>
+                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Separates simple follow-up from needs-human requests</li>
                 </ul>
-                <a href="/user/signup" className="btn-dark" style={{width: 'fit-content'}}>Get Started Now <svg viewBox="0 0 24 24" style={{width: 15, height: 15, fill: '#fff'}}><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg></a>
               </div>
               <div className="convo-card">
                 <div className="convo-avatars">
@@ -1267,48 +1237,10 @@ export function MarketingHomeTemplate() {
                   <div className="convo-avatar">S</div>
                   <div className="convo-avatar">M</div>
                 </div>
-                <div className="convo-quote">I want to book my<br />Saturday appointment.</div>
+                <div className="convo-quote">I called about moving<br />my appointment.</div>
                 <svg className="convo-wave" viewBox="0 0 400 52" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M0,26 C20,20 30,35 50,28 C70,21 80,38 100,30 C120,22 130,36 150,29 C170,22 185,40 200,32 C215,24 225,38 245,30 C265,22 278,36 300,29 C322,22 335,38 355,30 C375,22 388,34 400,28" stroke="#9CA3AF" strokeWidth="1.5" fill="none" />
                 </svg>
-              </div>
-            </div>
-          </div>
-        </section>
-        {/* DEEP SECTION 3 — Client memory */}
-        <section style={{padding: '0 48px 27px'}}>
-          <div className="deep-wrap" style={{padding: 0}}>
-            <div className="deep-s3-outer reveal">
-              <div className="donut-card">
-                <div className="donut-label-top">Call-to-Booking Rate.</div>
-                <div className="donut-svg-wrap">
-                  <svg viewBox="0 0 190 190" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="dg1" x1={0} y1={0} x2={1} y2={1}><stop offset="0%" stopColor="#7C3AED" /><stop offset="100%" stopColor="#A78BFA" /></linearGradient>
-                      <linearGradient id="dg2" x1={0} y1={1} x2={1} y2={0}><stop offset="0%" stopColor="#F97316" /><stop offset="100%" stopColor="#FBBF24" /></linearGradient>
-                    </defs>
-                    <circle cx={95} cy={95} r={72} fill="none" stroke="#F3F4F6" strokeWidth={16} />
-                    <circle cx={95} cy={95} r={72} fill="none" stroke="url(#dg1)" strokeWidth={16} strokeDasharray="344 108" strokeDashoffset={0} strokeLinecap="round" transform="rotate(-90 95 95)" />
-                    <circle cx={95} cy={95} r={72} fill="none" stroke="url(#dg2)" strokeWidth={16} strokeDasharray="81 371" strokeDashoffset={-362} strokeLinecap="round" transform="rotate(-90 95 95)" />
-                    <circle cx={95} cy={23} r={6} fill="#fff" stroke="#7C3AED" strokeWidth={2} />
-                    <circle cx={95} cy={167} r={6} fill="#fff" stroke="#F97316" strokeWidth={2} />
-                  </svg>
-                  <div className="donut-center">
-                    <div className="donut-pct">76%</div>
-                    <div className="donut-sub">calls booked</div>
-                  </div>
-                </div>
-                <div style={{fontSize: 14, color: 'var(--text-gray)', marginTop: 12, fontWeight: 500}}>vs 23% industry average</div>
-              </div>
-              <div className="d-text">
-                <h2>Your business memory.<br />Every client, every preference.</h2>
-                <p>RingBooker remembers which stylist each client prefers, their last service, and their usual slot — so every call feels personal, not robotic. Build loyalty that keeps chairs full.</p>
-                <ul className="checklist">
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Remembers stylist preference per client</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Flags VIP returning customers automatically</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Suggests rebooking at the right interval</li>
-                </ul>
-                <a href="/user/signup" className="btn-dark" style={{width: 'fit-content'}}>Get Started Now <svg viewBox="0 0 24 24" style={{width: 15, height: 15, fill: '#fff'}}><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg></a>
               </div>
             </div>
           </div>
@@ -1366,10 +1298,9 @@ export function MarketingHomeTemplate() {
           <div className="user-preview-inner">
             <div className="user-grid">
               <div className="user-copy">
-                <div className="sec-label" style={{textAlign: 'left'}}>User Dashboard</div>
-                <h2 style={{fontSize: 'clamp(30px,4vw,44px)', lineHeight: '1.12', letterSpacing: '-1.2px', marginBottom: 14}}>See calls, bookings, and settings in one place.</h2>
-                <p>Your user portal gives you a clear view of every booking, call outcome, reminder, and business setting — without needing to learn a complicated system.</p>
-                <a href="/user/signup" className="btn-dark" style={{width: 'fit-content'}}>Start Free Trial <svg viewBox="0 0 24 24" style={{width: 15, height: 15, fill: '#fff'}}><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg></a>
+                <div className="sec-label" style={{textAlign: 'left'}}>Call Context</div>
+                <h2 style={{fontSize: 'clamp(30px,4vw,44px)', lineHeight: '1.12', letterSpacing: '-1.2px', marginBottom: 14}}>Know who called, what they needed, and who needs follow-up.</h2>
+                <p>RingBooker keeps the useful context — call summaries, booking intent, preferred provider notes, and callback needs — without asking your team to manage another booking platform.</p>
               </div>
               <div className="user-shot">
                 <div className="user-shell user-image-corners">
@@ -1383,8 +1314,8 @@ export function MarketingHomeTemplate() {
         <section className="pricing" id="pricing">
           <div className="pricing-inner">
             <div className="sec-label" style={{textAlign: 'center'}}>Pricing</div>
-            <h2 className="sec-title reveal">Simple, transparent pricing.</h2>
-            <p className="sec-sub reveal">A fraction of what a human receptionist costs at $2,500–$3,500/month.</p>
+            <h2 className="sec-title reveal">Start with the coverage you need.</h2>
+            <p className="sec-sub reveal">Choose a lightweight phone answering layer now, then upgrade when you want more follow-up, reporting, and team support.</p>
             <div className="price-toggle">
               <button className="pt-btn on" id="tog-m" type="button">Monthly</button>
               <button className="pt-btn" id="tog-a" type="button">Annual</button>
@@ -1394,18 +1325,14 @@ export function MarketingHomeTemplate() {
             <div className="price-grid home-carousel-track reveal">
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Starter</div>
-                <div className="plan-desc">For small beauty businesses getting started with an AI phone agent.</div>
+                <div className="plan-desc">For small shops that need after-hours and overflow coverage on their current number.</div>
                 <div className="plan-price" id="ps">$79<span>/month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
-                  <li>AI answers calls 24/7</li>
-                  <li>Books appointments automatically</li>
-                  <li>Handles multiple simultaneous calls</li>
-                  <li>1 US business number included</li>
-                  <li>Or forward your existing number</li>
-                  <li>SMS booking confirmation</li>
+                  <li>Current-number forwarding or included US number</li>
+                  <li>After-hours and overflow call handling</li>
                   <li>Missed-call text back</li>
-                  <li>Basic call logs</li>
+                  <li>Basic call summaries</li>
                   <li>Vietnamese onboarding support</li>
                 </ul>
                 <a className="plan-btn pb-outline" href="/user/signup">Start Free Trial →</a>
@@ -1413,33 +1340,28 @@ export function MarketingHomeTemplate() {
               <div className="plan star home-carousel-slide">
                 <div className="plan-badge">⭐ Most Popular</div>
                 <div className="plan-name">Professional</div>
-                <div className="plan-desc">Best for busy beauty teams that want stronger follow-up and visibility.</div>
+                <div className="plan-desc">For busy teams that need stronger follow-up, reporting, and customer context.</div>
                 <div className="plan-price" id="pp">$149<span>/month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Everything in Starter</li>
-                  <li>Reminder SMS before appointments</li>
-                  <li>Returning customer memory</li>
-                  <li>Preferred stylist handling</li>
-                  <li>Bilingual user summaries</li>
+                  <li>Reminder and follow-up SMS workflows</li>
+                  <li>Returning customer and preferred provider notes</li>
                   <li>Weekly performance summary</li>
-                  <li>Advanced call insights</li>
                   <li>Priority support</li>
                 </ul>
                 <a className="plan-btn pb-dark" href="/user/signup">Start Free Trial →</a>
               </div>
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Custom</div>
-                <div className="plan-desc">For multi-location businesses, higher call volume, or custom workflows.</div>
+                <div className="plan-desc">For multi-location teams, higher call volume, or deeper routing and integration needs.</div>
                 <div className="plan-price" style={{fontSize: 30, letterSpacing: '-1px'}}>Custom<span>/contact us</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Multi-location setup</li>
-                  <li>Custom call flows</li>
+                  <li>Custom call flows and handoff rules</li>
                   <li>Custom integrations</li>
                   <li>Concierge onboarding</li>
-                  <li>Higher call volume</li>
-                  <li>Tailored implementation support</li>
                 </ul>
                 <a className="plan-btn pb-outline" href="/contact">Contact Sales →</a>
               </div>
@@ -1448,20 +1370,6 @@ export function MarketingHomeTemplate() {
                 <button type="button" id="pricingPrev" className="home-carousel-nav-btn" aria-label="Previous pricing plan">‹</button>
                 <div className="home-carousel-dots" id="pricingDots" aria-label="Pricing carousel indicators" />
                 <button type="button" id="pricingNext" className="home-carousel-nav-btn" aria-label="Next pricing plan">›</button>
-              </div>
-            </div>
-            <div className="roi-strip reveal">
-              <div className="roi-item">
-                <div className="roi-num">$2,351</div>
-                <div className="roi-lbl">Saved vs human receptionist/mo</div>
-              </div>
-              <div className="roi-item">
-                <div className="roi-num">$3,700</div>
-                <div className="roi-lbl">Avg revenue recovered from missed calls</div>
-              </div>
-              <div className="roi-item">
-                <div className="roi-num">2,300%+</div>
-                <div className="roi-lbl">Estimated ROI on Professional plan</div>
               </div>
             </div>
           </div>
@@ -1483,15 +1391,15 @@ export function MarketingHomeTemplate() {
           <div className="cta-inner">
             <div className="cta-banner reveal">
               <div className="cta-text">
-                <h2>Every unanswered call is a booking<br />your competitor just got.</h2>
-                <p>RingBooker answers 24/7 — so you never lose another client to voicemail, a busy signal, or a missed ring.</p>
+                <h2>Keep your number.<br />Cover the calls your team can’t.</h2>
+                <p>Go live quickly with an AI phone answering layer for after-hours, overflow, missed-call recovery, and human handoff when needed.</p>
               </div>
               <div className="cta-actions">
                 <a href="#pricing" className="btn-white">
                   <svg viewBox="0 0 24 24" style={{width: 16, height: 16, fill: 'var(--purple-dark)'}}><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
-                  Get 14 Days Free
+                  Start Free Trial
                 </a>
-                <a href="/demo" className="btn-ghost-w">📞 Try a Live Demo</a>
+                <a href="/demo" className="btn-ghost-w">📞 Hear Demo Call</a>
               </div>
               {/* CTA Phone — voice call UI */}
               <div className="cta-phone-wrap">
@@ -1517,7 +1425,7 @@ export function MarketingHomeTemplate() {
                         <span /><span /><span /><span /><span /><span /><span />
                       </div>
                       <div className="cta-sub-wrap">
-                        <div className="cta-sub-txt">Saturday 2pm with Maria is confirmed! You'll get a text shortly.</div>
+                        <div className="cta-sub-txt">I can help with that. What day would you like us to call you back?</div>
                       </div>
                       <div className="cta-vc-ctrl">
                         <div className="cta-ctrl">
@@ -1537,60 +1445,6 @@ export function MarketingHomeTemplate() {
             </div>
           </div>
         </div>
-        {/* FOOTER */}
-        <footer>
-          <div className="footer-inner">
-            <div className="footer-grid">
-              <div>
-                <div className="footer-brand">
-                  <div className="nav-logo-icon" style={{position: 'relative', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
-                    <div style={{position: 'absolute', width: 34, height: 34, borderRadius: '50%', background: '#8B5CF6', opacity: '.1'}} />
-                    <div style={{position: 'absolute', width: 26, height: 26, borderRadius: '50%', background: '#8B5CF6', opacity: '.18'}} />
-                    <div style={{position: 'absolute', width: 21, height: 21, borderRadius: '50%', background: '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1}}>
-                      <svg viewBox="0 0 24 24" style={{width: 11, height: 11, fill: '#fff'}}><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
-                    </div>
-                  </div>
-                  RingBooker
-                </div>
-                <p className="footer-desc">AI phone answering service built for nail shops, hair salons, spas, med spas, and beauty clinics. Stop losing after-hours and overflow calls to voicemail.</p>
-                <div className="footer-social">
-                  <a className="soc-btn" href="#"><svg viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" /></svg></a>
-                  <a className="soc-btn" href="#"><svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg></a>
-                  <a className="soc-btn" href="#"><svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg></a>
-                </div>
-              </div>
-              <div className="footer-col">
-                <h4>Product</h4>
-                <a href="#features">Features</a>
-                <a href="/demo">Live Demo</a>
-                <a href="#pricing">Pricing</a>
-                <a href="#how-it-works">How It Works</a>
-              </div>
-              <div className="footer-col">
-                <h4>Resources</h4>
-                <a href="/after-hours-calls">After-Hours Calls</a>
-                <a href="/missed-call-recovery">Missed-Call Recovery</a>
-                <a href="/demo">Live Demo</a>
-                <a href="#pricing">Pricing</a>
-                <a href="#faq">FAQ</a>
-                <a href="/contact">Contact Us</a>
-                <a href="/user/login">Sign In</a>
-              </div>
-              <div className="footer-col">
-                <h4>Company</h4>
-                <a href="/privacy">Privacy Policy</a>
-                <a href="/terms">Terms of Service</a>
-                <a href="/contact">Support</a>
-                <a href="/contact">Contact</a>
-                <a href="/user/login">Sign In</a>
-              </div>
-            </div>
-            <div className="footer-bottom">
-              <p>© 2025 RingBooker — All rights reserved.</p>
-              <p>Built for beauty & wellness teams 💜</p>
-            </div>
-          </div>
-        </footer>
       </div>
         <MarketingFooter />
       </>
