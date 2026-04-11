@@ -1,4 +1,4 @@
-import { voice as agentVoice, initializeLogger } from '@livekit/agents';
+import { voice as agentVoice, initializeLogger, llm as agentLlm } from '@livekit/agents';
 import { Room, RoomEvent, TrackKind } from '@livekit/rtc-node';
 
 import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
@@ -296,6 +296,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       llmConstructorName:
         (rawOpenAiRealtimeModel as { constructor?: { name?: string } }).constructor?.name ?? 'unknown',
       typeofSession: typeof llmWithSessionFactory.session,
+      llmInstanceofRealtimeModel: rawOpenAiRealtimeModel instanceof agentLlm.RealtimeModel,
       willPatchRealtimeSession: Boolean(openAiBoundSessionFactory),
     },
     'livekit_native_openai_llm_constructed',
@@ -528,21 +529,15 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
   let llm: typeof rawOpenAiRealtimeModel;
   if (openAiBoundSessionFactory) {
-    llm = new Proxy(rawOpenAiRealtimeModel, {
-      get(target, prop, receiver) {
-        if (prop === 'session') {
-          return () => {
-            log.info(
-              { roomName: input.roomName, sessionEntry: 'proxy' },
-              'livekit_native_openai_realtime_session_factory_called',
-            );
-            return attachOpenAiRealtimeInstrumentation(openAiBoundSessionFactory());
-          };
-        }
-        return Reflect.get(target, prop, receiver);
-      },
-    }) as typeof rawOpenAiRealtimeModel;
-    log.info({ roomName: input.roomName }, 'livekit_native_openai_llm_proxy_installed');
+    llmWithSessionFactory.session = () => {
+      log.info(
+        { roomName: input.roomName, sessionEntry: 'direct_patch' },
+        'livekit_native_openai_realtime_session_factory_called',
+      );
+      return attachOpenAiRealtimeInstrumentation(openAiBoundSessionFactory());
+    };
+    llm = rawOpenAiRealtimeModel;
+    log.info({ roomName: input.roomName }, 'livekit_native_openai_llm_session_patch_installed');
   } else {
     log.error(
       {
@@ -571,6 +566,19 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const agent = new NativeOpenAICallAgent();
 
   const session = new agentVoice.AgentSession({ llm });
+  const sessionLlm = (session as unknown as { llm?: unknown }).llm;
+  log.info(
+    {
+      roomName: input.roomName,
+      llmInstanceofRealtimeModel: llm instanceof agentLlm.RealtimeModel,
+      sessionLlmConstructorName:
+        (sessionLlm as { constructor?: { name?: string } } | undefined)?.constructor?.name ?? 'unknown',
+      sessionLlmSameObject: sessionLlm === llm,
+      sessionLlmHasSession: typeof (sessionLlm as { session?: unknown } | undefined)?.session,
+      sessionLlmInstanceofRealtimeModel: sessionLlm instanceof agentLlm.RealtimeModel,
+    },
+    'livekit_native_openai_agent_session_constructed',
+  );
   let boundParticipantIdentity: string | null = null;
   let answeredParticipantIdentity: string | null = null;
   let firstUserSpeechAtMs: number | null = null;
