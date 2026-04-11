@@ -284,6 +284,35 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const roomConnectedAtMs = options?.roomConnectedAtMs ?? Date.now();
   /** First OpenAI server event that indicates model audio stream (delta/done). */
   let firstOpenAiAudioStreamEventAtMs: number | null = null;
+  let firstUserSpeechAtMs: number | null = null;
+  let firstModelAudioAtMs: number | null = null;
+  let callAnsweredAtMs: number | null = null;
+  let sessionStartedAtMs: number | null = null;
+  let outputReadyAtMs: number | null = null;
+  let initialGreetingEnqueuedAtMs: number | null = null;
+  let firstGreetingResponseCreateQueuedAtMs: number | null = null;
+  let firstGreetingResponseCreatedAtMs: number | null = null;
+  let latestUserSpeechStartedAtMs: number | null = null;
+  let latestUserSpeechStoppedAtMs: number | null = null;
+  let latestAgentStartedSpeakingAtMs: number | null = null;
+  let latestAgentStoppedSpeakingAtMs: number | null = null;
+  let currentAgentState: string | null = null;
+  let currentUserState: string | null = null;
+
+  const timingSnapshot = (nowMs = Date.now()) => ({
+    msSinceRuntimeStart: nowMs - runtimeStartedAtMs,
+    msSinceRoomConnected: nowMs - roomConnectedAtMs,
+    msSinceCallAnswered: callAnsweredAtMs ? nowMs - callAnsweredAtMs : null,
+    msSinceSessionStarted: sessionStartedAtMs ? nowMs - sessionStartedAtMs : null,
+    msSinceOutputReady: outputReadyAtMs ? nowMs - outputReadyAtMs : null,
+    msSinceInitialGreetingEnqueued: initialGreetingEnqueuedAtMs ? nowMs - initialGreetingEnqueuedAtMs : null,
+    msSinceGreetingResponseCreateQueued: firstGreetingResponseCreateQueuedAtMs
+      ? nowMs - firstGreetingResponseCreateQueuedAtMs
+      : null,
+    msSinceGreetingResponseCreated: firstGreetingResponseCreatedAtMs
+      ? nowMs - firstGreetingResponseCreatedAtMs
+      : null,
+  });
 
   observeDurationMs('realtime_worker_stage_ms', roomConnectedAtMs - runtimeStartedAtMs, {
     transport: 'livekit',
@@ -439,6 +468,23 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         const event = payload as { type?: string; event_id?: string; response?: { instructions?: string } };
         if (!event?.type) return;
         if (
+          event.type === 'response.create' &&
+          initialGreetingEnqueuedAtMs &&
+          !firstGreetingResponseCreateQueuedAtMs
+        ) {
+          const nowMs = Date.now();
+          firstGreetingResponseCreateQueuedAtMs = nowMs;
+          log.info(
+            {
+              roomName: input.roomName,
+              eventId: event.event_id ?? null,
+              hasInstructions: Boolean(event.response?.instructions),
+              ...timingSnapshot(nowMs),
+            },
+            'livekit_native_openai_greeting_response_create_queued',
+          );
+        }
+        if (
           event.type === 'session.update' ||
           event.type === 'response.create' ||
           event.type === 'input_audio_buffer.commit' ||
@@ -481,24 +527,80 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           return;
         }
 
+        if (
+          event.type === 'response.created' &&
+          initialGreetingEnqueuedAtMs &&
+          !firstGreetingResponseCreatedAtMs
+        ) {
+          const nowMs = Date.now();
+          firstGreetingResponseCreatedAtMs = nowMs;
+          log.info(
+            {
+              roomName: input.roomName,
+              responseId: event.response_id ?? null,
+              ...timingSnapshot(nowMs),
+            },
+            'livekit_native_openai_greeting_response_created',
+          );
+        }
+
+        if (event.type === 'input_audio_buffer.speech_started') {
+          const nowMs = Date.now();
+          latestUserSpeechStartedAtMs = nowMs;
+          log.info(
+            {
+              roomName: input.roomName,
+              eventType: event.type,
+              currentAgentState,
+              currentUserState,
+              msSinceAgentStartedSpeaking: latestAgentStartedSpeakingAtMs
+                ? nowMs - latestAgentStartedSpeakingAtMs
+                : null,
+              msSinceFirstModelAudio: firstModelAudioAtMs ? nowMs - firstModelAudioAtMs : null,
+              ...timingSnapshot(nowMs),
+            },
+            'livekit_native_openai_user_speech_started_timing',
+          );
+        } else if (event.type === 'input_audio_buffer.speech_stopped') {
+          const nowMs = Date.now();
+          latestUserSpeechStoppedAtMs = nowMs;
+          log.info(
+            {
+              roomName: input.roomName,
+              eventType: event.type,
+              currentAgentState,
+              currentUserState,
+              userSpeechDurationMs: latestUserSpeechStartedAtMs ? nowMs - latestUserSpeechStartedAtMs : null,
+              ...timingSnapshot(nowMs),
+            },
+            'livekit_native_openai_user_speech_stopped_timing',
+          );
+        }
+
         const isAudioStreamEvent =
           event.type === 'response.output_audio.delta' ||
           event.type === 'response.output_audio.done' ||
           event.type === 'response.audio.delta' ||
           event.type === 'response.audio.done';
         if (isAudioStreamEvent && firstOpenAiAudioStreamEventAtMs === null) {
-          firstOpenAiAudioStreamEventAtMs = Date.now();
+          const nowMs = Date.now();
+          firstOpenAiAudioStreamEventAtMs = nowMs;
           log.info(
             {
               roomName: input.roomName,
               eventType: event.type,
-              msSinceRoomConnected: Date.now() - roomConnectedAtMs,
-              msSinceRuntimeStart: Date.now() - runtimeStartedAtMs,
+              responseId: event.response_id ?? null,
+              itemId: event.item_id ?? null,
+              ...timingSnapshot(nowMs),
             },
             'livekit_native_openai_first_openai_audio_stream_event',
           );
         }
 
+        const shouldLogAudioDeltas = parseBoolean(process.env.AGENT_OPENAI_LOG_AUDIO_DELTAS, false);
+        const isAudioDeltaEvent =
+          event.type === 'response.output_audio.delta' ||
+          event.type === 'response.audio.delta';
         const isDetailed =
           event.type === 'session.updated' ||
           event.type === 'response.created' ||
@@ -508,9 +610,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           event.type === 'conversation.item.created' ||
           event.type === 'conversation.item.input_audio_transcription.completed' ||
           event.type === 'conversation.item.input_audio_transcription.failed' ||
-          event.type === 'response.output_audio.delta' ||
+          (shouldLogAudioDeltas && isAudioDeltaEvent) ||
           event.type === 'response.output_audio.done' ||
-          event.type === 'response.audio.delta' ||
           event.type === 'response.audio.done' ||
           event.type === 'input_audio_buffer.speech_started' ||
           event.type === 'input_audio_buffer.speech_stopped' ||
@@ -644,10 +745,6 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   );
   let boundParticipantIdentity: string | null = null;
   let answeredParticipantIdentity: string | null = null;
-  let firstUserSpeechAtMs: number | null = null;
-  let firstModelAudioAtMs: number | null = null;
-  let callAnsweredAtMs: number | null = null;
-  let sessionStartedAtMs: number | null = null;
   let preAnswerShutdownRequested = false;
   let preAnswerShutdownReason: string | null = null;
   let resolveSessionClose: () => void = () => {};
@@ -670,11 +767,17 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const startAgentSession = async (placement: 'pre_answer_warmup' | 'post_answer_fallback'): Promise<void> => {
     if (sessionStarted) return;
     const sessionStartBeginMs = Date.now();
+    const outputQueueSizeMs = Math.max(
+      1000,
+      Math.round(parseNumber(process.env.AGENT_LIVEKIT_OUTPUT_QUEUE_MS, 2000)),
+    );
     log.info(
       {
         roomName: input.roomName,
         placement,
         participantIdentity: boundParticipantIdentity ?? null,
+        outputQueueSizeMs,
+        ...timingSnapshot(sessionStartBeginMs),
       },
       'livekit_native_openai_session_start_requested',
     );
@@ -687,7 +790,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           closeOnDisconnect: true,
         },
         outputOptions: {
-          queueSizeMs: Math.max(1000, Math.round(parseNumber(process.env.AGENT_LIVEKIT_OUTPUT_QUEUE_MS, 2000))),
+          queueSizeMs: outputQueueSizeMs,
         },
       });
       sessionStarted = true;
@@ -698,6 +801,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           placement,
           sessionStartDurationMs: sessionStartedAtMs - sessionStartBeginMs,
           msBeforeAnswer: callAnsweredAtMs ? null : Date.now() - sessionStartBeginMs,
+          ...timingSnapshot(sessionStartedAtMs),
         },
         'livekit_native_openai_session_started',
       );
@@ -727,6 +831,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   };
 
   const enqueueInitialGreetingAfterSessionReady = (): void => {
+    const nowMs = Date.now();
+    initialGreetingEnqueuedAtMs = nowMs;
     const greetingHandle = session.generateReply({
       instructions: initialGreetingInstructions,
     });
@@ -735,6 +841,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         roomName: input.roomName,
         speechHandleId: greetingHandle.id,
         placement: 'after_session_start',
+        ...timingSnapshot(nowMs),
       },
       'livekit_native_openai_initial_greeting_reply_enqueued',
     );
@@ -746,6 +853,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           interrupted: handle.interrupted,
           done: handle.done(),
           chatItemCount: handle.chatItems.length,
+          firstModelAudioSeen: Boolean(firstModelAudioAtMs),
+          ...timingSnapshot(Date.now()),
         },
         'livekit_native_openai_initial_greeting_reply_done',
       );
@@ -782,6 +891,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   ) => {
     if (!isAnsweredSipParticipant(participant)) return;
     callAnsweredAtMs ??= Date.now();
+    const nowMs = Date.now();
     answeredParticipantIdentity = participant.identity;
     if (!boundParticipantIdentity) {
       boundParticipantIdentity = participant.identity;
@@ -792,6 +902,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         participantIdentity: participant.identity,
         source,
         sipCallStatus: getSipCallStatus(participant),
+        ...timingSnapshot(nowMs),
       },
       'livekit_native_openai_call_answered',
     );
@@ -838,6 +949,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           roomName: input.roomName,
           transcript: ev.transcript ?? null,
           isFinal: ev.isFinal,
+          currentAgentState,
+          currentUserState,
+          msSinceUserSpeechStarted: latestUserSpeechStartedAtMs ? Date.now() - latestUserSpeechStartedAtMs : null,
         },
         'livekit_native_openai_user_input_transcribed',
       );
@@ -851,6 +965,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             roomName: input.roomName,
             dispatchToFirstUserSpeechMs: nowMs - runtimeStartedAtMs,
             roomConnectedToFirstUserSpeechMs: nowMs - roomConnectedAtMs,
+            ...timingSnapshot(nowMs),
           },
           'livekit_native_openai_first_user_speech_detected',
         );
@@ -884,7 +999,15 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             roomName: input.roomName,
             dispatchToFirstModelAudioMs: nowMs - runtimeStartedAtMs,
             roomConnectedToFirstModelAudioMs: nowMs - roomConnectedAtMs,
+            callAnsweredToFirstModelAudioMs: callAnsweredAtMs ? nowMs - callAnsweredAtMs : null,
+            initialGreetingEnqueuedToFirstModelAudioMs: initialGreetingEnqueuedAtMs
+              ? nowMs - initialGreetingEnqueuedAtMs
+              : null,
+            openAiAudioStreamToFirstModelAudioMs: firstOpenAiAudioStreamEventAtMs
+              ? nowMs - firstOpenAiAudioStreamEventAtMs
+              : null,
             firstUserSpeechToFirstModelAudioMs: firstUserSpeechAtMs ? nowMs - firstUserSpeechAtMs : null,
+            ...timingSnapshot(nowMs),
           },
           'livekit_native_openai_first_model_audio',
         );
@@ -913,22 +1036,50 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   });
 
   session.on(agentVoice.AgentSessionEventTypes.UserStateChanged, (ev) => {
+    const nowMs = Date.now();
+    currentUserState = ev.newState;
     log.info(
       {
         roomName: input.roomName,
         oldState: ev.oldState,
         newState: ev.newState,
+        ...timingSnapshot(nowMs),
       },
       'livekit_native_openai_user_state_changed',
     );
   });
 
   session.on(agentVoice.AgentSessionEventTypes.AgentStateChanged, (ev) => {
+    const nowMs = Date.now();
+    currentAgentState = ev.newState;
+    if (ev.newState === 'speaking') {
+      latestAgentStartedSpeakingAtMs = nowMs;
+    }
+    if (ev.oldState === 'speaking' && ev.newState !== 'speaking') {
+      latestAgentStoppedSpeakingAtMs = nowMs;
+      if (latestUserSpeechStartedAtMs) {
+        log.info(
+          {
+            roomName: input.roomName,
+            oldState: ev.oldState,
+            newState: ev.newState,
+            userSpeechStartToAgentStopSpeakingMs: nowMs - latestUserSpeechStartedAtMs,
+            agentSpeakingDurationMs: latestAgentStartedSpeakingAtMs ? nowMs - latestAgentStartedSpeakingAtMs : null,
+            ...timingSnapshot(nowMs),
+          },
+          'livekit_native_openai_interruption_timing',
+        );
+      }
+    }
     log.info(
       {
         roomName: input.roomName,
         oldState: ev.oldState,
         newState: ev.newState,
+        msSinceUserSpeechStarted: latestUserSpeechStartedAtMs ? nowMs - latestUserSpeechStartedAtMs : null,
+        msSinceAgentStartedSpeaking: latestAgentStartedSpeakingAtMs ? nowMs - latestAgentStartedSpeakingAtMs : null,
+        msSinceAgentStoppedSpeaking: latestAgentStoppedSpeakingAtMs ? nowMs - latestAgentStoppedSpeakingAtMs : null,
+        ...timingSnapshot(nowMs),
       },
       'livekit_native_openai_agent_state_changed',
     );
@@ -944,6 +1095,10 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         predictionDurationInS: ev.predictionDurationInS,
         probability: ev.probability,
         numRequests: ev.numRequests,
+        currentAgentState,
+        currentUserState,
+        msSinceUserSpeechStarted: latestUserSpeechStartedAtMs ? Date.now() - latestUserSpeechStartedAtMs : null,
+        msSinceAgentStartedSpeaking: latestAgentStartedSpeakingAtMs ? Date.now() - latestAgentStartedSpeakingAtMs : null,
       },
       'livekit_native_openai_overlapping_speech',
     );
@@ -1050,13 +1205,23 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     });
 
   room.on(RoomEvent.LocalTrackSubscribed, (track) => {
-      log.info({ trackName: track.name, trackSid: track.sid }, 'livekit_native_openai_local_track_subscribed');
+      const nowMs = Date.now();
+      log.info(
+        {
+          trackName: track.name,
+          trackSid: track.sid,
+          ...timingSnapshot(nowMs),
+        },
+        'livekit_native_openai_local_track_subscribed',
+      );
       if (track.name !== 'roomio_audio') return;
+      outputReadyAtMs ??= nowMs;
       log.info(
         {
           roomName: input.roomName,
           trackName: track.name,
           trackSid: track.sid,
+          ...timingSnapshot(nowMs),
         },
         'livekit_native_openai_output_ready',
       );
@@ -1070,7 +1235,19 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     500,
     Math.round(parseNumber(process.env.AGENT_LIVEKIT_FORCE_RESOLVE_OUTPUT_SUBSCRIPTION_MS, 1500)),
   );
-  if (forceResolveOutputSubscription) room.on(RoomEvent.LocalTrackPublished, (publication) => {
+  room.on(RoomEvent.LocalTrackPublished, (publication) => {
+      log.info(
+        {
+          roomName: input.roomName,
+          trackName: publication.track?.name ?? null,
+          trackSid: publication.track?.sid ?? null,
+          source: publication.source,
+          forceResolveOutputSubscription,
+          ...timingSnapshot(Date.now()),
+        },
+        'livekit_native_openai_local_track_published',
+      );
+      if (!forceResolveOutputSubscription) return;
       setTimeout(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const pub = publication as any;
@@ -1135,6 +1312,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     {
       roomName: input.roomName,
       participantIdentity: boundParticipantIdentity,
+      prewarmEnabled: shouldPrewarmBeforeAnswer,
+      sessionStarted,
+      ...timingSnapshot(Date.now()),
     },
     'livekit_native_openai_binding_participant_identity',
   );
@@ -1147,6 +1327,15 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     await startAgentSession('post_answer_fallback');
   }
   bindRoomIoParticipant(answeredIdentity, 'call_answered_after_session_start');
+  log.info(
+    {
+      roomName: input.roomName,
+      participantIdentity: answeredIdentity,
+      sessionStarted,
+      ...timingSnapshot(Date.now()),
+    },
+    'livekit_native_openai_ready_to_enqueue_initial_greeting',
+  );
   enqueueInitialGreetingAfterSessionReady();
 
   const timeoutMs = Number(process.env.AGENT_WORKER_MAX_SESSION_MS ?? 30 * 60 * 1000);
@@ -1167,8 +1356,21 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       roomName: input.roomName,
       answeredParticipantIdentity,
       sessionStartedAtMs,
+      outputReadyAtMs,
       callAnsweredToFirstModelAudioMs:
         callAnsweredAtMs && firstModelAudioAtMs ? firstModelAudioAtMs - callAnsweredAtMs : null,
+      callAnsweredToOutputReadyMs:
+        callAnsweredAtMs && outputReadyAtMs ? outputReadyAtMs - callAnsweredAtMs : null,
+      callAnsweredToInitialGreetingEnqueuedMs:
+        callAnsweredAtMs && initialGreetingEnqueuedAtMs ? initialGreetingEnqueuedAtMs - callAnsweredAtMs : null,
+      initialGreetingEnqueuedToOpenAiAudioMs:
+        initialGreetingEnqueuedAtMs && firstOpenAiAudioStreamEventAtMs
+          ? firstOpenAiAudioStreamEventAtMs - initialGreetingEnqueuedAtMs
+          : null,
+      openAiAudioToFirstModelAudioMs:
+        firstOpenAiAudioStreamEventAtMs && firstModelAudioAtMs
+          ? firstModelAudioAtMs - firstOpenAiAudioStreamEventAtMs
+          : null,
       activeCallDurationMs: callAnsweredAtMs ? Date.now() - callAnsweredAtMs : null,
       firstModelAudioSeen: Boolean(firstModelAudioAtMs),
       firstUserSpeechSeen: Boolean(firstUserSpeechAtMs),
