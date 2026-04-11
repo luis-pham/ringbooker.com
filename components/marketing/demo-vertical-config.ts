@@ -104,7 +104,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     businessType: 'hair-salon',
     eyebrow: 'RingBooker demo for hair salons',
     icon: 'H',
-    accent: '#D97706',
+    accent: '#B45309',
     title: 'Test a stylist-aware hair salon call.',
     subtitle:
       'Let RingBooker handle a booking or reschedule demo around stylist preference, color services, service duration, and consultation-style questions.',
