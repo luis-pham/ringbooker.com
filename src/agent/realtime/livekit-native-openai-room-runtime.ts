@@ -411,6 +411,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const roomConnectedAtMs = options?.roomConnectedAtMs ?? Date.now();
   /** First OpenAI server event that indicates model audio stream (delta/done). */
   let firstOpenAiAudioStreamEventAtMs: number | null = null;
+  let firstLiveKitAudioFrameCaptureStartedAtMs: number | null = null;
+  let firstLiveKitAudioFrameCapturedAtMs: number | null = null;
   let firstUserSpeechAtMs: number | null = null;
   let firstModelAudioAtMs: number | null = null;
   let callAnsweredAtMs: number | null = null;
@@ -437,6 +439,15 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     msSinceSessionStarted: sessionStartedAtMs ? nowMs - sessionStartedAtMs : null,
     msSinceOutputReady: outputReadyAtMs ? nowMs - outputReadyAtMs : null,
     msSinceInitialGreetingEnqueued: initialGreetingEnqueuedAtMs ? nowMs - initialGreetingEnqueuedAtMs : null,
+    msSinceFirstOpenAiAudioStreamEvent: firstOpenAiAudioStreamEventAtMs
+      ? nowMs - firstOpenAiAudioStreamEventAtMs
+      : null,
+    msSinceFirstLiveKitAudioFrameCaptureStarted: firstLiveKitAudioFrameCaptureStartedAtMs
+      ? nowMs - firstLiveKitAudioFrameCaptureStartedAtMs
+      : null,
+    msSinceFirstLiveKitAudioFrameCaptured: firstLiveKitAudioFrameCapturedAtMs
+      ? nowMs - firstLiveKitAudioFrameCapturedAtMs
+      : null,
     msSinceGreetingResponseCreateQueued: firstGreetingResponseCreateQueuedAtMs
       ? nowMs - firstGreetingResponseCreateQueuedAtMs
       : null,
@@ -981,23 +992,74 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   };
 
   const installOutputGain = (): void => {
-    if (liveKitOutputGain === 1) return;
     const roomIo = (
       session as unknown as {
         _roomIO?: {
           audioOutput?: {
             captureFrame?: (frame: AudioFrame) => Promise<void>;
-            __ringbookerOutputGainInstalled?: boolean;
+            __ringbookerOutputProcessingInstalled?: boolean;
           };
         };
       }
     )._roomIO;
     const audioOutput = roomIo?.audioOutput;
-    if (!audioOutput?.captureFrame || audioOutput.__ringbookerOutputGainInstalled) return;
+    if (!audioOutput?.captureFrame || audioOutput.__ringbookerOutputProcessingInstalled) return;
 
     const originalCaptureFrame = audioOutput.captureFrame.bind(audioOutput);
-    audioOutput.captureFrame = (frame: AudioFrame) => originalCaptureFrame(applyOutputGain(frame, liveKitOutputGain));
-    audioOutput.__ringbookerOutputGainInstalled = true;
+    audioOutput.captureFrame = async (frame: AudioFrame) => {
+      const captureStartedAtMs = Date.now();
+      const isFirstFrame = firstLiveKitAudioFrameCaptureStartedAtMs === null;
+      if (isFirstFrame) {
+        firstLiveKitAudioFrameCaptureStartedAtMs = captureStartedAtMs;
+        log.info(
+          {
+            roomName: input.roomName,
+            gain: liveKitOutputGain,
+            sampleRate: frame.sampleRate,
+            channels: frame.channels,
+            samplesPerChannel: frame.samplesPerChannel,
+            frameSamples: frame.data.length,
+            openAiAudioToLiveKitAudioFrameCaptureStartMs: firstOpenAiAudioStreamEventAtMs
+              ? captureStartedAtMs - firstOpenAiAudioStreamEventAtMs
+              : null,
+            ...timingSnapshot(captureStartedAtMs),
+          },
+          'livekit_native_openai_first_livekit_audio_frame_capture_started',
+        );
+      }
+
+      const processedFrame = liveKitOutputGain === 1 ? frame : applyOutputGain(frame, liveKitOutputGain);
+      await originalCaptureFrame(processedFrame);
+
+      if (isFirstFrame && firstLiveKitAudioFrameCapturedAtMs === null) {
+        const capturedAtMs = Date.now();
+        firstLiveKitAudioFrameCapturedAtMs = capturedAtMs;
+        log.info(
+          {
+            roomName: input.roomName,
+            gain: liveKitOutputGain,
+            captureFrameDurationMs: capturedAtMs - captureStartedAtMs,
+            openAiAudioToLiveKitAudioFrameCapturedMs: firstOpenAiAudioStreamEventAtMs
+              ? capturedAtMs - firstOpenAiAudioStreamEventAtMs
+              : null,
+            liveKitAudioFrameCaptureStartToCapturedMs: firstLiveKitAudioFrameCaptureStartedAtMs
+              ? capturedAtMs - firstLiveKitAudioFrameCaptureStartedAtMs
+              : null,
+            ...timingSnapshot(capturedAtMs),
+          },
+          'livekit_native_openai_first_livekit_audio_frame_captured',
+        );
+      }
+    };
+    audioOutput.__ringbookerOutputProcessingInstalled = true;
+    log.info(
+      {
+        roomName: input.roomName,
+        gain: liveKitOutputGain,
+      },
+      'livekit_native_openai_output_capture_instrumentation_installed',
+    );
+    if (liveKitOutputGain === 1) return;
     log.info(
       {
         roomName: input.roomName,
@@ -1616,12 +1678,41 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         initialGreetingEnqueuedAtMs && firstOpenAiAudioStreamEventAtMs
           ? firstOpenAiAudioStreamEventAtMs - initialGreetingEnqueuedAtMs
           : null,
+      initialGreetingEnqueuedToLiveKitAudioFrameCaptureStartMs:
+        initialGreetingEnqueuedAtMs && firstLiveKitAudioFrameCaptureStartedAtMs
+          ? firstLiveKitAudioFrameCaptureStartedAtMs - initialGreetingEnqueuedAtMs
+          : null,
+      initialGreetingEnqueuedToLiveKitAudioFrameCapturedMs:
+        initialGreetingEnqueuedAtMs && firstLiveKitAudioFrameCapturedAtMs
+          ? firstLiveKitAudioFrameCapturedAtMs - initialGreetingEnqueuedAtMs
+          : null,
       openAiAudioToFirstModelAudioMs:
         firstOpenAiAudioStreamEventAtMs && firstModelAudioAtMs
           ? firstModelAudioAtMs - firstOpenAiAudioStreamEventAtMs
           : null,
+      openAiAudioToLiveKitAudioFrameCaptureStartMs:
+        firstOpenAiAudioStreamEventAtMs && firstLiveKitAudioFrameCaptureStartedAtMs
+          ? firstLiveKitAudioFrameCaptureStartedAtMs - firstOpenAiAudioStreamEventAtMs
+          : null,
+      openAiAudioToLiveKitAudioFrameCapturedMs:
+        firstOpenAiAudioStreamEventAtMs && firstLiveKitAudioFrameCapturedAtMs
+          ? firstLiveKitAudioFrameCapturedAtMs - firstOpenAiAudioStreamEventAtMs
+          : null,
+      liveKitAudioFrameCaptureStartToCapturedMs:
+        firstLiveKitAudioFrameCaptureStartedAtMs && firstLiveKitAudioFrameCapturedAtMs
+          ? firstLiveKitAudioFrameCapturedAtMs - firstLiveKitAudioFrameCaptureStartedAtMs
+          : null,
+      callAnsweredToFirstLiveKitAudioFrameCaptureStartMs:
+        callAnsweredAtMs && firstLiveKitAudioFrameCaptureStartedAtMs
+          ? firstLiveKitAudioFrameCaptureStartedAtMs - callAnsweredAtMs
+          : null,
+      callAnsweredToFirstLiveKitAudioFrameCapturedMs:
+        callAnsweredAtMs && firstLiveKitAudioFrameCapturedAtMs
+          ? firstLiveKitAudioFrameCapturedAtMs - callAnsweredAtMs
+          : null,
       activeCallDurationMs: callAnsweredAtMs ? Date.now() - callAnsweredAtMs : null,
       firstModelAudioSeen: Boolean(firstModelAudioAtMs),
+      firstLiveKitAudioFrameCapturedSeen: Boolean(firstLiveKitAudioFrameCapturedAtMs),
       firstUserSpeechSeen: Boolean(firstUserSpeechAtMs),
     },
     'livekit_native_openai_session_finished',
