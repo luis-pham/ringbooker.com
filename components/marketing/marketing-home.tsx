@@ -2,6 +2,7 @@ import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { HomePricingToggleClient } from '@/components/marketing/home-pricing-toggle-client';
 
+
 const HOME_FAQS = [
   {
     q: 'Can RingBooker work with my current salon phone number?',
@@ -139,7 +140,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 	.leak-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:0 10px 30px rgba(17,24,39,.04)}
-	.leak-icon{font-size:26px;margin-bottom:10px}
+	.leak-icon{font-size:26px;margin-bottom:10px;text-align:center}
 	.leak-card h3{font-size:17px;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px}
 	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}
 	.compare-section{padding:88px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
@@ -149,11 +150,15 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.compare-cell{padding:18px 22px;background:#fff}
 	.compare-cell.bad{background:#FFFCFC;border-right:1px solid #F1F5F9}
 	.compare-cell.good{background:#FBFFFD}
-	.compare-eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;color:#9CA3AF}
+	.compare-eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;color:#9CA3AF;display:flex;align-items:center;gap:7px}
 	.compare-cell.good .compare-eyebrow{color:#059669}
 	.compare-cell.bad .compare-eyebrow{color:#EF4444}
 	.compare-cell p{font-size:14.5px;line-height:1.7;color:#4B5563}
 	.compare-cell.good p{color:#064E3B}
+	.cmp-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+	.cmp-icon svg{display:block}
+	.compare-cell.bad .cmp-icon{background:#EF4444}
+	.compare-cell.good .cmp-icon{background:#10B981}
 
 	/* ─── HERO VISUAL ─── */
 .hero-visual{position:relative;margin-top:56px;height:580px;display:flex;align-items:center;justify-content:center}
@@ -435,7 +440,8 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .user-preview{padding:36px 48px 88px;background:var(--bg-gray)}
 .user-preview-inner{max-width:1100px;margin:0 auto}
 .user-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:24px;align-items:center}
-.user-copy p{font-size:14.5px;color:var(--text-gray);line-height:1.75;margin-bottom:24px}
+.user-copy h2{text-align:left}
+.user-copy p{font-size:14.5px;color:var(--text-gray);line-height:1.75;margin-bottom:24px;text-align:left}
 .user-shot{border-radius:28px;background:linear-gradient(180deg,#ffffff,#f8fafc);padding:14px;box-shadow:0 20px 50px rgba(17,24,39,.10);border:1px solid rgba(139,92,246,.14)}
 .user-shell{position:relative;background:linear-gradient(135deg,#f7f2ff 0%,#ffffff 55%,#f5f3ff 100%);border-radius:22px;overflow:hidden;aspect-ratio:16/9;min-height:auto;border:1px solid #E5E7EB;display:block}
 
@@ -522,9 +528,10 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .user-image-corners::after{bottom:-42px;left:-42px}
 
 /* ─── FAQ ─── */
-.faq-section{padding:88px 48px;max-width:760px;margin:0 auto}
-.faq-section h2{font-size:clamp(28px,3.2vw,42px);font-weight:800;letter-spacing:-1.2px;margin-bottom:10px}
+.faq-section{padding:88px 48px;max-width:760px;margin:0 auto;text-align:center}
+.faq-section h2{font-size:clamp(28px,3.2vw,42px);font-weight:800;letter-spacing:-1.2px;margin-bottom:10px;text-align:center}
 .faq-section .sub{font-size:15px;color:var(--text-gray);margin-bottom:40px;line-height:1.6}
+.faq-section .faq-item{text-align:left}
 .faq-item{border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:10px;overflow:hidden}
 .faq-q{width:100%;background:none;border:none;padding:18px 24px;font-size:14.5px;font-weight:600;color:var(--text-dark);text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:inherit;transition:background .2s;gap:12px}
 .faq-q:hover{background:var(--bg-gray)}
@@ -890,7 +897,7 @@ export function MarketingHomeTemplate() {
                 Start 14-Day Free Trial
                 <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
               </a>
-              <a href="/demo" className="btn-outline">📞 Hear a Live Demo Call</a>
+              <a href="/demo" className="btn-outline" data-demo-picker>📞 Hear a Live Demo Call</a>
             </div>
             {/* HERO VISUAL */}
             <div className="hero-visual">
@@ -1020,11 +1027,17 @@ export function MarketingHomeTemplate() {
               ].map(([bad, good]) => (
                 <div className="compare-row" key={bad}>
                   <div className="compare-cell bad">
-                    <div className="compare-eyebrow">Generic AI phone agent</div>
+                    <div className="compare-eyebrow">
+                      <span className="cmp-icon"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M2 2l6 6M8 2l-6 6" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/></svg></span>
+                      Generic AI phone agent
+                    </div>
                     <p>{bad}</p>
                   </div>
                   <div className="compare-cell good">
-                    <div className="compare-eyebrow">RingBooker</div>
+                    <div className="compare-eyebrow">
+                      <span className="cmp-icon"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M2 5.2l2.2 2.3L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+                      RingBooker
+                    </div>
                     <p>{good}</p>
                   </div>
                 </div>
@@ -1399,7 +1412,7 @@ export function MarketingHomeTemplate() {
                   <svg viewBox="0 0 24 24" style={{width: 16, height: 16, fill: 'var(--purple-dark)'}}><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
                   Start Free Trial
                 </a>
-                <a href="/demo" className="btn-ghost-w">📞 Hear Demo Call</a>
+                <a href="/demo" className="btn-ghost-w" data-demo-picker>📞 Hear Demo Call</a>
               </div>
               {/* CTA Phone — voice call UI */}
               <div className="cta-phone-wrap">

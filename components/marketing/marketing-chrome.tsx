@@ -1,3 +1,5 @@
+import { DemoPickerModal } from '@/components/marketing/demo-picker-modal';
+
 type MarketingHeaderProps = {
   active?: 'demo' | 'pricing' | 'how-it-works' | 'contact';
 };
@@ -39,6 +41,42 @@ export function MarketingChromeStyles() {
 .mk-footer-col a:hover{color:#111827}
 .mk-footer-bottom{border-top:1px solid #E5E7EB;padding-top:22px;display:flex;justify-content:space-between;align-items:center}
 .mk-footer-bottom p{font-size:14px;color:#9CA3AF}
+/* ─── DEMO DROPDOWN ─── */
+.mk-demo-dd{position:relative;display:inline-flex;align-items:center}
+.mk-demo-dd-link{display:inline-flex;align-items:center;gap:4px;font-size:14.5px;font-weight:500;color:#6B7280;text-decoration:none;transition:color .2s;cursor:pointer;background:none;border:none;padding:0;font-family:inherit}
+.mk-demo-dd-link:hover,.mk-demo-dd-link.active{color:#111827}
+.mk-demo-caret{font-size:10px;opacity:.55;transition:transform .2s;display:inline-block;margin-top:1px;margin-left:2px}
+.mk-demo-dd:hover .mk-demo-caret{transform:rotate(180deg)}
+.mk-demo-menu{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(-4px);background:#fff;border:1px solid #E5E7EB;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:8px;min-width:210px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:200}
+.mk-demo-dd:hover .mk-demo-menu{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0)}
+.mk-demo-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;font-size:13.5px;font-weight:600;color:#374151;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
+.mk-demo-item:hover{background:#F5F3FF;color:#7C3AED}
+.mk-demo-item-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+
+/* ─── DEMO PICKER MODAL ─── */
+.dpm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:dpmFadeIn .2s ease}
+@keyframes dpmFadeIn{from{opacity:0}to{opacity:1}}
+.dpm-dialog{background:#fff;border-radius:28px;padding:36px 32px 28px;max-width:560px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,.2);position:relative;animation:dpmSlideUp .25s cubic-bezier(.22,1,.36,1)}
+@keyframes dpmSlideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.dpm-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid #E5E7EB;background:#F9FAFB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;transition:all .15s}
+.dpm-close:hover{background:#F3F4F6;color:#111827}
+.dpm-eyebrow{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8B5CF6;margin-bottom:8px}
+.dpm-title{font-size:20px;font-weight:800;color:#111827;letter-spacing:-.4px;margin-bottom:6px;line-height:1.3}
+.dpm-sub{font-size:14px;color:#6B7280;margin-bottom:22px;line-height:1.6}
+.dpm-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:20px}
+.dpm-card{display:flex;flex-direction:column;gap:2px;padding:14px 14px 28px;border-radius:16px;border:1.5px solid color-mix(in srgb,var(--dpm-accent,#8B5CF6) 25%,#E5E7EB);background:color-mix(in srgb,var(--dpm-accent,#8B5CF6) 5%,#fff);text-decoration:none;transition:all .15s;position:relative;overflow:hidden}
+.dpm-card:hover{border-color:var(--dpm-accent,#8B5CF6);background:color-mix(in srgb,var(--dpm-accent,#8B5CF6) 10%,#fff);transform:translateY(-1px);box-shadow:0 6px 20px color-mix(in srgb,var(--dpm-accent,#8B5CF6) 15%,transparent)}
+.dpm-icon{font-size:22px;margin-bottom:5px;display:block}
+.dpm-label{font-size:14px;font-weight:800;color:#111827;display:block}
+.dpm-card-sub{font-size:11.5px;color:#6B7280;line-height:1.4;display:block}
+.dpm-arrow{position:absolute;bottom:12px;right:12px;font-size:13px;font-weight:800;color:var(--dpm-accent,#8B5CF6);opacity:0;transition:.15s;transform:translateX(-4px)}
+.dpm-card:hover .dpm-arrow{opacity:1;transform:translateX(0)}
+.dpm-note{font-size:12px;color:#9CA3AF;text-align:center;line-height:1.5}
+@media(max-width:480px){
+  .dpm-dialog{padding:28px 20px 22px}
+  .dpm-grid{grid-template-columns:1fr}
+}
+
 @media(max-width:960px){
   .mk-nav{padding:0 22px}
   .mk-nav-links{display:none}
@@ -75,9 +113,18 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
           <a href="/#industries">
             Industries
           </a>
-          <a href="/demo" className={active === 'demo' ? 'active' : undefined}>
-            Live Demo
-          </a>
+          <div className="mk-demo-dd">
+            <a href="/demo" className={`mk-demo-dd-link${active === 'demo' ? ' active' : ''}`}>
+              Live Demo <span className="mk-demo-caret">▾</span>
+            </a>
+            <div className="mk-demo-menu">
+              <a href="/demo/nail-salon" className="mk-demo-item"><span className="mk-demo-item-icon">💅</span>Nail Salon</a>
+              <a href="/demo/hair-salon" className="mk-demo-item"><span className="mk-demo-item-icon">✂️</span>Hair Salon</a>
+              <a href="/demo/day-spa" className="mk-demo-item"><span className="mk-demo-item-icon">🧖</span>Day Spa</a>
+              <a href="/demo/med-spa" className="mk-demo-item"><span className="mk-demo-item-icon">💉</span>Med Spa</a>
+              <a href="/demo/beauty-clinic" className="mk-demo-item"><span className="mk-demo-item-icon">✨</span>Beauty Clinic</a>
+            </div>
+          </div>
           <a href="/pricing" className={active === 'pricing' ? 'active' : undefined}>
             Pricing
           </a>
@@ -103,6 +150,7 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
 
 export function MarketingFooter() {
   return (
+    <>
     <footer className="mk-footer">
       <div className="mk-footer-inner">
         <div className="mk-footer-grid">
@@ -159,7 +207,7 @@ export function MarketingFooter() {
             <h4>Product</h4>
             <a href="#features">Features</a>
             <a href="/#industries">Industries</a>
-            <a href="/demo">Live Demo</a>
+            <a href="/demo" data-demo-picker>Live Demo</a>
             <a href="#pricing">Pricing</a>
             <a href="#how-it-works">How It Works</a>
             <a href="/user/login">Sign In</a>
@@ -169,7 +217,7 @@ export function MarketingFooter() {
             <a href="/blog">Blog</a>
             <a href="/after-hours-calls">After-Hours Calls</a>
             <a href="/missed-call-recovery">Missed-Call Recovery</a>
-            <a href="/demo">Live Demo</a>
+            <a href="/demo" data-demo-picker>Live Demo</a>
             <a href="#pricing">Pricing</a>
             <a href="#faq">FAQ</a>
           </div>
@@ -189,5 +237,7 @@ export function MarketingFooter() {
         </div>
       </div>
     </footer>
+    <DemoPickerModal />
+    </>
   );
 }

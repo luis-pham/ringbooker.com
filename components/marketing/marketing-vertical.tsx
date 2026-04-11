@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
+
 export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic';
 
 type Integration = { name: string; status: 'Live now' | 'Soon' };
@@ -205,12 +206,13 @@ function FinalCta({
           >
             Start Free 14-Day Trial →
           </Link>
-          <Link
+          <a
             href={demoPath}
+            data-demo-picker
             className="inline-flex rounded-full border border-white/25 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:border-white/50 hover:bg-white/5"
           >
             Try Live AI Demo
-          </Link>
+          </a>
         </div>
       </div>
     </section>
@@ -238,9 +240,9 @@ function NailPage() {
             <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
               Start Free 14-Day Trial →
             </Link>
-            <Link href="/demo/nail-salon" className="rounded-full border border-slate-300 bg-white px-6 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-300 hover:text-violet-700">
+            <a href="/demo/nail-salon" data-demo-picker className="rounded-full border border-slate-300 bg-white px-6 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-300 hover:text-violet-700">
               Hear a Live Demo
-            </Link>
+            </a>
           </div>
           <IntegrationRow />
         </div>
@@ -252,9 +254,9 @@ function NailPage() {
             <div className="rounded-xl bg-white px-4 py-2.5 text-slate-500 shadow-sm">"Morning, like around 10?"</div>
             <div className="rounded-xl bg-violet-600 px-4 py-2.5 text-white shadow-sm">"10am works. Can I get your name to hold the spot?"</div>
           </div>
-          <Link href="/demo/nail-salon" className="mt-4 block rounded-xl bg-violet-100 px-4 py-2.5 text-center text-[13px] font-bold text-violet-700 transition hover:bg-violet-200">
+          <a href="/demo/nail-salon" data-demo-picker className="mt-4 block rounded-xl bg-violet-100 px-4 py-2.5 text-center text-[13px] font-bold text-violet-700 transition hover:bg-violet-200">
             Try the full nail salon demo →
-          </Link>
+          </a>
         </div>
       </section>
 
@@ -349,9 +351,9 @@ function HairPage() {
                 <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
                   Start Free Trial →
                 </Link>
-                <Link href="/demo/hair-salon" className="rounded-full border border-amber-200 bg-white px-6 py-3 text-[14px] font-semibold text-amber-700 transition hover:bg-amber-50">
+                <a href="/demo/hair-salon" data-demo-picker className="rounded-full border border-amber-200 bg-white px-6 py-3 text-[14px] font-semibold text-amber-700 transition hover:bg-amber-50">
                   Hear a Hair Salon Demo
-                </Link>
+                </a>
               </div>
               <IntegrationRow />
             </div>
@@ -363,9 +365,9 @@ function HairPage() {
                 <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-amber-900">"Sure, 2pm is fine."</div>
                 <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Booked. You'll get a confirmation text shortly."</div>
               </div>
-              <Link href="/demo/hair-salon" className="mt-4 block rounded-xl bg-amber-100 px-4 py-2.5 text-center text-[13px] font-bold text-amber-700 transition hover:bg-amber-200">
+              <a href="/demo/hair-salon" data-demo-picker className="mt-4 block rounded-xl bg-amber-100 px-4 py-2.5 text-center text-[13px] font-bold text-amber-700 transition hover:bg-amber-200">
                 Try the full hair salon demo →
-              </Link>
+              </a>
             </div>
           </div>
         </div>
@@ -461,9 +463,9 @@ function SpaPage() {
               <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
                 Start Free Trial →
               </Link>
-              <Link href="/demo/day-spa" className="rounded-full border border-teal-200 bg-white px-6 py-3 text-[14px] font-semibold text-teal-700 transition hover:bg-teal-50">
+              <a href="/demo/day-spa" data-demo-picker className="rounded-full border border-teal-200 bg-white px-6 py-3 text-[14px] font-semibold text-teal-700 transition hover:bg-teal-50">
                 Hear a Spa Demo
-              </Link>
+              </a>
             </div>
             <IntegrationRow />
           </div>
@@ -475,9 +477,9 @@ function SpaPage() {
               <div className="rounded-xl bg-teal-50 px-4 py-2.5 text-teal-900">"4pm sounds great."</div>
               <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Perfect. I'll hold that for you — name and number for confirmation?"</div>
             </div>
-            <Link href="/demo/day-spa" className="mt-4 block rounded-xl bg-teal-100 px-4 py-2.5 text-center text-[13px] font-bold text-teal-700 transition hover:bg-teal-200">
+            <a href="/demo/day-spa" data-demo-picker className="mt-4 block rounded-xl bg-teal-100 px-4 py-2.5 text-center text-[13px] font-bold text-teal-700 transition hover:bg-teal-200">
               Try the full spa demo →
-            </Link>
+            </a>
           </div>
         </div>
       </section>
@@ -573,9 +575,9 @@ function MedSpaPage() {
                 <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
                   Start Free Trial →
                 </Link>
-                <Link href="/demo/med-spa" className="rounded-full border border-indigo-200 bg-white px-6 py-3 text-[14px] font-semibold text-indigo-700 transition hover:bg-indigo-50">
+                <a href="/demo/med-spa" data-demo-picker className="rounded-full border border-indigo-200 bg-white px-6 py-3 text-[14px] font-semibold text-indigo-700 transition hover:bg-indigo-50">
                   Hear a Med Spa Demo
-                </Link>
+                </a>
               </div>
               <IntegrationRow />
             </div>
@@ -587,9 +589,9 @@ function MedSpaPage() {
                 <div className="rounded-xl bg-indigo-50 px-4 py-2.5 text-indigo-900">"Yes, next week if possible."</div>
                 <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"I have Tuesday at 11am or Thursday at 2pm — which works?"</div>
               </div>
-              <Link href="/demo/med-spa" className="mt-4 block rounded-xl bg-indigo-100 px-4 py-2.5 text-center text-[13px] font-bold text-indigo-700 transition hover:bg-indigo-200">
+              <a href="/demo/med-spa" data-demo-picker className="mt-4 block rounded-xl bg-indigo-100 px-4 py-2.5 text-center text-[13px] font-bold text-indigo-700 transition hover:bg-indigo-200">
                 Try the full med spa demo →
-              </Link>
+              </a>
             </div>
           </div>
         </div>
@@ -685,9 +687,9 @@ function BeautyClinicPage() {
               <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
                 Start Free Trial →
               </Link>
-              <Link href="/demo/beauty-clinic" className="rounded-full border border-fuchsia-200 bg-white px-6 py-3 text-[14px] font-semibold text-fuchsia-700 transition hover:bg-fuchsia-50">
+              <a href="/demo/beauty-clinic" data-demo-picker className="rounded-full border border-fuchsia-200 bg-white px-6 py-3 text-[14px] font-semibold text-fuchsia-700 transition hover:bg-fuchsia-50">
                 Hear a Clinic Demo
-              </Link>
+              </a>
             </div>
             <IntegrationRow />
           </div>
@@ -699,9 +701,9 @@ function BeautyClinicPage() {
               <div className="rounded-xl bg-fuchsia-50 px-4 py-2.5 text-fuchsia-900">"Yes, please."</div>
               <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Let me find the next available slot with your provider."</div>
             </div>
-            <Link href="/demo/beauty-clinic" className="mt-4 block rounded-xl bg-fuchsia-100 px-4 py-2.5 text-center text-[13px] font-bold text-fuchsia-700 transition hover:bg-fuchsia-200">
+            <a href="/demo/beauty-clinic" data-demo-picker className="mt-4 block rounded-xl bg-fuchsia-100 px-4 py-2.5 text-center text-[13px] font-bold text-fuchsia-700 transition hover:bg-fuchsia-200">
               Try the full beauty clinic demo →
-            </Link>
+            </a>
           </div>
         </div>
       </section>
