@@ -128,8 +128,13 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
 	.proofbar{padding:28px 48px 56px;background:#fff}
 	.proofbar-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-	.proof-item{display:flex;align-items:center;gap:10px;border:1px solid #E9D5FF;background:#FBFAFF;border-radius:18px;padding:14px 16px;font-size:13.5px;font-weight:800;color:#3F2A68;line-height:1.35}
-	.proof-check{width:22px;height:22px;min-width:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#EDE9FE;color:#6D28D9;font-size:13px}
+	.proof-item{display:flex;align-items:center;gap:12px;border:1px solid #E9D5FF;background:linear-gradient(145deg,#fff 0%,#FBFAFF 100%);border-radius:20px;padding:15px 16px;font-size:13.5px;font-weight:800;color:#3F2A68;line-height:1.35;box-shadow:0 10px 28px rgba(124,58,237,.06);transition:transform .2s,box-shadow .2s,border-color .2s}
+	.proof-item:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(124,58,237,.10);border-color:#DDD6FE}
+	.proof-icon{width:34px;height:34px;min-width:34px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
+	.proof-purple{background:#EDE9FE}
+	.proof-green{background:#D1FAE5}
+	.proof-amber{background:#FEF3C7}
+	.proof-pink{background:#FCE7F3}
 	.leak-section{padding:88px 48px;background:linear-gradient(180deg,#fff,#F9FAFB)}
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
@@ -137,18 +142,18 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-icon{font-size:26px;margin-bottom:10px}
 	.leak-card h3{font-size:17px;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px}
 	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}
-	.compare-section{padding:88px 48px;background:#111827;color:#fff}
-	.compare-section .sec-label{color:#C4B5FD}
-	.compare-section .sec-title,.compare-section .sec-sub{color:#fff}
-	.compare-grid{display:grid;gap:12px;margin-top:42px}
-	.compare-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-	.compare-cell{border-radius:20px;padding:20px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06)}
-	.compare-cell.bad{background:rgba(239,68,68,.10)}
-	.compare-cell.good{background:rgba(16,185,129,.12)}
-	.compare-eyebrow{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;color:#D1D5DB}
-	.compare-cell.good .compare-eyebrow{color:#A7F3D0}
-	.compare-cell.bad .compare-eyebrow{color:#FECACA}
-	.compare-cell p{font-size:14.5px;line-height:1.7;color:#F3F4F6}
+	.compare-section{padding:88px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
+	.compare-grid{display:grid;gap:14px;margin-top:42px}
+	.compare-row{display:grid;grid-template-columns:56px 1fr 1fr;gap:12px;align-items:stretch}
+	.compare-icon{width:56px;height:56px;border-radius:20px;background:#F5F3FF;border:1px solid #E9D5FF;display:flex;align-items:center;justify-content:center;font-size:25px;box-shadow:0 10px 24px rgba(124,58,237,.08)}
+	.compare-cell{border-radius:22px;padding:20px;border:1px solid var(--border);background:#fff;box-shadow:0 10px 30px rgba(17,24,39,.04)}
+	.compare-cell.bad{background:#FFFBFB;border-color:#FEE2E2}
+	.compare-cell.good{background:#F8FFFC;border-color:#BBF7D0}
+	.compare-eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;color:#9CA3AF}
+	.compare-cell.good .compare-eyebrow{color:#059669}
+	.compare-cell.bad .compare-eyebrow{color:#EF4444}
+	.compare-cell p{font-size:14.5px;line-height:1.7;color:#4B5563}
+	.compare-cell.good p{color:#064E3B}
 
 	/* ─── HERO VISUAL ─── */
 .hero-visual{position:relative;margin-top:56px;height:580px;display:flex;align-items:center;justify-content:center}
@@ -253,9 +258,9 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .deep-s1 .d-text p,.deep-s2-outer .d-text p,.deep-s3-outer .d-text p{font-size:14.5px;color:var(--text-gray);line-height:1.72;margin-bottom:24px}
 .checklist{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:30px}
 .checklist li{display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:var(--text-dark)}
-.ck-ico{width:22px;height:22px;min-width:22px;border-radius:50%;background:var(--purple-ultra);border:1.5px solid #C4B5FD;display:flex;align-items:center;justify-content:center}
+.ck-ico{width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center}
 .ck-ico svg{display:none}
-.ck-ico::before{font-size:12px;line-height:1}
+.ck-ico::before{font-size:17px;line-height:1}
 .deep-s1 .checklist li:nth-child(1) .ck-ico::before{content:"🌙"}
 .deep-s1 .checklist li:nth-child(2) .ck-ico::before{content:"💲"}
 .deep-s1 .checklist li:nth-child(3) .ck-ico::before{content:"💬"}
@@ -1015,13 +1020,13 @@ export function MarketingHomeTemplate() {
         <section className="proofbar" aria-label="RingBooker setup proof points">
           <div className="proofbar-inner">
             {[
-              'Keep your current phone number',
-              'Works with Square, Vagaro, Booksy & existing booking tools',
-              'Live in about 15 minutes — no tech setup',
-              'Built for nail salons, hair salons, spas, and clinics',
-            ].map((item) => (
+              ['☎️', 'Keep your current phone number', 'proof-purple'],
+              ['🔌', 'Works with Square, Vagaro, Booksy & existing booking tools', 'proof-green'],
+              ['⚡', 'Live in about 15 minutes — no tech setup', 'proof-amber'],
+              ['💅', 'Built for nail salons, hair salons, spas, and clinics', 'proof-pink'],
+            ].map(([icon, item, tone]) => (
               <div className="proof-item" key={item}>
-                <span className="proof-check">✓</span>
+                <span className={`proof-icon ${tone}`}>{icon}</span>
                 <span>{item}</span>
               </div>
             ))}
@@ -1057,13 +1062,14 @@ export function MarketingHomeTemplate() {
             <p className="sec-sub reveal">The product is built around real salon call behavior: short questions, interruptions, booking changes, and callers who just want a clear next step.</p>
             <div className="compare-grid">
               {[
-                ['Endless loops when the caller asks something unexpected.', 'A two-strike fallback, callback offer, and clean handoff when the request needs a human.'],
-                ['Pretends to be a real person and breaks trust.', 'Can introduce itself transparently as your virtual assistant while staying warm and useful.'],
-                ['Asks seven questions before helping.', 'Asks only what is needed to book, reschedule, cancel, or summarize the request.'],
-                ['No context when the team follows up.', 'Call summaries and intent notes help your team continue without making the caller repeat everything.'],
-                ['Dead-end voicemail after the caller hangs up.', 'Missed-call text back and smart callback workflows keep the booking alive.'],
-              ].map(([bad, good]) => (
+                ['🌀', 'Endless loops when the caller asks something unexpected.', 'A two-strike fallback, callback offer, and clean handoff when the request needs a human.'],
+                ['🤝', 'Pretends to be a real person and breaks trust.', 'Can introduce itself transparently as your virtual assistant while staying warm and useful.'],
+                ['💬', 'Asks seven questions before helping.', 'Asks only what is needed to book, reschedule, cancel, or summarize the request.'],
+                ['📝', 'No context when the team follows up.', 'Call summaries and intent notes help your team continue without making the caller repeat everything.'],
+                ['↩️', 'Dead-end voicemail after the caller hangs up.', 'Missed-call text back and smart callback workflows keep the booking alive.'],
+              ].map(([icon, bad, good]) => (
                 <div className="compare-row" key={bad}>
+                  <div className="compare-icon" aria-hidden="true">{icon}</div>
                   <div className="compare-cell bad">
                     <div className="compare-eyebrow">Generic AI phone agent</div>
                     <p>{bad}</p>
