@@ -1,11 +1,9 @@
 import Link from 'next/link';
 
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
-
+import { CallPreviewPlayer, type CallLine } from '@/components/marketing/call-preview-player';
 
 export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic';
-
-type Integration = { name: string; status: 'Live now' | 'Soon' };
 
 const SERVICE_BY_VERTICAL: Record<
   MarketingVerticalKey,
@@ -43,24 +41,94 @@ const SERVICE_BY_VERTICAL: Record<
   },
 };
 
+type Integration = { name: string; status: 'Live now' | 'Soon'; icon: string; bg: string; fg: string };
+
 const INTEGRATIONS: Integration[] = [
-  { name: 'Square Appointments', status: 'Live now' },
-  { name: 'Vagaro', status: 'Soon' },
-  { name: 'Mindbody', status: 'Soon' },
-  { name: 'Booksy', status: 'Soon' },
+  { name: 'Square', status: 'Live now', icon: '■', bg: '#000', fg: '#fff' },
+  { name: 'Vagaro', status: 'Soon', icon: 'V', bg: '#0E9488', fg: '#fff' },
+  { name: 'Mindbody', status: 'Soon', icon: 'M', bg: '#0066CC', fg: '#fff' },
+  { name: 'Booksy', status: 'Soon', icon: 'B', bg: '#F97316', fg: '#fff' },
 ];
+
+const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessName: string; accent: string }> = {
+  'nail-salon': {
+    businessName: 'Luxe Nail Studio',
+    accent: '#7C3AED',
+    lines: [
+      { role: 'caller', text: 'I saw your Instagram — how much for a full set with gel?' },
+      { role: 'ai', text: 'Full set with gel is $45. I can book you in today — do you have a preference for morning or afternoon?' },
+      { role: 'caller', text: 'Morning, like around 10?' },
+      { role: 'ai', text: '10am works. Can I get your name to hold the spot?' },
+    ],
+  },
+  'hair-salon': {
+    businessName: 'Studio Luxe Hair',
+    accent: '#B45309',
+    lines: [
+      { role: 'caller', text: 'Can I get a balayage with Sarah on Saturday?' },
+      { role: 'ai', text: 'Sarah is fully booked Saturday. I have a 2pm with Jessica who also specializes in balayage — would that work?' },
+      { role: 'caller', text: 'Sure, 2pm is fine.' },
+      { role: 'ai', text: 'Booked. You\'ll get a confirmation text shortly.' },
+    ],
+  },
+  spa: {
+    businessName: 'Serenity Day Spa',
+    accent: '#0D9488',
+    lines: [
+      { role: 'caller', text: 'Do you have a couples massage this Saturday afternoon?' },
+      { role: 'ai', text: 'Yes — we have a couples suite at 2pm and 4pm Saturday, each 60 minutes. Which would you prefer?' },
+      { role: 'caller', text: '4pm sounds great.' },
+      { role: 'ai', text: 'Perfect. I\'ll hold that for you — name and number for confirmation?' },
+    ],
+  },
+  'med-spa': {
+    businessName: 'Revive Med Spa',
+    accent: '#4F46E5',
+    lines: [
+      { role: 'caller', text: 'I\'m interested in Botox and filler — what does a consultation look like?' },
+      { role: 'ai', text: 'Our consultations are complimentary and take about 30 minutes. A provider reviews your goals and creates a personalized plan. Can I schedule one for you?' },
+      { role: 'caller', text: 'Yes, next week if possible.' },
+      { role: 'ai', text: 'I have Tuesday at 11am or Thursday at 2pm — which works?' },
+    ],
+  },
+  'beauty-clinic': {
+    businessName: 'Aura Beauty Clinic',
+    accent: '#A21CAF',
+    lines: [
+      { role: 'caller', text: 'I had laser done last month and want to book my next session — do I need another consultation?' },
+      { role: 'ai', text: 'If your last session was within 90 days and there are no new concerns, we can book directly. Would you like to schedule with the same provider?' },
+      { role: 'caller', text: 'Yes, please.' },
+      { role: 'ai', text: 'Let me find the next available slot with your provider.' },
+    ],
+  },
+};
 
 function IntegrationRow() {
   return (
-    <div className="mt-5 flex flex-wrap gap-2">
-      {INTEGRATIONS.map((item) => (
-        <span key={item.name} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[13px] font-semibold text-slate-700">
-          {item.name}
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${item.status === 'Live now' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-            {item.status}
-          </span>
-        </span>
-      ))}
+    <div className="mt-5">
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">Works with your booking tools</p>
+      <div className="flex flex-wrap gap-2">
+        {INTEGRATIONS.map((item) => (
+          <div key={item.name} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+            <div
+              style={{ background: item.bg, color: item.fg, width: 26, height: 26, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, flexShrink: 0 }}
+            >
+              {item.icon}
+            </div>
+            <div>
+              <div className="text-[12px] font-bold text-slate-700 leading-tight">{item.name}</div>
+              {item.status === 'Live now' ? (
+                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600">
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                  Live
+                </div>
+              ) : (
+                <div className="text-[10px] font-semibold text-slate-400">Coming soon</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -148,8 +216,8 @@ function FeatureGrid({ features, accent }: { features: FeatureItem[]; accent: st
       <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">Every feature you need, built in</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
-          <article key={f.title} className="rounded-3xl border border-slate-200 bg-white p-6 transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${accent}`}>{f.icon}</div>
+          <article key={f.title} className="flex flex-col items-center text-center rounded-3xl border border-slate-200 bg-white p-6 transition hover:-translate-y-0.5 hover:shadow-lg">
+            <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${accent}`}>{f.icon}</div>
             <p className="text-[15px] font-bold text-slate-900">{f.title}</p>
             <p className="mt-1.5 text-[13px] leading-6 text-slate-500">{f.body}</p>
           </article>
@@ -195,23 +263,22 @@ function FinalCta({
 }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6 pb-10">
-      <div className="rounded-3xl bg-slate-900 px-8 py-14 text-center text-white">
+      <div className="rounded-3xl px-8 py-14 text-center text-white" style={{ background: 'linear-gradient(135deg, #3b0764 0%, #6d28d9 50%, #312e81 100%)' }}>
         <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-violet-300">{label}</p>
         <h2 className="mt-3 text-[clamp(28px,5vw,48px)] font-extrabold leading-[1.1] tracking-tight">{title}</h2>
-        <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-slate-300">{subtitle}</p>
+        <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-violet-200">{subtitle}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             href="/user/signup"
-            className="inline-flex rounded-full bg-white px-7 py-3.5 text-[14px] font-bold text-slate-900 transition hover:-translate-y-0.5 hover:bg-slate-50"
+            className="inline-flex rounded-full bg-white px-7 py-3.5 text-[14px] font-bold text-violet-900 transition hover:-translate-y-0.5 hover:bg-violet-50"
           >
             Start Free 14-Day Trial →
           </Link>
           <a
             href={demoPath}
-            data-demo-picker
             className="inline-flex rounded-full border border-white/25 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:border-white/50 hover:bg-white/5"
           >
-            Try Live AI Demo
+            Try a Live Demo Call
           </a>
         </div>
       </div>
@@ -240,23 +307,14 @@ function NailPage() {
             <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
               Start Free 14-Day Trial →
             </Link>
-            <a href="/demo/nail-salon" data-demo-picker className="rounded-full border border-slate-300 bg-white px-6 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-300 hover:text-violet-700">
-              Hear a Live Demo
+            <a href="/demo/nail-salon" className="rounded-full border border-slate-300 bg-white px-6 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-300 hover:text-violet-700">
+              Try a Live Demo Call
             </a>
           </div>
           <IntegrationRow />
         </div>
-        <div className="hidden rounded-3xl border border-violet-100 bg-violet-50/60 p-6 lg:block">
-          <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-violet-500">Live call sample</p>
-          <div className="mt-3 space-y-2.5 text-[14px]">
-            <div className="rounded-xl bg-white px-4 py-2.5 text-slate-500 shadow-sm">"I saw your Instagram — how much for a full set with gel?"</div>
-            <div className="rounded-xl bg-violet-600 px-4 py-2.5 text-white shadow-sm">"Full set with gel is $45. I can book you in today — do you have a preference for morning or afternoon?"</div>
-            <div className="rounded-xl bg-white px-4 py-2.5 text-slate-500 shadow-sm">"Morning, like around 10?"</div>
-            <div className="rounded-xl bg-violet-600 px-4 py-2.5 text-white shadow-sm">"10am works. Can I get your name to hold the spot?"</div>
-          </div>
-          <a href="/demo/nail-salon" data-demo-picker className="mt-4 block rounded-xl bg-violet-100 px-4 py-2.5 text-center text-[13px] font-bold text-violet-700 transition hover:bg-violet-200">
-            Try the full nail salon demo →
-          </a>
+        <div className="hidden lg:block">
+          <CallPreviewPlayer {...CALL_PREVIEWS['nail-salon']} />
         </div>
       </section>
 
@@ -351,23 +409,14 @@ function HairPage() {
                 <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
                   Start Free Trial →
                 </Link>
-                <a href="/demo/hair-salon" data-demo-picker className="rounded-full border border-amber-200 bg-white px-6 py-3 text-[14px] font-semibold text-amber-700 transition hover:bg-amber-50">
-                  Hear a Hair Salon Demo
+                <a href="/demo/hair-salon" className="rounded-full border border-amber-200 bg-white px-6 py-3 text-[14px] font-semibold text-amber-700 transition hover:bg-amber-50">
+                  Try a Live Demo Call
                 </a>
               </div>
               <IntegrationRow />
             </div>
-            <div className="hidden rounded-2xl border border-amber-100 bg-white p-5 lg:block">
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-amber-600">Live call sample</p>
-              <div className="space-y-2.5 text-[14px]">
-                <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-amber-900">"Can I get a balayage with Sarah on Saturday?"</div>
-                <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Sarah is fully booked Saturday. I have a 2pm with Jessica who also specializes in balayage — would that work?"</div>
-                <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-amber-900">"Sure, 2pm is fine."</div>
-                <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Booked. You'll get a confirmation text shortly."</div>
-              </div>
-              <a href="/demo/hair-salon" data-demo-picker className="mt-4 block rounded-xl bg-amber-100 px-4 py-2.5 text-center text-[13px] font-bold text-amber-700 transition hover:bg-amber-200">
-                Try the full hair salon demo →
-              </a>
+            <div className="hidden lg:block">
+              <CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} />
             </div>
           </div>
         </div>
@@ -463,23 +512,14 @@ function SpaPage() {
               <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
                 Start Free Trial →
               </Link>
-              <a href="/demo/day-spa" data-demo-picker className="rounded-full border border-teal-200 bg-white px-6 py-3 text-[14px] font-semibold text-teal-700 transition hover:bg-teal-50">
-                Hear a Spa Demo
+              <a href="/demo/day-spa" className="rounded-full border border-teal-200 bg-white px-6 py-3 text-[14px] font-semibold text-teal-700 transition hover:bg-teal-50">
+                Try a Live Demo Call
               </a>
             </div>
             <IntegrationRow />
           </div>
-          <div className="hidden rounded-2xl border border-teal-100 bg-white p-5 lg:block">
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-teal-600">Live call sample</p>
-            <div className="space-y-2.5 text-[14px]">
-              <div className="rounded-xl bg-teal-50 px-4 py-2.5 text-teal-900">"Do you have a couples massage this Saturday afternoon?"</div>
-              <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Yes — we have a couples suite available at 2pm and 4pm Saturday. Each is 60 minutes. Which would you prefer?"</div>
-              <div className="rounded-xl bg-teal-50 px-4 py-2.5 text-teal-900">"4pm sounds great."</div>
-              <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Perfect. I'll hold that for you — name and number for confirmation?"</div>
-            </div>
-            <a href="/demo/day-spa" data-demo-picker className="mt-4 block rounded-xl bg-teal-100 px-4 py-2.5 text-center text-[13px] font-bold text-teal-700 transition hover:bg-teal-200">
-              Try the full spa demo →
-            </a>
+          <div className="hidden lg:block">
+            <CallPreviewPlayer {...CALL_PREVIEWS['spa']} />
           </div>
         </div>
       </section>
@@ -575,23 +615,14 @@ function MedSpaPage() {
                 <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
                   Start Free Trial →
                 </Link>
-                <a href="/demo/med-spa" data-demo-picker className="rounded-full border border-indigo-200 bg-white px-6 py-3 text-[14px] font-semibold text-indigo-700 transition hover:bg-indigo-50">
-                  Hear a Med Spa Demo
+                <a href="/demo/med-spa" className="rounded-full border border-indigo-200 bg-white px-6 py-3 text-[14px] font-semibold text-indigo-700 transition hover:bg-indigo-50">
+                  Try a Live Demo Call
                 </a>
               </div>
               <IntegrationRow />
             </div>
-            <div className="hidden rounded-2xl border border-indigo-100 bg-white p-5 lg:block">
-              <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-indigo-500">Live call sample</p>
-              <div className="space-y-2.5 text-[14px]">
-                <div className="rounded-xl bg-indigo-50 px-4 py-2.5 text-indigo-900">"I'm interested in Botox and filler — what does a consultation look like?"</div>
-                <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Our consultations are complimentary and take about 30 minutes. We review your goals and a provider creates a personalized plan. Can I schedule one for you?"</div>
-                <div className="rounded-xl bg-indigo-50 px-4 py-2.5 text-indigo-900">"Yes, next week if possible."</div>
-                <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"I have Tuesday at 11am or Thursday at 2pm — which works?"</div>
-              </div>
-              <a href="/demo/med-spa" data-demo-picker className="mt-4 block rounded-xl bg-indigo-100 px-4 py-2.5 text-center text-[13px] font-bold text-indigo-700 transition hover:bg-indigo-200">
-                Try the full med spa demo →
-              </a>
+            <div className="hidden lg:block">
+              <CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} />
             </div>
           </div>
         </div>
@@ -687,23 +718,14 @@ function BeautyClinicPage() {
               <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
                 Start Free Trial →
               </Link>
-              <a href="/demo/beauty-clinic" data-demo-picker className="rounded-full border border-fuchsia-200 bg-white px-6 py-3 text-[14px] font-semibold text-fuchsia-700 transition hover:bg-fuchsia-50">
-                Hear a Clinic Demo
+              <a href="/demo/beauty-clinic" className="rounded-full border border-fuchsia-200 bg-white px-6 py-3 text-[14px] font-semibold text-fuchsia-700 transition hover:bg-fuchsia-50">
+                Try a Live Demo Call
               </a>
             </div>
             <IntegrationRow />
           </div>
-          <div className="hidden rounded-2xl border border-fuchsia-100 bg-white p-5 lg:block">
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-fuchsia-500">Live call sample</p>
-            <div className="space-y-2.5 text-[14px]">
-              <div className="rounded-xl bg-fuchsia-50 px-4 py-2.5 text-fuchsia-900">"I had laser done last month and want to book my next session — do I need another consultation?"</div>
-              <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"If your last session was within 90 days and there are no new concerns, we can book your next session directly. Would you like to schedule with the same provider?"</div>
-              <div className="rounded-xl bg-fuchsia-50 px-4 py-2.5 text-fuchsia-900">"Yes, please."</div>
-              <div className="rounded-xl bg-slate-100 px-4 py-2.5 text-slate-600">"Let me find the next available slot with your provider."</div>
-            </div>
-            <a href="/demo/beauty-clinic" data-demo-picker className="mt-4 block rounded-xl bg-fuchsia-100 px-4 py-2.5 text-center text-[13px] font-bold text-fuchsia-700 transition hover:bg-fuchsia-200">
-              Try the full beauty clinic demo →
-            </a>
+          <div className="hidden lg:block">
+            <CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} />
           </div>
         </div>
       </section>

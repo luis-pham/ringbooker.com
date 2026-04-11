@@ -43,18 +43,23 @@ const VERTICAL_LANDING: Record<DemoVerticalSlug, string> = {
 const styles: string[] = [
   String.raw`
   /* ─── base ─────────────────────────────────────────────── */
-  .vd-page{padding-top:68px;background:linear-gradient(160deg,color-mix(in srgb,var(--va) 7%,#fff) 0%,#fff 55%);min-height:100dvh}
-  .vd-wrap{max-width:480px;margin:0 auto;padding:28px 20px 56px;display:flex;flex-direction:column}
+  .vd-page{padding-top:80px;background:linear-gradient(160deg,color-mix(in srgb,var(--va) 7%,#fff) 0%,#fff 55%);min-height:100dvh}
+  .vd-wrap{margin:0 auto;padding:28px 20px 56px;display:flex;flex-direction:column}
 
-  /* back */
-  .vd-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#6B7280;text-decoration:none;margin-bottom:22px}
+  /* page header (full-width, centered) */
+  .vd-page-header{max-width:1120px;margin:0 auto;padding:32px 20px 20px;display:flex;flex-direction:column;align-items:center}
+  .vd-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#6B7280;text-decoration:none;margin-bottom:18px;align-self:flex-start}
   .vd-back:hover{color:var(--va)}
 
   /* badge + heading */
-  .vd-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--va) 30%,#E5E7EB);background:color-mix(in srgb,var(--va) 8%,#fff);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--va);margin-bottom:14px;width:fit-content}
+  .vd-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--va) 30%,#E5E7EB);background:color-mix(in srgb,var(--va) 8%,#fff);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--va);margin:0 auto 14px;width:fit-content}
   .vd-icon{width:22px;height:22px;border-radius:7px;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
-  .vd-h1{font-size:clamp(24px,6vw,32px);font-weight:900;line-height:1.12;letter-spacing:-0.6px;color:#111827;margin:0 0 8px}
-  .vd-sub{font-size:14px;line-height:1.65;color:#6B7280;margin:0 0 24px}
+  .vd-h1{font-size:clamp(24px,6vw,36px);font-weight:900;line-height:1.1;letter-spacing:-0.6px;color:#111827;margin:0 0 10px}
+  .vd-sub{font-size:15px;line-height:1.65;color:#6B7280;margin:0 auto;max-width:560px}
+
+  @media(min-width:800px){
+    .vd-page-header{padding:40px 40px 24px}
+  }
 
   /* phone field — hero */
   .vd-phone-label{display:block;font-size:13px;font-weight:800;color:#111827;margin-bottom:7px}
@@ -150,19 +155,25 @@ const styles: string[] = [
   .vd-right{display:none}
 
   /* phone card */
-  .vd-phone{background:#111827;border-radius:28px;padding:24px;position:relative;overflow:hidden;color:#fff}
-  .vd-phone::before{content:'';position:absolute;inset:-70px -60px auto auto;width:200px;height:200px;border-radius:50%;background:color-mix(in srgb,var(--va) 45%,transparent)}
-  .vd-phone-top{display:flex;justify-content:space-between;color:rgba(255,255,255,.5);font-size:12px;margin-bottom:22px;position:relative}
-  .vd-phone-avatar{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--va),color-mix(in srgb,var(--va) 60%,#000));display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;margin:0 auto 14px;box-shadow:0 0 0 8px rgba(255,255,255,.08);position:relative}
-  .vd-phone-name{text-align:center;position:relative;margin-bottom:6px;font-size:18px;font-weight:800}
-  .vd-phone-scenario{color:rgba(255,255,255,.6);font-size:13px;text-align:center;position:relative;margin-bottom:18px;line-height:1.5}
-  .vd-phone-wave{height:26px;display:flex;justify-content:center;align-items:center;gap:3px;margin-bottom:18px}
-  .vd-phone-wave span{display:block;width:3px;border-radius:3px;background:#C4B5FD;animation:vdWave 1.1s ease-in-out infinite}
+  .vd-phone{background:linear-gradient(165deg,#1a0533 0%,#2d1b69 50%,#1a0d3a 100%);border-radius:28px;padding:24px;position:relative;overflow:hidden;color:#fff}
+  .vd-phone::before{content:'';position:absolute;inset:-70px -60px auto auto;width:200px;height:200px;border-radius:50%;background:color-mix(in srgb,var(--va) 35%,transparent)}
+  .vd-phone-top{display:flex;justify-content:space-between;color:rgba(255,255,255,.5);font-size:12px;margin-bottom:18px;position:relative}
+  .vd-phone-avatar{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--va),color-mix(in srgb,var(--va) 60%,#000));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;margin:0 auto 10px;box-shadow:0 0 0 8px rgba(255,255,255,.07),0 0 32px color-mix(in srgb,var(--va) 40%,transparent);position:relative}
+  .vd-phone-name{text-align:center;position:relative;margin-bottom:4px;font-size:17px;font-weight:800}
+  .vd-phone-subtitle{color:rgba(255,255,255,.5);font-size:11px;font-weight:700;letter-spacing:.06em;text-align:center;text-transform:uppercase;position:relative;margin-bottom:16px}
+  .vd-phone-wave{height:26px;display:flex;justify-content:center;align-items:center;gap:3px;margin-bottom:16px}
+  .vd-phone-wave span{display:block;width:3px;border-radius:3px;background:color-mix(in srgb,var(--va) 80%,#C4B5FD);animation:vdWave 1.1s ease-in-out infinite}
   .vd-phone-wave span:nth-child(1){height:7px}.vd-phone-wave span:nth-child(2){height:18px;animation-delay:.08s}.vd-phone-wave span:nth-child(3){height:24px;animation-delay:.16s}.vd-phone-wave span:nth-child(4){height:14px;animation-delay:.24s}.vd-phone-wave span:nth-child(5){height:20px;animation-delay:.32s}
-  .vd-phone-transcript{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.07);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px}
-  .vd-tr-caller{background:rgba(255,255,255,.12);border-radius:10px 10px 10px 3px;padding:9px 11px;font-size:13px;color:rgba(255,255,255,.85);line-height:1.4}
-  .vd-tr-ai{background:var(--va);border-radius:10px 10px 3px 10px;padding:9px 11px;font-size:13px;color:#fff;line-height:1.4}
-  .vd-tr-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:2px}
+  /* call state indicators */
+  .vd-states{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .vd-state{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);border-radius:12px;padding:10px 11px;display:flex;align-items:center;gap:7px}
+  .vd-state-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25);flex-shrink:0}
+  .vd-state-text{font-size:11.5px;font-weight:700;color:rgba(255,255,255,.45);line-height:1.2}
+  .vd-state.ai-answer .vd-state-dot{background:var(--va);box-shadow:0 0 6px color-mix(in srgb,var(--va) 80%,transparent);animation:vdPulse 1.4s infinite}
+  .vd-state.ai-answer .vd-state-text{color:#fff}
+  .vd-state.ai-answer{border-color:color-mix(in srgb,var(--va) 50%,transparent);background:color-mix(in srgb,var(--va) 15%,transparent)}
+  /* form card */
+  .vd-form-card{border:1px solid #E5E7EB;border-radius:24px;background:#fff;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 
   /* trust pills */
   .vd-trust{display:flex;flex-direction:column;gap:8px;margin-top:14px}
@@ -175,17 +186,17 @@ const styles: string[] = [
   @media(min-width:800px){
     .vd-page{background:linear-gradient(145deg,color-mix(in srgb,var(--va) 6%,#fff) 0%,#fff 60%)}
     .vd-wrap{
-      max-width:960px;
+      max-width:1100px;
       display:grid;
-      grid-template-columns:1fr 340px;
-      gap:48px;
+      grid-template-columns:1fr 360px;
+      gap:52px;
       align-items:start;
-      padding:48px 40px 72px;
+      padding:8px 40px 72px;
     }
-    .vd-right{display:flex;flex-direction:column;gap:0;position:sticky;top:88px}
+    .vd-right{display:flex;flex-direction:column;gap:0;position:sticky;top:96px}
   }
-  @media(min-width:1100px){
-    .vd-wrap{max-width:1060px;grid-template-columns:1fr 380px;gap:56px;padding:56px 48px 80px}
+  @media(min-width:1200px){
+    .vd-wrap{max-width:1120px;grid-template-columns:1fr 380px;gap:64px;padding:8px 48px 80px}
   }
   `,
 ];
@@ -222,44 +233,10 @@ function stageLabel(stage: DemoStage): string {
   return 'Ready';
 }
 
-// Preview transcripts per vertical
-const PREVIEW_TRANSCRIPT: Record<DemoVerticalSlug, Array<{ role: 'caller' | 'ai'; text: string }>> = {
-  'nail-salon': [
-    { role: 'caller', text: 'How much is a gel manicure?' },
-    { role: 'ai', text: 'Gel manicure is $32 and takes about 45 minutes. Want to book today?' },
-    { role: 'caller', text: 'Yes, do you have Saturday morning?' },
-    { role: 'ai', text: 'I have 10am or 11:30am Saturday. Which works for you?' },
-  ],
-  'hair-salon': [
-    { role: 'caller', text: 'Can I book a balayage with Mia?' },
-    { role: 'ai', text: 'Mia is fully booked this week, but Jessica also specializes in balayage. Want me to check her availability?' },
-    { role: 'caller', text: 'Sure, what\'s the price range?' },
-    { role: 'ai', text: 'Balayage starts at $145 and usually takes about 2 hours. I can book a free consultation first.' },
-  ],
-  'day-spa': [
-    { role: 'caller', text: 'Do you have a couples massage this Saturday?' },
-    { role: 'ai', text: 'We have a couples suite available at 2pm and 4pm Saturday. Each session is 60 minutes.' },
-    { role: 'caller', text: '4pm sounds great.' },
-    { role: 'ai', text: 'Perfect — I\'ll hold that for you. Can I get your name?' },
-  ],
-  'med-spa': [
-    { role: 'caller', text: 'I\'m interested in Botox — what does a consultation look like?' },
-    { role: 'ai', text: 'Consultations are complimentary and take about 30 minutes. A provider reviews your goals and creates a personalized plan.' },
-    { role: 'caller', text: 'Can I book one next week?' },
-    { role: 'ai', text: 'I have Tuesday at 11am or Thursday at 2pm. Which works better?' },
-  ],
-  'beauty-clinic': [
-    { role: 'caller', text: 'I had laser done last month and want to book my next session.' },
-    { role: 'ai', text: 'If your last session was within 90 days and you have no new concerns, we can book directly. Would you like the same provider?' },
-    { role: 'caller', text: 'Yes please.' },
-    { role: 'ai', text: 'Let me find the next available slot with your provider.' },
-  ],
-};
 
 export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVerticalSlug }) {
   const config = DEMO_VERTICALS[vertical];
   const landingPath = VERTICAL_LANDING[vertical];
-  const transcript = PREVIEW_TRANSCRIPT[vertical];
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: config.defaultBusinessName,
@@ -427,19 +404,22 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
         <MarketingHeader active="demo" />
 
         <div className="vd-page" style={{ '--va': config.accent } as CSSProperties}>
+
+          {/* ══ PAGE HEADER (centered, full-width) ════════════════ */}
+          <div className="vd-page-header">
+            <Link href={landingPath} className="vd-back">← Back to {verticalLabel}</Link>
+            <div className="vd-badge"><span className="vd-icon">{config.icon}</span>{config.eyebrow}</div>
+            <h1 className="vd-h1">{config.title}</h1>
+            <p className="vd-sub">{config.subtitle}</p>
+          </div>
+
           <div className="vd-wrap">
 
             {/* ══ LEFT COLUMN ══════════════════════════════════════ */}
             <div>
-              <Link href={landingPath} className="vd-back">← Back to {verticalLabel}</Link>
-
-              <div className="vd-badge"><span className="vd-icon">{config.icon}</span>{config.eyebrow}</div>
-              <h1 className="vd-h1">{config.title}</h1>
-              <p className="vd-sub">{config.subtitle}</p>
-
               {/* ── FORM ── */}
               {!isActive ? (
-                <>
+                <div className="vd-form-card">
                   {/* Phone — primary hero field */}
                   <label className="vd-phone-label" htmlFor="vd-phone">📞 Your phone number — we call you</label>
                   <input
@@ -544,7 +524,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                     {isSubmitting ? 'Starting…' : 'Call me now →'}
                   </button>
                   <p className="vd-cta-note">Outbound web demo only · Your real phone system is never changed</p>
-                </>
+                </div>
               ) : (
                 /* ── STATUS VIEW ── */
                 <div>
@@ -626,20 +606,30 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
               {/* Phone preview card */}
               <div className="vd-phone">
                 <div className="vd-phone-top">
-                  <span>Live demo preview</span>
-                  <span>~2 min</span>
+                  <span style={{ fontWeight: 700 }}>9:41</span>
+                  <span style={{ fontSize: 9 }}>● ▲ ■</span>
                 </div>
                 <div className="vd-phone-avatar">{config.icon}</div>
                 <div className="vd-phone-name">{business.businessName || config.defaultBusinessName}</div>
-                <div className="vd-phone-scenario">{config.quickScenario}</div>
+                <div className="vd-phone-subtitle">{stage === 'live' ? 'Active Call' : stage === 'completed' ? 'Call Summary' : 'Demo Preview'}</div>
                 <div className="vd-phone-wave"><span /><span /><span /><span /><span /></div>
-                <div className="vd-phone-transcript">
-                  {transcript.map((line, i) => (
-                    <div key={i}>
-                      <div className="vd-tr-label">{line.role === 'caller' ? 'Caller' : 'RingBooker AI'}</div>
-                      <div className={line.role === 'caller' ? 'vd-tr-caller' : 'vd-tr-ai'}>{line.text}</div>
-                    </div>
-                  ))}
+                <div className="vd-states">
+                  <div className={`vd-state ${stage === 'dialing' || (stage === 'live' && activeStep === 3) ? 'ai-answer' : ''}`}>
+                    <span className="vd-state-dot" />
+                    <span className="vd-state-text">AI Answering</span>
+                  </div>
+                  <div className={`vd-state ${stage === 'live' ? 'ai-answer' : ''}`} style={stage === 'live' ? { borderColor: 'rgba(255,255,255,.25)', background: 'rgba(255,255,255,.1)' } : {}}>
+                    <span className="vd-state-dot" style={stage === 'live' ? { background: '#fff' } : {}} />
+                    <span className="vd-state-text" style={stage === 'live' ? { color: '#fff' } : {}}>User Speaking</span>
+                  </div>
+                  <div className="vd-state">
+                    <span className="vd-state-dot" />
+                    <span className="vd-state-text">AI Listening</span>
+                  </div>
+                  <div className="vd-state">
+                    <span className="vd-state-dot" />
+                    <span className="vd-state-text">AI Responding</span>
+                  </div>
                 </div>
               </div>
 

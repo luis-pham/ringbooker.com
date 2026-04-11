@@ -47,7 +47,8 @@ export function MarketingChromeStyles() {
 .mk-demo-dd-link:hover,.mk-demo-dd-link.active{color:#111827}
 .mk-demo-caret{font-size:10px;opacity:.55;transition:transform .2s;display:inline-block;margin-top:1px;margin-left:2px}
 .mk-demo-dd:hover .mk-demo-caret{transform:rotate(180deg)}
-.mk-demo-menu{position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%) translateY(-4px);background:#fff;border:1px solid #E5E7EB;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:8px;min-width:210px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:200}
+.mk-demo-menu{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(-4px);padding-top:12px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:200}
+.mk-demo-menu-inner{background:#fff;border:1px solid #E5E7EB;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:8px;min-width:210px}
 .mk-demo-dd:hover .mk-demo-menu{opacity:1;pointer-events:all;transform:translateX(-50%) translateY(0)}
 .mk-demo-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;font-size:13.5px;font-weight:600;color:#374151;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
 .mk-demo-item:hover{background:#F5F3FF;color:#7C3AED}
@@ -73,8 +74,16 @@ export function MarketingChromeStyles() {
 .dpm-card:hover .dpm-arrow{opacity:1;transform:translateX(0)}
 .dpm-note{font-size:12px;color:#9CA3AF;text-align:center;line-height:1.5}
 @media(max-width:480px){
-  .dpm-dialog{padding:28px 20px 22px}
-  .dpm-grid{grid-template-columns:1fr}
+  .dpm-dialog{padding:22px 16px 18px;border-radius:22px}
+  .dpm-head{margin-bottom:0}
+  .dpm-title{font-size:17px;margin-bottom:4px}
+  .dpm-sub{display:none}
+  .dpm-grid{grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px}
+  .dpm-card{padding:12px 10px;gap:3px;padding-bottom:12px}
+  .dpm-card-sub{display:none}
+  .dpm-icon{font-size:20px;margin-bottom:2px}
+  .dpm-label{font-size:13px}
+  .dpm-arrow{display:none}
 }
 
 @media(max-width:960px){
@@ -118,11 +127,13 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
               Live Demo <span className="mk-demo-caret">▾</span>
             </a>
             <div className="mk-demo-menu">
-              <a href="/demo/nail-salon" className="mk-demo-item"><span className="mk-demo-item-icon">💅</span>Nail Salon</a>
-              <a href="/demo/hair-salon" className="mk-demo-item"><span className="mk-demo-item-icon">✂️</span>Hair Salon</a>
-              <a href="/demo/day-spa" className="mk-demo-item"><span className="mk-demo-item-icon">🧖</span>Day Spa</a>
-              <a href="/demo/med-spa" className="mk-demo-item"><span className="mk-demo-item-icon">💉</span>Med Spa</a>
-              <a href="/demo/beauty-clinic" className="mk-demo-item"><span className="mk-demo-item-icon">✨</span>Beauty Clinic</a>
+              <div className="mk-demo-menu-inner">
+                <a href="/demo/nail-salon" className="mk-demo-item"><span className="mk-demo-item-icon">💅</span>Nail Salon</a>
+                <a href="/demo/hair-salon" className="mk-demo-item"><span className="mk-demo-item-icon">✂️</span>Hair Salon</a>
+                <a href="/demo/day-spa" className="mk-demo-item"><span className="mk-demo-item-icon">🧖</span>Day Spa</a>
+                <a href="/demo/med-spa" className="mk-demo-item"><span className="mk-demo-item-icon">💉</span>Med Spa</a>
+                <a href="/demo/beauty-clinic" className="mk-demo-item"><span className="mk-demo-item-icon">✨</span>Beauty Clinic</a>
+              </div>
             </div>
           </div>
           <a href="/pricing" className={active === 'pricing' ? 'active' : undefined}>

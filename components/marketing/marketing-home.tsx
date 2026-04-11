@@ -437,10 +437,11 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .scope-icon.later{background:#fff7ed;color:#c2410c}
 
 /* ─── USER PREVIEW ─── */
-.user-preview{padding:36px 48px 88px;background:var(--bg-gray)}
+.user-preview{padding:88px 48px;background:var(--bg-gray)}
 .user-preview-inner{max-width:1100px;margin:0 auto}
 .user-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:24px;align-items:center}
-.user-copy h2{text-align:left}
+.user-copy .sec-label{text-align:left;margin-bottom:16px}
+.user-copy h2{text-align:left;font-size:clamp(28px,3.6vw,44px);font-weight:800;line-height:1.12;letter-spacing:-1.2px;margin-bottom:14px}
 .user-copy p{font-size:14.5px;color:var(--text-gray);line-height:1.75;margin-bottom:24px;text-align:left}
 .user-shot{border-radius:28px;background:linear-gradient(180deg,#ffffff,#f8fafc);padding:14px;box-shadow:0 20px 50px rgba(17,24,39,.10);border:1px solid rgba(139,92,246,.14)}
 .user-shell{position:relative;background:linear-gradient(135deg,#f7f2ff 0%,#ffffff 55%,#f5f3ff 100%);border-radius:22px;overflow:hidden;aspect-ratio:16/9;min-height:auto;border:1px solid #E5E7EB;display:block}
@@ -1312,7 +1313,7 @@ export function MarketingHomeTemplate() {
             <div className="user-grid">
               <div className="user-copy">
                 <div className="sec-label" style={{textAlign: 'left'}}>Call Context</div>
-                <h2 style={{fontSize: 'clamp(30px,4vw,44px)', lineHeight: '1.12', letterSpacing: '-1.2px', marginBottom: 14}}>Know who called, what they needed, and who needs follow-up.</h2>
+                <h2>Know who called, what they needed, and who needs follow-up.</h2>
                 <p>RingBooker keeps the useful context — call summaries, booking intent, preferred provider notes, and callback needs — without asking your team to manage another booking platform.</p>
               </div>
               <div className="user-shot">
