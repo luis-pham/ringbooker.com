@@ -648,6 +648,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   let firstModelAudioAtMs: number | null = null;
   let callAnsweredAtMs: number | null = null;
   let sessionStartedAtMs: number | null = null;
+  let preAnswerShutdownRequested = false;
+  let preAnswerShutdownReason: string | null = null;
+  let resolveSessionClose: () => void = () => {};
 
   const bindRoomIoParticipant = (participantIdentity: string, source: string): void => {
     const roomIo = (session as unknown as { _roomIO?: { setParticipant?: (identity: string) => void } })._roomIO;
@@ -698,6 +701,17 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         },
         'livekit_native_openai_session_started',
       );
+      if (preAnswerShutdownRequested) {
+        log.info(
+          {
+            roomName: input.roomName,
+            placement,
+            shutdownReason: preAnswerShutdownReason,
+          },
+          'livekit_native_openai_session_shutdown_after_late_prewarm',
+        );
+        session.shutdown({ drain: false });
+      }
     } catch (error) {
       log.error(
         {
@@ -751,8 +765,10 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   };
 
   let resolveAnsweredParticipant!: (participantIdentity: string) => void;
-  const answeredParticipantPromise = new Promise<string>((resolve) => {
+  let rejectAnsweredParticipant!: (error: Error) => void;
+  const answeredParticipantPromise = new Promise<string>((resolve, reject) => {
     resolveAnsweredParticipant = resolve;
+    rejectAnsweredParticipant = reject;
   });
   let answeredParticipantResolved = false;
 
@@ -783,6 +799,37 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       answeredParticipantResolved = true;
       resolveAnsweredParticipant(participant.identity);
     }
+  };
+
+  const markParticipantEndedBeforeAnswer = (
+    participant: {
+      identity: string;
+      attributes?: Record<string, string>;
+      info?: { kind?: number };
+    },
+    source: string,
+  ) => {
+    if (callAnsweredAtMs || answeredParticipantResolved || !isSipParticipant(participant)) return;
+
+    preAnswerShutdownRequested = true;
+    preAnswerShutdownReason = `${source}:${getSipCallStatus(participant) ?? 'unknown'}`;
+    answeredParticipantResolved = true;
+    log.info(
+      {
+        roomName: input.roomName,
+        participantIdentity: participant.identity,
+        source,
+        sipCallStatus: getSipCallStatus(participant),
+        sessionStarted,
+      },
+      'livekit_native_openai_call_ended_before_answer',
+    );
+    rejectAnsweredParticipant(new Error('livekit_native_openai_call_ended_before_answer'));
+    if (sessionStarted) {
+      session.shutdown({ drain: false });
+    }
+    resolveSessionClose();
+    void room.disconnect().catch(() => {});
   };
 
   session.on(agentVoice.AgentSessionEventTypes.UserInputTranscribed, (ev) => {
@@ -922,7 +969,6 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     );
   });
 
-  let resolveSessionClose!: () => void;
   const sessionClosePromise = new Promise<void>((resolve) => {
     resolveSessionClose = resolve;
   });
@@ -969,11 +1015,12 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     });
 
   room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      const sipCallStatus = getSipCallStatus(participant);
       log.info(
         {
           roomName: input.roomName,
           participantIdentity: participant.identity,
-          sipCallStatus: getSipCallStatus(participant),
+          sipCallStatus,
           isLocal: participant.identity === room.localParticipant?.identity,
           activeCallDurationMs: callAnsweredAtMs ? Date.now() - callAnsweredAtMs : null,
           firstModelAudioSeen: Boolean(firstModelAudioAtMs),
@@ -981,6 +1028,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         },
         'livekit_native_openai_participant_disconnected',
       );
+      markParticipantEndedBeforeAnswer(participant, 'participant_disconnected');
     });
 
   room.on(RoomEvent.ParticipantAttributesChanged, (changedAttributes, participant) => {
@@ -995,6 +1043,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       );
       if ('sip.callStatus' in changedAttributes) {
         markParticipantAnswered(participant, 'participant_attributes_changed');
+        if (participant.attributes['sip.callStatus'] === 'hangup') {
+          markParticipantEndedBeforeAnswer(participant, 'participant_attributes_changed');
+        }
       }
     });
 
