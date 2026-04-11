@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "npm run prompts:sync",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -11,6 +12,7 @@
     "agent:worker": "tsx src/agent/realtime/worker-entry.ts",
     "agent:livekit:native:openai": "tsx src/agent/realtime/livekit-native-openai-agent.ts start",
     "test": "tsx --test src/**/*.test.ts",
+    "prompts:sync": "node scripts/sync-prompts.mjs",
     "check:readiness": "node scripts/check-readiness.mjs",
     "check:readiness:openai": "node scripts/check-openai-realtime-readiness.mjs",
     "smoke:inbound": "node scripts/e2e-inbound-smoke.mjs",

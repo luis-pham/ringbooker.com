@@ -1,9 +1,9 @@
-import { MarketingNailSalonDemoTemplate } from '@/components/marketing/marketing-demo-nail-salon';
+import { MarketingVerticalDemoTemplate } from '@/components/marketing/marketing-vertical-demo';
 
 export const metadata = {
   title: 'Nail Salon Live Demo — RingBooker',
 };
 
 export default function NailSalonDemoPage() {
-  return <MarketingNailSalonDemoTemplate />;
+  return <MarketingVerticalDemoTemplate vertical="nail-salon" />;
 }

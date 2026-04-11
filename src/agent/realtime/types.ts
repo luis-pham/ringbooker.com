@@ -24,6 +24,12 @@ export interface RealtimeDispatchPayload {
     allowedTools?: string[];
     blockMessage?: string;
   };
+  demo?: {
+    isolated: boolean;
+    source: string;
+    vertical: string;
+    mode: string;
+  };
 }
 
 export interface RealtimeSessionMetadata extends Record<string, unknown> {

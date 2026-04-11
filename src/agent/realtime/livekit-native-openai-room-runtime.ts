@@ -2,6 +2,12 @@ import { voice as agentVoice, initializeLogger, llm as agentLlm } from '@livekit
 import { AudioFrame, Room, RoomEvent, TrackKind } from '@livekit/rtc-node';
 
 import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
+import {
+  compactRealtimeSystemInstruction,
+  getOpenAiVietnameseBookingTranscriptionPrompt,
+  renderFallbackGreeting,
+  renderRealtimeGreetingInstructions,
+} from '@/src/agent/prompts';
 import { withLogContext } from '@/src/backend/observability/logger';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
 
@@ -28,13 +34,10 @@ function resolveJoinToken(input: RealtimeDispatchInput): string | null {
 }
 
 function compactSystemInstruction(raw: string): string {
-  const compacted = raw.replace(/\s+/g, ' ').trim();
-  const maxCharsRaw = Number(process.env.AGENT_OPENAI_SYSTEM_PROMPT_MAX_CHARS ?? 7000);
-  const maxChars = Number.isFinite(maxCharsRaw) && maxCharsRaw >= 1000 ? maxCharsRaw : 7000;
-  const constrainedPolicy =
-    '\n\nHARD POLICY: Only use data from this call context and tool outputs. If out-of-scope, refuse briefly and offer callback or transfer.';
-  if (compacted.length <= maxChars) return `${compacted}${constrainedPolicy}`;
-  return `${compacted.slice(0, maxChars)}…${constrainedPolicy}`;
+  return compactRealtimeSystemInstruction(raw, {
+    maxCharsRaw: process.env.AGENT_OPENAI_SYSTEM_PROMPT_MAX_CHARS,
+    policyKind: 'native_openai',
+  });
 }
 
 function resolveOpenAIModel(input: RealtimeDispatchInput): string | null {
@@ -100,9 +103,7 @@ function resolveOpenAIInputAudioTranscription(
     (shouldDefaultToVietnamese(input) ? 'vi' : undefined);
   const prompt =
     process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_PROMPT?.trim() ||
-    (language === 'vi'
-      ? 'Cuộc gọi đặt lịch bằng tiếng Việt. Người gọi có thể hỏi về đặt lịch, đổi lịch, dịch vụ, giá, giờ mở cửa, địa chỉ.'
-      : undefined);
+    (language === 'vi' ? getOpenAiVietnameseBookingTranscriptionPrompt() : undefined);
 
   return {
     model: process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_MODEL?.trim() || 'gpt-4o-mini-transcribe',
@@ -176,15 +177,9 @@ function resolveGreetingText(input: RealtimeDispatchInput): string {
   const shopName = extractShopNameFromSystemPrompt(input.systemPrompt);
 
   if (shouldUseVietnamese) {
-    if (shopName) {
-      return `Dạ em chào anh/chị, đây là ${shopName}. Em có thể giúp mình đặt lịch hoặc hỏi thông tin dịch vụ hôm nay ạ.`;
-    }
-    return 'Dạ em chào anh/chị. Em có thể giúp mình đặt lịch hoặc hỏi thông tin dịch vụ hôm nay ạ.';
+    return renderFallbackGreeting({ businessName: shopName, language: 'vi' });
   }
-  if (shopName) {
-    return `Hi, thank you for calling ${shopName}. How can I help you today?`;
-  }
-  return 'Hi, thank you for calling. How can I help you today?';
+  return renderFallbackGreeting({ businessName: shopName, language: 'en' });
 }
 
 function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
@@ -198,6 +193,39 @@ function parseBoolean(value: string | undefined, defaultValue: boolean): boolean
 function parseNumber(value: string | undefined, defaultValue: number): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : defaultValue;
+}
+
+function resolveLiveKitInterruptionMode(): 'adaptive' | 'vad' | undefined {
+  const raw = process.env.AGENT_LIVEKIT_INTERRUPTION_MODE?.trim().toLowerCase();
+  if (raw === 'adaptive' || raw === 'vad') return raw;
+  return undefined;
+}
+
+function resolveLiveKitAgentSessionOptions() {
+  const falseInterruptionTimeoutRaw = process.env.AGENT_LIVEKIT_FALSE_INTERRUPTION_TIMEOUT_MS?.trim();
+  const falseInterruptionTimeout =
+    falseInterruptionTimeoutRaw?.toLowerCase() === 'off'
+      ? undefined
+      : Math.max(0, Math.round(parseNumber(falseInterruptionTimeoutRaw, 1200)));
+
+  return {
+    preemptiveGeneration: parseBoolean(process.env.AGENT_LIVEKIT_PREEMPTIVE_GENERATION, false),
+    aecWarmupDuration: Math.max(0, Math.round(parseNumber(process.env.AGENT_LIVEKIT_AEC_WARMUP_MS, 3000))),
+    turnHandling: {
+      interruption: {
+        enabled: parseBoolean(process.env.AGENT_LIVEKIT_INTERRUPTION_ENABLED, true),
+        mode: resolveLiveKitInterruptionMode(),
+        discardAudioIfUninterruptible: parseBoolean(
+          process.env.AGENT_LIVEKIT_DISCARD_AUDIO_IF_UNINTERRUPTIBLE,
+          true,
+        ),
+        minDuration: Math.max(0, Math.round(parseNumber(process.env.AGENT_LIVEKIT_INTERRUPTION_MIN_DURATION_MS, 650))),
+        minWords: Math.max(0, Math.round(parseNumber(process.env.AGENT_LIVEKIT_INTERRUPTION_MIN_WORDS, 1))),
+        falseInterruptionTimeout,
+        resumeFalseInterruption: parseBoolean(process.env.AGENT_LIVEKIT_RESUME_FALSE_INTERRUPTION, false),
+      },
+    },
+  };
 }
 
 /** For debug logs only; avoid huge payloads in production unless AGENT_OPENAI_LOG_ALL_SERVER_EVENTS. */
@@ -942,7 +970,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   }
 
   const initialGreetingText = resolveGreetingText(input);
-  const initialGreetingInstructions = `Say this opening phone greeting naturally and warmly. Do not add extra details or mention RingBooker unless the greeting itself says it: "${initialGreetingText}"`;
+  const initialGreetingInstructions = renderRealtimeGreetingInstructions(initialGreetingText);
   log.info(
     {
       roomName: input.roomName,
@@ -957,7 +985,15 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
   const agent = new NativeOpenAICallAgent();
 
-  const session = new agentVoice.AgentSession({ llm });
+  const agentSessionOptions = resolveLiveKitAgentSessionOptions();
+  log.info(
+    {
+      roomName: input.roomName,
+      ...agentSessionOptions,
+    },
+    'livekit_native_openai_agent_session_options_resolved',
+  );
+  const session = new agentVoice.AgentSession({ llm, ...agentSessionOptions });
   const sessionLlm = (session as unknown as { llm?: unknown }).llm;
   log.info(
     {

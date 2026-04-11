@@ -177,6 +177,7 @@ export function MarketingFooter() {
             <h4>Company</h4>
             <a href="/privacy">Privacy Policy</a>
             <a href="/terms">Terms of Service</a>
+            <a href="/refund">Refund Policy</a>
             <a href="/contact">Support</a>
             <a href="/contact">Contact</a>
             <a href="/user/login">Sign In</a>

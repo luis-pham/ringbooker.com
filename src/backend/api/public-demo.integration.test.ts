@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
+import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -34,6 +35,7 @@ test('public demo endpoint creates preview token and status endpoint returns dia
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     shopsRepository: new InMemoryShopsRepository(),
     callLogsRepository,
+    demoSessionsRepository: new InMemoryDemoSessionsRepository(),
     telephonyService: new FakeTelephonyService(),
     realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
     runtimeInfo: {

@@ -12,6 +12,7 @@ import { InMemoryMissedCallsRepository } from '@/src/backend/adapters/memory/mis
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
 import { InMemoryBlogPostsRepository } from '@/src/backend/adapters/memory/blog-posts-repository';
 import { InMemoryContactRequestsRepository } from '@/src/backend/adapters/memory/contact-requests-repository';
+import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
 import { NoopEmailService } from '@/src/backend/adapters/noop/email-service';
 import { NoopPhoneProvisioningService } from '@/src/backend/adapters/noop/phone-provisioning-service';
 import { NoopSmsService } from '@/src/backend/adapters/noop/sms-service';
@@ -30,6 +31,7 @@ import { SupabaseMissedCallsRepository } from '@/src/backend/adapters/supabase/m
 import { SupabaseAuthUsersRepository } from '@/src/backend/adapters/supabase/auth-users-repository';
 import { SupabaseBlogPostsRepository } from '@/src/backend/adapters/supabase/blog-posts-repository';
 import { SupabaseContactRequestsRepository } from '@/src/backend/adapters/supabase/contact-requests-repository';
+import { SupabaseDemoSessionsRepository } from '@/src/backend/adapters/supabase/demo-sessions-repository';
 import { TelnyxPhoneProvisioningService } from '@/src/backend/adapters/telnyx/phone-provisioning-service';
 import { TelnyxSmsService } from '@/src/backend/adapters/telnyx/sms-service';
 import { TelnyxTelephonyService } from '@/src/backend/adapters/telnyx/telephony-service';
@@ -147,6 +149,7 @@ export function createBackendRuntime() {
             authUsersRepository: new SupabaseAuthUsersRepository(supabase),
             blogPostsRepository: new SupabaseBlogPostsRepository(supabase),
             contactRequestsRepository: new SupabaseContactRequestsRepository(supabase),
+            demoSessionsRepository: new SupabaseDemoSessionsRepository(supabase),
           };
         })()
       : {
@@ -163,6 +166,7 @@ export function createBackendRuntime() {
           authUsersRepository: new InMemoryAuthUsersRepository(),
           blogPostsRepository: new InMemoryBlogPostsRepository(),
           contactRequestsRepository: new InMemoryContactRequestsRepository(),
+          demoSessionsRepository: new InMemoryDemoSessionsRepository(),
         };
   const services =
     commProvider === 'telnyx'
@@ -247,6 +251,7 @@ export function createBackendRuntime() {
     authUsersRepository: repositories.authUsersRepository,
     blogPostsRepository: repositories.blogPostsRepository,
     contactRequestsRepository: repositories.contactRequestsRepository,
+    demoSessionsRepository: repositories.demoSessionsRepository,
     billingProvider,
     basePath: '/api/backend',
     runtimeInfo: {
@@ -278,6 +283,7 @@ export function createBackendRuntime() {
     authUsersRepository: repositories.authUsersRepository,
     blogPostsRepository: repositories.blogPostsRepository,
     contactRequestsRepository: repositories.contactRequestsRepository,
+    demoSessionsRepository: repositories.demoSessionsRepository,
     smsService: services.smsService,
     telephonyService: services.telephonyService,
     phoneProvisioningService: services.phoneProvisioningService,

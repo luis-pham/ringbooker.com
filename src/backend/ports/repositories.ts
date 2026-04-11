@@ -26,6 +26,85 @@ export interface ProviderEventsRepository {
   clearProcessingError(provider: string, providerEventId: string): Promise<void>;
 }
 
+export type DemoMode = 'quick' | 'advanced' | 'free-form';
+export type DemoSessionStatus = 'created' | 'queued' | 'dialing' | 'live' | 'completed' | 'missed' | 'failed' | 'expired';
+export type DemoCallStatus = 'queued' | 'dialing' | 'live' | 'completed' | 'missed' | 'failed';
+
+export interface DemoCallRunRecord {
+  requestId: string;
+  publicSessionId: string;
+  verticalSlug: string;
+  mode: DemoMode;
+  callbackPhone: string;
+  provider: string;
+  providerCallId?: string | null;
+  roomName?: string | null;
+  status: DemoCallStatus;
+  startedAt?: string | null;
+  connectedAt?: string | null;
+  endedAt?: string | null;
+  outcome?: string | null;
+  expiresAt?: string | null;
+}
+
+export interface DemoSessionsRepository {
+  createSession(params: {
+    publicSessionId: string;
+    verticalSlug: string;
+    mode: DemoMode;
+    source: string;
+    callbackPhone: string;
+    businessName: string;
+    city?: string | null;
+    businessHours?: unknown;
+    staff?: unknown;
+    notes?: string | null;
+    systemPrompt?: string | null;
+    services?: Array<{
+      category: string;
+      name: string;
+      price?: number | null;
+      duration?: string | null;
+      enabled?: boolean;
+    }>;
+    expiresAt?: Date;
+  }): Promise<{ id: string; expiresAt: Date }>;
+  createCallRun(params: {
+    demoSessionId: string;
+    requestId: string;
+    provider: string;
+    providerCallId?: string | null;
+    roomName?: string | null;
+    status: DemoCallStatus;
+    startedAt?: Date;
+  }): Promise<void>;
+  markCallRunStatusByRequestId(params: {
+    requestId: string;
+    status: DemoCallStatus;
+    providerCallId?: string | null;
+    connectedAt?: Date | null;
+    endedAt?: Date | null;
+    outcome?: string | null;
+  }): Promise<void>;
+  createSmsRun(params: {
+    requestId: string;
+    toPhone: string;
+    templateKey: string;
+    previewBody: string;
+    sentAt?: Date | null;
+    providerMessageId?: string | null;
+  }): Promise<void>;
+  addStatusEvent(params: {
+    requestId?: string | null;
+    demoSessionId?: string | null;
+    eventType: string;
+    payload?: unknown;
+    occurredAt?: Date;
+  }): Promise<void>;
+  findCallRunByRequestId(requestId: string): Promise<DemoCallRunRecord | null>;
+  expireOlderThan(now: Date): Promise<number>;
+}
+
 export interface CallLogsRepository {
   createOrUpdateInboundCall(params: {
     provider: string;

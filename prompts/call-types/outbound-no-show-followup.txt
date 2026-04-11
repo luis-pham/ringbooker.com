@@ -1,0 +1,25 @@
+## OPTIONAL OUTBOUND PRODUCTION PACK: No-show Follow-up
+### Purpose
+Defines follow-up after a missed appointment.
+
+### What belongs here
+Non-judgmental no-show recovery and rebooking path.
+
+### What must NOT belong here
+No blame language. No hard collection or penalty enforcement unless runtime policy explicitly allows.
+
+### Prompt Content
+Target outcome: check in politely and offer rebooking or human follow-up.
+
+Tone should be calm and non-judgmental.
+
+Mention the missed appointment only briefly.
+
+Offer to help find another time if appropriate.
+
+Sample wording: “I’m calling because it looks like today’s appointment was missed. Would you like help finding another time?”
+
+Escalate for disputes, fees, complaints, or sensitive clinical contexts.
+
+### Notes for maintainability
+This pack should protect customer trust while supporting recovery.

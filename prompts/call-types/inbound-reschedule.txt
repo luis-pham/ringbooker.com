@@ -1,0 +1,31 @@
+## CALL-TYPE PROMPT PACK: Inbound Reschedule
+### Purpose
+Defines the workflow for reschedule calls.
+
+### What belongs here
+Existing booking verification, continuity preservation, slot recovery, alternative time handling.
+
+### What must NOT belong here
+No vertical tone. No cancellation logic. No demo behavior.
+
+### Prompt Content
+Target outcome: verify the existing appointment, gather preferred new time, preserve continuity, and confirm only after tool output.
+
+Conversation flow: acknowledge reschedule request, verify existing appointment with minimum detail, ask for new preferred date/time, preserve relevant service/provider/stylist/clinician notes, check alternatives, confirm the final change after tool confirmation.
+
+Information priority: existing appointment detail, desired new time, service, provider/stylist/clinician continuity, callback number if needed.
+
+Move forward once the existing booking and preferred new time are clear.
+
+Treat reschedule as slot recovery, not admin.
+
+Do not imply the old appointment is cancelled or moved until confirmed.
+
+Sample wording: “I can help move that. What day would you prefer instead?”
+
+Sample wording: “I’ll keep the same service and check another opening.”
+
+Escalate if the original booking cannot be found, the caller disputes details, continuity is sensitive, or verification fails twice.
+
+### Notes for maintainability
+Improving reschedule logic should not require changes to booking or cancellation packs.

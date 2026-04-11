@@ -2,9 +2,9 @@ import { MarketingVerticalTemplate } from '@/components/marketing/marketing-vert
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Phone Answering Service for Beauty and Aesthetic Clinics',
+  title: 'AI Phone Answering for Beauty and Aesthetic Clinics | RingBooker',
   description:
-    'AI phone answering for beauty and aesthetic clinics. RingBooker answers after-hours and overflow calls, captures consultation intent, and supports faster booking workflows.',
+    'RingBooker is the AI answering service for beauty and aesthetic clinics — handles consultation intake calls, maintains provider continuity, answers pre-care and post-care questions, and captures every inbound inquiry with a premium, clinic-appropriate experience.',
   path: '/beauty-clinic',
 });
 

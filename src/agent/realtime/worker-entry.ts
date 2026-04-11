@@ -25,6 +25,9 @@ async function postDispatchStatus(params: {
   shopId?: string;
   status: 'received' | 'agent_joined' | 'completed' | 'failed';
   error?: string;
+  isDemo?: boolean;
+  demoVertical?: string;
+  demoMode?: string;
 }) {
   const appBaseUrl = process.env.APP_BASE_URL;
   if (!appBaseUrl) return;
@@ -44,6 +47,9 @@ async function postDispatchStatus(params: {
       shopId: params.shopId,
       status: params.status,
       error: params.error,
+      isDemo: params.isDemo,
+      demoVertical: params.demoVertical,
+      demoMode: params.demoMode,
       occurredAt: new Date().toISOString(),
     }),
   }).catch(() => {
@@ -66,23 +72,28 @@ async function main() {
     (parsed.realtime.metadata as { shopId?: string } | undefined)?.shopId ??
     (parsed.realtime.metadata as { dispatchPayload?: { context?: { shopId?: string } } } | undefined)?.dispatchPayload?.context
       ?.shopId;
+  const demoMetadata = (parsed.realtime.metadata as { dispatchPayload?: { demo?: { isolated?: boolean; vertical?: string; mode?: string } } } | undefined)
+    ?.dispatchPayload?.demo;
+  const isDemoDispatch = demoMetadata?.isolated === true || parsed.requestId.startsWith('demo-');
   const runtime = getBackendRuntime();
-  const inboundSession = await createInboundAgentSession(
-    {
-      shopsRepository: runtime.shopsRepository,
-      jobsRepository: runtime.jobsRepository,
-      bookingsRepository: runtime.bookingsRepository,
-      callbacksRepository: runtime.callbacksRepository,
-      telephonyService: runtime.telephonyService,
-      realtimeAgentRuntime: runtime.realtimeAgentRuntime,
-    },
-    {
-      destinationPhone: parsed.destinationPhone,
-      callerPhone: parsed.callerPhone,
-      requestId: parsed.requestId,
-      roomName: parsed.roomName,
-    },
-  );
+  const inboundSession = isDemoDispatch
+    ? null
+    : await createInboundAgentSession(
+        {
+          shopsRepository: runtime.shopsRepository,
+          jobsRepository: runtime.jobsRepository,
+          bookingsRepository: runtime.bookingsRepository,
+          callbacksRepository: runtime.callbacksRepository,
+          telephonyService: runtime.telephonyService,
+          realtimeAgentRuntime: runtime.realtimeAgentRuntime,
+        },
+        {
+          destinationPhone: parsed.destinationPhone,
+          callerPhone: parsed.callerPhone,
+          requestId: parsed.requestId,
+          roomName: parsed.roomName,
+        },
+      );
   if (inboundSession) {
     void inboundSession.warmupCallStartContext().catch((error) => {
       log.warn(
@@ -113,6 +124,7 @@ async function main() {
   const seenTranscriptLines = new Set<string>();
 
   const persistTranscript = async (speaker: 'caller' | 'assistant', text: string) => {
+    if (isDemoDispatch) return;
     if (!shopId || !runtime.callLogsRepository) return;
     const cleaned = text.trim();
     if (!cleaned) return;
@@ -139,6 +151,7 @@ async function main() {
       | 'failed'
       | null,
   ) => {
+    if (isDemoDispatch) return;
     if (!shopId || !runtime.callLogsRepository) return;
     await runtime.callLogsRepository.updateDemoLiveStateByRequestId({
       shopId,
@@ -153,6 +166,9 @@ async function main() {
     sessionId: parsed.realtime.sessionId,
     shopId,
     status: 'received',
+    isDemo: isDemoDispatch,
+    demoVertical: demoMetadata?.vertical,
+    demoMode: demoMetadata?.mode,
   });
   await updateDemoLiveState('preparing');
 
@@ -175,6 +191,9 @@ async function main() {
     sessionId: parsed.realtime.sessionId,
     shopId,
     status: 'agent_joined',
+    isDemo: isDemoDispatch,
+    demoVertical: demoMetadata?.vertical,
+    demoMode: demoMetadata?.mode,
   });
 
   if (parsed.realtime.mode !== 'livekit_realtime') {
@@ -254,7 +273,7 @@ async function main() {
     );
   }
 
-  if (shopId && runtime.callLogsRepository) {
+  if (!isDemoDispatch && shopId && runtime.callLogsRepository) {
     await updateDemoLiveState('completed');
     await runtime.callLogsRepository.updateTranscriptStatusByRequestId({
       shopId,
@@ -269,6 +288,9 @@ async function main() {
     sessionId: parsed.realtime.sessionId,
     shopId,
     status: 'completed',
+    isDemo: isDemoDispatch,
+    demoVertical: demoMetadata?.vertical,
+    demoMode: demoMetadata?.mode,
   });
 }
 
@@ -282,17 +304,23 @@ main().catch((error) => {
     (parsed?.realtime.metadata as { shopId?: string } | undefined)?.shopId ??
     (parsed?.realtime.metadata as { dispatchPayload?: { context?: { shopId?: string } } } | undefined)?.dispatchPayload?.context
       ?.shopId;
+  const failedDemoMetadata = (
+    parsed?.realtime.metadata as { dispatchPayload?: { demo?: { isolated?: boolean; vertical?: string; mode?: string } } } | undefined
+  )?.dispatchPayload?.demo;
+  const failedIsDemoDispatch = failedDemoMetadata?.isolated === true || Boolean(parsed?.requestId.startsWith('demo-'));
   if (parsed && failedShopId) {
-    void runtime.callLogsRepository?.updateDemoLiveStateByRequestId({
-      shopId: failedShopId,
-      requestId: parsed.requestId,
-      state: 'failed',
-    });
-    void runtime.callLogsRepository?.updateTranscriptStatusByRequestId({
-      shopId: failedShopId,
-      requestId: parsed.requestId,
-      status: 'failed',
-    });
+    if (!failedIsDemoDispatch) {
+      void runtime.callLogsRepository?.updateDemoLiveStateByRequestId({
+        shopId: failedShopId,
+        requestId: parsed.requestId,
+        state: 'failed',
+      });
+      void runtime.callLogsRepository?.updateTranscriptStatusByRequestId({
+        shopId: failedShopId,
+        requestId: parsed.requestId,
+        status: 'failed',
+      });
+    }
   }
   log.error(
     {
@@ -306,6 +334,9 @@ main().catch((error) => {
     sessionId: process.env.RB_DISPATCH_SESSION_ID ?? 'unknown',
     status: 'failed',
     error: error instanceof Error ? error.message : 'unknown_error',
+    isDemo: failedIsDemoDispatch,
+    demoVertical: failedDemoMetadata?.vertical,
+    demoMode: failedDemoMetadata?.mode,
   });
   process.exit(1);
 });

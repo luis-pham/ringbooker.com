@@ -27,29 +27,27 @@ import { Room, RoomEvent, TrackKind } from '@livekit/rtc-node';
 
 import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
 import { REALTIME_TOOL_DEFINITIONS } from '@/src/agent/realtime/shared-tool-definitions';
+import { compactRealtimeSystemInstruction, normalizePromptWhitespace } from '@/src/agent/prompts';
 import { withLogContext } from '@/src/backend/observability/logger';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
 import type { ToolError } from '@/src/backend/domain/types';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 7000;
+const DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS = 18000;
 const DEFAULT_MAX_TOOL_RESPONSE_CHARS = 3000;
-const CONSTRAINED_POLICY =
-  '\n\nHARD POLICY: Only use data from this call context and tool outputs. If out-of-scope, refuse briefly and offer callback/transfer.';
 
 // ─── Utility: system prompt ─────────────────────────────────────────────────
 
 function normalizeWhitespace(text: string): string {
-  return text.replace(/\s+/g, ' ').trim();
+  return normalizePromptWhitespace(text);
 }
 
 function compactSystemInstruction(raw: string): string {
-  const maxCharsRaw = Number(process.env.AGENT_GEMINI_SYSTEM_PROMPT_MAX_CHARS ?? DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS);
-  const maxChars = Number.isFinite(maxCharsRaw) && maxCharsRaw >= 1000 ? maxCharsRaw : DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS;
-  const compacted = normalizeWhitespace(raw);
-  if (compacted.length <= maxChars) return `${compacted}${CONSTRAINED_POLICY}`;
-  return `${compacted.slice(0, maxChars)}…${CONSTRAINED_POLICY}`;
+  return compactRealtimeSystemInstruction(raw, {
+    maxCharsRaw: process.env.AGENT_GEMINI_SYSTEM_PROMPT_MAX_CHARS,
+    defaultMaxChars: DEFAULT_MAX_SYSTEM_INSTRUCTION_CHARS,
+  });
 }
 
 // ─── Utility: voice resolution ──────────────────────────────────────────────

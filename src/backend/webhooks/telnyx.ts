@@ -5,6 +5,7 @@ import { getEnv } from '@/src/backend/config/env';
 import type {
   CallLogsRepository,
   CallbacksRepository,
+  DemoSessionsRepository,
   JobsRepository,
   MissedCallsRepository,
   ProviderEventsRepository,
@@ -82,6 +83,7 @@ export async function handleTelnyxWebhook(
     shopsRepository?: ShopsRepository;
     callLogsRepository?: CallLogsRepository;
     missedCallsRepository?: MissedCallsRepository;
+    demoSessionsRepository?: DemoSessionsRepository;
   },
 ) {
   const bodyText = await c.req.text();
@@ -153,6 +155,48 @@ export async function handleTelnyxWebhook(
 
     const providerCallId = firstString(event.payload, ['call_control_id', 'call_leg_id', 'call_session_id']);
     const requestIdFromPayload = firstString(event.payload, ['client_state', 'request_id']);
+    const demoRun =
+      requestIdFromPayload && (requestIdFromPayload.startsWith('demo-') || deps.demoSessionsRepository)
+        ? await deps.demoSessionsRepository?.findCallRunByRequestId(requestIdFromPayload)
+        : null;
+    if (demoRun && requestIdFromPayload) {
+      if (providerCallId || isCallInitiated(event.event_type) || isCallEnded(event.event_type)) {
+        await deps.demoSessionsRepository?.markCallRunStatusByRequestId({
+          requestId: requestIdFromPayload,
+          status: isCallEnded(event.event_type)
+            ? isMissedInboundCall(event.event_type, event.payload)
+              ? 'missed'
+              : 'completed'
+            : isCallInitiated(event.event_type)
+              ? 'dialing'
+              : demoRun.status,
+          providerCallId,
+          endedAt: isCallEnded(event.event_type) ? new Date() : undefined,
+          outcome: isCallEnded(event.event_type)
+            ? isMissedInboundCall(event.event_type, event.payload)
+              ? 'missed'
+              : 'completed'
+            : undefined,
+        });
+      }
+      await deps.demoSessionsRepository?.addStatusEvent({
+        requestId: requestIdFromPayload,
+        eventType: `telnyx_${event.event_type}`,
+        payload: {
+          providerCallId,
+          demo: true,
+        },
+      });
+      log.info(
+        {
+          eventType: event.event_type,
+          eventId: event.id,
+          requestId: requestIdFromPayload,
+        },
+        'telnyx_demo_webhook_processed',
+      );
+      return c.json({ ok: true, demo: true }, 200);
+    }
 
     if (deps.callLogsRepository && deps.shopsRepository && providerCallId && isCallInitiated(event.event_type)) {
       const destinationPhone = normalizePhone(firstString(event.payload, ['to', 'called_number', 'to_number']));

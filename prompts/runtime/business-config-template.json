@@ -1,0 +1,39 @@
+{
+  "businessName": "string",
+  "businessType": "string",
+  "vertical": "nail-salon | hair-salon | day-spa | med-spa | beauty-clinic",
+  "mode": "production | demo",
+  "location": "string | null",
+  "timezone": "string | null",
+  "hours": "string | null",
+  "services": [
+    {
+      "name": "string",
+      "category": "string | null",
+      "price": "number | null",
+      "priceLabel": "string | null",
+      "duration": "string | null",
+      "notes": "string | null"
+    }
+  ],
+  "providers": ["string"],
+  "promotions": "string | null",
+  "cancellationPolicy": "string | null",
+  "bookingUrl": "string | null",
+  "welcomeMessage": "string | null",
+  "languageOptions": ["English"],
+  "callerContext": {
+    "name": "string | null",
+    "returningCustomer": "boolean",
+    "lastService": "string | null",
+    "preferredProvider": "string | null",
+    "notes": "string | null"
+  },
+  "demoContext": {
+    "isDemo": "boolean",
+    "demoVertical": "string | null",
+    "demoMode": "quick | advanced | free-form | null",
+    "suggestedPrompts": ["string"]
+  },
+  "customInstructions": "string | null"
+}

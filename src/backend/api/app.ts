@@ -9,6 +9,12 @@ import { handleRealtimeDispatch, parseRealtimeDispatchInput } from '@/src/agent/
 import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
 import { createInboundAgentSession } from '@/src/agent/runtime/session';
 import {
+  composeVoicePrompt,
+  inferVerticalFromBusinessConfig,
+  renderPublicDemoFallbackCustomInstructions,
+  type VoicePromptVertical,
+} from '@/src/agent/prompts';
+import {
   CAPABILITY_MIN_PLAN,
   CAPABILITY_LABELS,
   getShopPlanCapabilities,
@@ -35,6 +41,7 @@ import type {
   ShopsRepository,
   AuthUsersRepository,
   ContactRequestsRepository,
+  DemoSessionsRepository,
 } from '@/src/backend/ports/repositories';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -109,13 +116,36 @@ const startInboundSchema = z.object({
   roomName: z.string().min(1).optional(),
 });
 
+// Structured service item for demo prompt building — server-side only
+const demoServiceItemSchema = z.object({
+  category: z.string().max(60),
+  name: z.string().max(100),
+  price: z.number().min(0).max(100000).nullable().optional(),
+  duration: z.string().max(60).nullable().optional(),
+  enabled: z.boolean().optional(),
+});
+
 const publicDemoRequestSchema = z.object({
   shopName: z.string().min(1).max(120),
   phoneNumber: z.string().min(7).max(32),
   businessType: z.string().min(1).max(80),
+  demoVertical: z.enum(['nail-salon', 'hair-salon', 'day-spa', 'med-spa', 'beauty-clinic']).optional(),
+  demoMode: z.enum(['quick', 'advanced', 'free-form']).optional(),
+  demoSource: z.string().min(1).max(80).optional(),
   staffName: z.string().min(1).max(120).optional(),
   notes: z.string().max(500).optional(),
-  systemPrompt: z.string().min(1).max(12000).optional(),
+  // SECURITY: systemPrompt is intentionally removed from the public schema.
+  // The system prompt is always built server-side from structured inputs to prevent
+  // prompt injection. Any client-submitted raw prompt would bypass guardrails.
+  demoConfig: z
+    .object({
+      city: z.string().max(120).optional(),
+      primaryHours: z.string().max(200).optional(),
+      secondaryHours: z.string().max(200).optional(),
+      staffNames: z.array(z.string().max(80)).max(8).optional(),
+      services: z.array(demoServiceItemSchema).max(60).optional(),
+    })
+    .optional(),
   captchaToken: z.string().min(1),
   sessionId: z.string().min(8).max(120),
   website: z.string().max(120).optional(),
@@ -143,6 +173,9 @@ const dispatchStatusSchema = z.object({
   error: z.string().optional(),
   occurredAt: z.string().datetime().optional(),
   shopId: z.string().optional(),
+  isDemo: z.boolean().optional(),
+  demoVertical: z.string().optional(),
+  demoMode: z.string().optional(),
 });
 
 const authLoginSchema = z.object({
@@ -743,38 +776,91 @@ function normalizePhone(phone: string | null | undefined): string | null {
   return normalized.length >= 8 && normalized.length <= 15 ? `+${normalized}` : null;
 }
 
+type DemoConfigInput = {
+  city?: string;
+  primaryHours?: string;
+  secondaryHours?: string;
+  staffNames?: string[];
+  services?: Array<{
+    category: string;
+    name: string;
+    price?: number | null;
+    duration?: string | null;
+    enabled?: boolean;
+  }>;
+};
+
+/** Sanitize a plain-text user input to prevent prompt injection via newlines/separators */
+function sanitizeDemoTextField(value: string | undefined, maxLen = 280): string {
+  if (!value) return '';
+  return value
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/[-]{3,}/g, '--')
+    .trim()
+    .slice(0, maxLen);
+}
+
 function buildPublicDemoSystemPrompt(input: {
   shopName: string;
   businessType: string;
+  demoVertical?: VoicePromptVertical;
   staffName?: string;
   notes?: string;
+  demoConfig?: DemoConfigInput;
 }) {
-  const businessName = input.shopName.trim() || 'the business';
-  const businessType = input.businessType.trim() || 'business';
+  const businessName = sanitizeDemoTextField(input.shopName, 120) || 'the business';
+  const businessType = sanitizeDemoTextField(input.businessType, 80) || 'business';
   const isNailSalon = businessType.toLowerCase().includes('nail');
+
   const welcomeMessage = isNailSalon
     ? `Hi, thank you for calling ${businessName}. I can help with appointments, services, or pricing today.`
     : `Hi, thank you for calling ${businessName}. How can I help you today?`;
 
-  return [
-    `You are the AI receptionist for ${businessName}.`,
-    `WELCOME MESSAGE: ${welcomeMessage}`,
-    `Business type: ${businessType}.`,
-    'Handle the call like a real receptionist: booking, rescheduling, pricing, hours, and general questions.',
-    'Auto-detect caller language and adapt naturally between English and Vietnamese when needed.',
-    input.staffName ? `Preferred staff/member to reference when helpful: ${input.staffName}.` : null,
-    input.notes ? `Custom demo notes: ${input.notes}.` : null,
-    'Keep the conversation natural, warm, and short.',
-    'This is a demo call, not a real booking workflow.',
-    'Do not introduce yourself as RingBooker. You may say this is powered by RingBooker only if the caller asks what system is being tested.',
-    'Do not claim an appointment is actually booked or changed.',
-    'Do not use tools, do not collect payment, and do not promise a human will follow up unless explicitly asked.',
-    'If the prospect asks about pricing, availability, reminders, transcript, or booking flow, explain clearly how RingBooker would handle it.',
-    'Use natural American English. Keep most replies to 1-2 short sentences.',
-    'If the caller is silent or confused, briefly explain this is a live RingBooker demo call and ask what they want to test.',
-  ]
+  // Build providers list from either staffName (legacy) or demoConfig.staffNames
+  const providers: string[] = [];
+  if (input.demoConfig?.staffNames?.length) {
+    providers.push(...input.demoConfig.staffNames.slice(0, 8).map((n) => sanitizeDemoTextField(n, 80)).filter(Boolean));
+  } else if (input.staffName) {
+    providers.push(sanitizeDemoTextField(input.staffName, 80));
+  }
+
+  // Build services from demoConfig if provided
+  const services =
+    input.demoConfig?.services
+      ?.filter((s) => s.enabled !== false)
+      .slice(0, 40)
+      .map((s) => ({
+        category: sanitizeDemoTextField(s.category, 60),
+        name: sanitizeDemoTextField(s.name, 100),
+        price: typeof s.price === 'number' ? s.price : undefined,
+        duration: s.duration ? sanitizeDemoTextField(s.duration, 60) : undefined,
+      })) ?? [];
+
+  // Build hours from demoConfig if provided
+  const hoursRaw = [input.demoConfig?.primaryHours, input.demoConfig?.secondaryHours]
     .filter(Boolean)
-    .join('\n');
+    .map((h) => sanitizeDemoTextField(h, 200))
+    .join(', ');
+
+  const business = {
+    businessName,
+    businessType,
+    welcomeMessage,
+    location: input.demoConfig?.city ? sanitizeDemoTextField(input.demoConfig.city, 120) : undefined,
+    hours: hoursRaw || undefined,
+    providers: providers.length > 0 ? providers : [],
+    languageOptions: isNailSalon ? ['English', 'Vietnamese'] : ['English'],
+    services: services.length > 0 ? services : undefined,
+    demoContext: 'Outbound web demo — isolated from production. No real bookings are written.',
+    customInstructions: renderPublicDemoFallbackCustomInstructions(input.notes),
+  };
+
+  return composeVoicePrompt({
+    vertical: input.demoVertical ?? inferVerticalFromBusinessConfig(business),
+    callType: 'demo_outbound',
+    mode: 'demo',
+    business,
+  });
 }
 
 function deriveDemoCallStage(call: {
@@ -802,6 +888,21 @@ function deriveDemoLiveSignal(call: {
   if (call.endedAt || call.transcriptStatus === 'completed') return 'completed';
   if (call.transcriptText && call.transcriptText.trim().length > 0) return 'ai_agent_speaking';
   return 'preparing';
+}
+
+function mapDemoCallRunStatusToStage(status: string): 'queued' | 'dialing' | 'live' | 'completed' | 'failed' {
+  if (status === 'completed') return 'completed';
+  if (status === 'failed' || status === 'missed') return 'failed';
+  if (status === 'live') return 'live';
+  if (status === 'dialing') return 'dialing';
+  return 'queued';
+}
+
+function mapDispatchStatusToDemoCallStatus(status: 'received' | 'agent_joined' | 'completed' | 'failed') {
+  if (status === 'agent_joined') return 'live' as const;
+  if (status === 'completed') return 'completed' as const;
+  if (status === 'failed') return 'failed' as const;
+  return 'queued' as const;
 }
 
 async function verifyGoogleIdToken(idToken: string): Promise<{
@@ -891,6 +992,7 @@ export function createBackendApp(deps: {
   callbacksRepository?: CallbacksRepository;
   blogPostsRepository?: BlogPostsRepository;
   contactRequestsRepository?: ContactRequestsRepository;
+  demoSessionsRepository?: DemoSessionsRepository;
   shopsRepository?: ShopsRepository;
   telephonyService?: TelephonyService;
   phoneProvisioningService?: PhoneProvisioningService;
@@ -1088,6 +1190,7 @@ export function createBackendApp(deps: {
       shopsRepository: deps.shopsRepository,
       callLogsRepository: deps.callLogsRepository,
       missedCallsRepository: deps.missedCallsRepository,
+      demoSessionsRepository: deps.demoSessionsRepository,
       });
     })(),
   );
@@ -1354,10 +1457,12 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'invalid_request' }, 400);
     }
 
+    // Bind session rate limit to IP+sessionId so attackers cannot bypass by cycling sessionIds.
+    const sessionIp = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
     const sessionLimited = await enforceRateLimitWithIdentity(
       c,
       RATE_LIMIT_POLICIES.public_demo_request_session,
-      `public_demo_request_session:${parsed.data.sessionId}`,
+      `public_demo_request_session:${sessionIp}:${parsed.data.sessionId}`,
     );
     if (sessionLimited) return sessionLimited;
 
@@ -1403,7 +1508,7 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'captcha_failed' }, 403);
     }
 
-    if (!deps.shopsRepository || !deps.telephonyService || !deps.realtimeAgentRuntime || !deps.callLogsRepository) {
+    if (!deps.shopsRepository || !deps.telephonyService || !deps.realtimeAgentRuntime || !deps.demoSessionsRepository) {
       return c.json({ ok: false, error: 'demo_dependencies_unavailable' }, 503);
     }
 
@@ -1424,16 +1529,54 @@ export function createBackendApp(deps: {
 
     const requestId = `demo-${randomUUID()}`;
     const roomName = `rb-demo-${requestId.slice(-12)}`;
-    const systemPrompt =
-      parsed.data.systemPrompt?.trim() ||
-      buildPublicDemoSystemPrompt({
-        shopName: parsed.data.shopName,
-        businessType: parsed.data.businessType,
-        staffName: parsed.data.staffName,
-        notes: parsed.data.notes,
-      });
+    const demoVertical = parsed.data.demoVertical ?? parsed.data.businessType.toLowerCase().replace(/\s+/g, '-');
+    const demoMode = parsed.data.demoMode ?? 'free-form';
+    const demoSource = parsed.data.demoSource ?? 'public_demo';
+    // System prompt is always built server-side from validated structured inputs.
+    // Raw client-submitted prompts are not accepted to prevent prompt injection.
+    const systemPrompt = buildPublicDemoSystemPrompt({
+      shopName: parsed.data.shopName,
+      businessType: parsed.data.businessType,
+      demoVertical: parsed.data.demoVertical,
+      staffName: parsed.data.staffName,
+      notes: parsed.data.notes,
+      demoConfig: parsed.data.demoConfig,
+    });
 
     try {
+      const demoSession = await deps.demoSessionsRepository.createSession({
+        publicSessionId: parsed.data.sessionId,
+        verticalSlug: demoVertical,
+        mode: demoMode,
+        source: demoSource,
+        callbackPhone: normalizedPhone,
+        businessName: parsed.data.shopName,
+        city: null,
+        businessHours: {},
+        staff: parsed.data.staffName ? [parsed.data.staffName] : [],
+        notes: parsed.data.notes ?? null,
+        systemPrompt,
+        services: [],
+      });
+      await deps.demoSessionsRepository.createCallRun({
+        demoSessionId: demoSession.id,
+        requestId,
+        provider: 'marketing_demo',
+        roomName,
+        status: 'dialing',
+        startedAt: new Date(),
+      });
+      await deps.demoSessionsRepository.addStatusEvent({
+        demoSessionId: demoSession.id,
+        requestId,
+        eventType: 'demo_requested',
+        payload: {
+          demoVertical,
+          demoMode,
+          demoSource,
+        },
+      });
+
       const realtime = await deps.realtimeAgentRuntime.startInboundSession({
         requestId,
         roomName,
@@ -1459,18 +1602,13 @@ export function createBackendApp(deps: {
           allowedTools: [],
           blockMessage: 'This live demo explains the flow but does not perform real booking actions.',
         };
+        realtime.metadata.dispatchPayload.demo = {
+          isolated: true,
+          source: demoSource,
+          vertical: demoVertical,
+          mode: demoMode,
+        };
       }
-
-      await deps.callLogsRepository.createOrUpdateInboundCall({
-        provider: 'marketing_demo',
-        providerCallId: requestId,
-        shopId: demoShop.id,
-        callerPhone: normalizedPhone,
-        destinationPhone: demoShop.phone_number,
-        requestId,
-        roomName,
-        startedAt: new Date(),
-      });
 
       await dispatchRealtimeSession({
         requestId,
@@ -1490,6 +1628,14 @@ export function createBackendApp(deps: {
         idempotencyKey: `public_demo:${requestId}`,
         roomName: realtime.mode === 'livekit_realtime' ? roomName : undefined,
       });
+      await deps.demoSessionsRepository.addStatusEvent({
+        demoSessionId: demoSession.id,
+        requestId,
+        eventType: 'demo_outbound_call_created',
+        payload: {
+          providerCallId: outbound.providerCallId ?? null,
+        },
+      });
 
       const previewToken = await signDemoPreviewToken({
         requestId,
@@ -1506,6 +1652,9 @@ export function createBackendApp(deps: {
           requestId,
           shopId: demoShop.id,
           businessType: parsed.data.businessType,
+          demoVertical,
+          demoMode,
+          demoSource,
         },
       });
 
@@ -1518,16 +1667,16 @@ export function createBackendApp(deps: {
         mode: realtime.mode,
       });
     } catch (error) {
-      await deps.callLogsRepository.markEndedByProviderCallId({
-        provider: 'marketing_demo',
-        providerCallId: requestId,
+      await deps.demoSessionsRepository.markCallRunStatusByRequestId({
+        requestId,
+        status: 'failed',
         endedAt: new Date(),
         outcome: 'error',
       });
-      await deps.callLogsRepository.updateTranscriptStatusByRequestId({
-        shopId: demoShop.id,
+      await deps.demoSessionsRepository.addStatusEvent({
         requestId,
-        status: 'failed',
+        eventType: 'demo_request_failed',
+        payload: { error: error instanceof Error ? error.message : 'unknown_error' },
       });
       logger.error(
         {
@@ -1555,30 +1704,29 @@ export function createBackendApp(deps: {
     if (!verified || verified.requestId !== requestId) {
       return c.json({ ok: false, error: 'unauthorized' }, 401);
     }
-    if (!deps.callLogsRepository) {
+    if (!deps.demoSessionsRepository) {
       return c.json({ ok: false, error: 'demo_dependencies_unavailable' }, 503);
     }
 
-    const calls = await deps.callLogsRepository.listByShop(verified.shopId, { limit: 200 });
-    const call = calls.find((item) => item.requestId === requestId) ?? null;
-    const stage = call ? deriveDemoCallStage(call) : 'queued';
+    const call = await deps.demoSessionsRepository.findCallRunByRequestId(requestId);
+    const stage = call ? mapDemoCallRunStatusToStage(call.status) : 'queued';
 
     return c.json({
       ok: true,
       stage,
       call: call
         ? {
-            callerPhone: call.callerPhone ?? null,
+            callerPhone: call.callbackPhone ?? null,
             startedAt: call.startedAt ?? null,
             endedAt: call.endedAt ?? null,
             outcome: call.outcome ?? null,
-            transcriptStatus: call.transcriptStatus ?? null,
-            transcriptText: call.transcriptText ?? null,
-            demoLiveState: deriveDemoLiveSignal(call),
+            transcriptStatus: call.status === 'completed' ? 'completed' : call.status === 'failed' ? 'failed' : 'pending',
+            transcriptText: null,
+            demoLiveState: call.status === 'live' ? 'ai_agent_speaking' : call.status,
             roomName: call.roomName ?? null,
             requestId: call.requestId ?? null,
-            agentJoined: call.agentJoined,
-            humanAnswered: call.humanAnswered,
+            agentJoined: call.status === 'live' || call.status === 'completed',
+            humanAnswered: call.status === 'live' || call.status === 'completed',
           }
         : null,
     });
@@ -3484,7 +3632,10 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'realtime_mode_not_allowed' }, 422);
     }
 
-    await handleRealtimeDispatch(parsed, { callLogsRepository: deps.callLogsRepository });
+    const dispatchPayload = (parsed.realtime.metadata as { dispatchPayload?: { demo?: { isolated?: boolean } } } | undefined)
+      ?.dispatchPayload;
+    const isDemoDispatch = dispatchPayload?.demo?.isolated === true || parsed.requestId.startsWith('demo-');
+    await handleRealtimeDispatch(parsed, { callLogsRepository: isDemoDispatch ? undefined : deps.callLogsRepository });
     return c.json({
       ok: true,
       accepted: true,
@@ -3512,6 +3663,37 @@ export function createBackendApp(deps: {
     const parsed = dispatchStatusSchema.safeParse(body);
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    if (parsed.data.isDemo && deps.demoSessionsRepository) {
+      await deps.demoSessionsRepository.markCallRunStatusByRequestId({
+        requestId: parsed.data.requestId,
+        status: mapDispatchStatusToDemoCallStatus(parsed.data.status),
+        connectedAt: parsed.data.status === 'agent_joined' ? new Date(parsed.data.occurredAt ?? Date.now()) : undefined,
+        endedAt:
+          parsed.data.status === 'completed' || parsed.data.status === 'failed'
+            ? new Date(parsed.data.occurredAt ?? Date.now())
+            : undefined,
+        outcome: parsed.data.status === 'failed' ? 'error' : parsed.data.status === 'completed' ? 'completed' : undefined,
+      });
+      await deps.demoSessionsRepository.addStatusEvent({
+        requestId: parsed.data.requestId,
+        eventType: `agent_dispatch_${parsed.data.status}`,
+        payload: {
+          roomName: parsed.data.roomName,
+          sessionId: parsed.data.sessionId,
+          error: parsed.data.error ?? null,
+          demoVertical: parsed.data.demoVertical ?? null,
+          demoMode: parsed.data.demoMode ?? null,
+        },
+        occurredAt: parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : new Date(),
+      });
+      return c.json({
+        ok: true,
+        accepted: true,
+        requestId: parsed.data.requestId,
+        status: parsed.data.status,
+      });
     }
 
     if (deps.callLogsRepository && parsed.data.shopId && parsed.data.status === 'agent_joined') {

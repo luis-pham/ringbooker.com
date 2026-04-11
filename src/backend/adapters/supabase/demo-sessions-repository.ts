@@ -1,0 +1,229 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import type {
+  DemoCallRunRecord,
+  DemoCallStatus,
+  DemoMode,
+  DemoSessionsRepository,
+} from '@/src/backend/ports/repositories';
+
+export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
+  constructor(private readonly supabase: SupabaseClient) {}
+
+  async createSession(params: {
+    publicSessionId: string;
+    verticalSlug: string;
+    mode: DemoMode;
+    source: string;
+    callbackPhone: string;
+    businessName: string;
+    city?: string | null;
+    businessHours?: unknown;
+    staff?: unknown;
+    notes?: string | null;
+    systemPrompt?: string | null;
+    services?: Array<{
+      category: string;
+      name: string;
+      price?: number | null;
+      duration?: string | null;
+      enabled?: boolean;
+    }>;
+    expiresAt?: Date;
+  }): Promise<{ id: string; expiresAt: Date }> {
+    const expiresAt = params.expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const { data: session, error: sessionError } = await this.supabase
+      .from('demo_sessions')
+      .insert({
+        public_session_id: params.publicSessionId,
+        vertical_slug: params.verticalSlug,
+        demo_mode: params.mode,
+        source: params.source,
+        callback_phone: params.callbackPhone,
+        status: 'created',
+        expires_at: expiresAt.toISOString(),
+      })
+      .select('id,expires_at')
+      .single<{ id: string; expires_at: string }>();
+    if (sessionError) throw new Error(`demo_session_create_failed:${sessionError.message}`);
+
+    const { error: configError } = await this.supabase.from('demo_business_configs').insert({
+      demo_session_id: session.id,
+      business_name: params.businessName,
+      city: params.city,
+      business_hours: params.businessHours ?? {},
+      staff: params.staff ?? [],
+      notes: params.notes,
+      system_prompt: params.systemPrompt,
+    });
+    if (configError) throw new Error(`demo_business_config_create_failed:${configError.message}`);
+
+    if (params.services && params.services.length > 0) {
+      const { error: servicesError } = await this.supabase.from('demo_services').insert(
+        params.services.map((service) => ({
+          demo_session_id: session.id,
+          category: service.category,
+          name: service.name,
+          price: service.price,
+          duration: service.duration,
+          enabled: service.enabled ?? true,
+        })),
+      );
+      if (servicesError) throw new Error(`demo_services_create_failed:${servicesError.message}`);
+    }
+
+    return { id: session.id, expiresAt: new Date(session.expires_at) };
+  }
+
+  async createCallRun(params: {
+    demoSessionId: string;
+    requestId: string;
+    provider: string;
+    providerCallId?: string | null;
+    roomName?: string | null;
+    status: DemoCallStatus;
+    startedAt?: Date;
+  }): Promise<void> {
+    const { error } = await this.supabase.from('demo_call_runs').insert({
+      demo_session_id: params.demoSessionId,
+      request_id: params.requestId,
+      provider: params.provider,
+      provider_call_id: params.providerCallId,
+      room_name: params.roomName,
+      status: params.status,
+      started_at: (params.startedAt ?? new Date()).toISOString(),
+    });
+    if (error) throw new Error(`demo_call_run_create_failed:${error.message}`);
+
+    await this.supabase.from('demo_sessions').update({ status: params.status, updated_at: new Date().toISOString() }).eq('id', params.demoSessionId);
+  }
+
+  async markCallRunStatusByRequestId(params: {
+    requestId: string;
+    status: DemoCallStatus;
+    providerCallId?: string | null;
+    connectedAt?: Date | null;
+    endedAt?: Date | null;
+    outcome?: string | null;
+  }): Promise<void> {
+    const update: Record<string, unknown> = {
+      status: params.status,
+    };
+    if (params.providerCallId !== undefined) update.provider_call_id = params.providerCallId;
+    if (params.connectedAt !== undefined) update.connected_at = params.connectedAt?.toISOString() ?? null;
+    if (params.endedAt !== undefined) update.ended_at = params.endedAt?.toISOString() ?? null;
+    if (params.outcome !== undefined) update.outcome = params.outcome;
+
+    const { data, error } = await this.supabase
+      .from('demo_call_runs')
+      .update(update)
+      .eq('request_id', params.requestId)
+      .select('demo_session_id')
+      .maybeSingle<{ demo_session_id: string }>();
+    if (error) throw new Error(`demo_call_run_update_failed:${error.message}`);
+    if (data?.demo_session_id) {
+      await this.supabase
+        .from('demo_sessions')
+        .update({ status: params.status, updated_at: new Date().toISOString() })
+        .eq('id', data.demo_session_id);
+    }
+  }
+
+  async createSmsRun(params: {
+    requestId: string;
+    toPhone: string;
+    templateKey: string;
+    previewBody: string;
+    sentAt?: Date | null;
+    providerMessageId?: string | null;
+  }): Promise<void> {
+    const { data: call } = await this.supabase
+      .from('demo_call_runs')
+      .select('id,demo_session_id')
+      .eq('request_id', params.requestId)
+      .maybeSingle<{ id: string; demo_session_id: string }>();
+    const { error } = await this.supabase.from('demo_sms_runs').insert({
+      demo_session_id: call?.demo_session_id,
+      demo_call_run_id: call?.id,
+      to_phone: params.toPhone,
+      template_key: params.templateKey,
+      preview_body: params.previewBody,
+      sent_at: params.sentAt?.toISOString() ?? null,
+      provider_message_id: params.providerMessageId,
+    });
+    if (error) throw new Error(`demo_sms_run_create_failed:${error.message}`);
+  }
+
+  async addStatusEvent(params: {
+    requestId?: string | null;
+    demoSessionId?: string | null;
+    eventType: string;
+    payload?: unknown;
+    occurredAt?: Date;
+  }): Promise<void> {
+    const { error } = await this.supabase.from('demo_status_events').insert({
+      demo_session_id: params.demoSessionId,
+      request_id: params.requestId,
+      event_type: params.eventType,
+      payload: params.payload ?? {},
+      occurred_at: (params.occurredAt ?? new Date()).toISOString(),
+    });
+    if (error) throw new Error(`demo_status_event_create_failed:${error.message}`);
+  }
+
+  async findCallRunByRequestId(requestId: string): Promise<DemoCallRunRecord | null> {
+    const { data, error } = await this.supabase
+      .from('demo_call_runs')
+      .select(
+        'request_id,provider,provider_call_id,room_name,status,started_at,connected_at,ended_at,outcome,demo_sessions!inner(public_session_id,vertical_slug,demo_mode,callback_phone,expires_at)',
+      )
+      .eq('request_id', requestId)
+      .maybeSingle<{
+        request_id: string;
+        provider: string;
+        provider_call_id: string | null;
+        room_name: string | null;
+        status: DemoCallStatus;
+        started_at: string | null;
+        connected_at: string | null;
+        ended_at: string | null;
+        outcome: string | null;
+        demo_sessions: {
+          public_session_id: string;
+          vertical_slug: string;
+          demo_mode: DemoMode;
+          callback_phone: string;
+          expires_at: string | null;
+        };
+      }>();
+    if (error) throw new Error(`demo_call_run_find_failed:${error.message}`);
+    if (!data) return null;
+    return {
+      requestId: data.request_id,
+      publicSessionId: data.demo_sessions.public_session_id,
+      verticalSlug: data.demo_sessions.vertical_slug,
+      mode: data.demo_sessions.demo_mode,
+      callbackPhone: data.demo_sessions.callback_phone,
+      provider: data.provider,
+      providerCallId: data.provider_call_id,
+      roomName: data.room_name,
+      status: data.status,
+      startedAt: data.started_at,
+      connectedAt: data.connected_at,
+      endedAt: data.ended_at,
+      outcome: data.outcome,
+      expiresAt: data.demo_sessions.expires_at,
+    };
+  }
+
+  async expireOlderThan(now: Date): Promise<number> {
+    const { data, error } = await this.supabase
+      .from('demo_sessions')
+      .update({ status: 'expired', updated_at: now.toISOString() })
+      .lt('expires_at', now.toISOString())
+      .neq('status', 'expired')
+      .select('id');
+    if (error) throw new Error(`demo_sessions_expire_failed:${error.message}`);
+    return data?.length ?? 0;
+  }
+}

@@ -1,0 +1,1 @@
+Say this opening phone greeting naturally and warmly. Do not add extra details or mention RingBooker unless the greeting itself says it: {{greeting}}
