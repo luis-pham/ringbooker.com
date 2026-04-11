@@ -9,6 +9,8 @@ const routes = [
   '/spa',
   '/med-spa',
   '/beauty-clinic',
+  '/after-hours-calls',
+  '/missed-call-recovery',
   '/compare',
   '/compare/vs-truelark',
   '/compare/vs-my-ai-front-desk',

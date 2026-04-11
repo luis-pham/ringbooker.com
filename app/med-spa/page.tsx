@@ -2,9 +2,9 @@ import { MarketingVerticalTemplate } from '@/components/marketing/marketing-vert
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Phone Receptionist for Med Spa',
+  title: 'AI Phone Answering Service for Med Spas',
   description:
-    'RingBooker for med spas: answer consultation calls instantly, improve conversion from inbound leads, and reduce missed-call revenue loss.',
+    'RingBooker for med spas: answer consultation calls instantly, recover after-hours and overflow callers, improve inbound conversion, and reduce missed-call loss.',
   path: '/med-spa',
 });
 

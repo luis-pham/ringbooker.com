@@ -2,9 +2,9 @@ import { MarketingVerticalTemplate } from '@/components/marketing/marketing-vert
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Phone Agent for Hair Salons',
+  title: 'AI Phone Answering Service for Hair Salons',
   description:
-    'RingBooker helps hair salons answer every call, handle booking questions, and convert more callers into confirmed appointments.',
+    'RingBooker helps hair salons answer after-hours and overflow calls, handle stylist requests, reschedules, and convert callers into confirmed appointments.',
   path: '/hair-salon',
 });
 

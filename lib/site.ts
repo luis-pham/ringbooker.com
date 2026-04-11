@@ -4,13 +4,17 @@ export const siteConfig = {
   name: 'RingBooker',
   url: 'https://ringbooker.com',
   description:
-    'RingBooker is an AI phone agent for nail salons, hair salons, and booking-heavy service businesses. It answers calls, books appointments, sends confirmation texts, and reduces missed calls.',
+    'RingBooker is an AI phone answering service for salons, nail shops, spas, and med spas. It answers after-hours and overflow calls on your current number, recovers missed bookings, handles reschedules, and sends SMS follow-ups.',
   keywords: [
     'AI phone agent for salons',
+    'AI phone answering service for salons',
+    'after hours call answering for salons',
+    'missed call recovery for salons',
+    'nail salon answering service',
     'salon answering service',
     'AI receptionist for nail salon',
     'hair salon phone booking software',
-    'missed call recovery for salons',
+    'spa answering service',
     'appointment booking AI',
     'voice AI for salons',
     'RingBooker',
@@ -64,6 +68,8 @@ export const footerNav = {
     { href: '/demo', label: 'Demo' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/how-it-works', label: 'How It Works' },
+    { href: '/after-hours-calls', label: 'After-Hours Calls' },
+    { href: '/missed-call-recovery', label: 'Missed-Call Recovery' },
   ],
   company: [
     { href: '/contact', label: 'Book Demo' },

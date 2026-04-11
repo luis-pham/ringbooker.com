@@ -2,6 +2,69 @@ import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { HomePricingToggleClient } from '@/components/marketing/home-pricing-toggle-client';
 
+const HOME_FAQS = [
+  {
+    q: 'Can RingBooker work with my current salon phone number?',
+    a: 'Yes. RingBooker works by forwarding your existing number, so callers keep dialing the same number they already know. You can also use a new RingBooker number if you prefer.',
+  },
+  {
+    q: 'Does RingBooker replace my booking software?',
+    a: 'No. RingBooker works alongside Square Appointments today and is designed to support tools like Vagaro, Booksy, and Mindbody as integrations expand. It handles the phone layer while your booking workflow stays familiar.',
+  },
+  {
+    q: 'Can it handle reschedule and cancellation calls?',
+    a: 'Yes. RingBooker can collect the caller intent, confirm the service and time, handle simple reschedules or cancellations based on your rules, and send a summary when a human follow-up is needed.',
+  },
+  {
+    q: 'What happens if a caller wants to speak to a real person?',
+    a: 'RingBooker can offer a callback, route the request, and send your team a call summary so the caller does not have to repeat everything.',
+  },
+  {
+    q: "Will my customers know they're talking to AI?",
+    a: 'RingBooker is designed to be transparent and helpful. It can introduce itself as your virtual assistant, speak naturally, and hand off gracefully when a human is needed.',
+  },
+  {
+    q: 'Can RingBooker text missed callers automatically?',
+    a: 'Yes. Missed-call text back and smart callback workflows help recover callers who hang up, call after hours, or reach you during a busy service window.',
+  },
+  {
+    q: 'Does it work for nail salons with Vietnamese-speaking owners?',
+    a: 'Yes. RingBooker supports Vietnamese onboarding help and can be configured for English and Vietnamese call flows, summaries, and salon-specific scripts.',
+  },
+  {
+    q: 'Can it answer calls after hours and on weekends?',
+    a: 'Yes. RingBooker can answer after-hours and weekend calls, capture booking intent, send confirmations, and make sure your team sees what happened when you are back online.',
+  },
+];
+
+const homeFaqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: HOME_FAQS.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.a,
+    },
+  })),
+};
+
+const softwareJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'RingBooker',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web',
+  offers: {
+    '@type': 'Offer',
+    price: '79',
+    priceCurrency: 'USD',
+  },
+  description:
+    'AI phone answering service for nail salons, hair salons, spas, and med spas. Answers after-hours and overflow calls, recovers missed bookings, and handles reschedules on your current number.',
+};
+
 const styles: string[] = [
   String.raw`
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -55,14 +118,39 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,
 h1.hero-h{font-size:clamp(42px,6vw,68px);font-weight:800;line-height:1.08;letter-spacing:-2.5px;color:var(--text-dark);margin-bottom:20px}
 h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--r-pill);padding:2px 22px;margin:0 4px}
 .hero-sub{font-size:17.5px;color:var(--text-gray);line-height:1.72;max-width:540px;margin:0 auto 36px}
-.hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:0}
-.btn-dark{background:var(--text-dark);color:#fff;padding:14px 30px;border-radius:var(--r-pill);font-size:15px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:10px;transition:transform .15s,background .2s}
-.btn-dark:hover{background:#1f2937;transform:scale(1.03)}
-.btn-dark svg{width:16px;height:16px;fill:#fff}
-.btn-outline{background:transparent;color:var(--text-dark);padding:14px 26px;border-radius:var(--r-pill);font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--border);display:inline-flex;align-items:center;gap:8px;transition:all .2s}
-.btn-outline:hover{border-color:var(--purple);color:var(--purple)}
+	.hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:0}
+	.btn-dark{background:var(--text-dark);color:#fff;padding:14px 30px;border-radius:var(--r-pill);font-size:15px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:10px;transition:transform .15s,background .2s}
+	.btn-dark:hover{background:#1f2937;transform:scale(1.03)}
+	.btn-dark svg{width:16px;height:16px;fill:#fff}
+	.btn-outline{background:transparent;color:var(--text-dark);padding:14px 26px;border-radius:var(--r-pill);font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--border);display:inline-flex;align-items:center;gap:8px;transition:all .2s}
+	.btn-outline:hover{border-color:var(--purple);color:var(--purple)}
 
-/* ─── HERO VISUAL ─── */
+	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
+	.proofbar{padding:28px 48px 56px;background:#fff}
+	.proofbar-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+	.proof-item{display:flex;align-items:center;gap:10px;border:1px solid #E9D5FF;background:#FBFAFF;border-radius:18px;padding:14px 16px;font-size:13.5px;font-weight:800;color:#3F2A68;line-height:1.35}
+	.proof-check{width:22px;height:22px;min-width:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#EDE9FE;color:#6D28D9;font-size:13px}
+	.leak-section{padding:88px 48px;background:linear-gradient(180deg,#fff,#F9FAFB)}
+	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
+	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+	.leak-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:0 10px 30px rgba(17,24,39,.04)}
+	.leak-icon{font-size:26px;margin-bottom:10px}
+	.leak-card h3{font-size:17px;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px}
+	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}
+	.compare-section{padding:88px 48px;background:#111827;color:#fff}
+	.compare-section .sec-label{color:#C4B5FD}
+	.compare-section .sec-title,.compare-section .sec-sub{color:#fff}
+	.compare-grid{display:grid;gap:12px;margin-top:42px}
+	.compare-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+	.compare-cell{border-radius:20px;padding:20px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06)}
+	.compare-cell.bad{background:rgba(239,68,68,.10)}
+	.compare-cell.good{background:rgba(16,185,129,.12)}
+	.compare-eyebrow{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;color:#D1D5DB}
+	.compare-cell.good .compare-eyebrow{color:#A7F3D0}
+	.compare-cell.bad .compare-eyebrow{color:#FECACA}
+	.compare-cell p{font-size:14.5px;line-height:1.7;color:#F3F4F6}
+
+	/* ─── HERO VISUAL ─── */
 .hero-visual{position:relative;margin-top:56px;height:580px;display:flex;align-items:center;justify-content:center}
 
 /* floating cards */
@@ -560,11 +648,11 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 
 /* ─── RESPONSIVE ─── */
 @media(max-width:960px){
-  .feat-grid,.deep-s1,.deep-s2-outer,.deep-s3-outer,.insights-grid,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
+  .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.deep-s3-outer,.insights-grid,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
   nav .nav-links{display:none}
-  nav,footer,.hero,.features,.trusted,.insights,.testimonials,.pricing,.faq-section,.cta-outer,.deep-wrap{padding-left:22px;padding-right:22px}
+  nav,footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.insights,.testimonials,.pricing,.faq-section,.cta-outer,.deep-wrap{padding-left:22px;padding-right:22px}
   .hero-visual{height:480px}
   .phone-frame{width:230px;height:460px}
   .fc{display:none}
@@ -792,7 +880,7 @@ setPriceSafe('monthly')
 `,
 ];
 
-export const templateTitle = "RingBooker — AI Phone Agent for Beauty & Wellness Businesses";
+export const templateTitle = 'RingBooker — AI Phone Answering Service for Salons, Nail Shops & Spas';
 
 export function MarketingHomeTemplate() {
   return (
@@ -838,16 +926,16 @@ export function MarketingHomeTemplate() {
           <div className="hero-inner">
             <div className="hero-badge">
               <span className="pulse-dot" />
-              AI Phone Agent for Beauty &amp; Wellness Businesses
+              After-hours &amp; overflow call answering for salons
             </div>
-            <h1 className="hero-h">Never Miss a<br /><span className="hl">Booking Call</span> Again.</h1>
-            <p className="hero-sub">Your AI receptionist answers every call 24/7, books appointments instantly, and handles multiple calls at once — so you can focus on your clients in the chair.</p>
+            <h1 className="hero-h">Never Miss a<br /><span className="hl">Booking Call</span> on Your Current Number.</h1>
+            <p className="hero-sub">RingBooker answers after-hours and overflow calls for nail salons, hair salons, spas, and clinics — recovering missed bookings, handling reschedules, and texting callers back. No new number. No new software.</p>
             <div className="hero-btns">
               <a href="/user/signup" className="btn-dark">
                 Start 14-Day Free Trial
                 <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
               </a>
-              <a href="/demo" className="btn-outline">📞 Try a Live Demo</a>
+              <a href="/demo" className="btn-outline">📞 Hear a Live Demo Call</a>
             </div>
             {/* HERO VISUAL */}
             <div className="hero-visual">
@@ -921,6 +1009,71 @@ export function MarketingHomeTemplate() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+        <section className="proofbar" aria-label="RingBooker setup proof points">
+          <div className="proofbar-inner">
+            {[
+              'Keep your current phone number',
+              'Works with Square, Vagaro, Booksy & existing booking tools',
+              'Live in about 15 minutes — no tech setup',
+              'Built for nail salons, hair salons, spas, and clinics',
+            ].map((item) => (
+              <div className="proof-item" key={item}>
+                <span className="proof-check">✓</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="leak-section" id="missed-calls">
+          <div className="leak-inner">
+            <div className="sec-label">Missed-Call Recovery</div>
+            <h2 className="sec-title reveal">Your team is great. But your phone is leaking bookings every day.</h2>
+            <p className="sec-sub reveal">RingBooker covers the moments your front desk cannot: after hours, during services, at lunch, on weekends, and when two callers ring at once.</p>
+            <div className="leak-grid">
+              {[
+                ['💅', 'Your team is with a client', 'RingBooker answers without forcing your staff to pause a manicure, color service, treatment, or consultation.'],
+                ['🌙', 'Calls come in after hours', 'Capture booking intent when the salon is closed, then send confirmations or summaries for the next business day.'],
+                ['🔄', 'Reschedule and cancellation calls pile up', 'Handle routine changes without burying your team in voicemail and manual follow-up.'],
+                ['📵', 'Callers do not leave messages', 'Missed-call text back gives silent callers an easy way to continue instead of calling your competitor.'],
+                ['☎️', 'Two calls ring at the same time', 'Overflow handling keeps the second caller from hearing a busy line or waiting too long.'],
+                ['🗓️', 'Online booking did not replace phone calls', 'Some customers still want to talk. RingBooker meets them on the channel they already use.'],
+              ].map(([icon, title, body]) => (
+                <article className="leak-card reveal" key={title}>
+                  <div className="leak-icon">{icon}</div>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+        <section className="compare-section" id="ai-phone-agent-differences">
+          <div className="compare-inner">
+            <div className="sec-label">Why It Feels Different</div>
+            <h2 className="sec-title reveal">Most AI phone agents frustrate callers. RingBooker is designed not to.</h2>
+            <p className="sec-sub reveal">The product is built around real salon call behavior: short questions, interruptions, booking changes, and callers who just want a clear next step.</p>
+            <div className="compare-grid">
+              {[
+                ['Endless loops when the caller asks something unexpected.', 'A two-strike fallback, callback offer, and clean handoff when the request needs a human.'],
+                ['Pretends to be a real person and breaks trust.', 'Can introduce itself transparently as your virtual assistant while staying warm and useful.'],
+                ['Asks seven questions before helping.', 'Asks only what is needed to book, reschedule, cancel, or summarize the request.'],
+                ['No context when the team follows up.', 'Call summaries and intent notes help your team continue without making the caller repeat everything.'],
+                ['Dead-end voicemail after the caller hangs up.', 'Missed-call text back and smart callback workflows keep the booking alive.'],
+              ].map(([bad, good]) => (
+                <div className="compare-row" key={bad}>
+                  <div className="compare-cell bad">
+                    <div className="compare-eyebrow">Generic AI phone agent</div>
+                    <p>{bad}</p>
+                  </div>
+                  <div className="compare-cell good">
+                    <div className="compare-eyebrow">RingBooker</div>
+                    <p>{good}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -998,24 +1151,24 @@ export function MarketingHomeTemplate() {
                     <div className="step-icon">☎️</div>
                     <div className="step-num">Step 01</div>
                   </div>
-                  <h3>Connect your number.</h3>
-                  <p>Use a new business number from RingBooker or forward your current front-desk line. Keep your business running without changing customer behavior.</p>
+                  <h3>Forward your existing number (or get a new one).</h3>
+                  <p>Keep the number your clients already know. RingBooker can sit behind your current front-desk line or use a new number if you prefer.</p>
                 </div>
                 <div className="step-card reveal home-carousel-slide">
                   <div className="step-head">
                     <div className="step-icon">🗓️</div>
                     <div className="step-num">Step 02</div>
                   </div>
-                  <h3>Add services, hours, and calendar.</h3>
-                  <p>Set your services, prices, business hours, and Google Calendar availability so RingBooker knows exactly what it can offer callers.</p>
+                  <h3>Tell RingBooker your services, hours, and what to say.</h3>
+                  <p>Set your booking rules, service menu, business hours, caller scripts, and handoff rules so the AI follows your front-desk style.</p>
                 </div>
                 <div className="step-card reveal home-carousel-slide">
                   <div className="step-head">
                     <div className="step-icon">🤖</div>
                     <div className="step-num">Step 03</div>
                   </div>
-                  <h3>Answer, book, and text automatically.</h3>
-                  <p>RingBooker answers calls 24/7, confirms appointments, sends SMS updates, and logs everything for the user dashboard.</p>
+                  <h3>RingBooker handles calls, confirms bookings, and texts your clients — automatically.</h3>
+                  <p>After-hours and overflow callers get help right away, while your team gets the call summary and next action in the dashboard.</p>
                 </div>
               </div>
               <div className="home-carousel-controls" aria-label="How it works carousel controls">
@@ -1034,33 +1187,33 @@ export function MarketingHomeTemplate() {
           <div className="feat-grid">
             <div className="feat-card reveal">
               <div className="feat-ico fi-y">📞</div>
-              <h3>AI Phone Agent Answers Every Call.</h3>
-              <p>Answers instantly with a natural US voice, handles interruptions, and guides callers to the right booking outcome.</p>
+              <h3>After-Hours &amp; Overflow Call Answering.</h3>
+              <p>Answers calls when your team is busy, closed, already on another line, or serving a client.</p>
             </div>
             <div className="feat-card reveal">
               <div className="feat-ico fi-g">📅</div>
-              <h3>Instant Appointment Booking.</h3>
-              <p>Checks live availability and confirms the slot during the same call. No voicemail loops or manual follow-up.</p>
+              <h3>Reschedule, Cancel &amp; Confirm Call Handling.</h3>
+              <p>Handles common booking changes based on your rules and sends the caller a clear confirmation.</p>
             </div>
             <div className="feat-card reveal">
               <div className="feat-ico fi-p">⚡</div>
-              <h3>Handle 10 Calls Simultaneously.</h3>
-              <p>Peak hours are covered. Multiple callers are answered at once so your front desk never becomes a bottleneck.</p>
+              <h3>Missed-Call Text Back &amp; Smart Callback.</h3>
+              <p>Texts callers who hang up or reach you after hours, then queues the right follow-up for your team.</p>
             </div>
             <div className="feat-card reveal">
               <div className="feat-ico fi-y">↩️</div>
-              <h3>Missed-Call Recovery & Smart Callback.</h3>
-              <p>When a call drops or goes unanswered, RingBooker follows up and queues a callback so you recover more lost leads.</p>
+              <h3>Works With Your Current Number &amp; Booking Tools.</h3>
+              <p>Forward your front-desk line and keep using the booking workflow you already know, with Square live today and more integrations expanding.</p>
             </div>
             <div className="feat-card reveal">
               <div className="feat-ico fi-g">📲</div>
-              <h3>Automated SMS Journey.</h3>
-              <p>Sends booking confirmation, reminders, and review requests automatically based on your settings and plan.</p>
+              <h3>Call Summary &amp; Intent Dashboard for You.</h3>
+              <p>Every call becomes a transcript, summary, and outcome so you can see what happened without replaying voicemail.</p>
             </div>
             <div className="feat-card reveal">
               <div className="feat-ico fi-p">📊</div>
-              <h3>Full Call Intelligence.</h3>
-              <p>Track call outcomes, transcripts, and booking performance in one dashboard to improve operations week by week.</p>
+              <h3>Human Handoff When the Caller Needs It.</h3>
+              <p>If the request is complex, RingBooker collects context, offers a callback, and hands the conversation back cleanly.</p>
             </div>
           </div>
         </section>
@@ -1238,34 +1391,34 @@ export function MarketingHomeTemplate() {
               <div className="test-grid home-carousel-track">
                 <div className="test-card home-carousel-slide">
                   <div className="test-qq">"</div>
-                  <p className="lg">I used to miss 3–4 calls a day while doing color. Now every single call gets answered and I see the booking in my calendar. Game changer.</p>
-                  <div className="test-author">
-                    <div className="test-av">JM</div>
-                    <div><div className="test-name">Jessica Martinez</div><div className="test-role">User — Luxe Cuts, Austin TX</div></div>
-                  </div>
-                </div>
-                <div className="test-card home-carousel-slide">
-                  <div className="test-qq">"</div>
-                  <p>Setup took 15 minutes. I forwarded my number and it just worked. My customers say how friendly my "receptionist" is — they have no idea it's AI.</p>
+                  <p className="lg">I used to stop mid-color to answer the phone. Now my team stays focused and the bookings still happen.</p>
                   <div className="test-author">
                     <div className="test-av">SP</div>
-                    <div><div className="test-name">Sarah Park</div><div className="test-role">User — Bloom Nail, NYC</div></div>
+                    <div><div className="test-name">Sarah P.</div><div className="test-role">Nail Salon Owner — NYC</div></div>
                   </div>
                 </div>
                 <div className="test-card home-carousel-slide">
                   <div className="test-qq">"</div>
-                  <p>My Saturday slots were 70% full before. Now they're consistently 95%+. The ROI is undeniable — I made back the cost in the first week.</p>
+                  <p>Saturday mornings were a mess — three calls and one person at the desk. Now RingBooker handles the overflow and we do not lose callers.</p>
                   <div className="test-author">
-                    <div className="test-av">MK</div>
-                    <div><div className="test-name">Maria Kim</div><div className="test-role">User — Golden Shears, Chicago</div></div>
+                    <div className="test-av">MT</div>
+                    <div><div className="test-name">Michael T.</div><div className="test-role">Hair Salon — Chicago</div></div>
                   </div>
                 </div>
                 <div className="test-card home-carousel-slide">
                   <div className="test-qq">"</div>
-                  <p>The AI booked over $50,000 in appointments in 3 months. It sounds so natural that customers compliment how "friendly" our front desk is.</p>
+                  <p>We kept our existing number, took about 15 minutes to set up, and clients still reach us the way they always have.</p>
                   <div className="test-author">
-                    <div className="test-av">RC</div>
-                    <div><div className="test-name">Robert Chen</div><div className="test-role">User — The Style Bar, LA</div></div>
+                    <div className="test-av">JK</div>
+                    <div><div className="test-name">Jenny K.</div><div className="test-role">Day Spa — Dallas</div></div>
+                  </div>
+                </div>
+                <div className="test-card home-carousel-slide">
+                  <div className="test-qq">"</div>
+                  <p>After-hours used to be a black hole. Now missed callers get a text back and we know exactly who needs a callback.</p>
+                  <div className="test-author">
+                    <div className="test-av">LR</div>
+                    <div><div className="test-name">Lisa R.</div><div className="test-role">Med Spa — LA</div></div>
                   </div>
                 </div>
               </div>
@@ -1380,26 +1533,12 @@ export function MarketingHomeTemplate() {
           <div className="sec-label">FAQ</div>
           <h2 className="reveal">Frequently asked<br />questions.</h2>
           <p className="sub reveal">Everything you need to know before getting started.</p>
-          <details className="faq-item">
-            <summary className="faq-q">How does setup work?<div className="faq-plus"><svg viewBox="0 0 24 24"><path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg></div></summary>
-            <div className="faq-a"><p>Setup takes about 15 minutes. Fill out a simple form with your business info, services, and pricing. Our team configures your AI agent within 24 hours. Then just forward your existing number — or use the new one we provide.</p></div>
-          </details>
-          <details className="faq-item">
-            <summary className="faq-q">Will my customers know it's an AI?<div className="faq-plus"><svg viewBox="0 0 24 24"><path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg></div></summary>
-            <div className="faq-a"><p>RingBooker uses a natural US accent and handles conversation naturally — including interruptions and pauses. Many users report their customers compliment how friendly and helpful their "receptionist" is.</p></div>
-          </details>
-          <details className="faq-item">
-            <summary className="faq-q">What if the AI can't handle a situation?<div className="faq-plus"><svg viewBox="0 0 24 24"><path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg></div></summary>
-            <div className="faq-a"><p>When it encounters something outside its scope, it can transfer the call to you directly. You always have full control and can jump in at any time via the dashboard.</p></div>
-          </details>
-          <details className="faq-item">
-            <summary className="faq-q">Does it work with my booking software?<div className="faq-plus"><svg viewBox="0 0 24 24"><path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg></div></summary>
-            <div className="faq-a"><p>RingBooker is live with Square Appointments today, with Vagaro, Mindbody, and Booksy marked as soon. If you use a different system, contact us and we'll prioritize your integration request.</p></div>
-          </details>
-          <details className="faq-item">
-            <summary className="faq-q">Is it really available 24/7?<div className="faq-plus"><svg viewBox="0 0 24 24"><path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg></div></summary>
-            <div className="faq-a"><p>Always. RingBooker never sleeps, never calls in sick, and never has a bad day. It handles calls at 2am on holidays with the same professionalism as your busiest Saturday morning.</p></div>
-          </details>
+          {HOME_FAQS.map((faq) => (
+            <details className="faq-item" key={faq.q}>
+              <summary className="faq-q">{faq.q}<div className="faq-plus"><svg viewBox="0 0 24 24"><path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg></div></summary>
+              <div className="faq-a"><p>{faq.a}</p></div>
+            </details>
+          ))}
         </section>
         {/* CTA BANNER */}
         <div className="cta-outer">
@@ -1475,7 +1614,7 @@ export function MarketingHomeTemplate() {
                   </div>
                   RingBooker
                 </div>
-                <p className="footer-desc">AI-powered phone agent built for nail shops, hair salons, spas, med spas, and beauty clinics. Stop missing bookings and convert more calls every day.</p>
+                <p className="footer-desc">AI phone answering service built for nail shops, hair salons, spas, med spas, and beauty clinics. Stop losing after-hours and overflow calls to voicemail.</p>
                 <div className="footer-social">
                   <a className="soc-btn" href="#"><svg viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" /></svg></a>
                   <a className="soc-btn" href="#"><svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg></a>
@@ -1491,6 +1630,8 @@ export function MarketingHomeTemplate() {
               </div>
               <div className="footer-col">
                 <h4>Resources</h4>
+                <a href="/after-hours-calls">After-Hours Calls</a>
+                <a href="/missed-call-recovery">Missed-Call Recovery</a>
                 <a href="/demo">Live Demo</a>
                 <a href="#pricing">Pricing</a>
                 <a href="#faq">FAQ</a>
@@ -1515,6 +1656,8 @@ export function MarketingHomeTemplate() {
       </div>
         <MarketingFooter />
       </>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd) }} />
 
     </MarketingLayout>
   );

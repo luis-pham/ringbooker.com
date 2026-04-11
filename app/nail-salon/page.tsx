@@ -2,9 +2,9 @@ import { MarketingVerticalTemplate } from '@/components/marketing/marketing-vert
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Receptionist for Nail Salons',
+  title: 'AI Phone Answering Service for Nail Salons',
   description:
-    'AI phone receptionist for nail salons. Answer every call, book appointments instantly, and recover missed-call revenue with RingBooker.',
+    'RingBooker answers after-hours and overflow calls for nail salons on your current number, supports English and Vietnamese callers, and recovers missed bookings.',
   path: '/nail-salon',
 });
 

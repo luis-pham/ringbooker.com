@@ -6,6 +6,42 @@ export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-sp
 
 type Integration = { name: string; status: 'Live now' | 'Soon' };
 
+const SERVICE_BY_VERTICAL: Record<
+  MarketingVerticalKey,
+  { name: string; serviceType: string; description: string }
+> = {
+  'nail-salon': {
+    name: 'AI Phone Answering Service for Nail Salons',
+    serviceType: 'Nail salon answering service',
+    description:
+      'After-hours and overflow AI call answering for nail salons, including current-number forwarding, missed-call text back, bilingual support, booking intent capture, and reschedule handling.',
+  },
+  'hair-salon': {
+    name: 'AI Phone Answering Service for Hair Salons',
+    serviceType: 'Hair salon answering service',
+    description:
+      'AI call answering for hair salons that handles overflow calls, stylist requests, service questions, reschedules, and appointment confirmations.',
+  },
+  spa: {
+    name: 'AI Phone Answering Service for Spas',
+    serviceType: 'Spa answering service',
+    description:
+      'After-hours and overflow AI receptionist service for spas and day spas, with treatment-aware scripts, missed-call recovery, and SMS follow-up.',
+  },
+  'med-spa': {
+    name: 'AI Phone Answering Service for Med Spas',
+    serviceType: 'Med spa answering service',
+    description:
+      'AI phone answering for med spas that captures consultation calls, routes high-value inquiries, reduces missed calls, and supports reminder workflows.',
+  },
+  'beauty-clinic': {
+    name: 'AI Phone Answering Service for Beauty Clinics',
+    serviceType: 'Beauty clinic answering service',
+    description:
+      'AI call answering for beauty and aesthetic clinics with client intake, premium call scripts, smart routing, and call outcome summaries.',
+  },
+};
+
 const INTEGRATIONS: Integration[] = [
   { name: 'Square Appointments', status: 'Live now' },
   { name: 'Vagaro', status: 'Soon' },
@@ -70,8 +106,8 @@ function NailPage() {
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_360px]">
         <div>
           <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">🔥 #1 AI Receptionist for Vietnamese Nail Salons</div>
-          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.04em] text-slate-900">AI Phone Receptionist for Nail Salons</h1>
-          <p className="mt-4 max-w-2xl text-[17px] leading-8 text-slate-600">Answer every call in English + Vietnamese, book into your calendar, and capture after-hours demand automatically.</p>
+          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.04em] text-slate-900">AI Phone Answering Service for Nail Salons</h1>
+          <p className="mt-4 max-w-2xl text-[17px] leading-8 text-slate-600">Answer after-hours and overflow calls on your current number, support English + Vietnamese callers, capture booking intent, and recover missed appointments automatically.</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white">Start Free 14-Day Trial →</Link>
             <Link href="/demo" className="rounded-full border border-slate-300 bg-white px-6 py-3 text-[14px] font-semibold text-slate-700">Hear a Live Demo</Link>
@@ -272,7 +308,8 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
   'nail-salon': [
     { q: 'Can it handle bilingual callers?', a: 'Yes. RingBooker supports English + Vietnamese call handling for nail shops.' },
     { q: 'Does it sync with Square?', a: 'Yes, Square Appointments is live now.' },
-    { q: 'Can it capture after-hours bookings?', a: 'Yes. It can answer and book outside business hours.' },
+    { q: 'Can RingBooker work with our current nail salon phone number?', a: 'Yes. You can forward your existing salon number so clients keep calling the number they already know.' },
+    { q: 'Can it capture after-hours bookings?', a: 'Yes. It can answer and capture booking intent outside business hours, then send confirmations or summaries based on your setup.' },
   ],
   'hair-salon': [
     { q: 'Can it match caller to a stylist?', a: 'Yes, based on availability and configured rules.' },
@@ -311,6 +348,24 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
     '@type': 'FAQPage',
     mainEntity: faq.map((item) => ({ '@type': 'Question', name: item.q, acceptedAnswer: { '@type': 'Answer', text: item.a } })),
   };
+  const serviceConfig = SERVICE_BY_VERTICAL[vertical];
+  const serviceSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: serviceConfig.name,
+    serviceType: serviceConfig.serviceType,
+    provider: {
+      '@type': 'Organization',
+      name: 'RingBooker',
+      url: 'https://ringbooker.com',
+    },
+    areaServed: 'United States',
+    audience: {
+      '@type': 'BusinessAudience',
+      audienceType: serviceConfig.serviceType,
+    },
+    description: serviceConfig.description,
+  };
 
   const ctaMap: Record<MarketingVerticalKey, { label: string; title: string; subtitle: string }> = {
     'nail-salon': { label: 'For Nail Salons', title: 'Stop losing bookings to missed calls.', subtitle: 'Capture every high-intent caller with AI receptionist coverage.' },
@@ -331,6 +386,7 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
       </main>
       <MarketingFooter />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
     </>
   );
 }

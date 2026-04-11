@@ -1,5 +1,5 @@
 import { voice as agentVoice, initializeLogger, llm as agentLlm } from '@livekit/agents';
-import { Room, RoomEvent, TrackKind } from '@livekit/rtc-node';
+import { AudioFrame, Room, RoomEvent, TrackKind } from '@livekit/rtc-node';
 
 import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
 import { withLogContext } from '@/src/backend/observability/logger';
@@ -57,10 +57,30 @@ function resolveOpenAIAudioSpeed(): number | undefined {
 
 function resolveOpenAIInputNoiseReduction(): { type: 'near_field' | 'far_field' } | null | undefined {
   const raw = process.env.AGENT_OPENAI_INPUT_NOISE_REDUCTION?.trim().toLowerCase();
-  if (!raw) return undefined;
+  if (!raw) return { type: 'near_field' };
   if (raw === 'off' || raw === 'none' || raw === 'false' || raw === '0') return null;
   if (raw === 'near_field' || raw === 'far_field') return { type: raw };
-  return undefined;
+  return { type: 'near_field' };
+}
+
+function resolveLiveKitOutputGain(): number {
+  const raw = process.env.AGENT_LIVEKIT_OUTPUT_GAIN?.trim() || process.env.AGENT_OPENAI_OUTPUT_GAIN?.trim();
+  if (!raw) return 1.4;
+  const normalized = raw.toLowerCase();
+  if (normalized === 'off' || normalized === 'none' || normalized === 'false' || normalized === '0') return 1;
+  const gain = Number(raw);
+  if (!Number.isFinite(gain)) return 1.4;
+  return Math.max(0.25, Math.min(2, gain));
+}
+
+function applyOutputGain(frame: AudioFrame, gain: number): AudioFrame {
+  if (gain === 1 || frame.data.length === 0) return frame;
+  const amplified = new Int16Array(frame.data.length);
+  for (let i = 0; i < frame.data.length; i += 1) {
+    const sample = Math.round((frame.data[i] ?? 0) * gain);
+    amplified[i] = Math.max(-32768, Math.min(32767, sample));
+  }
+  return new AudioFrame(amplified, frame.sampleRate, frame.channels, frame.samplesPerChannel, frame.userdata);
 }
 
 function shouldDefaultToVietnamese(input: RealtimeDispatchInput): boolean {
@@ -271,9 +291,9 @@ function buildTurnDetectionConfig(): {
   const enabled = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
   if (!enabled) return null;
 
-  const mode = process.env.AGENT_OPENAI_TURN_DETECTION?.trim().toLowerCase() === 'server_vad'
-    ? 'server_vad'
-    : 'semantic_vad';
+  const mode = process.env.AGENT_OPENAI_TURN_DETECTION?.trim().toLowerCase() === 'semantic_vad'
+    ? 'semantic_vad'
+    : 'server_vad';
   const createResponse = parseBoolean(process.env.AGENT_OPENAI_CREATE_RESPONSE, true);
   const interruptResponse = parseBoolean(process.env.AGENT_OPENAI_INTERRUPT_RESPONSE, true);
 
@@ -281,8 +301,8 @@ function buildTurnDetectionConfig(): {
     return {
       type: 'server_vad',
       threshold: Math.max(0, Math.min(1, parseNumber(process.env.AGENT_OPENAI_VAD_THRESHOLD, 0.5))),
-      prefix_padding_ms: Math.max(0, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 300))),
-      silence_duration_ms: Math.max(1, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 200))),
+      prefix_padding_ms: Math.max(0, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 200))),
+      silence_duration_ms: Math.max(1, Math.round(parseNumber(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 300))),
       create_response: createResponse,
       interrupt_response: interruptResponse,
     };
@@ -386,6 +406,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const openAiAudioSpeed = resolveOpenAIAudioSpeed();
   const openAiInputNoiseReduction = resolveOpenAIInputNoiseReduction();
   const openAiInputAudioTranscription = resolveOpenAIInputAudioTranscription(input);
+  const liveKitOutputGain = resolveLiveKitOutputGain();
   const runtimeStartedAtMs = options?.runtimeStartedAtMs ?? Date.now();
   const roomConnectedAtMs = options?.roomConnectedAtMs ?? Date.now();
   /** First OpenAI server event that indicates model audio stream (delta/done). */
@@ -444,6 +465,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       audioSpeed: openAiAudioSpeed ?? null,
       inputAudioNoiseReduction: openAiInputNoiseReduction ?? null,
       inputAudioTranscription: openAiInputAudioTranscription,
+      liveKitOutputGain,
       turnDetection,
     },
     'livekit_native_openai_room_connected',
@@ -958,13 +980,40 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     );
   };
 
+  const installOutputGain = (): void => {
+    if (liveKitOutputGain === 1) return;
+    const roomIo = (
+      session as unknown as {
+        _roomIO?: {
+          audioOutput?: {
+            captureFrame?: (frame: AudioFrame) => Promise<void>;
+            __ringbookerOutputGainInstalled?: boolean;
+          };
+        };
+      }
+    )._roomIO;
+    const audioOutput = roomIo?.audioOutput;
+    if (!audioOutput?.captureFrame || audioOutput.__ringbookerOutputGainInstalled) return;
+
+    const originalCaptureFrame = audioOutput.captureFrame.bind(audioOutput);
+    audioOutput.captureFrame = (frame: AudioFrame) => originalCaptureFrame(applyOutputGain(frame, liveKitOutputGain));
+    audioOutput.__ringbookerOutputGainInstalled = true;
+    log.info(
+      {
+        roomName: input.roomName,
+        gain: liveKitOutputGain,
+      },
+      'livekit_native_openai_output_gain_installed',
+    );
+  };
+
   let sessionStarted = false;
   const startAgentSession = async (placement: 'pre_answer_warmup' | 'post_answer_fallback'): Promise<void> => {
     if (sessionStarted) return;
     const sessionStartBeginMs = Date.now();
     const outputQueueSizeMs = Math.max(
-      1000,
-      Math.round(parseNumber(process.env.AGENT_LIVEKIT_OUTPUT_QUEUE_MS, 2000)),
+      100,
+      Math.round(parseNumber(process.env.AGENT_LIVEKIT_OUTPUT_QUEUE_MS, 300)),
     );
     log.info(
       {
@@ -990,6 +1039,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       });
       sessionStarted = true;
       sessionStartedAtMs = Date.now();
+      installOutputGain();
       log.info(
         {
           roomName: input.roomName,
@@ -1428,11 +1478,11 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
   const forceResolveOutputSubscription = parseBoolean(
     process.env.AGENT_LIVEKIT_FORCE_RESOLVE_OUTPUT_SUBSCRIPTION,
-    false,
+    true,
   );
   const subscriptionForceResolveMs = Math.max(
-    500,
-    Math.round(parseNumber(process.env.AGENT_LIVEKIT_FORCE_RESOLVE_OUTPUT_SUBSCRIPTION_MS, 1500)),
+    100,
+    Math.round(parseNumber(process.env.AGENT_LIVEKIT_FORCE_RESOLVE_OUTPUT_SUBSCRIPTION_MS, 250)),
   );
   room.on(RoomEvent.LocalTrackPublished, (publication) => {
       log.info(

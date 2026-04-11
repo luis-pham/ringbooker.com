@@ -135,7 +135,7 @@ export function MarketingFooter() {
               RingBooker
             </div>
             <p className="mk-footer-desc">
-              AI-powered phone agent for appointment-based businesses. Stop missing bookings and convert more calls every day.
+              AI phone answering service for salons, nail shops, spas, med spas, and appointment-based businesses. Stop losing after-hours and overflow calls to voicemail.
             </p>
             <div className="mk-footer-social">
               <a className="mk-soc-btn" href="/contact">
@@ -167,6 +167,8 @@ export function MarketingFooter() {
           <div className="mk-footer-col">
             <h4>Resources</h4>
             <a href="/blog">Blog</a>
+            <a href="/after-hours-calls">After-Hours Calls</a>
+            <a href="/missed-call-recovery">Missed-Call Recovery</a>
             <a href="/demo">Live Demo</a>
             <a href="#pricing">Pricing</a>
             <a href="#faq">FAQ</a>
