@@ -124,6 +124,17 @@ type RealtimeSessionLike = RealtimeEventEmitter & {
   generateReply?: (instructions?: string) => Promise<unknown>;
 };
 
+type OpenAIRealtimeModelDelegate = {
+  model?: string;
+  provider?: string;
+  capabilities: ConstructorParameters<typeof agentLlm.RealtimeModel>[0];
+  sampleRate?: number;
+  numChannels?: number;
+  inFrameSize?: number;
+  outFrameSize?: number;
+  close?: () => Promise<void>;
+};
+
 function buildTurnDetectionConfig(): {
   type: 'semantic_vad';
   eagerness?: 'auto' | 'low' | 'medium' | 'high';
@@ -249,6 +260,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = resolveOpenAIModel(input);
   if (!apiKey || !model) throw new Error('missing_openai_api_key_or_model_for_native_runtime');
+  const openAiModel = model;
   const turnDetection = buildTurnDetectionConfig();
   const runtimeStartedAtMs = options?.runtimeStartedAtMs ?? Date.now();
   const roomConnectedAtMs = options?.roomConnectedAtMs ?? Date.now();
@@ -280,7 +292,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
   const rawOpenAiRealtimeModel = new openaiPlugin.realtime.RealtimeModel({
     apiKey,
-    model,
+    model: openAiModel,
     voice: resolveOpenAIVoice(),
     modalities: ['audio', 'text'],
     turnDetection,
@@ -527,17 +539,50 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     return realtimeSession;
   }
 
-  let llm: typeof rawOpenAiRealtimeModel;
-  if (openAiBoundSessionFactory) {
-    llmWithSessionFactory.session = () => {
+  class LiveKitOpenAIRealtimeModelAdapter extends agentLlm.RealtimeModel {
+    readonly sampleRate = (rawOpenAiRealtimeModel as OpenAIRealtimeModelDelegate).sampleRate;
+    readonly numChannels = (rawOpenAiRealtimeModel as OpenAIRealtimeModelDelegate).numChannels;
+    readonly inFrameSize = (rawOpenAiRealtimeModel as OpenAIRealtimeModelDelegate).inFrameSize;
+    readonly outFrameSize = (rawOpenAiRealtimeModel as OpenAIRealtimeModelDelegate).outFrameSize;
+
+    constructor(private readonly delegate: OpenAIRealtimeModelDelegate) {
+      super(delegate.capabilities);
+    }
+
+    get model(): string {
+      return this.delegate.model ?? openAiModel;
+    }
+
+    override get provider(): string {
+      return this.delegate.provider ?? 'openai';
+    }
+
+    session(): agentLlm.RealtimeSession {
+      if (!openAiBoundSessionFactory) {
+        throw new Error('livekit_native_openai_realtime_session_factory_missing');
+      }
       log.info(
-        { roomName: input.roomName, sessionEntry: 'direct_patch' },
+        { roomName: input.roomName, sessionEntry: 'adapter' },
         'livekit_native_openai_realtime_session_factory_called',
       );
-      return attachOpenAiRealtimeInstrumentation(openAiBoundSessionFactory());
-    };
-    llm = rawOpenAiRealtimeModel;
-    log.info({ roomName: input.roomName }, 'livekit_native_openai_llm_session_patch_installed');
+      return attachOpenAiRealtimeInstrumentation(openAiBoundSessionFactory()) as unknown as agentLlm.RealtimeSession;
+    }
+
+    async close(): Promise<void> {
+      await this.delegate.close?.();
+    }
+  }
+
+  let llm: agentLlm.RealtimeModel | typeof rawOpenAiRealtimeModel;
+  if (openAiBoundSessionFactory) {
+    llm = new LiveKitOpenAIRealtimeModelAdapter(rawOpenAiRealtimeModel as OpenAIRealtimeModelDelegate);
+    log.info(
+      {
+        roomName: input.roomName,
+        adapterInstanceofRealtimeModel: llm instanceof agentLlm.RealtimeModel,
+      },
+      'livekit_native_openai_llm_adapter_installed',
+    );
   } else {
     log.error(
       {
