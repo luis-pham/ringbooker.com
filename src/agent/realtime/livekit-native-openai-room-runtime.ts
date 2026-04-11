@@ -47,6 +47,22 @@ function resolveOpenAIVoice(): string {
   return process.env.AGENT_OPENAI_VOICE?.trim() || 'marin';
 }
 
+function resolveOpenAIAudioSpeed(): number | undefined {
+  const raw = process.env.AGENT_OPENAI_AUDIO_SPEED?.trim();
+  if (!raw) return undefined;
+  const speed = Number(raw);
+  if (!Number.isFinite(speed)) return undefined;
+  return Math.max(0.25, Math.min(4, speed));
+}
+
+function resolveOpenAIInputNoiseReduction(): { type: 'near_field' | 'far_field' } | null | undefined {
+  const raw = process.env.AGENT_OPENAI_INPUT_NOISE_REDUCTION?.trim().toLowerCase();
+  if (!raw) return undefined;
+  if (raw === 'off' || raw === 'none' || raw === 'false' || raw === '0') return null;
+  if (raw === 'near_field' || raw === 'far_field') return { type: raw };
+  return undefined;
+}
+
 function resolveGreetingText(input: RealtimeDispatchInput): string {
   const explicit = process.env.AGENT_OPENAI_INITIAL_GREETING_TEXT?.trim();
   if (explicit) return explicit;
@@ -190,7 +206,7 @@ function buildTurnDetectionConfig(): {
   const normalizedEagerness =
     eagerness === 'low' || eagerness === 'medium' || eagerness === 'high' || eagerness === 'auto'
       ? eagerness
-      : 'medium';
+      : 'high';
 
   return {
     type: 'semantic_vad',
@@ -280,6 +296,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   if (!apiKey || !model) throw new Error('missing_openai_api_key_or_model_for_native_runtime');
   const openAiModel = model;
   const turnDetection = buildTurnDetectionConfig();
+  const openAiVoice = resolveOpenAIVoice();
+  const openAiAudioSpeed = resolveOpenAIAudioSpeed();
+  const openAiInputNoiseReduction = resolveOpenAIInputNoiseReduction();
   const runtimeStartedAtMs = options?.runtimeStartedAtMs ?? Date.now();
   const roomConnectedAtMs = options?.roomConnectedAtMs ?? Date.now();
   /** First OpenAI server event that indicates model audio stream (delta/done). */
@@ -324,7 +343,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     {
       roomName: input.roomName,
       model,
-      voice: resolveOpenAIVoice(),
+      voice: openAiVoice,
+      audioSpeed: openAiAudioSpeed ?? null,
+      inputAudioNoiseReduction: openAiInputNoiseReduction ?? null,
       turnDetection,
     },
     'livekit_native_openai_room_connected',
@@ -340,7 +361,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const rawOpenAiRealtimeModel = new openaiPlugin.realtime.RealtimeModel({
     apiKey,
     model: openAiModel,
-    voice: resolveOpenAIVoice(),
+    voice: openAiVoice,
+    speed: openAiAudioSpeed,
+    inputAudioNoiseReduction: openAiInputNoiseReduction,
     modalities: ['audio', 'text'],
     turnDetection,
   });
