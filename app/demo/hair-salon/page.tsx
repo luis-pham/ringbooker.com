@@ -1,7 +1,8 @@
 import { MarketingVerticalDemoTemplate } from '@/components/marketing/marketing-vertical-demo';
 
 export const metadata = {
-  title: 'Hair Salon Live Demo — RingBooker',
+  title: 'AI Call Demo for Hair Salons',
+  robots: { index: false, follow: true },
 };
 
 export default function HairSalonDemoPage() {

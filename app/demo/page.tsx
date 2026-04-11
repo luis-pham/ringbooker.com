@@ -1,7 +1,7 @@
 import { MarketingDemoVerticalIndexTemplate } from '@/components/marketing/marketing-demo-vertical-index';
 
 export const metadata = {
-  title: 'RingBooker Demos — Live AI Call Experience',
+  title: 'Live AI Call Demos for Salons & Spas',
 };
 
 export default function DemoPage() {

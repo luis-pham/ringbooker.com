@@ -898,7 +898,7 @@ export function MarketingHomeTemplate() {
                 Start 14-Day Free Trial
                 <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
               </a>
-              <a href="/demo" className="btn-outline" data-demo-picker>📞 Hear a Live Demo Call</a>
+              <a href="/demo" className="btn-outline" data-demo-picker>📞 Try a Live Demo Call</a>
             </div>
             {/* HERO VISUAL */}
             <div className="hero-visual">
@@ -1054,8 +1054,8 @@ export function MarketingHomeTemplate() {
             <div className="industries-carousel" id="industriesCarousel">
               <div className="industries-track">
               <a href="/nail-salon" className="industry-card" data-index={0}>
-                <div className="industry-thumb" aria-hidden="true">
-                  <img src="/images/nail.jpeg" alt="" loading="lazy" />
+                <div className="industry-thumb">
+                  <img src="/images/nail.jpeg" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" loading="lazy" />
                   <span className="industry-tag">Nail</span>
                 </div>
                 <div className="industry-title">Nail Salon</div>
@@ -1063,8 +1063,8 @@ export function MarketingHomeTemplate() {
                 <div className="industry-link">Explore this page →</div>
               </a>
               <a href="/hair-salon" className="industry-card" data-index={1}>
-                <div className="industry-thumb" aria-hidden="true">
-                  <img src="/images/hair_shop.jpeg" alt="" loading="lazy" />
+                <div className="industry-thumb">
+                  <img src="/images/hair_shop.jpeg" alt="Hair salon stylist performing color treatment — AI receptionist answers overflow calls for hair salon bookings and reschedules" loading="lazy" />
                   <span className="industry-tag">Hair</span>
                 </div>
                 <div className="industry-title">Hair Salon</div>
@@ -1072,8 +1072,8 @@ export function MarketingHomeTemplate() {
                 <div className="industry-link">Explore this page →</div>
               </a>
               <a href="/spa" className="industry-card" data-index={2}>
-                <div className="industry-thumb" aria-hidden="true">
-                  <img src="/images/spa.jpeg" alt="" loading="lazy" />
+                <div className="industry-thumb">
+                  <img src="/images/spa.jpeg" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" loading="lazy" />
                   <span className="industry-tag">Spa</span>
                 </div>
                 <div className="industry-title">Spa / Day Spa</div>
@@ -1081,8 +1081,8 @@ export function MarketingHomeTemplate() {
                 <div className="industry-link">Explore this page →</div>
               </a>
               <a href="/med-spa" className="industry-card" data-index={3}>
-                <div className="industry-thumb" aria-hidden="true">
-                  <img src="/images/med_spa.jpeg" alt="" loading="lazy" />
+                <div className="industry-thumb">
+                  <img src="/images/med_spa.jpeg" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" loading="lazy" />
                   <span className="industry-tag">Med Spa</span>
                 </div>
                 <div className="industry-title">Med Spa</div>
@@ -1090,8 +1090,8 @@ export function MarketingHomeTemplate() {
                 <div className="industry-link">Explore this page →</div>
               </a>
               <a href="/beauty-clinic" className="industry-card" data-index={4}>
-                <div className="industry-thumb" aria-hidden="true">
-                  <img src="/images/beauty_clinic.jpeg" alt="" loading="lazy" />
+                <div className="industry-thumb">
+                  <img src="/images/beauty_clinic.jpeg" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" loading="lazy" />
                   <span className="industry-tag">Clinic</span>
                 </div>
                 <div className="industry-title">Beauty / Aesthetic Clinic</div>
@@ -1413,7 +1413,7 @@ export function MarketingHomeTemplate() {
                   <svg viewBox="0 0 24 24" style={{width: 16, height: 16, fill: 'var(--purple-dark)'}}><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
                   Start Free Trial
                 </a>
-                <a href="/demo" className="btn-ghost-w" data-demo-picker>📞 Hear Demo Call</a>
+                <a href="/demo" className="btn-ghost-w" data-demo-picker>📞 Try Demo Call</a>
               </div>
               {/* CTA Phone — voice call UI */}
               <div className="cta-phone-wrap">

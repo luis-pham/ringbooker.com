@@ -2,9 +2,9 @@ import { MarketingVerticalTemplate } from '@/components/marketing/marketing-vert
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Receptionist for Spas and Day Spas | RingBooker',
+  title: 'AI Receptionist for Day Spas & Wellness',
   description:
-    'RingBooker is the AI answering service for spas and day spas — captures after-hours calls, handles couples massage bookings, answers treatment questions, and covers your front desk while therapists are in session.',
+    'AI receptionist for day spas: answer after-hours and overflow calls, handle couples massage, package questions, reschedules, and SMS confirmations.',
   path: '/spa',
 });
 

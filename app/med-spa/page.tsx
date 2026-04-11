@@ -2,9 +2,9 @@ import { MarketingVerticalTemplate } from '@/components/marketing/marketing-vert
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Phone Answering Service for Med Spas | RingBooker',
+  title: 'AI Phone Answering for Med Spas & Clinics',
   description:
-    'RingBooker is the AI receptionist for med spas — captures Botox, filler, and laser consultation calls after hours, reduces no-shows on high-ticket slots, and recovers missed inbound leads before they go to competitors.',
+    'AI phone answering for med spas: capture consultation calls, route Botox, filler, and laser inquiries, reduce no-shows, and keep your current number.',
   path: '/med-spa',
 });
 

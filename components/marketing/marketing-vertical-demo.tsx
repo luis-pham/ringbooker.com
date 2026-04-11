@@ -44,21 +44,19 @@ const styles: string[] = [
   String.raw`
   /* ─── base ─────────────────────────────────────────────── */
   .vd-page{padding-top:80px;background:linear-gradient(160deg,color-mix(in srgb,var(--va) 7%,#fff) 0%,#fff 55%);min-height:100dvh}
-  .vd-wrap{margin:0 auto;padding:28px 20px 56px;display:flex;flex-direction:column}
+  .vd-wrap{margin:0 auto;padding:18px 20px 56px;display:flex;flex-direction:column}
 
   /* page header (full-width, centered) */
-  .vd-page-header{max-width:1120px;margin:0 auto;padding:32px 20px 20px;display:flex;flex-direction:column;align-items:center}
+  .vd-page-header{max-width:1120px;margin:0 auto;padding:24px 20px 8px;display:flex;flex-direction:column;align-items:center}
   .vd-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#6B7280;text-decoration:none;margin-bottom:18px;align-self:flex-start}
   .vd-back:hover{color:var(--va)}
 
   /* badge + heading */
-  .vd-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--va) 30%,#E5E7EB);background:color-mix(in srgb,var(--va) 8%,#fff);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--va);margin:0 auto 14px;width:fit-content}
+  .vd-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--va) 30%,#E5E7EB);background:color-mix(in srgb,var(--va) 8%,#fff);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--va);margin:0 auto;width:fit-content}
   .vd-icon{width:22px;height:22px;border-radius:7px;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
-  .vd-h1{font-size:clamp(24px,6vw,36px);font-weight:900;line-height:1.1;letter-spacing:-0.6px;color:#111827;margin:0 0 10px}
-  .vd-sub{font-size:15px;line-height:1.65;color:#6B7280;margin:0 auto;max-width:560px}
 
   @media(min-width:800px){
-    .vd-page-header{padding:40px 40px 24px}
+    .vd-page-header{padding:34px 40px 10px}
   }
 
   /* phone field — hero */
@@ -155,9 +153,9 @@ const styles: string[] = [
   .vd-right{display:none}
 
   /* phone card */
-  .vd-phone{background:linear-gradient(165deg,#1a0533 0%,#2d1b69 50%,#1a0d3a 100%);border-radius:28px;padding:24px;position:relative;overflow:hidden;color:#fff}
+  .vd-phone{width:min(100%,286px);min-height:500px;margin:0 auto;background:linear-gradient(165deg,#1a0533 0%,#2d1b69 50%,#1a0d3a 100%);border:10px solid #0B0B10;border-radius:42px;padding:22px 18px;position:relative;overflow:hidden;color:#fff;box-shadow:0 34px 70px rgba(17,24,39,.25),0 0 0 1px rgba(255,255,255,.06) inset;display:flex;flex-direction:column}
   .vd-phone::before{content:'';position:absolute;inset:-70px -60px auto auto;width:200px;height:200px;border-radius:50%;background:color-mix(in srgb,var(--va) 35%,transparent)}
-  .vd-phone-top{display:flex;justify-content:space-between;color:rgba(255,255,255,.5);font-size:12px;margin-bottom:18px;position:relative}
+  .vd-phone-top{display:flex;justify-content:space-between;color:rgba(255,255,255,.5);font-size:12px;margin-bottom:34px;position:relative}
   .vd-phone-avatar{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,var(--va),color-mix(in srgb,var(--va) 60%,#000));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;margin:0 auto 10px;box-shadow:0 0 0 8px rgba(255,255,255,.07),0 0 32px color-mix(in srgb,var(--va) 40%,transparent);position:relative}
   .vd-phone-name{text-align:center;position:relative;margin-bottom:4px;font-size:17px;font-weight:800}
   .vd-phone-subtitle{color:rgba(255,255,255,.5);font-size:11px;font-weight:700;letter-spacing:.06em;text-align:center;text-transform:uppercase;position:relative;margin-bottom:16px}
@@ -165,7 +163,7 @@ const styles: string[] = [
   .vd-phone-wave span{display:block;width:3px;border-radius:3px;background:color-mix(in srgb,var(--va) 80%,#C4B5FD);animation:vdWave 1.1s ease-in-out infinite}
   .vd-phone-wave span:nth-child(1){height:7px}.vd-phone-wave span:nth-child(2){height:18px;animation-delay:.08s}.vd-phone-wave span:nth-child(3){height:24px;animation-delay:.16s}.vd-phone-wave span:nth-child(4){height:14px;animation-delay:.24s}.vd-phone-wave span:nth-child(5){height:20px;animation-delay:.32s}
   /* call state indicators */
-  .vd-states{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .vd-states{display:grid;grid-template-columns:1fr;gap:8px;margin-top:auto}
   .vd-state{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);border-radius:12px;padding:10px 11px;display:flex;align-items:center;gap:7px}
   .vd-state-dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.25);flex-shrink:0}
   .vd-state-text{font-size:11.5px;font-weight:700;color:rgba(255,255,255,.45);line-height:1.2}
@@ -175,28 +173,21 @@ const styles: string[] = [
   /* form card */
   .vd-form-card{border:1px solid #E5E7EB;border-radius:24px;background:#fff;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 
-  /* trust pills */
-  .vd-trust{display:flex;flex-direction:column;gap:8px;margin-top:14px}
-  .vd-trust-pill{display:flex;align-items:center;gap:10px;border:1px solid #E5E7EB;border-radius:14px;padding:10px 13px;background:#fff;font-size:13px;color:#374151}
-  .vd-trust-icon{width:28px;height:28px;border-radius:8px;background:color-mix(in srgb,var(--va) 10%,#fff);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
-  .vd-trust-text strong{display:block;font-weight:800;font-size:13px;color:#111827}
-  .vd-trust-text span{font-size:12px;color:#9CA3AF}
-
   /* ─── desktop breakpoint ──────────────────────────────── */
   @media(min-width:800px){
     .vd-page{background:linear-gradient(145deg,color-mix(in srgb,var(--va) 6%,#fff) 0%,#fff 60%)}
     .vd-wrap{
       max-width:1100px;
       display:grid;
-      grid-template-columns:1fr 360px;
+      grid-template-columns:1fr 320px;
       gap:52px;
       align-items:start;
       padding:8px 40px 72px;
     }
-    .vd-right{display:flex;flex-direction:column;gap:0;position:sticky;top:96px}
+    .vd-right{display:flex;flex-direction:column;gap:0;position:sticky;top:96px;align-items:center}
   }
   @media(min-width:1200px){
-    .vd-wrap{max-width:1120px;grid-template-columns:1fr 380px;gap:64px;padding:8px 48px 80px}
+    .vd-wrap{max-width:1120px;grid-template-columns:1fr 340px;gap:64px;padding:8px 48px 80px}
   }
   `,
 ];
@@ -409,8 +400,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
           <div className="vd-page-header">
             <Link href={landingPath} className="vd-back">← Back to {verticalLabel}</Link>
             <div className="vd-badge"><span className="vd-icon">{config.icon}</span>{config.eyebrow}</div>
-            <h1 className="vd-h1">{config.title}</h1>
-            <p className="vd-sub">{config.subtitle}</p>
           </div>
 
           <div className="vd-wrap">
@@ -629,31 +618,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   <div className="vd-state">
                     <span className="vd-state-dot" />
                     <span className="vd-state-text">AI Responding</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Trust signals */}
-              <div className="vd-trust">
-                <div className="vd-trust-pill">
-                  <div className="vd-trust-icon">📞</div>
-                  <div className="vd-trust-text">
-                    <strong>Your current number</strong>
-                    <span>No new number needed in production</span>
-                  </div>
-                </div>
-                <div className="vd-trust-pill">
-                  <div className="vd-trust-icon">🔒</div>
-                  <div className="vd-trust-text">
-                    <strong>Zero system changes</strong>
-                    <span>Demo is isolated from your real setup</span>
-                  </div>
-                </div>
-                <div className="vd-trust-pill">
-                  <div className="vd-trust-icon">⚡</div>
-                  <div className="vd-trust-text">
-                    <strong>Live AI, not a recording</strong>
-                    <span>Real-time voice — ask anything</span>
                   </div>
                 </div>
               </div>

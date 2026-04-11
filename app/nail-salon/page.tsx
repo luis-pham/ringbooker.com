@@ -2,9 +2,9 @@ import { MarketingVerticalTemplate } from '@/components/marketing/marketing-vert
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Phone Answering Service for Nail Salons | RingBooker',
+  title: 'AI Phone Answering for Nail Salons & Shops',
   description:
-    'RingBooker is the AI receptionist for nail salons — answers after-hours and overflow calls on your current number, supports English and Vietnamese, captures walk-in and same-day bookings, and stops missed calls from costing you clients.',
+    'AI phone answering for nail salons: answer after-hours and overflow calls on your current number, handle prices, walk-ins, reschedules, and Vietnamese callers.',
   path: '/nail-salon',
 });
 

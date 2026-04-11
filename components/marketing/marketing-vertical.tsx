@@ -50,6 +50,11 @@ const INTEGRATIONS: Integration[] = [
   { name: 'Booksy', status: 'Soon', icon: 'B', bg: '#F97316', fg: '#fff' },
 ];
 
+const PRIMARY_CTA_CLASS =
+  'inline-flex items-center justify-center rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:scale-[1.03] hover:bg-slate-800';
+const SECONDARY_CTA_CLASS =
+  'inline-flex items-center justify-center rounded-full border border-slate-200 bg-transparent px-6 py-3 text-[14px] font-semibold text-slate-900 transition hover:border-violet-500 hover:text-violet-600';
+
 const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessName: string; accent: string }> = {
   'nail-salon': {
     businessName: 'Luxe Nail Studio',
@@ -263,20 +268,21 @@ function FinalCta({
 }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6 pb-10">
-      <div className="rounded-3xl px-8 py-14 text-center text-white" style={{ background: 'linear-gradient(135deg, #3b0764 0%, #6d28d9 50%, #312e81 100%)' }}>
-        <p className="text-[12px] font-bold uppercase tracking-[0.18em] text-violet-300">{label}</p>
-        <h2 className="mt-3 text-[clamp(28px,5vw,48px)] font-extrabold leading-[1.1] tracking-tight">{title}</h2>
-        <p className="mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-violet-200">{subtitle}</p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
+      <div className="relative overflow-hidden rounded-3xl bg-[linear-gradient(125deg,#6D28D9_0%,#8B5CF6_55%,#A78BFA_100%)] px-8 py-14 text-center text-white md:px-14">
+        <div className="pointer-events-none absolute -right-8 -top-10 h-72 w-72 rounded-full bg-white/10" />
+        <p className="relative text-[12px] font-bold uppercase tracking-[0.18em] text-white/70">{label}</p>
+        <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-extrabold leading-[1.1] tracking-tight">{title}</h2>
+        <p className="relative mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-white/75">{subtitle}</p>
+        <div className="relative mt-8 flex flex-wrap justify-center gap-3">
           <Link
             href="/user/signup"
-            className="inline-flex rounded-full bg-white px-7 py-3.5 text-[14px] font-bold text-violet-900 transition hover:-translate-y-0.5 hover:bg-violet-50"
+            className="inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-[14px] font-bold text-violet-900 transition hover:scale-[1.04]"
           >
             Start Free 14-Day Trial →
           </Link>
           <a
             href={demoPath}
-            className="inline-flex rounded-full border border-white/25 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:border-white/50 hover:bg-white/5"
+            className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/15 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:bg-white/25"
           >
             Try a Live Demo Call
           </a>
@@ -304,10 +310,10 @@ function NailPage() {
             Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won't wait. RingBooker answers every call on your current number, supports English and Vietnamese, and captures booking intent 24/7.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
+            <Link href="/user/signup" className={PRIMARY_CTA_CLASS}>
               Start Free 14-Day Trial →
             </Link>
-            <a href="/demo/nail-salon" className="rounded-full border border-slate-300 bg-white px-6 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-300 hover:text-violet-700">
+            <a href="/demo/nail-salon" className={SECONDARY_CTA_CLASS}>
               Try a Live Demo Call
             </a>
           </div>
@@ -406,10 +412,10 @@ function HairPage() {
                 While your stylists are in-chair, callers asking about color slots, preferred stylists, or reschedules can't get through. RingBooker handles hair salon calls so your team stays focused — and your books stay full.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
+                <Link href="/user/signup" className={PRIMARY_CTA_CLASS}>
                   Start Free Trial →
                 </Link>
-                <a href="/demo/hair-salon" className="rounded-full border border-amber-200 bg-white px-6 py-3 text-[14px] font-semibold text-amber-700 transition hover:bg-amber-50">
+                <a href="/demo/hair-salon" className={SECONDARY_CTA_CLASS}>
                   Try a Live Demo Call
                 </a>
               </div>
@@ -509,10 +515,10 @@ function SpaPage() {
               Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can't interrupt that. RingBooker captures every spa call without compromising your in-room guest experience.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
+              <Link href="/user/signup" className={PRIMARY_CTA_CLASS}>
                 Start Free Trial →
               </Link>
-              <a href="/demo/day-spa" className="rounded-full border border-teal-200 bg-white px-6 py-3 text-[14px] font-semibold text-teal-700 transition hover:bg-teal-50">
+              <a href="/demo/day-spa" className={SECONDARY_CTA_CLASS}>
                 Try a Live Demo Call
               </a>
             </div>
@@ -612,10 +618,10 @@ function MedSpaPage() {
                 Every missed consultation call at a med spa is a high-value lead lost. RingBooker captures after-hours and overflow consult calls on your current number, routes inquiry intent, and keeps your pipeline full — without a live receptionist on standby.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
+                <Link href="/user/signup" className={PRIMARY_CTA_CLASS}>
                   Start Free Trial →
                 </Link>
-                <a href="/demo/med-spa" className="rounded-full border border-indigo-200 bg-white px-6 py-3 text-[14px] font-semibold text-indigo-700 transition hover:bg-indigo-50">
+                <a href="/demo/med-spa" className={SECONDARY_CTA_CLASS}>
                   Try a Live Demo Call
                 </a>
               </div>
@@ -715,10 +721,10 @@ function BeautyClinicPage() {
               Beauty clinic clients expect a different level of care — consultation-first, provider continuity, and privacy. RingBooker answers calls with the professional tone your clinic brand demands, capturing every booking inquiry and consultation request.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/user/signup" className="rounded-full bg-slate-900 px-6 py-3 text-[14px] font-bold text-white transition hover:bg-slate-700">
+              <Link href="/user/signup" className={PRIMARY_CTA_CLASS}>
                 Start Free Trial →
               </Link>
-              <a href="/demo/beauty-clinic" className="rounded-full border border-fuchsia-200 bg-white px-6 py-3 text-[14px] font-semibold text-fuchsia-700 transition hover:bg-fuchsia-50">
+              <a href="/demo/beauty-clinic" className={SECONDARY_CTA_CLASS}>
                 Try a Live Demo Call
               </a>
             </div>

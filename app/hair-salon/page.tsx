@@ -2,9 +2,9 @@ import { MarketingVerticalTemplate } from '@/components/marketing/marketing-vert
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Phone Answering Service for Hair Salons | RingBooker',
+  title: 'AI Phone Answering for Hair Salons & Stylists',
   description:
-    'RingBooker is the AI receptionist for hair salons — handles stylist-match requests, color appointment booking, reschedule calls, and overflow calls on your current number so your team stays focused in-chair.',
+    'AI phone answering for hair salons: capture overflow and after-hours calls, handle stylist requests, color bookings, reschedules, and SMS confirmations.',
   path: '/hair-salon',
 });
 
