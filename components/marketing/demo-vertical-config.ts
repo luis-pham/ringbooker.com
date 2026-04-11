@@ -46,7 +46,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     businessType: 'nail-salon',
     eyebrow: 'RingBooker demo for nail salons',
     icon: 'N',
-    accent: '#EC4899',
+    accent: '#7C3AED',
     title: 'Hear a nail salon booking call in under a minute.',
     subtitle:
       'Run a web-only outbound demo that handles gel manicures, dip powder, walk-ins, reschedules, pricing, and bilingual English/Vietnamese callers.',
@@ -104,7 +104,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     businessType: 'hair-salon',
     eyebrow: 'RingBooker demo for hair salons',
     icon: 'H',
-    accent: '#F97316',
+    accent: '#D97706',
     title: 'Test a stylist-aware hair salon call.',
     subtitle:
       'Let RingBooker handle a booking or reschedule demo around stylist preference, color services, service duration, and consultation-style questions.',
@@ -160,7 +160,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     businessType: 'day-spa',
     eyebrow: 'RingBooker demo for day spas',
     icon: 'S',
-    accent: '#14B8A6',
+    accent: '#0D9488',
     title: 'Run a calmer spa booking demo.',
     subtitle:
       'Show how RingBooker handles massage, packages, couples appointments, cancellation questions, and rebooking in a calm, premium voice.',
@@ -215,7 +215,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     businessType: 'med-spa',
     eyebrow: 'RingBooker demo for med spas',
     icon: 'M',
-    accent: '#2563EB',
+    accent: '#4F46E5',
     title: 'Preview a consultation-first med spa call.',
     subtitle:
       'Test a safer demo flow for consultations, pricing boundaries, provider preference, and handoff language without giving treatment recommendations.',
@@ -271,7 +271,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     businessType: 'beauty-clinic',
     eyebrow: 'RingBooker demo for beauty clinics',
     icon: 'C',
-    accent: '#0F766E',
+    accent: '#A21CAF',
     title: 'Test a privacy-first clinic call.',
     subtitle:
       'Show how RingBooker can handle appointment intent, session continuity, pre-care questions, and human handoff with a clinical, careful tone.',
