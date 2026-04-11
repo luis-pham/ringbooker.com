@@ -63,22 +63,108 @@ function resolveOpenAIInputNoiseReduction(): { type: 'near_field' | 'far_field' 
   return undefined;
 }
 
+function shouldDefaultToVietnamese(input: RealtimeDispatchInput): boolean {
+  const callerPhone = input.callerPhone.trim();
+  const destinationPhone = input.destinationPhone.trim();
+  return callerPhone.startsWith('+84') || destinationPhone.startsWith('+84');
+}
+
+function resolveOpenAIInputAudioTranscription(
+  input: RealtimeDispatchInput,
+): { model: string; language?: string; prompt?: string } | null {
+  if (!parseBoolean(process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_ENABLED, true)) return null;
+
+  const language =
+    process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_LANGUAGE?.trim() ||
+    process.env.AGENT_OPENAI_LANGUAGE?.trim() ||
+    (shouldDefaultToVietnamese(input) ? 'vi' : undefined);
+  const prompt =
+    process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_PROMPT?.trim() ||
+    (language === 'vi'
+      ? 'Cuộc gọi đặt lịch bằng tiếng Việt. Người gọi có thể hỏi về đặt lịch, đổi lịch, dịch vụ, giá, giờ mở cửa, địa chỉ.'
+      : undefined);
+
+  return {
+    model: process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_MODEL?.trim() || 'gpt-4o-mini-transcribe',
+    ...(language ? { language } : {}),
+    ...(prompt ? { prompt } : {}),
+  };
+}
+
+function stripSurroundingQuotes(value: string): string {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
+}
+
+function normalizePromptValue(value: string): string {
+  return stripSurroundingQuotes(value.replace(/\s+/g, ' ').trim()).replace(/[.!?]+$/, '').trim();
+}
+
+function extractPromptLineValue(systemPrompt: string, labels: string[]): string | null {
+  const normalizedLabels = labels.map((label) => `${label.toLowerCase()}:`);
+  for (const line of systemPrompt.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    const lower = trimmed.toLowerCase();
+    const matchedLabel = normalizedLabels.find((label) => lower.startsWith(label));
+    if (!matchedLabel) continue;
+    const value = stripSurroundingQuotes(trimmed.slice(matchedLabel.length).trim());
+    if (value) return value;
+  }
+  return null;
+}
+
+function extractShopNameFromSystemPrompt(systemPrompt: string): string | null {
+  const explicitName = extractPromptLineValue(systemPrompt, ['SHOP NAME', 'SALON NAME', 'BUSINESS NAME']);
+  if (explicitName) return normalizePromptValue(explicitName);
+
+  const patterns = [
+    /You are the AI receptionist for\s+(.+?)(?:\.|\n|$)/i,
+    /You work at\s+(.+?)(?:,|\n|$)/i,
+    /Treat the prospect's business name as\s+(.+?)(?:\.|\n|$)/i,
+  ];
+  for (const pattern of patterns) {
+    const match = systemPrompt.match(pattern);
+    const name = match?.[1] ? normalizePromptValue(match[1]) : null;
+    if (name) return name;
+  }
+
+  return null;
+}
+
 function resolveGreetingText(input: RealtimeDispatchInput): string {
+  const promptGreeting = extractPromptLineValue(input.systemPrompt, [
+    'WELCOME MESSAGE',
+    'INITIAL GREETING',
+    'OPENING GREETING',
+  ]);
+  if (promptGreeting) return promptGreeting;
+
   const explicit = process.env.AGENT_OPENAI_INITIAL_GREETING_TEXT?.trim();
   if (explicit) return explicit;
 
   const language = process.env.AGENT_OPENAI_GREETING_LANGUAGE?.trim().toLowerCase();
-  const callerPhone = input.callerPhone.trim();
-  const destinationPhone = input.destinationPhone.trim();
   const shouldUseVietnamese =
     language === 'vi' ||
     language === 'vietnamese' ||
-    (!language && (callerPhone.startsWith('+84') || destinationPhone.startsWith('+84')));
+    (!language && shouldDefaultToVietnamese(input));
+  const shopName = extractShopNameFromSystemPrompt(input.systemPrompt);
 
   if (shouldUseVietnamese) {
-    return 'Xin chào, tôi là trợ lý đặt lịch của RingBooker. Tôi có thể giúp gì cho bạn?';
+    if (shopName) {
+      return `Dạ em chào anh/chị, đây là ${shopName}. Em có thể giúp mình đặt lịch hoặc hỏi thông tin dịch vụ hôm nay ạ.`;
+    }
+    return 'Dạ em chào anh/chị. Em có thể giúp mình đặt lịch hoặc hỏi thông tin dịch vụ hôm nay ạ.';
   }
-  return 'Hi, this is the RingBooker booking assistant. How can I help?';
+  if (shopName) {
+    return `Hi, thank you for calling ${shopName}. How can I help you today?`;
+  }
+  return 'Hi, thank you for calling. How can I help you today?';
 }
 
 function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
@@ -299,6 +385,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   const openAiVoice = resolveOpenAIVoice();
   const openAiAudioSpeed = resolveOpenAIAudioSpeed();
   const openAiInputNoiseReduction = resolveOpenAIInputNoiseReduction();
+  const openAiInputAudioTranscription = resolveOpenAIInputAudioTranscription(input);
   const runtimeStartedAtMs = options?.runtimeStartedAtMs ?? Date.now();
   const roomConnectedAtMs = options?.roomConnectedAtMs ?? Date.now();
   /** First OpenAI server event that indicates model audio stream (delta/done). */
@@ -317,6 +404,10 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   let latestAgentStoppedSpeakingAtMs: number | null = null;
   let currentAgentState: string | null = null;
   let currentUserState: string | null = null;
+  let latestUserSpeechStartedDuringAgentSpeaking = false;
+  let latestResponseCreateQueuedAtMs: number | null = null;
+  let latestResponseCreatedAtMs: number | null = null;
+  const responseIdsWithAudioStartedLogged = new Set<string>();
 
   const timingSnapshot = (nowMs = Date.now()) => ({
     msSinceRuntimeStart: nowMs - runtimeStartedAtMs,
@@ -331,6 +422,12 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     msSinceGreetingResponseCreated: firstGreetingResponseCreatedAtMs
       ? nowMs - firstGreetingResponseCreatedAtMs
       : null,
+    msSinceLatestUserSpeechStarted: latestUserSpeechStartedAtMs ? nowMs - latestUserSpeechStartedAtMs : null,
+    msSinceLatestUserSpeechStopped: latestUserSpeechStoppedAtMs ? nowMs - latestUserSpeechStoppedAtMs : null,
+    msSinceLatestResponseCreateQueued: latestResponseCreateQueuedAtMs
+      ? nowMs - latestResponseCreateQueuedAtMs
+      : null,
+    msSinceLatestResponseCreated: latestResponseCreatedAtMs ? nowMs - latestResponseCreatedAtMs : null,
   });
 
   observeDurationMs('realtime_worker_stage_ms', roomConnectedAtMs - runtimeStartedAtMs, {
@@ -346,6 +443,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       voice: openAiVoice,
       audioSpeed: openAiAudioSpeed ?? null,
       inputAudioNoiseReduction: openAiInputNoiseReduction ?? null,
+      inputAudioTranscription: openAiInputAudioTranscription,
       turnDetection,
     },
     'livekit_native_openai_room_connected',
@@ -363,6 +461,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     model: openAiModel,
     voice: openAiVoice,
     speed: openAiAudioSpeed,
+    inputAudioTranscription: openAiInputAudioTranscription,
     inputAudioNoiseReduction: openAiInputNoiseReduction,
     modalities: ['audio', 'text'],
     turnDetection,
@@ -490,6 +589,25 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       realtimeSessionWithEvents.on?.('openai_client_event_queued', (payload: unknown) => {
         const event = payload as { type?: string; event_id?: string; response?: { instructions?: string } };
         if (!event?.type) return;
+        if (event.type === 'response.create') {
+          const nowMs = Date.now();
+          latestResponseCreateQueuedAtMs = nowMs;
+          log.info(
+            {
+              roomName: input.roomName,
+              eventId: event.event_id ?? null,
+              hasInstructions: Boolean(event.response?.instructions),
+              currentAgentState,
+              currentUserState,
+              userSpeechDurationMs:
+                latestUserSpeechStartedAtMs && latestUserSpeechStoppedAtMs
+                  ? latestUserSpeechStoppedAtMs - latestUserSpeechStartedAtMs
+                  : null,
+              ...timingSnapshot(nowMs),
+            },
+            'livekit_native_openai_response_create_queued_timing',
+          );
+        }
         if (
           event.type === 'response.create' &&
           initialGreetingEnqueuedAtMs &&
@@ -567,15 +685,36 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           );
         }
 
+        if (event.type === 'response.created') {
+          const nowMs = Date.now();
+          latestResponseCreatedAtMs = nowMs;
+          log.info(
+            {
+              roomName: input.roomName,
+              responseId: event.response_id ?? null,
+              currentAgentState,
+              currentUserState,
+              userSpeechDurationMs:
+                latestUserSpeechStartedAtMs && latestUserSpeechStoppedAtMs
+                  ? latestUserSpeechStoppedAtMs - latestUserSpeechStartedAtMs
+                  : null,
+              ...timingSnapshot(nowMs),
+            },
+            'livekit_native_openai_response_created_timing',
+          );
+        }
+
         if (event.type === 'input_audio_buffer.speech_started') {
           const nowMs = Date.now();
           latestUserSpeechStartedAtMs = nowMs;
+          latestUserSpeechStartedDuringAgentSpeaking = currentAgentState === 'speaking';
           log.info(
             {
               roomName: input.roomName,
               eventType: event.type,
               currentAgentState,
               currentUserState,
+              startedDuringAgentSpeaking: latestUserSpeechStartedDuringAgentSpeaking,
               msSinceAgentStartedSpeaking: latestAgentStartedSpeakingAtMs
                 ? nowMs - latestAgentStartedSpeakingAtMs
                 : null,
@@ -617,6 +756,28 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
               ...timingSnapshot(nowMs),
             },
             'livekit_native_openai_first_openai_audio_stream_event',
+          );
+        }
+
+        const responseAudioKey = event.response_id ?? event.item_id ?? null;
+        if (isAudioStreamEvent && responseAudioKey && !responseIdsWithAudioStartedLogged.has(responseAudioKey)) {
+          const nowMs = Date.now();
+          responseIdsWithAudioStartedLogged.add(responseAudioKey);
+          log.info(
+            {
+              roomName: input.roomName,
+              eventType: event.type,
+              responseId: event.response_id ?? null,
+              itemId: event.item_id ?? null,
+              currentAgentState,
+              currentUserState,
+              userSpeechDurationMs:
+                latestUserSpeechStartedAtMs && latestUserSpeechStoppedAtMs
+                  ? latestUserSpeechStoppedAtMs - latestUserSpeechStartedAtMs
+                  : null,
+              ...timingSnapshot(nowMs),
+            },
+            'livekit_native_openai_response_audio_started_timing',
           );
         }
 
@@ -748,7 +909,18 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   }
 
   const initialGreetingText = resolveGreetingText(input);
-  const initialGreetingInstructions = `Say exactly this greeting and no extra words: "${initialGreetingText}"`;
+  const initialGreetingInstructions = `Say this opening phone greeting naturally and warmly. Do not add extra details or mention RingBooker unless the greeting itself says it: "${initialGreetingText}"`;
+  log.info(
+    {
+      roomName: input.roomName,
+      promptGreetingConfigured: Boolean(
+        extractPromptLineValue(input.systemPrompt, ['WELCOME MESSAGE', 'INITIAL GREETING', 'OPENING GREETING']),
+      ),
+      promptShopName: extractShopNameFromSystemPrompt(input.systemPrompt),
+      greetingLength: initialGreetingText.length,
+    },
+    'livekit_native_openai_initial_greeting_resolved',
+  );
 
   const agent = new NativeOpenAICallAgent();
 
@@ -1086,12 +1258,16 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             roomName: input.roomName,
             oldState: ev.oldState,
             newState: ev.newState,
+            startedDuringAgentSpeaking: latestUserSpeechStartedDuringAgentSpeaking,
             userSpeechStartToAgentStopSpeakingMs: nowMs - latestUserSpeechStartedAtMs,
             agentSpeakingDurationMs: latestAgentStartedSpeakingAtMs ? nowMs - latestAgentStartedSpeakingAtMs : null,
             ...timingSnapshot(nowMs),
           },
-          'livekit_native_openai_interruption_timing',
+          latestUserSpeechStartedDuringAgentSpeaking
+            ? 'livekit_native_openai_interruption_timing'
+            : 'livekit_native_openai_assistant_turn_completion_timing',
         );
+        latestUserSpeechStartedDuringAgentSpeaking = false;
       }
     }
     log.info(

@@ -264,6 +264,24 @@ function normalizePhone(value: string): string {
   return trimmed;
 }
 
+function singleLine(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function buildWelcomeMessage(config: NailSalonDemoConfig): string {
+  const salonName = singleLine(config.salonName) || 'the salon';
+  const city = singleLine(config.city);
+  const cityText = city ? ` ở ${city}` : '';
+  const shouldUseVietnamese = normalizePhone(config.phoneNumber).startsWith('+84');
+
+  if (shouldUseVietnamese) {
+    return `Dạ em chào anh/chị, đây là cuộc gọi từ ${salonName}${cityText}. Em có thể giúp mình đặt lịch làm nail hoặc hỏi giá dịch vụ hôm nay ạ.`;
+  }
+
+  const englishCityText = city ? ` in ${city}` : '';
+  return `Hi, thank you for calling ${salonName}${englishCityText}. I can help with appointments, services, or pricing today.`;
+}
+
 function mapStatusText(stage: DemoStage): string {
   if (stage === 'queued') return 'Preparing demo call...';
   if (stage === 'dialing') return 'Dialing your number...';
@@ -280,8 +298,11 @@ function generateAdaptivePrompt(config: NailSalonDemoConfig): string {
     .join('\n');
 
   const techList = config.technicians.length > 0 ? config.technicians.join(', ') : 'any available technician';
+  const welcomeMessage = buildWelcomeMessage(config);
 
   return `You are the AI receptionist for ${config.salonName}.
+
+WELCOME MESSAGE: ${welcomeMessage}
 
 ## YOUR IDENTITY
 - You work at ${config.salonName}, a nail salon
@@ -293,6 +314,7 @@ function generateAdaptivePrompt(config: NailSalonDemoConfig): string {
 ${servicesList}
 
 ## LANGUAGE RULE (CRITICAL)
+- Start the call with the WELCOME MESSAGE exactly once. Do not introduce yourself as RingBooker.
 - Detect caller's language in the FIRST sentence
 - If they speak Vietnamese -> respond 100% in Vietnamese
   - Use natural Vietnamese: "em", "chị", "anh", "dạ", "vâng"
@@ -483,7 +505,7 @@ export function MarketingNailSalonDemoTemplate() {
       } else if (nextStage === 'dialing') {
         setSummaryText('Dialing your phone now.');
       } else if (nextStage === 'live') {
-        setSummaryText('Connected. RingBooker AI is speaking with you in real-time.');
+        setSummaryText('Connected. The salon AI receptionist is speaking with you in real-time.');
       } else if (nextStage === 'completed') {
         setSummaryText('Call completed successfully.');
         return;
