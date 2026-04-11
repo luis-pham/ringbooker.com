@@ -143,12 +143,12 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-card h3{font-size:17px;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px}
 	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}
 	.compare-section{padding:88px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
-	.compare-grid{display:grid;gap:14px;margin-top:42px}
-	.compare-row{display:grid;grid-template-columns:56px 1fr 1fr;gap:12px;align-items:stretch}
-	.compare-icon{width:56px;height:56px;border-radius:20px;background:#F5F3FF;border:1px solid #E9D5FF;display:flex;align-items:center;justify-content:center;font-size:25px;box-shadow:0 10px 24px rgba(124,58,237,.08)}
-	.compare-cell{border-radius:22px;padding:20px;border:1px solid var(--border);background:#fff;box-shadow:0 10px 30px rgba(17,24,39,.04)}
-	.compare-cell.bad{background:#FFFBFB;border-color:#FEE2E2}
-	.compare-cell.good{background:#F8FFFC;border-color:#BBF7D0}
+	.compare-grid{display:grid;gap:0;margin-top:42px;border:1px solid #E5E7EB;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 14px 38px rgba(17,24,39,.05)}
+	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #EEF2F7}
+	.compare-row:last-child{border-bottom:none}
+	.compare-cell{padding:18px 22px;background:#fff}
+	.compare-cell.bad{background:#FFFCFC;border-right:1px solid #F1F5F9}
+	.compare-cell.good{background:#FBFFFD}
 	.compare-eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;color:#9CA3AF}
 	.compare-cell.good .compare-eyebrow{color:#059669}
 	.compare-cell.bad .compare-eyebrow{color:#EF4444}
@@ -252,6 +252,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .feat-card p{font-size:13.5px;color:var(--text-gray);line-height:1.65;text-align:left;width:100%}
 
 /* ─── DEEP SECTIONS ─── */
+.deep-section{padding:88px 48px 0}
 .deep-wrap{padding:0 48px;max-width:1200px;margin:0 auto}
 .deep-s1{padding:40px 0 27px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
 .deep-s1 .d-text h2,.deep-s2-outer .d-text h2,.deep-s3-outer .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:16px}
@@ -296,36 +297,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .donut-pct{font-size:38px;font-weight:800;letter-spacing:-1.5px}
 .donut-sub{font-size:14px;color:var(--text-gray);margin-top:2px}
-
-/* ─── AI INSIGHTS ─── */
-.insights{padding:88px 48px;background:var(--bg-gray)}
-.insights-inner{max-width:1100px;margin:0 auto}
-.insights-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:48px}
-.ins-card{border-radius:var(--r-lg);padding:30px 28px;overflow:hidden}
-.ins-purple{background:#E8E0FF}
-.ins-pink{background:#FCE7F3}
-.ins-card h3{font-size:17.5px;font-weight:700;color:var(--text-dark);margin-bottom:8px}
-.ins-card p{font-size:13.5px;color:var(--text-gray);margin-bottom:20px;line-height:1.6}
-.waveform-big-wrap{background:#fff;border-radius:var(--r-md);padding:20px 22px 14px}
-.waveform-big{display:flex;align-items:flex-end;gap:2px;height:60px;position:relative;margin-bottom:10px}
-.waveform-big span{flex:1;background:#7C3AED;border-radius:2px;transition:background .3s}
-.waveform-big.playing span{animation:wbig .8s ease-in-out infinite}
-.waveform-big span:nth-child(odd){animation-delay:.08s}
-.waveform-big span:nth-child(3n){animation-delay:.2s}
-@keyframes wbig{0%,100%{opacity:.35;transform:scaleY(.4)}50%{opacity:1;transform:scaleY(1)}}
-.wf-needle{position:absolute;top:0;bottom:0;left:52%;width:1.5px;background:#F97316}
-.wf-dot-top{position:absolute;top:-4px;left:calc(52% - 5px);width:10px;height:10px;background:#F97316;border-radius:50%}
-.wf-dot-left{position:absolute;left:-5px;top:50%;margin-top:-5px;width:10px;height:10px;background:#F97316;border-radius:50%}
-.wf-footer{display:flex;justify-content:space-between;align-items:center}
-.wf-left-row{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text-gray)}
-.wf-time{font-size:14px;color:var(--text-gray);font-weight:500}
-.integrations-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.int-item{background:#fff;border-radius:var(--r-md);padding:14px 16px;display:flex;align-items:center;gap:10px;border:1px solid var(--border)}
-.int-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--bg-gray)}
-.int-name{font-size:13.5px;font-weight:700;color:var(--text-dark)}
-.int-sub{font-size:11.5px;color:var(--text-light)}
-.int-check{margin-left:auto;width:20px;height:20px;background:var(--purple-ultra);border-radius:50%;display:flex;align-items:center;justify-content:center}
-.int-check svg{width:11px;height:11px;fill:var(--purple)}
 
 /* ─── TESTIMONIALS ─── */
 .testimonials{padding:88px 48px}
@@ -527,10 +498,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 @media(max-width:960px){
   .steps-grid,.flow-grid,.scope-inner,.user-grid{grid-template-columns:1fr}
   .user-shell{aspect-ratio:16/10}
-  .integrations-list{grid-template-columns:1fr}
-  .int-item{padding:12px 14px}
-  .int-name{font-size:13px}
-  .int-sub{font-size:11px}
   .industry-card{flex-basis:calc((100% - 12px) / 2)}
   .steps-section,.flow-section,.scope-section,.user-preview,.industries{padding-left:22px;padding-right:22px}
   .home-carousel-track{
@@ -547,22 +514,26 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .home-carousel-slide{scroll-snap-align:start}
   .home-carousel-controls{display:flex}
   .home-carousel-track .step-card,
-  .home-carousel-track .test-card{
+  .home-carousel-track .test-card,
+  .home-carousel-track .plan{
     margin:0;
     box-sizing:border-box;
     transform:none;
   }
   .home-carousel-track .step-card{flex:0 0 calc((100% - 12px) / 2)}
   .home-carousel-track .test-card{flex:0 0 calc((100% - 12px) / 2)}
+  .home-carousel-track .plan{flex:0 0 calc((100% - 12px) / 2);height:auto}
   .home-carousel-track .step-card:hover,
-  .home-carousel-track .test-card:hover{transform:none}
+  .home-carousel-track .test-card:hover,
+  .home-carousel-track .plan:hover{transform:none}
 }
 
 @media(max-width:640px){
   .industry-card{flex-basis:100%}
   .industries-controls{justify-content:center}
   .home-carousel-track .step-card,
-  .home-carousel-track .test-card{flex-basis:100%}
+  .home-carousel-track .test-card,
+  .home-carousel-track .plan{flex-basis:100%}
   .home-carousel-controls{justify-content:center}
 }
 
@@ -653,11 +624,11 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 
 /* ─── RESPONSIVE ─── */
 @media(max-width:960px){
-  .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.deep-s3-outer,.insights-grid,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
+  .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.deep-s3-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
   nav .nav-links{display:none}
-  nav,footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.insights,.testimonials,.pricing,.faq-section,.cta-outer,.deep-wrap{padding-left:22px;padding-right:22px}
+  nav,footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-wrap{padding-left:22px;padding-right:22px}
   .hero-visual{height:480px}
   .phone-frame{width:230px;height:460px}
   .fc{display:none}
@@ -676,9 +647,6 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 .legacy-marketing .sec-label,
 .legacy-marketing .feat-card p,
 .legacy-marketing .checklist li,
-.legacy-marketing .ins-card p,
-.legacy-marketing .int-name,
-.legacy-marketing .int-sub,
 .legacy-marketing .test-card p,
 .legacy-marketing .plan-desc,
 .legacy-marketing .plan-feats li,
@@ -878,6 +846,16 @@ setPriceSafe('monthly')
       dotsId: 'usersDots',
       dotClassName: 'home-carousel-dot',
     })
+
+    initCarousel({
+      rootId: 'pricingCarousel',
+      trackSelector: '.home-carousel-track',
+      cardSelector: '.plan',
+      prevId: 'pricingPrev',
+      nextId: 'pricingNext',
+      dotsId: 'pricingDots',
+      dotClassName: 'home-carousel-dot',
+    })
   } catch (error) {
     console.error('Home carousels init failed', error)
   }
@@ -1062,14 +1040,13 @@ export function MarketingHomeTemplate() {
             <p className="sec-sub reveal">The product is built around real salon call behavior: short questions, interruptions, booking changes, and callers who just want a clear next step.</p>
             <div className="compare-grid">
               {[
-                ['🌀', 'Endless loops when the caller asks something unexpected.', 'A two-strike fallback, callback offer, and clean handoff when the request needs a human.'],
-                ['🤝', 'Pretends to be a real person and breaks trust.', 'Can introduce itself transparently as your virtual assistant while staying warm and useful.'],
-                ['💬', 'Asks seven questions before helping.', 'Asks only what is needed to book, reschedule, cancel, or summarize the request.'],
-                ['📝', 'No context when the team follows up.', 'Call summaries and intent notes help your team continue without making the caller repeat everything.'],
-                ['↩️', 'Dead-end voicemail after the caller hangs up.', 'Missed-call text back and smart callback workflows keep the booking alive.'],
-              ].map(([icon, bad, good]) => (
+                ['Endless loops when the caller asks something unexpected.', 'A two-strike fallback, callback offer, and clean handoff when the request needs a human.'],
+                ['Pretends to be a real person and breaks trust.', 'Can introduce itself transparently as your virtual assistant while staying warm and useful.'],
+                ['Asks seven questions before helping.', 'Asks only what is needed to book, reschedule, cancel, or summarize the request.'],
+                ['No context when the team follows up.', 'Call summaries and intent notes help your team continue without making the caller repeat everything.'],
+                ['Dead-end voicemail after the caller hangs up.', 'Missed-call text back and smart callback workflows keep the booking alive.'],
+              ].map(([bad, good]) => (
                 <div className="compare-row" key={bad}>
-                  <div className="compare-icon" aria-hidden="true">{icon}</div>
                   <div className="compare-cell bad">
                     <div className="compare-eyebrow">Generic AI phone agent</div>
                     <p>{bad}</p>
@@ -1224,7 +1201,7 @@ export function MarketingHomeTemplate() {
           </div>
         </section>
         {/* DEEP SECTION 1 — Line chart */}
-        <section style={{padding: '88px 48px 0'}}>
+        <section className="deep-section">
           <div style={{textAlign: 'center', marginBottom: 4}}><div className="sec-label">24/7 Availability</div></div>
           <h2 className="sec-title reveal" style={{marginBottom: 60}}>Fill your calendar while<br />you do what you do best.</h2>
           <div className="deep-wrap" style={{padding: 0}}>
@@ -1336,58 +1313,6 @@ export function MarketingHomeTemplate() {
             </div>
           </div>
         </section>
-        {/* AI INSIGHTS — Voice + Integrations */}
-        <section className="insights" id="demo">
-          <div className="insights-inner">
-            <div className="sec-label" style={{textAlign: 'center'}}>AI Voice Intelligence</div>
-            <h2 className="sec-title reveal">Sounds human. Works like AI.<br />Integrates with your tools.</h2>
-            <div className="insights-grid reveal">
-              <div className="ins-card ins-purple">
-                <h3>Real-time voice conversation</h3>
-                <p>Natural tone, perfect timing. RingBooker handles pauses, interruptions, and complex requests — then books, confirms, and logs the call automatically.</p>
-                <div className="waveform-big-wrap">
-                  <div className="waveform-big" id="wfbig" style={{alignItems: 'flex-end'}}>
-                    <span style={{height: '30%'}} /><span style={{height: '55%'}} /><span style={{height: '75%'}} /><span style={{height: '90%'}} /><span style={{height: '60%'}} /><span style={{height: '100%'}} /><span style={{height: '80%'}} /><span style={{height: '45%'}} /><span style={{height: '70%'}} /><span style={{height: '95%'}} /><span style={{height: '50%'}} /><span style={{height: '85%'}} /><span style={{height: '65%'}} /><span style={{height: '40%'}} />
-                    <div className="wf-needle" />
-                    <div className="wf-dot-top" />
-                    <div className="wf-dot-left" />
-                    <span style={{height: '35%'}} /><span style={{height: '60%'}} /><span style={{height: '45%'}} /><span style={{height: '70%'}} /><span style={{height: '55%'}} /><span style={{height: '80%'}} /><span style={{height: '40%'}} /><span style={{height: '65%'}} /><span style={{height: '50%'}} /><span style={{height: '75%'}} /><span style={{height: '30%'}} />
-                  </div>
-                  <div className="wf-footer">
-                    <div className="wf-left-row"><span>🎙</span><span>Live call</span></div>
-                    <span className="wf-time">20:16</span>
-                  </div>
-                </div>
-              </div>
-              <div className="ins-card ins-pink">
-                <h3>Works with your booking tools</h3>
-                <p>RingBooker connects with the scheduling software you already use — no migration, no setup headaches.</p>
-                <div className="integrations-list">
-                  <div className="int-item">
-                    <div className="int-icon">💈</div>
-                    <div><div className="int-name">Vagaro</div><div className="int-sub">Soon</div></div>
-                    <div className="int-check"><span style={{fontSize: 10, fontWeight: 700, color: 'var(--purple)'}}>Soon</span></div>
-                  </div>
-                  <div className="int-item">
-                    <div className="int-icon">🟩</div>
-                    <div><div className="int-name">Square Appointments</div><div className="int-sub">Live now</div></div>
-                    <div className="int-check"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></div>
-                  </div>
-                  <div className="int-item">
-                    <div className="int-icon">🧘</div>
-                    <div><div className="int-name">Mindbody</div><div className="int-sub">Soon</div></div>
-                    <div className="int-check"><span style={{fontSize: 10, fontWeight: 700, color: 'var(--purple)'}}>Soon</span></div>
-                  </div>
-                  <div className="int-item">
-                    <div className="int-icon">📘</div>
-                    <div><div className="int-name">Booksy</div><div className="int-sub">Soon</div></div>
-                    <div className="int-check"><span style={{fontSize: 10, fontWeight: 700, color: 'var(--purple)'}}>Soon</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
         {/* TESTIMONIALS */}
         <section className="testimonials" id="testimonials">
           <div className="test-inner">
@@ -1465,8 +1390,9 @@ export function MarketingHomeTemplate() {
               <button className="pt-btn" id="tog-a" type="button">Annual</button>
               <span className="save-tag">SAVE 20%</span>
             </div>
-            <div className="price-grid reveal">
-              <div className="plan">
+            <div className="home-carousel" id="pricingCarousel">
+            <div className="price-grid home-carousel-track reveal">
+              <div className="plan home-carousel-slide">
                 <div className="plan-name">Starter</div>
                 <div className="plan-desc">For small beauty businesses getting started with an AI phone agent.</div>
                 <div className="plan-price" id="ps">$79<span>/month</span></div>
@@ -1484,7 +1410,7 @@ export function MarketingHomeTemplate() {
                 </ul>
                 <a className="plan-btn pb-outline" href="/user/signup">Start Free Trial →</a>
               </div>
-              <div className="plan star">
+              <div className="plan star home-carousel-slide">
                 <div className="plan-badge">⭐ Most Popular</div>
                 <div className="plan-name">Professional</div>
                 <div className="plan-desc">Best for busy beauty teams that want stronger follow-up and visibility.</div>
@@ -1502,7 +1428,7 @@ export function MarketingHomeTemplate() {
                 </ul>
                 <a className="plan-btn pb-dark" href="/user/signup">Start Free Trial →</a>
               </div>
-              <div className="plan">
+              <div className="plan home-carousel-slide">
                 <div className="plan-name">Custom</div>
                 <div className="plan-desc">For multi-location businesses, higher call volume, or custom workflows.</div>
                 <div className="plan-price" style={{fontSize: 30, letterSpacing: '-1px'}}>Custom<span>/contact us</span></div>
@@ -1516,6 +1442,12 @@ export function MarketingHomeTemplate() {
                   <li>Tailored implementation support</li>
                 </ul>
                 <a className="plan-btn pb-outline" href="/contact">Contact Sales →</a>
+              </div>
+            </div>
+              <div className="home-carousel-controls" aria-label="Pricing carousel controls">
+                <button type="button" id="pricingPrev" className="home-carousel-nav-btn" aria-label="Previous pricing plan">‹</button>
+                <div className="home-carousel-dots" id="pricingDots" aria-label="Pricing carousel indicators" />
+                <button type="button" id="pricingNext" className="home-carousel-nav-btn" aria-label="Next pricing plan">›</button>
               </div>
             </div>
             <div className="roi-strip reveal">
