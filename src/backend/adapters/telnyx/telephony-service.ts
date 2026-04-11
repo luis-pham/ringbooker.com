@@ -11,6 +11,14 @@ type TelnyxCallCreateResponse = {
   };
 };
 
+function parseBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
+  if (!value) return defaultValue;
+  const normalized = value.trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return defaultValue;
+}
+
 export class TelnyxTelephonyService implements TelephonyService {
   private readonly sipClient: SipClient | null;
 
@@ -145,7 +153,7 @@ export class TelnyxTelephonyService implements TelephonyService {
           playDialtone: true,
           ringingTimeout: 45,
           maxCallDuration: 20 * 60,
-          krispEnabled: true,
+          krispEnabled: parseBooleanEnv(process.env.LIVEKIT_SIP_KRISP_ENABLED, false),
           headers: {
             'X-RingBooker-Request-Id': params.requestId,
             'X-RingBooker-Purpose': params.purpose,
