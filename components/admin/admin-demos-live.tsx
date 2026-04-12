@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { adminCallsScripts, adminCallsStyles } from '@/components/admin/admin-calls';
@@ -81,7 +81,8 @@ export function AdminDemosLive() {
   const [calls, setCalls] = useState<DemoCallRow[]>([]);
   const [chartDaily, setChartDaily] = useState<ChartDay[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<DemoCallRow | null>(null);
+  const [transcriptDialogRow, setTranscriptDialogRow] = useState<DemoCallRow | null>(null);
+  const transcriptDialogRef = useRef<HTMLDialogElement>(null);
   const [transcriptLoading, setTranscriptLoading] = useState(false);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
   const [transcriptText, setTranscriptText] = useState<string | null>(null);
@@ -101,7 +102,6 @@ export function AdminDemosLive() {
         setError(null);
         setCalls(body.calls ?? []);
         setChartDaily(body.chartDaily ?? []);
-        setSelected((body.calls ?? [])[0] ?? null);
       })
       .catch(() => {
         setError('network_error');
@@ -115,15 +115,30 @@ export function AdminDemosLive() {
   }, [appliedFrom, appliedTo, load]);
 
   useEffect(() => {
-    if (!selected) {
+    const el = transcriptDialogRef.current;
+    if (!el) return;
+    if (transcriptDialogRow) {
+      if (!el.open) el.showModal();
+    } else if (el.open) {
+      el.close();
+    }
+  }, [transcriptDialogRow]);
+
+  useEffect(() => {
+    if (!transcriptDialogRow) {
       setTranscriptText(null);
       setTranscriptStatus(null);
       setTranscriptError(null);
+      setTranscriptLoading(false);
       return;
     }
+    const requestId = transcriptDialogRow.requestId;
+    let cancelled = false;
     setTranscriptLoading(true);
     setTranscriptError(null);
-    void fetch(`/api/backend/admin/demo-calls/${encodeURIComponent(selected.requestId)}/transcript`)
+    setTranscriptText(null);
+    setTranscriptStatus(null);
+    void fetch(`/api/backend/admin/demo-calls/${encodeURIComponent(requestId)}/transcript`)
       .then(async (response) => {
         const body = (await response.json()) as {
           ok: boolean;
@@ -131,6 +146,7 @@ export function AdminDemosLive() {
           transcriptStatus?: string | null;
           error?: string;
         };
+        if (cancelled) return;
         if (!response.ok || !body.ok) {
           setTranscriptError(body.error ?? `http_${response.status}`);
           setTranscriptText(null);
@@ -141,11 +157,18 @@ export function AdminDemosLive() {
         setTranscriptStatus(body.transcriptStatus ?? null);
       })
       .catch(() => {
-        setTranscriptError('network_error');
-        setTranscriptText(null);
+        if (!cancelled) {
+          setTranscriptError('network_error');
+          setTranscriptText(null);
+        }
       })
-      .finally(() => setTranscriptLoading(false));
-  }, [selected]);
+      .finally(() => {
+        if (!cancelled) setTranscriptLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [transcriptDialogRow?.requestId]);
 
   async function signOut() {
     await fetch('/api/backend/auth/logout', { method: 'POST' });
@@ -255,7 +278,7 @@ export function AdminDemosLive() {
               <span>System Health</span>
             </a>
           </div>
-          </aside>
+        </aside>
         <main className="main">
           <div className="topbar">
             <div className="page-title">
@@ -412,144 +435,144 @@ export function AdminDemosLive() {
             </div>
           </section>
 
-          <section className="call-grid" style={{ marginTop: 18 }}>
-            <div className="card">
-              <div className="panel-head">
-                <div>
-                  <h3>Demo call runs</h3>
-                  <p className="sub">Select a row to load transcript from the demo shop call log.</p>
-                </div>
-              </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Started</th>
-                      <th>Business</th>
-                      <th>Vertical</th>
-                      <th>Callback</th>
-                      <th>IP</th>
-                      <th>Country</th>
-                      <th>Demo duration</th>
-                      <th>Status</th>
-                      <th>Transcript</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {calls.map((row) => (
-                      <tr
-                        key={row.requestId}
-                        style={{
-                          cursor: 'pointer',
-                          background: selected?.requestId === row.requestId ? 'rgba(139,92,246,.08)' : undefined,
-                        }}
-                        onClick={() => setSelected(row)}
-                      >
-                        <td>{formatDateTime(row.startedAt ?? row.runCreatedAt)}</td>
-                        <td>{row.businessName ?? '—'}</td>
-                        <td>{row.verticalSlug}</td>
-                        <td>{row.callbackPhone}</td>
-                        <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{row.clientIp ?? '—'}</td>
-                        <td>{row.clientCountry ?? '—'}</td>
-                        <td>{formatDuration(row.demoDurationSeconds)}</td>
-                        <td>
-                          <span className={runStatusClass(row)}>{row.runStatus}</span>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="btn ghost"
-                            style={{ padding: '8px 12px', fontSize: 12 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelected(row);
-                            }}
-                          >
-                            View transcript
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          <section className="card" style={{ marginTop: 18 }}>
+            <div className="panel-head">
+              <div>
+                <h3>Demo call runs</h3>
+                <p className="sub">Open a transcript in the dialog to read the demo shop call log for that run.</p>
               </div>
             </div>
-
-            <div className="card">
-              <div className="panel-head">
-                <div>
-                  <h3>Transcript</h3>
-                  <p className="sub">
-                    {selected ? (
-                      <>
-                        Request <span style={{ fontFamily: 'ui-monospace, monospace' }}>{selected.requestId}</span>
-                      </>
-                    ) : (
-                      'Select a demo run.'
-                    )}
-                  </p>
-                </div>
-                {selected ? (
-                  <span className="tag purple">{transcriptStatus ?? 'unknown'}</span>
-                ) : null}
-              </div>
-              {transcriptLoading ? <p className="sub">Loading transcript…</p> : null}
-              {transcriptError ? (
-                <div className="note">
-                  {transcriptError === 'transcript_not_found'
-                    ? 'No call log row yet for this request (call may not have hit the demo shop log).'
-                    : transcriptError}
-                </div>
-              ) : null}
-              {!transcriptLoading && !transcriptError && selected ? (
-                <div className="note" style={{ maxHeight: 420, overflow: 'auto', whiteSpace: 'pre-wrap', color: 'var(--text)' }}>
-                  {transcriptText?.trim()
-                    ? transcriptText
-                    : 'No transcript text stored for this request yet.'}
-                </div>
-              ) : null}
-              {selected ? (
-                <div className="list" style={{ marginTop: 14 }}>
-                  <div className="list-item">
-                    <div className="item-main">
-                      <div className="avatar">IP</div>
-                      <div>
-                        <h4>Client IP</h4>
-                        <p>{selected.clientIp ?? 'Not captured'}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="list-item">
-                    <div className="item-main">
-                      <div className="avatar">CC</div>
-                      <div>
-                        <h4>Country</h4>
-                        <p>{selected.clientCountry ?? 'Not available (needs CF-IPCountry or future geo lookup)'}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="list-item">
-                    <div className="item-main">
-                      <div className="avatar">RM</div>
-                      <div>
-                        <h4>Room</h4>
-                        <p>{selected.roomName ?? '—'}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="list-item">
-                    <div className="item-main">
-                      <div className="avatar">PR</div>
-                      <div>
-                        <h4>Provider call</h4>
-                        <p style={{ wordBreak: 'break-all' }}>{selected.providerCallId ?? '—'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
+            <div style={{ overflowX: 'auto' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Started</th>
+                    <th>Business</th>
+                    <th>Vertical</th>
+                    <th>Callback</th>
+                    <th>IP</th>
+                    <th>Country</th>
+                    <th>Demo duration</th>
+                    <th>Status</th>
+                    <th>Transcript</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {calls.map((row) => (
+                    <tr key={row.requestId}>
+                      <td>{formatDateTime(row.startedAt ?? row.runCreatedAt)}</td>
+                      <td>{row.businessName ?? '—'}</td>
+                      <td>{row.verticalSlug}</td>
+                      <td>{row.callbackPhone}</td>
+                      <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{row.clientIp ?? '—'}</td>
+                      <td>{row.clientCountry ?? '—'}</td>
+                      <td>{formatDuration(row.demoDurationSeconds)}</td>
+                      <td>
+                        <span className={runStatusClass(row)}>{row.runStatus}</span>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          style={{ padding: '8px 12px', fontSize: 12 }}
+                          onClick={() => setTranscriptDialogRow(row)}
+                        >
+                          View transcript
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
+
+          <dialog
+            ref={transcriptDialogRef}
+            className="rb-admin-modal"
+            onClose={() => setTranscriptDialogRow(null)}
+          >
+            {transcriptDialogRow ? (
+              <>
+                <div className="rb-admin-modal-head">
+                  <div>
+                    <h3 style={{ margin: '0 0 6px' }}>Transcript</h3>
+                    <p className="sub" style={{ margin: 0 }}>
+                      Request{' '}
+                      <span style={{ fontFamily: 'ui-monospace, monospace' }}>{transcriptDialogRow.requestId}</span>
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                    <span className="tag purple">{transcriptStatus ?? 'unknown'}</span>
+                    <button type="button" className="btn ghost" onClick={() => transcriptDialogRef.current?.close()}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+                <div className="rb-admin-modal-body">
+                  {transcriptLoading ? <p className="sub">Loading transcript…</p> : null}
+                  {transcriptError ? (
+                    <div className="note">
+                      {transcriptError === 'transcript_not_found'
+                        ? 'No call log row yet for this request (call may not have hit the demo shop log).'
+                        : transcriptError}
+                    </div>
+                  ) : null}
+                  {!transcriptLoading && !transcriptError ? (
+                    <div
+                      className="note"
+                      style={{ whiteSpace: 'pre-wrap', color: 'var(--text)', maxHeight: 'none' }}
+                    >
+                      {transcriptText?.trim()
+                        ? transcriptText
+                        : 'No transcript text stored for this request yet.'}
+                    </div>
+                  ) : null}
+                  <div className="list" style={{ marginTop: 16 }}>
+                    <div className="list-item">
+                      <div className="item-main">
+                        <div className="avatar">IP</div>
+                        <div>
+                          <h4>Client IP</h4>
+                          <p>{transcriptDialogRow.clientIp ?? 'Not captured'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="list-item">
+                      <div className="item-main">
+                        <div className="avatar">CC</div>
+                        <div>
+                          <h4>Country</h4>
+                          <p>
+                            {transcriptDialogRow.clientCountry ??
+                              'Not available (needs CF-IPCountry or future geo lookup)'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="list-item">
+                      <div className="item-main">
+                        <div className="avatar">RM</div>
+                        <div>
+                          <h4>Room</h4>
+                          <p>{transcriptDialogRow.roomName ?? '—'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="list-item">
+                      <div className="item-main">
+                        <div className="avatar">PR</div>
+                        <div>
+                          <h4>Provider call</h4>
+                          <p style={{ wordBreak: 'break-all' }}>{transcriptDialogRow.providerCallId ?? '—'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </dialog>
         </main>
       </div>
     </AdminLayout>

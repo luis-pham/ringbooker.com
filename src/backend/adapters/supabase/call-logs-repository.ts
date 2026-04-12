@@ -181,7 +181,10 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }
   }
 
-  async listByShop(shopId: string, params?: { limit?: number }): Promise<
+  async listByShop(
+    shopId: string,
+    params?: { limit?: number; startedAfter?: Date; startedBefore?: Date },
+  ): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -201,14 +204,15 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }>
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
-    const { data, error } = await this.supabase
+    let q = this.supabase
       .from('call_logs')
       .select(
         'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome',
       )
-      .eq('shop_id', shopId)
-      .order('started_at', { ascending: false })
-      .limit(limit);
+      .eq('shop_id', shopId);
+    if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
+    if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+    const { data, error } = await q.order('started_at', { ascending: false }).limit(limit);
 
     if (error) {
       throw new Error(`call_logs_list_by_shop_failed:${error.message}`);
@@ -233,7 +237,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }));
   }
 
-  async listRecent(params?: { limit?: number }): Promise<
+  async listRecent(params?: { limit?: number; startedAfter?: Date; startedBefore?: Date }): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -253,13 +257,14 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }>
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
-    const { data, error } = await this.supabase
+    let q = this.supabase
       .from('call_logs')
       .select(
         'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome',
-      )
-      .order('started_at', { ascending: false })
-      .limit(limit);
+      );
+    if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
+    if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+    const { data, error } = await q.order('started_at', { ascending: false }).limit(limit);
 
     if (error) {
       throw new Error(`call_logs_list_recent_failed:${error.message}`);

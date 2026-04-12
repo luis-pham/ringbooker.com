@@ -336,6 +336,12 @@ const adminDemoCallsListQuerySchema = z.object({
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
+const adminCallsListQuerySchema = z.object({
+  shopId: z.string().min(1).optional(),
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
 const adminLeadStatusUpdateSchema = z.object({
   status: contactRequestStatusSchema,
   notes: z.string().max(2000).nullable().optional(),
@@ -3295,9 +3301,34 @@ export function createBackendApp(deps: {
     if (!deps.callLogsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const shopId = c.req.query('shopId')?.trim();
+    const parsed = adminCallsListQuerySchema.safeParse({
+      shopId: c.req.query('shopId'),
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+    const shopId = parsed.data.shopId?.trim();
+    const dateFrom = parsed.data.dateFrom;
+    const dateTo = parsed.data.dateTo;
+
+    let listParams: { limit: number; startedAfter?: Date; startedBefore?: Date } = { limit: 200 };
+    if (dateFrom && dateTo) {
+      const startedAfter = new Date(`${dateFrom}T00:00:00.000Z`);
+      const startedBefore = new Date(`${dateTo}T23:59:59.999Z`);
+      if (startedAfter.getTime() > startedBefore.getTime()) {
+        return c.json({ ok: false, error: 'invalid_date_range' }, 400);
+      }
+      listParams = { limit: 500, startedAfter, startedBefore };
+    } else if (dateFrom || dateTo) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+
     const [calls, shops] = await Promise.all([
-      shopId ? deps.callLogsRepository.listByShop(shopId, { limit: 200 }) : deps.callLogsRepository.listRecent({ limit: 200 }),
+      shopId
+        ? deps.callLogsRepository.listByShop(shopId, listParams)
+        : deps.callLogsRepository.listRecent(listParams),
       deps.shopsRepository ? deps.shopsRepository.list({ limit: 500 }) : Promise.resolve([]),
     ]);
     const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
@@ -3310,6 +3341,8 @@ export function createBackendApp(deps: {
       filter: {
         shopId: shopId || null,
         shopName: shopId ? (shopNameById.get(shopId) ?? null) : null,
+        dateFrom: dateFrom ?? null,
+        dateTo: dateTo ?? null,
       },
     });
   });

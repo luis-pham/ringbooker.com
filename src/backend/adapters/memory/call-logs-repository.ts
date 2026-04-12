@@ -23,6 +23,18 @@ function callKey(provider: string, providerCallId: string): string {
   return `${provider}:${providerCallId}`;
 }
 
+function matchesStartedRange(
+  log: MemoryCallLog,
+  params?: { startedAfter?: Date; startedBefore?: Date },
+): boolean {
+  if (!params?.startedAfter && !params?.startedBefore) return true;
+  const t = log.startedAt;
+  if (!t) return false;
+  if (params.startedAfter && t < params.startedAfter) return false;
+  if (params.startedBefore && t > params.startedBefore) return false;
+  return true;
+}
+
 export class InMemoryCallLogsRepository implements CallLogsRepository {
   private readonly logsByCall = new Map<string, MemoryCallLog>();
 
@@ -157,7 +169,10 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     }
   }
 
-  async listByShop(shopId: string, params?: { limit?: number }): Promise<
+  async listByShop(
+    shopId: string,
+    params?: { limit?: number; startedAfter?: Date; startedBefore?: Date },
+  ): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -178,7 +193,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     return [...this.logsByCall.values()]
-      .filter((log) => log.shopId === shopId)
+      .filter((log) => log.shopId === shopId && matchesStartedRange(log, params))
       .sort((a, b) => (b.startedAt?.toISOString() ?? '').localeCompare(a.startedAt?.toISOString() ?? ''))
       .slice(0, limit)
       .map((log) => ({
@@ -188,7 +203,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       }));
   }
 
-  async listRecent(params?: { limit?: number }): Promise<
+  async listRecent(params?: { limit?: number; startedAfter?: Date; startedBefore?: Date }): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -209,6 +224,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     return [...this.logsByCall.values()]
+      .filter((log) => matchesStartedRange(log, params))
       .sort((a, b) => (b.startedAt?.toISOString() ?? '').localeCompare(a.startedAt?.toISOString() ?? ''))
       .slice(0, limit)
       .map((log) => ({

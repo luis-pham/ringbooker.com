@@ -184,7 +184,10 @@ export interface CallLogsRepository {
     outcome?: string;
     humanAnswered?: boolean;
   }): Promise<void>;
-  listByShop(shopId: string, params?: { limit?: number }): Promise<
+  listByShop(
+    shopId: string,
+    params?: { limit?: number; startedAfter?: Date; startedBefore?: Date },
+  ): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -203,7 +206,7 @@ export interface CallLogsRepository {
       outcome?: string;
     }>
   >;
-  listRecent(params?: { limit?: number }): Promise<
+  listRecent(params?: { limit?: number; startedAfter?: Date; startedBefore?: Date }): Promise<
     Array<{
       provider: string;
       providerCallId: string;
