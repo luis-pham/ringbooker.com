@@ -13,6 +13,8 @@ export type SecurityAuditEvent = {
     | 'auth_logout'
     | 'auth_password_reset_requested'
     | 'auth_password_reset_completed'
+    | 'user_password_changed'
+    | 'user_password_change_denied'
     | 'admin_shop_created'
     | 'admin_shop_plan_updated'
     | 'admin_user_invited'
