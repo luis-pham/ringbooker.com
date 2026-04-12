@@ -14,6 +14,206 @@ type DashboardMetrics = {
   missedCalls: number;
 };
 
+type ChartPeriod = 'today' | 'week' | 'month' | 'year';
+
+type DashboardChartMetric = 'demo-calls' | 'leads' | 'shops' | 'calls';
+
+type SingleChartResponse = {
+  ok: boolean;
+  error?: string;
+  metric?: DashboardChartMetric;
+  period?: ChartPeriod;
+  from?: string;
+  to?: string;
+  labels?: string[];
+  labelTitles?: string[];
+  values?: number[];
+  repositoryAvailable?: boolean;
+};
+
+const PERIODS: { id: ChartPeriod; label: string }[] = [
+  { id: 'today', label: 'Today' },
+  { id: 'week', label: 'This week' },
+  { id: 'month', label: 'This month' },
+  { id: 'year', label: 'This year' },
+];
+
+const METRIC_SOURCE: Record<DashboardChartMetric, string> = {
+  'demo-calls': 'Aggregated from `demo_call_runs.created_at` (same source as Admin → Demo calls).',
+  leads: 'Aggregated from `contact_requests.created_at` (same source as Admin → Leads).',
+  shops: 'Aggregated from `shops.created_at` (new shop rows in the selected UTC window).',
+  calls: 'Aggregated from `call_logs.started_at` (inbound / logged calls).',
+};
+
+function sum(values: number[]): number {
+  return values.reduce((a, b) => a + b, 0);
+}
+
+function AdminTrendSvg({
+  chartId,
+  ariaLabel,
+  values,
+  labels,
+  labelTitles,
+  stroke,
+}: {
+  chartId: string;
+  ariaLabel: string;
+  values: number[];
+  labels: string[];
+  labelTitles: string[];
+  stroke: string;
+}) {
+  const max = Math.max(1, ...values);
+  const w = 400;
+  const h = 132;
+  const padL = 10;
+  const padR = 10;
+  const padB = 26;
+  const padT = 12;
+  const chartW = w - padL - padR;
+  const chartH = h - padT - padB;
+  const n = values.length;
+  const xAt = (i: number) => padL + (n <= 1 ? chartW / 2 : (i / Math.max(n - 1, 1)) * chartW);
+  const yAt = (v: number) => padT + chartH - (v / max) * chartH;
+  const linePoints = values.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ');
+  const areaPath =
+    n > 0
+      ? `M ${xAt(0)},${padT + chartH} L ${values
+          .map((v, i) => `${xAt(i)},${yAt(v)}`)
+          .join(' L ')} L ${xAt(n - 1)},${padT + chartH} Z`
+      : '';
+
+  const tickStep = Math.max(1, Math.ceil(n / 8));
+
+  return (
+    <svg className="admin-chart-svg" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={ariaLabel}>
+        <defs>
+          <linearGradient id={`admin-dash-grad-${chartId}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={stroke} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill={`url(#admin-dash-grad-${chartId})`} stroke="none" />
+        <polyline
+          fill="none"
+          stroke={stroke}
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          points={linePoints}
+        />
+        {labels.map((_, i) =>
+          i % tickStep === 0 || i === n - 1 ? (
+            <text
+              key={`t-${labels[i]}-${i}`}
+              className="admin-chart-x"
+              x={xAt(i)}
+              y={h - 6}
+              textAnchor="middle"
+            >
+              {labelTitles[i] ?? labels[i]}
+            </text>
+          ) : null,
+        )}
+      </svg>
+  );
+}
+
+function DashboardMetricChart({
+  metric,
+  title,
+  stroke,
+  chartId,
+}: {
+  metric: DashboardChartMetric;
+  title: string;
+  stroke: string;
+  chartId: string;
+}) {
+  const [period, setPeriod] = useState<ChartPeriod>('week');
+  const [data, setData] = useState<SingleChartResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLocalError(null);
+    const qs = new URLSearchParams({ period });
+    void fetch(`/api/backend/admin/dashboard/charts/${encodeURIComponent(metric)}?${qs.toString()}`)
+      .then(async (response) => (await response.json()) as SingleChartResponse)
+      .then((body) => {
+        if (cancelled) return;
+        if (!body.ok || !body.values || !body.labels || !body.labelTitles) {
+          setData(null);
+          setLocalError(body.error ?? 'unable_to_load');
+          return;
+        }
+        setData(body);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setData(null);
+        setLocalError('network_error');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [metric, period]);
+
+  const values = data?.values ?? [];
+  const labels = data?.labels ?? [];
+  const labelTitles = data?.labelTitles ?? [];
+  const repoOk = data?.repositoryAvailable !== false;
+
+  return (
+    <div className="admin-chart-card">
+      <div className="chart-head">
+        <h3>{title}</h3>
+      </div>
+      <div className="admin-period-filter">
+        <span className="period-label">UTC</span>
+        {PERIODS.map((p) => (
+          <button key={p.id} type="button" className={period === p.id ? 'active' : ''} onClick={() => setPeriod(p.id)}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <p className="chart-source">{METRIC_SOURCE[metric]}</p>
+      {!repoOk ? (
+        <div className="note" style={{ marginBottom: 10, fontSize: 12 }}>
+          Repository not configured for this metric in this environment — chart shows zeros.
+        </div>
+      ) : null}
+      {localError ? (
+        <div className="note" style={{ marginBottom: 10, fontSize: 12 }}>
+          {localError}
+        </div>
+      ) : null}
+      {loading ? <p className="sub">Loading…</p> : null}
+      {!loading && !localError && labels.length > 0 ? (
+        <>
+          <div className="chart-total" style={{ marginBottom: 8 }}>
+            Total in range: {sum(values)}
+          </div>
+          <AdminTrendSvg
+            chartId={chartId}
+            ariaLabel={`${title} trend`}
+            values={values}
+            labels={labels}
+            labelTitles={labelTitles}
+            stroke={stroke}
+          />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export function AdminDashboardLive() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +230,7 @@ export function AdminDashboardLive() {
           setError(body.error ?? 'unable_to_load');
           return;
         }
+        setError(null);
         setMetrics(body.metrics);
       })
       .catch(() => setError('network_error'));
@@ -53,7 +254,10 @@ export function AdminDashboardLive() {
           <div className="topbar">
             <div className="page-title">
               <h1>Admin overview</h1>
-              <p>High-level counts across shops and calls. Open Calls for transcripts and per-call detail.</p>
+              <p>
+                KPI snapshot plus four independent charts. Each chart loads its own period from the backend and counts
+                real database rows (UTC buckets) — no mock series.
+              </p>
             </div>
             <div className="top-actions">
               <a className="btn" href="/admin/calls">
@@ -133,23 +337,11 @@ export function AdminDashboardLive() {
                 </div>
               </section>
 
-              <section className="grid grid-2" style={{ marginTop: 18 }}>
-                <div className="card soft">
-                  <div className="panel-head">
-                    <div>
-                      <h3>Quick links</h3>
-                      <p className="sub">Leads and CMS open in the same admin shell where available.</p>
-                    </div>
-                  </div>
-                  <div className="top-actions" style={{ justifyContent: 'flex-start' }}>
-                    <a className="btn purple" href="/admin/leads">
-                      Leads
-                    </a>
-                    <a className="btn" href="/admin/blog">
-                      Blog / CMS
-                    </a>
-                  </div>
-                </div>
+              <section className="admin-chart-grid" style={{ marginTop: 22 }}>
+                <DashboardMetricChart metric="demo-calls" title="Demo calls" stroke="#a78bfa" chartId="demo" />
+                <DashboardMetricChart metric="leads" title="Leads" stroke="#60a5fa" chartId="leads" />
+                <DashboardMetricChart metric="shops" title="Shops created" stroke="#4ade80" chartId="shops" />
+                <DashboardMetricChart metric="calls" title="Calls" stroke="#c4b5fd" chartId="calls" />
               </section>
             </>
           ) : null}

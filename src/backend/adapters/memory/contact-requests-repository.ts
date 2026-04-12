@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import type { ContactRequest, ContactRequestStatus } from '@/src/backend/domain/types';
 import type { ContactRequestsRepository } from '@/src/backend/ports/repositories';
 
-function normalizeLimit(limit?: number): number {
+function normalizeLimit(limit?: number, maxCap = 500): number {
   if (!limit || limit <= 0) return 100;
-  return Math.min(limit, 500);
+  return Math.min(limit, maxCap);
 }
 
 function normalizeQuery(value?: string): string {
@@ -81,12 +81,21 @@ export class InMemoryContactRequestsRepository implements ContactRequestsReposit
     limit?: number;
     status?: ContactRequestStatus | 'all';
     query?: string;
+    createdAfter?: Date;
+    createdBefore?: Date;
   }): Promise<ContactRequest[]> {
-    const limit = normalizeLimit(params?.limit);
+    const hasRange = Boolean(params?.createdAfter && params?.createdBefore);
+    const limit = normalizeLimit(params?.limit, hasRange ? 10_000 : 500);
     const status = params?.status ?? 'all';
+    const fromMs = params?.createdAfter?.getTime();
+    const toMs = params?.createdBefore?.getTime();
     return sortByCreatedAtDesc(
       [...this.records.values()].filter((record) => {
         if (status !== 'all' && record.status !== status) return false;
+        if (fromMs !== undefined && toMs !== undefined && record.createdAt) {
+          const t = new Date(record.createdAt).getTime();
+          if (Number.isNaN(t) || t < fromMs || t > toMs) return false;
+        }
         return matchesQuery(record, params?.query);
       }),
     ).slice(0, limit);

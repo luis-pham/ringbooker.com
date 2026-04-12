@@ -274,6 +274,8 @@ export interface MissedCallsRepository {
 export interface ShopsRepository {
   findByDestinationPhone(destinationPhone: string): Promise<Shop | null>;
   findById(shopId: string): Promise<Shop | null>;
+  /** ISO timestamps of shop creation, for admin charts (UTC). */
+  listCreatedAtInRange(params: { createdAfter: Date; createdBefore: Date }): Promise<string[]>;
   list(params?: { limit?: number }): Promise<Shop[]>;
   create(params: {
     name: string;
@@ -572,6 +574,8 @@ export interface ContactRequestsRepository {
     limit?: number;
     status?: ContactRequestStatus | 'all';
     query?: string;
+    createdAfter?: Date;
+    createdBefore?: Date;
   }): Promise<ContactRequest[]>;
   updateStatus(
     id: string,

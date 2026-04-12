@@ -538,4 +538,17 @@ export class SupabaseShopsRepository implements ShopsRepository {
     }
     return data ? toShop(data) : null;
   }
+
+  async listCreatedAtInRange(params: { createdAfter: Date; createdBefore: Date }): Promise<string[]> {
+    const { data, error } = await this.supabase
+      .from('shops')
+      .select('created_at')
+      .gte('created_at', params.createdAfter.toISOString())
+      .lte('created_at', params.createdBefore.toISOString())
+      .limit(50_000);
+    if (error) {
+      throw new Error(`shops_list_created_at_range_failed:${error.message}`);
+    }
+    return (data ?? []).map((row) => (row as { created_at: string }).created_at);
+  }
 }

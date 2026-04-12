@@ -84,6 +84,23 @@ body.app-body{overflow-y:scroll}
 .auth-card h1{margin:0 0 8px;font-size:32px;letter-spacing:-.04em}.auth-card p{margin:0 0 24px;color:var(--muted);line-height:1.7}.auth-brand-copy h2{font-size:46px;line-height:1.02;letter-spacing:-.06em;margin:18px 0 14px}.auth-brand-copy p{max-width:520px;color:#a7b4cf;line-height:1.8}.auth-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:24px}.auth-stat{padding:16px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.05)}.auth-stat strong{display:block;font-size:28px;letter-spacing:-.04em}.auth-stat span{display:block;color:#9fb0cc;font-size:13px;line-height:1.55;margin-top:6px}.auth-foot{display:flex;justify-content:space-between;gap:10px;color:#8191ac;font-size:12px;line-height:1.6;margin-top:22px}.divider{height:1px;background:var(--line);margin:18px 0}.inline{display:flex;align-items:center;justify-content:space-between;gap:12px}.checkbox{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px}.checkbox input{accent-color:var(--purple)}
 .helper-links{display:flex;justify-content:space-between;gap:12px;margin-top:12px;font-size:13px;color:#b8c6e2}.helper-links a{color:#cfbfff}.center{text-align:center}
 .empty{padding:26px;border-radius:20px;border:1px dashed #314261;background:rgba(255,255,255,.02);text-align:center;color:var(--muted)}
+.admin-period-filter{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px;align-items:center}
+.admin-period-filter .period-label{font-size:12px;font-weight:800;color:#7f8baa;margin-right:6px;text-transform:uppercase;letter-spacing:.06em}
+.admin-period-filter button{padding:9px 16px;border-radius:999px;font-size:13px;font-weight:700;border:1px solid var(--line-soft);background:rgba(255,255,255,.03);color:#c7d2e8;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease}
+.admin-period-filter button:hover{border-color:var(--line);color:#fff}
+.admin-period-filter button.active{background:linear-gradient(135deg,var(--purple),var(--purple-2));border-color:transparent;color:#fff}
+.admin-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
+.admin-chart-card{background:linear-gradient(180deg,var(--panel),var(--panel-3));border:1px solid var(--line);border-radius:22px;padding:18px 18px 14px;box-shadow:var(--shadow)}
+.admin-chart-card .admin-period-filter{margin:0 0 12px}
+.admin-chart-card .admin-period-filter .period-label{font-size:10px;margin-right:4px}
+.admin-chart-card .admin-period-filter button{padding:7px 12px;font-size:12px}
+.admin-chart-card .chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.admin-chart-card h3{margin:0;font-size:16px;letter-spacing:-.02em}
+.admin-chart-card .chart-total{font-size:12px;font-weight:800;color:var(--muted)}
+.admin-chart-card .chart-source{font-size:11px;color:var(--muted);line-height:1.45;margin:0 0 4px;opacity:.92}
+.admin-chart-svg{width:100%;height:auto;display:block;border-radius:14px;background:rgba(0,0,0,.15)}
+.admin-chart-x{font-size:9px;fill:#7f8baa;font-weight:700}
+@media (max-width:1100px){.admin-chart-grid{grid-template-columns:1fr}}
 dialog.rb-admin-modal{max-width:min(720px,94vw);width:100%;border:none;border-radius:24px;padding:0;background:linear-gradient(180deg,var(--panel),var(--panel-3));color:var(--text);box-shadow:var(--shadow)}
 dialog.rb-admin-modal::backdrop{background:rgba(5,8,16,.72);backdrop-filter:blur(4px)}
 .rb-admin-modal-head{padding:20px 22px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}

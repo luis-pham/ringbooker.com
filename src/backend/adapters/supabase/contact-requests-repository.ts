@@ -47,9 +47,9 @@ function toContactRequest(row: ContactRequestRow): ContactRequest {
   };
 }
 
-function normalizeLimit(limit?: number): number {
+function normalizeLimit(limit?: number, maxCap = 500): number {
   if (!limit || limit <= 0) return 100;
-  return Math.min(limit, 500);
+  return Math.min(limit, maxCap);
 }
 
 function applySearch<T extends { or: (filters: string) => T }>(query: T, search?: string): T {
@@ -116,12 +116,21 @@ export class SupabaseContactRequestsRepository implements ContactRequestsReposit
     limit?: number;
     status?: ContactRequestStatus | 'all';
     query?: string;
+    createdAfter?: Date;
+    createdBefore?: Date;
   }): Promise<ContactRequest[]> {
-    const limit = normalizeLimit(params?.limit);
+    const hasRange = Boolean(params?.createdAfter && params?.createdBefore);
+    const limit = normalizeLimit(params?.limit, hasRange ? 10_000 : 500);
     const status = params?.status ?? 'all';
     let query = this.supabase.from('contact_requests').select('*').order('created_at', { ascending: false }).limit(limit);
     if (status !== 'all') {
       query = query.eq('status', status);
+    }
+    if (params?.createdAfter) {
+      query = query.gte('created_at', params.createdAfter.toISOString());
+    }
+    if (params?.createdBefore) {
+      query = query.lte('created_at', params.createdBefore.toISOString());
     }
     query = applySearch(query, params?.query);
     const { data, error } = await query.returns<ContactRequestRow[]>();

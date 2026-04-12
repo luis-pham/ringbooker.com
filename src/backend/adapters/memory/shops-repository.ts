@@ -43,6 +43,7 @@ const defaultShop: Shop = {
 
 export class InMemoryShopsRepository implements ShopsRepository {
   private readonly shops = new Map<string, Shop>([[defaultShop.id, defaultShop]]);
+  private readonly shopCreatedAt = new Map<string, string>([[defaultShop.id, new Date().toISOString()]]);
 
   async findByDestinationPhone(destinationPhone: string): Promise<Shop | null> {
     for (const shop of this.shops.values()) {
@@ -60,6 +61,19 @@ export class InMemoryShopsRepository implements ShopsRepository {
   async list(params?: { limit?: number }): Promise<Shop[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 50;
     return [...this.shops.values()].slice(0, limit);
+  }
+
+  async listCreatedAtInRange(params: { createdAfter: Date; createdBefore: Date }): Promise<string[]> {
+    const fromMs = params.createdAfter.getTime();
+    const toMs = params.createdBefore.getTime();
+    const out: string[] = [];
+    for (const id of this.shops.keys()) {
+      const iso = this.shopCreatedAt.get(id);
+      if (!iso) continue;
+      const t = new Date(iso).getTime();
+      if (t >= fromMs && t <= toMs) out.push(iso);
+    }
+    return out;
   }
 
   async create(params: {
@@ -96,6 +110,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
       active: params.active ?? true,
     };
     this.shops.set(id, created);
+    this.shopCreatedAt.set(id, new Date().toISOString());
     return created;
   }
 

@@ -75,6 +75,11 @@ import {
   type SquareConnectionCredentials,
 } from '@/src/backend/services/calendar/provider-connections';
 import { CALENDAR_PROVIDER_CATALOG } from '@/src/backend/services/calendar/provider-catalog';
+import {
+  aggregateIntoBuckets,
+  getChartRangeSpec,
+  type DashboardChartPeriod,
+} from '@/src/backend/services/admin-dashboard-chart-series';
 
 const jobTypeSchema = z.enum([
   'realtime_session_dispatch',
@@ -1047,6 +1052,9 @@ const ADMIN_CALL_LIST_PAGE_SIZE = 20;
 const ADMIN_CALL_CHART_SAMPLE = 8000;
 const ADMIN_DEMO_LIST_PAGE_SIZE = 20;
 const ADMIN_DEMO_CHART_SAMPLE = 8000;
+
+const adminDashboardChartPeriodSchema = z.enum(['today', 'week', 'month', 'year']);
+const adminDashboardChartMetricSchema = z.enum(['demo-calls', 'leads', 'shops', 'calls']);
 
 function buildAdminCallChartDaily(calls: Array<{ startedAt?: string }>): Array<{ day: string; count: number }> {
   const map = new Map<string, number>();
@@ -3114,6 +3122,102 @@ export function createBackendApp(deps: {
         callCount: calls.length,
         missedCalls: calls.filter((item) => item.outcome === 'missed').length,
       },
+    });
+  });
+
+  app.get(path('/admin/dashboard/charts/:metric'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_dashboard_chart_metric');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+
+    const metricParsed = adminDashboardChartMetricSchema.safeParse(c.req.param('metric'));
+    if (!metricParsed.success) {
+      return c.json({ ok: false, error: 'invalid_metric' }, 400);
+    }
+    const metric = metricParsed.data;
+
+    const periodParsed = adminDashboardChartPeriodSchema.safeParse(c.req.query('period') ?? 'week');
+    const period: DashboardChartPeriod = periodParsed.success ? periodParsed.data : 'week';
+    const now = new Date();
+    const spec = getChartRangeSpec(period, now);
+    const pageSize = 2500;
+
+    let timestamps: string[] = [];
+    let repositoryAvailable = true;
+
+    if (metric === 'calls') {
+      if (!deps.callLogsRepository) {
+        return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+      }
+      let offset = 0;
+      for (;;) {
+        const batch = await deps.callLogsRepository.listRecent({
+          startedAfter: spec.from,
+          startedBefore: spec.to,
+          limit: pageSize,
+          offset,
+        });
+        for (const row of batch) {
+          if (row.startedAt) timestamps.push(row.startedAt);
+        }
+        if (batch.length < pageSize) break;
+        offset += pageSize;
+        if (offset > 250_000) break;
+      }
+    } else if (metric === 'demo-calls') {
+      if (!deps.demoSessionsRepository) {
+        repositoryAvailable = false;
+      } else {
+        let offset = 0;
+        for (;;) {
+          const batch = await deps.demoSessionsRepository.listAdminDemoCallRuns({
+            createdAfter: spec.from,
+            createdBefore: spec.to,
+            limit: pageSize,
+            offset,
+          });
+          for (const row of batch) {
+            timestamps.push(row.runCreatedAt);
+          }
+          if (batch.length < pageSize) break;
+          offset += pageSize;
+        }
+      }
+    } else if (metric === 'leads') {
+      if (!deps.contactRequestsRepository) {
+        repositoryAvailable = false;
+      } else {
+        const rows = await deps.contactRequestsRepository.listForAdmin({
+          createdAfter: spec.from,
+          createdBefore: spec.to,
+          status: 'all',
+          limit: 10_000,
+        });
+        timestamps = rows.map((r) => r.createdAt).filter((x): x is string => Boolean(x));
+      }
+    } else if (metric === 'shops') {
+      if (!deps.shopsRepository) {
+        return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+      }
+      timestamps = await deps.shopsRepository.listCreatedAtInRange({
+        createdAfter: spec.from,
+        createdBefore: spec.to,
+      });
+    }
+
+    const values = aggregateIntoBuckets(spec.labels, timestamps, spec.bucketOf);
+
+    return c.json({
+      ok: true,
+      metric,
+      period,
+      from: spec.from.toISOString(),
+      to: spec.to.toISOString(),
+      labels: spec.labels,
+      labelTitles: spec.labelTitles,
+      values,
+      repositoryAvailable,
     });
   });
 
