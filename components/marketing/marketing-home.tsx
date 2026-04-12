@@ -140,7 +140,8 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-section{padding:88px 48px;background:linear-gradient(180deg,#fff,#F9FAFB)}
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-	.leak-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:0 10px 30px rgba(17,24,39,.04)}
+	.leak-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s,box-shadow .2s,border-color .2s}
+	.leak-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.07);border-color:#d8ccfe}
 	.leak-icon{font-size:26px;margin-bottom:10px;text-align:center}
 	.leak-card h3{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px;text-align:center}
 	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}

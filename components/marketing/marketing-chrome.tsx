@@ -234,11 +234,11 @@ export function MarketingFooter() {
           </div>
           <div className="mk-footer-col">
             <h4>Product</h4>
-            <a href="#features">Features</a>
+            <a href="/#features">Features</a>
             <a href="/#industries">Industries</a>
             <a href="/demo" data-demo-picker>Live Demo</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#how-it-works">How It Works</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/how-it-works">How It Works</a>
             <a href="/user/login">Sign In</a>
           </div>
           <div className="mk-footer-col">
@@ -247,8 +247,8 @@ export function MarketingFooter() {
             <a href="/after-hours-calls">After-Hours Calls</a>
             <a href="/missed-call-recovery">Missed-Call Recovery</a>
             <a href="/demo" data-demo-picker>Live Demo</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#faq">FAQ</a>
+            <a href="/pricing">Pricing</a>
+            <a href="/faq">FAQ</a>
           </div>
           <div className="mk-footer-col">
             <h4>Company</h4>
