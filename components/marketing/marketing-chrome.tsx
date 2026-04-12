@@ -236,28 +236,24 @@ export function MarketingFooter() {
             <h4>Product</h4>
             <a href="/#features">Features</a>
             <a href="/#industries">Industries</a>
-            <a href="/demo" data-demo-picker>Live Demo</a>
             <a href="/pricing">Pricing</a>
             <a href="/how-it-works">How It Works</a>
+            <a href="/demo" data-demo-picker>Live Demo</a>
             <a href="/user/login">Sign In</a>
           </div>
           <div className="mk-footer-col">
             <h4>Resources</h4>
             <a href="/blog">Blog</a>
+            <a href="/faq">FAQ</a>
             <a href="/after-hours-calls">After-Hours Calls</a>
             <a href="/missed-call-recovery">Missed-Call Recovery</a>
-            <a href="/demo" data-demo-picker>Live Demo</a>
-            <a href="/pricing">Pricing</a>
-            <a href="/faq">FAQ</a>
+            <a href="/contact">Contact</a>
           </div>
           <div className="mk-footer-col">
-            <h4>Company</h4>
+            <h4>Legal</h4>
             <a href="/privacy">Privacy Policy</a>
             <a href="/terms">Terms of Service</a>
             <a href="/refund">Refund Policy</a>
-            <a href="/contact">Support</a>
-            <a href="/contact">Contact</a>
-            <a href="/user/login">Sign In</a>
           </div>
         </div>
         <div className="mk-footer-bottom">
