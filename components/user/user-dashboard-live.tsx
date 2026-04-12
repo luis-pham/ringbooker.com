@@ -71,17 +71,17 @@ const US_BIG3_CALL_FORWARDING_GUIDES = [
   {
     name: 'Verizon',
     url: 'https://www.verizon.com/support/call-forwarding/',
-    hint: 'FAQ chuyển tiếp, mã quay số, My Verizon · FAQs, dial codes & My Verizon.',
+    hint: 'Wireless call forwarding FAQs, dial codes, and the My Verizon app.',
   },
   {
     name: 'AT&T',
     url: 'https://www.att.com/support/article/wireless/KM1011513',
-    hint: 'Hướng dẫn call forwarding không dây (thường bật trên điện thoại) · Wireless forwarding from the handset.',
+    hint: 'Wireless call forwarding — setup is usually done from your handset.',
   },
   {
     name: 'T-Mobile',
     url: 'https://www.t-mobile.com/support/plans-features/calling-features',
-    hint: 'Gói & tính năng gọi — call / conditional forwarding theo máy · Plans & calling features for your device.',
+    hint: 'Plans & calling features — find call or conditional forwarding for your device.',
   },
 ] as const;
 
@@ -217,26 +217,20 @@ export function UserDashboardLive() {
             <div className="card forward-guide-card">
               <div className="panel-head">
                 <div>
-                  <h3>Hướng dẫn nhanh: chuyển tiếp cuộc gọi</h3>
+                  <h3>Quick guide: Call forwarding</h3>
                   <p className="sub">
-                    Chuyển tiếp từ số điện thoại cũ của salon sang số RingBooker mới để khách quay số cũ vẫn được AI tiếp nhận.
-                    <span className="sub-lead">
-                      Forward your old business line to your RingBooker number so callers who dial the old number still reach the AI receptionist.
-                    </span>
+                    Forward your old business line to your RingBooker number so callers who still dial the old number reach your AI receptionist.
                   </p>
                 </div>
                 <span className="badge-right">Big 3 (US)</span>
               </div>
               {data.shop?.phone_number ? (
                 <div className="forward-num" title="RingBooker destination number">
-                  Số RingBooker: {data.shop.phone_number}
+                  RingBooker number: {data.shop.phone_number}
                 </div>
               ) : null}
               <p className="forward-guide-intro">
-                Ba nhà mạng không dây lớn nhất tại Hoa Kỳ có trang hỗ trợ cho call forwarding. Chọn đúng nhà mạng của SIM bạn (mã quay số có thể khác theo máy và gói cước).
-                <span className="sub-lead">
-                  The three largest US wireless carriers publish official call forwarding steps. Open your carrier’s link; codes and menus vary by phone and plan.
-                </span>
+                The three largest US wireless carriers publish official wireless call-forwarding help. Open the link for the carrier that issued your SIM; dial codes and menus vary by phone and plan.
               </p>
               <div className="carrier-links">
                 {US_BIG3_CALL_FORWARDING_GUIDES.map((row) => (
@@ -259,14 +253,11 @@ export function UserDashboardLive() {
               </div>
               <div className="carrier-callcenter-tip">
                 <p className="carrier-tip-line">
-                  <strong>Gợi ý chung:</strong> SIM thuộc quốc gia nào thì gọi tổng đài / call center nhà mạng tại quốc gia đó để được hướng dẫn bật call forwarding đúng với thuê bao của bạn — áp dụng cả khi không thuộc ba nhà mạng trên.
-                </p>
-                <p className="carrier-tip-line carrier-tip-line-en">
-                  Wherever your service is based, call your carrier’s in-country customer support and ask how to enable call forwarding to your RingBooker number for your SIM and plan.
+                  <strong>Outside the Big 3 or outside the US:</strong> call your mobile carrier’s in-country customer support (the number on your SIM or in the carrier app) and ask how to enable call forwarding to your RingBooker number for your line and plan.
                 </p>
               </div>
               <p className="forward-guide-disclaimer">
-                RingBooker không liên kết với các nhà mạng; liên kết chỉ để tham khảo. Cước phí, giới hạn gói và tính năng phụ thuộc hợp đồng của bạn — khi cần hãy gọi số chăm sóc khách hàng in trên SIM hoặc trong ứng dụng nhà mạng.
+                RingBooker is not affiliated with any carrier; links are for reference only. Charges, plan limits, and feature availability depend on your contract — use the customer-care number on your SIM or in your carrier’s app when in doubt.
               </p>
             </div>
           </section>
