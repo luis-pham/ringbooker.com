@@ -95,12 +95,6 @@ button,input,select,textarea{font:inherit}
 .nav-item.active .nav-icon{background:var(--purple);border-color:transparent}
 .nav-item.active .nav-icon svg{stroke:#fff}
 .sidebar-spacer{flex:1}
-.sidebar-foot{
-  background:#111827;color:#fff;border-radius:20px;padding:16px;margin-top:18px;
-  box-shadow:var(--shadow-soft);
-}
-.sidebar-foot strong{display:block;font-size:13px}
-.sidebar-foot small{display:block;color:rgba(255,255,255,.65);margin-top:4px;line-height:1.55;font-size:12px}
 
 .main{padding:28px 30px 34px;min-width:0}
 .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:24px}
@@ -310,12 +304,12 @@ button,input,select,textarea{font:inherit}
   .app-shell{grid-template-columns:96px minmax(0,1fr)}
   .sidebar{padding:18px 12px}
   .sidebar-inner{min-height:calc(100vh - 36px)}
-  .brand span,.workspace,.nav-item span,.nav-label,.sidebar-foot{display:none}
+  .brand span,.workspace,.nav-item span,.nav-label{display:none}
   .nav-item{justify-content:center;padding:10px}
   .nav-icon{margin:0}
 }
 @media (max-width:860px){
-  .main{padding:18px}
+  .main{padding:18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
   .grid-2,.grid-3,.grid-4,.form-grid,.option-grid,.services-grid,.service-controls{grid-template-columns:1fr}
   .tab-strip{grid-template-columns:1fr}
   .topbar{align-items:flex-start;flex-direction:column}
@@ -323,9 +317,45 @@ button,input,select,textarea{font:inherit}
   .app-shell{grid-template-columns:1fr}
   .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}
   .sidebar-inner{min-height:auto}
-  .brand span,.workspace,.nav-item span,.nav-label,.sidebar-foot{display:block}
-  .nav-list{flex-direction:row;flex-wrap:wrap}
-  .nav-item{justify-content:flex-start}
+  .sidebar-spacer{display:none}
+  .brand span,.workspace{display:block}
+  .nav-section{
+    position:fixed;
+    z-index:100;
+    left:0;right:0;bottom:0;
+    margin:0;
+    padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    background:rgba(255,255,255,.96);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    border-top:1px solid var(--border);
+    box-shadow:0 -10px 28px rgba(17,24,39,.07);
+  }
+  .nav-label{display:none !important}
+  .nav-list{
+    flex-direction:row;
+    flex-wrap:nowrap;
+    justify-content:space-between;
+    align-items:stretch;
+    gap:2px;
+  }
+  .nav-item{
+    flex:1 1 0;
+    min-width:0;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    padding:4px 2px 2px;
+    font-size:9px;
+    font-weight:650;
+    line-height:1.15;
+    text-align:center;
+    border-radius:12px;
+  }
+  .nav-item span{display:block !important}
+  .nav-icon{margin:0;width:30px;height:30px;border-radius:11px}
+  .nav-icon svg{width:15px;height:15px}
   .hours-row{grid-template-columns:1fr}
 }
 `,
@@ -355,7 +385,6 @@ export function UserSettingsTemplate() {
             <div className="workspace"><h3>Luxe Hair Studio</h3><p>Phone number active · Google Calendar connected · Vietnamese user summaries on.</p></div>
             <div className="nav-section"><div className="nav-label">User Portal</div><div className="nav-list"><a className="nav-item" href="/user"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={4} width={7} height={7} rx="1.5" /><rect x={14} y={4} width={7} height={4} rx="1.5" /><rect x={14} y={11} width={7} height={9} rx="1.5" /><rect x={3} y={14} width={7} height={6} rx="1.5" /></svg></div><span>Overview</span></a><a className="nav-item" href="/user/bookings"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span>Bookings</span></a><a className="nav-item" href="/user/calls"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span>Calls &amp; Transcripts</span></a><a className="nav-item active" href="/user/settings"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1Z" /></svg></div><span>Settings</span></a><a className="nav-item" href="/user/billing"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={14} rx={2} /><path d="M3 10h18" /><path d="M7 15h4" /></svg></div><span>Billing</span></a></div></div>
             <div className="sidebar-spacer" />
-            <div className="sidebar-foot"><strong>Keep your AI accurate.</strong><small>Update hours, services, and policies so RingBooker always answers correctly.</small></div>
           </div>
         </aside>
         <main className="main">

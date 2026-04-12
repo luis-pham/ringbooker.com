@@ -241,10 +241,6 @@ export function UserBillingLive() {
               </div>
             </div>
             <div className="sidebar-spacer" />
-            <div className="sidebar-foot">
-              <strong>Provider abstraction ready.</strong>
-              <small>Subscription state is normalized in RingBooker, so Paddle can be swapped later without rewriting the user portal.</small>
-            </div>
           </div>
         </aside>
         <main className="main">

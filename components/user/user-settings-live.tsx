@@ -568,10 +568,6 @@ export function UserSettingsLive() {
               </div>
             </div>
             <div className="sidebar-spacer" />
-            <div className="sidebar-foot">
-              <strong>Plan-based controls are live.</strong>
-              <small>Each setting below is enforced in the API too, so the portal only exposes what your current plan can really use.</small>
-            </div>
           </div>
         </aside>
 

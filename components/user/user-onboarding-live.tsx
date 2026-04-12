@@ -217,10 +217,6 @@ export function UserOnboardingLive() {
               </div>
             </div>
             <div className="sidebar-spacer" />
-            <div className="sidebar-foot">
-              <strong>Fast setup, then refine later.</strong>
-              <small>This page captures only the essentials. You can adjust full AI behavior in Settings after entering the dashboard.</small>
-            </div>
           </div>
         </aside>
 

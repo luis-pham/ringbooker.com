@@ -96,10 +96,6 @@ export function UserDashboardLive() {
               </div>
             </div>
             <div className="sidebar-spacer" />
-            <div className="sidebar-foot">
-              <strong>Live shop metrics enabled.</strong>
-              <small>Review real bookings, calls, and missed-call recovery without leaving the panel.</small>
-            </div>
           </div>
         </aside>
         <main className="main">
