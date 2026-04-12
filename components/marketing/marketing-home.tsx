@@ -624,6 +624,8 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .deep-s2-outer .checklist li{font-size:14px}
   .deep-s2-outer .convo-card{padding:22px 20px 26px}
   .deep-s2-outer .convo-quote{font-size:clamp(18px,4.5vw,21px)}
+  /* Align 24/7 copy with chart card inner padding and other body columns */
+  .deep-s1 .d-text{padding-left:28px;padding-right:28px}
 }
 
 @media(max-width:640px){

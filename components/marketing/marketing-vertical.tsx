@@ -248,12 +248,12 @@ function FeatureGrid({ features, accent }: { features: FeatureItem[]; accent: st
 
 function VsTable({ rows }: { rows: Array<{ scenario: string; without: string; with: string }> }) {
   return (
-    <section className="mx-auto mt-20 w-full max-w-[1320px] px-4 sm:px-6 lg:px-8">
+    <section className="mx-auto mt-20 max-w-6xl px-6">
       <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Before vs. After</div>
       <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">Stop relying on voicemail</h2>
       <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
-        <div className="min-w-[720px]">
-          <div className="grid grid-cols-3 gap-x-6 border-b border-slate-100 bg-slate-50 px-6 py-3.5 text-[12px] font-bold uppercase tracking-wider text-slate-400 md:gap-x-8 md:px-8 md:py-4">
+        <div className="min-w-[600px]">
+          <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-bold uppercase tracking-wider text-slate-400">
             <span>Scenario</span>
             <span>Without RingBooker</span>
             <span className="text-violet-600">With RingBooker</span>
@@ -261,7 +261,7 @@ function VsTable({ rows }: { rows: Array<{ scenario: string; without: string; wi
           {rows.map((row) => (
             <div
               key={row.scenario}
-              className="grid grid-cols-3 gap-x-6 border-b border-slate-100 px-6 py-4 text-[13.5px] leading-relaxed last:border-b-0 md:gap-x-8 md:px-8 md:py-5"
+              className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 px-5 py-4 text-[13.5px] last:border-b-0"
             >
               <span className="font-semibold text-slate-700">{row.scenario}</span>
               <span className="flex items-start gap-2 text-slate-500">
