@@ -2476,6 +2476,7 @@ export function createBackendApp(deps: {
       shop: {
         id: shop.id,
         name: shop.name,
+        phone_number: shop.phone_number,
         timezone: shop.timezone,
         plan: shop.plan,
         active: shop.active,

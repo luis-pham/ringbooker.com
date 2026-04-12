@@ -17,12 +17,73 @@ type UserDashboardResponse = {
   shop?: {
     id: string;
     name: string;
+    phone_number?: string;
     timezone: string;
     plan: string;
     active: boolean;
   };
   error?: string;
 };
+
+function IconQuickBookings() {
+  return (
+    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden>
+      <rect x={3} y={4} width={18} height={18} rx={2} fill="none" stroke="currentColor" strokeWidth={2} />
+      <path d="M16 2v4M8 2v4M3 10h18" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconQuickCalls() {
+  return (
+    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+      />
+    </svg>
+  );
+}
+
+function IconQuickSettings() {
+  return (
+    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden>
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        d="M4 21v-7M4 10V3M12 21v-9M12 13V3M20 21v-5M20 16V3"
+      />
+      <circle cx={4} cy={14} r={2} fill="none" stroke="currentColor" strokeWidth={2} />
+      <circle cx={12} cy={8} r={2} fill="none" stroke="currentColor" strokeWidth={2} />
+      <circle cx={20} cy={17} r={2} fill="none" stroke="currentColor" strokeWidth={2} />
+    </svg>
+  );
+}
+
+/** Top 3 US wireless carriers — official call forwarding help (education only). */
+const US_BIG3_CALL_FORWARDING_GUIDES = [
+  {
+    name: 'Verizon',
+    url: 'https://www.verizon.com/support/call-forwarding/',
+    hint: 'FAQ chuyển tiếp, mã quay số, My Verizon · FAQs, dial codes & My Verizon.',
+  },
+  {
+    name: 'AT&T',
+    url: 'https://www.att.com/support/article/wireless/KM1011513',
+    hint: 'Hướng dẫn call forwarding không dây (thường bật trên điện thoại) · Wireless forwarding from the handset.',
+  },
+  {
+    name: 'T-Mobile',
+    url: 'https://www.t-mobile.com/support/plans-features/calling-features',
+    hint: 'Gói & tính năng gọi — call / conditional forwarding theo máy · Plans & calling features for your device.',
+  },
+] as const;
 
 export function UserDashboardLive() {
   const [data, setData] = useState<UserDashboardResponse | null>(null);
@@ -111,20 +172,102 @@ export function UserDashboardLive() {
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M7 15l3-3 3 2 4-5" /></svg></div><span className="tag green">{data.shop?.active ? 'Active' : 'Paused'}</span></div><div className="stat-value">{planLabel}</div><div className="stat-meta">{data.shop?.timezone ?? 'Timezone unavailable'}</div></div>
           </section>
           <section className="call-grid" style={{ marginTop: 18 }}>
-            <div className="card call-live">
-              <div className="live-label"><span className="dot" /> Shop overview</div>
-              <div className="live-name">{shopName}</div>
-              <div className="live-copy">Metrics on this page are full totals from your shop (counts from the database), not a capped sample list.</div>
-              <div className="subtitle-box"><div className="mini">Current snapshot</div><p>{data.metrics?.callCount ?? 0} total calls, {data.metrics?.bookingCount ?? 0} total bookings, {data.metrics?.missedCalls ?? 0} missed calls (outcome missed).</p></div>
-              <div className="wave"><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
-            </div>
             <div className="card soft">
               <div className="panel-head"><div><h3>Quick actions</h3><p className="sub">Jump straight into the shop controls that matter most.</p></div><span className="badge-right">User portal</span></div>
               <div className="list">
-                <div className="list-item"><div className="item-main"><div className="avatar">BK</div><div><h4>Open bookings</h4><p>Review upcoming appointments and confirmations.</p></div></div><a className="btn" href="/user/bookings">Go</a></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">CL</div><div><h4>Review call logs</h4><p>Inspect calls, transcripts, and missed-call recovery.</p></div></div><a className="btn" href="/user/calls">Go</a></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">ST</div><div><h4>Update business settings</h4><p>Hours, services, AI greeting, and transfer rules.</p></div></div><a className="btn purple" href="/user/settings">Open</a></div>
+                <div className="list-item">
+                  <div className="item-main">
+                    <div className="avatar quick-avatar--bookings" aria-hidden title="Bookings">
+                      <IconQuickBookings />
+                    </div>
+                    <div>
+                      <h4>Open bookings</h4>
+                      <p>Review upcoming appointments and confirmations.</p>
+                    </div>
+                  </div>
+                  <a className="btn" href="/user/bookings">Go</a>
+                </div>
+                <div className="list-item">
+                  <div className="item-main">
+                    <div className="avatar quick-avatar--calls" aria-hidden title="Calls">
+                      <IconQuickCalls />
+                    </div>
+                    <div>
+                      <h4>Review call logs</h4>
+                      <p>Inspect calls, transcripts, and missed-call recovery.</p>
+                    </div>
+                  </div>
+                  <a className="btn" href="/user/calls">Go</a>
+                </div>
+                <div className="list-item">
+                  <div className="item-main">
+                    <div className="avatar quick-avatar--settings" aria-hidden title="Settings">
+                      <IconQuickSettings />
+                    </div>
+                    <div>
+                      <h4>Update business settings</h4>
+                      <p>Hours, services, AI greeting, and transfer rules.</p>
+                    </div>
+                  </div>
+                  <a className="btn purple" href="/user/settings">Open</a>
+                </div>
               </div>
+            </div>
+
+            <div className="card forward-guide-card">
+              <div className="panel-head">
+                <div>
+                  <h3>Hướng dẫn nhanh: chuyển tiếp cuộc gọi</h3>
+                  <p className="sub">
+                    Chuyển tiếp từ số điện thoại cũ của salon sang số RingBooker mới để khách quay số cũ vẫn được AI tiếp nhận.
+                    <span className="sub-lead">
+                      Forward your old business line to your RingBooker number so callers who dial the old number still reach the AI receptionist.
+                    </span>
+                  </p>
+                </div>
+                <span className="badge-right">Big 3 (US)</span>
+              </div>
+              {data.shop?.phone_number ? (
+                <div className="forward-num" title="RingBooker destination number">
+                  Số RingBooker: {data.shop.phone_number}
+                </div>
+              ) : null}
+              <p className="forward-guide-intro">
+                Ba nhà mạng không dây lớn nhất tại Hoa Kỳ có trang hỗ trợ cho call forwarding. Chọn đúng nhà mạng của SIM bạn (mã quay số có thể khác theo máy và gói cước).
+                <span className="sub-lead">
+                  The three largest US wireless carriers publish official call forwarding steps. Open your carrier’s link; codes and menus vary by phone and plan.
+                </span>
+              </p>
+              <div className="carrier-links">
+                {US_BIG3_CALL_FORWARDING_GUIDES.map((row) => (
+                  <a
+                    key={row.name}
+                    className="carrier-link"
+                    href={row.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <span className="carrier-link-row">
+                      <strong>{row.name}</strong>
+                      <span className="ext-ico" aria-hidden>
+                        ↗
+                      </span>
+                    </span>
+                    <span className="carrier-hint carrier-hint-single">{row.hint}</span>
+                  </a>
+                ))}
+              </div>
+              <div className="carrier-callcenter-tip">
+                <p className="carrier-tip-line">
+                  <strong>Gợi ý chung:</strong> SIM thuộc quốc gia nào thì gọi tổng đài / call center nhà mạng tại quốc gia đó để được hướng dẫn bật call forwarding đúng với thuê bao của bạn — áp dụng cả khi không thuộc ba nhà mạng trên.
+                </p>
+                <p className="carrier-tip-line carrier-tip-line-en">
+                  Wherever your service is based, call your carrier’s in-country customer support and ask how to enable call forwarding to your RingBooker number for your SIM and plan.
+                </p>
+              </div>
+              <p className="forward-guide-disclaimer">
+                RingBooker không liên kết với các nhà mạng; liên kết chỉ để tham khảo. Cước phí, giới hạn gói và tính năng phụ thuộc hợp đồng của bạn — khi cần hãy gọi số chăm sóc khách hàng in trên SIM hoặc trong ứng dụng nhà mạng.
+              </p>
             </div>
           </section>
           <div className="footer-inline"><span>RingBooker shop panel</span><span>Live data + restored shared styling</span></div>
