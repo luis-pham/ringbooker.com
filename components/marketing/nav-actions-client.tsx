@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import { MARKETING_DEMO_NAV_ITEMS } from '@/lib/marketing-demo-nav';
 import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
 
 // ─── State Model ──────────────────────────────────────────────────────────────
@@ -230,6 +231,16 @@ function AvatarMenu({
           ))}
           <a href="/pricing" className="mk-avatar-item" onClick={onClose}>Pricing</a>
           <a href="/how-it-works" className="mk-avatar-item" onClick={onClose}>How It Works</a>
+          <a href="/contact" className="mk-avatar-item" onClick={onClose}>Contact</a>
+          <a href="/demo" className="mk-avatar-item" onClick={onClose}>
+            <span>📞</span> Live Demo
+          </a>
+          {MARKETING_DEMO_NAV_ITEMS.map((item) => (
+            <a key={item.href} href={item.href} className="mk-avatar-item" onClick={onClose}>
+              <span>{item.icon}</span>
+              {item.label}
+            </a>
+          ))}
         </div>
 
         <div className="mk-avatar-sep" />

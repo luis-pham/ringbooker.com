@@ -1,5 +1,7 @@
 import { DemoPickerLazy } from '@/components/marketing/demo-picker-lazy';
+import { MarketingMobileNav } from '@/components/marketing/marketing-mobile-nav';
 import { NavActionsClient } from '@/components/marketing/nav-actions-client';
+import { MARKETING_DEMO_NAV_ITEMS } from '@/lib/marketing-demo-nav';
 import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
 import { siteConfig } from '@/lib/site';
 
@@ -75,6 +77,37 @@ export function MarketingChromeStyles() {
 .mk-demo-item:hover{background:#F5F3FF;color:#7C3AED}
 .mk-demo-item-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
 
+/* ─── MOBILE HAMBURGER + DRAWER (≤960px) ─── */
+.mk-nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.mk-nav-burger{display:none;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;border:1px solid #E5E7EB;background:#fff;color:#374151;cursor:pointer;transition:border-color .15s,background .15s,transform .12s}
+.mk-nav-burger:hover{border-color:#D1D5DB;background:#F9FAFB}
+.mk-nav-burger:active{transform:scale(.97)}
+.mk-drawer-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.45);z-index:1050;animation:mkDrFade .18s ease}
+@keyframes mkDrFade{from{opacity:0}to{opacity:1}}
+.mk-drawer-panel{position:fixed;top:0;right:0;bottom:0;width:min(100vw - 40px,380px);max-width:100%;background:#fff;z-index:1060;box-shadow:-12px 0 48px rgba(0,0,0,.14);display:flex;flex-direction:column;animation:mkDrSlide .22s cubic-bezier(.22,1,.36,1)}
+@keyframes mkDrSlide{from{transform:translateX(14px);opacity:.92}to{transform:translateX(0);opacity:1}}
+.mk-drawer-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #F3F4F6;background:#fff}
+.mk-drawer-title{font-size:15px;font-weight:800;color:#111827;letter-spacing:-.02em}
+.mk-drawer-close{width:40px;height:40px;border-radius:12px;border:1px solid #E5E7EB;background:#FAFAFA;font-size:22px;line-height:1;color:#6B7280;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit}
+.mk-drawer-close:hover{background:#F3F4F6;color:#111827}
+.mk-drawer-scroll{flex:1;overflow-y:auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:2px;-webkit-overflow-scrolling:touch}
+.mk-drawer-subhead{font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px}
+.mk-drawer-subhead:first-of-type{margin-top:4px}
+.mk-drawer-link{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;font-size:15px;font-weight:600;color:#4B5563;text-decoration:none;transition:background .12s,color .12s}
+.mk-drawer-link:hover,.mk-drawer-link:focus-visible{background:#F5F3FF;color:#6D28D9;outline:none}
+.mk-drawer-link.active{color:#111827;background:#F3F4F6}
+.mk-drawer-indent{padding-left:18px;font-size:14.5px;font-weight:500}
+.mk-drawer-ico{width:22px;text-align:center;font-size:16px;flex-shrink:0}
+.mk-drawer-foot{flex-shrink:0;padding:16px 18px calc(18px + env(safe-area-inset-bottom,0));border-top:1px solid #F3F4F6;display:flex;flex-direction:column;gap:10px;background:#FAFAFA}
+.mk-drawer-btn-demo{width:100%;padding:14px 16px;border-radius:999px;border:2px solid #7C3AED;background:#F5F3FF;color:#5B21B6;font-size:14.5px;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s,transform .12s}
+.mk-drawer-btn-demo:hover{background:#EDE9FE}
+.mk-drawer-btn-demo:active{transform:scale(.99)}
+.mk-drawer-btn-cta{width:100%;padding:14px 16px;border-radius:999px;background:#111827;color:#fff;font-size:14.5px;font-weight:700;text-align:center;text-decoration:none;transition:background .15s,transform .12s}
+.mk-drawer-btn-cta:hover{background:#1f2937}
+.mk-drawer-btn-cta:active{transform:scale(.99)}
+.mk-drawer-signin{text-align:center;padding:8px;font-size:14px;font-weight:600;color:#6B7280;text-decoration:none}
+.mk-drawer-signin:hover{color:#111827}
+
 /* ─── DEMO PICKER MODAL ─── */
 .dpm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:dpmFadeIn .2s ease}
 @keyframes dpmFadeIn{from{opacity:0}to{opacity:1}}
@@ -145,6 +178,7 @@ export function MarketingChromeStyles() {
   .mk-nav{padding:0 22px}
   .mk-nav-links{display:none}
   .mk-nav-signin{display:none}
+  .mk-nav-burger{display:inline-flex}
   .mk-footer{padding-left:22px;padding-right:22px}
   .mk-footer-grid{grid-template-columns:1fr}
   /* on mobile, avatar dropdown shows nav links so user can still navigate */
@@ -204,11 +238,12 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
             </a>
             <div className="mk-demo-menu">
               <div className="mk-demo-menu-inner">
-                <a href="/demo/nail-salon" className="mk-demo-item"><span className="mk-demo-item-icon">💅</span>Nail Salon</a>
-                <a href="/demo/hair-salon" className="mk-demo-item"><span className="mk-demo-item-icon">✂️</span>Hair Salon</a>
-                <a href="/demo/day-spa" className="mk-demo-item"><span className="mk-demo-item-icon">🧖</span>Day Spa</a>
-                <a href="/demo/med-spa" className="mk-demo-item"><span className="mk-demo-item-icon">💉</span>Med Spa</a>
-                <a href="/demo/beauty-clinic" className="mk-demo-item"><span className="mk-demo-item-icon">✨</span>Beauty Clinic</a>
+                {MARKETING_DEMO_NAV_ITEMS.map((item) => (
+                  <a key={item.href} href={item.href} className="mk-demo-item">
+                    <span className="mk-demo-item-icon">{item.icon}</span>
+                    {item.label}
+                  </a>
+                ))}
               </div>
             </div>
           </div>
@@ -222,7 +257,10 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
             Contact
           </a>
         </div>
-        <NavActionsClient />
+        <div className="mk-nav-right">
+          <MarketingMobileNav active={active} />
+          <NavActionsClient />
+        </div>
       </div>
     </nav>
   );
