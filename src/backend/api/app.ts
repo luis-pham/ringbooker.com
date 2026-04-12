@@ -875,6 +875,82 @@ type DemoConfigInput = {
   }>;
 };
 
+/** Default demo data per vertical — used when demoConfig fields are missing */
+const VERTICAL_DEMO_DEFAULTS: Record<string, {
+  city: string;
+  primaryHours: string;
+  secondaryHours: string;
+  staffNames: string[];
+  services: Array<{ category: string; name: string; price: number; duration: string }>;
+}> = {
+  'nail-salon': {
+    city: 'Garden Grove, CA',
+    primaryHours: 'Mon–Sat 9am–7pm',
+    secondaryHours: 'Sun 10am–5pm',
+    staffNames: ['Lan', 'Mai', 'Thu'],
+    services: [
+      { category: 'Manicure', name: 'Regular Manicure', price: 18, duration: '30 min' },
+      { category: 'Manicure', name: 'Gel Manicure', price: 32, duration: '45 min' },
+      { category: 'Manicure', name: 'Dip Powder', price: 40, duration: '60 min' },
+      { category: 'Manicure', name: 'Acrylic Full Set', price: 50, duration: '75 min' },
+      { category: 'Pedicure', name: 'Regular Pedicure', price: 28, duration: '35 min' },
+      { category: 'Pedicure', name: 'Gel Pedicure', price: 42, duration: '50 min' },
+      { category: 'Pedicure', name: 'Deluxe Pedicure', price: 55, duration: '60 min' },
+    ],
+  },
+  'hair-salon': {
+    city: 'Austin, TX',
+    primaryHours: 'Tue–Sat 9am–6pm',
+    secondaryHours: 'Sun–Mon closed',
+    staffNames: ['Mia', 'Jordan', 'Alex'],
+    services: [
+      { category: 'Cut & Style', name: "Women's Haircut", price: 65, duration: '60 min' },
+      { category: 'Cut & Style', name: "Men's Haircut", price: 40, duration: '45 min' },
+      { category: 'Cut & Style', name: 'Blowout', price: 45, duration: '45 min' },
+      { category: 'Color', name: 'Balayage Consultation', price: 0, duration: '20 min' },
+      { category: 'Color', name: 'Partial Highlights', price: 145, duration: '2 hr' },
+      { category: 'Color', name: 'Keratin Treatment', price: 220, duration: '2.5 hr' },
+    ],
+  },
+  'day-spa': {
+    city: 'Scottsdale, AZ',
+    primaryHours: 'Mon–Sat 10am–7pm',
+    secondaryHours: 'Sun 10am–4pm',
+    staffNames: ['Avery', 'Naomi', 'Sam'],
+    services: [
+      { category: 'Massage', name: 'Signature Massage', price: 120, duration: '60 min' },
+      { category: 'Massage', name: 'Deep Tissue Massage', price: 140, duration: '60 min' },
+      { category: 'Massage', name: 'Couples Massage', price: 260, duration: '60 min' },
+      { category: 'Facial', name: 'Hydrating Facial', price: 115, duration: '50 min' },
+      { category: 'Facial', name: 'Spa Day Package', price: 220, duration: '2 hr' },
+    ],
+  },
+  'med-spa': {
+    city: 'Newport Beach, CA',
+    primaryHours: 'Mon–Fri 9am–6pm',
+    secondaryHours: 'Sat 10am–3pm',
+    staffNames: ['Dr. Lee', 'Nurse Ava', 'Morgan'],
+    services: [
+      { category: 'Consults', name: 'Injectables Consultation', price: 0, duration: '20 min' },
+      { category: 'Consults', name: 'Laser Consultation', price: 0, duration: '20 min' },
+      { category: 'Consults', name: 'Skin Consultation', price: 50, duration: '30 min' },
+      { category: 'Treatments', name: 'Botox / Dysport', price: 0, duration: 'Consult required' },
+      { category: 'Treatments', name: 'Microneedling', price: 275, duration: '60 min' },
+    ],
+  },
+  'beauty-clinic': {
+    city: 'Seattle, WA',
+    primaryHours: 'Mon–Fri 8:30am–5:30pm',
+    secondaryHours: 'Sat by appointment',
+    staffNames: ['Dr. Patel', 'Erin', 'Sofia'],
+    services: [
+      { category: 'Appointments', name: 'New Patient Consultation', price: 75, duration: '30 min' },
+      { category: 'Appointments', name: 'Follow-up Visit', price: 0, duration: '20 min' },
+      { category: 'Appointments', name: 'Skin Treatment Session', price: 180, duration: '60 min' },
+    ],
+  },
+};
+
 /** Sanitize a plain-text user input to prevent prompt injection via newlines/separators */
 function sanitizeDemoTextField(value: string | undefined, maxLen = 280): string {
   if (!value) return '';
@@ -913,37 +989,44 @@ function buildPublicDemoSystemPrompt(input: {
   }
   const welcomeMessage = buildDemoWelcomeMessage();
 
-  // Build providers list from either staffName (legacy) or demoConfig.staffNames
+  // Resolve defaults for this vertical — fill in any missing demoConfig fields
+  const defaults = resolvedVertical ? VERTICAL_DEMO_DEFAULTS[resolvedVertical] : undefined;
+
+  // Build providers list: demoConfig → legacy staffName → vertical default
   const providers: string[] = [];
   if (input.demoConfig?.staffNames?.length) {
     providers.push(...input.demoConfig.staffNames.slice(0, 8).map((n) => sanitizeDemoTextField(n, 80)).filter(Boolean));
   } else if (input.staffName) {
     providers.push(sanitizeDemoTextField(input.staffName, 80));
+  } else if (defaults?.staffNames?.length) {
+    providers.push(...defaults.staffNames);
   }
 
-  // Build services from demoConfig if provided
-  const services =
-    input.demoConfig?.services
-      ?.filter((s) => s.enabled !== false)
-      .slice(0, 40)
-      .map((s) => ({
-        category: sanitizeDemoTextField(s.category, 60),
-        name: sanitizeDemoTextField(s.name, 100),
-        price: typeof s.price === 'number' ? s.price : undefined,
-        duration: s.duration ? sanitizeDemoTextField(s.duration, 60) : undefined,
-      })) ?? [];
+  // Build services: demoConfig → vertical default
+  const rawServices = input.demoConfig?.services?.filter((s) => s.enabled !== false).length
+    ? input.demoConfig.services.filter((s) => s.enabled !== false)
+    : defaults?.services ?? [];
 
-  // Build hours from demoConfig if provided
-  const hoursRaw = [input.demoConfig?.primaryHours, input.demoConfig?.secondaryHours]
-    .filter(Boolean)
-    .map((h) => sanitizeDemoTextField(h, 200))
-    .join(', ');
+  const services = rawServices.slice(0, 40).map((s) => ({
+    category: sanitizeDemoTextField(s.category, 60),
+    name: sanitizeDemoTextField(s.name, 100),
+    price: typeof s.price === 'number' ? s.price : undefined,
+    duration: s.duration ? sanitizeDemoTextField(s.duration, 60) : undefined,
+  }));
+
+  // Build hours: demoConfig → vertical default
+  const primaryHours = input.demoConfig?.primaryHours || defaults?.primaryHours;
+  const secondaryHours = input.demoConfig?.secondaryHours || defaults?.secondaryHours;
+  const hoursRaw = [primaryHours, secondaryHours].filter(Boolean).map((h) => sanitizeDemoTextField(h, 200)).join(', ');
+
+  // Build city: demoConfig → vertical default
+  const city = input.demoConfig?.city || defaults?.city;
 
   const business = {
     businessName,
     businessType,
     welcomeMessage,
-    location: input.demoConfig?.city ? sanitizeDemoTextField(input.demoConfig.city, 120) : undefined,
+    location: city ? sanitizeDemoTextField(city, 120) : undefined,
     hours: hoursRaw || undefined,
     providers: providers.length > 0 ? providers : [],
     languageOptions: (resolvedVertical === 'nail-salon' || resolvedVertical === 'beauty-clinic') ? ['English', 'Vietnamese'] : ['English'],

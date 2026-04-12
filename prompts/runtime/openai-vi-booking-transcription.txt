@@ -1,1 +1,1 @@
-Cuộc gọi đặt lịch bằng tiếng Việt. Người gọi có thể hỏi về đặt lịch, đổi lịch, dịch vụ, giá, giờ mở cửa, địa chỉ.
+đặt lịch, đổi lịch, hủy lịch, dịch vụ, giá, giờ mở cửa, địa chỉ, gel, dip, acrylic, móng, tóc, spa, massage
