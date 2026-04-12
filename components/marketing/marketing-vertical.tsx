@@ -41,13 +41,19 @@ const SERVICE_BY_VERTICAL: Record<
   },
 };
 
-type Integration = { name: string; status: 'Live now' | 'Soon'; icon: string; iconClass: string };
+type BookingToolIntegration = {
+  id: string;
+  name: string;
+  logoSrc: string;
+  status: 'live' | 'soon';
+};
 
-const INTEGRATIONS: Integration[] = [
-  { name: 'Square', status: 'Live now', icon: '■', iconClass: 'bg-black text-white' },
-  { name: 'Vagaro', status: 'Soon', icon: 'V', iconClass: 'bg-teal-600 text-white' },
-  { name: 'Mindbody', status: 'Soon', icon: 'M', iconClass: 'bg-blue-600 text-white' },
-  { name: 'Booksy', status: 'Soon', icon: 'B', iconClass: 'bg-orange-500 text-white' },
+/** Logos under /public/images — same assets as user portal calendar integrations. */
+const BOOKING_TOOL_INTEGRATIONS: BookingToolIntegration[] = [
+  { id: 'square', name: 'Square', logoSrc: '/images/square.png', status: 'live' },
+  { id: 'vagaro', name: 'Vagaro', logoSrc: '/images/vagaro.png', status: 'soon' },
+  { id: 'mindbody', name: 'Mindbody', logoSrc: '/images/mindbody.webp', status: 'soon' },
+  { id: 'booksy', name: 'Booksy', logoSrc: '/images/booksy.png', status: 'soon' },
 ];
 
 const PRIMARY_CTA_CLASS =
@@ -110,27 +116,49 @@ const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessN
 
 function IntegrationRow() {
   return (
-    <div className="mt-5">
-      <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">Works with your booking tools</p>
-      <div className="flex flex-wrap gap-2">
-        {INTEGRATIONS.map((item) => (
-          <div key={item.name} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
-            <div className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg text-[12px] font-black ${item.iconClass}`}>
-              {item.icon}
-            </div>
-            <div>
-              <div className="text-[12px] font-bold text-slate-700 leading-tight">{item.name}</div>
-              {item.status === 'Live now' ? (
-                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600">
-                  <span className="inline-block h-[5px] w-[5px] rounded-full bg-emerald-500" />
+    <div className="mt-6">
+      <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">Works with your booking tools</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {BOOKING_TOOL_INTEGRATIONS.map((item) => {
+          const isLive = item.status === 'live';
+          return (
+            <div
+              key={item.id}
+              className={[
+                'flex flex-col items-center rounded-2xl border px-3 py-4 text-center shadow-sm transition',
+                isLive
+                  ? 'border-violet-200 bg-gradient-to-b from-violet-50/90 to-white ring-1 ring-violet-100/80'
+                  : 'border-slate-200 bg-white',
+              ].join(' ')}
+            >
+              <div
+                className={[
+                  'flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-white',
+                  isLive ? 'border-violet-200' : 'border-slate-100',
+                ].join(' ')}
+              >
+                <img
+                  src={item.logoSrc}
+                  alt=""
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 object-contain p-1.5"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div className="mt-2.5 text-[13px] font-extrabold tracking-tight text-slate-900">{item.name}</div>
+              {isLive ? (
+                <div className="mt-1 flex items-center justify-center gap-1.5 text-[10px] font-bold text-emerald-600">
+                  <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
                   Live
                 </div>
               ) : (
-                <div className="text-[10px] font-semibold text-slate-400">Coming soon</div>
+                <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-400">Coming soon</div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
