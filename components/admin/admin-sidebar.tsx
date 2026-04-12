@@ -9,6 +9,9 @@ import {
   IconDemo,
   IconFolder,
   IconHealth,
+  IconLeafCalls,
+  IconLeafOverview,
+  IconLeafShop,
   IconLeads,
   IconMegaphone,
   IconOverview,
@@ -65,9 +68,9 @@ const GROUP_ICON: Record<string, ComponentType> = {
 };
 
 const ITEM_ICON: Record<string, ComponentType> = {
-  '/admin': IconOverview,
-  '/admin/shops': IconShop,
-  '/admin/calls': IconPhone,
+  '/admin': IconLeafOverview,
+  '/admin/shops': IconLeafShop,
+  '/admin/calls': IconLeafCalls,
   '/admin/demos': IconDemo,
   '/admin/leads': IconLeads,
   '/admin/blog': IconBlog,

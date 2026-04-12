@@ -1,25 +1,30 @@
-/** Grouped admin nav styled like legacy flat `nav-item` + `nav-icon` rows (append to admin shell stylesheet array). */
+/** Grouped admin nav: soft hierarchy, no boxed borders; child links lighter than group headers. */
 export const adminSidebarAddonStyles: string[] = [
   String.raw`
-.nav-groups{display:flex;flex-direction:column;gap:8px;margin-top:4px}
-.nav-group{border-radius:16px;border:1px solid transparent;transition:border-color .18s ease,background .18s ease}
-.nav-group.has-active{border-color:rgba(139,92,246,.22);background:rgba(124,58,237,.06)}
-.nav-group-toggle{width:100%;display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;border:none;background:transparent;color:#c7d2e8;font:inherit;font-size:14px;font-weight:700;text-align:left;cursor:pointer;transition:background .18s ease,color .18s ease,border-color .18s ease;border:1px solid transparent}
-.nav-group-toggle:hover{background:rgba(255,255,255,.03);border-color:var(--line-soft);color:#fff}
-.nav-group.has-active .nav-group-toggle{color:#e5edf9}
-.nav-group-title{flex:1;min-width:0;letter-spacing:-.01em}
-.nav-group-chevron{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:10px;background:#0f1729;border:1px solid var(--line);color:#93a0ba;flex-shrink:0;transition:transform .2s ease,background .18s ease,color .18s ease,border-color .18s ease}
-.nav-group-chevron svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.nav-group.open .nav-group-chevron{transform:rotate(90deg);color:#d8c9ff;border-color:rgba(139,92,246,.35);background:rgba(139,92,246,.12)}
-.nav-icon--group svg,.nav-icon--sub svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.nav-icon--sub{width:30px;height:30px;border-radius:11px;flex:0 0 30px}
-.nav-icon--sub svg{width:15px;height:15px}
-.nav-sub{display:flex;flex-direction:column;gap:6px;padding:4px 4px 8px 6px;margin:0 0 4px 0}
-.nav-sub-item{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 10px;margin-left:6px;border-radius:14px;font-size:14px;font-weight:700;color:#c7d2e8;border:1px solid transparent;transition:background .18s ease,border-color .18s ease,color .18s ease}
-.nav-sub-item:hover{background:rgba(255,255,255,.03);border-color:var(--line-soft);color:#fff}
-.nav-sub-item.active{background:linear-gradient(180deg,rgba(124,58,237,.2),rgba(124,58,237,.1));border-color:rgba(139,92,246,.28);color:#fff}
-.nav-sub-item.active .nav-icon{background:rgba(139,92,246,.18);border-color:rgba(139,92,246,.4)}
-.nav-sub-label{min-width:0;line-height:1.35}
+.sidebar{border-right-color:rgba(255,255,255,.07)}
+.nav-label{color:#6b7a95;font-weight:700;letter-spacing:.06em;padding:8px 10px 6px}
+.nav-groups{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.nav-group{border:none;background:transparent;border-radius:0}
+.nav-group.has-active{background:transparent}
+.nav-group-toggle{width:100%;display:flex;align-items:center;gap:10px;padding:10px 8px;border-radius:12px;border:none;background:transparent;color:#e2e8f0;font:inherit;font-size:14px;font-weight:600;letter-spacing:-.01em;text-align:left;cursor:pointer;transition:background .16s ease,color .16s ease}
+.nav-group-toggle:hover{background:rgba(255,255,255,.04);color:#f8fafc}
+.nav-group.has-active .nav-group-toggle{color:#f1f5f9}
+.nav-group-title{flex:1;min-width:0}
+.nav-group-chevron{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:8px;border:none;background:transparent;color:#8b9cb8;flex-shrink:0;transition:transform .2s ease,color .16s ease}
+.nav-group-chevron svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.nav-group.open .nav-group-chevron{transform:rotate(90deg);color:#a5b4c8}
+.sidebar .nav-icon.nav-icon--group,
+.sidebar .nav-icon.nav-icon--sub{width:auto;min-width:28px;height:auto;min-height:28px;padding:2px;border:none;background:transparent!important;box-shadow:none;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-icon--group{color:#cbd5e1}
+.nav-icon--group svg,.nav-icon--sub svg{width:17px;height:17px;stroke:currentColor;stroke-width:1.75;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.nav-icon--sub{color:#94a3b8;opacity:.92}
+.nav-sub{display:flex;flex-direction:column;gap:1px;padding:2px 0 6px 4px;margin:0}
+.nav-sub-item{display:flex;align-items:center;gap:9px;padding:8px 10px 8px 12px;margin-left:6px;border-radius:10px;font-size:13px;font-weight:500;letter-spacing:-.01em;color:#8b9cb8;border:none;background:transparent;transition:background .16s ease,color .16s ease}
+.nav-sub-item:hover{background:rgba(255,255,255,.04);color:#cbd5e1}
+.nav-sub-item:hover .nav-icon--sub{color:#94a3b8;opacity:1}
+.nav-sub-item.active{background:rgba(124,58,237,.1);color:#f1f5f9;border:none}
+.nav-sub-item.active .nav-icon--sub{color:#c4b5fd;opacity:1}
+.nav-sub-label{min-width:0;line-height:1.4}
 .btn-icon{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:14px;border:1px solid var(--line);background:linear-gradient(180deg,#11182b,#0c1425);color:var(--text);box-shadow:var(--shadow);cursor:pointer;transition:transform .15s ease,border-color .18s ease,background .18s ease}
 .btn-icon:hover{transform:translateY(-1px);border-color:#33466f}
 .btn-icon.purple{background:linear-gradient(135deg,var(--purple),var(--purple-2));border-color:transparent;color:#fff}
@@ -27,11 +32,11 @@ export const adminSidebarAddonStyles: string[] = [
 @media (max-width:1200px){
   .nav-group-title{display:none}
   .nav-sub-label{display:none}
-  .nav-group-toggle{justify-content:center;padding:12px 10px;gap:8px}
+  .nav-group-toggle{justify-content:center;padding:10px 8px;gap:6px}
   .nav-group-toggle .nav-icon--group{margin:0}
-  .nav-sub-item{justify-content:center;padding:12px 10px;margin-left:0}
+  .nav-sub-item{justify-content:center;padding:10px 8px;margin-left:0}
   .nav-sub-item .nav-icon--sub{margin:0}
-  .nav-sub{padding:4px 2px 6px}
+  .nav-sub{padding:2px 0 4px}
 }
 `,
 ];

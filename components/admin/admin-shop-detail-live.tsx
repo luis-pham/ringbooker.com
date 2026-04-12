@@ -168,6 +168,8 @@ export function AdminShopDetailLive() {
   const [appliedCallFrom, setAppliedCallFrom] = useState(() => utcDaysAgoIso(30));
   const [appliedCallTo, setAppliedCallTo] = useState(() => utcTodayIso());
   const [activeCall, setActiveCall] = useState<ShopCall | null>(null);
+  const [callDetailOpen, setCallDetailOpen] = useState(false);
+  const callDetailDialogRef = useRef<HTMLDialogElement>(null);
   const [callsLoading, setCallsLoading] = useState(false);
 
   const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
@@ -209,6 +211,7 @@ export function AdminShopDetailLive() {
       setTab('info');
       setCallsPage(1);
       setActiveCall(null);
+      setCallDetailOpen(false);
       const from = utcDaysAgoIso(30);
       const to = utcTodayIso();
       setCallDateFrom(from);
@@ -250,9 +253,9 @@ export function AdminShopDetailLive() {
           body.callsPagination ?? { page, pageSize: 20, total: list.length },
         );
         setActiveCall((prev) => {
-          if (!prev) return list[0] ?? null;
+          if (!prev) return null;
           const still = list.find((c) => c.providerCallId === prev.providerCallId && c.shopId === prev.shopId);
-          return still ?? list[0] ?? null;
+          return still ?? null;
         });
       } catch {
         setError('network_error');
@@ -297,6 +300,27 @@ export function AdminShopDetailLive() {
     void loadAnalytics();
   }, [tab, shopId, loadAnalytics]);
 
+  useEffect(() => {
+    const el = callDetailDialogRef.current;
+    if (!el) return;
+    if (callDetailOpen && activeCall) {
+      if (!el.open) el.showModal();
+    } else if (el.open) {
+      el.close();
+    }
+  }, [callDetailOpen, activeCall]);
+
+  useEffect(() => {
+    if (!activeCall) setCallDetailOpen(false);
+  }, [activeCall]);
+
+  useEffect(() => {
+    if (tab !== 'calls') {
+      setCallDetailOpen(false);
+      setActiveCall(null);
+    }
+  }, [tab]);
+
   function applyCallFilters() {
     setCallsPage(1);
     setAppliedCallFrom(callDateFrom);
@@ -338,7 +362,7 @@ export function AdminShopDetailLive() {
         return;
       }
       setShop(body.shop);
-      setNotice('Shop profile and operational settings saved.');
+      setNotice('Business profile and policy saved.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'network_error');
     } finally {
@@ -564,62 +588,74 @@ export function AdminShopDetailLive() {
                         <div className="stat-meta">Automation toggles (see AI tab)</div>
                       </div>
                     </section>
-                    <form className="card" onSubmit={onSaveProfile}>
-                      <div className="panel-head">
-                        <div>
-                          <h3>Business profile</h3>
-                          <p className="sub">Services, hours, policy, and contact data used in prompts and tools.</p>
+                    <form className="shop-info-stack" onSubmit={onSaveProfile}>
+                      <section className="card">
+                        <div className="panel-head">
+                          <div>
+                            <h3>Business profile</h3>
+                            <p className="sub">Identity, contact, location, and booking link used across the product.</p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="form-grid">
-                        <div className="field">
-                          <label>Shop name</label>
-                          <input value={shop.name} readOnly />
+                        <div className="form-grid">
+                          <div className="field">
+                            <label>Shop name</label>
+                            <input value={shop.name} readOnly />
+                          </div>
+                          <div className="field">
+                            <label>Timezone</label>
+                            <input name="timezone" defaultValue={shop.timezone} />
+                          </div>
+                          <div className="field">
+                            <label>User name</label>
+                            <input name="user_name" defaultValue={shop.user_name ?? ''} />
+                          </div>
+                          <div className="field">
+                            <label>User phone</label>
+                            <input name="user_phone" defaultValue={shop.user_phone} />
+                          </div>
+                          <div className="field">
+                            <label>Backup phone</label>
+                            <input name="backup_phone" defaultValue={shop.backup_phone ?? ''} />
+                          </div>
+                          <div className="field">
+                            <label>Booking URL</label>
+                            <input name="booking_url" defaultValue={shop.booking_url ?? ''} />
+                          </div>
+                          <div className="field" style={{ gridColumn: '1 / -1' }}>
+                            <label>Address</label>
+                            <textarea name="address" defaultValue={shop.address ?? ''} />
+                          </div>
                         </div>
-                        <div className="field">
-                          <label>Timezone</label>
-                          <input name="timezone" defaultValue={shop.timezone} />
+                      </section>
+                      <section className="card">
+                        <div className="panel-head">
+                          <div>
+                            <h3>Business policy</h3>
+                            <p className="sub">Cancellation rules, promotions, services catalog, and hours (JSON).</p>
+                          </div>
                         </div>
-                        <div className="field">
-                          <label>User name</label>
-                          <input name="user_name" defaultValue={shop.user_name ?? ''} />
+                        <div className="form-grid">
+                          <div className="field" style={{ gridColumn: '1 / -1' }}>
+                            <label>Cancel policy</label>
+                            <textarea name="cancel_policy" defaultValue={shop.cancel_policy} />
+                          </div>
+                          <div className="field" style={{ gridColumn: '1 / -1' }}>
+                            <label>Promotions</label>
+                            <textarea name="promotions" defaultValue={shop.promotions ?? ''} />
+                          </div>
+                          <div className="field" style={{ gridColumn: '1 / -1' }}>
+                            <label>Services JSON</label>
+                            <textarea name="services_json" defaultValue={prettyJson(shop.services)} />
+                          </div>
+                          <div className="field" style={{ gridColumn: '1 / -1' }}>
+                            <label>Hours JSON</label>
+                            <textarea name="hours_json" defaultValue={prettyJson(shop.hours)} />
+                          </div>
                         </div>
-                        <div className="field">
-                          <label>User phone</label>
-                          <input name="user_phone" defaultValue={shop.user_phone} />
-                        </div>
-                        <div className="field">
-                          <label>Backup phone</label>
-                          <input name="backup_phone" defaultValue={shop.backup_phone ?? ''} />
-                        </div>
-                        <div className="field">
-                          <label>Booking URL</label>
-                          <input name="booking_url" defaultValue={shop.booking_url ?? ''} />
-                        </div>
-                        <div className="field" style={{ gridColumn: '1 / -1' }}>
-                          <label>Address</label>
-                          <textarea name="address" defaultValue={shop.address ?? ''} />
-                        </div>
-                        <div className="field" style={{ gridColumn: '1 / -1' }}>
-                          <label>Cancel policy</label>
-                          <textarea name="cancel_policy" defaultValue={shop.cancel_policy} />
-                        </div>
-                        <div className="field" style={{ gridColumn: '1 / -1' }}>
-                          <label>Promotions</label>
-                          <textarea name="promotions" defaultValue={shop.promotions ?? ''} />
-                        </div>
-                        <div className="field" style={{ gridColumn: '1 / -1' }}>
-                          <label>Services JSON</label>
-                          <textarea name="services_json" defaultValue={prettyJson(shop.services)} />
-                        </div>
-                        <div className="field" style={{ gridColumn: '1 / -1' }}>
-                          <label>Hours JSON</label>
-                          <textarea name="hours_json" defaultValue={prettyJson(shop.hours)} />
-                        </div>
-                      </div>
-                      <div className="top-actions" style={{ marginTop: 18, justifyContent: 'flex-start' }}>
+                      </section>
+                      <div className="top-actions" style={{ justifyContent: 'flex-start' }}>
                         <button className="btn purple" type="submit" disabled={savingProfile}>
-                          {savingProfile ? 'Saving…' : 'Save profile'}
+                          {savingProfile ? 'Saving…' : 'Save profile & policy'}
                         </button>
                       </div>
                     </form>
@@ -627,36 +663,77 @@ export function AdminShopDetailLive() {
                 ) : null}
 
                 {tab === 'ai' ? (
-                  <form className="card" onSubmit={onSaveConfig}>
+                  <form className="card shop-ai-layout" onSubmit={onSaveConfig}>
                     <div className="panel-head">
                       <div>
-                        <h3>AI and automation</h3>
-                        <p className="sub">Voice, prompts, transfers, callbacks, and SMS jobs for this shop.</p>
+                        <h3>AI configuration</h3>
+                        <p className="sub">Voice agent behavior, call handling, and outbound SMS automation.</p>
                       </div>
                     </div>
-                    <div className="form-grid">
-                      <div className="field">
-                        <label>AI voice</label>
-                        <input name="ai_voice" defaultValue={shop.ai_voice ?? 'Aoede'} />
+                    <section className="card soft shop-ai-hero" style={{ margin: 0, boxShadow: 'none' }}>
+                      <div className="shop-ai-panel-head">
+                        <h4>Voice & prompts</h4>
+                        <p>Model voice id and what the assistant says on the line.</p>
                       </div>
-                      <div className="field" style={{ alignSelf: 'end' }}>
-                        <label>Feature toggles</label>
-                        <div className="list" style={{ gap: 10 }}>
+                      <div className="form-grid">
+                        <div className="field">
+                          <label>AI voice</label>
+                          <input name="ai_voice" defaultValue={shop.ai_voice ?? 'Aoede'} placeholder="e.g. Aoede" />
+                        </div>
+                        <div className="field" style={{ gridColumn: '1 / -1' }}>
+                          <label>Welcome message</label>
+                          <textarea
+                            name="ai_welcome_message"
+                            rows={4}
+                            defaultValue={shop.ai_welcome_message ?? ''}
+                            placeholder="Opening line when the call connects…"
+                          />
+                        </div>
+                        <div className="field" style={{ gridColumn: '1 / -1' }}>
+                          <label>Custom instructions</label>
+                          <textarea
+                            name="ai_custom_instructions"
+                            rows={6}
+                            defaultValue={shop.ai_custom_instructions ?? ''}
+                            placeholder="Business-specific rules, tone, services to mention…"
+                          />
+                        </div>
+                      </div>
+                    </section>
+                    <div className="shop-ai-cols">
+                      <section className="shop-ai-panel">
+                        <div className="shop-ai-panel-head">
+                          <h4>Call handling</h4>
+                          <p>Transfers and callback workflow for this shop.</p>
+                        </div>
+                        <div className="shop-ai-toggle-grid">
                           <label className="checkbox">
                             <input name="allow_transfers" type="checkbox" defaultChecked={shop.allow_transfers} />
-                            Allow live transfers
+                            Allow live transfers to staff
                           </label>
                           <label className="checkbox">
                             <input name="allow_callbacks" type="checkbox" defaultChecked={shop.allow_callbacks} />
-                            Allow callbacks
+                            Allow scheduling return calls
                           </label>
+                        </div>
+                      </section>
+                      <section className="shop-ai-panel">
+                        <div className="shop-ai-panel-head">
+                          <h4>SMS automation</h4>
+                          <p>Outbound text jobs tied to bookings and missed calls.</p>
+                        </div>
+                        <div className="shop-ai-toggle-grid">
                           <label className="checkbox">
                             <input name="send_reminder_sms" type="checkbox" defaultChecked={shop.send_reminder_sms} />
-                            Send reminder SMS
+                            Appointment reminder SMS
                           </label>
                           <label className="checkbox">
-                            <input name="send_review_request_sms" type="checkbox" defaultChecked={shop.send_review_request_sms} />
-                            Send review request SMS
+                            <input
+                              name="send_review_request_sms"
+                              type="checkbox"
+                              defaultChecked={shop.send_review_request_sms}
+                            />
+                            Post-visit review request SMS
                           </label>
                           <label className="checkbox">
                             <input
@@ -664,22 +741,14 @@ export function AdminShopDetailLive() {
                               type="checkbox"
                               defaultChecked={shop.send_missed_call_followup_sms}
                             />
-                            Send missed-call follow-up SMS
+                            Missed-call follow-up SMS
                           </label>
                         </div>
-                      </div>
-                      <div className="field" style={{ gridColumn: '1 / -1' }}>
-                        <label>AI welcome message</label>
-                        <textarea name="ai_welcome_message" defaultValue={shop.ai_welcome_message ?? ''} />
-                      </div>
-                      <div className="field" style={{ gridColumn: '1 / -1' }}>
-                        <label>AI custom instructions</label>
-                        <textarea name="ai_custom_instructions" defaultValue={shop.ai_custom_instructions ?? ''} />
-                      </div>
+                      </section>
                     </div>
-                    <div className="top-actions" style={{ marginTop: 18, justifyContent: 'flex-start' }}>
+                    <div className="top-actions" style={{ marginTop: 8, justifyContent: 'flex-start' }}>
                       <button className="btn purple" type="submit" disabled={savingConfig}>
-                        {savingConfig ? 'Saving…' : 'Save AI config'}
+                        {savingConfig ? 'Saving…' : 'Save AI configuration'}
                       </button>
                     </div>
                   </form>
@@ -757,48 +826,53 @@ export function AdminShopDetailLive() {
                     {callsLoading ? (
                       <p className="sub">Loading calls…</p>
                     ) : (
-                      <div className="shop-calls-split">
-                        <div className="card">
-                          <div className="panel-head">
-                            <div>
-                              <h3>Calls</h3>
-                              <p className="sub">Select a row to view transcript on the right.</p>
-                            </div>
+                      <div className="card">
+                        <div className="panel-head">
+                          <div>
+                            <h3>Call logs</h3>
+                            <p className="sub">Click a row to open transcript and metadata in a dialog.</p>
                           </div>
-                          {callsPagination && callsPagination.total === 0 ? (
-                            <div className="empty">No calls in this date range.</div>
-                          ) : (
-                            <>
-                              <div style={{ overflowX: 'auto' }}>
-                                <table className="table">
-                                  <thead>
+                        </div>
+                        {callsPagination && callsPagination.total === 0 ? (
+                          <div className="empty">No calls in this date range.</div>
+                        ) : (
+                          <>
+                            <div style={{ overflowX: 'auto' }}>
+                              <table className="table">
+                                <thead>
+                                  <tr>
+                                    <th>Caller</th>
+                                    <th>Started</th>
+                                    <th>Outcome</th>
+                                    <th style={{ width: 100 }}> </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {recentCalls.length === 0 ? (
                                     <tr>
-                                      <th>Caller</th>
-                                      <th>Started</th>
-                                      <th>Outcome</th>
+                                      <td colSpan={4}>
+                                        <div className="sub" style={{ padding: '10px 0' }}>
+                                          No rows on this page.
+                                        </div>
+                                      </td>
                                     </tr>
-                                  </thead>
-                                  <tbody>
-                                    {recentCalls.length === 0 ? (
-                                      <tr>
-                                        <td colSpan={3}>
-                                          <div className="sub" style={{ padding: '10px 0' }}>
-                                            No rows on this page.
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    ) : (
-                                      recentCalls.map((call) => (
+                                  ) : (
+                                    recentCalls.map((call) => {
+                                      const isOpen =
+                                        callDetailOpen &&
+                                        activeCall?.providerCallId === call.providerCallId &&
+                                        activeCall?.shopId === call.shopId;
+                                      return (
                                         <tr
                                           key={`${call.shopId}:${call.providerCallId}`}
                                           style={{
                                             cursor: 'pointer',
-                                            background:
-                                              activeCall?.providerCallId === call.providerCallId
-                                                ? 'rgba(124,58,237,.12)'
-                                                : undefined,
+                                            background: isOpen ? 'rgba(124,58,237,.1)' : undefined,
                                           }}
-                                          onClick={() => setActiveCall(call)}
+                                          onClick={() => {
+                                            setActiveCall(call);
+                                            setCallDetailOpen(true);
+                                          }}
                                         >
                                           <td>{call.callerPhone ?? 'Unknown'}</td>
                                           <td>{formatDateTime(call.startedAt)}</td>
@@ -815,114 +889,130 @@ export function AdminShopDetailLive() {
                                               {call.outcome ?? 'in_progress'}
                                             </span>
                                           </td>
+                                          <td>
+                                            <span className="tag purple" style={{ opacity: 0.9 }}>
+                                              Details
+                                            </span>
+                                          </td>
                                         </tr>
-                                      ))
-                                    )}
-                                  </tbody>
-                                </table>
-                              </div>
-                              {callsPagination && callsPagination.total > 0 ? (
-                                <div
-                                  className="top-actions"
-                                  style={{ marginTop: 14, justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}
-                                >
-                                  <p className="sub" style={{ margin: 0 }}>
-                                    {callsPagination.total > callsPagination.pageSize ? (
-                                      <>
-                                        Page {callsPagination.page} of{' '}
-                                        {Math.max(1, Math.ceil(callsPagination.total / callsPagination.pageSize))}
-                                        <span style={{ opacity: 0.75 }}>
-                                          {' '}
-                                          · {callsPagination.total} calls · {callsPagination.pageSize} per page
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <span style={{ opacity: 0.85 }}>
-                                        {callsPagination.total} call{callsPagination.total === 1 ? '' : 's'}
-                                      </span>
-                                    )}
-                                  </p>
+                                      );
+                                    })
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                            {callsPagination && callsPagination.total > 0 ? (
+                              <div
+                                className="top-actions"
+                                style={{ marginTop: 14, justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}
+                              >
+                                <p className="sub" style={{ margin: 0 }}>
                                   {callsPagination.total > callsPagination.pageSize ? (
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                      <button
-                                        type="button"
-                                        className="btn ghost"
-                                        disabled={callsPagination.page <= 1}
-                                        onClick={() => setCallsPage((p) => Math.max(1, p - 1))}
-                                      >
-                                        Previous
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn ghost"
-                                        disabled={callsPagination.page * callsPagination.pageSize >= callsPagination.total}
-                                        onClick={() => setCallsPage((p) => p + 1)}
-                                      >
-                                        Next
-                                      </button>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : null}
-                            </>
-                          )}
-                        </div>
-
-                        <div className="card soft">
-                          <div className="panel-head">
-                            <div>
-                              <h3>Call detail</h3>
-                              <p className="sub">Transcript and metadata for the selected call.</p>
-                            </div>
-                          </div>
-                          {!activeCall ? (
-                            <div className="empty">Select a call from the list.</div>
-                          ) : (
-                            <div className="list">
-                              <div className="list-item">
-                                <div className="item-main">
-                                  <div className="avatar">CL</div>
-                                  <div>
-                                    <h4>{activeCall.callerPhone ?? 'Unknown caller'}</h4>
-                                    <p>
-                                      {formatDateTime(activeCall.startedAt)} · {activeCall.providerCallId}
-                                    </p>
+                                    <>
+                                      Page {callsPagination.page} of{' '}
+                                      {Math.max(1, Math.ceil(callsPagination.total / callsPagination.pageSize))}
+                                      <span style={{ opacity: 0.75 }}>
+                                        {' '}
+                                        · {callsPagination.total} calls · {callsPagination.pageSize} per page
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span style={{ opacity: 0.85 }}>
+                                      {callsPagination.total} call{callsPagination.total === 1 ? '' : 's'}
+                                    </span>
+                                  )}
+                                </p>
+                                {callsPagination.total > callsPagination.pageSize ? (
+                                  <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                      type="button"
+                                      className="btn ghost"
+                                      disabled={callsPagination.page <= 1}
+                                      onClick={() => setCallsPage((p) => Math.max(1, p - 1))}
+                                    >
+                                      Previous
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn ghost"
+                                      disabled={callsPagination.page * callsPagination.pageSize >= callsPagination.total}
+                                      onClick={() => setCallsPage((p) => p + 1)}
+                                    >
+                                      Next
+                                    </button>
                                   </div>
-                                </div>
+                                ) : null}
                               </div>
-                              <div className="list-item">
-                                <div className="item-main">
-                                  <div className="avatar">TX</div>
-                                  <div>
-                                    <h4>
-                                      {activeCall.transcriptStatus === 'completed'
-                                        ? 'Transcript ready'
-                                        : activeCall.transcriptStatus === 'failed'
-                                          ? 'Transcript failed'
-                                          : 'Transcript pending'}
-                                    </h4>
-                                    <p>
-                                      Room {activeCall.roomName ?? 'n/a'} · Request {activeCall.requestId ?? 'n/a'}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="note">
-                                {activeCall.transcriptText ? (
-                                  <div style={{ whiteSpace: 'pre-wrap' }}>{activeCall.transcriptText}</div>
-                                ) : activeCall.transcriptStatus === 'completed' ? (
-                                  'Transcript marked ready but body is missing.'
-                                ) : activeCall.transcriptStatus === 'failed' ? (
-                                  'Transcript generation failed.'
-                                ) : (
-                                  'Transcript not available yet.'
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                            ) : null}
+                          </>
+                        )}
                       </div>
                     )}
+
+                    <dialog
+                      ref={callDetailDialogRef}
+                      className="rb-admin-modal"
+                      onClose={() => {
+                        setCallDetailOpen(false);
+                        setActiveCall(null);
+                      }}
+                    >
+                      {activeCall ? (
+                        <>
+                          <div className="rb-admin-modal-head">
+                            <div>
+                              <h3 style={{ margin: '0 0 6px' }}>Call detail</h3>
+                              <p className="sub" style={{ margin: 0 }}>
+                                {activeCall.callerPhone ?? 'Unknown'} · {formatDateTime(activeCall.startedAt)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn ghost"
+                              onClick={() => callDetailDialogRef.current?.close()}
+                            >
+                              Close
+                            </button>
+                          </div>
+                          <div className="rb-admin-modal-body">
+                            <dl className="call-detail-dl">
+                              <dt>Provider call id</dt>
+                              <dd style={{ wordBreak: 'break-all' }}>{activeCall.providerCallId}</dd>
+                              <dt>Outcome</dt>
+                              <dd>{activeCall.outcome ?? 'in_progress'}</dd>
+                              <dt>Transcript</dt>
+                              <dd>
+                                {activeCall.transcriptStatus === 'completed'
+                                  ? 'Ready'
+                                  : activeCall.transcriptStatus === 'failed'
+                                    ? 'Failed'
+                                    : 'Pending'}
+                              </dd>
+                              <dt>Room</dt>
+                              <dd>{activeCall.roomName ?? '—'}</dd>
+                              <dt>Request id</dt>
+                              <dd style={{ wordBreak: 'break-all' }}>{activeCall.requestId ?? '—'}</dd>
+                              <dt>Ended</dt>
+                              <dd>{formatDateTime(activeCall.endedAt)}</dd>
+                            </dl>
+                            <p className="sub" style={{ margin: '0 0 8px' }}>
+                              Transcript
+                            </p>
+                            <div className="call-detail-transcript">
+                              {activeCall.transcriptText ? (
+                                activeCall.transcriptText
+                              ) : activeCall.transcriptStatus === 'completed' ? (
+                                'Transcript marked ready but body is missing.'
+                              ) : activeCall.transcriptStatus === 'failed' ? (
+                                'Transcript generation failed.'
+                              ) : (
+                                'Transcript not available yet.'
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
+                    </dialog>
                   </>
                 ) : null}
 
