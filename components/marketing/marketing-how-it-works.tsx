@@ -103,7 +103,13 @@ a{text-decoration:none;color:inherit}
 .hiw-step{position:relative}
 .hiw-step::before{counter-increment:hiwStep;content:counter(hiwStep);width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;margin-bottom:18px;box-shadow:0 12px 24px rgba(139,92,246,.24)}
 .hiw-handle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.hiw-handle{background:#fff;border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:0 10px 30px rgba(17,24,39,.04)}
+.hiw-handle{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 10px 30px rgba(17,24,39,.04)}
+.hiw-handle-icon{width:48px;height:48px;border-radius:18px;margin:0 auto 14px;background:var(--purple-ultra);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:inset 0 0 0 1px rgba(139,92,246,.08)}
+.hiw-handle-icon.green{background:#D1FAE5}
+.hiw-handle-icon.amber{background:#FEF3C7}
+.hiw-handle-icon.pink{background:#FCE7F3}
+.hiw-handle-icon.blue{background:#DBEAFE}
+.hiw-handle-icon.slate{background:#F1F5F9}
 .hiw-handle strong{display:block;font-size:16px;letter-spacing:-.25px;margin-bottom:7px}
 .hiw-handle p{font-size:14px;color:var(--text-gray);line-height:1.65}
 .hiw-no-replace{background:#111827;color:#fff;border-radius:32px;padding:36px;display:grid;grid-template-columns:1fr 1.05fr;gap:30px;align-items:start;box-shadow:0 24px 70px rgba(17,24,39,.22)}
@@ -265,12 +271,12 @@ export function MarketingHowItWorksTemplate() {
               <h2 className="hiw-title">Built for the calls that usually leak bookings.</h2>
               <p className="hiw-sub">RingBooker is focused on the phone moments that hurt appointment-based beauty businesses: busy service windows, after-hours callers, reschedules, cancellations, and people who hang up before voicemail.</p>
               <div className="hiw-handle-grid">
-                <div className="hiw-handle"><strong>After-hours calls</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
-                <div className="hiw-handle"><strong>Overflow calls</strong><p>Step in when your team is with a client, at the chair, in a treatment room, or handling another call.</p></div>
-                <div className="hiw-handle"><strong>Booking requests</strong><p>Collect service, timing, customer details, and preferences needed to move the booking forward.</p></div>
-                <div className="hiw-handle"><strong>Reschedules and cancellations</strong><p>Understand the caller’s change request, preserve context, and help your team recover the slot where appropriate.</p></div>
-                <div className="hiw-handle"><strong>Missed-call text back</strong><p>Text callers back when they hang up, call after hours, or reach you during a busy window.</p></div>
-                <div className="hiw-handle"><strong>Human handoff</strong><p>Escalate special cases with context so your team does not have to restart the conversation.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon amber">🌙</div><strong>After-hours calls</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon blue">📞</div><strong>Overflow calls</strong><p>Step in when your team is with a client, at the chair, in a treatment room, or handling another call.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon green">📅</div><strong>Booking requests</strong><p>Collect service, timing, customer details, and preferences needed to move the booking forward.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon pink">🔄</div><strong>Reschedules and cancellations</strong><p>Understand the caller’s change request, preserve context, and help your team recover the slot where appropriate.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon">💬</div><strong>Missed-call text back</strong><p>Text callers back when they hang up, call after hours, or reach you during a busy window.</p></div>
+                <div className="hiw-handle"><div className="hiw-handle-icon slate">🤝</div><strong>Human handoff</strong><p>Escalate special cases with context so your team does not have to restart the conversation.</p></div>
               </div>
             </div>
           </section>
