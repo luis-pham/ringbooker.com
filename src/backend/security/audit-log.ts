@@ -16,6 +16,8 @@ export type SecurityAuditEvent = {
     | 'admin_shop_created'
     | 'admin_shop_plan_updated'
     | 'admin_user_invited'
+    | 'admin_user_updated'
+    | 'admin_user_password_set'
     | 'admin_contact_request_status_updated'
     | 'admin_shop_settings_updated'
     | 'admin_shop_dynamic_config_updated'

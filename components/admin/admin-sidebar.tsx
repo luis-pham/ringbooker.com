@@ -1,7 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import { usePathname } from 'next/navigation';
+
+import {
+  IconBilling,
+  IconBlog,
+  IconDemo,
+  IconFolder,
+  IconHealth,
+  IconLeads,
+  IconMegaphone,
+  IconOverview,
+  IconPhone,
+  IconShop,
+  IconSliders,
+  IconUsers,
+} from '@/components/admin/admin-sidebar-icons';
 
 type NavItem = { href: string; label: string };
 
@@ -41,6 +56,26 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
+const GROUP_ICON: Record<string, ComponentType> = {
+  dashboard: IconOverview,
+  shops: IconShop,
+  calls: IconPhone,
+  marketing: IconMegaphone,
+  system: IconSliders,
+};
+
+const ITEM_ICON: Record<string, ComponentType> = {
+  '/admin': IconOverview,
+  '/admin/shops': IconShop,
+  '/admin/calls': IconPhone,
+  '/admin/demos': IconDemo,
+  '/admin/leads': IconLeads,
+  '/admin/blog': IconBlog,
+  '/admin/billing': IconBilling,
+  '/admin/users': IconUsers,
+  '/admin/system-health': IconHealth,
+};
+
 function isActiveHref(href: string, pathname: string): boolean {
   const p = pathname || '';
   if (href === '/admin') return p === '/admin' || p === '/admin/';
@@ -66,6 +101,16 @@ function defaultOpenForPath(pathname: string): Record<string, boolean> {
     next.dashboard = true;
   }
   return next;
+}
+
+function GroupGlyph({ groupId }: { groupId: string }) {
+  const Cmp = GROUP_ICON[groupId] ?? IconFolder;
+  return <Cmp />;
+}
+
+function ItemGlyph({ href }: { href: string }) {
+  const Cmp = ITEM_ICON[href] ?? IconFolder;
+  return <Cmp />;
 }
 
 export function AdminSidebar() {
@@ -114,6 +159,9 @@ export function AdminSidebar() {
                 aria-expanded={open}
                 onClick={() => toggleGroup(group.id)}
               >
+                <div className="nav-icon nav-icon--group" aria-hidden>
+                  <GroupGlyph groupId={group.id} />
+                </div>
                 <span className="nav-group-title">{group.label}</span>
                 <span className="nav-group-chevron" aria-hidden>
                   <svg viewBox="0 0 24 24">
@@ -129,7 +177,10 @@ export function AdminSidebar() {
                       href={item.href}
                       className={isActiveHref(item.href, pathname) ? 'nav-sub-item active' : 'nav-sub-item'}
                     >
-                      {item.label}
+                      <div className="nav-icon nav-icon--sub" aria-hidden>
+                        <ItemGlyph href={item.href} />
+                      </div>
+                      <span className="nav-sub-label">{item.label}</span>
                     </a>
                   ))}
                 </div>

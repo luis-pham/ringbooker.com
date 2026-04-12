@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AdminLayout } from '@/components/admin/admin-layout';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
@@ -25,9 +25,25 @@ type Call = {
   outcome?: string;
 };
 
+type CallsSummary = {
+  total: number;
+  booked: number;
+  missed: number;
+  readyTranscript: number;
+  chartSampleSize: number;
+  chartTruncated: boolean;
+};
+
+type ChartDay = { day: string; count: number };
+
+type CallsPagination = { page: number; pageSize: number; total: number };
+
 type CallsResponse = {
   ok: boolean;
   calls?: Call[];
+  summary?: CallsSummary;
+  chartDaily?: ChartDay[];
+  pagination?: CallsPagination;
   filter?: {
     shopId?: string | null;
     shopName?: string | null;
@@ -77,17 +93,22 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
   const [dateTo, setDateTo] = useState(() => utcTodayIso());
   const [appliedFrom, setAppliedFrom] = useState(() => utcDaysAgoIso(30));
   const [appliedTo, setAppliedTo] = useState(() => utcTodayIso());
+  const [listPage, setListPage] = useState(1);
   const [calls, setCalls] = useState<Call[]>([]);
+  const [summary, setSummary] = useState<CallsSummary | null>(null);
+  const [chartDaily, setChartDaily] = useState<ChartDay[]>([]);
+  const [pagination, setPagination] = useState<CallsPagination | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filterLabel, setFilterLabel] = useState<string | null>(null);
   const [transcriptDialogCall, setTranscriptDialogCall] = useState<Call | null>(null);
   const transcriptDialogRef = useRef<HTMLDialogElement>(null);
 
   const load = useCallback(
-    async (from: string, to: string) => {
+    async (from: string, to: string, page: number) => {
       const qs = new URLSearchParams();
       qs.set('dateFrom', from);
       qs.set('dateTo', to);
+      qs.set('page', String(page));
       if (shopId) qs.set('shopId', shopId);
       void fetch(`/api/backend/admin/calls?${qs.toString()}`)
         .then(async (response) => {
@@ -95,23 +116,36 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
           if (!body.ok) {
             setError(body.error ?? 'unable_to_load');
             setCalls([]);
+            setSummary(null);
+            setChartDaily([]);
+            setPagination(null);
             return;
           }
           setError(null);
           setCalls(body.calls ?? []);
+          setSummary(body.summary ?? null);
+          setChartDaily(body.chartDaily ?? []);
+          setPagination(body.pagination ?? null);
           setFilterLabel(body.filter?.shopName ?? null);
         })
         .catch(() => {
           setError('network_error');
           setCalls([]);
+          setSummary(null);
+          setChartDaily([]);
+          setPagination(null);
         });
     },
     [shopId],
   );
 
   useEffect(() => {
-    void load(appliedFrom, appliedTo);
-  }, [appliedFrom, appliedTo, load]);
+    void load(appliedFrom, appliedTo, listPage);
+  }, [appliedFrom, appliedTo, listPage, load]);
+
+  useEffect(() => {
+    setListPage(1);
+  }, [shopId]);
 
   useEffect(() => {
     const el = transcriptDialogRef.current;
@@ -124,36 +158,25 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
   }, [transcriptDialogCall]);
 
   function applyFilters() {
+    setListPage(1);
     setAppliedFrom(dateFrom);
     setAppliedTo(dateTo);
   }
 
-  const chartDaily = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const call of calls) {
-      const day = call.startedAt?.slice(0, 10);
-      if (!day) continue;
-      map.set(day, (map.get(day) ?? 0) + 1);
-    }
-    return [...map.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([day, count]) => ({ day, count }));
-  }, [calls]);
-
-  const chartMax = useMemo(() => {
+  const chartMax = (() => {
     let max = 1;
     for (const d of chartDaily) max = Math.max(max, d.count);
     return max;
-  }, [chartDaily]);
+  })();
 
-  const metrics = useMemo(() => {
-    return {
-      total: calls.length,
-      booked: calls.filter((call) => call.outcome === 'booked').length,
-      missed: calls.filter((call) => call.outcome === 'missed').length,
-      readyTranscript: calls.filter((call) => call.transcriptStatus === 'completed').length,
-    };
-  }, [calls]);
+  const metrics = summary ?? {
+    total: 0,
+    booked: 0,
+    missed: 0,
+    readyTranscript: 0,
+    chartSampleSize: 0,
+    chartTruncated: false,
+  };
 
   async function signOut() {
     await fetch('/api/backend/auth/logout', { method: 'POST' });
@@ -246,7 +269,7 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
                 <span className="tag blue">Loaded</span>
               </div>
               <div className="stat-value">{metrics.total}</div>
-              <div className="stat-meta">Calls in the current view</div>
+              <div className="stat-meta">Calls in the selected range (all pages)</div>
             </div>
             <div className="stat-card">
               <div className="stat-top">
@@ -290,7 +313,12 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
             <div className="panel-head">
               <div>
                 <h3>Daily volume</h3>
-                <p className="sub">Calls per UTC day in the loaded range (based on started time).</p>
+                <p className="sub">
+                  Calls per UTC day in the selected range (based on started time).
+                  {metrics.chartTruncated
+                    ? ` Chart uses the ${metrics.chartSampleSize} most recent matching calls (range has ${metrics.total} total).`
+                    : null}
+                </p>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, minHeight: 140, padding: '8px 0 4px' }}>
@@ -339,49 +367,104 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
                 <p className="sub">Use View transcript to open the full transcript for that call.</p>
               </div>
             </div>
-            {calls.length === 0 ? (
+            {error ? null : !pagination ? (
+              <p className="sub" style={{ margin: 0 }}>
+                Loading calls…
+              </p>
+            ) : pagination.total === 0 ? (
               <div className="empty">No calls found for this filter yet.</div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Call</th>
-                      <th>Started</th>
-                      <th>Status</th>
-                      <th>Booker</th>
-                      <th>Transcript</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {calls.map((call) => (
-                      <tr key={callDialogKey(call)}>
-                        <td>
-                          <div>
-                            <strong>{call.shopName ?? call.shopId}</strong>
-                            <div className="sub" style={{ marginTop: 4 }}>
-                              {call.callerPhone ?? 'Unknown caller'} · {call.providerCallId}
-                            </div>
-                          </div>
-                        </td>
-                        <td>{formatDateTime(call.startedAt)}</td>
-                        <td>
-                          <span className={callStatusClass(call)}>{call.outcome ?? 'in_progress'}</span>
-                        </td>
-                        <td>
-                          {call.agentJoined ? 'AI joined' : 'Waiting'}
-                          {call.humanAnswered ? ' · human answered' : ''}
-                        </td>
-                        <td>
-                          <button type="button" className="btn ghost" onClick={() => setTranscriptDialogCall(call)}>
-                            View transcript
-                          </button>
-                        </td>
+              <>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Call</th>
+                        <th>Started</th>
+                        <th>Status</th>
+                        <th>Booker</th>
+                        <th>Transcript</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {calls.length === 0 ? (
+                        <tr>
+                          <td colSpan={5}>
+                            <div className="sub" style={{ padding: '12px 0' }}>
+                              No rows on this page. Try the previous page.
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        calls.map((call) => (
+                          <tr key={callDialogKey(call)}>
+                            <td>
+                              <div>
+                                <strong>{call.shopName ?? call.shopId}</strong>
+                                <div className="sub" style={{ marginTop: 4 }}>
+                                  {call.callerPhone ?? 'Unknown caller'} · {call.providerCallId}
+                                </div>
+                              </div>
+                            </td>
+                            <td>{formatDateTime(call.startedAt)}</td>
+                            <td>
+                              <span className={callStatusClass(call)}>{call.outcome ?? 'in_progress'}</span>
+                            </td>
+                            <td>
+                              {call.agentJoined ? 'AI joined' : 'Waiting'}
+                              {call.humanAnswered ? ' · human answered' : ''}
+                            </td>
+                            <td>
+                              <button type="button" className="btn ghost" onClick={() => setTranscriptDialogCall(call)}>
+                                View transcript
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {pagination && pagination.total > 0 ? (
+                  <div className="top-actions" style={{ marginTop: 14, justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                    <p className="sub" style={{ margin: 0 }}>
+                      {pagination.total > pagination.pageSize ? (
+                        <>
+                          Page {pagination.page} of {Math.max(1, Math.ceil(pagination.total / pagination.pageSize))}
+                          <span style={{ opacity: 0.75 }}>
+                            {' '}
+                            · {pagination.total} calls · {pagination.pageSize} per page
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ opacity: 0.85 }}>
+                          {pagination.total} call{pagination.total === 1 ? '' : 's'} · {pagination.pageSize} per page
+                        </span>
+                      )}
+                    </p>
+                    {pagination.total > pagination.pageSize ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          disabled={pagination.page <= 1}
+                          onClick={() => setListPage((p) => Math.max(1, p - 1))}
+                        >
+                          Previous
+                        </button>
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          disabled={pagination.page * pagination.pageSize >= pagination.total}
+                          onClick={() => setListPage((p) => p + 1)}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
             )}
           </section>
 

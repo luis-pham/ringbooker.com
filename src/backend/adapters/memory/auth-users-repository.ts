@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-import type { AuthUserRecord, AuthUsersRepository } from '@/src/backend/ports/repositories';
+import type {
+  AuthRole,
+  AuthUserAdminListItem,
+  AuthUserRecord,
+  AuthUsersRepository,
+} from '@/src/backend/ports/repositories';
 import { hashPassword } from '@/src/backend/security/password';
 
 type ResetTokenRecord = {
@@ -13,8 +18,28 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+type StoredAuthUser = AuthUserRecord & { createdAt: string; updatedAt: string };
+
+function toPublicRecord(user: StoredAuthUser): AuthUserRecord {
+  const { createdAt: _c, updatedAt: _u, ...record } = user;
+  return record;
+}
+
+function toAdminListItem(user: StoredAuthUser): AuthUserAdminListItem {
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    shopId: user.shopId,
+    active: user.active,
+    mfaEnabled: user.mfaEnabled,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+}
+
 export class InMemoryAuthUsersRepository implements AuthUsersRepository {
-  private readonly usersById = new Map<string, AuthUserRecord>();
+  private readonly usersById = new Map<string, StoredAuthUser>();
   private readonly userIdByEmail = new Map<string, string>();
   private readonly resetTokens = new Map<string, ResetTokenRecord>();
 
@@ -43,11 +68,13 @@ export class InMemoryAuthUsersRepository implements AuthUsersRepository {
   async findByEmail(email: string): Promise<AuthUserRecord | null> {
     const id = this.userIdByEmail.get(normalizeEmail(email));
     if (!id) return null;
-    return this.usersById.get(id) ?? null;
+    const row = this.usersById.get(id);
+    return row ? toPublicRecord(row) : null;
   }
 
   async findById(id: string): Promise<AuthUserRecord | null> {
-    return this.usersById.get(id) ?? null;
+    const row = this.usersById.get(id);
+    return row ? toPublicRecord(row) : null;
   }
 
   async create(params: {
@@ -62,10 +89,11 @@ export class InMemoryAuthUsersRepository implements AuthUsersRepository {
     const existingId = this.userIdByEmail.get(email);
     if (existingId) {
       const existing = this.usersById.get(existingId);
-      if (existing) return existing;
+      if (existing) return toPublicRecord(existing);
     }
 
-    const user: AuthUserRecord = {
+    const now = new Date().toISOString();
+    const user: StoredAuthUser = {
       id: randomUUID(),
       email,
       role: params.role,
@@ -73,10 +101,12 @@ export class InMemoryAuthUsersRepository implements AuthUsersRepository {
       passwordHash: params.passwordHash,
       active: params.active ?? true,
       mfaEnabled: params.mfaEnabled ?? false,
+      createdAt: now,
+      updatedAt: now,
     };
     this.usersById.set(user.id, user);
     this.userIdByEmail.set(user.email, user.id);
-    return user;
+    return toPublicRecord(user);
   }
 
   async updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
@@ -85,7 +115,32 @@ export class InMemoryAuthUsersRepository implements AuthUsersRepository {
     this.usersById.set(userId, {
       ...current,
       passwordHash,
+      updatedAt: new Date().toISOString(),
     });
+  }
+
+  async listForAdmin(params?: { limit?: number }): Promise<AuthUserAdminListItem[]> {
+    const limit = params?.limit ?? 500;
+    const rows = [...this.usersById.values()]
+      .map(toAdminListItem)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+    return rows.slice(0, limit);
+  }
+
+  async updateUserAdmin(
+    userId: string,
+    patch: { role?: AuthRole; active?: boolean },
+  ): Promise<AuthUserAdminListItem | null> {
+    const current = this.usersById.get(userId);
+    if (!current) return null;
+    const next: StoredAuthUser = {
+      ...current,
+      role: patch.role ?? current.role,
+      active: patch.active ?? current.active,
+      updatedAt: new Date().toISOString(),
+    };
+    this.usersById.set(userId, next);
+    return toAdminListItem(next);
   }
 
   async createPasswordResetToken(params: { userId: string; tokenHash: string; expiresAt: Date }): Promise<void> {

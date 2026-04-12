@@ -133,7 +133,9 @@ export interface DemoSessionsRepository {
     createdAfter: Date;
     createdBefore: Date;
     limit?: number;
+    offset?: number;
   }): Promise<DemoAdminCallListRow[]>;
+  countAdminDemoCallRuns(params: { createdAfter: Date; createdBefore: Date }): Promise<number>;
 }
 
 export interface CallLogsRepository {
@@ -208,9 +210,25 @@ export interface CallLogsRepository {
   >;
   countByShop(
     shopId: string,
-    params?: { startedAfter?: Date; startedBefore?: Date },
+    params?: {
+      startedAfter?: Date;
+      startedBefore?: Date;
+      outcome?: string;
+      transcriptStatus?: string;
+    },
   ): Promise<number>;
-  listRecent(params?: { limit?: number; startedAfter?: Date; startedBefore?: Date }): Promise<
+  countRecent(params?: {
+    startedAfter?: Date;
+    startedBefore?: Date;
+    outcome?: string;
+    transcriptStatus?: string;
+  }): Promise<number>;
+  listRecent(params?: {
+    limit?: number;
+    offset?: number;
+    startedAfter?: Date;
+    startedBefore?: Date;
+  }): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -393,7 +411,10 @@ export interface BookingRecord {
 
 export interface BookingsRepository {
   findById(bookingId: string): Promise<BookingRecord | null>;
-  listByShop(shopId: string, params?: { limit?: number }): Promise<BookingRecord[]>;
+  listByShop(
+    shopId: string,
+    params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },
+  ): Promise<BookingRecord[]>;
   create(params: {
     id?: string;
     shopId: string;
@@ -459,6 +480,18 @@ export interface AuthUserRecord {
   mfaEnabled: boolean;
 }
 
+/** Safe row for admin user directory (no password hash). */
+export type AuthUserAdminListItem = {
+  id: string;
+  email: string;
+  role: AuthRole;
+  shopId?: string | null;
+  active: boolean;
+  mfaEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export interface AuthUsersRepository {
   findByEmail(email: string): Promise<AuthUserRecord | null>;
   findById(id: string): Promise<AuthUserRecord | null>;
@@ -471,6 +504,11 @@ export interface AuthUsersRepository {
     mfaEnabled?: boolean;
   }): Promise<AuthUserRecord>;
   updatePasswordHash(userId: string, passwordHash: string): Promise<void>;
+  listForAdmin(params?: { limit?: number }): Promise<AuthUserAdminListItem[]>;
+  updateUserAdmin(
+    userId: string,
+    patch: { role?: AuthRole; active?: boolean },
+  ): Promise<AuthUserAdminListItem | null>;
   createPasswordResetToken(params: {
     userId: string;
     tokenHash: string;

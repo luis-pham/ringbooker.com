@@ -233,12 +233,24 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
     return data?.length ?? 0;
   }
 
+  async countAdminDemoCallRuns(params: { createdAfter: Date; createdBefore: Date }): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('demo_call_runs')
+      .select('request_id', { count: 'exact', head: true })
+      .gte('created_at', params.createdAfter.toISOString())
+      .lte('created_at', params.createdBefore.toISOString());
+    if (error) throw new Error(`demo_call_runs_count_admin_failed:${error.message}`);
+    return count ?? 0;
+  }
+
   async listAdminDemoCallRuns(params: {
     createdAfter: Date;
     createdBefore: Date;
     limit?: number;
+    offset?: number;
   }): Promise<DemoAdminCallListRow[]> {
-    const limit = Math.min(params.limit ?? 500, 500);
+    const limit = Math.min(Math.max(params.limit ?? 20, 1), 10_000);
+    const offset = params.offset && params.offset > 0 ? params.offset : 0;
     type SessionRow = {
       id: string;
       public_session_id: string;
@@ -273,7 +285,7 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
       .gte('created_at', params.createdAfter.toISOString())
       .lte('created_at', params.createdBefore.toISOString())
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
 
     if (error) throw new Error(`demo_call_runs_list_admin_failed:${error.message}`);
 

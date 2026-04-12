@@ -35,10 +35,23 @@ type DemoCallRow = {
 
 type ChartDay = { day: string; count: number; demoSeconds: number };
 
+type DemosSummary = {
+  total: number;
+  completed: number;
+  missed: number;
+  withTranscript: number;
+  summarySampleSize: number;
+  summaryTruncated: boolean;
+};
+
+type DemosPagination = { page: number; pageSize: number; total: number };
+
 type ListResponse = {
   ok: boolean;
   calls?: DemoCallRow[];
   chartDaily?: ChartDay[];
+  summary?: DemosSummary;
+  pagination?: DemosPagination;
   filter?: { dateFrom: string; dateTo: string };
   error?: string;
 };
@@ -80,8 +93,11 @@ export function AdminDemosLive() {
   const [dateTo, setDateTo] = useState(() => utcTodayIso());
   const [appliedFrom, setAppliedFrom] = useState(() => utcDaysAgoIso(30));
   const [appliedTo, setAppliedTo] = useState(() => utcTodayIso());
+  const [listPage, setListPage] = useState(1);
   const [calls, setCalls] = useState<DemoCallRow[]>([]);
   const [chartDaily, setChartDaily] = useState<ChartDay[]>([]);
+  const [summary, setSummary] = useState<DemosSummary | null>(null);
+  const [pagination, setPagination] = useState<DemosPagination | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [transcriptDialogRow, setTranscriptDialogRow] = useState<DemoCallRow | null>(null);
   const transcriptDialogRef = useRef<HTMLDialogElement>(null);
@@ -90,31 +106,41 @@ export function AdminDemosLive() {
   const [transcriptText, setTranscriptText] = useState<string | null>(null);
   const [transcriptStatus, setTranscriptStatus] = useState<string | null>(null);
 
-  const load = useCallback(async (from: string, to: string) => {
-    const qs = `?dateFrom=${encodeURIComponent(from)}&dateTo=${encodeURIComponent(to)}`;
-    void fetch(`/api/backend/admin/demo-calls${qs}`)
+  const load = useCallback(async (from: string, to: string, page: number) => {
+    const qs = new URLSearchParams({
+      dateFrom: from,
+      dateTo: to,
+      page: String(page),
+    });
+    void fetch(`/api/backend/admin/demo-calls?${qs.toString()}`)
       .then(async (response) => {
         const body = (await response.json()) as ListResponse;
         if (!body.ok) {
           setError(body.error ?? 'unable_to_load');
           setCalls([]);
           setChartDaily([]);
+          setSummary(null);
+          setPagination(null);
           return;
         }
         setError(null);
         setCalls(body.calls ?? []);
         setChartDaily(body.chartDaily ?? []);
+        setSummary(body.summary ?? null);
+        setPagination(body.pagination ?? null);
       })
       .catch(() => {
         setError('network_error');
         setCalls([]);
         setChartDaily([]);
+        setSummary(null);
+        setPagination(null);
       });
   }, []);
 
   useEffect(() => {
-    void load(appliedFrom, appliedTo);
-  }, [appliedFrom, appliedTo, load]);
+    void load(appliedFrom, appliedTo, listPage);
+  }, [appliedFrom, appliedTo, listPage, load]);
 
   useEffect(() => {
     const el = transcriptDialogRef.current;
@@ -178,6 +204,7 @@ export function AdminDemosLive() {
   }
 
   function applyFilters() {
+    setListPage(1);
     setAppliedFrom(dateFrom);
     setAppliedTo(dateTo);
   }
@@ -190,14 +217,14 @@ export function AdminDemosLive() {
     return max;
   }, [chartDaily]);
 
-  const metrics = useMemo(() => {
-    return {
-      total: calls.length,
-      completed: calls.filter((c) => c.runStatus === 'completed').length,
-      missed: calls.filter((c) => c.runStatus === 'missed' || c.outcome === 'missed').length,
-      withTranscript: calls.filter((c) => c.hasTranscriptText).length,
-    };
-  }, [calls]);
+  const metrics = summary ?? {
+    total: 0,
+    completed: 0,
+    missed: 0,
+    withTranscript: 0,
+    summarySampleSize: 0,
+    summaryTruncated: false,
+  };
 
   return (
     <AdminLayout
@@ -278,7 +305,7 @@ export function AdminDemosLive() {
                 <span className="tag blue">Runs</span>
               </div>
               <div className="stat-value">{metrics.total}</div>
-              <div className="stat-meta">Demo call runs in range</div>
+              <div className="stat-meta">Runs in the selected date range (all pages)</div>
             </div>
             <div className="stat-card">
               <div className="stat-top">
@@ -290,7 +317,10 @@ export function AdminDemosLive() {
                 <span className="tag green">Completed</span>
               </div>
               <div className="stat-value">{metrics.completed}</div>
-              <div className="stat-meta">Runs marked completed</div>
+              <div className="stat-meta">
+                Completed runs
+                {metrics.summaryTruncated ? ` (sample of ${metrics.summarySampleSize})` : ''}
+              </div>
             </div>
             <div className="stat-card">
               <div className="stat-top">
@@ -302,7 +332,10 @@ export function AdminDemosLive() {
                 <span className="tag orange">Missed</span>
               </div>
               <div className="stat-value">{metrics.missed}</div>
-              <div className="stat-meta">Missed / failed outcomes</div>
+              <div className="stat-meta">
+                Missed / failed
+                {metrics.summaryTruncated ? ` (sample of ${metrics.summarySampleSize})` : ''}
+              </div>
             </div>
             <div className="stat-card">
               <div className="stat-top">
@@ -314,7 +347,10 @@ export function AdminDemosLive() {
                 <span className="tag purple">Transcripts</span>
               </div>
               <div className="stat-value">{metrics.withTranscript}</div>
-              <div className="stat-meta">Rows with stored transcript text</div>
+              <div className="stat-meta">
+                With transcript text
+                {metrics.summaryTruncated ? ` (sample of ${metrics.summarySampleSize})` : ''}
+              </div>
             </div>
           </section>
 
@@ -322,7 +358,12 @@ export function AdminDemosLive() {
             <div className="panel-head">
               <div>
                 <h3>Daily volume</h3>
-                <p className="sub">Bar height = demo count per UTC day. Tooltip tone via label below.</p>
+                <p className="sub">
+                  Bar height = demo count per UTC day (from run created time).
+                  {metrics.summaryTruncated
+                    ? ` Chart uses the ${metrics.summarySampleSize} most recent runs in range (${metrics.total} total).`
+                    : null}
+                </p>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, minHeight: 140, padding: '8px 0 4px' }}>
@@ -371,49 +412,108 @@ export function AdminDemosLive() {
                 <p className="sub">Open a transcript in the dialog to read the demo shop call log for that run.</p>
               </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Started</th>
-                    <th>Business</th>
-                    <th>Vertical</th>
-                    <th>Callback</th>
-                    <th>IP</th>
-                    <th>Country</th>
-                    <th>Demo duration</th>
-                    <th>Status</th>
-                    <th>Transcript</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {calls.map((row) => (
-                    <tr key={row.requestId}>
-                      <td>{formatDateTime(row.startedAt ?? row.runCreatedAt)}</td>
-                      <td>{row.businessName ?? '—'}</td>
-                      <td>{row.verticalSlug}</td>
-                      <td>{row.callbackPhone}</td>
-                      <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{row.clientIp ?? '—'}</td>
-                      <td>{row.clientCountry ?? '—'}</td>
-                      <td>{formatDuration(row.demoDurationSeconds)}</td>
-                      <td>
-                        <span className={runStatusClass(row)}>{row.runStatus}</span>
-                      </td>
-                      <td>
+            {error ? null : !pagination ? (
+              <p className="sub" style={{ margin: 0 }}>
+                Loading demo runs…
+              </p>
+            ) : pagination.total === 0 ? (
+              <div className="empty">No demo runs in this range yet.</div>
+            ) : (
+              <>
+                <div style={{ overflowX: 'auto' }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Started</th>
+                        <th>Business</th>
+                        <th>Vertical</th>
+                        <th>Callback</th>
+                        <th>IP</th>
+                        <th>Country</th>
+                        <th>Demo duration</th>
+                        <th>Status</th>
+                        <th>Transcript</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {calls.length === 0 ? (
+                        <tr>
+                          <td colSpan={9}>
+                            <div className="sub" style={{ padding: '12px 0' }}>
+                              No rows on this page. Try the previous page.
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        calls.map((row) => (
+                          <tr key={row.requestId}>
+                            <td>{formatDateTime(row.startedAt ?? row.runCreatedAt)}</td>
+                            <td>{row.businessName ?? '—'}</td>
+                            <td>{row.verticalSlug}</td>
+                            <td>{row.callbackPhone}</td>
+                            <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{row.clientIp ?? '—'}</td>
+                            <td>{row.clientCountry ?? '—'}</td>
+                            <td>{formatDuration(row.demoDurationSeconds)}</td>
+                            <td>
+                              <span className={runStatusClass(row)}>{row.runStatus}</span>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="btn ghost"
+                                style={{ padding: '8px 12px', fontSize: 12 }}
+                                onClick={() => setTranscriptDialogRow(row)}
+                              >
+                                View transcript
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                {pagination.total > 0 ? (
+                  <div className="top-actions" style={{ marginTop: 14, justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                    <p className="sub" style={{ margin: 0 }}>
+                      {pagination.total > pagination.pageSize ? (
+                        <>
+                          Page {pagination.page} of {Math.max(1, Math.ceil(pagination.total / pagination.pageSize))}
+                          <span style={{ opacity: 0.75 }}>
+                            {' '}
+                            · {pagination.total} runs · {pagination.pageSize} per page
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ opacity: 0.85 }}>
+                          {pagination.total} run{pagination.total === 1 ? '' : 's'} · {pagination.pageSize} per page
+                        </span>
+                      )}
+                    </p>
+                    {pagination.total > pagination.pageSize ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
                         <button
                           type="button"
                           className="btn ghost"
-                          style={{ padding: '8px 12px', fontSize: 12 }}
-                          onClick={() => setTranscriptDialogRow(row)}
+                          disabled={pagination.page <= 1}
+                          onClick={() => setListPage((p) => Math.max(1, p - 1))}
                         >
-                          View transcript
+                          Previous
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        <button
+                          type="button"
+                          className="btn ghost"
+                          disabled={pagination.page * pagination.pageSize >= pagination.total}
+                          onClick={() => setListPage((p) => p + 1)}
+                        >
+                          Next
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            )}
           </section>
 
           <dialog

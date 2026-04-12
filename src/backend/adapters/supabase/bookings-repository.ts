@@ -52,17 +52,20 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     };
   }
 
-  async listByShop(shopId: string, params?: { limit?: number }): Promise<BookingRecord[]> {
+  async listByShop(
+    shopId: string,
+    params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },
+  ): Promise<BookingRecord[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
-    const { data, error } = await this.supabase
+    let q = this.supabase
       .from('bookings')
       .select(
         'id,shop_id,customer_phone,customer_name,service,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
       )
-      .eq('shop_id', shopId)
-      .order('datetime_utc', { ascending: false })
-      .limit(limit)
-      .returns<BookingRow[]>();
+      .eq('shop_id', shopId);
+    if (params?.createdAfter) q = q.gte('created_at', params.createdAfter.toISOString());
+    if (params?.createdBefore) q = q.lte('created_at', params.createdBefore.toISOString());
+    const { data, error } = await q.order('datetime_utc', { ascending: false }).limit(limit).returns<BookingRow[]>();
 
     if (error) {
       throw new Error(`bookings_list_by_shop_failed:${error.message}`);

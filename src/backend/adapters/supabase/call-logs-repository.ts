@@ -183,7 +183,12 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
 
   async countByShop(
     shopId: string,
-    params?: { startedAfter?: Date; startedBefore?: Date },
+    params?: {
+      startedAfter?: Date;
+      startedBefore?: Date;
+      outcome?: string;
+      transcriptStatus?: string;
+    },
   ): Promise<number> {
     let q = this.supabase
       .from('call_logs')
@@ -191,9 +196,29 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       .eq('shop_id', shopId);
     if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
     if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+    if (params?.outcome) q = q.eq('outcome', params.outcome);
+    if (params?.transcriptStatus) q = q.eq('transcript_status', params.transcriptStatus);
     const { count, error } = await q;
     if (error) {
       throw new Error(`call_logs_count_by_shop_failed:${error.message}`);
+    }
+    return count ?? 0;
+  }
+
+  async countRecent(params?: {
+    startedAfter?: Date;
+    startedBefore?: Date;
+    outcome?: string;
+    transcriptStatus?: string;
+  }): Promise<number> {
+    let q = this.supabase.from('call_logs').select('provider_call_id', { count: 'exact', head: true });
+    if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
+    if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+    if (params?.outcome) q = q.eq('outcome', params.outcome);
+    if (params?.transcriptStatus) q = q.eq('transcript_status', params.transcriptStatus);
+    const { count, error } = await q;
+    if (error) {
+      throw new Error(`call_logs_count_recent_failed:${error.message}`);
     }
     return count ?? 0;
   }
@@ -255,7 +280,12 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }));
   }
 
-  async listRecent(params?: { limit?: number; startedAfter?: Date; startedBefore?: Date }): Promise<
+  async listRecent(params?: {
+    limit?: number;
+    offset?: number;
+    startedAfter?: Date;
+    startedBefore?: Date;
+  }): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -275,6 +305,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }>
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
+    const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     let q = this.supabase
       .from('call_logs')
       .select(
@@ -282,7 +313,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       );
     if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
     if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
-    const { data, error } = await q.order('started_at', { ascending: false }).limit(limit);
+    const { data, error } = await q.order('started_at', { ascending: false }).range(offset, offset + limit - 1);
 
     if (error) {
       throw new Error(`call_logs_list_recent_failed:${error.message}`);

@@ -35,6 +35,21 @@ function matchesStartedRange(
   return true;
 }
 
+function matchesCallAdminFilters(
+  log: MemoryCallLog,
+  params?: {
+    startedAfter?: Date;
+    startedBefore?: Date;
+    outcome?: string;
+    transcriptStatus?: string;
+  },
+): boolean {
+  if (!matchesStartedRange(log, params)) return false;
+  if (params?.outcome !== undefined && (log.outcome ?? '') !== params.outcome) return false;
+  if (params?.transcriptStatus !== undefined && (log.transcriptStatus ?? '') !== params.transcriptStatus) return false;
+  return true;
+}
+
 export class InMemoryCallLogsRepository implements CallLogsRepository {
   private readonly logsByCall = new Map<string, MemoryCallLog>();
 
@@ -171,11 +186,25 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
 
   async countByShop(
     shopId: string,
-    params?: { startedAfter?: Date; startedBefore?: Date },
+    params?: {
+      startedAfter?: Date;
+      startedBefore?: Date;
+      outcome?: string;
+      transcriptStatus?: string;
+    },
   ): Promise<number> {
     return [...this.logsByCall.values()].filter(
-      (log) => log.shopId === shopId && matchesStartedRange(log, params),
+      (log) => log.shopId === shopId && matchesCallAdminFilters(log, params),
     ).length;
+  }
+
+  async countRecent(params?: {
+    startedAfter?: Date;
+    startedBefore?: Date;
+    outcome?: string;
+    transcriptStatus?: string;
+  }): Promise<number> {
+    return [...this.logsByCall.values()].filter((log) => matchesCallAdminFilters(log, params)).length;
   }
 
   async listByShop(
@@ -213,7 +242,12 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       }));
   }
 
-  async listRecent(params?: { limit?: number; startedAfter?: Date; startedBefore?: Date }): Promise<
+  async listRecent(params?: {
+    limit?: number;
+    offset?: number;
+    startedAfter?: Date;
+    startedBefore?: Date;
+  }): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -233,10 +267,11 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     }>
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
+    const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     return [...this.logsByCall.values()]
       .filter((log) => matchesStartedRange(log, params))
       .sort((a, b) => (b.startedAt?.toISOString() ?? '').localeCompare(a.startedAt?.toISOString() ?? ''))
-      .slice(0, limit)
+      .slice(offset, offset + limit)
       .map((log) => ({
         ...log,
         startedAt: log.startedAt?.toISOString(),

@@ -8,10 +8,19 @@ export class InMemoryBookingsRepository implements BookingsRepository {
     return this.bookings.get(bookingId) ?? null;
   }
 
-  async listByShop(shopId: string, params?: { limit?: number }): Promise<BookingRecord[]> {
+  async listByShop(
+    shopId: string,
+    params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },
+  ): Promise<BookingRecord[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     return [...this.bookings.values()]
-      .filter((booking) => booking.shopId === shopId)
+      .filter((booking) => {
+        if (booking.shopId !== shopId) return false;
+        const created = booking.createdAt ? new Date(booking.createdAt) : null;
+        if (params?.createdAfter && (!created || created < params.createdAfter)) return false;
+        if (params?.createdBefore && (!created || created > params.createdBefore)) return false;
+        return true;
+      })
       .sort((a, b) => (b.datetimeUtc > a.datetimeUtc ? 1 : -1))
       .slice(0, limit);
   }

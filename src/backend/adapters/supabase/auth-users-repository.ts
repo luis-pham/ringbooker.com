@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { AuthUserRecord, AuthUsersRepository } from '@/src/backend/ports/repositories';
+import type {
+  AuthUserAdminListItem,
+  AuthUserRecord,
+  AuthUsersRepository,
+} from '@/src/backend/ports/repositories';
 
 type AuthUsersRow = {
   id: string;
@@ -12,6 +16,17 @@ type AuthUsersRow = {
   mfa_enabled: boolean | null;
 };
 
+type AuthUsersAdminRow = {
+  id: string;
+  email: string;
+  role: 'user' | 'admin';
+  shop_id: string | null;
+  active: boolean | null;
+  mfa_enabled: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+
 function toAuthUser(row: AuthUsersRow): AuthUserRecord {
   return {
     id: row.id,
@@ -21,6 +36,19 @@ function toAuthUser(row: AuthUsersRow): AuthUserRecord {
     passwordHash: row.password_hash,
     active: row.active ?? true,
     mfaEnabled: row.mfa_enabled ?? false,
+  };
+}
+
+function toAdminListItem(row: AuthUsersAdminRow): AuthUserAdminListItem {
+  return {
+    id: row.id,
+    email: row.email,
+    role: row.role,
+    shopId: row.shop_id,
+    active: row.active ?? true,
+    mfaEnabled: row.mfa_enabled ?? false,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -81,6 +109,38 @@ export class SupabaseAuthUsersRepository implements AuthUsersRepository {
       })
       .eq('id', userId);
     if (error) throw new Error(`auth_users_update_password_hash_failed:${error.message}`);
+  }
+
+  async listForAdmin(params?: { limit?: number }): Promise<AuthUserAdminListItem[]> {
+    const limit = params?.limit ?? 500;
+    const { data, error } = await this.supabase
+      .from('auth_users')
+      .select('id,email,role,shop_id,active,mfa_enabled,created_at,updated_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(`auth_users_list_for_admin_failed:${error.message}`);
+    return (data as AuthUsersAdminRow[] | null)?.map(toAdminListItem) ?? [];
+  }
+
+  async updateUserAdmin(
+    userId: string,
+    patch: { role?: 'user' | 'admin'; active?: boolean },
+  ): Promise<AuthUserAdminListItem | null> {
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if (patch.role !== undefined) updates.role = patch.role;
+    if (patch.active !== undefined) updates.active = patch.active;
+
+    const { data, error } = await this.supabase
+      .from('auth_users')
+      .update(updates)
+      .eq('id', userId)
+      .select('id,email,role,shop_id,active,mfa_enabled,created_at,updated_at')
+      .maybeSingle<AuthUsersAdminRow>();
+
+    if (error) throw new Error(`auth_users_update_admin_failed:${error.message}`);
+    return data ? toAdminListItem(data) : null;
   }
 
   async createPasswordResetToken(params: {

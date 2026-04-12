@@ -205,12 +205,25 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
     };
   }
 
+  async countAdminDemoCallRuns(params: { createdAfter: Date; createdBefore: Date }): Promise<number> {
+    let n = 0;
+    for (const call of this.callRunsByRequestId.values()) {
+      const created = call.createdAt;
+      if (created < params.createdAfter || created > params.createdBefore) continue;
+      if (!this.sessionsById.get(call.demoSessionId)) continue;
+      n += 1;
+    }
+    return n;
+  }
+
   async listAdminDemoCallRuns(params: {
     createdAfter: Date;
     createdBefore: Date;
     limit?: number;
+    offset?: number;
   }): Promise<DemoAdminCallListRow[]> {
-    const limit = Math.min(params.limit ?? 500, 500);
+    const limit = Math.min(Math.max(params.limit ?? 20, 1), 10_000);
+    const offset = params.offset && params.offset > 0 ? params.offset : 0;
     const rows: DemoAdminCallListRow[] = [];
     for (const call of this.callRunsByRequestId.values()) {
       const created = call.createdAt;
@@ -242,7 +255,7 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
       });
     }
     rows.sort((a, b) => b.runCreatedAt.localeCompare(a.runCreatedAt));
-    return rows.slice(0, limit);
+    return rows.slice(offset, offset + limit);
   }
 
   async expireOlderThan(now: Date): Promise<number> {

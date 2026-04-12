@@ -138,4 +138,54 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
   assert.equal(inviteBody.ok, true);
   assert.equal(inviteBody.invited, true);
   assert.ok(typeof inviteBody.resetToken === 'string' && inviteBody.resetToken.length > 20);
+
+  const listResponse = await app.request('/admin/users', {
+    method: 'GET',
+    headers: { cookie: cookieHeader! },
+  });
+  assert.equal(listResponse.status, 200);
+  const listBody = (await listResponse.json()) as {
+    ok: boolean;
+    users: Array<{ id: string; email: string; role: string; active: boolean }>;
+    stats: { total: number };
+  };
+  assert.equal(listBody.ok, true);
+  assert.ok(listBody.stats.total >= 3);
+  const invited = listBody.users.find((u) => u.email === 'ops-admin@ringbooker.local');
+  assert.ok(invited);
+  const primaryAdmin = listBody.users.find((u) => u.email === 'admin@ringbooker.local');
+  assert.ok(primaryAdmin);
+
+  const deactivateInvited = await app.request(`/admin/users/${invited!.id}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      cookie: cookieHeader!,
+    },
+    body: JSON.stringify({ active: false }),
+  });
+  assert.equal(deactivateInvited.status, 200);
+
+  const demoteInvited = await app.request(`/admin/users/${invited!.id}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      cookie: cookieHeader!,
+    },
+    body: JSON.stringify({ role: 'user', active: true }),
+  });
+  assert.equal(demoteInvited.status, 200);
+
+  const lastAdminBlock = await app.request(`/admin/users/${primaryAdmin!.id}`, {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      cookie: cookieHeader!,
+    },
+    body: JSON.stringify({ role: 'user' }),
+  });
+  assert.equal(lastAdminBlock.status, 400);
+  const blockedBody = (await lastAdminBlock.json()) as { ok: boolean; error?: string };
+  assert.equal(blockedBody.ok, false);
+  assert.equal(blockedBody.error, 'last_active_admin');
 });

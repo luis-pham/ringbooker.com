@@ -299,6 +299,19 @@ const adminInviteSchema = z.object({
   shopId: z.string().uuid().optional(),
 });
 
+const adminUserPatchSchema = z
+  .object({
+    role: z.enum(['user', 'admin']).optional(),
+    active: z.boolean().optional(),
+  })
+  .refine((data) => data.role !== undefined || data.active !== undefined, {
+    message: 'empty_patch',
+  });
+
+const adminUserSetPasswordSchema = z.object({
+  newPassword: z.string().min(8).max(128),
+});
+
 const userBillingCheckoutSchema = z.object({
   plan: z.enum(['starter', 'professional', 'enterprise']),
   successUrl: z.string().url().optional(),
@@ -334,16 +347,25 @@ const adminLeadsListQuerySchema = z.object({
 const adminDemoCallsListQuerySchema = z.object({
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).optional(),
 });
 
 const adminCallsListQuerySchema = z.object({
   shopId: z.string().min(1).optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).optional(),
 });
 
-const adminShopDetailQuerySchema = z.object({
+const adminShopCallsQuerySchema = z.object({
   callsPage: z.coerce.number().int().min(1).max(10_000).optional(),
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+const adminShopAnalyticsQuerySchema = z.object({
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 const adminLeadStatusUpdateSchema = z.object({
@@ -1019,6 +1041,23 @@ function demoCallDurationSeconds(row: Pick<DemoAdminCallListRow, 'connectedAt' |
     return Math.round(ms / 1000);
   }
   return null;
+}
+
+const ADMIN_CALL_LIST_PAGE_SIZE = 20;
+const ADMIN_CALL_CHART_SAMPLE = 8000;
+const ADMIN_DEMO_LIST_PAGE_SIZE = 20;
+const ADMIN_DEMO_CHART_SAMPLE = 8000;
+
+function buildAdminCallChartDaily(calls: Array<{ startedAt?: string }>): Array<{ day: string; count: number }> {
+  const map = new Map<string, number>();
+  for (const call of calls) {
+    const day = call.startedAt?.slice(0, 10);
+    if (!day) continue;
+    map.set(day, (map.get(day) ?? 0) + 1);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, count]) => ({ day, count }));
 }
 
 export function createBackendApp(deps: {
@@ -3182,6 +3221,125 @@ export function createBackendApp(deps: {
     return c.json({ ok: true, shop: created }, 201);
   });
 
+  app.get(path('/admin/shops/:id/calls'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_shop_calls');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = c.req.param('id');
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const shop = await deps.shopsRepository.findById(shopId);
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const qParsed = adminShopCallsQuerySchema.safeParse({
+      callsPage: c.req.query('callsPage'),
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+    });
+    if (!qParsed.success) return c.json({ ok: false, error: 'invalid_query' }, 400);
+
+    const callsPage = qParsed.data.callsPage ?? 1;
+    const callsPageSize = 20;
+    const callsOffset = (callsPage - 1) * callsPageSize;
+
+    let range: { startedAfter?: Date; startedBefore?: Date } = {};
+    const df = qParsed.data.dateFrom;
+    const dt = qParsed.data.dateTo;
+    if (df && dt) {
+      const startedAfter = new Date(`${df}T00:00:00.000Z`);
+      const startedBefore = new Date(`${dt}T23:59:59.999Z`);
+      if (startedAfter.getTime() > startedBefore.getTime()) {
+        return c.json({ ok: false, error: 'invalid_date_range' }, 400);
+      }
+      range = { startedAfter, startedBefore };
+    } else if (df || dt) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+
+    const [recentCalls, callsTotal] = await Promise.all([
+      deps.callLogsRepository.listByShop(shopId, {
+        limit: callsPageSize,
+        offset: callsOffset,
+        ...range,
+      }),
+      deps.callLogsRepository.countByShop(shopId, range),
+    ]);
+
+    return c.json({
+      ok: true,
+      recentCalls,
+      callsPagination: { page: callsPage, pageSize: callsPageSize, total: callsTotal },
+      filter: { dateFrom: df ?? null, dateTo: dt ?? null },
+    });
+  });
+
+  app.get(path('/admin/shops/:id/analytics'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_shop_analytics');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = c.req.param('id');
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const shop = await deps.shopsRepository.findById(shopId);
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const qParsed = adminShopAnalyticsQuerySchema.safeParse({
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+    });
+    if (!qParsed.success) return c.json({ ok: false, error: 'invalid_query' }, 400);
+
+    const now = new Date();
+    let endDay = qParsed.data.dateTo ?? now.toISOString().slice(0, 10);
+    let startDay = qParsed.data.dateFrom ?? null;
+    if (!startDay) {
+      const from = new Date(now);
+      from.setUTCDate(from.getUTCDate() - 30);
+      startDay = from.toISOString().slice(0, 10);
+    }
+    const createdAfter = new Date(`${startDay}T00:00:00.000Z`);
+    const createdBefore = new Date(`${endDay}T23:59:59.999Z`);
+    if (createdAfter.getTime() > createdBefore.getTime()) {
+      return c.json({ ok: false, error: 'invalid_date_range' }, 400);
+    }
+
+    const bookings = deps.bookingsRepository
+      ? await deps.bookingsRepository.listByShop(shopId, {
+          limit: 5000,
+          createdAfter,
+          createdBefore,
+        })
+      : [];
+
+    const byStatus: Record<string, number> = {};
+    for (const b of bookings) {
+      const s = b.status || 'unknown';
+      byStatus[s] = (byStatus[s] ?? 0) + 1;
+    }
+
+    let modifiedCount = 0;
+    for (const b of bookings) {
+      if (b.updatedAt && b.createdAt && b.updatedAt !== b.createdAt) modifiedCount += 1;
+    }
+
+    return c.json({
+      ok: true,
+      shopId: shop.id,
+      shopName: shop.name,
+      period: { dateFrom: startDay, dateTo: endDay },
+      bookingsInPeriod: bookings.length,
+      byStatus,
+      bookingsUpdatedAfterCreate: modifiedCount,
+      recentBookings: bookings.slice(0, 40),
+    });
+  });
+
   app.get(path('/admin/shops/:id'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_shop_detail');
     if (limited) return limited;
@@ -3192,34 +3350,13 @@ export function createBackendApp(deps: {
     }
     const shopId = c.req.param('id');
     if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
-    const qParsed = adminShopDetailQuerySchema.safeParse({ callsPage: c.req.query('callsPage') });
-    if (!qParsed.success) {
-      return c.json({ ok: false, error: 'invalid_query' }, 400);
-    }
-    const callsPage = qParsed.data.callsPage ?? 1;
-    const callsPageSize = 20;
-    const callsOffset = (callsPage - 1) * callsPageSize;
 
     const shop = await deps.shopsRepository.findById(shopId);
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
-    let recentCalls: Awaited<ReturnType<NonNullable<typeof deps.callLogsRepository>['listByShop']>> = [];
-    let callsTotal = 0;
-    if (deps.callLogsRepository) {
-      [recentCalls, callsTotal] = await Promise.all([
-        deps.callLogsRepository.listByShop(shopId, {
-          limit: callsPageSize,
-          offset: callsOffset,
-        }),
-        deps.callLogsRepository.countByShop(shopId),
-      ]);
-    }
-
     return c.json({
       ok: true,
       shop,
-      recentCalls,
-      callsPagination: { page: callsPage, pageSize: callsPageSize, total: callsTotal },
     });
   });
 
@@ -3327,13 +3464,15 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'admin');
     if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.callLogsRepository) {
+    const callLogsRepository = deps.callLogsRepository;
+    if (!callLogsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
     const parsed = adminCallsListQuerySchema.safeParse({
       shopId: c.req.query('shopId'),
       dateFrom: c.req.query('dateFrom'),
       dateTo: c.req.query('dateTo'),
+      page: c.req.query('page'),
     });
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_query' }, 400);
@@ -3341,32 +3480,69 @@ export function createBackendApp(deps: {
     const shopId = parsed.data.shopId?.trim();
     const dateFrom = parsed.data.dateFrom;
     const dateTo = parsed.data.dateTo;
+    const page = parsed.data.page ?? 1;
+    const pageSize = ADMIN_CALL_LIST_PAGE_SIZE;
+    const offset = (page - 1) * pageSize;
 
-    let listParams: { limit: number; startedAfter?: Date; startedBefore?: Date } = { limit: 200 };
+    let rangeParams: { startedAfter?: Date; startedBefore?: Date } = {};
     if (dateFrom && dateTo) {
       const startedAfter = new Date(`${dateFrom}T00:00:00.000Z`);
       const startedBefore = new Date(`${dateTo}T23:59:59.999Z`);
       if (startedAfter.getTime() > startedBefore.getTime()) {
         return c.json({ ok: false, error: 'invalid_date_range' }, 400);
       }
-      listParams = { limit: 500, startedAfter, startedBefore };
+      rangeParams = { startedAfter, startedBefore };
     } else if (dateFrom || dateTo) {
       return c.json({ ok: false, error: 'invalid_query' }, 400);
     }
 
-    const [calls, shops] = await Promise.all([
+    const countArgs = rangeParams;
+    const listPageArgs = { limit: pageSize, offset, ...rangeParams };
+    const chartSampleArgs = { limit: ADMIN_CALL_CHART_SAMPLE, offset: 0, ...rangeParams };
+
+    const countFn = (extra?: { outcome?: string; transcriptStatus?: string }) =>
       shopId
-        ? deps.callLogsRepository.listByShop(shopId, listParams)
-        : deps.callLogsRepository.listRecent(listParams),
+        ? callLogsRepository.countByShop(shopId, { ...countArgs, ...extra })
+        : callLogsRepository.countRecent({ ...countArgs, ...extra });
+
+    const [
+      total,
+      booked,
+      missed,
+      readyTranscript,
+      calls,
+      chartSource,
+      shops,
+    ] = await Promise.all([
+      countFn(),
+      countFn({ outcome: 'booked' }),
+      countFn({ outcome: 'missed' }),
+      countFn({ transcriptStatus: 'completed' }),
+      shopId ? callLogsRepository.listByShop(shopId, listPageArgs) : callLogsRepository.listRecent(listPageArgs),
+      shopId ? callLogsRepository.listByShop(shopId, chartSampleArgs) : callLogsRepository.listRecent(chartSampleArgs),
       deps.shopsRepository ? deps.shopsRepository.list({ limit: 500 }) : Promise.resolve([]),
     ]);
-    const shopNameById = new Map(shops.map((shop) => [shop.id, shop.name]));
+
+    const shopNameById = new Map(shops.map((s) => [s.id, s.name]));
+    const chartDaily = buildAdminCallChartDaily(chartSource);
+    const chartTruncated = total > ADMIN_CALL_CHART_SAMPLE;
+
     return c.json({
       ok: true,
       calls: calls.map((call) => ({
         ...call,
         shopName: shopNameById.get(call.shopId) ?? call.shopId,
       })),
+      summary: {
+        total,
+        booked,
+        missed,
+        readyTranscript,
+        chartSampleSize: chartSource.length,
+        chartTruncated,
+      },
+      chartDaily,
+      pagination: { page, pageSize, total },
       filter: {
         shopId: shopId || null,
         shopName: shopId ? (shopNameById.get(shopId) ?? null) : null,
@@ -3387,6 +3563,7 @@ export function createBackendApp(deps: {
     const parsed = adminDemoCallsListQuerySchema.safeParse({
       dateFrom: c.req.query('dateFrom'),
       dateTo: c.req.query('dateTo'),
+      page: c.req.query('page'),
     });
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_query' }, 400);
@@ -3406,18 +3583,33 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'invalid_date_range' }, 400);
     }
 
-    const rows = await deps.demoSessionsRepository.listAdminDemoCallRuns({
-      createdAfter,
-      createdBefore,
-      limit: 500,
-    });
-    const requestIds = rows.map((r) => r.requestId);
+    const page = parsed.data.page ?? 1;
+    const pageSize = ADMIN_DEMO_LIST_PAGE_SIZE;
+    const offset = (page - 1) * pageSize;
+
+    const rangeArgs = { createdAfter, createdBefore };
+    const [total, pageRows, chartRows] = await Promise.all([
+      deps.demoSessionsRepository.countAdminDemoCallRuns(rangeArgs),
+      deps.demoSessionsRepository.listAdminDemoCallRuns({
+        ...rangeArgs,
+        limit: pageSize,
+        offset,
+      }),
+      deps.demoSessionsRepository.listAdminDemoCallRuns({
+        ...rangeArgs,
+        limit: ADMIN_DEMO_CHART_SAMPLE,
+        offset: 0,
+      }),
+    ]);
+
+    const requestIdsPage = pageRows.map((r) => r.requestId);
+    const requestIdsChart = chartRows.map((r) => r.requestId);
     const transcriptMeta = await deps.callLogsRepository.listTranscriptMetaByShopAndRequestIds({
       shopId: env.PUBLIC_DEMO_SHOP_ID,
-      requestIds,
+      requestIds: [...new Set([...requestIdsPage, ...requestIdsChart])],
     });
 
-    const calls = rows.map((row) => {
+    const enrich = (row: (typeof pageRows)[0]) => {
       const meta = transcriptMeta.get(row.requestId);
       return {
         ...row,
@@ -3425,10 +3617,13 @@ export function createBackendApp(deps: {
         transcriptStatus: meta?.transcriptStatus,
         hasTranscriptText: meta?.hasTranscriptText ?? false,
       };
-    });
+    };
 
+    const calls = pageRows.map(enrich);
+
+    const chartEnriched = chartRows.map(enrich);
     const chartDailyMap = new Map<string, { count: number; demoSeconds: number }>();
-    for (const row of calls) {
+    for (const row of chartEnriched) {
       const day = row.runCreatedAt.slice(0, 10);
       const sec = row.demoDurationSeconds ?? 0;
       const prev = chartDailyMap.get(day) ?? { count: 0, demoSeconds: 0 };
@@ -3440,10 +3635,21 @@ export function createBackendApp(deps: {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([day, v]) => ({ day, count: v.count, demoSeconds: v.demoSeconds }));
 
+    const summary = {
+      total,
+      completed: chartEnriched.filter((r) => r.runStatus === 'completed').length,
+      missed: chartEnriched.filter((r) => r.runStatus === 'missed' || r.outcome === 'missed').length,
+      withTranscript: chartEnriched.filter((r) => r.hasTranscriptText).length,
+      summarySampleSize: chartEnriched.length,
+      summaryTruncated: total > ADMIN_DEMO_CHART_SAMPLE,
+    };
+
     return c.json({
       ok: true,
       calls,
       chartDaily,
+      summary,
+      pagination: { page, pageSize, total },
       filter: {
         dateFrom: startDay,
         dateTo: endDay,
@@ -3564,6 +3770,116 @@ export function createBackendApp(deps: {
     });
 
     return c.json({ ok: true, lead: updated });
+  });
+
+  app.get(path('/admin/users'), async (c) => {
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.authUsersRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const users = await deps.authUsersRepository.listForAdmin({ limit: 500 });
+    const activeAdmins = users.filter((u) => u.role === 'admin' && u.active);
+    const mfaEnabled = users.filter((u) => u.mfaEnabled).length;
+    const stats = {
+      total: users.length,
+      adminTotal: users.filter((u) => u.role === 'admin').length,
+      activeAdminCount: activeAdmins.length,
+      mfaEnabledCount: mfaEnabled,
+      mfaPercent: users.length ? Math.round((mfaEnabled / users.length) * 100) : 0,
+    };
+    return c.json({ ok: true, users, stats });
+  });
+
+  app.patch(path('/admin/users/:id'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_user_patch');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.authUsersRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const userId = c.req.param('id');
+    if (!userId) return c.json({ ok: false, error: 'invalid_user_id' }, 400);
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminUserPatchSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const existing = await deps.authUsersRepository.findById(userId);
+    if (!existing) return c.json({ ok: false, error: 'user_not_found' }, 404);
+
+    const isAdminSeat = existing.role === 'admin' && existing.active;
+    const willLoseAdminSeat =
+      (parsed.data.role === 'user' && existing.role === 'admin') ||
+      (parsed.data.active === false && existing.role === 'admin');
+
+    if (isAdminSeat && willLoseAdminSeat) {
+      const directory = await deps.authUsersRepository.listForAdmin({ limit: 500 });
+      const otherActiveAdmins = directory.filter(
+        (u) => u.id !== userId && u.role === 'admin' && u.active,
+      );
+      if (otherActiveAdmins.length === 0) {
+        return c.json({ ok: false, error: 'last_active_admin' }, 400);
+      }
+    }
+
+    const updated = await deps.authUsersRepository.updateUserAdmin(userId, {
+      role: parsed.data.role,
+      active: parsed.data.active,
+    });
+    if (!updated) return c.json({ ok: false, error: 'user_not_found' }, 404);
+
+    securityAudit({
+      action: 'admin_user_updated',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        targetUserId: userId,
+        patch: parsed.data,
+      },
+    });
+
+    return c.json({ ok: true, user: updated });
+  });
+
+  app.post(path('/admin/users/:id/password'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_user_password');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.authUsersRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const userId = c.req.param('id');
+    if (!userId) return c.json({ ok: false, error: 'invalid_user_id' }, 400);
+    const body = await c.req.json().catch(() => null);
+    const parsed = adminUserSetPasswordSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const existing = await deps.authUsersRepository.findById(userId);
+    if (!existing) return c.json({ ok: false, error: 'user_not_found' }, 404);
+
+    await deps.authUsersRepository.updatePasswordHash(userId, hashPassword(parsed.data.newPassword));
+
+    securityAudit({
+      action: 'admin_user_password_set',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        targetUserId: userId,
+        targetEmail: existing.email,
+      },
+    });
+
+    return c.json({ ok: true });
   });
 
   app.post(path('/admin/users/invite'), async (c) => {
