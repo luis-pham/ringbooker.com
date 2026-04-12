@@ -118,44 +118,31 @@ function IntegrationRow() {
   return (
     <div className="mt-6">
       <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">Works with your booking tools</p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="flex flex-wrap items-start gap-x-8 gap-y-4 sm:gap-x-10">
         {BOOKING_TOOL_INTEGRATIONS.map((item) => {
           const isLive = item.status === 'live';
           return (
-            <div
-              key={item.id}
-              className={[
-                'flex flex-col items-center rounded-2xl border px-3 py-4 text-center shadow-sm transition',
-                isLive
-                  ? 'border-violet-200 bg-gradient-to-b from-violet-50/90 to-white ring-1 ring-violet-100/80'
-                  : 'border-slate-200 bg-white',
-              ].join(' ')}
-            >
-              <div
-                className={[
-                  'flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border bg-white',
-                  isLive ? 'border-violet-200' : 'border-slate-100',
-                ].join(' ')}
-              >
-                <img
-                  src={item.logoSrc}
-                  alt=""
-                  width={44}
-                  height={44}
-                  className="h-11 w-11 object-contain p-1.5"
-                  loading="lazy"
-                  decoding="async"
-                />
+            <div key={item.id} className="flex items-start gap-2.5">
+              <img
+                src={item.logoSrc}
+                alt=""
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 object-contain"
+                loading="lazy"
+                decoding="async"
+              />
+              <div className="flex min-w-0 flex-col justify-center pt-0.5">
+                <span className="text-[13px] font-extrabold leading-tight tracking-tight text-slate-900">{item.name}</span>
+                {isLive ? (
+                  <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
+                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                    Live
+                  </div>
+                ) : (
+                  <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-400">Coming soon</div>
+                )}
               </div>
-              <div className="mt-2.5 text-[13px] font-extrabold tracking-tight text-slate-900">{item.name}</div>
-              {isLive ? (
-                <div className="mt-1 flex items-center justify-center gap-1.5 text-[10px] font-bold text-emerald-600">
-                  <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                  Live
-                </div>
-              ) : (
-                <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-400">Coming soon</div>
-              )}
             </div>
           );
         })}
