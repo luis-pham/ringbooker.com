@@ -895,11 +895,23 @@ function buildPublicDemoSystemPrompt(input: {
 }) {
   const businessName = sanitizeDemoTextField(input.shopName, 120) || 'the business';
   const businessType = sanitizeDemoTextField(input.businessType, 80) || 'business';
-  const isNailSalon = businessType.toLowerCase().includes('nail');
 
-  const welcomeMessage = isNailSalon
-    ? `Hi, thank you for calling ${businessName}. I can help with appointments, services, or pricing today.`
-    : `Hi, thank you for calling ${businessName}. How can I help you today?`;
+  // Resolve vertical: prefer explicit demoVertical, fall back to businessType string match
+  const resolvedVertical = input.demoVertical ?? (businessType.toLowerCase().includes('nail') ? 'nail-salon' : undefined);
+
+  function buildDemoWelcomeMessage(): string {
+    const hour = new Date().getUTCHours(); // UTC fallback; close enough for demo
+    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+    switch (resolvedVertical) {
+      case 'nail-salon':    return `Hi, it's Mai at ${businessName} — what can I help with?`;
+      case 'hair-salon':    return `Hi, Maya at ${businessName} — how can I help?`;
+      case 'day-spa':       return `Good ${timeOfDay}, Lily at ${businessName}. What brings you in?`;
+      case 'med-spa':       return `Hi, Alex at ${businessName}. What can I help with today?`;
+      case 'beauty-clinic': return `Hi, Morgan at ${businessName}. How can I help you today?`;
+      default:              return `Hi, you're through to ${businessName} — what would you like to try?`;
+    }
+  }
+  const welcomeMessage = buildDemoWelcomeMessage();
 
   // Build providers list from either staffName (legacy) or demoConfig.staffNames
   const providers: string[] = [];
@@ -934,7 +946,7 @@ function buildPublicDemoSystemPrompt(input: {
     location: input.demoConfig?.city ? sanitizeDemoTextField(input.demoConfig.city, 120) : undefined,
     hours: hoursRaw || undefined,
     providers: providers.length > 0 ? providers : [],
-    languageOptions: isNailSalon ? ['English', 'Vietnamese'] : ['English'],
+    languageOptions: (resolvedVertical === 'nail-salon' || resolvedVertical === 'beauty-clinic') ? ['English', 'Vietnamese'] : ['English'],
     services: services.length > 0 ? services : undefined,
     demoContext: 'Outbound web demo — isolated from production. No real bookings are written.',
     customInstructions: renderPublicDemoFallbackCustomInstructions(input.notes),

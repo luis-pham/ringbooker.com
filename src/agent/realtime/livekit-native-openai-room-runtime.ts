@@ -46,7 +46,23 @@ function resolveOpenAIModel(input: RealtimeDispatchInput): string | null {
   return fromMetadata ?? process.env.AGENT_VOICE_MODEL ?? 'gpt-realtime';
 }
 
-function resolveOpenAIVoice(): string {
+const DEMO_VERTICAL_VOICE: Record<string, string> = {
+  'nail-salon':    'shimmer',
+  'hair-salon':    'coral',
+  'day-spa':       'sage',
+  'med-spa':       'ash',
+  'beauty-clinic': 'echo',
+};
+
+function resolveOpenAIVoice(input?: RealtimeDispatchInput): string {
+  const demoVertical = (
+    input?.realtime.metadata as { dispatchPayload?: { demo?: { vertical?: string } } } | undefined
+  )?.dispatchPayload?.demo?.vertical;
+
+  if (demoVertical && DEMO_VERTICAL_VOICE[demoVertical]) {
+    return DEMO_VERTICAL_VOICE[demoVertical]!;
+  }
+
   return process.env.AGENT_OPENAI_VOICE?.trim() || 'marin';
 }
 
@@ -430,7 +446,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   if (!apiKey || !model) throw new Error('missing_openai_api_key_or_model_for_native_runtime');
   const openAiModel = model;
   const turnDetection = buildTurnDetectionConfig();
-  const openAiVoice = resolveOpenAIVoice();
+  const openAiVoice = resolveOpenAIVoice(input);
   const openAiAudioSpeed = resolveOpenAIAudioSpeed();
   const openAiInputNoiseReduction = resolveOpenAIInputNoiseReduction();
   const openAiInputAudioTranscription = resolveOpenAIInputAudioTranscription(input);
