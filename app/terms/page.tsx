@@ -97,7 +97,7 @@ export default function TermsPage() {
           title: 'Contact',
           content: (
             <>
-              <p>For legal or contract inquiries, contact: <strong>legal@ringbooker.com</strong>.</p>
+              <p>For legal or contract inquiries, contact: <strong>support@ringbooker.com</strong>.</p>
             </>
           ),
         },

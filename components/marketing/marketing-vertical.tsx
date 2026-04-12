@@ -157,7 +157,7 @@ function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
 }
 
 type HowItWorksStep = { n: string; title: string; body: string };
-function HowItWorks({ steps }: { steps: HowItWorksStep[] }) {
+function HowItWorks({ steps, accentBg }: { steps: HowItWorksStep[]; accentBg: string }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6">
       <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
@@ -165,8 +165,8 @@ function HowItWorks({ steps }: { steps: HowItWorksStep[] }) {
       <p className="mt-2 max-w-xl text-[15px] text-slate-500">No new phone number needed. Works with your existing line in minutes.</p>
       <div className="mt-8 grid gap-5 md:grid-cols-3">
         {steps.map((s) => (
-          <div key={s.n} className="relative rounded-3xl border border-slate-200 bg-white p-6">
-            <div className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-sm font-extrabold text-white">{s.n}</div>
+          <div key={s.n} className="relative rounded-3xl border border-slate-200 bg-white p-6 text-center">
+            <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-extrabold text-white`}>{s.n}</div>
             <p className="text-[15px] font-bold text-slate-900">{s.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-500">{s.body}</p>
           </div>
@@ -193,7 +193,7 @@ function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
   );
 }
 
-type PainPoint = { title: string; body: string };
+type PainPoint = { icon?: string; title: string; body: string };
 function PainPoints({ points, heading }: { points: PainPoint[]; heading: string }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6">
@@ -202,6 +202,7 @@ function PainPoints({ points, heading }: { points: PainPoint[]; heading: string 
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {points.map((p) => (
           <article key={p.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+            {p.icon && <div className="mb-3 text-2xl">{p.icon}</div>}
             <p className="text-[15px] font-bold text-slate-900">{p.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-600">{p.body}</p>
           </article>
@@ -347,18 +348,22 @@ function NailPage() {
         heading="Why nail salons lose calls — and clients"
         points={[
           {
+            icon: '💅',
             title: 'Techs are with clients when the phone rings',
             body: 'During busy hours, every technician has hands full. No one can stop mid-service to answer pricing questions or take a same-day walk-in call. The phone goes to voicemail — and voicemail doesn\'t convert.',
           },
           {
+            icon: '💰',
             title: 'Callers want prices, not a callback',
             body: 'The most common nail salon calls are "how much for a full set?" or "do you have availability today?" These are high-intent callers who will book — if someone answers. If not, they call the next salon.',
           },
           {
+            icon: '📅',
             title: 'Walk-ins and same-day calls flood in on weekends',
             body: 'Weekend and lunch-hour call volume spikes exactly when your team is most occupied. After-hours calls from clients checking hours or pricing also go unanswered. You can\'t grow if you\'re invisible outside open hours.',
           },
           {
+            icon: '📵',
             title: 'Voicemail is a dead end for nail clients',
             body: 'Almost no one leaves a voicemail for a nail salon. They just call the next place. Even customers who left messages before rarely do it again. The only way to capture these bookings is to answer live.',
           },
@@ -380,6 +385,7 @@ function NailPage() {
 
       {/* How It Works */}
       <HowItWorks
+        accentBg="bg-violet-600"
         steps={[
           { n: '1', title: 'Forward calls to RingBooker', body: 'Set up call forwarding on your current salon number — for overflow, after-hours, or full-time. Takes under 5 minutes.' },
           { n: '2', title: 'RingBooker answers with your shop info', body: 'Your services, pricing, hours, and staff are loaded in. The AI handles real callers immediately.' },
@@ -451,18 +457,22 @@ function HairPage() {
         heading="The hair salon phone problem"
         points={[
           {
+            icon: '✂️',
             title: 'Stylists can\'t answer while in-service',
             body: 'A colorist mid-application can\'t stop for a 5-minute call. Neither can a stylist during a cut. But callers don\'t know that — they just hear the phone ring and ring, then hang up.',
           },
           {
+            icon: '👩‍🎨',
             title: 'Preferred stylist requests need careful handling',
             body: 'Hair clients are loyal to their stylist. When their usual person is unavailable, the booking is lost unless someone can quickly offer an alternative. That nuance is impossible to put in a voicemail.',
           },
           {
+            icon: '🎨',
             title: 'Color and extension slots are high-value and complex',
             body: 'Balayage, keratin, and extensions need long slots. Getting the right length, the right stylist, and the right prep info requires a real conversation — which gets dropped if no one picks up.',
           },
           {
+            icon: '🔄',
             title: 'Cancellations go unrecovered',
             body: 'When a color appointment cancels with short notice, that slot is hard to fill unless someone can immediately reach the next caller. An AI answering service can capture and route those recovery calls in real time.',
           },
@@ -484,6 +494,7 @@ function HairPage() {
 
       {/* How It Works */}
       <HowItWorks
+        accentBg="bg-amber-600"
         steps={[
           { n: '1', title: 'Connect your salon number', body: 'Forward overflow or after-hours calls. Your existing number stays the same for all clients.' },
           { n: '2', title: 'Load your services and stylists', body: 'Add your team, service list, and booking rules. RingBooker handles calls with that context immediately.' },
@@ -553,18 +564,22 @@ function SpaPage() {
         heading="Why spas miss bookings when it matters most"
         points={[
           {
+            icon: '🧖',
             title: 'Therapists can\'t leave treatment rooms for calls',
             body: 'When every treatment room is occupied, no one is available to answer the front desk. Callers asking about services, availability, or packages get voicemail — and spa clients rarely leave messages.',
           },
           {
+            icon: '💑',
             title: 'Couples and group bookings require real conversation',
             body: 'Booking two or more people at the same time, with matching therapist availability and room availability, is complex. Voicemail can\'t handle that — but an AI with your schedule context can.',
           },
           {
+            icon: '🌙',
             title: 'After-hours inquiry is high intent',
             body: 'Spa clients often research and decide to book during evenings and weekends — right when your team is off or winding down. Those callers have strong intent and no patience for voicemail.',
           },
           {
+            icon: '🔁',
             title: 'Package and pricing questions repeat constantly',
             body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "Do you offer prenatal massage?" An AI answering service handles these instantly, every time.',
           },
@@ -586,6 +601,7 @@ function SpaPage() {
 
       {/* How It Works */}
       <HowItWorks
+        accentBg="bg-teal-600"
         steps={[
           { n: '1', title: 'Set your services and availability windows', body: 'Load your treatment menu, room types, and hours. RingBooker learns your spa\'s context.' },
           { n: '2', title: 'Forward calls during busy or off hours', body: 'Route overflow while sessions are running, or go full-time for always-on coverage.' },
@@ -657,18 +673,22 @@ function MedSpaPage() {
         heading="Why med spas lose high-value leads on the phone"
         points={[
           {
+            icon: '💸',
             title: 'Missed consultation calls = real dollar losses',
             body: 'At a med spa, a missed call isn\'t just a missed booking — it\'s a potential $800+ Botox or filler patient walking to a competitor. After-hours research calls have especially high intent and zero patience for voicemail.',
           },
           {
+            icon: '😰',
             title: 'Front desk overload crushes inbound conversion',
             body: 'Your front desk juggles check-ins, checkout, upsells, and phones simultaneously. During treatment hours, high-intent consultation calls get delayed, rushed, or dropped entirely — destroying conversion before it starts.',
           },
           {
+            icon: '🌙',
             title: 'After-hours research intent is your biggest opportunity',
             body: 'Med spa clients often research at night and call first thing in the morning — or late in the evening after work. A 24/7 answering layer captures that intent before it cools off and moves to a competitor.',
           },
           {
+            icon: '⚠️',
             title: 'No-shows and late cancels destroy high-ticket schedule economics',
             body: 'A 90-minute laser or filler slot that cancels same-day is almost impossible to fill. Reminder workflows and deposit-capture conversations during the booking call are the best prevention.',
           },
@@ -690,6 +710,7 @@ function MedSpaPage() {
 
       {/* How It Works */}
       <HowItWorks
+        accentBg="bg-indigo-600"
         steps={[
           { n: '1', title: 'Configure your services and providers', body: 'Add your treatment list, providers, and consultation flow. RingBooker handles calls with that context.' },
           { n: '2', title: 'Forward overflow and after-hours calls', body: 'During treatments, busy windows, or full-time — calls are answered professionally every time.' },
@@ -759,18 +780,22 @@ function BeautyClinicPage() {
         heading="Why beauty clinics need a smarter phone layer"
         points={[
           {
+            icon: '👑',
             title: 'Clients expect a "patient" experience, not a booking hotline',
             body: 'Beauty and aesthetic clinic callers are often asking about privacy, treatment continuity, pre-care, post-care, or the number of sessions. They expect considered answers, not rushed scripts or voicemail.',
           },
           {
+            icon: '🤝',
             title: 'Consultation-first calls require handling with care',
             body: 'A caller asking about laser, skin treatment, or aesthetic procedures is often in a discovery phase. How the call is handled — tone, clarity, and follow-through — directly shapes whether they book a consultation.',
           },
           {
+            icon: '🔁',
             title: 'Provider continuity is a real retention lever',
             body: 'Returning clients often want to see the same provider. If no one can confirm availability and book continuity in-call, those returning clients start shopping again.',
           },
           {
+            icon: '📋',
             title: 'Pre-care and post-care questions repeat and consume front-desk time',
             body: 'Staff spend significant time answering the same questions about what to do before and after treatments. An AI answering layer handles this consistently and instantly, freeing your team for in-clinic work.',
           },
@@ -792,6 +817,7 @@ function BeautyClinicPage() {
 
       {/* How It Works */}
       <HowItWorks
+        accentBg="bg-fuchsia-600"
         steps={[
           { n: '1', title: 'Configure clinic services and providers', body: 'Load your treatment list, providers, and consultation flow. RingBooker reflects your clinic\'s standards.' },
           { n: '2', title: 'Forward calls during treatments or after hours', body: 'Cover overflow during busy clinic hours or go full-time. Clients experience a seamless, professional response.' },

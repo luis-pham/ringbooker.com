@@ -71,7 +71,7 @@ a{text-decoration:none;color:inherit}
 .self-card,.feature-card,.upgrade-card,.faq-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:var(--shadow)}
 .self-card{text-align:center}
 .self-card .feature-icon,.feature-card .feature-icon{margin:0 auto 13px}
-.self-card h3,.feature-card h3,.upgrade-card h3,.faq-card h3{font-size:16px;line-height:1.3;letter-spacing:-.25px;margin-bottom:8px}
+.self-card h3,.feature-card h3,.upgrade-card h3,.faq-card h3{font-size:16px;font-weight:900;line-height:1.3;letter-spacing:-.25px;margin-bottom:8px}
 .self-card p,.feature-card p,.upgrade-card p,.faq-card p{font-size:14px;color:var(--text-gray);line-height:1.65}
 .feature-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .feature-card{text-align:center}

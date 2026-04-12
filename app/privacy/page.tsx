@@ -111,7 +111,7 @@ export default function PrivacyPage() {
           title: 'Contact',
           content: (
             <>
-              <p>For privacy requests, data subject inquiries, or security concerns, contact: <strong>privacy@ringbooker.com</strong>.</p>
+              <p>For privacy requests, data subject inquiries, or security concerns, contact: <strong>support@ringbooker.com</strong>.</p>
             </>
           ),
         },

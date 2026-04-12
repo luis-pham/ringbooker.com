@@ -60,7 +60,7 @@ export default function RefundPage() {
           title: 'How to Request a Refund',
           content: (
             <>
-              <p>To request a refund, email <strong>billing@ringbooker.com</strong> with your account email and a brief description of the issue. Include your payment receipt or transaction ID if available.</p>
+              <p>To request a refund, email <strong>support@ringbooker.com</strong> with your account email and a brief description of the issue. Include your payment receipt or transaction ID if available.</p>
               <p>Refund requests are reviewed within 5 business days. Approved refunds are returned to the original payment method and typically appear within 5–10 business days depending on your card issuer.</p>
             </>
           ),
@@ -85,7 +85,7 @@ export default function RefundPage() {
           title: 'Contact',
           content: (
             <>
-              <p>For billing or refund questions, contact: <strong>billing@ringbooker.com</strong>.</p>
+              <p>For billing or refund questions, contact: <strong>support@ringbooker.com</strong>.</p>
             </>
           ),
         },
