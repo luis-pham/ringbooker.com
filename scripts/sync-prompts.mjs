@@ -116,5 +116,18 @@ export const RUNTIME_PROMPT_TEMPLATES = ${toTs(runtimePrompts)} as const;
 `;
 
 await mkdir(path.dirname(outputFile), { recursive: true });
-await writeFile(outputFile, `${generated}\n`, 'utf8');
-console.log(`Synced prompt packs to ${path.relative(repoRoot, outputFile)}`);
+const nextContent = `${generated}\n`;
+let previous = '';
+try {
+  previous = await readFile(outputFile, 'utf8');
+} catch {
+  // missing output — write below
+}
+if (previous === nextContent) {
+  console.log(
+    `Prompt packs unchanged; skipped writing ${path.relative(repoRoot, outputFile)} (avoids dirty git after npm run build).`,
+  );
+} else {
+  await writeFile(outputFile, nextContent, 'utf8');
+  console.log(`Synced prompt packs to ${path.relative(repoRoot, outputFile)}`);
+}
