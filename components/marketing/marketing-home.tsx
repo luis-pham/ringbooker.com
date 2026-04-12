@@ -1089,7 +1089,7 @@ export function MarketingHomeTemplate() {
               <div className="industries-track">
               <a href="/nail-salon" className="industry-card" data-index={0}>
                 <div className="industry-thumb">
-                  <Image src="/images/nail.jpeg" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
+                  <Image src="/images/nail.webp" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Nail</span>
                 </div>
                 <div className="industry-title">Nail Salon</div>
@@ -1098,7 +1098,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/hair-salon" className="industry-card" data-index={1}>
                 <div className="industry-thumb">
-                  <Image src="/images/hair_shop.jpeg" alt="Hair salon stylist performing color treatment — AI receptionist answers overflow calls for hair salon bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
+                  <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI receptionist answers overflow calls for hair salon bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Hair</span>
                 </div>
                 <div className="industry-title">Hair Salon</div>
@@ -1107,7 +1107,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/spa" className="industry-card" data-index={2}>
                 <div className="industry-thumb">
-                  <Image src="/images/spa.jpeg" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
+                  <Image src="/images/spa.webp" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Spa</span>
                 </div>
                 <div className="industry-title">Spa / Day Spa</div>
@@ -1116,7 +1116,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/med-spa" className="industry-card" data-index={3}>
                 <div className="industry-thumb">
-                  <Image src="/images/med_spa.jpeg" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
+                  <Image src="/images/med_spa.webp" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Med Spa</span>
                 </div>
                 <div className="industry-title">Med Spa</div>
@@ -1125,7 +1125,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/beauty-clinic" className="industry-card" data-index={4}>
                 <div className="industry-thumb">
-                  <Image src="/images/beauty_clinic.jpeg" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
+                  <Image src="/images/beauty_clinic.webp" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Clinic</span>
                 </div>
                 <div className="industry-title">Beauty / Aesthetic Clinic</div>
@@ -1352,7 +1352,7 @@ export function MarketingHomeTemplate() {
               </div>
               <div className="user-shot">
                 <div className="user-shell user-image-corners">
-                  <Image src="/images/shop_panel.jpg" alt="RingBooker user dashboard preview" className="user-preview-img" width={2982} height={1718} sizes="(max-width: 960px) calc(100vw - 44px), 520px" quality={70} />
+                  <Image src="/images/shop_panel.webp" alt="RingBooker user dashboard preview" className="user-preview-img" width={2982} height={1718} sizes="(max-width: 960px) calc(100vw - 44px), 520px" quality={70} />
                 </div>
               </div>
             </div>
