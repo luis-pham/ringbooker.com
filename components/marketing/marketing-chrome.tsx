@@ -1,4 +1,5 @@
 import { DemoPickerLazy } from '@/components/marketing/demo-picker-lazy';
+import { NavActionsClient } from '@/components/marketing/nav-actions-client';
 import { siteConfig } from '@/lib/site';
 
 type MarketingHeaderProps = {
@@ -110,12 +111,47 @@ export function MarketingChromeStyles() {
   .dpm-arrow{display:none}
 }
 
+/* ─── AUTHENTICATED NAV: avatar + dropdown ─── */
+.mk-avatar-dd{position:relative;display:inline-flex;align-items:center}
+.mk-avatar-btn{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;font-size:12px;font-weight:800;border:2px solid rgba(255,255,255,.9);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .18s,box-shadow .18s;letter-spacing:.02em;box-shadow:0 2px 8px rgba(124,58,237,.28)}
+.mk-avatar-btn:hover{transform:scale(1.07);box-shadow:0 4px 14px rgba(124,58,237,.38)}
+.mk-avatar-menu{position:absolute;top:calc(100% + 10px);right:0;min-width:230px;opacity:0;pointer-events:none;transition:opacity .17s,transform .17s;transform:translateY(-6px);z-index:400}
+.mk-avatar-menu.open{opacity:1;pointer-events:all;transform:translateY(0)}
+.mk-avatar-menu-inner{background:#fff;border:1px solid #E5E7EB;border-radius:18px;box-shadow:0 16px 48px rgba(17,24,39,.13);overflow:hidden}
+.mk-avatar-head{padding:14px 16px;background:#FAFAFA;border-bottom:1px solid #F3F4F6}
+.mk-avatar-name{font-size:13px;font-weight:700;color:#111827;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.mk-avatar-email{font-size:11.5px;color:#6B7280;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.mk-avatar-plan{display:inline-flex;align-items:center;margin-top:7px;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;background:#F5F3FF;color:#7C3AED;border:1px solid #EDE9FE}
+.mk-avatar-items{padding:5px}
+.mk-avatar-item{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;font-size:13.5px;font-weight:500;color:#374151;text-decoration:none;transition:background .13s,color .13s;cursor:pointer;border:none;background:none;width:100%;text-align:left;font-family:inherit;line-height:1.2}
+.mk-avatar-item span{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.mk-avatar-item:hover{background:#F5F3FF;color:#7C3AED}
+.mk-avatar-sep{height:1px;background:#F3F4F6;margin:2px 0}
+.mk-avatar-upgrade{color:#7C3AED;font-weight:700}
+.mk-avatar-upgrade:hover{background:#F5F3FF;color:#6D28D9}
+.mk-avatar-signout{color:#6B7280}
+.mk-avatar-signout:hover{background:#FFF1F2;color:#DC2626}
+/* on mobile the nav-link section of the avatar menu is shown; on desktop hidden */
+.mk-avatar-mobile-nav{display:none}
+/* upgrade secondary CTA */
+.mk-nav-upgrade{padding:9px 16px;border-radius:999px;border:1.5px solid rgba(139,92,246,.4);font-size:13.5px;font-weight:700;color:#7C3AED;background:rgba(245,243,255,.8);text-decoration:none;transition:border-color .15s,background .15s;white-space:nowrap}
+.mk-nav-upgrade:hover{border-color:#8B5CF6;background:#EDE9FE}
+/* loading skeleton */
+.mk-nav-skel{height:36px;width:130px;border-radius:999px;background:linear-gradient(90deg,#F3F4F6 25%,#E9EAEB 50%,#F3F4F6 75%);background-size:200% 100%;animation:mkSkel 1.4s infinite}
+@keyframes mkSkel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
 @media(max-width:960px){
   .mk-nav{padding:0 22px}
   .mk-nav-links{display:none}
   .mk-nav-signin{display:none}
   .mk-footer{padding-left:22px;padding-right:22px}
   .mk-footer-grid{grid-template-columns:1fr}
+  /* on mobile, avatar dropdown shows nav links so user can still navigate */
+  .mk-avatar-mobile-nav{display:block}
+  .mk-avatar-mobile-nav .mk-avatar-item{color:#374151}
+  .mk-avatar-menu{right:0;min-width:260px}
+  /* hide upgrade pill on mobile to keep nav clean */
+  .mk-nav-upgrade{display:none}
 }
 `,
       }}
@@ -170,14 +206,7 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
             Contact
           </a>
         </div>
-        <div className="mk-nav-actions">
-          <a href="/user/login" className="mk-nav-signin">
-            Sign In
-          </a>
-          <a href="/user/signup" className="mk-nav-cta">
-            Start Free Trial →
-          </a>
-        </div>
+        <NavActionsClient />
       </div>
     </nav>
   );

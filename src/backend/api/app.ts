@@ -2386,6 +2386,36 @@ export function createBackendApp(deps: {
     });
   });
 
+  // ── Nav state: minimal authenticated data for the marketing nav ──────────────
+  app.get(path('/user/nav-state'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_nav_state');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    let subscriptionStatus: string | null = null;
+    if (deps.billingSubscriptionsRepository) {
+      const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+      subscriptionStatus = subscription?.status ?? null;
+    }
+
+    return c.json({
+      ok: true,
+      email: sessionResult.email,
+      shopName: shop.name,
+      userName: shop.user_name ?? '',
+      plan: shop.plan,
+      onboardingRequired: !isShopOnboardingComplete(shop),
+      subscriptionStatus,
+    });
+  });
+
   app.get(path('/user/bookings'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_bookings');
     if (limited) return limited;
