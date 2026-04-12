@@ -8,6 +8,10 @@ export class InMemoryBookingsRepository implements BookingsRepository {
     return this.bookings.get(bookingId) ?? null;
   }
 
+  async countByShop(shopId: string): Promise<number> {
+    return [...this.bookings.values()].filter((booking) => booking.shopId === shopId).length;
+  }
+
   async listByShop(
     shopId: string,
     params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },

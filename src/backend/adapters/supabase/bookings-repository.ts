@@ -52,6 +52,17 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     };
   }
 
+  async countByShop(shopId: string): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('shop_id', shopId);
+    if (error) {
+      throw new Error(`bookings_count_by_shop_failed:${error.message}`);
+    }
+    return count ?? 0;
+  }
+
   async listByShop(
     shopId: string,
     params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },

@@ -267,6 +267,11 @@ const userSettingsUpdateSchema = userSettingsBaseSchema.extend({
   send_missed_call_followup_sms: z.boolean().optional(),
 });
 
+const userPasswordChangeSchema = z.object({
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8).max(128),
+});
+
 const adminShopSettingsUpdateSchema = userSettingsBaseSchema.extend({
   services: z.array(serviceItemSchema).optional(),
   hours: z.record(z.string(), businessHoursEntrySchema).optional(),
@@ -372,6 +377,11 @@ const adminShopCallsQuerySchema = z.object({
   callsPage: z.coerce.number().int().min(1).max(10_000).optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+const USER_CALLS_PAGE_SIZE = 20;
+const userCallsListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(10_000).optional(),
 });
 
 const adminShopAnalyticsQuerySchema = z.object({
@@ -2455,9 +2465,10 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    const [bookings, calls] = await Promise.all([
-      deps.bookingsRepository.listByShop(shop.id, { limit: 50 }),
-      deps.callLogsRepository.listByShop(shop.id, { limit: 50 }),
+    const [bookingCount, callCount, missedCalls] = await Promise.all([
+      deps.bookingsRepository.countByShop(shop.id),
+      deps.callLogsRepository.countByShop(shop.id, {}),
+      deps.callLogsRepository.countByShop(shop.id, { outcome: 'missed' }),
     ]);
 
     return c.json({
@@ -2471,9 +2482,9 @@ export function createBackendApp(deps: {
       },
       onboardingRequired: !isShopOnboardingComplete(shop),
       metrics: {
-        bookingCount: bookings.length,
-        callCount: calls.length,
-        missedCalls: calls.filter((item) => item.outcome === 'missed').length,
+        bookingCount,
+        callCount,
+        missedCalls,
       },
     });
   });
@@ -2559,10 +2570,34 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
     }
 
+    const parsed = userCallsListQuerySchema.safeParse({
+      page: c.req.query('page'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query', details: parsed.error.flatten() }, 400);
+    }
+
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    const calls = await deps.callLogsRepository.listByShop(shop.id, { limit: 100 });
-    return c.json({ ok: true, calls });
+
+    const page = parsed.data.page ?? 1;
+    const offset = (page - 1) * USER_CALLS_PAGE_SIZE;
+    const repo = deps.callLogsRepository;
+
+    const [calls, total, booked, missed, transcriptsReady] = await Promise.all([
+      repo.listByShop(shop.id, { limit: USER_CALLS_PAGE_SIZE, offset }),
+      repo.countByShop(shop.id, {}),
+      repo.countByShop(shop.id, { outcome: 'booked' }),
+      repo.countByShop(shop.id, { outcome: 'missed' }),
+      repo.countByShop(shop.id, { transcriptStatus: 'completed' }),
+    ]);
+
+    return c.json({
+      ok: true,
+      calls,
+      pagination: { page, pageSize: USER_CALLS_PAGE_SIZE, total },
+      summary: { total, booked, missed, transcriptsReady },
+    });
   });
 
   app.get(path('/user/settings'), async (c) => {
@@ -3074,6 +3109,58 @@ export function createBackendApp(deps: {
       shop: updated,
       capabilities: getShopPlanCapabilities(updated.plan),
     });
+  });
+
+  app.put(path('/user/password'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_password_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.authUsersRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = userPasswordChangeSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    if (parsed.data.newPassword === parsed.data.currentPassword) {
+      return c.json({ ok: false, error: 'password_unchanged' }, 400);
+    }
+
+    const email = sessionResult.email.toLowerCase();
+    const authUser = await deps.authUsersRepository.findByEmail(email);
+    if (!authUser || authUser.role !== 'user' || !authUser.active) {
+      return c.json({ ok: false, error: 'user_not_found' }, 404);
+    }
+
+    if (!verifyPassword(parsed.data.currentPassword, authUser.passwordHash)) {
+      securityAudit({
+        action: 'user_password_change_denied',
+        actorType: 'user',
+        actorId: email,
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'invalid_current_password' },
+      });
+      return c.json({ ok: false, error: 'invalid_current_password' }, 400);
+    }
+
+    await deps.authUsersRepository.updatePasswordHash(authUser.id, hashPassword(parsed.data.newPassword));
+
+    securityAudit({
+      action: 'user_password_changed',
+      actorType: 'user',
+      actorId: email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+    });
+
+    return c.json({ ok: true });
   });
 
   app.get(path('/admin/system-health/metrics'), async (c) => {

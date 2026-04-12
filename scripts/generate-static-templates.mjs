@@ -170,6 +170,7 @@ const userMap = [
   ['bookings.html', '/user/bookings'],
   ['calls.html', '/user/calls'],
   ['settings.html', '/user/settings'],
+  ['account.html', '/user/account'],
   ['billing.html', '/user/billing'],
 ];
 

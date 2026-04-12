@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { userCallsScripts, userCallsStyles } from '@/components/user/user-calls';
+import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
+import { UserPortalNav } from '@/components/user/user-portal-nav';
 
 type Call = {
   provider: string;
@@ -21,9 +23,20 @@ type Call = {
   humanAnswered: boolean;
 };
 
+const USER_CALLS_PAGE_SIZE = 20;
+
+type CallsSummary = {
+  total: number;
+  booked: number;
+  missed: number;
+  transcriptsReady: number;
+};
+
 type CallsResponse = {
   ok: boolean;
   calls?: Call[];
+  pagination?: { page: number; pageSize: number; total: number };
+  summary?: CallsSummary;
   error?: string;
 };
 
@@ -93,30 +106,65 @@ function buildVipSignals(calls: Call[]) {
 
 export function UserCallsLive() {
   const [calls, setCalls] = useState<Call[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [summary, setSummary] = useState<CallsSummary | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
 
   useEffect(() => {
-    void fetch('/api/backend/user/calls')
+    setLoading(true);
+    setError(null);
+    setCalls([]);
+    const query = new URLSearchParams();
+    if (page > 1) query.set('page', String(page));
+    const url = query.toString() ? `/api/backend/user/calls?${query}` : '/api/backend/user/calls';
+    void fetch(url)
       .then(async (response) => {
         const body = (await response.json()) as CallsResponse;
         if (!body.ok) {
           setError(body.error ?? 'unknown_error');
+          setCalls([]);
+          setTotalCount(null);
+          setSummary(null);
           return;
         }
         setCalls(body.calls ?? []);
+        const total = body.pagination?.total ?? body.calls?.length ?? 0;
+        setTotalCount(total);
+        setSummary(
+          body.summary ?? {
+            total,
+            booked: 0,
+            missed: 0,
+            transcriptsReady: 0,
+          },
+        );
       })
-      .catch(() => setError('network_error'));
-  }, []);
+      .catch(() => {
+        setError('network_error');
+        setCalls([]);
+        setTotalCount(null);
+        setSummary(null);
+      })
+      .finally(() => setLoading(false));
+  }, [page]);
 
   const metrics = useMemo(() => {
+    if (summary) return summary;
     return {
-      total: calls.length,
-      booked: calls.filter((call) => call.outcome === 'booked').length,
-      missed: calls.filter((call) => call.outcome === 'missed').length,
-      transcriptsReady: calls.filter((call) => call.transcriptStatus === 'completed').length,
+      total: 0,
+      booked: 0,
+      missed: 0,
+      transcriptsReady: 0,
     };
-  }, [calls]);
+  }, [summary]);
+
+  const totalPages =
+    totalCount === null ? 1 : Math.max(1, Math.ceil(totalCount / USER_CALLS_PAGE_SIZE));
+  const canGoPrev = page > 1;
+  const canGoNext = totalCount !== null && page * USER_CALLS_PAGE_SIZE < totalCount;
 
   const vipSignals = useMemo(() => buildVipSignals(calls), [calls]);
 
@@ -125,6 +173,12 @@ export function UserCallsLive() {
       ...userCallsStyles,
       String.raw`
 .calls-table-wrap{overflow:auto}
+.calls-pagination{
+  display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;
+  margin-top:16px;padding-top:16px;border-top:1px solid var(--border);
+}
+.calls-pagination .pager-meta{color:var(--text-gray);font-size:13px}
+.calls-pagination .pager-actions{display:flex;align-items:center;gap:8px}
 .calls-table td:last-child,.calls-table th:last-child{text-align:right}
 .calls-table .subline{margin-top:4px;color:var(--text-gray);font-size:12px;line-height:1.5}
 .calls-table .stack{display:flex;flex-direction:column;gap:6px}
@@ -180,12 +234,13 @@ export function UserCallsLive() {
 
   return (
     <UserLayout styles={modalStyles} scripts={userCallsScripts} scriptPrefix="user-calls-live">
-      <div className="app-shell">
+      <>
+      <div className="app-shell user-app-shell">
         <aside className="sidebar">
           <div className="sidebar-inner">
             <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><span>RingBooker</span></div>
             <div className="workspace"><h3>Calls workspace</h3><p>Review outcomes fast, then open a transcript only when you need to inspect the details.</p></div>
-            <div className="nav-section"><div className="nav-label">User Portal</div><div className="nav-list"><a className="nav-item" href="/user"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={4} width={7} height={7} rx="1.5" /><rect x={14} y={4} width={7} height={4} rx="1.5" /><rect x={14} y={11} width={7} height={9} rx="1.5" /><rect x={3} y={14} width={7} height={6} rx="1.5" /></svg></div><span>Overview</span></a><a className="nav-item" href="/user/bookings"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span>Bookings</span></a><a className="nav-item active" href="/user/calls"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span>Calls &amp; Transcripts</span></a><a className="nav-item" href="/user/settings"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1Z" /></svg></div><span>Settings</span></a><a className="nav-item" href="/user/billing"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={14} rx={2} /><path d="M3 10h18" /><path d="M7 15h4" /></svg></div><span>Billing</span></a></div></div>
+            <UserPortalNav active="calls" />
             <div className="sidebar-spacer" />
           </div>
         </aside>
@@ -220,10 +275,20 @@ export function UserCallsLive() {
               <span className="badge-right">Transcript modal</span>
             </div>
 
-            {calls.length === 0 ? (
+            {!error && !loading && totalCount === 0 ? (
               <div className="note">No calls have been recorded for this shop yet.</div>
-            ) : (
+            ) : !error && totalCount !== null && totalCount > 0 ? (
               <>
+                {loading && calls.length === 0 ? (
+                  <div className="note" style={{ marginBottom: 14 }}>
+                    Loading call list…
+                  </div>
+                ) : !loading && calls.length === 0 ? (
+                  <div className="note" style={{ marginBottom: 14 }}>
+                    No calls on this page. Try another page.
+                  </div>
+                ) : null}
+                {calls.length > 0 ? (
                 <div className="desktop-calls calls-table-wrap">
                   <table className="table calls-table">
                     <thead>
@@ -274,7 +339,9 @@ export function UserCallsLive() {
                     </tbody>
                   </table>
                 </div>
+                ) : null}
 
+                {calls.length > 0 ? (
                 <div className="mobile-calls">
                   {calls.map((call) => {
                     const isVip = call.callerPhone ? vipSignals.get(call.callerPhone) === true : false;
@@ -304,11 +371,40 @@ export function UserCallsLive() {
                     );
                   })}
                 </div>
+                ) : null}
+
+                <div className="calls-pagination">
+                  <span className="pager-meta">
+                    Page {page} of {totalPages}
+                    {totalCount !== null ? ` · ${totalCount} total` : null}
+                  </span>
+                  <div className="pager-actions">
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      disabled={!canGoPrev || loading}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      disabled={!canGoNext || loading}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
               </>
-            )}
+            ) : !error && loading && calls.length === 0 ? (
+              <div className="note">Loading call list…</div>
+            ) : null}
           </section>
         </main>
       </div>
+      <UserPortalMobileTabbar active="calls" />
 
       {activeCall ? (
         <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="transcript-preview-title" onClick={() => setActiveCall(null)}>
@@ -342,6 +438,7 @@ export function UserCallsLive() {
           </div>
         </div>
       ) : null}
+      </>
     </UserLayout>
   );
 }

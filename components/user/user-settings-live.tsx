@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
+import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
+import { UserPortalNav } from '@/components/user/user-portal-nav';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
@@ -227,6 +230,48 @@ const HOURS_PRESETS: Array<{
     },
   },
 ];
+
+function SettingsTabIcon({ tabId }: { tabId: SettingsTabId }): ReactNode {
+  const wrap = (children: ReactNode) => (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
+      <g fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        {children}
+      </g>
+    </svg>
+  );
+
+  switch (tabId) {
+    case 'business':
+      return wrap(
+        <>
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </>,
+      );
+    case 'services-hours':
+      return wrap(
+        <>
+          <rect x={3} y={4} width={18} height={18} rx={2} />
+          <path d="M16 2v4M8 2v4M3 10h18" />
+        </>,
+      );
+    case 'ai-call-behavior':
+      return wrap(
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
+      );
+    case 'messaging':
+      return wrap(<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />);
+    case 'integrations':
+      return wrap(
+        <>
+          <circle cx={12} cy={12} r={3} />
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </>,
+      );
+    default:
+      return null;
+  }
+}
 
 const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; description: string }> = [
   { id: 'business', label: 'Business', description: 'Profile, policy, and promo details.' },
@@ -538,7 +583,8 @@ export function UserSettingsLive() {
 
   return (
     <UserLayout styles={userSettingsStyles} scripts={userSettingsScripts} scriptPrefix="user-settings-live">
-      <div className="app-shell">
+      <>
+      <div className="app-shell user-app-shell">
         <aside className="sidebar">
           <div className="sidebar-inner">
             <div className="brand">
@@ -557,16 +603,7 @@ export function UserSettingsLive() {
               <h3>{shop.name}</h3>
               <p>{shop.plan[0].toUpperCase() + shop.plan.slice(1)} plan · AI agent {shop.active ? 'active' : 'paused'} · Number {shop.phone_number}</p>
             </div>
-            <div className="nav-section">
-              <div className="nav-label">User Portal</div>
-              <div className="nav-list">
-                <a className="nav-item" href="/user"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={4} width={7} height={7} rx="1.5" /><rect x={14} y={4} width={7} height={4} rx="1.5" /><rect x={14} y={11} width={7} height={9} rx="1.5" /><rect x={3} y={14} width={7} height={6} rx="1.5" /></svg></div><span>Overview</span></a>
-                <a className="nav-item" href="/user/bookings"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span>Bookings</span></a>
-                <a className="nav-item" href="/user/calls"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span>Calls &amp; Transcripts</span></a>
-                <a className="nav-item active" href="/user/settings"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1Z" /></svg></div><span>Settings</span></a>
-                <a className="nav-item" href="/user/billing"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={14} rx={2} /><path d="M3 10h18" /><path d="M7 15h4" /></svg></div><span>Billing</span></a>
-              </div>
-            </div>
+            <UserPortalNav active="settings" />
             <div className="sidebar-spacer" />
           </div>
         </aside>
@@ -593,11 +630,17 @@ export function UserSettingsLive() {
                 type="button"
                 role="tab"
                 aria-selected={activeTab === tab.id}
+                title={tab.description}
                 className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => setActiveTab(tab.id)}
               >
-                <strong>{tab.label}</strong>
-                <span>{tab.description}</span>
+                <span className="tab-button-icon">
+                  <SettingsTabIcon tabId={tab.id} />
+                </span>
+                <span className="tab-button-body">
+                  <strong>{tab.label}</strong>
+                  <span className="tab-button-desc">{tab.description}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -1041,6 +1084,8 @@ export function UserSettingsLive() {
           </div>
         </main>
       </div>
+      <UserPortalMobileTabbar active="settings" />
+      </>
     </UserLayout>
   );
 }

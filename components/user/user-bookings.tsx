@@ -235,43 +235,7 @@ button,input,select,textarea{font:inherit}
   .sidebar-inner{min-height:auto}
   .sidebar-spacer{display:none}
   .brand span,.workspace{display:block}
-  .nav-section{
-    position:fixed;
-    z-index:100;
-    left:0;right:0;bottom:0;
-    margin:0;
-    padding:6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
-    background:rgba(255,255,255,.96);
-    backdrop-filter:blur(16px);
-    -webkit-backdrop-filter:blur(16px);
-    border-top:1px solid var(--border);
-    box-shadow:0 -10px 28px rgba(17,24,39,.07);
-  }
-  .nav-label{display:none !important}
-  .nav-list{
-    flex-direction:row;
-    flex-wrap:nowrap;
-    justify-content:space-between;
-    align-items:stretch;
-    gap:2px;
-  }
-  .nav-item{
-    flex:1 1 0;
-    min-width:0;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:3px;
-    padding:4px 2px 2px;
-    font-size:9px;
-    font-weight:650;
-    line-height:1.15;
-    text-align:center;
-    border-radius:12px;
-  }
-  .nav-item span{display:block !important}
-  .nav-icon{margin:0;width:30px;height:30px;border-radius:11px}
-  .nav-icon svg{width:15px;height:15px}
+  .user-app-shell .nav-section{display:none !important}
 }
 `,
 ];

@@ -46,6 +46,95 @@ a {
   background: rgba(139, 92, 246, 0.16);
 }
 
+/* /user portal: bottom tab bar on small screens (nav lives outside .app-shell to avoid overflow/backdrop clipping) */
+.user-mobile-tabbar {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .user-mobile-tabbar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+    box-sizing: border-box;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 1px;
+    padding: 6px 2px calc(6px + env(safe-area-inset-bottom, 0px));
+    margin: 0;
+    background: rgba(255, 255, 255, 0.97);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid #e5e7eb;
+    box-shadow: 0 -10px 28px rgba(17, 24, 39, 0.08);
+  }
+
+  .user-mobile-tabbar__link {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 3px 1px 2px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #4b5563;
+    font-size: 8px;
+    font-weight: 650;
+    line-height: 1.15;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .user-mobile-tabbar__link--active {
+    color: #5b21b6;
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+    box-shadow: none;
+  }
+
+  .user-mobile-tabbar__icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+  }
+
+  .user-mobile-tabbar__icon svg {
+    width: 14px;
+    height: 14px;
+    stroke: #6b7280;
+    stroke-width: 2;
+    fill: none;
+  }
+
+  .user-mobile-tabbar__link--active .user-mobile-tabbar__icon {
+    background: #8b5cf6;
+    border-color: transparent;
+  }
+
+  .user-mobile-tabbar__link--active .user-mobile-tabbar__icon svg {
+    stroke: #fff;
+  }
+
+  .user-mobile-tabbar__label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* Shared logo override: use uploaded raster logo everywhere */
 .mk-nav-logo-icon,
 .nav-logo-icon,

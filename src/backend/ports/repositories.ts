@@ -413,6 +413,7 @@ export interface BookingRecord {
 
 export interface BookingsRepository {
   findById(bookingId: string): Promise<BookingRecord | null>;
+  countByShop(shopId: string): Promise<number>;
   listByShop(
     shopId: string,
     params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },
