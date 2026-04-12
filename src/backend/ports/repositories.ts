@@ -186,7 +186,7 @@ export interface CallLogsRepository {
   }): Promise<void>;
   listByShop(
     shopId: string,
-    params?: { limit?: number; startedAfter?: Date; startedBefore?: Date },
+    params?: { limit?: number; offset?: number; startedAfter?: Date; startedBefore?: Date },
   ): Promise<
     Array<{
       provider: string;
@@ -206,6 +206,10 @@ export interface CallLogsRepository {
       outcome?: string;
     }>
   >;
+  countByShop(
+    shopId: string,
+    params?: { startedAfter?: Date; startedBefore?: Date },
+  ): Promise<number>;
   listRecent(params?: { limit?: number; startedAfter?: Date; startedBefore?: Date }): Promise<
     Array<{
       provider: string;

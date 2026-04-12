@@ -169,9 +169,18 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     }
   }
 
+  async countByShop(
+    shopId: string,
+    params?: { startedAfter?: Date; startedBefore?: Date },
+  ): Promise<number> {
+    return [...this.logsByCall.values()].filter(
+      (log) => log.shopId === shopId && matchesStartedRange(log, params),
+    ).length;
+  }
+
   async listByShop(
     shopId: string,
-    params?: { limit?: number; startedAfter?: Date; startedBefore?: Date },
+    params?: { limit?: number; offset?: number; startedAfter?: Date; startedBefore?: Date },
   ): Promise<
     Array<{
       provider: string;
@@ -192,10 +201,11 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     }>
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
+    const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     return [...this.logsByCall.values()]
       .filter((log) => log.shopId === shopId && matchesStartedRange(log, params))
       .sort((a, b) => (b.startedAt?.toISOString() ?? '').localeCompare(a.startedAt?.toISOString() ?? ''))
-      .slice(0, limit)
+      .slice(offset, offset + limit)
       .map((log) => ({
         ...log,
         startedAt: log.startedAt?.toISOString(),

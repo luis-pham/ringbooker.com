@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 
+import { AdminLayout } from '@/components/admin/admin-layout';
+import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { adminSidebarAddonStyles } from '@/components/admin/admin-sidebar-styles';
+import { adminCallsScripts, adminCallsStyles } from '@/components/admin/admin-calls';
+
 type HealthResponse = { ok: boolean };
 type ReadinessCheck = { key: string; ok: boolean };
 type ReadinessResponse = {
@@ -101,101 +106,136 @@ export function AdminSystemHealthLive() {
   const openJobs = (metrics?.jobs?.queued ?? 0) + (metrics?.jobs?.running ?? 0) + (metrics?.jobs?.leased ?? 0);
   const criticalApiSpikes = (metrics?.apiStatus?.status5xx ?? 0) + (metrics?.apiStatus?.status429 ?? 0);
 
+  async function signOut() {
+    await fetch('/api/backend/auth/logout', { method: 'POST' });
+    window.location.href = '/admin/login';
+  }
+
   return (
-    <main style={{ padding: 24, fontFamily: 'Mona Sans Variable, system-ui, sans-serif' }}>
-      <h1 style={{ marginTop: 0, marginBottom: 8 }}>System health</h1>
-      <p style={{ marginTop: 0, color: '#6b7280' }}>
-        Live status from `/health`, `/readiness`, `/runtime`, and `/admin/system-health/metrics`.
-      </p>
-      {error ? <p style={{ color: '#dc2626' }}>{error}</p> : null}
+    <AdminLayout
+      styles={[...adminCallsStyles, ...adminSidebarAddonStyles]}
+      scripts={adminCallsScripts}
+      scriptPrefix="admin-system-health-live"
+      bodyClass="app-body"
+    >
+      <div className="app-shell">
+        <AdminSidebar />
+        <main className="main">
+          <div className="topbar">
+            <div className="page-title">
+              <h1>System health</h1>
+              <p>Live status from `/health`, `/readiness`, `/runtime`, and `/admin/system-health/metrics`.</p>
+            </div>
+            <div className="top-actions">
+              <button type="button" className="btn ghost" onClick={() => void signOut()}>
+                Sign out
+              </button>
+            </div>
+          </div>
 
-      <section style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', marginBottom: 16 }}>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>Health</strong>
-          <p style={{ margin: '8px 0 0' }}>{health ? (health.ok ? 'OK' : 'NOT OK') : 'Loading...'}</p>
-        </article>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>Readiness</strong>
-          <p style={{ margin: '8px 0 0' }}>
-            {readiness ? (readiness.ok ? 'READY' : `NOT READY (${failedChecks} failed checks)`) : 'Loading...'}
-          </p>
-        </article>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>Runtime</strong>
-          <p style={{ margin: '8px 0 0' }}>
-            {runtime ? `${runtime.mode ?? 'unknown'} / ${runtime.commProvider ?? 'unknown'} / ${runtime.agentRuntimeMode ?? 'unknown'}` : 'Loading...'}
-          </p>
-        </article>
-      </section>
+          {error ? <div className="note" style={{ marginBottom: 18 }}>{error}</div> : null}
 
-      <section style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', marginBottom: 16 }}>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>Realtime latency</strong>
-          <p style={{ margin: '8px 0 0' }}>
-            {metrics?.realtime
-              ? `${metrics.realtime.responseLatencyMs.avg} ms avg (${metrics.realtime.responseLatencyMs.count} samples)`
-              : 'Loading...'}
-          </p>
-        </article>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>Audio queue/jitter</strong>
-          <p style={{ margin: '8px 0 0' }}>
-            {metrics?.realtime
-              ? `queue ${metrics.realtime.queueLatencyMs.avg} ms | jitter ${metrics.realtime.jitterMs.avg} ms`
-              : 'Loading...'}
-          </p>
-        </article>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>Toolcalls</strong>
-          <p style={{ margin: '8px 0 0' }}>
-            {metrics?.toolcalls
-              ? `${metrics.toolcalls.total} total | ${metrics.toolcalls.durationMs.avg} ms avg | queue failed ${metrics.toolcalls.queueFailed}`
-              : 'Loading...'}
-          </p>
-        </article>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>Webhooks</strong>
-          <p style={{ margin: '8px 0 0' }}>
-            {metrics?.webhooks
-              ? `${metrics.webhooks.processed}/${metrics.webhooks.total} processed | failures ${webhookFailures}`
-              : 'Loading...'}
-          </p>
-        </article>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>Job queue</strong>
-          <p style={{ margin: '8px 0 0' }}>
-            {metrics?.jobs
-              ? `open ${openJobs} | dead-letter ${metrics.jobs.deadLetter} | failed ${metrics.jobs.failed}`
-              : 'Loading...'}
-          </p>
-        </article>
-        <article style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-          <strong>API alerts proxy</strong>
-          <p style={{ margin: '8px 0 0' }}>
-            {metrics?.apiStatus
-              ? `401:${metrics.apiStatus.status401} 403:${metrics.apiStatus.status403} 429:${metrics.apiStatus.status429} 5xx:${metrics.apiStatus.status5xx}`
-              : 'Loading...'}
-          </p>
-          <p style={{ margin: '6px 0 0', color: criticalApiSpikes > 0 ? '#b91c1c' : '#6b7280' }}>
-            {criticalApiSpikes > 0 ? 'Investigate spikes now.' : 'No critical spikes in current in-memory counters.'}
-          </p>
-        </article>
-      </section>
+          <section className="grid grid-3">
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>Health</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {health ? (health.ok ? 'OK' : 'NOT OK') : 'Loading...'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>Readiness</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {readiness ? (readiness.ok ? 'READY' : `NOT READY (${failedChecks} failed checks)`) : 'Loading...'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>Runtime</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {runtime
+                  ? `${runtime.mode ?? 'unknown'} / ${runtime.commProvider ?? 'unknown'} / ${runtime.agentRuntimeMode ?? 'unknown'}`
+                  : 'Loading...'}
+              </p>
+            </div>
+          </section>
 
-      <section style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
-        <h2 style={{ marginTop: 0 }}>Readiness checks</h2>
-        {!readiness?.checks?.length ? (
-          <p style={{ marginBottom: 0, color: '#6b7280' }}>No checks returned.</p>
-        ) : (
-          <ul style={{ marginBottom: 0 }}>
-            {readiness.checks.map((check) => (
-              <li key={check.key}>
-                {check.key}: <strong style={{ color: check.ok ? '#15803d' : '#b91c1c' }}>{check.ok ? 'OK' : 'FAIL'}</strong>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+          <section className="grid grid-3" style={{ marginTop: 18 }}>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>Realtime latency</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {metrics?.realtime
+                  ? `${metrics.realtime.responseLatencyMs.avg} ms avg (${metrics.realtime.responseLatencyMs.count} samples)`
+                  : 'Loading...'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>Audio queue / jitter</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {metrics?.realtime
+                  ? `queue ${metrics.realtime.queueLatencyMs.avg} ms | jitter ${metrics.realtime.jitterMs.avg} ms`
+                  : 'Loading...'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>Toolcalls</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {metrics?.toolcalls
+                  ? `${metrics.toolcalls.total} total | ${metrics.toolcalls.durationMs.avg} ms avg | queue failed ${metrics.toolcalls.queueFailed}`
+                  : 'Loading...'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>Webhooks</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {metrics?.webhooks
+                  ? `${metrics.webhooks.processed}/${metrics.webhooks.total} processed | failures ${webhookFailures}`
+                  : 'Loading...'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>Job queue</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {metrics?.jobs
+                  ? `open ${openJobs} | dead-letter ${metrics.jobs.deadLetter} | failed ${metrics.jobs.failed}`
+                  : 'Loading...'}
+              </p>
+            </div>
+            <div className="card">
+              <h3 style={{ margin: '0 0 8px' }}>API alerts proxy</h3>
+              <p className="sub" style={{ margin: 0 }}>
+                {metrics?.apiStatus
+                  ? `401:${metrics.apiStatus.status401} 403:${metrics.apiStatus.status403} 429:${metrics.apiStatus.status429} 5xx:${metrics.apiStatus.status5xx}`
+                  : 'Loading...'}
+              </p>
+              <p className="sub" style={{ margin: '8px 0 0', color: criticalApiSpikes > 0 ? 'var(--red)' : undefined }}>
+                {criticalApiSpikes > 0 ? 'Investigate spikes now.' : 'No critical spikes in current in-memory counters.'}
+              </p>
+            </div>
+          </section>
+
+          <section className="card" style={{ marginTop: 18 }}>
+            <div className="panel-head">
+              <div>
+                <h3>Readiness checks</h3>
+                <p className="sub">Individual dependency gates.</p>
+              </div>
+            </div>
+            {!readiness?.checks?.length ? (
+              <p className="sub" style={{ margin: 0 }}>
+                No checks returned.
+              </p>
+            ) : (
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {readiness.checks.map((check) => (
+                  <li key={check.key} style={{ marginBottom: 8 }}>
+                    {check.key}:{' '}
+                    <span className={check.ok ? 'tag green' : 'tag red'}>{check.ok ? 'OK' : 'FAIL'}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </main>
+      </div>
+    </AdminLayout>
   );
 }

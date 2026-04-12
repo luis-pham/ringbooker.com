@@ -342,6 +342,10 @@ const adminCallsListQuerySchema = z.object({
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
+const adminShopDetailQuerySchema = z.object({
+  callsPage: z.coerce.number().int().min(1).max(10_000).optional(),
+});
+
 const adminLeadStatusUpdateSchema = z.object({
   status: contactRequestStatusSchema,
   notes: z.string().max(2000).nullable().optional(),
@@ -3188,10 +3192,35 @@ export function createBackendApp(deps: {
     }
     const shopId = c.req.param('id');
     if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const qParsed = adminShopDetailQuerySchema.safeParse({ callsPage: c.req.query('callsPage') });
+    if (!qParsed.success) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+    const callsPage = qParsed.data.callsPage ?? 1;
+    const callsPageSize = 20;
+    const callsOffset = (callsPage - 1) * callsPageSize;
+
     const shop = await deps.shopsRepository.findById(shopId);
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    const recentCalls = deps.callLogsRepository ? await deps.callLogsRepository.listByShop(shopId, { limit: 20 }) : [];
-    return c.json({ ok: true, shop, recentCalls });
+
+    let recentCalls: Awaited<ReturnType<NonNullable<typeof deps.callLogsRepository>['listByShop']>> = [];
+    let callsTotal = 0;
+    if (deps.callLogsRepository) {
+      [recentCalls, callsTotal] = await Promise.all([
+        deps.callLogsRepository.listByShop(shopId, {
+          limit: callsPageSize,
+          offset: callsOffset,
+        }),
+        deps.callLogsRepository.countByShop(shopId),
+      ]);
+    }
+
+    return c.json({
+      ok: true,
+      shop,
+      recentCalls,
+      callsPagination: { page: callsPage, pageSize: callsPageSize, total: callsTotal },
+    });
   });
 
   app.put(path('/admin/shops/:id/plan'), async (c) => {

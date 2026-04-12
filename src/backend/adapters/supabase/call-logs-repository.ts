@@ -181,9 +181,26 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }
   }
 
+  async countByShop(
+    shopId: string,
+    params?: { startedAfter?: Date; startedBefore?: Date },
+  ): Promise<number> {
+    let q = this.supabase
+      .from('call_logs')
+      .select('provider_call_id', { count: 'exact', head: true })
+      .eq('shop_id', shopId);
+    if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
+    if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+    const { count, error } = await q;
+    if (error) {
+      throw new Error(`call_logs_count_by_shop_failed:${error.message}`);
+    }
+    return count ?? 0;
+  }
+
   async listByShop(
     shopId: string,
-    params?: { limit?: number; startedAfter?: Date; startedBefore?: Date },
+    params?: { limit?: number; offset?: number; startedAfter?: Date; startedBefore?: Date },
   ): Promise<
     Array<{
       provider: string;
@@ -204,6 +221,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }>
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
+    const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     let q = this.supabase
       .from('call_logs')
       .select(
@@ -212,7 +230,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       .eq('shop_id', shopId);
     if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
     if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
-    const { data, error } = await q.order('started_at', { ascending: false }).limit(limit);
+    const { data, error } = await q.order('started_at', { ascending: false }).range(offset, offset + limit - 1);
 
     if (error) {
       throw new Error(`call_logs_list_by_shop_failed:${error.message}`);
