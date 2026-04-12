@@ -3,14 +3,23 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 
-import { MARKETING_DEMO_NAV_ITEMS } from '@/lib/marketing-demo-nav';
-import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
-
 import { useNavState } from '@/components/marketing/nav-actions-client';
 
 type MarketingMobileNavProps = {
   active?: 'demo' | 'pricing' | 'how-it-works' | 'contact' | 'industry';
 };
+
+const PRIMARY_NAV: {
+  href: string;
+  label: string;
+  active?: MarketingMobileNavProps['active'];
+}[] = [
+  { href: '/#features', label: 'Features' },
+  { href: '/#industries', label: 'Industries', active: 'industry' },
+  { href: '/pricing', label: 'Pricing', active: 'pricing' },
+  { href: '/how-it-works', label: 'How It Works', active: 'how-it-works' },
+  { href: '/contact', label: 'Contact', active: 'contact' },
+];
 
 export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
   const [open, setOpen] = useState(false);
@@ -70,86 +79,45 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
             aria-modal="true"
             aria-labelledby={titleId}
           >
-            <div className="mk-drawer-head">
-              <span id={titleId} className="mk-drawer-title">
-                Menu
-              </span>
+            <header className="mk-drawer-head">
+              <div className="mk-drawer-head-text">
+                <span className="mk-drawer-eyebrow">RingBooker</span>
+                <span id={titleId} className="mk-drawer-title">
+                  Menu
+                </span>
+              </div>
               <button
                 type="button"
                 className="mk-drawer-close"
                 aria-label="Close menu"
                 onClick={() => setOpen(false)}
               >
-                ×
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+                  <path
+                    d="M6 6l12 12M18 6L6 18"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </button>
-            </div>
+            </header>
 
-            <nav className="mk-drawer-scroll" aria-label="Marketing">
-              <a href="/#features" className="mk-drawer-link" onClick={() => setOpen(false)}>
-                Features
-              </a>
-
-              <div className="mk-drawer-subhead">Industries</div>
-              <a
-                href="/#industries"
-                className={`mk-drawer-link mk-drawer-indent${active === 'industry' ? ' active' : ''}`}
-                onClick={() => setOpen(false)}
-              >
-                Overview
-              </a>
-              {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="mk-drawer-link mk-drawer-indent"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="mk-drawer-ico">{item.icon}</span>
-                  {item.label}
-                </a>
-              ))}
-
-              <div className="mk-drawer-subhead">Live Demo</div>
-              <a
-                href="/demo"
-                className={`mk-drawer-link mk-drawer-indent${active === 'demo' ? ' active' : ''}`}
-                onClick={() => setOpen(false)}
-              >
-                Live Demo hub
-              </a>
-              {MARKETING_DEMO_NAV_ITEMS.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className="mk-drawer-link mk-drawer-indent"
-                  onClick={() => setOpen(false)}
-                >
-                  <span className="mk-drawer-ico">{item.icon}</span>
-                  {item.label}
-                </a>
-              ))}
-
-              <a
-                href="/pricing"
-                className={`mk-drawer-link${active === 'pricing' ? ' active' : ''}`}
-                onClick={() => setOpen(false)}
-              >
-                Pricing
-              </a>
-              <a
-                href="/how-it-works"
-                className={`mk-drawer-link${active === 'how-it-works' ? ' active' : ''}`}
-                onClick={() => setOpen(false)}
-              >
-                How It Works
-              </a>
-              <a
-                href="/contact"
-                className={`mk-drawer-link${active === 'contact' ? ' active' : ''}`}
-                onClick={() => setOpen(false)}
-              >
-                Contact
-              </a>
+            <nav className="mk-drawer-nav" aria-label="Primary">
+              {PRIMARY_NAV.map((item) => {
+                const isActive = item.active !== undefined && active === item.active;
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className={`mk-drawer-navlink${isActive ? ' active' : ''}`}
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="mk-drawer-navlink-label">{item.label}</span>
+                    <span className="mk-drawer-navlink-chevron" aria-hidden="true" />
+                  </a>
+                );
+              })}
             </nav>
 
             <div className="mk-drawer-foot">
