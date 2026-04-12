@@ -82,9 +82,9 @@ export function MarketingChromeStyles() {
 .mk-nav-burger{display:none;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;border:1px solid #E5E7EB;background:#fff;color:#374151;cursor:pointer;transition:border-color .15s,background .15s,transform .12s}
 .mk-nav-burger:hover{border-color:#D1D5DB;background:#F9FAFB}
 .mk-nav-burger:active{transform:scale(.97)}
-.mk-drawer-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);backdrop-filter:blur(6px);z-index:1050;animation:mkDrFade .2s ease}
+.mk-drawer-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);backdrop-filter:blur(6px);z-index:5000;animation:mkDrFade .2s ease}
 @keyframes mkDrFade{from{opacity:0}to{opacity:1}}
-.mk-drawer-panel{position:fixed;inset:0;width:100%;max-width:100%;min-height:100dvh;background:#fff;z-index:1060;display:flex;flex-direction:column;animation:mkDrReveal .28s cubic-bezier(.22,1,.36,1)}
+.mk-drawer-panel{position:fixed;inset:0;width:100%;max-width:100%;min-height:100dvh;background:#fff;z-index:5010;display:flex;flex-direction:column;animation:mkDrReveal .28s cubic-bezier(.22,1,.36,1)}
 @keyframes mkDrReveal{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 .mk-drawer-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(14px + env(safe-area-inset-top,0)) calc(20px + env(safe-area-inset-right,0)) 16px calc(20px + env(safe-area-inset-left,0));border-bottom:1px solid #EEF0F3;background:linear-gradient(180deg,#fff 0%,#FAFBFC 100%)}
 .mk-drawer-head-text{display:flex;flex-direction:column;gap:2px;min-width:0}
