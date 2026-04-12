@@ -128,6 +128,14 @@ type SettingsTabId =
   | 'messaging'
   | 'integrations';
 
+/** Logos under /public/images — used in Calendar integrations cards. */
+const CALENDAR_PROVIDER_LOGOS: Record<string, string> = {
+  vagaro: '/images/vagaro.png',
+  square_appointments: '/images/square.png',
+  mindbody: '/images/mindbody.webp',
+  booksy: '/images/booksy.png',
+};
+
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<(typeof DAY_ORDER)[number], string> = {
   mon: 'Monday',
@@ -335,7 +343,7 @@ export function UserSettingsLive() {
   const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(null);
   const [form, setForm] = useState<SettingsState | null>(null);
   const [status, setStatus] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [savingSection, setSavingSection] = useState<string | null>(null);
   const [cancelPreset, setCancelPreset] = useState<string>('custom');
   const [promoPreset, setPromoPreset] = useState<string>('custom');
   const [greetingPreset, setGreetingPreset] = useState<string>('custom');
@@ -479,7 +487,6 @@ export function UserSettingsLive() {
     );
   }
 
-  const currentShop = shop;
   const currentCapabilities = capabilities;
   const currentForm = form;
 
@@ -516,35 +523,14 @@ export function UserSettingsLive() {
     setHourPreset('custom');
   }
 
-  async function onSave(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSaving(true);
+  async function commitSettingsPatch(sectionId: string, patch: Record<string, unknown>) {
+    setSavingSection(sectionId);
     setStatus(null);
-    const payload = {
-      user_name: currentForm.user_name,
-      user_phone: currentForm.user_phone,
-      backup_phone: currentForm.backup_phone || null,
-      address: currentForm.address || null,
-      timezone: currentForm.timezone,
-      booking_url: currentForm.booking_url || null,
-      cancel_policy: currentForm.cancel_policy,
-      promotions: currentForm.promotions || null,
-      services: currentForm.services,
-      hours: currentForm.hours,
-      ai_voice: currentForm.ai_voice || null,
-      ai_welcome_message: currentForm.ai_welcome_message || null,
-      ai_custom_instructions: currentForm.ai_custom_instructions || null,
-      allow_transfers: currentForm.allow_transfers,
-      allow_callbacks: currentForm.allow_callbacks,
-      send_reminder_sms: currentForm.send_reminder_sms,
-      send_review_request_sms: currentForm.send_review_request_sms,
-      send_missed_call_followup_sms: currentForm.send_missed_call_followup_sms,
-    };
     try {
       const response = await fetch('/api/backend/user/settings', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(patch),
       });
       const body = (await response.json()) as UserSettingsResponse;
       if (!response.ok || !body.ok || !body.shop || !body.capabilities) {
@@ -555,14 +541,25 @@ export function UserSettingsLive() {
         setStatus(body.error ?? 'save_failed');
         return;
       }
-      setShop(body.shop);
+      const nextShop = body.shop;
+      setShop(nextShop);
       setCapabilities(body.capabilities);
-      setForm(buildInitialState(body.shop));
+      const nextState = buildInitialState(nextShop);
+      setForm(nextState);
+      setCancelPreset(getPresetMatch(nextState.cancel_policy, CANCEL_POLICY_PRESETS));
+      setPromoPreset(getPresetMatch(nextState.promotions, PROMOTION_PRESETS));
+      setGreetingPreset(
+        getPresetMatch(
+          nextState.ai_welcome_message,
+          AI_GREETING_PRESETS.map((item) => normalizeGreeting(item, nextShop.name)),
+        ),
+      );
+      setHourPreset(getHourPresetId(nextState.hours));
       setStatus('saved');
     } catch {
       setStatus('network_error');
     } finally {
-      setSaving(false);
+      setSavingSection(null);
     }
   }
 
@@ -617,9 +614,6 @@ export function UserSettingsLive() {
             <div className="top-actions">
               <span className="plan-chip">{shop.plan[0].toUpperCase() + shop.plan.slice(1)} plan</span>
               <a className="btn" href="/user/billing">See upgrade options</a>
-              <button className="btn purple" type="submit" form="user-settings-form" disabled={saving}>
-                {saving ? 'Saving...' : 'Save settings'}
-              </button>
             </div>
           </div>
 
@@ -645,7 +639,7 @@ export function UserSettingsLive() {
             ))}
           </div>
 
-          <form id="user-settings-form" onSubmit={onSave} className="section-stack">
+          <div className="section-stack">
             {activeTab === 'integrations' ? (
             <section className="card">
               <div className="panel-head">
@@ -663,79 +657,110 @@ export function UserSettingsLive() {
                 </button>
               </div>
 
-              <div className="option-grid">
-                {calendarProviders.map((provider) => (
-                  <div key={provider.id} className={`option-card ${provider.connected ? 'active' : ''}`}>
-                    <span className="option-title">{provider.label}</span>
-                    <span className="option-copy">
-                      {provider.connected
-                        ? provider.configured
-                          ? 'Connected and configured for live booking.'
-                          : 'Connected. Finish setup to choose location/service.'
-                        : provider.implemented
-                          ? 'Ready to connect.'
-                          : 'Planned integration.'}
-                    </span>
-                  </div>
-                ))}
+              <div className="calendar-int-grid">
+                {calendarProviders.map((provider) => {
+                  const isSquare = provider.id === 'square_appointments';
+                  const logoSrc = CALENDAR_PROVIDER_LOGOS[provider.id] ?? '/images/calendar.png';
+                  const cardClass = [
+                    'calendar-int-card',
+                    isSquare && provider.connected ? 'connected-active' : '',
+                    !isSquare ? 'soon' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
+
+                  const statusCopy = isSquare
+                    ? provider.connected
+                      ? provider.configured
+                        ? 'Connected and configured — live availability and booking to Square.'
+                        : 'Connected. Pick location and service below, then save.'
+                      : 'OAuth to Square, then choose location and service for the AI.'
+                    : 'Integration is on the roadmap.';
+
+                  return (
+                    <div key={provider.id} className={cardClass}>
+                      <div className="calendar-int-head">
+                        <div className="calendar-int-logo-wrap">
+                          <img
+                            src={logoSrc}
+                            alt=""
+                            width={52}
+                            height={52}
+                            loading="lazy"
+                            aria-hidden
+                          />
+                        </div>
+                        <span className="calendar-int-name">{provider.label}</span>
+                      </div>
+                      <p className="calendar-int-desc">{statusCopy}</p>
+                      <div className="calendar-int-actions">
+                        {isSquare ? (
+                          <>
+                            <button
+                              type="button"
+                              className="btn purple"
+                              onClick={() => {
+                                window.location.href =
+                                  '/api/backend/user/calendar/providers/square_appointments/connect/start';
+                              }}
+                            >
+                              {provider.connected ? 'Reconnect' : 'Connect'}
+                            </button>
+                            {provider.connected ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  onClick={async () => {
+                                    try {
+                                      const response = await fetch(
+                                        '/api/backend/user/calendar/providers/square_appointments/disconnect',
+                                        { method: 'POST' },
+                                      );
+                                      const body = (await response.json()) as { ok: boolean; error?: string };
+                                      if (!response.ok || !body.ok) {
+                                        setCalendarStatus(body.error ?? 'disconnect_failed');
+                                        return;
+                                      }
+                                      setCalendarStatus('Square disconnected.');
+                                      setSquareOptions(null);
+                                      await loadCalendarProviders();
+                                    } catch {
+                                      setCalendarStatus('disconnect_failed');
+                                    }
+                                  }}
+                                >
+                                  Disconnect
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  onClick={() => void loadSquareOptions()}
+                                  disabled={loadingSquareOptions}
+                                >
+                                  {loadingSquareOptions ? 'Loading…' : 'Reload options'}
+                                </button>
+                              </>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="calendar-int-badge" aria-label="Coming soon">
+                            Soon
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div className="card-section">
+              {squareProvider?.connected ? (
+              <div className="card-section" style={{ marginTop: 18 }}>
                 <div className="hint-row">
-                  <strong className="option-title">Square Appointments</strong>
-                  <span className="hint-copy">
-                    {squareProvider?.connected ? 'Step 2: confirm booking targets.' : 'Step 1: connect your Square account.'}
-                  </span>
+                  <strong className="option-title">Square booking targets</strong>
+                  <span className="hint-copy">Choose the location and service the AI should use.</span>
                 </div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-                  <button
-                    type="button"
-                    className="btn purple"
-                    onClick={() => {
-                      window.location.href = '/api/backend/user/calendar/providers/square_appointments/connect/start';
-                    }}
-                  >
-                    {squareProvider?.connected ? 'Reconnect Square' : 'Connect Square'}
-                  </button>
-                  {squareProvider?.connected ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/backend/user/calendar/providers/square_appointments/disconnect', {
-                            method: 'POST',
-                          });
-                          const body = (await response.json()) as { ok: boolean; error?: string };
-                          if (!response.ok || !body.ok) {
-                            setCalendarStatus(body.error ?? 'disconnect_failed');
-                            return;
-                          }
-                          setCalendarStatus('Square disconnected.');
-                          setSquareOptions(null);
-                          await loadCalendarProviders();
-                        } catch {
-                          setCalendarStatus('disconnect_failed');
-                        }
-                      }}
-                    >
-                      Disconnect
-                    </button>
-                  ) : null}
-                  {squareProvider?.connected ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => void loadSquareOptions()}
-                      disabled={loadingSquareOptions}
-                    >
-                      {loadingSquareOptions ? 'Loading options...' : 'Reload locations/services'}
-                    </button>
-                  ) : null}
-                </div>
-
-                {squareProvider?.connected ? (
-                  <div className="form-grid" style={{ marginTop: 16 }}>
+                  <div className="form-grid" style={{ marginTop: 12 }}>
                     <div className="field">
                       <label>Square location</label>
                       <select value={squareLocationId} onChange={(event) => setSquareLocationId(event.target.value)}>
@@ -809,12 +834,8 @@ export function UserSettingsLive() {
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="note" style={{ marginTop: 14 }}>
-                    After connecting, we will show your real Square locations and service variations here.
-                  </div>
-                )}
               </div>
+              ) : null}
 
               {calendarStatus ? (
                 <div className="note" style={{ marginTop: 14 }}>{calendarStatus}</div>
@@ -824,7 +845,20 @@ export function UserSettingsLive() {
 
             {activeTab === 'business' ? (
             <section className="grid grid-2">
-              <div className="card">
+              <form
+                className="card"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('business-profile', {
+                    user_name: form.user_name,
+                    user_phone: form.user_phone,
+                    backup_phone: form.backup_phone || null,
+                    address: form.address || null,
+                    timezone: form.timezone,
+                    booking_url: form.booking_url.trim() ? form.booking_url.trim() : null,
+                  });
+                }}
+              >
                 <div className="panel-head"><div><h3>Business profile</h3><p className="sub">Keep core shop details accurate so the AI stays grounded in real data.</p></div></div>
                 <div className="form-grid">
                   <div className="field"><label>Shop display name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} /></div>
@@ -834,9 +868,23 @@ export function UserSettingsLive() {
                   <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={form.address} onChange={(event) => patchState('address', event.target.value)} /></div>
                   <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={form.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
                 </div>
-              </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                    {savingSection === 'business-profile' ? 'Saving...' : 'Save business profile'}
+                  </button>
+                </div>
+              </form>
 
-              <div className="card">
+              <form
+                className="card"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('business-policies', {
+                    cancel_policy: form.cancel_policy,
+                    promotions: form.promotions || null,
+                  });
+                }}
+              >
                 <div className="panel-head"><div><h3>Policies and promos</h3><p className="sub">Use presets first so callers hear clean, consistent rules without extra typing.</p></div></div>
                 <div className="card-section">
                   <div>
@@ -883,13 +931,24 @@ export function UserSettingsLive() {
                     </div>
                   </div>
                 </div>
-              </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                    {savingSection === 'business-policies' ? 'Saving...' : 'Save policies & promos'}
+                  </button>
+                </div>
+              </form>
             </section>
             ) : null}
 
             {activeTab === 'services-hours' ? (
             <section className="grid grid-2">
-              <div className="card">
+              <form
+                className="card"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('services', { services: form.services });
+                }}
+              >
                 <div className="panel-head"><div><h3>Services</h3><p className="sub">Tap to include common services. Duration and price stay editable in a lightweight way.</p></div></div>
                 <div className="services-grid">
                   {serviceChoices.map((service) => (
@@ -924,9 +983,20 @@ export function UserSettingsLive() {
                 ) : (
                   <div className="note" style={{ marginTop: 16 }}>Pick at least one service so availability checks and voice bookings stay consistent.</div>
                 )}
-              </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                    {savingSection === 'services' ? 'Saving...' : 'Save services'}
+                  </button>
+                </div>
+              </form>
 
-              <div className="card">
+              <form
+                className="card"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('hours', { hours: form.hours });
+                }}
+              >
                 <div className="panel-head"><div><h3>Business hours</h3><p className="sub">Start from a schedule template, then fine-tune only the days that differ.</p></div></div>
                 <div className="preset-pills" style={{ marginBottom: 14 }}>
                   {HOURS_PRESETS.map((preset) => (
@@ -963,13 +1033,27 @@ export function UserSettingsLive() {
                     );
                   })}
                 </div>
-              </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                    {savingSection === 'hours' ? 'Saving...' : 'Save hours'}
+                  </button>
+                </div>
+              </form>
             </section>
             ) : null}
 
             {activeTab === 'ai-call-behavior' ? (
             <section className="grid grid-2">
-              <div className="card">
+              <form
+                className="card"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('call-handling', {
+                    allow_transfers: form.allow_transfers,
+                    allow_callbacks: form.allow_callbacks,
+                  });
+                }}
+              >
                 <div className="panel-head"><div><h3>Call handling</h3><p className="sub">Starter plan includes practical routing controls for day-to-day salon operations.</p></div></div>
                 <div className="switch-list">
                   <div className="switch-row">
@@ -981,13 +1065,28 @@ export function UserSettingsLive() {
                     <div className="switch-stack"><button type="button" className={`switch ${form.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !form.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>
                   </div>
                 </div>
-              </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                    {savingSection === 'call-handling' ? 'Saving...' : 'Save call handling'}
+                  </button>
+                </div>
+              </form>
             </section>
             ) : null}
 
             {activeTab === 'messaging' ? (
             <section className="grid grid-2">
-              <div className="card">
+              <form
+                className="card"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('messaging', {
+                    send_reminder_sms: form.send_reminder_sms,
+                    send_review_request_sms: form.send_review_request_sms,
+                    send_missed_call_followup_sms: form.send_missed_call_followup_sms,
+                  });
+                }}
+              >
                 <div className="panel-head"><div><h3>SMS automations</h3><p className="sub">Choose which outbound messages RingBooker sends after calls and bookings.</p></div></div>
                 <div className="switch-list">
                   <div className="switch-row">
@@ -1011,7 +1110,12 @@ export function UserSettingsLive() {
                     </div>
                   </div>
                 </div>
-              </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                    {savingSection === 'messaging' ? 'Saving...' : 'Save messaging'}
+                  </button>
+                </div>
+              </form>
 
               <div className="card">
                 <div className="panel-head"><div><h3>Messaging notes</h3><p className="sub">Keep your outbound communication intentional and aligned with your plan.</p></div></div>
@@ -1024,7 +1128,17 @@ export function UserSettingsLive() {
 
             {activeTab === 'ai-call-behavior' ? (
             <section className="grid grid-2">
-              <div className="card">
+              <form
+                className="card"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('ai-voice', {
+                    ai_voice: form.ai_voice || null,
+                    ai_welcome_message: form.ai_welcome_message.trim() ? form.ai_welcome_message : null,
+                    ai_custom_instructions: form.ai_custom_instructions.trim() ? form.ai_custom_instructions : null,
+                  });
+                }}
+              >
                 <div className="panel-head"><div><h3>AI tone and voice</h3><p className="sub">These controls unlock by plan so the shop only sees the level of customization it can really use.</p></div></div>
                 <div className="card-section">
                   <div className="field">
@@ -1072,15 +1186,20 @@ export function UserSettingsLive() {
                     {renderLockCopy('edit_ai_custom_instructions')}
                   </div>
                 </div>
-              </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                    {savingSection === 'ai-voice' ? 'Saving...' : 'Save AI voice & greeting'}
+                  </button>
+                </div>
+              </form>
             </section>
             ) : null}
 
-          </form>
+          </div>
 
           <div className="footer-inline">
-            <span>Settings are plan-aware in both UI and API. No hidden toggles can bypass the current shop subscription.</span>
-            <span>{status === 'saved' ? 'Saved just now' : status ? status : 'Changes apply on the next call flow immediately.'}</span>
+            <span>Settings are plan-aware in both UI and API. Save each card separately; no hidden toggles can bypass the current shop subscription.</span>
+            <span>{status === 'saved' ? 'Saved just now' : status ? status : 'After you save, changes apply on the next call flow immediately.'}</span>
           </div>
         </main>
       </div>

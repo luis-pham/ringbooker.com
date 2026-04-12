@@ -2633,7 +2633,7 @@ export function createBackendApp(deps: {
 
     const squareCredentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
     const providers = (Object.keys(CALENDAR_PROVIDER_CATALOG) as Array<keyof typeof CALENDAR_PROVIDER_CATALOG>)
-      .filter((id) => id !== 'manual')
+      .filter((id) => id !== 'manual' && id !== 'google_calendar')
       .map((id) => {
         const meta = CALENDAR_PROVIDER_CATALOG[id];
         if (id === 'square_appointments') {

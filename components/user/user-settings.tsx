@@ -202,8 +202,41 @@ button,input,select,textarea{font:inherit}
 .field textarea{min-height:108px;resize:vertical}
 
 .section-stack{display:grid;gap:18px}
+.settings-save-footer{
+  display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px;padding-top:16px;
+  border-top:1px solid rgba(15,23,42,.08);flex-wrap:wrap;
+}
 .card-section{display:grid;gap:16px}
 .option-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.calendar-int-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:14px;
+}
+.calendar-int-card{
+  border:1px solid var(--border);border-radius:18px;padding:16px;background:#fff;
+  display:flex;flex-direction:column;gap:10px;min-width:0;transition:.18s ease;
+}
+.calendar-int-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-soft);border-color:#d8ccff}
+.calendar-int-card.connected-active{
+  border-color:rgba(139,92,246,.55);
+  background:linear-gradient(180deg,#faf7ff 0%,#fff 100%);
+  box-shadow:0 0 0 4px rgba(139,92,246,.08);
+}
+.calendar-int-card.soon{background:#fafafa}
+.calendar-int-head{display:flex;align-items:center;gap:12px;min-width:0}
+.calendar-int-logo-wrap{
+  width:52px;height:52px;border-radius:14px;border:1px solid var(--border);
+  background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;
+}
+.calendar-int-logo-wrap img{width:100%;height:100%;object-fit:contain;padding:7px}
+.calendar-int-name{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
+.calendar-int-desc{font-size:12px;color:var(--text-gray);line-height:1.55;margin:0;flex:1}
+.calendar-int-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px}
+.calendar-int-badge{
+  display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
+  font-size:11px;font-weight:700;background:#f3f4f6;color:#6b7280;border:1px solid var(--border);
+}
 .option-card{
   border:1px solid var(--border);border-radius:18px;padding:16px;background:#fff;transition:.18s ease;
   cursor:pointer;display:grid;gap:6px;min-width:0;
@@ -321,7 +354,7 @@ button,input,select,textarea{font:inherit}
 }
 @media (max-width:860px){
   .main{padding:18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
-  .grid-2,.grid-3,.grid-4,.form-grid,.option-grid,.services-grid,.service-controls{grid-template-columns:1fr}
+  .grid-2,.grid-3,.grid-4,.form-grid,.option-grid,.calendar-int-grid,.services-grid,.service-controls{grid-template-columns:1fr}
   .tab-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   .tab-button{flex-direction:column;align-items:center;text-align:center;padding:12px 8px;gap:8px}
   .tab-button-icon{width:40px;height:40px;border-radius:12px}
