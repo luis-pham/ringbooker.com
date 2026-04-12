@@ -129,8 +129,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-card h3{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px;text-align:center}
 	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}
 	.compare-section{padding:88px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
-	.compare-grid-scroll{margin-top:42px;width:100%;max-width:100%}
-	.compare-grid{display:grid;gap:0;margin-top:0;border:1px solid #E5E7EB;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 14px 38px rgba(17,24,39,.05)}
+	.compare-grid{display:grid;gap:0;margin-top:42px;border:1px solid #E5E7EB;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 14px 38px rgba(17,24,39,.05)}
 	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #EEF2F7}
 	.compare-row:last-child{border-bottom:none}
 	.compare-cell{padding:18px 22px;background:#fff}
@@ -258,8 +257,10 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .deep-wrap{padding:0 48px;max-width:1200px;margin:0 auto}
 .deep-wrap-flush{padding:0}
 .deep-s1{padding:40px 0 27px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.deep-s1 .d-text h2,.deep-s2-outer .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:16px}
-.deep-s1 .d-text p,.deep-s2-outer .d-text p{font-size:14.5px;color:var(--text-gray);line-height:1.72;margin-bottom:24px}
+.deep-s1 .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:10px}
+.deep-s1 .d-text p{font-size:13.5px;color:var(--text-gray);line-height:1.7;margin-bottom:16px}
+.deep-s2-outer .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:16px}
+.deep-s2-outer .d-text p{font-size:14.5px;color:var(--text-gray);line-height:1.72;margin-bottom:24px}
 .checklist{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:30px}
 .checklist li{display:flex;align-items:center;gap:11px;font-size:13.5px;font-weight:600;color:var(--text-dark)}
 .ck-ico{width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center}
@@ -607,18 +608,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 
 /* ─── RESPONSIVE ─── */
 @media(max-width:960px){
-  .proofbar-inner,.leak-grid,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
-  .compare-grid-scroll{
-    overflow-x:auto;
-    -webkit-overflow-scrolling:touch;
-    overscroll-behavior-x:contain;
-    touch-action:pan-x pinch-zoom;
-    scrollbar-width:thin;
-    scrollbar-color:#D1D5DB transparent;
-  }
-  .compare-grid-scroll::-webkit-scrollbar{height:6px}
-  .compare-grid-scroll::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:999px}
-  .compare-grid-scroll .compare-grid{min-width:min(640px, max(100%, 520px))}
+  .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
   footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
@@ -1029,7 +1019,6 @@ export function MarketingHomeTemplate() {
             <div className="sec-label">Why It Feels Different</div>
             <h2 className="sec-title reveal">Most AI phone agents frustrate callers. RingBooker is designed not to.</h2>
             <p className="sec-sub reveal">The product is built around real salon call behavior: short questions, interruptions, booking changes, and callers who just want a clear next step.</p>
-            <div className="compare-grid-scroll">
               <div className="compare-grid">
               {[
                 ['Endless loops when the caller asks something unexpected.', 'A two-strike fallback, callback offer, and clean handoff when the request needs a human.'],
@@ -1056,7 +1045,6 @@ export function MarketingHomeTemplate() {
                 </div>
               ))}
               </div>
-            </div>
           </div>
         </section>
         <section className="industries" id="industries">
