@@ -3,9 +3,6 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
-import { MARKETING_DEMO_NAV_ITEMS } from '@/lib/marketing-demo-nav';
-import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
-
 // ─── State Model ──────────────────────────────────────────────────────────────
 
 export type NavStateType =
@@ -211,39 +208,16 @@ function AvatarMenu({
     <div className={`mk-avatar-menu${open ? ' open' : ''}`} role="menu">
       <div className="mk-avatar-menu-inner">
         <div className="mk-avatar-head">
-          <div className="mk-avatar-name">{state.shopName || state.email}</div>
-          <div className="mk-avatar-email">{state.email}</div>
+          <div className="mk-avatar-name">
+            {state.shopName.trim() ? state.shopName : state.email}
+          </div>
+          {state.shopName.trim() ? (
+            <div className="mk-avatar-email">{state.email}</div>
+          ) : null}
           {'plan' in state && (
             <div className="mk-avatar-plan">{getPlanLabel(state.plan)}</div>
           )}
         </div>
-
-        <div className="mk-avatar-items mk-avatar-mobile-nav">
-          <a href="/#features" className="mk-avatar-item" onClick={onClose}>Features</a>
-          <a href="/#industries" className="mk-avatar-item" onClick={onClose}>
-            <span>📋</span> Industries overview
-          </a>
-          {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
-            <a key={item.href} href={item.href} className="mk-avatar-item" onClick={onClose}>
-              <span>{item.icon}</span>
-              {item.label}
-            </a>
-          ))}
-          <a href="/pricing" className="mk-avatar-item" onClick={onClose}>Pricing</a>
-          <a href="/how-it-works" className="mk-avatar-item" onClick={onClose}>How It Works</a>
-          <a href="/contact" className="mk-avatar-item" onClick={onClose}>Contact</a>
-          <a href="/demo" className="mk-avatar-item" onClick={onClose}>
-            <span>📞</span> Live Demo
-          </a>
-          {MARKETING_DEMO_NAV_ITEMS.map((item) => (
-            <a key={item.href} href={item.href} className="mk-avatar-item" onClick={onClose}>
-              <span>{item.icon}</span>
-              {item.label}
-            </a>
-          ))}
-        </div>
-
-        <div className="mk-avatar-sep" />
 
         <div className="mk-avatar-items">
           <a href="/user" className="mk-avatar-item" onClick={onClose}>
@@ -361,7 +335,9 @@ export function NavActionsClient() {
     return (
       <div className="mk-nav-actions">
         <a href="/user/login" className="mk-nav-signin">Sign In</a>
-        <a href="/user/signup" className="mk-nav-cta">Start Free Trial →</a>
+        <a href="/user/signup" className="mk-nav-cta mk-nav-cta-hide-sm">
+          Start Free Trial →
+        </a>
       </div>
     );
   }
@@ -383,7 +359,7 @@ export function NavActionsClient() {
         <a href="/pricing" className="mk-nav-upgrade">Upgrade</a>
       )}
 
-      <a href={cta.href} className="mk-nav-cta">
+      <a href={cta.href} className="mk-nav-cta mk-nav-cta-hide-sm">
         {cta.label}
       </a>
 

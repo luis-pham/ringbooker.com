@@ -87,9 +87,7 @@ export function MarketingChromeStyles() {
 .mk-drawer-panel{position:fixed;inset:0;width:100%;max-width:100%;min-height:100dvh;background:#fff;z-index:5010;display:flex;flex-direction:column;animation:mkDrReveal .28s cubic-bezier(.22,1,.36,1)}
 @keyframes mkDrReveal{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
 .mk-drawer-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(14px + env(safe-area-inset-top,0)) calc(20px + env(safe-area-inset-right,0)) 16px calc(20px + env(safe-area-inset-left,0));border-bottom:1px solid #EEF0F3;background:linear-gradient(180deg,#fff 0%,#FAFBFC 100%)}
-.mk-drawer-head-text{display:flex;flex-direction:column;gap:2px;min-width:0}
-.mk-drawer-eyebrow{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8B5CF6}
-.mk-drawer-title{font-size:20px;font-weight:800;color:#111827;letter-spacing:-.03em;line-height:1.2}
+.mk-drawer-head-logo{flex:1;min-width:0;margin-right:4px}
 .mk-drawer-close{flex-shrink:0;width:44px;height:44px;border-radius:14px;border:1px solid #E5E7EB;background:#fff;color:#4B5563;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;transition:background .15s,border-color .15s,color .15s,transform .12s}
 .mk-drawer-close:hover{background:#F5F3FF;border-color:#DDD6FE;color:#5B21B6}
 .mk-drawer-close:active{transform:scale(.96)}
@@ -168,8 +166,6 @@ export function MarketingChromeStyles() {
 .mk-avatar-upgrade:hover{background:#F5F3FF;color:#6D28D9}
 .mk-avatar-signout{color:#6B7280}
 .mk-avatar-signout:hover{background:#FFF1F2;color:#DC2626}
-/* on mobile the nav-link section of the avatar menu is shown; on desktop hidden */
-.mk-avatar-mobile-nav{display:none}
 /* upgrade secondary CTA */
 .mk-nav-upgrade{padding:9px 16px;border-radius:999px;border:1.5px solid rgba(139,92,246,.4);font-size:13.5px;font-weight:700;color:#7C3AED;background:rgba(245,243,255,.8);text-decoration:none;transition:border-color .15s,background .15s;white-space:nowrap}
 .mk-nav-upgrade:hover{border-color:#8B5CF6;background:#EDE9FE}
@@ -182,11 +178,10 @@ export function MarketingChromeStyles() {
   .mk-nav-links{display:none}
   .mk-nav-signin{display:none}
   .mk-nav-burger{display:inline-flex}
+  /* visitor trial + auth primary CTA live in drawer / avatar; keep bar minimal */
+  .mk-nav-cta-hide-sm{display:none !important}
   .mk-footer{padding-left:22px;padding-right:22px}
   .mk-footer-grid{grid-template-columns:1fr}
-  /* on mobile, avatar dropdown shows nav links so user can still navigate */
-  .mk-avatar-mobile-nav{display:block}
-  .mk-avatar-mobile-nav .mk-avatar-item{color:#374151}
   .mk-avatar-menu{right:0;min-width:260px}
   /* hide upgrade pill on mobile to keep nav clean */
   .mk-nav-upgrade{display:none}
