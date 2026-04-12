@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 // ─── State Model ──────────────────────────────────────────────────────────────
@@ -10,7 +11,7 @@ export type NavStateType =
   | 'setup_incomplete'
   | 'trial_user'
   | 'active_customer'
-  | 'dashboard_user'; // paid or plan-based, no subscription record
+  | 'dashboard_user';
 
 export type NavUserState =
   | { type: 'loading' }
@@ -63,13 +64,43 @@ function getPlanLabel(plan: string): string {
   return labels[plan] ?? plan;
 }
 
-// ─── State Fetcher ────────────────────────────────────────────────────────────
+function navFetchTimeoutMs(): AbortSignal {
+  return AbortSignal.timeout(12_000);
+}
 
-async function fetchNavState(): Promise<NavUserState> {
+function authMeTimeoutMs(): AbortSignal {
+  return AbortSignal.timeout(6_000);
+}
+
+function dashboardFallbackFromEmail(email: string): NavUserState {
+  return {
+    type: 'dashboard_user',
+    email,
+    shopName: '',
+    initials: getInitials('', email),
+    plan: 'starter',
+  };
+}
+
+type FetchNavStateOpts = {
+  /** When set, non-401 failures keep the user in an authenticated nav instead of visitor. */
+  confirmedUserEmail?: string;
+};
+
+async function fetchNavState(opts?: FetchNavStateOpts): Promise<NavUserState> {
+  const fallbackEmail = opts?.confirmedUserEmail;
   try {
-    const res = await fetch('/api/backend/user/nav-state', { cache: 'no-store' });
-    if (res.status === 401 || res.status === 403) return { type: 'visitor' };
-    if (!res.ok) return { type: 'visitor' };
+    const res = await fetch('/api/backend/user/nav-state', {
+      cache: 'no-store',
+      credentials: 'include',
+      signal: navFetchTimeoutMs(),
+    });
+    if (res.status === 401 || res.status === 403) {
+      return { type: 'visitor' };
+    }
+    if (!res.ok) {
+      return fallbackEmail ? dashboardFallbackFromEmail(fallbackEmail) : { type: 'visitor' };
+    }
     const data = (await res.json()) as {
       ok: boolean;
       email?: string;
@@ -79,7 +110,9 @@ async function fetchNavState(): Promise<NavUserState> {
       onboardingRequired?: boolean;
       subscriptionStatus?: string | null;
     };
-    if (!data.ok) return { type: 'visitor' };
+    if (!data.ok) {
+      return fallbackEmail ? dashboardFallbackFromEmail(fallbackEmail) : { type: 'visitor' };
+    }
 
     const email = data.email ?? '';
     const shopName = data.shopName ?? '';
@@ -98,8 +131,43 @@ async function fetchNavState(): Promise<NavUserState> {
     }
     return { type: 'dashboard_user', email, shopName, initials, plan };
   } catch {
+    return fallbackEmail ? dashboardFallbackFromEmail(fallbackEmail) : { type: 'visitor' };
+  }
+}
+
+/**
+ * Single resolver: cheap JWT session first, then account-aware nav-state.
+ * Guests resolve from /auth/me only (no dependency on a slow /user/nav-state).
+ */
+export async function resolveMarketingNav(): Promise<NavUserState> {
+  let meRes: Response;
+  try {
+    meRes = await fetch('/api/backend/auth/me', {
+      credentials: 'include',
+      cache: 'no-store',
+      signal: authMeTimeoutMs(),
+    });
+  } catch {
     return { type: 'visitor' };
   }
+
+  if (meRes.status === 401 || meRes.status === 403) {
+    return { type: 'visitor' };
+  }
+  if (!meRes.ok) {
+    return { type: 'visitor' };
+  }
+
+  const meJson = (await meRes.json().catch(() => null)) as {
+    ok?: boolean;
+    session?: { role?: string; email?: string };
+  } | null;
+
+  if (!meJson?.ok || !meJson.session || meJson.session.role !== 'user' || typeof meJson.session.email !== 'string') {
+    return { type: 'visitor' };
+  }
+
+  return fetchNavState({ confirmedUserEmail: meJson.session.email });
 }
 
 // ─── Sign Out ─────────────────────────────────────────────────────────────────
@@ -114,12 +182,14 @@ async function handleSignOut() {
 
 // ─── Avatar Dropdown ──────────────────────────────────────────────────────────
 
+type AvatarMenuState = Exclude<NavUserState, { type: 'loading' } | { type: 'visitor' }>;
+
 function AvatarMenu({
   state,
   open,
   onClose,
 }: {
-  state: Exclude<NavUserState, { type: 'loading' } | { type: 'visitor' }>;
+  state: AvatarMenuState;
   open: boolean;
   onClose: () => void;
 }) {
@@ -128,7 +198,6 @@ function AvatarMenu({
   return (
     <div className={`mk-avatar-menu${open ? ' open' : ''}`} role="menu">
       <div className="mk-avatar-menu-inner">
-        {/* User identity header */}
         <div className="mk-avatar-head">
           <div className="mk-avatar-name">{state.shopName || state.email}</div>
           <div className="mk-avatar-email">{state.email}</div>
@@ -137,7 +206,6 @@ function AvatarMenu({
           )}
         </div>
 
-        {/* Nav links (doubles as mobile nav) */}
         <div className="mk-avatar-items mk-avatar-mobile-nav">
           <a href="/#features" className="mk-avatar-item" onClick={onClose}>Features</a>
           <a href="/#industries" className="mk-avatar-item" onClick={onClose}>Industries</a>
@@ -147,7 +215,6 @@ function AvatarMenu({
 
         <div className="mk-avatar-sep" />
 
-        {/* Account links */}
         <div className="mk-avatar-items">
           <a href="/user" className="mk-avatar-item" onClick={onClose}>
             <span>⚡</span> Dashboard
@@ -182,6 +249,54 @@ function AvatarMenu({
   );
 }
 
+// ─── Hook: shared nav state (desktop + mobile use same component instance per header) ──
+
+export function useNavState() {
+  const pathname = usePathname();
+  const [state, setState] = useState<NavUserState>({ type: 'loading' });
+  const genRef = useRef(0);
+
+  useEffect(() => {
+    const myGen = (genRef.current += 1);
+    setState({ type: 'loading' });
+    void (async () => {
+      const next = await resolveMarketingNav();
+      if (myGen !== genRef.current) return;
+      setState(next);
+    })();
+    return () => {
+      genRef.current += 1;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    let debounce: ReturnType<typeof setTimeout> | null = null;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (debounce) clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        debounce = null;
+        const myGen = (genRef.current += 1);
+        setState({ type: 'loading' });
+        void (async () => {
+          const next = await resolveMarketingNav();
+          if (myGen !== genRef.current) return;
+          setState(next);
+        })();
+      }, 400);
+    };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      if (debounce) clearTimeout(debounce);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
+  return state;
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 /**
@@ -189,15 +304,10 @@ function AvatarMenu({
  * Renders correct CTAs per authentication + account state.
  */
 export function NavActionsClient() {
-  const [state, setState] = useState<NavUserState>({ type: 'loading' });
+  const state = useNavState();
   const [menuOpen, setMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    fetchNavState().then(setState);
-  }, []);
-
-  // Close dropdown on outside click
   useEffect(() => {
     if (!menuOpen) return;
     function handleClick(e: MouseEvent) {
@@ -209,7 +319,6 @@ export function NavActionsClient() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [menuOpen]);
 
-  // ── Visitor state ──
   if (state.type === 'visitor') {
     return (
       <div className="mk-nav-actions">
@@ -219,7 +328,6 @@ export function NavActionsClient() {
     );
   }
 
-  // ── Loading state — show nothing to avoid flash ──
   if (state.type === 'loading') {
     return (
       <div className="mk-nav-actions">
@@ -228,23 +336,19 @@ export function NavActionsClient() {
     );
   }
 
-  // ── Authenticated states ──
   const cta = resolveNavCta(state);
   const showUpgradeCta = state.type === 'trial_user';
 
   return (
     <div className="mk-nav-actions" ref={containerRef}>
-      {/* Upgrade secondary CTA for trial users */}
       {showUpgradeCta && (
         <a href="/pricing" className="mk-nav-upgrade">Upgrade</a>
       )}
 
-      {/* Primary CTA */}
       <a href={cta.href} className="mk-nav-cta">
         {cta.label}
       </a>
 
-      {/* Avatar button + dropdown */}
       <div className="mk-avatar-dd">
         <button
           className="mk-avatar-btn"
