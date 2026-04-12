@@ -129,7 +129,8 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-card h3{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px;text-align:center}
 	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}
 	.compare-section{padding:88px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
-	.compare-grid{display:grid;gap:0;margin-top:42px;border:1px solid #E5E7EB;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 14px 38px rgba(17,24,39,.05)}
+	.compare-grid-scroll{margin-top:42px;width:100%;max-width:100%}
+	.compare-grid{display:grid;gap:0;margin-top:0;border:1px solid #E5E7EB;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 14px 38px rgba(17,24,39,.05)}
 	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #EEF2F7}
 	.compare-row:last-child{border-bottom:none}
 	.compare-cell{padding:18px 22px;background:#fff}
@@ -606,16 +607,33 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 
 /* ─── RESPONSIVE ─── */
 @media(max-width:960px){
-  .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
+  .proofbar-inner,.leak-grid,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
+  .compare-grid-scroll{
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+    touch-action:pan-x pinch-zoom;
+    scrollbar-width:thin;
+    scrollbar-color:#D1D5DB transparent;
+  }
+  .compare-grid-scroll::-webkit-scrollbar{height:6px}
+  .compare-grid-scroll::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:999px}
+  .compare-grid-scroll .compare-grid{min-width:min(640px, max(100%, 520px))}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
-  footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation,.deep-wrap{padding-left:22px;padding-right:22px}
+  footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
   .hero-badge,.industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.vc-ring,.user-image-corners::before,.user-image-corners::after{display:none}
   .pulse-dot,.wv span,.vc-wave span,.live-dot,.cta-vc-wave span{animation:none}
   .hero-visual{height:480px}
   .phone-frame{width:230px;height:460px}
   .fc{display:none}
+  .deep-s2-outer{padding:36px 22px 40px;gap:32px}
+  .deep-s2-outer .d-text h2{font-size:clamp(19px,4.8vw,24px);line-height:1.2;margin-bottom:14px}
+  .deep-s2-outer .d-text p{font-size:15px;line-height:1.72}
+  .deep-s2-outer .checklist li{font-size:14px}
+  .deep-s2-outer .convo-card{padding:22px 20px 26px}
+  .deep-s2-outer .convo-quote{font-size:clamp(18px,4.5vw,21px)}
 }
 
 @media(max-width:640px){
@@ -623,6 +641,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .hero-visual{height:420px;margin-top:34px}
   .phone-frame{width:216px;height:432px;box-shadow:0 26px 48px rgba(0,0,0,.2)}
   .hero-sub{margin-bottom:26px}
+  .deep-s2-outer{padding:28px 18px 32px;gap:26px}
 }
 .legacy-marketing > nav,
 .legacy-marketing > footer,
@@ -1010,7 +1029,8 @@ export function MarketingHomeTemplate() {
             <div className="sec-label">Why It Feels Different</div>
             <h2 className="sec-title reveal">Most AI phone agents frustrate callers. RingBooker is designed not to.</h2>
             <p className="sec-sub reveal">The product is built around real salon call behavior: short questions, interruptions, booking changes, and callers who just want a clear next step.</p>
-            <div className="compare-grid">
+            <div className="compare-grid-scroll">
+              <div className="compare-grid">
               {[
                 ['Endless loops when the caller asks something unexpected.', 'A two-strike fallback, callback offer, and clean handoff when the request needs a human.'],
                 ['Pretends to be a real person and breaks trust.', 'Can introduce itself transparently as your virtual assistant while staying warm and useful.'],
@@ -1035,6 +1055,7 @@ export function MarketingHomeTemplate() {
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           </div>
         </section>
