@@ -458,7 +458,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   let firstLiveKitAudioFrameCaptureStartedAtMs: number | null = null;
   let firstLiveKitAudioFrameCapturedAtMs: number | null = null;
   let firstUserSpeechAtMs: number | null = null;
-  let firstModelAudioAtMs: number | null = null;
+  /** Timestamp when the first assistant conversation item was finalized (transcript complete — NOT when audio starts). */
+  let firstAssistantItemAtMs: number | null = null;
   let callAnsweredAtMs: number | null = null;
   let sessionStartedAtMs: number | null = null;
   let outputReadyAtMs: number | null = null;
@@ -475,6 +476,18 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
   let latestResponseCreateQueuedAtMs: number | null = null;
   let latestResponseCreatedAtMs: number | null = null;
   const responseIdsWithAudioStartedLogged = new Set<string>();
+  /**
+   * Latency phases per turn:
+   *   Phase 1 — OpenAI:    speech_stopped  →  response.output_audio.delta  (model think time)
+   *   Phase 2 — LiveKit:   response.output_audio.delta  →  first LK frame captured  (buffer + encode)
+   *   Phase 3 — SIP:       first LK frame captured  →  caller hears  (outputQueueMs + network/SIP jitter — NOT measurable server-side)
+   */
+  /** Phase 1 anchor: timestamp of first OpenAI audio delta for the current in-flight response. Reset each response. */
+  let latestResponseAudioOpenAiAtMs: number | null = null;
+  /** Phase 2 result: timestamp of first LiveKit frame captured after latestResponseAudioOpenAiAtMs. Reset each response. */
+  let latestResponseLiveKitFrameCapturedAtMs: number | null = null;
+  /** Resolved outputQueueSizeMs — set when session starts, used in phase-3 estimate. */
+  let outputQueueSizeMsResolved = 300;
 
   const timingSnapshot = (nowMs = Date.now()) => ({
     msSinceRuntimeStart: nowMs - runtimeStartedAtMs,
@@ -795,7 +808,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
               msSinceAgentStartedSpeaking: latestAgentStartedSpeakingAtMs
                 ? nowMs - latestAgentStartedSpeakingAtMs
                 : null,
-              msSinceFirstModelAudio: firstModelAudioAtMs ? nowMs - firstModelAudioAtMs : null,
+              msSinceFirstModelAudio: firstAssistantItemAtMs ? nowMs - firstAssistantItemAtMs : null,
               ...timingSnapshot(nowMs),
             },
             'livekit_native_openai_user_speech_started_timing',
@@ -840,6 +853,10 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
         if (isAudioStreamEvent && responseAudioKey && !responseIdsWithAudioStartedLogged.has(responseAudioKey)) {
           const nowMs = Date.now();
           responseIdsWithAudioStartedLogged.add(responseAudioKey);
+          // Phase 1 anchor: mark when OpenAI started streaming audio for this response
+          latestResponseAudioOpenAiAtMs = nowMs;
+          latestResponseLiveKitFrameCapturedAtMs = null;
+          const openAiPhaseMs = latestUserSpeechStoppedAtMs ? nowMs - latestUserSpeechStoppedAtMs : null;
           log.info(
             {
               roomName: input.roomName,
@@ -852,6 +869,8 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
                 latestUserSpeechStartedAtMs && latestUserSpeechStoppedAtMs
                   ? latestUserSpeechStoppedAtMs - latestUserSpeechStartedAtMs
                   : null,
+              // Phase 1 result: speech_stopped → first OpenAI audio delta (model think time + VAD silence window)
+              openAiPhaseMs,
               ...timingSnapshot(nowMs),
             },
             'livekit_native_openai_response_audio_started_timing',
@@ -1060,8 +1079,11 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     const originalCaptureFrame = audioOutput.captureFrame.bind(audioOutput);
     audioOutput.captureFrame = async (frame: AudioFrame) => {
       const captureStartedAtMs = Date.now();
-      const isFirstFrame = firstLiveKitAudioFrameCaptureStartedAtMs === null;
-      if (isFirstFrame) {
+      const isFirstFrameGlobal = firstLiveKitAudioFrameCaptureStartedAtMs === null;
+      const isFirstFrameForLatestResponse =
+        latestResponseAudioOpenAiAtMs !== null && latestResponseLiveKitFrameCapturedAtMs === null;
+
+      if (isFirstFrameGlobal) {
         firstLiveKitAudioFrameCaptureStartedAtMs = captureStartedAtMs;
         log.info(
           {
@@ -1082,9 +1104,9 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
 
       const processedFrame = liveKitOutputGain === 1 ? frame : applyOutputGain(frame, liveKitOutputGain);
       await originalCaptureFrame(processedFrame);
+      const capturedAtMs = Date.now();
 
-      if (isFirstFrame && firstLiveKitAudioFrameCapturedAtMs === null) {
-        const capturedAtMs = Date.now();
+      if (isFirstFrameGlobal && firstLiveKitAudioFrameCapturedAtMs === null) {
         firstLiveKitAudioFrameCapturedAtMs = capturedAtMs;
         log.info(
           {
@@ -1100,6 +1122,26 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             ...timingSnapshot(capturedAtMs),
           },
           'livekit_native_openai_first_livekit_audio_frame_captured',
+        );
+      }
+
+      // Phase 2 per-turn: first LiveKit frame captured after the latest response's OpenAI audio started
+      if (isFirstFrameForLatestResponse && latestResponseLiveKitFrameCapturedAtMs === null) {
+        latestResponseLiveKitFrameCapturedAtMs = capturedAtMs;
+        const liveKitPhaseMs = latestResponseAudioOpenAiAtMs
+          ? capturedAtMs - latestResponseAudioOpenAiAtMs
+          : null;
+        log.info(
+          {
+            roomName: input.roomName,
+            // Phase 2 result: first OpenAI audio delta → first LK frame enqueued (LiveKit buffer + encode time)
+            liveKitPhaseMs,
+            // Phase 3 lower bound: outputQueue is the minimum before SIP sends audio to caller
+            outputQueueSizeMsConfig: outputQueueSizeMsResolved,
+            sipPhaseNote: 'not_measurable_server_side',
+            ...timingSnapshot(capturedAtMs),
+          },
+          'livekit_native_openai_response_livekit_phase_timing',
         );
       }
     };
@@ -1129,6 +1171,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       100,
       Math.round(parseNumber(process.env.AGENT_LIVEKIT_OUTPUT_QUEUE_MS, 300)),
     );
+    outputQueueSizeMsResolved = outputQueueSizeMs;
     log.info(
       {
         roomName: input.roomName,
@@ -1212,7 +1255,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           interrupted: handle.interrupted,
           done: handle.done(),
           chatItemCount: handle.chatItems.length,
-          firstModelAudioSeen: Boolean(firstModelAudioAtMs),
+          firstModelAudioSeen: Boolean(firstAssistantItemAtMs),
           ...timingSnapshot(Date.now()),
         },
         'livekit_native_openai_initial_greeting_reply_done',
@@ -1220,7 +1263,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
     });
     const waitMs = Math.max(2000, Math.round(parseNumber(process.env.AGENT_OPENAI_GREETING_AUDIO_WAIT_MS, 8000)));
     setTimeout(() => {
-      if (firstModelAudioAtMs) return;
+      if (firstAssistantItemAtMs) return;
       log.warn(
         {
           roomName: input.roomName,
@@ -1351,29 +1394,32 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       );
       if (ev.item.role !== 'assistant') return;
       const nowMs = Date.now();
-      if (!firstModelAudioAtMs) {
-        firstModelAudioAtMs = nowMs;
+      if (!firstAssistantItemAtMs) {
+        firstAssistantItemAtMs = nowMs;
+        // NOTE: this fires when the FULL response transcript is finalized, not when audio starts.
+        // For audio-start timing, use livekit_native_openai_response_audio_started_timing (openAiPhaseMs)
+        // and livekit_native_openai_response_livekit_phase_timing (liveKitPhaseMs).
         log.info(
           {
             roomName: input.roomName,
-            dispatchToFirstModelAudioMs: nowMs - runtimeStartedAtMs,
-            roomConnectedToFirstModelAudioMs: nowMs - roomConnectedAtMs,
-            callAnsweredToFirstModelAudioMs: callAnsweredAtMs ? nowMs - callAnsweredAtMs : null,
-            initialGreetingEnqueuedToFirstModelAudioMs: initialGreetingEnqueuedAtMs
+            dispatchToFirstAssistantItemMs: nowMs - runtimeStartedAtMs,
+            roomConnectedToFirstAssistantItemMs: nowMs - roomConnectedAtMs,
+            callAnsweredToFirstAssistantItemMs: callAnsweredAtMs ? nowMs - callAnsweredAtMs : null,
+            initialGreetingEnqueuedToFirstAssistantItemMs: initialGreetingEnqueuedAtMs
               ? nowMs - initialGreetingEnqueuedAtMs
               : null,
-            openAiAudioStreamToFirstModelAudioMs: firstOpenAiAudioStreamEventAtMs
+            openAiAudioStreamToFirstAssistantItemMs: firstOpenAiAudioStreamEventAtMs
               ? nowMs - firstOpenAiAudioStreamEventAtMs
               : null,
-            firstUserSpeechToFirstModelAudioMs: firstUserSpeechAtMs ? nowMs - firstUserSpeechAtMs : null,
+            firstUserSpeechToFirstAssistantItemMs: firstUserSpeechAtMs ? nowMs - firstUserSpeechAtMs : null,
             ...timingSnapshot(nowMs),
           },
-          'livekit_native_openai_first_model_audio',
+          'livekit_native_openai_first_assistant_item_finalized',
         );
         observeDurationMs('realtime_worker_stage_ms', nowMs - runtimeStartedAtMs, {
           transport: 'livekit',
           voiceProvider: 'openai_realtime_native',
-          stage: 'dispatch_to_first_model_audio',
+          stage: 'dispatch_to_first_assistant_item',
         });
       }
     });
@@ -1498,7 +1544,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
             err: ev.error,
             reason: ev.reason,
             activeCallDurationMs: callAnsweredAtMs ? Date.now() - callAnsweredAtMs : null,
-            firstModelAudioSeen: Boolean(firstModelAudioAtMs),
+            firstModelAudioSeen: Boolean(firstAssistantItemAtMs),
             firstUserSpeechSeen: Boolean(firstUserSpeechAtMs),
           },
           'livekit_native_openai_session_closed_with_error',
@@ -1508,7 +1554,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           {
             reason: ev.reason,
             activeCallDurationMs: callAnsweredAtMs ? Date.now() - callAnsweredAtMs : null,
-            firstModelAudioSeen: Boolean(firstModelAudioAtMs),
+            firstModelAudioSeen: Boolean(firstAssistantItemAtMs),
             firstUserSpeechSeen: Boolean(firstUserSpeechAtMs),
           },
           'livekit_native_openai_session_closed',
@@ -1541,7 +1587,7 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
           sipCallStatus,
           isLocal: participant.identity === room.localParticipant?.identity,
           activeCallDurationMs: callAnsweredAtMs ? Date.now() - callAnsweredAtMs : null,
-          firstModelAudioSeen: Boolean(firstModelAudioAtMs),
+          firstModelAudioSeen: Boolean(firstAssistantItemAtMs),
           firstUserSpeechSeen: Boolean(firstUserSpeechAtMs),
         },
         'livekit_native_openai_participant_disconnected',
@@ -1720,50 +1766,37 @@ export async function runLiveKitNativeOpenAIConnectedRoomRuntime(
       answeredParticipantIdentity,
       sessionStartedAtMs,
       outputReadyAtMs,
-      callAnsweredToFirstModelAudioMs:
-        callAnsweredAtMs && firstModelAudioAtMs ? firstModelAudioAtMs - callAnsweredAtMs : null,
+      // ── Greeting latency breakdown (call answered → caller hears first word) ──────────────────
+      // Phase 1 (OpenAI): greeting enqueued → first OpenAI audio delta
+      greetingOpenAiPhaseMs:
+        initialGreetingEnqueuedAtMs && firstOpenAiAudioStreamEventAtMs
+          ? firstOpenAiAudioStreamEventAtMs - initialGreetingEnqueuedAtMs
+          : null,
+      // Phase 2 (LiveKit): first OpenAI audio delta → first LK frame enqueued
+      greetingLiveKitPhaseMs:
+        firstOpenAiAudioStreamEventAtMs && firstLiveKitAudioFrameCapturedAtMs
+          ? firstLiveKitAudioFrameCapturedAtMs - firstOpenAiAudioStreamEventAtMs
+          : null,
+      // Phase 3 (SIP): lower bound only — outputQueueMs + network/SIP jitter (not measurable server-side)
+      greetingSipPhaseLowerBoundMs: outputQueueSizeMsResolved,
+      greetingSipPhaseNote: 'actual_sip_delay_not_measurable_server_side',
+      // Total measurable: call answered → first LK frame captured (excludes SIP phase)
+      callAnsweredToFirstLiveKitFrameMs:
+        callAnsweredAtMs && firstLiveKitAudioFrameCapturedAtMs
+          ? firstLiveKitAudioFrameCapturedAtMs - callAnsweredAtMs
+          : null,
+      // ── Per-turn latency: see livekit_native_openai_response_audio_started_timing (openAiPhaseMs)
+      //    and livekit_native_openai_response_livekit_phase_timing (liveKitPhaseMs) ──────────────
+      // ── Misc ─────────────────────────────────────────────────────────────────────────────────
       callAnsweredToOutputReadyMs:
         callAnsweredAtMs && outputReadyAtMs ? outputReadyAtMs - callAnsweredAtMs : null,
       callAnsweredToInitialGreetingEnqueuedMs:
         callAnsweredAtMs && initialGreetingEnqueuedAtMs ? initialGreetingEnqueuedAtMs - callAnsweredAtMs : null,
-      initialGreetingEnqueuedToOpenAiAudioMs:
-        initialGreetingEnqueuedAtMs && firstOpenAiAudioStreamEventAtMs
-          ? firstOpenAiAudioStreamEventAtMs - initialGreetingEnqueuedAtMs
-          : null,
-      initialGreetingEnqueuedToLiveKitAudioFrameCaptureStartMs:
-        initialGreetingEnqueuedAtMs && firstLiveKitAudioFrameCaptureStartedAtMs
-          ? firstLiveKitAudioFrameCaptureStartedAtMs - initialGreetingEnqueuedAtMs
-          : null,
-      initialGreetingEnqueuedToLiveKitAudioFrameCapturedMs:
-        initialGreetingEnqueuedAtMs && firstLiveKitAudioFrameCapturedAtMs
-          ? firstLiveKitAudioFrameCapturedAtMs - initialGreetingEnqueuedAtMs
-          : null,
-      openAiAudioToFirstModelAudioMs:
-        firstOpenAiAudioStreamEventAtMs && firstModelAudioAtMs
-          ? firstModelAudioAtMs - firstOpenAiAudioStreamEventAtMs
-          : null,
-      openAiAudioToLiveKitAudioFrameCaptureStartMs:
-        firstOpenAiAudioStreamEventAtMs && firstLiveKitAudioFrameCaptureStartedAtMs
-          ? firstLiveKitAudioFrameCaptureStartedAtMs - firstOpenAiAudioStreamEventAtMs
-          : null,
-      openAiAudioToLiveKitAudioFrameCapturedMs:
-        firstOpenAiAudioStreamEventAtMs && firstLiveKitAudioFrameCapturedAtMs
-          ? firstLiveKitAudioFrameCapturedAtMs - firstOpenAiAudioStreamEventAtMs
-          : null,
-      liveKitAudioFrameCaptureStartToCapturedMs:
-        firstLiveKitAudioFrameCaptureStartedAtMs && firstLiveKitAudioFrameCapturedAtMs
-          ? firstLiveKitAudioFrameCapturedAtMs - firstLiveKitAudioFrameCaptureStartedAtMs
-          : null,
-      callAnsweredToFirstLiveKitAudioFrameCaptureStartMs:
-        callAnsweredAtMs && firstLiveKitAudioFrameCaptureStartedAtMs
-          ? firstLiveKitAudioFrameCaptureStartedAtMs - callAnsweredAtMs
-          : null,
-      callAnsweredToFirstLiveKitAudioFrameCapturedMs:
-        callAnsweredAtMs && firstLiveKitAudioFrameCapturedAtMs
-          ? firstLiveKitAudioFrameCapturedAtMs - callAnsweredAtMs
-          : null,
+      // firstAssistantItemAtMs = when first assistant transcript finalized (NOT audio start — use greetingOpenAiPhaseMs)
+      callAnsweredToFirstAssistantItemMs:
+        callAnsweredAtMs && firstAssistantItemAtMs ? firstAssistantItemAtMs - callAnsweredAtMs : null,
       activeCallDurationMs: callAnsweredAtMs ? Date.now() - callAnsweredAtMs : null,
-      firstModelAudioSeen: Boolean(firstModelAudioAtMs),
+      firstAssistantItemSeen: Boolean(firstAssistantItemAtMs),
       firstLiveKitAudioFrameCapturedSeen: Boolean(firstLiveKitAudioFrameCapturedAtMs),
       firstUserSpeechSeen: Boolean(firstUserSpeechAtMs),
     },
