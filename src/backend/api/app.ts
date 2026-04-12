@@ -35,6 +35,7 @@ import type {
   BillingSubscriptionsRepository,
   CallbacksRepository,
   CallLogsRepository,
+  DemoAdminCallListRow,
   JobsRepository,
   MissedCallsRepository,
   ProviderEventsRepository,
@@ -328,6 +329,11 @@ const adminLeadsListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
   status: z.union([contactRequestStatusSchema, z.literal('all')]).optional(),
   query: z.string().max(120).optional(),
+});
+
+const adminDemoCallsListQuerySchema = z.object({
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 const adminLeadStatusUpdateSchema = z.object({
@@ -983,6 +989,28 @@ function buildSquareConnectionPayload(current: SquareConnectionCredentials | nul
   };
 }
 
+/** Cloudflare `CF-IPCountry` or compatible two-letter country code. */
+function normalizeCfIpCountry(header: string | undefined): string | null {
+  const raw = header?.trim().toUpperCase();
+  if (!raw || raw.length !== 2 || !/^[A-Z]{2}$/.test(raw)) return null;
+  if (raw === 'XX' || raw === 'T1') return null;
+  return raw;
+}
+
+function demoCallDurationSeconds(row: Pick<DemoAdminCallListRow, 'connectedAt' | 'endedAt' | 'startedAt'>): number | null {
+  if (row.connectedAt && row.endedAt) {
+    const ms = new Date(row.endedAt).getTime() - new Date(row.connectedAt).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    return Math.round(ms / 1000);
+  }
+  if (row.startedAt && row.endedAt) {
+    const ms = new Date(row.endedAt).getTime() - new Date(row.startedAt).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return null;
+    return Math.round(ms / 1000);
+  }
+  return null;
+}
+
 export function createBackendApp(deps: {
   providerEventsRepository: ProviderEventsRepository;
   jobsRepository?: JobsRepository;
@@ -1557,6 +1585,8 @@ export function createBackendApp(deps: {
         notes: parsed.data.notes ?? null,
         systemPrompt,
         services: [],
+        clientIp: ip,
+        clientCountry: normalizeCfIpCountry(c.req.header('CF-IPCountry')),
       });
       await deps.demoSessionsRepository.createCallRun({
         demoSessionId: demoSession.id,
@@ -3281,6 +3311,111 @@ export function createBackendApp(deps: {
         shopId: shopId || null,
         shopName: shopId ? (shopNameById.get(shopId) ?? null) : null,
       },
+    });
+  });
+
+  app.get(path('/admin/demo-calls'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_demo_calls');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.demoSessionsRepository || !deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const parsed = adminDemoCallsListQuerySchema.safeParse({
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+    const env = getEnv();
+    const now = new Date();
+    const endDay = parsed.data.dateTo ?? now.toISOString().slice(0, 10);
+    let startDay = parsed.data.dateFrom ?? null;
+    if (!startDay) {
+      const from = new Date(now);
+      from.setUTCDate(from.getUTCDate() - 30);
+      startDay = from.toISOString().slice(0, 10);
+    }
+    const createdAfter = new Date(`${startDay}T00:00:00.000Z`);
+    const createdBefore = new Date(`${endDay}T23:59:59.999Z`);
+    if (createdAfter.getTime() > createdBefore.getTime()) {
+      return c.json({ ok: false, error: 'invalid_date_range' }, 400);
+    }
+
+    const rows = await deps.demoSessionsRepository.listAdminDemoCallRuns({
+      createdAfter,
+      createdBefore,
+      limit: 500,
+    });
+    const requestIds = rows.map((r) => r.requestId);
+    const transcriptMeta = await deps.callLogsRepository.listTranscriptMetaByShopAndRequestIds({
+      shopId: env.PUBLIC_DEMO_SHOP_ID,
+      requestIds,
+    });
+
+    const calls = rows.map((row) => {
+      const meta = transcriptMeta.get(row.requestId);
+      return {
+        ...row,
+        demoDurationSeconds: demoCallDurationSeconds(row),
+        transcriptStatus: meta?.transcriptStatus,
+        hasTranscriptText: meta?.hasTranscriptText ?? false,
+      };
+    });
+
+    const chartDailyMap = new Map<string, { count: number; demoSeconds: number }>();
+    for (const row of calls) {
+      const day = row.runCreatedAt.slice(0, 10);
+      const sec = row.demoDurationSeconds ?? 0;
+      const prev = chartDailyMap.get(day) ?? { count: 0, demoSeconds: 0 };
+      prev.count += 1;
+      prev.demoSeconds += sec;
+      chartDailyMap.set(day, prev);
+    }
+    const chartDaily = [...chartDailyMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, v]) => ({ day, count: v.count, demoSeconds: v.demoSeconds }));
+
+    return c.json({
+      ok: true,
+      calls,
+      chartDaily,
+      filter: {
+        dateFrom: startDay,
+        dateTo: endDay,
+      },
+    });
+  });
+
+  app.get(path('/admin/demo-calls/:requestId/transcript'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_demo_calls_transcript');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const requestId = c.req.param('requestId')?.trim() ?? '';
+    if (!requestId.startsWith('demo-') || requestId.length > 120) {
+      return c.json({ ok: false, error: 'invalid_request_id' }, 400);
+    }
+    const env = getEnv();
+    const row = await deps.callLogsRepository.findTranscriptByShopAndRequestId({
+      shopId: env.PUBLIC_DEMO_SHOP_ID,
+      requestId,
+    });
+    if (!row) {
+      return c.json({ ok: false, error: 'transcript_not_found' }, 404);
+    }
+    return c.json({
+      ok: true,
+      requestId,
+      transcriptStatus: row.transcriptStatus ?? null,
+      transcriptText: row.transcriptText ?? null,
+      startedAt: row.startedAt ?? null,
+      endedAt: row.endedAt ?? null,
     });
   });
 

@@ -283,4 +283,60 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       outcome: (row.outcome as string | null) ?? undefined,
     }));
   }
+
+  async findTranscriptByShopAndRequestId(params: {
+    shopId: string;
+    requestId: string;
+  }): Promise<{
+    transcriptText?: string;
+    transcriptStatus?: string;
+    startedAt?: string;
+    endedAt?: string;
+  } | null> {
+    const { data, error } = await this.supabase
+      .from('call_logs')
+      .select('transcript_text,transcript_status,started_at,ended_at')
+      .eq('shop_id', params.shopId)
+      .eq('request_id', params.requestId)
+      .maybeSingle<{
+        transcript_text: string | null;
+        transcript_status: string | null;
+        started_at: string | null;
+        ended_at: string | null;
+      }>();
+
+    if (error) throw new Error(`call_logs_find_transcript_failed:${error.message}`);
+    if (!data) return null;
+    return {
+      transcriptText: (data.transcript_text as string | null) ?? undefined,
+      transcriptStatus: (data.transcript_status as string | null) ?? undefined,
+      startedAt: (data.started_at as string | null) ?? undefined,
+      endedAt: (data.ended_at as string | null) ?? undefined,
+    };
+  }
+
+  async listTranscriptMetaByShopAndRequestIds(params: {
+    shopId: string;
+    requestIds: string[];
+  }): Promise<Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>> {
+    const map = new Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>();
+    if (params.requestIds.length === 0) return map;
+    const { data, error } = await this.supabase
+      .from('call_logs')
+      .select('request_id,transcript_status,transcript_text')
+      .eq('shop_id', params.shopId)
+      .in('request_id', params.requestIds);
+
+    if (error) throw new Error(`call_logs_list_transcript_meta_failed:${error.message}`);
+    for (const row of data ?? []) {
+      const rid = row.request_id as string | null;
+      if (!rid) continue;
+      const text = (row.transcript_text as string | null) ?? '';
+      map.set(rid, {
+        transcriptStatus: (row.transcript_status as string | null) ?? undefined,
+        hasTranscriptText: text.trim().length > 0,
+      });
+    }
+    return map;
+  }
 }

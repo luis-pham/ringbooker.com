@@ -178,6 +178,7 @@ const adminMap = [
   ['shops.html', '/admin/shops'],
   ['shop-detail.html', '/admin/shops/luxe-hair-studio'],
   ['calls.html', '/admin/calls'],
+  ['demos.html', '/admin/demos'],
   ['billing.html', '/admin/billing'],
   ['users.html', '/admin/users'],
   ['system-health.html', '/admin/system-health'],

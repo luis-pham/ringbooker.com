@@ -47,6 +47,30 @@ export interface DemoCallRunRecord {
   expiresAt?: string | null;
 }
 
+/** One marketing demo call run with session context for admin list UIs. */
+export type DemoAdminCallListRow = {
+  requestId: string;
+  demoSessionId: string;
+  publicSessionId: string;
+  verticalSlug: string;
+  demoMode: DemoMode;
+  source: string;
+  sessionStatus: DemoSessionStatus;
+  runStatus: DemoCallStatus;
+  outcome: string | null;
+  callbackPhone: string;
+  businessName: string | null;
+  clientIp: string | null;
+  clientCountry: string | null;
+  provider: string;
+  providerCallId: string | null;
+  roomName: string | null;
+  startedAt: string | null;
+  connectedAt: string | null;
+  endedAt: string | null;
+  runCreatedAt: string;
+};
+
 export interface DemoSessionsRepository {
   createSession(params: {
     publicSessionId: string;
@@ -68,6 +92,8 @@ export interface DemoSessionsRepository {
       enabled?: boolean;
     }>;
     expiresAt?: Date;
+    clientIp?: string | null;
+    clientCountry?: string | null;
   }): Promise<{ id: string; expiresAt: Date }>;
   createCallRun(params: {
     demoSessionId: string;
@@ -103,6 +129,11 @@ export interface DemoSessionsRepository {
   }): Promise<void>;
   findCallRunByRequestId(requestId: string): Promise<DemoCallRunRecord | null>;
   expireOlderThan(now: Date): Promise<number>;
+  listAdminDemoCallRuns(params: {
+    createdAfter: Date;
+    createdBefore: Date;
+    limit?: number;
+  }): Promise<DemoAdminCallListRow[]>;
 }
 
 export interface CallLogsRepository {
@@ -191,6 +222,19 @@ export interface CallLogsRepository {
       outcome?: string;
     }>
   >;
+  findTranscriptByShopAndRequestId(params: {
+    shopId: string;
+    requestId: string;
+  }): Promise<{
+    transcriptText?: string;
+    transcriptStatus?: string;
+    startedAt?: string;
+    endedAt?: string;
+  } | null>;
+  listTranscriptMetaByShopAndRequestIds(params: {
+    shopId: string;
+    requestIds: string[];
+  }): Promise<Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>>;
 }
 
 export interface MissedCallsRepository {

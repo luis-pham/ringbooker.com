@@ -1,9 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type {
+  DemoAdminCallListRow,
   DemoCallRunRecord,
   DemoCallStatus,
   DemoMode,
+  DemoSessionStatus,
   DemoSessionsRepository,
 } from '@/src/backend/ports/repositories';
 
@@ -30,6 +32,8 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
       enabled?: boolean;
     }>;
     expiresAt?: Date;
+    clientIp?: string | null;
+    clientCountry?: string | null;
   }): Promise<{ id: string; expiresAt: Date }> {
     const expiresAt = params.expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const { data: session, error: sessionError } = await this.supabase
@@ -42,6 +46,8 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
         callback_phone: params.callbackPhone,
         status: 'created',
         expires_at: expiresAt.toISOString(),
+        client_ip: params.clientIp ?? null,
+        client_country: params.clientCountry ?? null,
       })
       .select('id,expires_at')
       .single<{ id: string; expires_at: string }>();
@@ -225,5 +231,105 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
       .select('id');
     if (error) throw new Error(`demo_sessions_expire_failed:${error.message}`);
     return data?.length ?? 0;
+  }
+
+  async listAdminDemoCallRuns(params: {
+    createdAfter: Date;
+    createdBefore: Date;
+    limit?: number;
+  }): Promise<DemoAdminCallListRow[]> {
+    const limit = Math.min(params.limit ?? 500, 500);
+    type SessionRow = {
+      id: string;
+      public_session_id: string;
+      vertical_slug: string;
+      demo_mode: DemoMode;
+      source: string;
+      status: DemoSessionStatus;
+      callback_phone: string;
+      client_ip: string | null;
+      client_country: string | null;
+    };
+    type RunRow = {
+      request_id: string;
+      demo_session_id: string;
+      provider: string;
+      provider_call_id: string | null;
+      room_name: string | null;
+      status: DemoCallStatus;
+      started_at: string | null;
+      connected_at: string | null;
+      ended_at: string | null;
+      outcome: string | null;
+      created_at: string;
+      demo_sessions: SessionRow;
+    };
+
+    const { data: runs, error } = await this.supabase
+      .from('demo_call_runs')
+      .select(
+        'request_id,demo_session_id,provider,provider_call_id,room_name,status,started_at,connected_at,ended_at,outcome,created_at,demo_sessions!inner(id,public_session_id,vertical_slug,demo_mode,source,status,callback_phone,client_ip,client_country)',
+      )
+      .gte('created_at', params.createdAfter.toISOString())
+      .lte('created_at', params.createdBefore.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) throw new Error(`demo_call_runs_list_admin_failed:${error.message}`);
+
+    const unwrapSession = (value: SessionRow | SessionRow[] | null | undefined): SessionRow | null => {
+      if (value == null) return null;
+      return Array.isArray(value) ? (value[0] ?? null) : value;
+    };
+
+    const sessionIds = [
+      ...new Set(
+        (runs ?? [])
+          .map((r) => unwrapSession((r as { demo_sessions?: SessionRow | SessionRow[] }).demo_sessions))
+          .filter(Boolean)
+          .map((s) => (s as SessionRow).id),
+      ),
+    ];
+    const businessNameBySession = new Map<string, string>();
+    if (sessionIds.length > 0) {
+      const { data: configs, error: configError } = await this.supabase
+        .from('demo_business_configs')
+        .select('demo_session_id,business_name')
+        .in('demo_session_id', sessionIds);
+      if (configError) throw new Error(`demo_business_configs_list_admin_failed:${configError.message}`);
+      for (const row of configs ?? []) {
+        businessNameBySession.set(row.demo_session_id as string, row.business_name as string);
+      }
+    }
+
+    return (runs ?? []).map((raw) => {
+      const r = raw as Omit<RunRow, 'demo_sessions'> & { demo_sessions: SessionRow | SessionRow[] };
+      const s = unwrapSession(r.demo_sessions);
+      if (!s) {
+        throw new Error('demo_call_runs_list_admin_failed:missing_session_embed');
+      }
+      return {
+        requestId: r.request_id,
+        demoSessionId: r.demo_session_id,
+        publicSessionId: s.public_session_id,
+        verticalSlug: s.vertical_slug,
+        demoMode: s.demo_mode,
+        source: s.source,
+        sessionStatus: s.status,
+        runStatus: r.status,
+        outcome: r.outcome,
+        callbackPhone: s.callback_phone,
+        businessName: businessNameBySession.get(s.id) ?? null,
+        clientIp: s.client_ip,
+        clientCountry: s.client_country,
+        provider: r.provider,
+        providerCallId: r.provider_call_id,
+        roomName: r.room_name,
+        startedAt: r.started_at,
+        connectedAt: r.connected_at,
+        endedAt: r.ended_at,
+        runCreatedAt: r.created_at,
+      };
+    });
   }
 }

@@ -1,4 +1,5 @@
 import type {
+  DemoAdminCallListRow,
   DemoCallRunRecord,
   DemoCallStatus,
   DemoMode,
@@ -16,6 +17,8 @@ type MemoryDemoSession = {
   status: DemoSessionStatus;
   expiresAt: Date;
   createdAt: Date;
+  clientIp?: string | null;
+  clientCountry?: string | null;
 };
 
 type MemoryDemoBusinessConfig = {
@@ -74,6 +77,8 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
       enabled?: boolean;
     }>;
     expiresAt?: Date;
+    clientIp?: string | null;
+    clientCountry?: string | null;
   }): Promise<{ id: string; expiresAt: Date }> {
     const id = createId();
     const expiresAt = params.expiresAt ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -87,6 +92,8 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
       status: 'created',
       expiresAt,
       createdAt: new Date(),
+      clientIp: params.clientIp ?? null,
+      clientCountry: params.clientCountry ?? null,
     });
     this.businessConfigsBySessionId.set(id, {
       demoSessionId: id,
@@ -196,6 +203,46 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
       outcome: call.outcome,
       expiresAt: session.expiresAt.toISOString(),
     };
+  }
+
+  async listAdminDemoCallRuns(params: {
+    createdAfter: Date;
+    createdBefore: Date;
+    limit?: number;
+  }): Promise<DemoAdminCallListRow[]> {
+    const limit = Math.min(params.limit ?? 500, 500);
+    const rows: DemoAdminCallListRow[] = [];
+    for (const call of this.callRunsByRequestId.values()) {
+      const created = call.createdAt;
+      if (created < params.createdAfter || created > params.createdBefore) continue;
+      const session = this.sessionsById.get(call.demoSessionId);
+      if (!session) continue;
+      const cfg = this.businessConfigsBySessionId.get(session.id);
+      rows.push({
+        requestId: call.requestId,
+        demoSessionId: session.id,
+        publicSessionId: session.publicSessionId,
+        verticalSlug: session.verticalSlug,
+        demoMode: session.mode,
+        source: session.source,
+        sessionStatus: session.status,
+        runStatus: call.status,
+        outcome: call.outcome ?? null,
+        callbackPhone: session.callbackPhone,
+        businessName: cfg?.businessName ?? null,
+        clientIp: session.clientIp ?? null,
+        clientCountry: session.clientCountry ?? null,
+        provider: call.provider,
+        providerCallId: call.providerCallId ?? null,
+        roomName: call.roomName ?? null,
+        startedAt: call.startedAt?.toISOString() ?? null,
+        connectedAt: call.connectedAt?.toISOString() ?? null,
+        endedAt: call.endedAt?.toISOString() ?? null,
+        runCreatedAt: call.createdAt.toISOString(),
+      });
+    }
+    rows.sort((a, b) => b.runCreatedAt.localeCompare(a.runCreatedAt));
+    return rows.slice(0, limit);
   }
 
   async expireOlderThan(now: Date): Promise<number> {

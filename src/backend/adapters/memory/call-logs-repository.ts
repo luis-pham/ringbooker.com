@@ -217,4 +217,43 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
         endedAt: log.endedAt?.toISOString(),
       }));
   }
+
+  async findTranscriptByShopAndRequestId(params: {
+    shopId: string;
+    requestId: string;
+  }): Promise<{
+    transcriptText?: string;
+    transcriptStatus?: string;
+    startedAt?: string;
+    endedAt?: string;
+  } | null> {
+    for (const log of this.logsByCall.values()) {
+      if (log.shopId === params.shopId && log.requestId === params.requestId) {
+        return {
+          transcriptText: log.transcriptText,
+          transcriptStatus: log.transcriptStatus,
+          startedAt: log.startedAt?.toISOString(),
+          endedAt: log.endedAt?.toISOString(),
+        };
+      }
+    }
+    return null;
+  }
+
+  async listTranscriptMetaByShopAndRequestIds(params: {
+    shopId: string;
+    requestIds: string[];
+  }): Promise<Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>> {
+    const map = new Map<string, { transcriptStatus?: string; hasTranscriptText: boolean }>();
+    const want = new Set(params.requestIds);
+    if (want.size === 0) return map;
+    for (const log of this.logsByCall.values()) {
+      if (log.shopId !== params.shopId || !log.requestId || !want.has(log.requestId)) continue;
+      map.set(log.requestId, {
+        transcriptStatus: log.transcriptStatus,
+        hasTranscriptText: Boolean(log.transcriptText?.trim().length),
+      });
+    }
+    return map;
+  }
 }

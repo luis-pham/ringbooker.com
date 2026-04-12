@@ -193,10 +193,6 @@ export function AdminLeadsLive() {
             </div>
             <span>RingBooker Admin</span>
           </div>
-          <div className="workspace">
-            <h3>Inbound demand</h3>
-            <p>Review contact leads from marketing forms and move them through follow-up status quickly.</p>
-          </div>
           <div className="nav-label">Backoffice</div>
           <div className="nav-list">
             <a className="nav-item" href="/admin">
@@ -262,11 +258,7 @@ export function AdminLeadsLive() {
               <span>System Health</span>
             </a>
           </div>
-          <div className="sidebar-foot">
-            <strong>Lead handling.</strong>
-            <small>Track every inbound contact request with status and handling notes in one place.</small>
-          </div>
-        </aside>
+          </aside>
         <main className="main">
           <div className="topbar">
             <div className="page-title">

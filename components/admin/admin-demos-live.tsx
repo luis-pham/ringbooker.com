@@ -1,0 +1,557 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { AdminLayout } from '@/components/admin/admin-layout';
+import { adminCallsScripts, adminCallsStyles } from '@/components/admin/admin-calls';
+
+type DemoCallRow = {
+  requestId: string;
+  demoSessionId: string;
+  publicSessionId: string;
+  verticalSlug: string;
+  demoMode: string;
+  source: string;
+  sessionStatus: string;
+  runStatus: string;
+  outcome: string | null;
+  callbackPhone: string;
+  businessName: string | null;
+  clientIp: string | null;
+  clientCountry: string | null;
+  provider: string;
+  providerCallId: string | null;
+  roomName: string | null;
+  startedAt: string | null;
+  connectedAt: string | null;
+  endedAt: string | null;
+  runCreatedAt: string;
+  demoDurationSeconds: number | null;
+  transcriptStatus?: string;
+  hasTranscriptText?: boolean;
+};
+
+type ChartDay = { day: string; count: number; demoSeconds: number };
+
+type ListResponse = {
+  ok: boolean;
+  calls?: DemoCallRow[];
+  chartDaily?: ChartDay[];
+  filter?: { dateFrom: string; dateTo: string };
+  error?: string;
+};
+
+function utcTodayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function utcDaysAgoIso(days: number): string {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return parsed.toLocaleString();
+}
+
+function formatDuration(seconds: number | null | undefined) {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) return '—';
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}m ${s}s`;
+}
+
+function runStatusClass(row: DemoCallRow) {
+  if (row.outcome === 'missed' || row.runStatus === 'missed') return 'tag orange';
+  if (row.outcome === 'error' || row.runStatus === 'failed') return 'tag red';
+  if (row.runStatus === 'completed') return 'tag green';
+  return 'tag blue';
+}
+
+export function AdminDemosLive() {
+  const [dateFrom, setDateFrom] = useState(() => utcDaysAgoIso(30));
+  const [dateTo, setDateTo] = useState(() => utcTodayIso());
+  const [appliedFrom, setAppliedFrom] = useState(() => utcDaysAgoIso(30));
+  const [appliedTo, setAppliedTo] = useState(() => utcTodayIso());
+  const [calls, setCalls] = useState<DemoCallRow[]>([]);
+  const [chartDaily, setChartDaily] = useState<ChartDay[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<DemoCallRow | null>(null);
+  const [transcriptLoading, setTranscriptLoading] = useState(false);
+  const [transcriptError, setTranscriptError] = useState<string | null>(null);
+  const [transcriptText, setTranscriptText] = useState<string | null>(null);
+  const [transcriptStatus, setTranscriptStatus] = useState<string | null>(null);
+
+  const load = useCallback(async (from: string, to: string) => {
+    const qs = `?dateFrom=${encodeURIComponent(from)}&dateTo=${encodeURIComponent(to)}`;
+    void fetch(`/api/backend/admin/demo-calls${qs}`)
+      .then(async (response) => {
+        const body = (await response.json()) as ListResponse;
+        if (!body.ok) {
+          setError(body.error ?? 'unable_to_load');
+          setCalls([]);
+          setChartDaily([]);
+          return;
+        }
+        setError(null);
+        setCalls(body.calls ?? []);
+        setChartDaily(body.chartDaily ?? []);
+        setSelected((body.calls ?? [])[0] ?? null);
+      })
+      .catch(() => {
+        setError('network_error');
+        setCalls([]);
+        setChartDaily([]);
+      });
+  }, []);
+
+  useEffect(() => {
+    void load(appliedFrom, appliedTo);
+  }, [appliedFrom, appliedTo, load]);
+
+  useEffect(() => {
+    if (!selected) {
+      setTranscriptText(null);
+      setTranscriptStatus(null);
+      setTranscriptError(null);
+      return;
+    }
+    setTranscriptLoading(true);
+    setTranscriptError(null);
+    void fetch(`/api/backend/admin/demo-calls/${encodeURIComponent(selected.requestId)}/transcript`)
+      .then(async (response) => {
+        const body = (await response.json()) as {
+          ok: boolean;
+          transcriptText?: string | null;
+          transcriptStatus?: string | null;
+          error?: string;
+        };
+        if (!response.ok || !body.ok) {
+          setTranscriptError(body.error ?? `http_${response.status}`);
+          setTranscriptText(null);
+          setTranscriptStatus(null);
+          return;
+        }
+        setTranscriptText(body.transcriptText ?? null);
+        setTranscriptStatus(body.transcriptStatus ?? null);
+      })
+      .catch(() => {
+        setTranscriptError('network_error');
+        setTranscriptText(null);
+      })
+      .finally(() => setTranscriptLoading(false));
+  }, [selected]);
+
+  async function signOut() {
+    await fetch('/api/backend/auth/logout', { method: 'POST' });
+    window.location.href = '/admin/login';
+  }
+
+  function applyFilters() {
+    setAppliedFrom(dateFrom);
+    setAppliedTo(dateTo);
+  }
+
+  const chartMax = useMemo(() => {
+    let max = 1;
+    for (const d of chartDaily) {
+      max = Math.max(max, d.count, Math.ceil(d.demoSeconds / 60));
+    }
+    return max;
+  }, [chartDaily]);
+
+  const metrics = useMemo(() => {
+    return {
+      total: calls.length,
+      completed: calls.filter((c) => c.runStatus === 'completed').length,
+      missed: calls.filter((c) => c.runStatus === 'missed' || c.outcome === 'missed').length,
+      withTranscript: calls.filter((c) => c.hasTranscriptText).length,
+    };
+  }, [calls]);
+
+  return (
+    <AdminLayout styles={adminCallsStyles} scripts={adminCallsScripts} scriptPrefix="admin-demos-live" bodyClass="app-body">
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div className="brand">
+            <div className="brand-mark">
+              <div className="brand-ripple r3" />
+              <div className="brand-ripple r2" />
+              <div className="brand-core">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+                </svg>
+              </div>
+            </div>
+            <span>RingBooker Admin</span>
+          </div>
+          <div className="nav-label">Backoffice</div>
+          <div className="nav-list">
+            <a className="nav-item " href="/admin">
+              <div className="nav-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 10h6V4h-6zM4 20h6v-3H4z" />
+                </svg>
+              </div>
+              <span>Overview</span>
+            </a>
+            <a className="nav-item " href="/admin/shops">
+              <div className="nav-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 10l2-5h14l2 5" />
+                  <path d="M4 10h16v10H4z" />
+                  <path d="M9 20v-6h6v6" />
+                </svg>
+              </div>
+              <span>Shops</span>
+            </a>
+            <a className="nav-item " href="/admin/calls">
+              <div className="nav-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.08 3h3a2 2 0 0 1 2 1.72l.42 3a2 2 0 0 1-.57 1.73l-1.27 1.27a16 16 0 0 0 6.44 6.44l1.27-1.27a2 2 0 0 1 1.73-.57l3 .42A2 2 0 0 1 22 16.92Z" />
+                </svg>
+              </div>
+              <span>Calls &amp; Incidents</span>
+            </a>
+            <a className="nav-item active" href="/admin/demos">
+              <div className="nav-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                </svg>
+              </div>
+              <span>Demo calls</span>
+            </a>
+            <a className="nav-item " href="/admin/billing">
+              <div className="nav-icon">
+                <svg viewBox="0 0 24 24">
+                  <rect x={3} y={5} width={18} height={14} rx={2} />
+                  <path d="M3 10h18" />
+                </svg>
+              </div>
+              <span>Billing</span>
+            </a>
+            <a className="nav-item " href="/admin/users">
+              <div className="nav-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+                  <circle cx="9.5" cy={7} r={3} />
+                  <path d="M20 8v6" />
+                  <path d="M17 11h6" />
+                </svg>
+              </div>
+              <span>Users &amp; Roles</span>
+            </a>
+            <a className="nav-item " href="/admin/system-health">
+              <div className="nav-icon">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 12h4l2-5 4 10 2-5h6" />
+                </svg>
+              </div>
+              <span>System Health</span>
+            </a>
+          </div>
+          </aside>
+        <main className="main">
+          <div className="topbar">
+            <div className="page-title">
+              <h1>Marketing demo calls</h1>
+              <p>
+                Filter by UTC date range, inspect IP and country captured at request time, and open transcripts from the
+                demo shop call log.
+              </p>
+            </div>
+            <div className="top-actions">
+              <a className="btn" href="/admin/calls">
+                Operations calls
+              </a>
+              <button type="button" className="btn ghost" onClick={() => void signOut()}>
+                Sign out
+              </button>
+            </div>
+          </div>
+
+          <section className="card soft" style={{ marginBottom: 18 }}>
+            <div className="panel-head">
+              <div>
+                <h3>Date range (UTC)</h3>
+                <p className="sub">Applies to when the demo call run was created.</p>
+              </div>
+              <div className="top-actions" style={{ flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+                  From
+                  <input
+                    className="btn ghost"
+                    style={{ padding: '10px 14px', cursor: 'pointer', minWidth: 140 }}
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
+                  To
+                  <input
+                    className="btn ghost"
+                    style={{ padding: '10px 14px', cursor: 'pointer', minWidth: 140 }}
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                  />
+                </label>
+                <button type="button" className="btn purple" style={{ alignSelf: 'flex-end' }} onClick={applyFilters}>
+                  Apply
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {error ? (
+            <div className="note" style={{ marginBottom: 18 }}>
+              Unable to load demo calls: {error}
+            </div>
+          ) : null}
+
+          <section className="grid grid-4">
+            <div className="stat-card">
+              <div className="stat-top">
+                <div className="stat-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.08 3h3a2 2 0 0 1 2 1.72l.42 3a2 2 0 0 1-.57 1.73l-1.27 1.27a16 16 0 0 0 6.44 6.44l1.27-1.27a2 2 0 0 1 1.73-.57l3 .42A2 2 0 0 1 22 16.92Z" />
+                  </svg>
+                </div>
+                <span className="tag blue">Runs</span>
+              </div>
+              <div className="stat-value">{metrics.total}</div>
+              <div className="stat-meta">Demo call runs in range</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-top">
+                <div className="stat-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 13h6V4H4zM14 20h6v-9h-6zM14 10h6V4h-6zM4 20h6v-3H4z" />
+                  </svg>
+                </div>
+                <span className="tag green">Completed</span>
+              </div>
+              <div className="stat-value">{metrics.completed}</div>
+              <div className="stat-meta">Runs marked completed</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-top">
+                <div className="stat-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M3 12h4l2-5 4 10 2-5h6" />
+                  </svg>
+                </div>
+                <span className="tag orange">Missed</span>
+              </div>
+              <div className="stat-value">{metrics.missed}</div>
+              <div className="stat-meta">Missed / failed outcomes</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-top">
+                <div className="stat-icon">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <span className="tag purple">Transcripts</span>
+              </div>
+              <div className="stat-value">{metrics.withTranscript}</div>
+              <div className="stat-meta">Rows with stored transcript text</div>
+            </div>
+          </section>
+
+          <section className="card" style={{ marginTop: 18 }}>
+            <div className="panel-head">
+              <div>
+                <h3>Daily volume</h3>
+                <p className="sub">Bar height = demo count per UTC day. Tooltip tone via label below.</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, minHeight: 140, padding: '8px 0 4px' }}>
+              {chartDaily.length === 0 ? (
+                <p className="sub" style={{ margin: 0 }}>
+                  No data in this range.
+                </p>
+              ) : (
+                chartDaily.map((d) => {
+                  const h = Math.max(8, Math.round((d.count / chartMax) * 120));
+                  return (
+                    <div
+                      key={d.day}
+                      title={`${d.day}: ${d.count} demos, ${formatDuration(d.demoSeconds)} connected/total audio`}
+                      style={{
+                        flex: 1,
+                        minWidth: 8,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '100%',
+                          maxWidth: 28,
+                          height: h,
+                          borderRadius: 10,
+                          background: 'linear-gradient(180deg, rgba(139,92,246,.85), rgba(124,58,237,.35))',
+                          border: '1px solid rgba(139,92,246,.35)',
+                        }}
+                      />
+                      <span style={{ fontSize: 9, color: 'var(--muted)', textAlign: 'center' }}>{d.day.slice(5)}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </section>
+
+          <section className="call-grid" style={{ marginTop: 18 }}>
+            <div className="card">
+              <div className="panel-head">
+                <div>
+                  <h3>Demo call runs</h3>
+                  <p className="sub">Select a row to load transcript from the demo shop call log.</p>
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Started</th>
+                      <th>Business</th>
+                      <th>Vertical</th>
+                      <th>Callback</th>
+                      <th>IP</th>
+                      <th>Country</th>
+                      <th>Demo duration</th>
+                      <th>Status</th>
+                      <th>Transcript</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calls.map((row) => (
+                      <tr
+                        key={row.requestId}
+                        style={{
+                          cursor: 'pointer',
+                          background: selected?.requestId === row.requestId ? 'rgba(139,92,246,.08)' : undefined,
+                        }}
+                        onClick={() => setSelected(row)}
+                      >
+                        <td>{formatDateTime(row.startedAt ?? row.runCreatedAt)}</td>
+                        <td>{row.businessName ?? '—'}</td>
+                        <td>{row.verticalSlug}</td>
+                        <td>{row.callbackPhone}</td>
+                        <td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{row.clientIp ?? '—'}</td>
+                        <td>{row.clientCountry ?? '—'}</td>
+                        <td>{formatDuration(row.demoDurationSeconds)}</td>
+                        <td>
+                          <span className={runStatusClass(row)}>{row.runStatus}</span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            className="btn ghost"
+                            style={{ padding: '8px 12px', fontSize: 12 }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelected(row);
+                            }}
+                          >
+                            View transcript
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="panel-head">
+                <div>
+                  <h3>Transcript</h3>
+                  <p className="sub">
+                    {selected ? (
+                      <>
+                        Request <span style={{ fontFamily: 'ui-monospace, monospace' }}>{selected.requestId}</span>
+                      </>
+                    ) : (
+                      'Select a demo run.'
+                    )}
+                  </p>
+                </div>
+                {selected ? (
+                  <span className="tag purple">{transcriptStatus ?? 'unknown'}</span>
+                ) : null}
+              </div>
+              {transcriptLoading ? <p className="sub">Loading transcript…</p> : null}
+              {transcriptError ? (
+                <div className="note">
+                  {transcriptError === 'transcript_not_found'
+                    ? 'No call log row yet for this request (call may not have hit the demo shop log).'
+                    : transcriptError}
+                </div>
+              ) : null}
+              {!transcriptLoading && !transcriptError && selected ? (
+                <div className="note" style={{ maxHeight: 420, overflow: 'auto', whiteSpace: 'pre-wrap', color: 'var(--text)' }}>
+                  {transcriptText?.trim()
+                    ? transcriptText
+                    : 'No transcript text stored for this request yet.'}
+                </div>
+              ) : null}
+              {selected ? (
+                <div className="list" style={{ marginTop: 14 }}>
+                  <div className="list-item">
+                    <div className="item-main">
+                      <div className="avatar">IP</div>
+                      <div>
+                        <h4>Client IP</h4>
+                        <p>{selected.clientIp ?? 'Not captured'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="list-item">
+                    <div className="item-main">
+                      <div className="avatar">CC</div>
+                      <div>
+                        <h4>Country</h4>
+                        <p>{selected.clientCountry ?? 'Not available (needs CF-IPCountry or future geo lookup)'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="list-item">
+                    <div className="item-main">
+                      <div className="avatar">RM</div>
+                      <div>
+                        <h4>Room</h4>
+                        <p>{selected.roomName ?? '—'}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="list-item">
+                    <div className="item-main">
+                      <div className="avatar">PR</div>
+                      <div>
+                        <h4>Provider call</h4>
+                        <p style={{ wordBreak: 'break-all' }}>{selected.providerCallId ?? '—'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        </main>
+      </div>
+    </AdminLayout>
+  );
+}
