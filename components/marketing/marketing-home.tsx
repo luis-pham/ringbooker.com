@@ -89,24 +89,7 @@ const styles: string[] = [
 html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:16px;line-height:1.6}
 
-/* ─── NAV ─── */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(255,255,255,0.92);backdrop-filter:blur(14px);border-bottom:1px solid rgba(229,231,235,0.7);height:68px;display:flex;align-items:center;justify-content:center;padding:0 48px}
-.nav-inner{width:100%;max-width:1100px;display:flex;align-items:center;justify-content:space-between}
-.nav-logo{display:flex;align-items:center;gap:11px;font-weight:800;font-size:19px;color:var(--text-dark);text-decoration:none}
-.nav-logo-icon{position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.nav-ripple{position:absolute;border-radius:50%;background:#8B5CF6}
-.nav-ripple-3{width:38px;height:38px;opacity:.1}
-.nav-ripple-2{width:30px;height:30px;opacity:.18}
-.nav-ripple-core{width:24px;height:24px;background:var(--purple);border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
-.nav-ripple-core svg{width:13px;height:13px;fill:#fff}
-.nav-links{display:flex;align-items:center;gap:32px}
-.nav-links a{font-size:14.5px;font-weight:500;color:var(--text-gray);text-decoration:none;transition:color .2s}
-.nav-links a:hover{color:var(--text-dark)}
-.nav-actions{display:flex;align-items:center;gap:10px}
-.nav-signin{padding:9px 16px;border-radius:var(--r-pill);border:1px solid var(--border);font-size:14px;font-weight:600;color:#374151;text-decoration:none;transition:border-color .2s,color .2s,background .2s}
-.nav-signin:hover{border-color:#d1d5db;color:var(--text-dark);background:#f9fafb}
-.nav-cta{background:var(--text-dark);color:#fff;padding:10px 22px;border-radius:var(--r-pill);font-size:14px;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:7px;transition:background .2s,transform .15s}
-.nav-cta:hover{background:#1f2937;transform:scale(1.03)}
+/* Primary site nav is MarketingHeader (.mk-nav in marketing-chrome). Legacy duplicate nav CSS removed — bare "nav{}" selectors were overriding .mk-nav on this page only. */
 
 /* ─── HERO ─── */
 .hero{min-height:100vh;padding:100px 48px 60px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%)}
@@ -626,9 +609,8 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
-  nav .nav-links{display:none}
-  nav,footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation,.deep-wrap{padding-left:22px;padding-right:22px}
-  nav,.hero-badge,.industry-tag{backdrop-filter:none}
+  footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation,.deep-wrap{padding-left:22px;padding-right:22px}
+  .hero-badge,.industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.vc-ring,.user-image-corners::before,.user-image-corners::after{display:none}
   .pulse-dot,.wv span,.vc-wave span,.live-dot,.cta-vc-wave span{animation:none}
   .hero-visual{height:480px}
