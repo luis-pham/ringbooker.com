@@ -244,8 +244,18 @@ function VsTable({ rows }: { rows: Array<{ scenario: string; without: string; wi
         {rows.map((row) => (
           <div key={row.scenario} className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 px-5 py-4 text-[13.5px] last:border-b-0">
             <span className="font-semibold text-slate-700">{row.scenario}</span>
-            <span className="text-slate-500">{row.without}</span>
-            <span className="font-semibold text-slate-800">{row.with}</span>
+            <span className="flex items-start gap-2 text-slate-500">
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-100">
+                <svg viewBox="0 0 10 10" width="8" height="8"><path d="M2 2l6 6M8 2l-6 6" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              </span>
+              {row.without}
+            </span>
+            <span className="flex items-start gap-2 font-semibold text-slate-800">
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                <svg viewBox="0 0 10 10" width="8" height="8"><path d="M1.5 5l2.5 2.5 4.5-5" stroke="#10B981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </span>
+              {row.with}
+            </span>
           </div>
         ))}
       </div>

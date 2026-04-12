@@ -102,7 +102,7 @@ export function MarketingSeoPage({
 .seo-section p{font-size:16px;line-height:1.74;color:#4b5563;margin:0 0 10px}
 .seo-faq-grid{display:grid;grid-template-columns:1fr;gap:10px}
 .seo-faq-card{border:1px solid #ece7ff;background:#faf9ff;border-radius:14px;padding:14px}
-.seo-faq-card h3{font-size:16px;line-height:1.4;color:#111827;margin:0 0 6px}
+.seo-faq-card h3{font-size:16px;font-weight:900;line-height:1.4;color:#111827;margin:0 0 6px;letter-spacing:-.2px}
 .seo-faq-card p{font-size:15px;line-height:1.65;color:#4b5563;margin:0}
 @media (max-width: 860px){
   .seo-shell{padding-top:96px}

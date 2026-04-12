@@ -36,7 +36,8 @@ a{text-decoration:none;color:inherit}
 .hero-copy p{font-size:17px;color:var(--text-gray);max-width:540px;margin-bottom:24px;line-height:1.75}
 .trust-list{display:grid;gap:12px;margin-top:22px;max-width:520px}
 .trust-item{display:flex;gap:12px;align-items:flex-start;border:1px solid rgba(139,92,246,.13);background:rgba(255,255,255,.72);border-radius:18px;padding:14px 15px;box-shadow:0 10px 28px rgba(17,24,39,.04)}
-.trust-icon,.mini-icon{width:36px;height:36px;border-radius:13px;background:var(--purple-ultra);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.trust-icon{width:36px;height:36px;border-radius:13px;background:var(--purple-ultra);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mini-icon{width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;font-weight:900;box-shadow:0 8px 20px rgba(124,58,237,.28)}
 .trust-item strong{display:block;font-size:14px;margin-bottom:2px}
 .trust-item span{display:block;font-size:13px;color:var(--text-gray);line-height:1.55}
 .formshell{background:#fff;border:1px solid var(--border);border-radius:30px;padding:28px;box-shadow:0 24px 70px rgba(17,24,39,.11)}

@@ -1095,7 +1095,7 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="industry-title">Nail Salon</div>
                 <div className="industry-sub">Built for manicure, pedicure, and gel services with heavy walk-in and peak-hour calls.</div>
-                <div className="industry-link">Explore this page →</div>
+                <div className="industry-link">Explore more →</div>
               </a>
               <a href="/hair-salon" className="industry-card" data-index={1}>
                 <div className="industry-thumb">
@@ -1104,7 +1104,7 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="industry-title">Hair Salon</div>
                 <div className="industry-sub">Designed for cuts, color, and stylist-led schedules where calls arrive during active service.</div>
-                <div className="industry-link">Explore this page →</div>
+                <div className="industry-link">Explore more →</div>
               </a>
               <a href="/spa" className="industry-card" data-index={2}>
                 <div className="industry-thumb">
@@ -1113,7 +1113,7 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="industry-title">Spa / Day Spa</div>
                 <div className="industry-sub">Treatment-heavy bookings and after-hours availability.</div>
-                <div className="industry-link">Explore this page →</div>
+                <div className="industry-link">Explore more →</div>
               </a>
               <a href="/med-spa" className="industry-card" data-index={3}>
                 <div className="industry-thumb">
@@ -1122,7 +1122,7 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="industry-title">Med Spa</div>
                 <div className="industry-sub">Consultation-driven calls with high-ticket conversion.</div>
-                <div className="industry-link">Explore this page →</div>
+                <div className="industry-link">Explore more →</div>
               </a>
               <a href="/beauty-clinic" className="industry-card" data-index={4}>
                 <div className="industry-thumb">
@@ -1131,7 +1131,7 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="industry-title">Beauty / Aesthetic Clinic</div>
                 <div className="industry-sub">Consultation, follow-up, and treatment scheduling workflows.</div>
-                <div className="industry-link">Explore this page →</div>
+                <div className="industry-link">Explore more →</div>
               </a>
               </div>
               <div className="industries-controls" aria-label="Industries carousel controls">
@@ -1147,7 +1147,7 @@ export function MarketingHomeTemplate() {
           <div className="steps-inner">
             <div className="sec-label">How It Works</div>
             <h2 className="sec-title reveal">Get your AI phone agent live<br />in three simple steps.</h2>
-            <p className="sec-sub reveal">Built for busy beauty businesses that want to go live in about <span className="emphasis-5min">5 minutes</span>, not get stuck in more software complexity.</p>
+            <p className="sec-sub reveal">Built for busy beauty businesses that want to go live in about <span className="emphasis-5min">15 minutes</span>, not get stuck in more software complexity.</p>
             <div className="home-carousel" id="howCarousel">
               <div className="steps-grid home-carousel-track">
                 <div className="step-card reveal home-carousel-slide">

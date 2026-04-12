@@ -101,7 +101,7 @@ a{text-decoration:none;color:inherit}
 .hiw-list li::before{content:"✓";width:20px;height:20px;border-radius:50%;background:var(--purple-ultra);color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0;margin-top:1px}
 .hiw-flow{counter-reset:hiwStep}
 .hiw-step{position:relative}
-.hiw-step::before{counter-increment:hiwStep;content:counter(hiwStep);width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;margin-bottom:18px;box-shadow:0 12px 24px rgba(139,92,246,.24)}
+.hiw-step::before{counter-increment:hiwStep;content:counter(hiwStep);width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;margin:0 auto 18px;box-shadow:0 12px 24px rgba(139,92,246,.24)}
 .hiw-handle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .hiw-handle{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 10px 30px rgba(17,24,39,.04)}
 .hiw-handle-icon{width:48px;height:48px;border-radius:18px;margin:0 auto 14px;background:var(--purple-ultra);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:inset 0 0 0 1px rgba(139,92,246,.08)}
