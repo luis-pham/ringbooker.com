@@ -3,6 +3,8 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
+
 // ─── State Model ──────────────────────────────────────────────────────────────
 
 export type NavStateType =
@@ -170,10 +172,19 @@ export async function resolveMarketingNav(): Promise<NavUserState> {
   return fetchNavState({ confirmedUserEmail: meJson.session.email });
 }
 
+/** Last resolved marketing nav (never `loading`). Survives route changes in the same tab to avoid nav skeleton flicker. */
+let marketingNavResolvedCache: NavUserState | null = null;
+
 // ─── Sign Out ─────────────────────────────────────────────────────────────────
+
+/** Cleared on sign-out so the next session never inherits the previous user’s nav. */
+export function clearMarketingNavCache() {
+  marketingNavResolvedCache = null;
+}
 
 async function handleSignOut() {
   try {
+    clearMarketingNavCache();
     await fetch('/api/backend/auth/logout', { method: 'POST', credentials: 'include' });
   } finally {
     window.location.href = '/';
@@ -208,7 +219,15 @@ function AvatarMenu({
 
         <div className="mk-avatar-items mk-avatar-mobile-nav">
           <a href="/#features" className="mk-avatar-item" onClick={onClose}>Features</a>
-          <a href="/#industries" className="mk-avatar-item" onClick={onClose}>Industries</a>
+          <a href="/#industries" className="mk-avatar-item" onClick={onClose}>
+            <span>📋</span> Industries overview
+          </a>
+          {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
+            <a key={item.href} href={item.href} className="mk-avatar-item" onClick={onClose}>
+              <span>{item.icon}</span>
+              {item.label}
+            </a>
+          ))}
           <a href="/pricing" className="mk-avatar-item" onClick={onClose}>Pricing</a>
           <a href="/how-it-works" className="mk-avatar-item" onClick={onClose}>How It Works</a>
         </div>
@@ -253,15 +272,21 @@ function AvatarMenu({
 
 export function useNavState() {
   const pathname = usePathname();
-  const [state, setState] = useState<NavUserState>({ type: 'loading' });
+  const [state, setState] = useState<NavUserState>(() => marketingNavResolvedCache ?? { type: 'loading' });
   const genRef = useRef(0);
 
   useEffect(() => {
     const myGen = (genRef.current += 1);
-    setState({ type: 'loading' });
+    const hasCache = marketingNavResolvedCache !== null;
+    if (!hasCache) {
+      setState({ type: 'loading' });
+    }
     void (async () => {
       const next = await resolveMarketingNav();
       if (myGen !== genRef.current) return;
+      if (next.type !== 'loading') {
+        marketingNavResolvedCache = next;
+      }
       setState(next);
     })();
     return () => {
@@ -277,10 +302,12 @@ export function useNavState() {
       debounce = setTimeout(() => {
         debounce = null;
         const myGen = (genRef.current += 1);
-        setState({ type: 'loading' });
         void (async () => {
           const next = await resolveMarketingNav();
           if (myGen !== genRef.current) return;
+          if (next.type !== 'loading') {
+            marketingNavResolvedCache = next;
+          }
           setState(next);
         })();
       }, 400);

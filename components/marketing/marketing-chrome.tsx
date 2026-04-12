@@ -1,9 +1,10 @@
 import { DemoPickerLazy } from '@/components/marketing/demo-picker-lazy';
 import { NavActionsClient } from '@/components/marketing/nav-actions-client';
+import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
 import { siteConfig } from '@/lib/site';
 
 type MarketingHeaderProps = {
-  active?: 'demo' | 'pricing' | 'how-it-works' | 'contact';
+  active?: 'demo' | 'pricing' | 'how-it-works' | 'contact' | 'industry';
 };
 
 const socialIconPaths = {
@@ -179,9 +180,24 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
           <a href="/#features">
             Features
           </a>
-          <a href="/#industries">
-            Industries
-          </a>
+          <div className="mk-demo-dd">
+            <a
+              href="/#industries"
+              className={`mk-demo-dd-link${active === 'industry' ? ' active' : ''}`}
+            >
+              Industries <span className="mk-demo-caret">▾</span>
+            </a>
+            <div className="mk-demo-menu">
+              <div className="mk-demo-menu-inner">
+                {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
+                  <a key={item.href} href={item.href} className="mk-demo-item">
+                    <span className="mk-demo-item-icon">{item.icon}</span>
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
           <div className="mk-demo-dd">
             <a href="/demo" className={`mk-demo-dd-link${active === 'demo' ? ' active' : ''}`}>
               Live Demo <span className="mk-demo-caret">▾</span>

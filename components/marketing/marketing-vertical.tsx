@@ -1052,7 +1052,7 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
   return (
     <>
       <MarketingChromeStyles />
-      <MarketingHeader />
+      <MarketingHeader active="industry" />
       <main className="bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fff_60%)] pb-16 pt-28">
         <PageBody vertical={vertical} />
         <Faq items={faq} />
