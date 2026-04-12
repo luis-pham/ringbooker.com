@@ -356,7 +356,13 @@ const adminDemoCallsListQuerySchema = z.object({
 });
 
 const adminCallsListQuerySchema = z.object({
-  shopId: z.string().min(1).optional(),
+  shopId: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z
+      .string()
+      .optional()
+      .refine((v) => v === undefined || parseAdminShopIdParam(v) !== null, { message: 'invalid_shop_id' }),
+  ),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   page: z.coerce.number().int().min(1).max(10_000).optional(),
@@ -605,6 +611,29 @@ async function requireSession(
   return session;
 }
 
+/** Returns a canonical UUID string or null if the path/query segment is not a valid UUID */
+function parseAdminResourceUuid(raw: string | undefined): string | null {
+  const trimmed = raw?.trim() ?? '';
+  const parsed = z.string().uuid().safeParse(trimmed);
+  return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Shop id in Postgres is a UUID; in-memory tests use `shop-<uuid>`; fixtures may use short slugs (e.g. demo-shop).
+ */
+function parseAdminShopIdParam(raw: string | undefined): string | null {
+  const trimmed = raw?.trim() ?? '';
+  if (!trimmed || trimmed.length > 80) return null;
+  if (z.string().uuid().safeParse(trimmed).success) return trimmed;
+  if (trimmed.startsWith('shop-')) {
+    const suffix = trimmed.slice(5);
+    if (z.string().uuid().safeParse(suffix).success) return trimmed;
+    return null;
+  }
+  if (/^[a-z0-9][a-z0-9-]{0,62}$/i.test(trimmed)) return trimmed;
+  return null;
+}
+
 async function enforceRateLimit(
   c: Context,
   policy: (typeof RATE_LIMIT_POLICIES)[keyof typeof RATE_LIMIT_POLICIES],
@@ -646,6 +675,9 @@ async function enforceRateLimitWithIdentity(
   identity: string,
 ): Promise<Response | null> {
   const result = await consumeRateLimit(policy, identity);
+  c.header('X-RateLimit-Limit', String(result.limit));
+  c.header('X-RateLimit-Remaining', String(result.remaining));
+  c.header('Retry-After', String(result.retryAfterSec));
   if (!result.ok) {
     securityAudit({
       action: 'rate_limit_blocked',
@@ -3126,7 +3158,7 @@ export function createBackendApp(deps: {
   });
 
   app.get(path('/admin/dashboard/charts/:metric'), async (c) => {
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_dashboard_chart_metric');
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_chart_query, 'admin_dashboard_chart_metric');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'admin');
     if (sessionResult instanceof Response) return sessionResult;
@@ -3333,7 +3365,7 @@ export function createBackendApp(deps: {
     if (!deps.shopsRepository || !deps.callLogsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const shopId = c.req.param('id');
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
     if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
     const shop = await deps.shopsRepository.findById(shopId);
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
@@ -3388,7 +3420,7 @@ export function createBackendApp(deps: {
     if (!deps.shopsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const shopId = c.req.param('id');
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
     if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
     const shop = await deps.shopsRepository.findById(shopId);
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
@@ -3452,7 +3484,7 @@ export function createBackendApp(deps: {
     if (!deps.shopsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const shopId = c.req.param('id');
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
     if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
 
     const shop = await deps.shopsRepository.findById(shopId);
@@ -3474,7 +3506,7 @@ export function createBackendApp(deps: {
     if (!deps.shopsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const shopId = c.req.param('id');
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
     if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
     const body = await c.req.json().catch(() => null);
     const parsed = adminUpdatePlanSchema.safeParse(body);
@@ -3510,7 +3542,7 @@ export function createBackendApp(deps: {
     if (!deps.shopsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const shopId = c.req.param('id');
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
     if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
     const body = await c.req.json().catch(() => null);
     const parsed = adminShopSettingsUpdateSchema.safeParse(body);
@@ -3541,7 +3573,7 @@ export function createBackendApp(deps: {
     if (!deps.shopsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const shopId = c.req.param('id');
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
     if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
     const body = await c.req.json().catch(() => null);
     const parsed = adminShopDynamicConfigSchema.safeParse(body);
@@ -3581,7 +3613,7 @@ export function createBackendApp(deps: {
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_query' }, 400);
     }
-    const shopId = parsed.data.shopId?.trim();
+    const shopId = parsed.data.shopId;
     const dateFrom = parsed.data.dateFrom;
     const dateTo = parsed.data.dateTo;
     const page = parsed.data.page ?? 1;
@@ -3762,7 +3794,7 @@ export function createBackendApp(deps: {
   });
 
   app.get(path('/admin/demo-calls/:requestId/transcript'), async (c) => {
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_demo_calls_transcript');
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_demo_transcript_read, 'admin_demo_calls_transcript');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'admin');
     if (sessionResult instanceof Response) return sessionResult;
@@ -3781,6 +3813,14 @@ export function createBackendApp(deps: {
     if (!row) {
       return c.json({ ok: false, error: 'transcript_not_found' }, 404);
     }
+    securityAudit({
+      action: 'admin_demo_transcript_viewed',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { requestId },
+    });
     return c.json({
       ok: true,
       requestId,
@@ -3847,7 +3887,7 @@ export function createBackendApp(deps: {
     if (!deps.contactRequestsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const leadId = c.req.param('id');
+    const leadId = parseAdminResourceUuid(c.req.param('id'));
     if (!leadId) return c.json({ ok: false, error: 'invalid_lead_id' }, 400);
 
     const body = await c.req.json().catch(() => null);
@@ -3877,6 +3917,8 @@ export function createBackendApp(deps: {
   });
 
   app.get(path('/admin/users'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_users_list');
+    if (limited) return limited;
     const sessionResult = await requireSession(c, 'admin');
     if (sessionResult instanceof Response) return sessionResult;
     if (!deps.authUsersRepository) {
@@ -3905,7 +3947,7 @@ export function createBackendApp(deps: {
     if (!deps.authUsersRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const userId = c.req.param('id');
+    const userId = parseAdminResourceUuid(c.req.param('id'));
     if (!userId) return c.json({ ok: false, error: 'invalid_user_id' }, 400);
     const body = await c.req.json().catch(() => null);
     const parsed = adminUserPatchSchema.safeParse(body);
@@ -3957,10 +3999,16 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'admin');
     if (sessionResult instanceof Response) return sessionResult;
+    const actorLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.admin_user_password_set_by_actor,
+      `pw:${sessionResult.email.toLowerCase()}`,
+    );
+    if (actorLimited) return actorLimited;
     if (!deps.authUsersRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
-    const userId = c.req.param('id');
+    const userId = parseAdminResourceUuid(c.req.param('id'));
     if (!userId) return c.json({ ok: false, error: 'invalid_user_id' }, 400);
     const body = await c.req.json().catch(() => null);
     const parsed = adminUserSetPasswordSchema.safeParse(body);
@@ -3993,6 +4041,12 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'admin');
     if (sessionResult instanceof Response) return sessionResult;
+    const actorLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.admin_user_invite_by_actor,
+      `invite:${sessionResult.email.toLowerCase()}`,
+    );
+    if (actorLimited) return actorLimited;
     if (!deps.authUsersRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }

@@ -185,6 +185,24 @@ export const RATE_LIMIT_POLICIES = {
   auth_session_read: { name: 'auth_session_read', limit: 120, windowMs: 60_000 },
   user_api: { name: 'user_api', limit: 180, windowMs: 60_000 },
   admin_api: { name: 'admin_api', limit: 180, windowMs: 60_000 },
+  /** Expensive time-series aggregation; tighter than generic admin_api to reduce DB abuse */
+  admin_chart_query: { name: 'admin_chart_query', limit: 72, windowMs: 60_000, blockMs: 5 * 60_000 },
+  /** Demo call transcript body can be large; limit bulk scraping */
+  admin_demo_transcript_read: { name: 'admin_demo_transcript_read', limit: 48, windowMs: 60_000, blockMs: 5 * 60_000 },
+  /** Per-admin cap on invites (insider / mistaken bulk) — keyed by actor email, not IP */
+  admin_user_invite_by_actor: {
+    name: 'admin_user_invite_by_actor',
+    limit: 12,
+    windowMs: 60 * 60_000,
+    blockMs: 30 * 60_000,
+  },
+  /** Per-admin cap on password resets set via admin UI */
+  admin_user_password_set_by_actor: {
+    name: 'admin_user_password_set_by_actor',
+    limit: 10,
+    windowMs: 60 * 60_000,
+    blockMs: 30 * 60_000,
+  },
   admin_mutation: { name: 'admin_mutation', limit: 60, windowMs: 60_000, blockMs: 5 * 60_000 },
   jobs_enqueue: { name: 'jobs_enqueue', limit: 40, windowMs: 60_000, blockMs: 5 * 60_000 },
   agent_simulate_inbound: { name: 'agent_simulate_inbound', limit: 20, windowMs: 60_000, blockMs: 5 * 60_000 },
