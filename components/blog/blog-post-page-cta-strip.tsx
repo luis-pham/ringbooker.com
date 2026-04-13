@@ -1,17 +1,12 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-/**
- * Centers a max-w-6xl band in the viewport so the CTA matches the former bottom strip width
- * (not constrained to the article column when the layout is two-column).
- */
-export function BlogPostCtaViewportBand(props: { children: ReactNode }) {
-  return (
-    <div className="not-prose mt-12 w-screen max-w-[100vw] -translate-x-1/2 relative left-1/2 px-6 md:px-12">
-      <div className="mx-auto max-w-6xl">{props.children}</div>
-    </div>
-  );
-}
+/** Same scale as the former “Ready to stop missing bookings?” line on blog detail. */
+const ctaHeadlineClass =
+  'relative z-10 mx-auto max-w-3xl px-1 font-sans text-[clamp(24px,3vw,36px)] font-extrabold leading-[1.2] tracking-tight text-white';
+
+const ctaSubLineClass =
+  'relative z-10 mx-auto mb-7 max-w-2xl font-sans text-[15px] leading-relaxed text-white/75 md:text-[16px]';
 
 /** Matches the full-width marketing CTA at the bottom of blog detail (before removal). */
 const stripShellClass =
@@ -109,13 +104,13 @@ export function BlogPostMarketingCtaStrip({ headline, body, primary, secondary }
     <div className={stripShellClass}>
       <span className={decoOrbClass} aria-hidden />
       {headline ? (
-        <h2 className="relative z-10 mb-2 text-[clamp(24px,3vw,36px)] font-sans font-extrabold tracking-tight text-white">
-          {headline}
-        </h2>
-      ) : null}
-      <div className="relative z-10 mx-auto mb-7 max-w-2xl font-sans text-[15px] leading-relaxed text-white/75 md:text-[16px]">
-        {body}
-      </div>
+        <>
+          <h2 className={`${ctaHeadlineClass} mb-2`}>{headline}</h2>
+          <div className={ctaSubLineClass}>{body}</div>
+        </>
+      ) : (
+        <div className={`${ctaHeadlineClass} mb-7`}>{body}</div>
+      )}
       <div className="relative z-10">
         <PageCtaButtonPair primary={primary} secondary={secondary} />
       </div>
@@ -126,20 +121,18 @@ export function BlogPostMarketingCtaStrip({ headline, body, primary, secondary }
 /** Fixed fallback when the post has no CMS footer CTAs — same copy as the former bottom bar. */
 export function BlogPostDefaultPageCta() {
   return (
-    <section aria-label="Try RingBooker">
-      <BlogPostCtaViewportBand>
-        <BlogPostMarketingCtaStrip
-          headline="Ready to stop missing bookings?"
-          body={
-            <>
-              RingBooker answers every call 24/7 — books appointments, sends confirmations, and fills your calendar while you
-              focus on your clients.
-            </>
-          }
-          primary={{ href: '/demo', label: 'Try a Live Demo', demoPicker: true }}
-          secondary={{ href: '/user/signup', label: 'Start 14-Day Free Trial →' }}
-        />
-      </BlogPostCtaViewportBand>
+    <section className="not-prose w-full min-w-0" aria-label="Try RingBooker">
+      <BlogPostMarketingCtaStrip
+        headline="Ready to stop missing bookings?"
+        body={
+          <>
+            RingBooker answers every call 24/7 — books appointments, sends confirmations, and fills your calendar while you
+            focus on your clients.
+          </>
+        }
+        primary={{ href: '/demo', label: 'Try a Live Demo', demoPicker: true }}
+        secondary={{ href: '/user/signup', label: 'Start 14-Day Free Trial →' }}
+      />
     </section>
   );
 }

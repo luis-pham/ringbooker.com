@@ -4,11 +4,7 @@ import {
   getBlogFooterButton,
 } from '@/lib/blog/footer-cta-templates';
 
-import {
-  BlogPostCtaViewportBand,
-  BlogPostMarketingCtaStrip,
-  type PageCtaButtonProps,
-} from '@/components/blog/blog-post-page-cta-strip';
+import { BlogPostMarketingCtaStrip, type PageCtaButtonProps } from '@/components/blog/blog-post-page-cta-strip';
 
 type PostFooterCtasProps = {
   rows: BlogFooterCtaRow[];
@@ -26,9 +22,8 @@ export function PostFooterCtas({ rows }: PostFooterCtasProps) {
   if (!rows.length) return null;
 
   return (
-    <BlogPostCtaViewportBand>
-      <div className="not-prose space-y-6" aria-label="Suggested next steps">
-        {rows.map((row, index) => {
+    <div className="not-prose w-full min-w-0 space-y-6" aria-label="Suggested next steps">
+      {rows.map((row, index) => {
         const preset = getBlogFooterArticlePreset(row.kind);
         const primaryBtn = getBlogFooterButton(preset.primaryButtonId);
         const secondaryBtn = getBlogFooterButton(preset.secondaryButtonId);
@@ -45,13 +40,12 @@ export function PostFooterCtas({ rows }: PostFooterCtasProps) {
           demoPicker: demoPickerFor(preset.secondaryButtonId, row.secondaryHref) || undefined,
         };
 
-          return (
-            <section key={key}>
-              <BlogPostMarketingCtaStrip body={preset.ctaBody} primary={primary} secondary={secondary} />
-            </section>
-          );
-        })}
-      </div>
-    </BlogPostCtaViewportBand>
+        return (
+          <section key={key}>
+            <BlogPostMarketingCtaStrip body={preset.ctaBody} primary={primary} secondary={secondary} />
+          </section>
+        );
+      })}
+    </div>
   );
 }
