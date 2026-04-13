@@ -72,7 +72,9 @@ async function upsertTags(tagValues: string[]) {
 }
 
 function revalidateBlogPaths(slug: string) {
-  revalidatePath('/blog');
+  // Invalidate every page under /blog (list + all [slug]) so related / Keep Reading
+  // and sidebar links drop deleted or updated posts without waiting for ISR.
+  revalidatePath('/blog', 'layout');
   revalidatePath(`/blog/${slug}`);
   revalidatePath('/admin/blog');
 }

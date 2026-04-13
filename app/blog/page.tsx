@@ -149,7 +149,7 @@ function Pagination({
   for (let p = start; p <= end; p += 1) pages.push(p);
 
   return (
-    <div className="mx-auto mb-24 flex max-w-[1100px] items-center justify-center gap-2 px-6 md:px-12">
+    <div className="mx-auto mb-24 flex max-w-6xl items-center justify-center gap-2 px-6 md:px-12">
       <Link
         href={buildPageHref({ page: Math.max(1, page - 1), category, search })}
         aria-disabled={page <= 1}
@@ -250,7 +250,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       <main className="overflow-x-hidden bg-white">
         <section className="relative overflow-hidden px-6 pb-8 pt-[88px] text-center md:px-12 md:pb-12">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,#EDE9FE_0%,#FDF4FF_50%,transparent_75%)]" />
-          <div className="relative mx-auto max-w-[760px]">
+          <div className="relative mx-auto max-w-6xl">
             <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-purple/25 bg-white/90 px-4 py-1.5 text-[14px] font-semibold text-violet-700">
               <svg viewBox="0 0 24 24" className="h-[13px] w-[13px] fill-current">
                 <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-2 15H8v-2h4v2zm3-4H8v-2h7v2zm0-4H8V7h7v2z" />
@@ -262,7 +262,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               <br />
               AI-Powered Insights
             </h1>
-            <p className="mx-auto mb-8 max-w-[560px] text-base leading-7 text-gray-500 sm:text-[17px]">
+            <p className="mx-auto mb-8 max-w-3xl text-base leading-7 text-gray-500 sm:text-[17px]">
               Practical guides, case studies, and playbooks for appointment-based businesses to capture more calls,
               book more clients, and grow revenue.
             </p>
@@ -272,7 +272,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           <CategoryFilter categories={categories} />
         </section>
 
-        <div className="mx-auto max-w-[1100px] px-6 md:px-12">
+        <div className="mx-auto max-w-6xl px-6 md:px-12">
           {featuredPost ? <FeaturedPost post={featuredPost} /> : null}
 
           <div className="mb-7 flex items-baseline justify-between">
@@ -298,7 +298,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         <Pagination page={page} totalPages={totalPages} category={params.category} search={params.search} />
 
         <section className="px-6 pb-14 md:px-12">
-          <div className="relative mx-auto max-w-[1100px] overflow-hidden rounded-3xl bg-gradient-to-r from-violet-700 via-brand-purple to-violet-400 px-6 py-14 text-center md:px-12">
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-r from-violet-700 via-brand-purple to-violet-400 px-6 py-14 text-center md:px-12">
             <span className="pointer-events-none absolute -right-16 -top-20 h-[300px] w-[300px] rounded-full bg-white/5" />
             <h2 className="mb-2 text-[clamp(26px,3vw,38px)] font-extrabold tracking-tight text-white">
               Ready to stop missing bookings?
