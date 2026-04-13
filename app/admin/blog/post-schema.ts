@@ -1,23 +1,24 @@
 import { z } from 'zod';
 
-import { BLOG_FOOTER_BUTTON_IDS, BLOG_FOOTER_CTA_COPY_IDS } from '@/lib/blog/footer-cta-templates';
+import { BLOG_FOOTER_ARTICLE_KIND_IDS } from '@/lib/blog/footer-cta-templates';
 import { BLOG_PATH_PREFIXES, isReservedCompareBlogSlug } from '@/lib/blog/path-prefixes';
 
-const blogFooterButtonIdSchema = z.enum(BLOG_FOOTER_BUTTON_IDS as unknown as [string, ...string[]]);
-const blogFooterCtaCopyIdSchema = z.enum(BLOG_FOOTER_CTA_COPY_IDS as unknown as [string, ...string[]]);
+const blogFooterArticleKindSchema = z.enum(BLOG_FOOTER_ARTICLE_KIND_IDS as unknown as [string, ...string[]]);
 const blogPathPrefixSchema = z.enum(BLOG_PATH_PREFIXES as unknown as [string, ...string[]]);
 
+const footerCtaHrefSchema = z
+  .string()
+  .min(1, 'Link is required')
+  .max(2000)
+  .refine((h) => {
+    const t = h.trim();
+    return t.startsWith('/') || /^https?:\/\//i.test(t);
+  }, { message: 'Link must start with / or http(s)://' });
+
 const footerCtaEntrySchema = z.object({
-  buttonId: blogFooterButtonIdSchema,
-  ctaCopyId: blogFooterCtaCopyIdSchema,
-  href: z
-    .string()
-    .min(1, 'Link is required')
-    .max(2000)
-    .refine((h) => {
-      const t = h.trim();
-      return t.startsWith('/') || /^https?:\/\//i.test(t);
-    }, { message: 'Link must start with / or http(s)://' }),
+  kind: blogFooterArticleKindSchema,
+  primaryHref: footerCtaHrefSchema,
+  secondaryHref: footerCtaHrefSchema,
 });
 
 /** Limits chosen so legacy posts (short excerpts, long titles) still load and save in admin. */
@@ -63,15 +64,14 @@ export const postSchema = z
   footerCtas: z.array(footerCtaEntrySchema).max(6).superRefine((rows, ctx) => {
     const seen = new Set<string>();
     rows.forEach((row, i) => {
-      const key = `${row.buttonId}:${row.ctaCopyId}`;
-      if (seen.has(key)) {
+      if (seen.has(row.kind)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Each combination of button and CTA text can only be used once',
-          path: [i, 'ctaCopyId'],
+          message: 'Each article type can only be used once',
+          path: [i, 'kind'],
         });
       }
-      seen.add(key);
+      seen.add(row.kind);
     });
   }),
 })

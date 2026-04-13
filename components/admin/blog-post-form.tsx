@@ -8,7 +8,12 @@ import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { postSchema, slugify, type PostFormData } from '@/app/admin/blog/post-schema';
-import { BLOG_FOOTER_BUTTONS, BLOG_FOOTER_CTA_COPIES, type BlogFooterButtonId } from '@/lib/blog/footer-cta-templates';
+import {
+  BLOG_FOOTER_ARTICLE_PRESETS,
+  getBlogFooterArticlePreset,
+  getBlogFooterButton,
+  type BlogFooterArticleKind,
+} from '@/lib/blog/footer-cta-templates';
 import { BLOG_PATH_PREFIX_LABEL, BLOG_PATH_PREFIXES, postPublicPath } from '@/lib/blog/path-prefixes';
 
 import '@uiw/react-md-editor/markdown-editor.css';
@@ -350,19 +355,20 @@ export function BlogPostForm(props: BlogPostFormProps) {
             <div>
               <h2 className="text-base font-semibold text-slate-900">End-of-article CTAs</h2>
               <p className="mt-1 text-sm text-slate-600">
-                Optional blocks below the article: choose supporting CTA text, button label, and link (paths like{' '}
-                <code className="rounded bg-slate-100 px-1">/pricing</code> or full URLs). Max 6; each button + CTA text pair once.
+                Pick an article type: copy and primary/secondary buttons are fixed; you set both links (paths like{' '}
+                <code className="rounded bg-slate-100 px-1">/pricing</code> or full URLs). Max 6 blocks; each type once.
               </p>
             </div>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
+                const preset = BLOG_FOOTER_ARTICLE_PRESETS[0];
                 appendFooterCta({
-                  buttonId: BLOG_FOOTER_BUTTONS[0].id,
-                  ctaCopyId: BLOG_FOOTER_CTA_COPIES[0].id,
-                  href: BLOG_FOOTER_BUTTONS[0].suggestedHref,
-                })
-              }
+                  kind: preset.id,
+                  primaryHref: getBlogFooterButton(preset.primaryButtonId).suggestedHref,
+                  secondaryHref: getBlogFooterButton(preset.secondaryButtonId).suggestedHref,
+                });
+              }}
               disabled={footerCtaFields.length >= 6}
               className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -375,60 +381,72 @@ export function BlogPostForm(props: BlogPostFormProps) {
               <p className="text-sm text-slate-500">No footer CTAs — the article ends after the markdown body only.</p>
             ) : null}
             {footerCtaFields.map((field, index) => {
-              const bid = form.watch(`footerCtas.${index}.buttonId`) as BlogFooterButtonId;
-              const suggested = BLOG_FOOTER_BUTTONS.find((b) => b.id === bid)?.suggestedHref ?? '/';
-              const buttonIdRegister = form.register(`footerCtas.${index}.buttonId`);
+              const kind = form.watch(`footerCtas.${index}.kind`) as BlogFooterArticleKind;
+              const preset = getBlogFooterArticlePreset(kind);
+              const primaryPh = getBlogFooterButton(preset.primaryButtonId).suggestedHref;
+              const secondaryPh = getBlogFooterButton(preset.secondaryButtonId).suggestedHref;
+              const kindRegister = form.register(`footerCtas.${index}.kind`);
               return (
                 <div key={field.id} className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/80 p-4">
                   <label className="block space-y-1.5">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">CTA text</span>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Article type</span>
                     <select
-                      {...form.register(`footerCtas.${index}.ctaCopyId`)}
+                      {...kindRegister}
+                      onChange={(e) => {
+                        kindRegister.onChange(e);
+                        const nextKind = e.target.value as BlogFooterArticleKind;
+                        const prevPreset = getBlogFooterArticlePreset(kind);
+                        const pPrev = getBlogFooterButton(prevPreset.primaryButtonId).suggestedHref;
+                        const sPrev = getBlogFooterButton(prevPreset.secondaryButtonId).suggestedHref;
+                        const primaryNow = form.getValues(`footerCtas.${index}.primaryHref`)?.trim() ?? '';
+                        const secondaryNow = form.getValues(`footerCtas.${index}.secondaryHref`)?.trim() ?? '';
+                        const nextPreset = getBlogFooterArticlePreset(nextKind);
+                        const pNext = getBlogFooterButton(nextPreset.primaryButtonId).suggestedHref;
+                        const sNext = getBlogFooterButton(nextPreset.secondaryButtonId).suggestedHref;
+                        if (!primaryNow || primaryNow === pPrev) {
+                          form.setValue(`footerCtas.${index}.primaryHref`, pNext, { shouldValidate: true, shouldDirty: true });
+                        }
+                        if (!secondaryNow || secondaryNow === sPrev) {
+                          form.setValue(`footerCtas.${index}.secondaryHref`, sNext, { shouldValidate: true, shouldDirty: true });
+                        }
+                      }}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-brand-purple/30 transition focus:ring"
                     >
-                      {BLOG_FOOTER_CTA_COPIES.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.body}
+                      {BLOG_FOOTER_ARTICLE_PRESETS.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.label}
                         </option>
                       ))}
                     </select>
-                    <FormError message={form.formState.errors.footerCtas?.[index]?.ctaCopyId?.message} />
+                    <FormError message={form.formState.errors.footerCtas?.[index]?.kind?.message} />
                   </label>
+                  <p className="rounded-lg border border-violet-100/80 bg-white px-3 py-2 text-sm leading-relaxed text-slate-600">
+                    {preset.ctaBody}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    <span className="font-semibold text-slate-600">Primary:</span> {getBlogFooterButton(preset.primaryButtonId).label}{' '}
+                    <span className="mx-1 text-slate-400">·</span>
+                    <span className="font-semibold text-slate-600">Secondary:</span>{' '}
+                    {getBlogFooterButton(preset.secondaryButtonId).label}
+                  </p>
                   <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
                     <label className="space-y-1.5">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Button text</span>
-                      <select
-                        {...buttonIdRegister}
-                        onChange={(e) => {
-                          buttonIdRegister.onChange(e);
-                          const id = e.target.value as BlogFooterButtonId;
-                          const hrefNow = form.getValues(`footerCtas.${index}.href`)?.trim() ?? '';
-                          const prevBtn = BLOG_FOOTER_BUTTONS.find((b) => b.id === bid);
-                          if (!hrefNow || hrefNow === (prevBtn?.suggestedHref ?? '')) {
-                            const nextS = BLOG_FOOTER_BUTTONS.find((b) => b.id === id)?.suggestedHref;
-                            if (nextS) {
-                              form.setValue(`footerCtas.${index}.href`, nextS, { shouldValidate: true, shouldDirty: true });
-                            }
-                          }
-                        }}
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-brand-purple/30 transition focus:ring"
-                      >
-                        {BLOG_FOOTER_BUTTONS.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.label}
-                          </option>
-                        ))}
-                      </select>
-                      <FormError message={form.formState.errors.footerCtas?.[index]?.buttonId?.message} />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Primary link</span>
+                      <input
+                        {...form.register(`footerCtas.${index}.primaryHref`)}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm outline-none ring-brand-purple/30 transition focus:ring"
+                        placeholder={primaryPh}
+                      />
+                      <FormError message={form.formState.errors.footerCtas?.[index]?.primaryHref?.message} />
                     </label>
                     <label className="space-y-1.5">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Link</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Secondary link</span>
                       <input
-                        {...form.register(`footerCtas.${index}.href`)}
+                        {...form.register(`footerCtas.${index}.secondaryHref`)}
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm outline-none ring-brand-purple/30 transition focus:ring"
-                        placeholder={suggested}
+                        placeholder={secondaryPh}
                       />
-                      <FormError message={form.formState.errors.footerCtas?.[index]?.href?.message} />
+                      <FormError message={form.formState.errors.footerCtas?.[index]?.secondaryHref?.message} />
                     </label>
                     <button
                       type="button"

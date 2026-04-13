@@ -41,9 +41,9 @@ function normalizeCoverImageUrl(value: string): string | null {
 
 function normalizeFooterCtasJson(data: PostFormData) {
   const rows = data.footerCtas.map((row) => ({
-    buttonId: row.buttonId,
-    ctaCopyId: row.ctaCopyId,
-    href: row.href.trim(),
+    kind: row.kind,
+    primaryHref: row.primaryHref.trim(),
+    secondaryHref: row.secondaryHref.trim(),
   }));
   return rows.length > 0 ? rows : [];
 }

@@ -18,7 +18,7 @@ model Post {
   /// Public URL path (e.g. /uploads/blog/...) or absolute https URL for list/detail hero
   coverImageUrl  String?
   coverStats     Json?
-  /// End-of-article CTAs: [{ "buttonId", "ctaCopyId", "href" }, ...] (legacy rows may use templateId)
+  /// End-of-article CTAs: [{ "kind", "primaryHref", "secondaryHref" }, ...] (legacy: templateId or buttonId+ctaCopyId+href)
   footerCtas     Json?
   status      PostStatus @default(DRAFT)
   publishedAt DateTime?
