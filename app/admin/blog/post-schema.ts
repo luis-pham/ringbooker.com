@@ -1,13 +1,15 @@
 import { z } from 'zod';
 
-import { BLOG_FOOTER_CTA_IDS } from '@/lib/blog/footer-cta-templates';
+import { BLOG_FOOTER_BUTTON_IDS, BLOG_FOOTER_CTA_COPY_IDS } from '@/lib/blog/footer-cta-templates';
 import { BLOG_PATH_PREFIXES, isReservedCompareBlogSlug } from '@/lib/blog/path-prefixes';
 
-const blogFooterCtaTemplateIdSchema = z.enum(BLOG_FOOTER_CTA_IDS as unknown as [string, ...string[]]);
+const blogFooterButtonIdSchema = z.enum(BLOG_FOOTER_BUTTON_IDS as unknown as [string, ...string[]]);
+const blogFooterCtaCopyIdSchema = z.enum(BLOG_FOOTER_CTA_COPY_IDS as unknown as [string, ...string[]]);
 const blogPathPrefixSchema = z.enum(BLOG_PATH_PREFIXES as unknown as [string, ...string[]]);
 
 const footerCtaEntrySchema = z.object({
-  templateId: blogFooterCtaTemplateIdSchema,
+  buttonId: blogFooterButtonIdSchema,
+  ctaCopyId: blogFooterCtaCopyIdSchema,
   href: z
     .string()
     .min(1, 'Link is required')
@@ -61,14 +63,15 @@ export const postSchema = z
   footerCtas: z.array(footerCtaEntrySchema).max(6).superRefine((rows, ctx) => {
     const seen = new Set<string>();
     rows.forEach((row, i) => {
-      if (seen.has(row.templateId)) {
+      const key = `${row.buttonId}:${row.ctaCopyId}`;
+      if (seen.has(key)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'Each button template can only be used once',
-          path: [i, 'templateId'],
+          message: 'Each combination of button and CTA text can only be used once',
+          path: [i, 'ctaCopyId'],
         });
       }
-      seen.add(row.templateId);
+      seen.add(key);
     });
   }),
 })
