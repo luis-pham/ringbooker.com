@@ -4,7 +4,8 @@ export type TocItem = {
   level: number;
 };
 
-function slugify(value: string) {
+/** Slug for heading anchors — shared by TOC extraction and blog markdown rendering. */
+export function slugifyTocAnchor(value: string) {
   return value
     .toLowerCase()
     .normalize('NFKD')
@@ -22,7 +23,7 @@ export function extractToc(mdxContent: string): TocItem[] {
     const level = markdownMatch[1]?.length ?? 2;
     const label = markdownMatch[2]?.trim() ?? '';
     if (label.length === 0) continue;
-    toc.push({ id: slugify(label), label, level });
+    toc.push({ id: slugifyTocAnchor(label), label, level });
   }
 
   const htmlHeadingRegex = /<h([1-3])(?:\s+[^>]*)?>(.*?)<\/h\1>/gim;
@@ -32,7 +33,7 @@ export function extractToc(mdxContent: string): TocItem[] {
     const rawLabel = htmlMatch[2] ?? '';
     const label = rawLabel.replace(/<[^>]+>/g, '').trim();
     if (label.length === 0) continue;
-    toc.push({ id: slugify(label), label, level });
+    toc.push({ id: slugifyTocAnchor(label), label, level });
   }
 
   const deduped = new Map<string, TocItem>();

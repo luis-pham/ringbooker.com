@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PostStatus } from '@prisma/client';
-import sanitizeHtml from 'sanitize-html';
 
 import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { ShareButtons } from '@/components/blog/ShareButtons';
@@ -11,6 +10,7 @@ import { ViewCounter } from '@/components/blog/ViewCounter';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { extractToc } from '@/lib/extractToc';
 import { getAllPosts, getPostBySlug, getRelatedPosts, incrementPostViews } from '@/lib/blog';
+import { renderMarkdownToSafeHtml } from '@/lib/blog/markdown';
 
 type RouteParams = { slug: string };
 type RouteProps = { params: Promise<RouteParams> };
@@ -77,37 +77,7 @@ export default async function BlogPostPage({ params }: RouteProps) {
         .filter((item): item is { num: string; label: string } => Boolean(item))
     : [];
 
-  const safeArticleHtml = sanitizeHtml(post.content, {
-    allowedTags: [
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'p',
-      'ul',
-      'ol',
-      'li',
-      'strong',
-      'em',
-      'blockquote',
-      'pre',
-      'code',
-      'a',
-      'br',
-      'hr',
-    ],
-    allowedAttributes: {
-      h1: ['id'],
-      h2: ['id'],
-      h3: ['id'],
-      h4: ['id'],
-      a: ['href', 'target', 'rel'],
-    },
-    allowedSchemes: ['http', 'https', 'mailto', 'tel'],
-    transformTags: {
-      a: sanitizeHtml.simpleTransform('a', { rel: 'nofollow noopener noreferrer' }),
-    },
-  });
+  const safeArticleHtml = renderMarkdownToSafeHtml(post.content);
 
   return (
     <>
