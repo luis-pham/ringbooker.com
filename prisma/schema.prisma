@@ -9,7 +9,7 @@ datasource db {
 
 model Post {
   id             String     @id @default(cuid())
-  /// Public URL first segment: /{pathPrefix}/{slug} (e.g. blog, phone-booking-recovery).
+  /// Public URL path before slug: /{pathPrefix}/{slug} (e.g. blog, industries/nail-salon).
   pathPrefix     String     @default("blog")
   slug           String
   title          String

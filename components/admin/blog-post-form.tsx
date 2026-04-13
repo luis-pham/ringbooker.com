@@ -188,7 +188,8 @@ export function BlogPostForm(props: BlogPostFormProps) {
           <label className="space-y-1.5 md:col-span-2">
             <span className="text-sm font-semibold text-slate-700">Public URL path</span>
             <p className="mb-1.5 text-xs text-slate-500">
-              Article will be served at this prefix + slug (e.g. <code className="rounded bg-slate-100 px-1">/trust/your-post-slug</code>).
+              Article URL is this path + slug (e.g. <code className="rounded bg-slate-100 px-1">/trust/your-post-slug</code> or{' '}
+              <code className="rounded bg-slate-100 px-1">/industries/nail-salon/your-post-slug</code>).
             </p>
             <select
               {...form.register('pathPrefix')}

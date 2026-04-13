@@ -1,4 +1,4 @@
--- Multi-path blog URLs: /{pathPrefix}/{slug}. Default prefix "blog" keeps existing /blog/{slug} URLs.
+-- Multi-path blog URLs: /{pathPrefix}/{slug} (pathPrefix may include slashes, e.g. industries/nail-salon).
 ALTER TABLE "Post" ADD COLUMN IF NOT EXISTS "pathPrefix" TEXT NOT NULL DEFAULT 'blog';
 
 UPDATE "Post" SET "pathPrefix" = 'blog' WHERE "pathPrefix" IS NULL OR trim("pathPrefix") = '';

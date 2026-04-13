@@ -45,3 +45,21 @@ export async function buildBlogPostStaticParams(pathPrefix: string) {
     return [];
   }
 }
+
+/** Posts under `/industries/{industry}/{slug}` (pathPrefix `industries/{industry}`). */
+export async function buildIndustriesNestedBlogStaticParams(): Promise<{ industry: string; slug: string }[]> {
+  if (!hasDatabaseUrl) return [];
+  try {
+    const { posts } = await getAllPosts({ status: PostStatus.PUBLISHED, perPage: 200 });
+    const out: { industry: string; slug: string }[] = [];
+    for (const p of posts) {
+      if (!p.pathPrefix.startsWith('industries/') || p.pathPrefix === 'industries') continue;
+      const industry = p.pathPrefix.slice('industries/'.length).replace(/^\/+|\/+$/g, '');
+      if (!industry || industry.includes('/')) continue;
+      out.push({ industry, slug: p.slug });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}

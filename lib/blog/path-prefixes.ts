@@ -1,10 +1,15 @@
-/** URL segment before post slug: `/[pathPrefix]/[slug]` */
+/** URL path before post slug: `/[pathPrefix]/[slug]` — `pathPrefix` may contain slashes (e.g. industries/nail-salon). */
 
 export const BLOG_PATH_PREFIXES = [
   'blog',
   'phone-booking-recovery',
   'current-number',
   'industries',
+  'industries/nail-salon',
+  'industries/hair-salon',
+  'industries/spa',
+  'industries/med-spa',
+  'industries/beauty-clinic',
   'trust',
   'compare',
 ] as const;
@@ -15,7 +20,12 @@ export const BLOG_PATH_PREFIX_LABEL: Record<BlogPathPrefix, string> = {
   blog: 'Blog',
   'phone-booking-recovery': 'Phone booking recovery',
   'current-number': 'Current number',
-  industries: 'Industries',
+  industries: 'Industries (general)',
+  'industries/nail-salon': 'Industries — Nail salon',
+  'industries/hair-salon': 'Industries — Hair salon',
+  'industries/spa': 'Industries — Spa',
+  'industries/med-spa': 'Industries — Med spa',
+  'industries/beauty-clinic': 'Industries — Beauty clinic',
   trust: 'Trust',
   compare: 'Compare',
 };
@@ -32,7 +42,8 @@ export function isBlogPathPrefix(value: string): value is BlogPathPrefix {
 }
 
 export function postPublicPath(pathPrefix: string, slug: string): string {
-  const p = (pathPrefix || 'blog').trim() || 'blog';
+  const p = (pathPrefix || 'blog').trim().replace(/^\/+|\/+$/g, '') || 'blog';
   const s = slug.trim();
-  return `/${p}/${s}`;
+  const base = p.split('/').filter(Boolean).join('/');
+  return `/${base}/${s}`;
 }
