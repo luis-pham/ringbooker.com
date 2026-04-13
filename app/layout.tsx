@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
-import { GoogleTagManager } from '@/components/analytics/google-tag-manager';
+import { GoogleTagManagerBody, GoogleTagManagerHead } from '@/components/analytics/google-tag-manager';
 import { buildAlternates, siteConfig } from '@/lib/site';
 
 const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
@@ -110,6 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        <GoogleTagManagerHead />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
@@ -124,7 +125,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <GoogleTagManager />
+        <GoogleTagManagerBody />
         {children}
       </body>
     </html>

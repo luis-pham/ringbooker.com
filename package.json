@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "prebuild": "npm run prompts:sync",
+    "prebuild": "npm run prompts:sync && prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
