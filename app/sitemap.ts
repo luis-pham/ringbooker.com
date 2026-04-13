@@ -8,11 +8,11 @@ import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
 
 const routes = [
   '',
-  '/nail-salon',
-  '/hair-salon',
-  '/spa',
-  '/med-spa',
-  '/beauty-clinic',
+  '/industries/nail-salon',
+  '/industries/hair-salon',
+  '/industries/spa',
+  '/industries/med-spa',
+  '/industries/beauty-clinic',
   '/after-hours-calls',
   '/missed-call-recovery',
   '/compare',

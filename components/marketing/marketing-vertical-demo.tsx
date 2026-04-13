@@ -32,11 +32,11 @@ type DemoStatusResponse = {
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
 
 const VERTICAL_LANDING: Record<DemoVerticalSlug, string> = {
-  'nail-salon': '/nail-salon',
-  'hair-salon': '/hair-salon',
-  'day-spa': '/spa',
-  'med-spa': '/med-spa',
-  'beauty-clinic': '/beauty-clinic',
+  'nail-salon': '/industries/nail-salon',
+  'hair-salon': '/industries/hair-salon',
+  'day-spa': '/industries/spa',
+  'med-spa': '/industries/med-spa',
+  'beauty-clinic': '/industries/beauty-clinic',
 };
 
 const styles: string[] = [

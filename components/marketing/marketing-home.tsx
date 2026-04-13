@@ -1064,7 +1064,7 @@ export function MarketingHomeTemplate() {
             <p className="sec-sub">Each page is tailored to real call patterns, booking flow, and conversion goals for that business type.</p>
             <div className="industries-carousel" id="industriesCarousel">
               <div className="industries-track">
-              <a href="/nail-salon" className="industry-card" data-index={0}>
+              <a href="/industries/nail-salon" className="industry-card" data-index={0}>
                 <div className="industry-thumb">
                   <Image src="/images/nail.webp" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Nail</span>
@@ -1073,7 +1073,7 @@ export function MarketingHomeTemplate() {
                 <div className="industry-sub">Built for manicure, pedicure, and gel services with heavy walk-in and peak-hour calls.</div>
                 <div className="industry-link">Explore more →</div>
               </a>
-              <a href="/hair-salon" className="industry-card" data-index={1}>
+              <a href="/industries/hair-salon" className="industry-card" data-index={1}>
                 <div className="industry-thumb">
                   <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI receptionist answers overflow calls for hair salon bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Hair</span>
@@ -1082,7 +1082,7 @@ export function MarketingHomeTemplate() {
                 <div className="industry-sub">Designed for cuts, color, and stylist-led schedules where calls arrive during active service.</div>
                 <div className="industry-link">Explore more →</div>
               </a>
-              <a href="/spa" className="industry-card" data-index={2}>
+              <a href="/industries/spa" className="industry-card" data-index={2}>
                 <div className="industry-thumb">
                   <Image src="/images/spa.webp" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Spa</span>
@@ -1091,7 +1091,7 @@ export function MarketingHomeTemplate() {
                 <div className="industry-sub">Treatment-heavy bookings and after-hours availability.</div>
                 <div className="industry-link">Explore more →</div>
               </a>
-              <a href="/med-spa" className="industry-card" data-index={3}>
+              <a href="/industries/med-spa" className="industry-card" data-index={3}>
                 <div className="industry-thumb">
                   <Image src="/images/med_spa.webp" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Med Spa</span>
@@ -1100,7 +1100,7 @@ export function MarketingHomeTemplate() {
                 <div className="industry-sub">Consultation-driven calls with high-ticket conversion.</div>
                 <div className="industry-link">Explore more →</div>
               </a>
-              <a href="/beauty-clinic" className="industry-card" data-index={4}>
+              <a href="/industries/beauty-clinic" className="industry-card" data-index={4}>
                 <div className="industry-thumb">
                   <Image src="/images/beauty_clinic.webp" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Clinic</span>

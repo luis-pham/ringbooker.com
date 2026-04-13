@@ -5,6 +5,7 @@ import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useNavState } from '@/components/marketing/nav-actions-client';
+import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
 
 type MarketingMobileNavProps = {
   active?: 'demo' | 'pricing' | 'how-it-works' | 'contact' | 'industry';
@@ -135,6 +136,19 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
                 </a>
               );
             })}
+            {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="mk-drawer-navlink"
+                onClick={() => setOpen(false)}
+              >
+                <span className="mk-drawer-navlink-label">
+                  {item.icon} {item.label}
+                </span>
+                <span className="mk-drawer-navlink-chevron" aria-hidden="true" />
+              </a>
+            ))}
           </nav>
 
           <div className="mk-drawer-foot">

@@ -38,11 +38,11 @@ export const BLOG_FOOTER_BUTTONS: readonly BlogFooterButtonDefinition[] = [
   { id: 'reduce_missed_calls', label: 'Reduce Missed Calls', variant: 'soft', suggestedHref: '/missed-call-recovery' },
   { id: 'keep_your_number', label: 'Keep Your Number', variant: 'soft', suggestedHref: '/pricing' },
   { id: 'compare_options', label: 'Compare Options', variant: 'soft', suggestedHref: '/compare' },
-  { id: 'for_nail_salons', label: 'For Nail Salons', variant: 'soft', suggestedHref: '/nail-salon' },
-  { id: 'for_hair_salons', label: 'For Hair Salons', variant: 'soft', suggestedHref: '/hair-salon' },
-  { id: 'for_spas', label: 'For Spas', variant: 'soft', suggestedHref: '/spa' },
-  { id: 'for_med_spas', label: 'For Med Spas', variant: 'soft', suggestedHref: '/med-spa' },
-  { id: 'for_beauty_clinics', label: 'For Beauty Clinics', variant: 'soft', suggestedHref: '/beauty-clinic' },
+  { id: 'for_nail_salons', label: 'For Nail Salons', variant: 'soft', suggestedHref: '/industries/nail-salon' },
+  { id: 'for_hair_salons', label: 'For Hair Salons', variant: 'soft', suggestedHref: '/industries/hair-salon' },
+  { id: 'for_spas', label: 'For Spas', variant: 'soft', suggestedHref: '/industries/spa' },
+  { id: 'for_med_spas', label: 'For Med Spas', variant: 'soft', suggestedHref: '/industries/med-spa' },
+  { id: 'for_beauty_clinics', label: 'For Beauty Clinics', variant: 'soft', suggestedHref: '/industries/beauty-clinic' },
   { id: 'see_human_handoff', label: 'See Human Handoff', variant: 'soft', suggestedHref: '/how-it-works' },
 ] as const;
 

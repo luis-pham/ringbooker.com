@@ -332,6 +332,14 @@ export function MarketingFooter() {
             <a href="/contact">Contact</a>
           </div>
           <div className="mk-footer-col">
+            <h4>Industries</h4>
+            {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
+              <a key={item.href} href={item.href}>
+                {item.label}
+              </a>
+            ))}
+          </div>
+          <div className="mk-footer-col">
             <h4>Legal</h4>
             <a href="/privacy">Privacy Policy</a>
             <a href="/terms">Terms of Service</a>
