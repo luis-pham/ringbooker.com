@@ -30,7 +30,7 @@ export const siteConfig = {
 
 /** Open Graph / X / LinkedIn default preview. Path under `public/` or full `https://` URL. Override with `NEXT_PUBLIC_SITE_OG_IMAGE`. For large link previews, use a 1200×630 PNG/JPG/WebP. */
 export const defaultSiteOgImage =
-  process.env.NEXT_PUBLIC_SITE_OG_IMAGE?.trim() || '/images/shop_panel.webp';
+  process.env.NEXT_PUBLIC_SITE_OG_IMAGE?.trim() || '/images/og_ringbooker.webp';
 
 export function absoluteOgImageUrl(url: string): string {
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
