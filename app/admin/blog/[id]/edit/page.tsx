@@ -4,7 +4,7 @@ import { BlogPostForm } from '@/components/admin/blog-post-form';
 import { prisma } from '@/lib/prisma';
 
 import { updatePost } from '../../actions';
-import type { PostFormData } from '../../post-schema';
+import { sanitizeCoverImageInput, type PostFormData } from '../../post-schema';
 
 export const metadata = {
   title: 'Edit Blog Post',
@@ -46,7 +46,7 @@ export default async function AdminBlogEditPage({ params }: PageProps) {
     categoryIds: post.categories.map((item) => item.categoryId),
     tags: post.tags.map((item) => item.tag.name),
     featured: post.featured,
-    coverImageUrl: post.coverImageUrl ?? '',
+    coverImageUrl: sanitizeCoverImageInput(post.coverImageUrl),
     coverStats: Array.isArray(post.coverStats)
       ? post.coverStats
           .map((item) => {
@@ -56,6 +56,7 @@ export default async function AdminBlogEditPage({ params }: PageProps) {
             return { num: stat.num, label: stat.label };
           })
           .filter((item): item is { num: string; label: string } => Boolean(item))
+          .slice(0, 3)
       : [],
     readTimeMin: post.readTimeMin,
   };
@@ -65,5 +66,7 @@ export default async function AdminBlogEditPage({ params }: PageProps) {
     await updatePost(id, data);
   }
 
-  return <BlogPostForm mode="edit" postId={id} categories={categories} initialData={initialData} onSubmitAction={saveAction} />;
+  return (
+    <BlogPostForm key={id} mode="edit" postId={id} categories={categories} initialData={initialData} onSubmitAction={saveAction} />
+  );
 }

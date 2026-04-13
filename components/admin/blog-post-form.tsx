@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { postSchema, slugify, type PostFormData } from '@/app/admin/blog/post-schema';
@@ -168,7 +168,11 @@ export function BlogPostForm(props: BlogPostFormProps) {
           <p className="mb-4 text-sm text-slate-600">
             Shown on the blog list, featured block, and above the article. JPEG, PNG, WebP, or GIF — up to 2.5MB.
           </p>
-          <input type="hidden" {...form.register('coverImageUrl')} />
+          <Controller
+            control={form.control}
+            name="coverImageUrl"
+            render={({ field }) => <input type="hidden" {...field} value={field.value ?? ''} />}
+          />
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="relative h-44 w-full max-w-md shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
               {coverImageUrl?.trim() ? (
@@ -218,7 +222,11 @@ export function BlogPostForm(props: BlogPostFormProps) {
                                 : code;
                       throw new Error(hint);
                     }
-                    form.setValue('coverImageUrl', json.url, { shouldValidate: true, shouldDirty: true });
+                    form.setValue('coverImageUrl', json.url, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
                   } catch (err) {
                     setError(err instanceof Error ? err.message : 'Cover upload failed');
                   } finally {
@@ -233,7 +241,11 @@ export function BlogPostForm(props: BlogPostFormProps) {
                   type="button"
                   className="w-fit text-sm font-medium text-rose-600 underline-offset-2 hover:underline"
                   onClick={() => {
-                    form.setValue('coverImageUrl', '', { shouldValidate: true, shouldDirty: true });
+                    form.setValue('coverImageUrl', '', {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                      shouldTouch: true,
+                    });
                     if (coverFileInputRef.current) coverFileInputRef.current.value = '';
                   }}
                 >

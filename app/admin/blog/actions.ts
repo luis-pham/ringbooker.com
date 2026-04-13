@@ -32,7 +32,11 @@ function normalizeCoverStats(data: PostFormData): Array<{ num: string; label: st
 
 function normalizeCoverImageUrl(value: string): string | null {
   const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
+  if (!trimmed.length) return null;
+  if (/^uploads\//i.test(trimmed) && !trimmed.startsWith('/')) {
+    return `/${trimmed}`;
+  }
+  return trimmed;
 }
 
 async function ensureAuthorId() {
@@ -73,9 +77,22 @@ function revalidateBlogPaths(slug: string) {
   revalidatePath('/admin/blog');
 }
 
+function parsePostSchema(data: PostFormData) {
+  const out = postSchema.safeParse(data);
+  if (!out.success) {
+    const msg = out.error.issues.map((i) => `${i.path.length ? i.path.join('.') : 'form'}: ${i.message}`).join(' · ');
+    throw new Error(msg);
+  }
+  return out.data;
+}
+
+function normalizePostSlug(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 export async function createPost(data: PostFormData): Promise<{ id: string }> {
   await assertAdminSession();
-  const parsed = postSchema.parse(data);
+  const parsed = parsePostSchema(data);
 
   const authorId = await ensureAuthorId();
   const [categories, tags] = await Promise.all([
@@ -93,7 +110,7 @@ export async function createPost(data: PostFormData): Promise<{ id: string }> {
   const post = await prisma.post.create({
     data: {
       title: parsed.title.trim(),
-      slug: parsed.slug.trim(),
+      slug: normalizePostSlug(parsed.slug),
       excerpt: parsed.excerpt.trim(),
       content: parsed.content,
       status: parsed.status,
@@ -119,7 +136,7 @@ export async function createPost(data: PostFormData): Promise<{ id: string }> {
 
 export async function updatePost(id: string, data: PostFormData): Promise<void> {
   await assertAdminSession();
-  const parsed = postSchema.parse(data);
+  const parsed = parsePostSchema(data);
   const postId = id.trim();
   if (!postId) throw new Error('invalid_post_id');
 
@@ -142,7 +159,7 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
       where: { id: postId },
       data: {
         title: parsed.title.trim(),
-        slug: parsed.slug.trim(),
+        slug: normalizePostSlug(parsed.slug),
         excerpt: parsed.excerpt.trim(),
         content: parsed.content,
         status: parsed.status,
@@ -162,8 +179,9 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
     }),
   ]);
 
-  revalidateBlogPaths(parsed.slug.trim());
-  if (existingPost.slug !== parsed.slug.trim()) {
+  const nextSlug = normalizePostSlug(parsed.slug);
+  revalidateBlogPaths(nextSlug);
+  if (existingPost.slug !== nextSlug) {
     revalidatePath(`/blog/${existingPost.slug}`);
   }
 }
