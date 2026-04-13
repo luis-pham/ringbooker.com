@@ -308,16 +308,17 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="/user/signup"
-                className="inline-flex items-center rounded-full bg-white px-7 py-3 text-sm font-bold text-violet-700 transition hover:scale-[1.04]"
-              >
-                Start 14-Day Free Trial →
-              </Link>
-              <Link
                 href="/demo"
-                className="inline-flex items-center rounded-full border border-white/30 bg-white/15 px-7 py-3 text-sm font-semibold text-white transition hover:bg-white/25"
+                className="inline-flex items-center rounded-full bg-white px-7 py-3.5 text-sm font-extrabold text-violet-800 shadow-md shadow-black/15 transition hover:scale-[1.04]"
+                data-demo-picker
               >
                 📞 Try a Live Demo
+              </Link>
+              <Link
+                href="/user/signup"
+                className="inline-flex items-center rounded-full border border-white/35 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+              >
+                Start 14-Day Free Trial →
               </Link>
             </div>
           </div>

@@ -26,12 +26,12 @@ export type NavUserState =
 /**
  * Central CTA decision function.
  * Maps nav state → primary CTA label + href.
- * Never shows "Start Free Trial" or "Sign In" to authenticated users.
+ * Never shows visitor CTAs or "Sign In" to authenticated users.
  */
 export function resolveNavCta(state: NavUserState): { label: string; href: string } {
   switch (state.type) {
     case 'visitor':
-      return { label: 'Start Free Trial →', href: '/user/signup' };
+      return { label: 'Try a Live Demo →', href: '/demo' };
     case 'setup_incomplete':
       return { label: 'Continue Setup →', href: '/user/onboarding' };
     case 'trial_user':
@@ -335,8 +335,8 @@ export function NavActionsClient() {
     return (
       <div className="mk-nav-actions">
         <a href="/user/login" className="mk-nav-signin">Sign In</a>
-        <a href="/user/signup" className="mk-nav-cta mk-nav-cta-hide-sm">
-          Start Free Trial →
+        <a href="/demo" className="mk-nav-cta mk-nav-cta-hide-sm" data-demo-picker>
+          Try a Live Demo →
         </a>
       </div>
     );

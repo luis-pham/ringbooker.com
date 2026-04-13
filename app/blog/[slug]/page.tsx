@@ -226,13 +226,17 @@ export default async function BlogPostPage({ params }: RouteProps) {
               RingBooker answers every call 24/7 and books the appointment before they hang up.
             </p>
             <Link
+              href="/demo"
+              className="block rounded-[10px] bg-white px-3 py-3.5 text-center text-sm font-extrabold text-violet-800 shadow-md transition hover:opacity-95"
+              data-demo-picker
+            >
+              📞 Try a Live Demo
+            </Link>
+            <Link
               href="/user/signup"
-              className="block rounded-[10px] bg-white px-3 py-2.5 text-center text-sm font-bold text-violet-700 transition hover:opacity-90"
+              className="mt-2.5 block rounded-[10px] border border-white/35 bg-white/10 px-3 py-2 text-center text-[11px] font-semibold text-white/95 transition hover:bg-white/15"
             >
               Start 14-Day Free Trial →
-            </Link>
-            <Link href="/demo" className="mt-2.5 block text-center text-[12.5px] font-medium text-white/70 transition hover:text-white">
-              📞 Try a live demo first
             </Link>
           </div>
 
@@ -314,16 +318,17 @@ export default async function BlogPostPage({ params }: RouteProps) {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link
-              href="/user/signup"
-              className="inline-flex items-center rounded-full bg-white px-7 py-3 text-sm font-bold text-violet-700 transition hover:scale-[1.04]"
-            >
-              Start 14-Day Free Trial →
-            </Link>
-            <Link
               href="/demo"
-              className="inline-flex items-center rounded-full border border-white/30 bg-white/15 px-7 py-3 text-sm font-semibold text-white transition hover:bg-white/25"
+              className="inline-flex items-center rounded-full bg-white px-8 py-3.5 text-sm font-extrabold text-violet-800 shadow-lg shadow-black/15 transition hover:scale-[1.04]"
+              data-demo-picker
             >
               📞 Try a Live Demo
+            </Link>
+            <Link
+              href="/user/signup"
+              className="inline-flex items-center rounded-full border border-white/40 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white/95 backdrop-blur-sm transition hover:bg-white/20"
+            >
+              Start 14-Day Free Trial →
             </Link>
           </div>
         </div>

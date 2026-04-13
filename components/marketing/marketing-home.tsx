@@ -109,6 +109,10 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.btn-dark svg{width:16px;height:16px;fill:#fff}
 	.btn-outline{background:transparent;color:var(--text-dark);padding:14px 26px;border-radius:var(--r-pill);font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--border);display:inline-flex;align-items:center;gap:8px;transition:all .2s}
 	.btn-outline:hover{border-color:var(--purple);color:var(--purple)}
+	.hero-btns .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:16px 34px;border-radius:var(--r-pill);font-size:16px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 36px rgba(91,33,182,.32);border:none;transition:transform .15s,filter .2s,box-shadow .2s}
+	.hero-btns .btn-hero-live:hover{filter:brightness(1.06);transform:scale(1.04);box-shadow:0 14px 44px rgba(91,33,182,.38)}
+	.hero-btns .btn-hero-live svg{width:16px;height:16px;fill:#fff}
+	.hero-btns .btn-hero-trial{padding:11px 20px;font-size:14px;font-weight:600}
 
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
 	.proofbar{padding:28px 48px 56px;background:#fff}
@@ -897,11 +901,15 @@ export function MarketingHomeTemplate() {
             <h1 className="hero-h">Never Miss a<br /><span className="hl">Booking Call</span> on Your Current Number.</h1>
             <p className="hero-sub">RingBooker answers after-hours and overflow calls for nail salons, hair salons, spas, and clinics — recovering missed bookings, handling reschedules, and texting callers back. No new number. No new software.</p>
             <div className="hero-btns">
-              <a href="/user/signup" className="btn-dark">
-                Start 14-Day Free Trial
-                <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
+              <a href="/demo" className="btn-hero-live" data-demo-picker>
+                📞 Try a Live Demo Call
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                </svg>
               </a>
-              <a href="/demo" className="btn-outline" data-demo-picker>📞 Try a Live Demo Call</a>
+              <a href="/user/signup" className="btn-outline btn-hero-trial">
+                Start 14-Day Free Trial
+              </a>
             </div>
             {/* HERO VISUAL */}
             <div className="hero-visual">
@@ -1412,11 +1420,13 @@ export function MarketingHomeTemplate() {
                 <p>Go live quickly with an AI phone answering layer for after-hours, overflow, missed-call recovery, and human handoff when needed.</p>
               </div>
               <div className="cta-actions">
-                <a href="#pricing" className="btn-white">
-                  <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
-                  Start Free Trial
+                <a href="/demo" className="btn-white" data-demo-picker>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
+                  Try a Live Demo Call
                 </a>
-                <a href="/demo" className="btn-ghost-w" data-demo-picker>📞 Try Demo Call</a>
+                <a href="#pricing" className="btn-ghost-w">
+                  Start 14-Day Free Trial
+                </a>
               </div>
               {/* CTA Phone — voice call UI */}
               <div className="cta-phone-wrap">

@@ -38,6 +38,10 @@ a{text-decoration:none;color:inherit}
 .btn-dark:hover{background:#1f2937;transform:translateY(-1px)}
 .btn-outline{border:1.5px solid var(--border);color:var(--text-dark);background:#fff}
 .btn-outline:hover{border-color:var(--purple);color:var(--purple)}
+.btn-demo-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:15px 28px;border-radius:var(--r-pill);font-size:15px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:filter .2s,transform .15s,box-shadow .2s;border:none;box-shadow:0 10px 32px rgba(91,33,182,.32)}
+.btn-demo-live:hover{filter:brightness(1.06);transform:translateY(-1px);box-shadow:0 14px 40px rgba(91,33,182,.38)}
+.btn-trial-soft{padding:12px 22px;border-radius:var(--r-pill);font-size:14px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;border:1.5px solid var(--border);color:var(--text-dark);background:transparent}
+.btn-trial-soft:hover{border-color:var(--purple);color:var(--purple)}
 .trust-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:24px auto 0;max-width:980px}
 .trust-pill{display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid rgba(139,92,246,.14);background:rgba(255,255,255,.82);border-radius:18px;padding:12px 13px;font-size:13.5px;font-weight:800;color:#374151;box-shadow:0 10px 28px rgba(17,24,39,.04)}
 .trust-pill span{font-size:18px}
@@ -97,7 +101,10 @@ a{text-decoration:none;color:inherit}
 .cta-box p{color:rgba(255,255,255,.78);line-height:1.75}
 .cta-actions{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap}
 .cta-box .btn-outline{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff}
+.cta-box .btn-outline:hover{border-color:rgba(255,255,255,.45);color:#fff}
 .cta-box .btn-dark{background:#fff;color:#111827}
+.cta-box .btn-trial-soft{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.28);color:#fff}
+.cta-box .btn-trial-soft:hover{border-color:rgba(255,255,255,.45);color:#fff}
 @media(max-width:960px){
   .hero-page,.section{padding-left:22px;padding-right:22px}
   .trust-row,.plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.faq-grid,.cta-box{grid-template-columns:1fr}
@@ -235,8 +242,8 @@ export function MarketingPricingTemplate() {
                 <h1>Plans for recovering more booking calls on your current number.</h1>
                 <p>RingBooker handles after-hours and overflow calls, reschedules, cancellations, and missed-call text back without replacing your booking software. Most businesses keep their current number; a dedicated RingBooker line is optional.</p>
                 <div className="hero-actions">
-                  <a className="btn-dark" href="/user/signup">Start free trial →</a>
-                  <a className="btn-outline" href="/demo">Try a live demo call</a>
+                  <a className="btn-demo-live" href="/demo" data-demo-picker>Try a live demo call</a>
+                  <a className="btn-trial-soft" href="/user/signup">Start free trial →</a>
                 </div>
                 <div className="trust-row">
                   <div className="trust-pill"><span>🏪</span> Current number first</div>
@@ -397,8 +404,8 @@ export function MarketingPricingTemplate() {
                   <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that helps recover missed demand.</p>
                 </div>
                 <div className="cta-actions">
-                  <a className="btn-dark" href="/user/signup">Start free trial →</a>
-                  <a className="btn-outline" href="/demo">Try a live demo call</a>
+                  <a className="btn-demo-live" href="/demo" data-demo-picker>Try a live demo call</a>
+                  <a className="btn-trial-soft" href="/user/signup">Start free trial →</a>
                 </div>
               </div>
             </div>

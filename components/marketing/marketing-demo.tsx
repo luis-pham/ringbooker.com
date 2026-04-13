@@ -43,11 +43,13 @@ const styles: string[] = [
     .nav-links{display:flex;align-items:center;gap:28px;flex-wrap:wrap}
     .nav-links a{font-size:14.5px;font-weight:500;color:var(--text-gray);transition:color .2s}
     .nav-links a:hover,.nav-links a.active{color:var(--text-dark)}
-    .nav-actions{display:flex;align-items:center;gap:10px}
+    .nav-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
     .nav-signin{padding:9px 16px;border-radius:var(--r-pill);border:1px solid var(--border);font-size:14px;font-weight:600;color:#374151;background:#fff;transition:border-color .2s,color .2s,background .2s}
     .nav-signin:hover{border-color:#d1d5db;color:var(--text-dark);background:#f9fafb}
-    .nav-cta{background:var(--text-dark);color:#fff;padding:10px 22px;border-radius:var(--r-pill);font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;transition:background .2s,transform .15s;white-space:nowrap}
-    .nav-cta:hover{background:#1f2937;transform:scale(1.03)}
+    .nav-demo-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:10px 22px;border-radius:var(--r-pill);font-size:14px;font-weight:800;display:flex;align-items:center;gap:7px;transition:filter .2s,transform .15s,box-shadow .2s;white-space:nowrap;box-shadow:0 6px 22px rgba(91,33,182,.28)}
+    .nav-demo-live:hover{filter:brightness(1.06);transform:scale(1.03)}
+    .nav-trial-outline{background:transparent;color:#374151;padding:10px 20px;border-radius:var(--r-pill);font-size:14px;font-weight:600;border:1.5px solid var(--border);display:flex;align-items:center;gap:7px;transition:border-color .2s,color .2s,background .2s,transform .15s;white-space:nowrap}
+    .nav-trial-outline:hover{border-color:var(--purple);color:var(--purple-dark);background:#faf5ff}
 
     .hero{padding:84px 48px 28px;display:flex;justify-content:center;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%)}
     .hero-inner{width:100%;max-width:960px;text-align:center}
@@ -579,7 +581,12 @@ export function MarketingDemoTemplate() {
             </div>
             <div className="nav-actions">
               <a href="/user/login" className="nav-signin">Sign In</a>
-              <a href="/user/signup" className="nav-cta">Start Free Trial →</a>
+              <a href="/demo" className="nav-demo-live" data-demo-picker>
+                Try Live Demo →
+              </a>
+              <a href="/user/signup" className="nav-trial-outline">
+                Start Free Trial →
+              </a>
             </div>
           </div>
         </nav>
