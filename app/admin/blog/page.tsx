@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { PostStatus } from '@prisma/client';
 
 import { deletePost, publishPost } from '@/app/admin/blog/actions';
+import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { prisma } from '@/lib/prisma';
 
 const statusBadgeClass: Record<PostStatus, string> = {
@@ -27,6 +28,7 @@ export default async function AdminBlogPage() {
     select: {
       id: true,
       title: true,
+      pathPrefix: true,
       slug: true,
       status: true,
       featured: true,
@@ -64,7 +66,7 @@ export default async function AdminBlogPage() {
               <tr key={post.id} className="align-top">
                 <td className="px-4 py-3">
                   <p className="font-semibold text-slate-900">{post.title}</p>
-                  <p className="text-xs text-slate-500">/{post.slug}</p>
+                  <p className="font-mono text-xs text-slate-500">{postPublicPath(post.pathPrefix, post.slug)}</p>
                   <p className="mt-1 text-xs text-slate-400">
                     Updated{' '}
                     {new Intl.DateTimeFormat('en-US', {
@@ -101,7 +103,7 @@ export default async function AdminBlogPage() {
                       </form>
                     ) : null}
                     <Link
-                      href={`/blog/${post.slug}`}
+                      href={postPublicPath(post.pathPrefix, post.slug)}
                       target="_blank"
                       className="rounded-md border border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
                     >

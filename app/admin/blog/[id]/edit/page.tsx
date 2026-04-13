@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 
 import { updatePost } from '../../actions';
 import { parseStoredFooterCtas } from '@/lib/blog/footer-cta-templates';
+import { isBlogPathPrefix } from '@/lib/blog/path-prefixes';
 
 import { sanitizeCoverImageInput, type PostFormData } from '../../post-schema';
 
@@ -61,6 +62,7 @@ export default async function AdminBlogEditPage({ params }: PageProps) {
           .slice(0, 3)
       : [],
     readTimeMin: post.readTimeMin,
+    pathPrefix: isBlogPathPrefix(post.pathPrefix) ? post.pathPrefix : 'blog',
     footerCtas: parseStoredFooterCtas(post.footerCtas),
   };
 

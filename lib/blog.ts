@@ -1,6 +1,7 @@
 import { PostStatus, Prisma } from '@prisma/client';
 import { z } from 'zod';
 
+import { isBlogPathPrefix } from '@/lib/blog/path-prefixes';
 import { prisma } from '@/lib/prisma';
 import type { CategoryWithCount, PostWithRelations } from '@/types/blog';
 
@@ -113,22 +114,31 @@ export async function getAllPosts(options?: {
   }
 }
 
-export async function getPostBySlug(slug: string): Promise<PostWithRelations | null> {
+export async function getPostByPathPrefixAndSlug(
+  pathPrefix: string,
+  slug: string,
+): Promise<PostWithRelations | null> {
   if (!hasDatabaseUrl()) {
     warnMissingDatabaseUrl();
     return null;
   }
   try {
     const parsedSlug = slugSchema.parse(slug);
+    const prefix = isBlogPathPrefix(pathPrefix.trim()) ? pathPrefix.trim() : 'blog';
     const post = await prisma.post.findUnique({
-      where: { slug: parsedSlug },
+      where: { pathPrefix_slug: { pathPrefix: prefix, slug: parsedSlug } },
       include: postInclude,
     });
     return post as PostWithRelations | null;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error';
-    throw new Error(`Failed to fetch post by slug: ${message}`);
+    throw new Error(`Failed to fetch post: ${message}`);
   }
+}
+
+/** @deprecated Prefer getPostByPathPrefixAndSlug — kept for call sites that only know legacy /blog/{slug}. */
+export async function getPostBySlug(slug: string): Promise<PostWithRelations | null> {
+  return getPostByPathPrefixAndSlug('blog', slug);
 }
 
 export async function getFeaturedPost(): Promise<PostWithRelations | null> {
@@ -222,19 +232,20 @@ export async function getAllCategories(): Promise<CategoryWithCount[]> {
   }
 }
 
-export async function incrementPostViews(slug: string): Promise<void> {
+export async function incrementPostViews(pathPrefix: string, slug: string): Promise<void> {
   if (!hasDatabaseUrl()) {
     warnMissingDatabaseUrl();
     return;
   }
   try {
     const parsedSlug = slugSchema.parse(slug);
+    const prefix = isBlogPathPrefix(pathPrefix.trim()) ? pathPrefix.trim() : 'blog';
     const updated = await prisma.post.updateMany({
-      where: { slug: parsedSlug },
+      where: { pathPrefix: prefix, slug: parsedSlug },
       data: { views: { increment: 1 } },
     });
     if (updated.count === 0) {
-      throw new Error(`post not found for slug "${parsedSlug}"`);
+      throw new Error(`post not found for path "${prefix}/${parsedSlug}"`);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error';

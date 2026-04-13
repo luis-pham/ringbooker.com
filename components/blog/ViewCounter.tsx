@@ -2,16 +2,26 @@
 
 import { useEffect, useState } from 'react';
 
-export function ViewCounter({ slug, fallback = 0 }: { slug: string; fallback?: number }) {
+export function ViewCounter({
+  pathPrefix,
+  slug,
+  fallback = 0,
+}: {
+  pathPrefix: string;
+  slug: string;
+  fallback?: number;
+}) {
   const [views, setViews] = useState<number>(fallback);
 
   useEffect(() => {
     let mounted = true;
-    const key = `blog:viewed:${slug}`;
+    const p = encodeURIComponent(pathPrefix);
+    const s = encodeURIComponent(slug);
+    const key = `blog:viewed:${pathPrefix}:${slug}`;
 
     const run = async () => {
       try {
-        const getRes = await fetch(`/api/blog/views/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+        const getRes = await fetch(`/api/blog/views/${p}/${s}`, { cache: 'no-store' });
         if (getRes.ok && mounted) {
           const data = (await getRes.json()) as { views?: number };
           setViews(typeof data.views === 'number' ? data.views : fallback);
@@ -22,7 +32,7 @@ export function ViewCounter({ slug, fallback = 0 }: { slug: string; fallback?: n
 
       try {
         if (sessionStorage.getItem(key)) return;
-        const postRes = await fetch(`/api/blog/views/${encodeURIComponent(slug)}`, { method: 'POST' });
+        const postRes = await fetch(`/api/blog/views/${p}/${s}`, { method: 'POST' });
         if (postRes.ok) {
           sessionStorage.setItem(key, '1');
           if (mounted) setViews((prev) => prev + 1);
@@ -36,7 +46,7 @@ export function ViewCounter({ slug, fallback = 0 }: { slug: string; fallback?: n
     return () => {
       mounted = false;
     };
-  }, [fallback, slug]);
+  }, [fallback, pathPrefix, slug]);
 
   return <>{views.toLocaleString('en-US')} views</>;
 }

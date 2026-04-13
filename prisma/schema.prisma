@@ -9,7 +9,9 @@ datasource db {
 
 model Post {
   id             String     @id @default(cuid())
-  slug           String     @unique
+  /// Public URL first segment: /{pathPrefix}/{slug} (e.g. blog, phone-booking-recovery).
+  pathPrefix     String     @default("blog")
+  slug           String
   title          String
   excerpt        String
   content        String     @db.Text
@@ -34,6 +36,7 @@ model Post {
   relatedFrom Post[]           @relation("RelatedPosts")
   relatedTo   Post[]           @relation("RelatedPosts")
 
+  @@unique([pathPrefix, slug])
   @@index([status, publishedAt])
   @@index([authorId])
   @@index([featured])

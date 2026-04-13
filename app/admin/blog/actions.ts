@@ -79,12 +79,14 @@ async function upsertTags(tagValues: string[]) {
   return records;
 }
 
-function revalidateBlogPaths(slug: string) {
-  // Invalidate every page under /blog (list + all [slug]) so related / Keep Reading
-  // and sidebar links drop deleted or updated posts without waiting for ISR.
+function revalidateBlogPostPaths(opts: { slug: string; pathPrefix: string; oldSlug?: string; oldPathPrefix?: string }) {
+  const prefix = opts.pathPrefix || 'blog';
   revalidatePath('/blog', 'layout');
-  revalidatePath(`/blog/${slug}`);
+  revalidatePath(`/${prefix}/${opts.slug}`);
   revalidatePath('/admin/blog');
+  if (opts.oldSlug && (opts.oldSlug !== opts.slug || (opts.oldPathPrefix ?? 'blog') !== prefix)) {
+    revalidatePath(`/${opts.oldPathPrefix ?? 'blog'}/${opts.oldSlug}`);
+  }
 }
 
 function parsePostSchema(data: PostFormData) {
@@ -120,6 +122,7 @@ export async function createPost(data: PostFormData): Promise<{ id: string }> {
   const post = await prisma.post.create({
     data: {
       title: parsed.title.trim(),
+      pathPrefix: parsed.pathPrefix,
       slug: normalizePostSlug(parsed.slug),
       excerpt: parsed.excerpt.trim(),
       content: parsed.content,
@@ -138,10 +141,10 @@ export async function createPost(data: PostFormData): Promise<{ id: string }> {
         create: tags.map((tag) => ({ tagId: tag.id })),
       },
     },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, pathPrefix: true },
   });
 
-  revalidateBlogPaths(post.slug);
+  revalidateBlogPostPaths({ slug: post.slug, pathPrefix: post.pathPrefix });
   return { id: post.id };
 }
 
@@ -152,7 +155,10 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
   if (!postId) throw new Error('invalid_post_id');
 
   const [existingPost, categories, tags] = await Promise.all([
-    prisma.post.findUnique({ where: { id: postId }, select: { id: true, slug: true, publishedAt: true } }),
+    prisma.post.findUnique({
+      where: { id: postId },
+      select: { id: true, slug: true, pathPrefix: true, publishedAt: true },
+    }),
     prisma.category.findMany({
       where: { id: { in: unique(parsed.categoryIds) } },
       select: { id: true },
@@ -170,6 +176,7 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
       where: { id: postId },
       data: {
         title: parsed.title.trim(),
+        pathPrefix: parsed.pathPrefix,
         slug: normalizePostSlug(parsed.slug),
         excerpt: parsed.excerpt.trim(),
         content: parsed.content,
@@ -192,10 +199,12 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
   ]);
 
   const nextSlug = normalizePostSlug(parsed.slug);
-  revalidateBlogPaths(nextSlug);
-  if (existingPost.slug !== nextSlug) {
-    revalidatePath(`/blog/${existingPost.slug}`);
-  }
+  revalidateBlogPostPaths({
+    slug: nextSlug,
+    pathPrefix: parsed.pathPrefix,
+    oldSlug: existingPost.slug,
+    oldPathPrefix: existingPost.pathPrefix,
+  });
 }
 
 export async function deletePost(id: string): Promise<void> {
@@ -203,10 +212,10 @@ export async function deletePost(id: string): Promise<void> {
   const postId = id.trim();
   if (!postId) throw new Error('invalid_post_id');
 
-  const post = await prisma.post.findUnique({ where: { id: postId }, select: { slug: true } });
+  const post = await prisma.post.findUnique({ where: { id: postId }, select: { slug: true, pathPrefix: true } });
   if (!post) return;
   await prisma.post.delete({ where: { id: postId } });
-  revalidateBlogPaths(post.slug);
+  revalidateBlogPostPaths({ slug: post.slug, pathPrefix: post.pathPrefix });
 }
 
 export async function publishPost(id: string): Promise<void> {
@@ -219,8 +228,8 @@ export async function publishPost(id: string): Promise<void> {
       status: 'PUBLISHED',
       publishedAt: new Date(),
     },
-    select: { slug: true },
+    select: { slug: true, pathPrefix: true },
   });
-  revalidateBlogPaths(post.slug);
+  revalidateBlogPostPaths({ slug: post.slug, pathPrefix: post.pathPrefix });
 }
 

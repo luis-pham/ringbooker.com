@@ -1,8 +1,10 @@
 import { z } from 'zod';
 
 import { BLOG_FOOTER_CTA_IDS } from '@/lib/blog/footer-cta-templates';
+import { BLOG_PATH_PREFIXES, isReservedCompareBlogSlug } from '@/lib/blog/path-prefixes';
 
 const blogFooterCtaTemplateIdSchema = z.enum(BLOG_FOOTER_CTA_IDS as unknown as [string, ...string[]]);
+const blogPathPrefixSchema = z.enum(BLOG_PATH_PREFIXES as unknown as [string, ...string[]]);
 
 const footerCtaEntrySchema = z.object({
   templateId: blogFooterCtaTemplateIdSchema,
@@ -17,7 +19,8 @@ const footerCtaEntrySchema = z.object({
 });
 
 /** Limits chosen so legacy posts (short excerpts, long titles) still load and save in admin. */
-export const postSchema = z.object({
+export const postSchema = z
+  .object({
   title: z.string().min(1).max(200),
   slug: z
     .string()
@@ -54,6 +57,7 @@ export const postSchema = z.object({
     )
     .max(3),
   readTimeMin: z.number().min(1).max(60),
+  pathPrefix: blogPathPrefixSchema,
   footerCtas: z.array(footerCtaEntrySchema).max(6).superRefine((rows, ctx) => {
     const seen = new Set<string>();
     rows.forEach((row, i) => {
@@ -67,7 +71,16 @@ export const postSchema = z.object({
       seen.add(row.templateId);
     });
   }),
-});
+})
+  .superRefine((data, ctx) => {
+    if (data.pathPrefix === 'compare' && isReservedCompareBlogSlug(data.slug)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'This slug is reserved for a static page under /compare',
+        path: ['slug'],
+      });
+    }
+  });
 
 export type PostFormData = z.infer<typeof postSchema>;
 

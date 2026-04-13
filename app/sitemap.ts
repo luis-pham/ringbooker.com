@@ -1,4 +1,8 @@
 import type { MetadataRoute } from 'next';
+import { PostStatus } from '@prisma/client';
+
+import { getAllPosts } from '@/lib/blog';
+import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { siteConfig } from '@/lib/site';
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
 
@@ -16,9 +20,6 @@ const routes = [
   '/compare/vs-my-ai-front-desk',
   '/compare/vs-goodcall',
   '/blog',
-  '/blog/how-many-calls-does-a-nail-salon-miss-per-day',
-  '/blog/ai-receptionist-for-vietnamese-nail-salons',
-  '/blog/truelark-alternatives-for-nail-salons-2026',
   '/demo',
   '/pricing',
   '/how-it-works',
@@ -38,8 +39,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       cmsPosts = [];
     }
   }
-  const cmsRoutes = cmsPosts.map((post) => `/blog/${post.slug}`);
-  const allRoutes = [...new Set([...routes, ...cmsRoutes])];
+  const legacyCmsRoutes = cmsPosts.map((post) => `/blog/${post.slug}`);
+
+  let prismaBlogRoutes: string[] = [];
+  try {
+    const { posts } = await getAllPosts({ status: PostStatus.PUBLISHED, perPage: 200 });
+    prismaBlogRoutes = posts.map((p) => postPublicPath(p.pathPrefix, p.slug));
+  } catch {
+    prismaBlogRoutes = [];
+  }
+
+  const allRoutes = [...new Set([...routes, ...legacyCmsRoutes, ...prismaBlogRoutes])];
 
   return allRoutes.map((route) => ({
     url: `${siteConfig.url}${route}`,

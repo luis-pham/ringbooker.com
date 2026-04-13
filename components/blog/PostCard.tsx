@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { postPublicPath } from '@/lib/blog/path-prefixes';
 import type { PostWithRelations } from '@/types/blog';
 
 const gradientMap: Record<string, string> = {
@@ -40,7 +41,7 @@ export function PostCard({ post }: { post: PostWithRelations }) {
 
   return (
     <Link
-      href={`/blog/${post.slug}`}
+      href={postPublicPath(post.pathPrefix, post.slug)}
       className="block overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-[0_14px_40px_rgba(0,0,0,.08)]"
     >
       <div className="relative h-44 overflow-hidden">

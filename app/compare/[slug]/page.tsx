@@ -8,15 +8,15 @@ type RouteProps = { params: Promise<{ slug: string }> };
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  return buildBlogPostStaticParams('blog');
+  return buildBlogPostStaticParams('compare');
 }
 
 export async function generateMetadata({ params }: RouteProps): Promise<Metadata> {
   const { slug } = await params;
-  return buildBlogPostMetadata('blog', slug);
+  return buildBlogPostMetadata('compare', slug);
 }
 
-export default async function BlogPostPage({ params }: RouteProps) {
+export default async function CompareBlogPostPage({ params }: RouteProps) {
   const { slug } = await params;
-  return <BlogPostView pathPrefix="blog" slug={slug} />;
+  return <BlogPostView pathPrefix="compare" slug={slug} />;
 }

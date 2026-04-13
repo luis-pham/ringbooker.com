@@ -7,6 +7,7 @@ import { PostCard } from '@/components/blog/PostCard';
 import { SearchBar } from '@/components/blog/SearchBar';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { getAllCategories, getAllPosts, getFeaturedPost } from '@/lib/blog';
+import { postPublicPath } from '@/lib/blog/path-prefixes';
 import type { PostWithRelations } from '@/types/blog';
 
 export const metadata: Metadata = {
@@ -61,7 +62,7 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
   const cover = post.coverImageUrl?.trim() ?? '';
   return (
     <Link
-      href={`/blog/${post.slug}`}
+      href={postPublicPath(post.pathPrefix, post.slug)}
       className="mb-14 grid overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(0,0,0,.08)] lg:grid-cols-[1.15fr_1fr]"
     >
       <div className="relative flex min-h-[220px] flex-col justify-end bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95] p-9 lg:min-h-[340px]">

@@ -310,7 +310,7 @@ async function main() {
     const coverStatsJson = post.coverStats ? (post.coverStats as Prisma.InputJsonValue) : undefined;
 
     const row = await prisma.post.upsert({
-      where: { slug: post.slug },
+      where: { pathPrefix_slug: { pathPrefix: 'blog', slug: post.slug } },
       update: {
         title: post.title,
         excerpt: post.excerpt,
@@ -322,8 +322,10 @@ async function main() {
         views: post.views,
         featured: post.featured,
         authorId: author.id,
+        pathPrefix: 'blog',
       },
       create: {
+        pathPrefix: 'blog',
         slug: post.slug,
         title: post.title,
         excerpt: post.excerpt,

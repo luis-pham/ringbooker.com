@@ -9,6 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 import { postSchema, slugify, type PostFormData } from '@/app/admin/blog/post-schema';
 import { BLOG_FOOTER_CTA_TEMPLATES, type BlogFooterCtaTemplateId } from '@/lib/blog/footer-cta-templates';
+import { BLOG_PATH_PREFIX_LABEL, BLOG_PATH_PREFIXES, postPublicPath } from '@/lib/blog/path-prefixes';
 
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
@@ -46,6 +47,7 @@ const defaultValues: PostFormData = {
   coverImageUrl: '',
   coverStats: [],
   readTimeMin: 5,
+  pathPrefix: 'blog',
   footerCtas: [],
 };
 
@@ -80,6 +82,7 @@ export function BlogPostForm(props: BlogPostFormProps) {
 
   const title = form.watch('title');
   const slugWatch = form.watch('slug');
+  const pathPrefixWatch = form.watch('pathPrefix');
   const content = form.watch('content');
   const status = form.watch('status');
   const selectedCategoryIds = form.watch('categoryIds');
@@ -124,6 +127,7 @@ export function BlogPostForm(props: BlogPostFormProps) {
             .filter(Boolean);
           const payload: PostFormData = {
             ...values,
+            pathPrefix: values.pathPrefix ?? 'blog',
             tags: normalizedTags,
             coverStats: values.coverStats.filter(
               (item: { num: string; label: string }) => item.num.trim() && item.label.trim(),
@@ -174,6 +178,29 @@ export function BlogPostForm(props: BlogPostFormProps) {
               )}
             />
             <FormError message={form.formState.errors.slug?.message} />
+          </label>
+
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="text-sm font-semibold text-slate-700">Public URL path</span>
+            <p className="mb-1.5 text-xs text-slate-500">
+              Article will be served at this prefix + slug (e.g. <code className="rounded bg-slate-100 px-1">/trust/your-post-slug</code>).
+            </p>
+            <select
+              {...form.register('pathPrefix')}
+              className="w-full max-w-xl rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-brand-purple/30 transition focus:ring"
+            >
+              {BLOG_PATH_PREFIXES.map((p) => (
+                <option key={p} value={p}>
+                  /{p}/ — {BLOG_PATH_PREFIX_LABEL[p]}
+                </option>
+              ))}
+            </select>
+            <FormError message={form.formState.errors.pathPrefix?.message} />
+            {slugWatch?.trim() ? (
+              <p className="mt-1.5 font-mono text-xs text-violet-700">
+                Preview: {postPublicPath(pathPrefixWatch ?? 'blog', slugWatch)}
+              </p>
+            ) : null}
           </label>
 
           <label className="space-y-1.5 md:col-span-2">
@@ -515,7 +542,7 @@ export function BlogPostForm(props: BlogPostFormProps) {
           <div className="flex items-center gap-2">
             {isEdit && props.postId ? (
               <Link
-                href={`/blog/${encodeURIComponent(slugWatch)}`}
+                href={postPublicPath(pathPrefixWatch ?? 'blog', slugWatch)}
                 target="_blank"
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
