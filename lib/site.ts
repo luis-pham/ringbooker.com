@@ -21,11 +21,10 @@ export const siteConfig = {
   ],
   socialLinks: {
     linkedin: process.env.NEXT_PUBLIC_LINKEDIN_URL?.trim() || 'https://www.linkedin.com/company/ringbooker',
-    twitter: process.env.NEXT_PUBLIC_TWITTER_URL?.trim() || 'https://twitter.com/ringbooker',
-    // Placeholders: add the real profile URLs here or via NEXT_PUBLIC_* env vars when ready.
-    facebook: process.env.NEXT_PUBLIC_FACEBOOK_URL?.trim() || '',
+    twitter: process.env.NEXT_PUBLIC_TWITTER_URL?.trim() || 'https://x.com/ringbooker',
+    facebook: process.env.NEXT_PUBLIC_FACEBOOK_URL?.trim() || 'https://www.facebook.com/ringbooker',
     instagram: process.env.NEXT_PUBLIC_INSTAGRAM_URL?.trim() || '',
-    youtube: process.env.NEXT_PUBLIC_YOUTUBE_URL?.trim() || '',
+    youtube: process.env.NEXT_PUBLIC_YOUTUBE_URL?.trim() || 'https://www.youtube.com/@ringbooker',
   },
 };
 
