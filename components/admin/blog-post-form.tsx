@@ -197,9 +197,26 @@ export function BlogPostForm(props: BlogPostFormProps) {
                       body,
                       credentials: 'include',
                     });
-                    const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+                    let json: { ok?: boolean; url?: string; error?: string } = {};
+                    const text = await res.text();
+                    try {
+                      json = text ? (JSON.parse(text) as typeof json) : {};
+                    } catch {
+                      throw new Error(`Upload failed (${res.status}). Check server logs.`);
+                    }
                     if (!res.ok || !json.ok || !json.url) {
-                      throw new Error(json.error ?? 'Upload failed');
+                      const code = json.error ?? 'upload_failed';
+                      const hint =
+                        code === 'unauthorized'
+                          ? 'Session expired — sign in again.'
+                          : code === 'storage_failed'
+                            ? 'Server could not save the file (read-only disk on host, or permission error).'
+                            : code === 'invalid_file_type'
+                              ? 'Use JPEG, PNG, WebP, or GIF.'
+                              : code === 'file_too_large'
+                                ? 'File too large (max 2.5MB).'
+                                : code;
+                      throw new Error(hint);
                     }
                     form.setValue('coverImageUrl', json.url, { shouldValidate: true, shouldDirty: true });
                   } catch (err) {
