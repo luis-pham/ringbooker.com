@@ -63,8 +63,13 @@ export function MarketingChromeStyles() {
 .mk-footer-col h4{font-size:11.5px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px}
 .mk-footer-col a{display:block;font-size:13.5px;color:#6B7280;text-decoration:none;margin-bottom:10px;transition:color .2s}
 .mk-footer-col a:hover{color:#111827}
-.mk-footer-bottom{border-top:1px solid #E5E7EB;padding-top:22px;display:flex;justify-content:space-between;align-items:center}
-.mk-footer-bottom p{font-size:14px;color:#9CA3AF}
+.mk-footer-bottom{border-top:1px solid #E5E7EB;padding-top:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px 28px}
+.mk-footer-bottom p,.mk-footer-copy,.mk-footer-tagline{font-size:14px;color:#9CA3AF;margin:0}
+.mk-footer-bottom-right{display:flex;align-items:center;flex-wrap:wrap;gap:10px 22px}
+.mk-footer-legal{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 10px}
+.mk-footer-legal a{font-size:13.5px;color:#9CA3AF;text-decoration:none;transition:color .2s;white-space:nowrap}
+.mk-footer-legal a:hover{color:#111827}
+.mk-footer-legal-sep{color:#D1D5DB;font-size:13px;user-select:none}
 /* ─── DEMO DROPDOWN ─── */
 .mk-demo-dd{position:relative;display:inline-flex;align-items:center}
 .mk-demo-dd-link{display:inline-flex;align-items:center;gap:4px;font-size:14.5px;font-weight:500;color:#6B7280;text-decoration:none;transition:color .2s;cursor:pointer;background:none;border:none;padding:0;font-family:inherit}
@@ -183,6 +188,7 @@ export function MarketingChromeStyles() {
   .mk-nav-cta-hide-sm{display:none !important}
   .mk-footer{padding-left:22px;padding-right:22px}
   .mk-footer-grid{grid-template-columns:1fr}
+  .mk-footer-bottom{flex-direction:column;align-items:flex-start}
   .mk-avatar-menu{right:0;min-width:260px}
   /* hide upgrade pill on mobile to keep nav clean */
   .mk-nav-upgrade{display:none}
@@ -339,16 +345,23 @@ export function MarketingFooter() {
               </a>
             ))}
           </div>
-          <div className="mk-footer-col">
-            <h4>Legal</h4>
-            <a href="/privacy">Privacy Policy</a>
-            <a href="/terms">Terms of Service</a>
-            <a href="/refund">Refund Policy</a>
-          </div>
         </div>
         <div className="mk-footer-bottom">
-          <p>© 2025 RingBooker — All rights reserved.</p>
-          <p>Built for salon users 💜</p>
+          <p className="mk-footer-copy">© 2025 RingBooker — All rights reserved.</p>
+          <div className="mk-footer-bottom-right">
+            <nav className="mk-footer-legal" aria-label="Legal">
+              <a href="/privacy">Privacy Policy</a>
+              <span className="mk-footer-legal-sep" aria-hidden="true">
+                ·
+              </span>
+              <a href="/terms">Terms of Service</a>
+              <span className="mk-footer-legal-sep" aria-hidden="true">
+                ·
+              </span>
+              <a href="/refund">Refund Policy</a>
+            </nav>
+            <p className="mk-footer-tagline">Built for salon users 💜</p>
+          </div>
         </div>
       </div>
     </footer>
