@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 import { GoogleTagManagerBody, GoogleTagManagerHead } from '@/components/analytics/google-tag-manager';
-import { buildAlternates, siteConfig } from '@/lib/site';
+import { buildAlternates, defaultSiteOgImage, siteConfig, siteOgImageEntry } from '@/lib/site';
 
 const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
 
@@ -24,11 +24,13 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     locale: 'en_US',
     type: 'website',
+    images: [siteOgImageEntry(defaultSiteOgImage)],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'RingBooker | AI Phone Answering for Busy Salons & Spas',
     description: siteConfig.description,
+    images: [defaultSiteOgImage],
   },
 };
 

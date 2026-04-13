@@ -2,37 +2,43 @@ import type { Metadata } from 'next';
 import { PostStatus } from '@prisma/client';
 
 import { getAllPosts, getPostByPathPrefixAndSlug } from '@/lib/blog';
-import { siteConfig } from '@/lib/site';
+import { postPublicPath } from '@/lib/blog/path-prefixes';
+import { absoluteOgImageUrl, buildAlternates, defaultSiteOgImage, siteConfig, siteOgImageEntry } from '@/lib/site';
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
-
-export function absoluteOgImageUrl(url: string): string {
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  const base = siteConfig.url.replace(/\/$/, '');
-  const path = url.startsWith('/') ? url : `/${url}`;
-  return `${base}${path}`;
-}
 
 export async function buildBlogPostMetadata(pathPrefix: string, slug: string): Promise<Metadata> {
   if (!hasDatabaseUrl) return { title: 'RingBooker Blog' };
   const post = await getPostByPathPrefixAndSlug(pathPrefix, slug).catch(() => null);
   if (!post) return { title: 'Post Not Found' };
 
+  const path = postPublicPath(pathPrefix, post.slug);
+  const canonicalUrl = new URL(path, siteConfig.url).toString();
+
   const cover = post.coverImageUrl?.trim();
-  const ogImage = cover ? absoluteOgImageUrl(cover) : undefined;
+  /** Absolute URL for crawlers (X / Facebook / LinkedIn). */
+  const shareImageUrl = cover ? absoluteOgImageUrl(cover) : absoluteOgImageUrl(defaultSiteOgImage);
+  const ogImages = cover
+    ? [{ url: shareImageUrl, alt: post.title }]
+    : [siteOgImageEntry(absoluteOgImageUrl(defaultSiteOgImage))];
 
   return {
+    metadataBase: new URL(siteConfig.url),
     title: `${post.title} — RingBooker Blog`,
     description: post.excerpt,
+    alternates: buildAlternates(path),
     openGraph: {
       title: post.title,
       description: post.excerpt,
+      url: canonicalUrl,
+      siteName: siteConfig.name,
+      locale: 'en_US',
       type: 'article',
       publishedTime: post.publishedAt?.toISOString(),
       authors: [post.author.name],
-      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
+      images: ogImages,
     },
-    twitter: { card: 'summary_large_image', ...(ogImage ? { images: [ogImage] } : {}) },
+    twitter: { card: 'summary_large_image', images: [shareImageUrl] },
   };
 }
 

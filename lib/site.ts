@@ -28,6 +28,27 @@ export const siteConfig = {
   },
 };
 
+/** Open Graph / X / LinkedIn default preview. Path under `public/` or full `https://` URL. Override with `NEXT_PUBLIC_SITE_OG_IMAGE`. For large link previews, use a 1200×630 PNG/JPG/WebP. */
+export const defaultSiteOgImage =
+  process.env.NEXT_PUBLIC_SITE_OG_IMAGE?.trim() || '/images/shop_panel.webp';
+
+export function absoluteOgImageUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const base = siteConfig.url.replace(/\/$/, '');
+  const path = url.startsWith('/') ? url : `/${url}`;
+  return `${base}${path}`;
+}
+
+export function siteOgImageEntry(urlOrPath: string) {
+  const url = urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://') ? urlOrPath : urlOrPath.startsWith('/') ? urlOrPath : `/${urlOrPath}`;
+  return {
+    url,
+    width: 1200,
+    height: 630,
+    alt: `${siteConfig.name} — AI phone answering for salons & spas`,
+  };
+}
+
 export function buildAlternates(path = '/'): Metadata['alternates'] {
   return {
     canonical: path,
@@ -42,12 +63,17 @@ export function buildMetadata({
   title,
   description,
   path = '/',
+  image,
 }: {
   title: string;
   description: string;
   path?: string;
+  /** Page-specific preview; absolute URL or path under `public/`. Defaults to `defaultSiteOgImage`. */
+  image?: string;
 }): Metadata {
   const url = new URL(path, siteConfig.url).toString();
+  const shareSrc = image?.trim() || defaultSiteOgImage;
+  const ogImages = [siteOgImageEntry(shareSrc)];
 
   return {
     title,
@@ -62,11 +88,13 @@ export function buildMetadata({
       siteName: siteConfig.name,
       locale: 'en_US',
       type: 'website',
+      images: ogImages,
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
+      images: [shareSrc],
     },
   };
 }
