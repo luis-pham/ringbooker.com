@@ -8,12 +8,14 @@ datasource db {
 }
 
 model Post {
-  id          String     @id @default(cuid())
-  slug        String     @unique
-  title       String
-  excerpt     String
-  content     String     @db.Text
-  coverStats  Json?
+  id             String     @id @default(cuid())
+  slug           String     @unique
+  title          String
+  excerpt        String
+  content        String     @db.Text
+  /// Public URL path (e.g. /uploads/blog/...) or absolute https URL for list/detail hero
+  coverImageUrl  String?
+  coverStats     Json?
   status      PostStatus @default(DRAFT)
   publishedAt DateTime?
   updatedAt   DateTime   @updatedAt

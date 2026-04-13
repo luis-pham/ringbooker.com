@@ -24,6 +24,10 @@ pnpm-debug.log*
 # misc
 .DS_Store
 
+# uploaded blog covers (keep directory via .gitkeep)
+public/uploads/blog/*
+!public/uploads/blog/.gitkeep
+
 # Cursor / Claude local worktrees (nested git repos — do not commit)
 .claude/
 *.pem

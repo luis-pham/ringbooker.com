@@ -46,6 +46,7 @@ export default async function AdminBlogEditPage({ params }: PageProps) {
     categoryIds: post.categories.map((item) => item.categoryId),
     tags: post.tags.map((item) => item.tag.name),
     featured: post.featured,
+    coverImageUrl: post.coverImageUrl ?? '',
     coverStats: Array.isArray(post.coverStats)
       ? post.coverStats
           .map((item) => {

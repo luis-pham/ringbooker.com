@@ -30,6 +30,11 @@ function normalizeCoverStats(data: PostFormData): Array<{ num: string; label: st
     .slice(0, 3);
 }
 
+function normalizeCoverImageUrl(value: string): string | null {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 async function ensureAuthorId() {
   const initials = 'RBA';
   const author = await prisma.author.upsert({
@@ -94,6 +99,7 @@ export async function createPost(data: PostFormData): Promise<{ id: string }> {
       status: parsed.status,
       featured: parsed.featured,
       readTimeMin: parsed.readTimeMin,
+      coverImageUrl: normalizeCoverImageUrl(parsed.coverImageUrl),
       coverStats: normalizeCoverStats(parsed),
       authorId,
       publishedAt: parsed.status === 'PUBLISHED' ? new Date() : null,
@@ -142,6 +148,7 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
         status: parsed.status,
         featured: parsed.featured,
         readTimeMin: parsed.readTimeMin,
+        coverImageUrl: normalizeCoverImageUrl(parsed.coverImageUrl),
         coverStats: normalizeCoverStats(parsed),
         publishedAt:
           parsed.status === 'PUBLISHED' ? existingPost.publishedAt ?? new Date() : parsed.status === 'ARCHIVED' ? null : existingPost.publishedAt,

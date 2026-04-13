@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
@@ -38,6 +38,7 @@ const defaultValues: PostFormData = {
   categoryIds: [],
   tags: [],
   featured: false,
+  coverImageUrl: '',
   coverStats: [],
   readTimeMin: 5,
 };
@@ -48,6 +49,8 @@ export function BlogPostForm(props: BlogPostFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [tagsInput, setTagsInput] = useState((props.initialData?.tags ?? []).join(', '));
   const [slugTouched, setSlugTouched] = useState(Boolean(props.initialData?.slug));
+  const [coverUploading, setCoverUploading] = useState(false);
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PostFormData>({
     resolver: zodResolver(postSchema),
@@ -64,6 +67,7 @@ export function BlogPostForm(props: BlogPostFormProps) {
   const content = form.watch('content');
   const status = form.watch('status');
   const selectedCategoryIds = form.watch('categoryIds');
+  const coverImageUrl = form.watch('coverImageUrl');
 
   useEffect(() => {
     if (!slugTouched) {
@@ -157,6 +161,71 @@ export function BlogPostForm(props: BlogPostFormProps) {
             />
             <FormError message={form.formState.errors.excerpt?.message} />
           </label>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h2 className="mb-1 text-base font-semibold text-slate-900">Cover image</h2>
+          <p className="mb-4 text-sm text-slate-600">
+            Shown on the blog list, featured block, and above the article. JPEG, PNG, WebP, or GIF — up to 2.5MB.
+          </p>
+          <input type="hidden" {...form.register('coverImageUrl')} />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="relative h-44 w-full max-w-md shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+              {coverImageUrl?.trim() ? (
+                <img src={coverImageUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-slate-400">No cover image</div>
+              )}
+            </div>
+            <div className="flex min-w-0 flex-col gap-2">
+              <input
+                ref={coverFileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                disabled={coverUploading}
+                className="max-w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-purple file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:opacity-90 disabled:opacity-50"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setError(null);
+                  setCoverUploading(true);
+                  try {
+                    const body = new FormData();
+                    body.append('file', file);
+                    const res = await fetch('/api/admin/blog/cover-image', {
+                      method: 'POST',
+                      body,
+                      credentials: 'include',
+                    });
+                    const json = (await res.json()) as { ok?: boolean; url?: string; error?: string };
+                    if (!res.ok || !json.ok || !json.url) {
+                      throw new Error(json.error ?? 'Upload failed');
+                    }
+                    form.setValue('coverImageUrl', json.url, { shouldValidate: true, shouldDirty: true });
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Cover upload failed');
+                  } finally {
+                    setCoverUploading(false);
+                    event.target.value = '';
+                  }
+                }}
+              />
+              {coverUploading ? <p className="text-xs text-slate-500">Uploading…</p> : null}
+              {coverImageUrl?.trim() ? (
+                <button
+                  type="button"
+                  className="w-fit text-sm font-medium text-rose-600 underline-offset-2 hover:underline"
+                  onClick={() => {
+                    form.setValue('coverImageUrl', '', { shouldValidate: true, shouldDirty: true });
+                    if (coverFileInputRef.current) coverFileInputRef.current.value = '';
+                  }}
+                >
+                  Remove cover
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <FormError message={form.formState.errors.coverImageUrl?.message} />
         </section>
 
         <section className="rounded-xl border border-slate-200 bg-white p-5">

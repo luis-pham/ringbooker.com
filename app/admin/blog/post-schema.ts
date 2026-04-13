@@ -9,6 +9,15 @@ export const postSchema = z.object({
   categoryIds: z.array(z.string()).min(1),
   tags: z.array(z.string()),
   featured: z.boolean(),
+  coverImageUrl: z
+    .string()
+    .max(2000)
+    .refine((value) => {
+      const v = value.trim();
+      return v === '' || v.startsWith('/') || /^https?:\/\//i.test(v);
+    }, {
+      message: 'Cover image must be empty, a path starting with /, or an http(s) URL',
+    }),
   coverStats: z
     .array(
       z.object({

@@ -58,17 +58,25 @@ function buildPageHref({
 
 function FeaturedPost({ post }: { post: PostWithRelations }) {
   const category = post.categories[0]?.category;
+  const cover = post.coverImageUrl?.trim() ?? '';
   return (
     <Link
       href={`/blog/${post.slug}`}
       className="mb-14 grid overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(0,0,0,.08)] lg:grid-cols-[1.15fr_1fr]"
     >
       <div className="relative flex min-h-[220px] flex-col justify-end bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95] p-9 lg:min-h-[340px]">
-        <div className="absolute inset-0 overflow-hidden">
-          <span className="absolute right-10 top-5 h-60 w-60 rounded-full border border-white/10" />
-          <span className="absolute right-20 top-14 h-36 w-36 rounded-full bg-violet-400/20 blur-2xl" />
-        </div>
-        <span className="relative mb-auto inline-flex w-fit items-center rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-bold text-white backdrop-blur">
+        {cover ? (
+          <>
+            <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-black/25" />
+          </>
+        ) : (
+          <div className="absolute inset-0 overflow-hidden">
+            <span className="absolute right-10 top-5 h-60 w-60 rounded-full border border-white/10" />
+            <span className="absolute right-20 top-14 h-36 w-36 rounded-full bg-violet-400/20 blur-2xl" />
+          </div>
+        )}
+        <span className="relative z-10 mb-auto inline-flex w-fit items-center rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-bold text-white backdrop-blur">
           🔥 Featured · {category?.name ?? 'Insights'}
         </span>
         <div className="relative z-10 flex flex-wrap gap-6">

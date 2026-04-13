@@ -36,6 +36,7 @@ export function PostCard({ post }: { post: PostWithRelations }) {
   const categorySlug = primaryCategory?.slug ?? 'default';
   const gradient = gradientMap[categorySlug] ?? gradientMap.default;
   const icon = iconMap[categorySlug] ?? iconMap.default;
+  const cover = post.coverImageUrl?.trim() ?? '';
 
   return (
     <Link
@@ -43,9 +44,18 @@ export function PostCard({ post }: { post: PostWithRelations }) {
       className="block overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-1 hover:shadow-[0_14px_40px_rgba(0,0,0,.08)]"
     >
       <div className="relative h-44 overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
-        <span className="absolute inset-0 flex items-center justify-center text-[44px] opacity-25">{icon}</span>
-        <span className="absolute left-3.5 top-3.5 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-[11px] font-bold text-white backdrop-blur">
+        {cover ? (
+          <>
+            <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
+          </>
+        ) : (
+          <>
+            <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+            <span className="absolute inset-0 flex items-center justify-center text-[44px] opacity-25">{icon}</span>
+          </>
+        )}
+        <span className="absolute left-3.5 top-3.5 z-10 rounded-full border border-white/20 bg-white/15 px-3 py-1 text-[11px] font-bold text-white backdrop-blur">
           {primaryCategory?.name ?? 'Article'}
         </span>
       </div>

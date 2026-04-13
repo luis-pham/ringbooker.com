@@ -11,6 +11,7 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 import { extractToc } from '@/lib/extractToc';
 import { getAllPosts, getPostBySlug, getRelatedPosts, incrementPostViews } from '@/lib/blog';
 import { renderMarkdownToSafeHtml } from '@/lib/blog/markdown';
+import { siteConfig } from '@/lib/site';
 
 type RouteParams = { slug: string };
 type RouteProps = { params: Promise<RouteParams> };
@@ -18,6 +19,13 @@ type RouteProps = { params: Promise<RouteParams> };
 export const revalidate = 3600;
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+
+function absoluteOgImageUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const base = siteConfig.url.replace(/\/$/, '');
+  const path = url.startsWith('/') ? url : `/${url}`;
+  return `${base}${path}`;
+}
 
 export async function generateStaticParams() {
   if (!hasDatabaseUrl) return [];
@@ -35,6 +43,9 @@ export async function generateMetadata({ params }: RouteProps): Promise<Metadata
   const post = await getPostBySlug(slug).catch(() => null);
   if (!post) return { title: 'Post Not Found' };
 
+  const cover = post.coverImageUrl?.trim();
+  const ogImage = cover ? absoluteOgImageUrl(cover) : undefined;
+
   return {
     title: `${post.title} — RingBooker Blog`,
     description: post.excerpt,
@@ -44,8 +55,9 @@ export async function generateMetadata({ params }: RouteProps): Promise<Metadata
       type: 'article',
       publishedTime: post.publishedAt?.toISOString(),
       authors: [post.author.name],
+      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
     },
-    twitter: { card: 'summary_large_image' },
+    twitter: { card: 'summary_large_image', ...(ogImage ? { images: [ogImage] } : {}) },
   };
 }
 
@@ -78,6 +90,7 @@ export default async function BlogPostPage({ params }: RouteProps) {
     : [];
 
   const safeArticleHtml = renderMarkdownToSafeHtml(post.content);
+  const cover = post.coverImageUrl?.trim() ?? '';
 
   return (
     <>
@@ -153,8 +166,17 @@ export default async function BlogPostPage({ params }: RouteProps) {
 
       <div className="mx-auto max-w-[760px] px-6 pt-9 md:px-12">
         <div className="relative flex h-[360px] items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95]">
-          <span className="absolute right-16 top-5 h-[300px] w-[300px] rounded-full border border-white/10" />
-          <span className="absolute right-24 top-12 h-[180px] w-[180px] rounded-full bg-violet-400/25 blur-[40px]" />
+          {cover ? (
+            <>
+              <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-black/20" />
+            </>
+          ) : (
+            <>
+              <span className="absolute right-16 top-5 h-[300px] w-[300px] rounded-full border border-white/10" />
+              <span className="absolute right-24 top-12 h-[180px] w-[180px] rounded-full bg-violet-400/25 blur-[40px]" />
+            </>
+          )}
           <div className="relative z-10 flex gap-10">
             {stats.map((item) => (
               <div key={`${item.num}-${item.label}`} className="text-center">
@@ -223,8 +245,14 @@ export default async function BlogPostPage({ params }: RouteProps) {
                   href={`/blog/${related.slug}`}
                   className="flex gap-3 border-b border-gray-200 py-2.5 last:border-b-0 hover:opacity-75"
                 >
-                  <span className="relative h-11 w-14 shrink-0 overflow-hidden rounded-lg">
-                    <span className="absolute inset-0 bg-gradient-to-br from-violet-900 to-violet-700" />
+                  <span className="relative h-11 w-14 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-violet-900 to-violet-700">
+                    {related.coverImageUrl?.trim() ? (
+                      <img
+                        src={related.coverImageUrl.trim()}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : null}
                   </span>
                   <span>
                     <span className="block font-sans text-[12.5px] font-semibold leading-5 text-gray-900">{related.title}</span>
@@ -246,9 +274,19 @@ export default async function BlogPostPage({ params }: RouteProps) {
               href={`/blog/${related.slug}`}
               className="block overflow-hidden rounded-3xl border border-gray-200 bg-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,.07)]"
             >
-              <div className="relative h-36 overflow-hidden">
-                <span className="absolute inset-0 bg-gradient-to-br from-violet-900 to-violet-700" />
-                <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-25">📘</span>
+              <div className="relative h-36 overflow-hidden bg-gradient-to-br from-violet-900 to-violet-700">
+                {related.coverImageUrl?.trim() ? (
+                  <>
+                    <img
+                      src={related.coverImageUrl.trim()}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  </>
+                ) : (
+                  <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-25">📘</span>
+                )}
               </div>
               <div className="p-4">
                 <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-purple">
