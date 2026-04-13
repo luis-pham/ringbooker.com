@@ -20,7 +20,6 @@ const config: Config = {
         pearl: '#F9FAFB',
         rosewash: '#FDF2F8',
         mint: '#10B981',
-        amber: '#F59E0B',
         danger: '#EF4444',
         skywash: '#EEF2FF',
       },
