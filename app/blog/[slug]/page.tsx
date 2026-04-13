@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PostStatus } from '@prisma/client';
 
+import { PostFooterCtas } from '@/components/blog/post-footer-ctas';
 import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { ShareButtons } from '@/components/blog/ShareButtons';
 import { TableOfContents } from '@/components/blog/TableOfContents';
@@ -10,6 +11,7 @@ import { ViewCounter } from '@/components/blog/ViewCounter';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { extractToc } from '@/lib/extractToc';
 import { getAllPosts, getPostBySlug, getRelatedPosts, incrementPostViews } from '@/lib/blog';
+import { parseStoredFooterCtas } from '@/lib/blog/footer-cta-templates';
 import { renderMarkdownToSafeHtml } from '@/lib/blog/markdown';
 import { siteConfig } from '@/lib/site';
 
@@ -90,6 +92,7 @@ export default async function BlogPostPage({ params }: RouteProps) {
     : [];
 
   const safeArticleHtml = renderMarkdownToSafeHtml(post.content);
+  const footerCtas = parseStoredFooterCtas(post.footerCtas);
   const cover = post.coverImageUrl?.trim() ?? '';
 
   return (
@@ -194,6 +197,8 @@ export default async function BlogPostPage({ params }: RouteProps) {
             className="rb-blog-md prose prose-lg prose-gray max-w-none font-serif text-gray-700 prose-headings:font-sans prose-headings:font-extrabold prose-headings:tracking-tight prose-headings:text-gray-900 prose-h1:text-[clamp(26px,3vw,34px)] prose-h1:leading-tight prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-[clamp(22px,2.5vw,28px)] prose-h2:leading-snug prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h4:mt-6 prose-h4:mb-2 prose-p:mb-5 prose-ul:my-4 prose-ol:my-4 prose-li:my-1 prose-blockquote:border-l-4 prose-blockquote:border-brand-purple prose-blockquote:bg-violet-50/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-a:font-medium prose-a:text-brand-purple prose-a:underline prose-a:decoration-violet-300 prose-a:underline-offset-2 hover:prose-a:decoration-brand-purple prose-strong:text-gray-900 prose-code:rounded-md prose-code:bg-violet-100/90 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.9em] prose-code:font-medium prose-code:text-violet-900 prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:shadow-lg prose-th:border prose-th:border-gray-200 prose-th:bg-gray-50 prose-td:border prose-td:border-gray-200 prose-img:rounded-xl prose-hr:border-gray-200"
             dangerouslySetInnerHTML={{ __html: safeArticleHtml }}
           />
+
+          <PostFooterCtas rows={footerCtas} />
 
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-8 font-sans">
             <div className="flex flex-wrap gap-2">

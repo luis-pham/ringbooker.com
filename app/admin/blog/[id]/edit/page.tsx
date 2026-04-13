@@ -4,6 +4,8 @@ import { BlogPostForm } from '@/components/admin/blog-post-form';
 import { prisma } from '@/lib/prisma';
 
 import { updatePost } from '../../actions';
+import { parseStoredFooterCtas } from '@/lib/blog/footer-cta-templates';
+
 import { sanitizeCoverImageInput, type PostFormData } from '../../post-schema';
 
 export const metadata = {
@@ -59,6 +61,7 @@ export default async function AdminBlogEditPage({ params }: PageProps) {
           .slice(0, 3)
       : [],
     readTimeMin: post.readTimeMin,
+    footerCtas: parseStoredFooterCtas(post.footerCtas),
   };
 
   async function saveAction(data: PostFormData) {

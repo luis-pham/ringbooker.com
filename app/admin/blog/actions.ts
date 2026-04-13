@@ -39,6 +39,14 @@ function normalizeCoverImageUrl(value: string): string | null {
   return trimmed;
 }
 
+function normalizeFooterCtasJson(data: PostFormData) {
+  const rows = data.footerCtas.map((row) => ({
+    templateId: row.templateId,
+    href: row.href.trim(),
+  }));
+  return rows.length > 0 ? rows : [];
+}
+
 async function ensureAuthorId() {
   const initials = 'RBA';
   const author = await prisma.author.upsert({
@@ -120,6 +128,7 @@ export async function createPost(data: PostFormData): Promise<{ id: string }> {
       readTimeMin: parsed.readTimeMin,
       coverImageUrl: normalizeCoverImageUrl(parsed.coverImageUrl),
       coverStats: normalizeCoverStats(parsed),
+      footerCtas: normalizeFooterCtasJson(parsed),
       authorId,
       publishedAt: parsed.status === 'PUBLISHED' ? new Date() : null,
       categories: {
@@ -169,6 +178,7 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
         readTimeMin: parsed.readTimeMin,
         coverImageUrl: normalizeCoverImageUrl(parsed.coverImageUrl),
         coverStats: normalizeCoverStats(parsed),
+        footerCtas: normalizeFooterCtasJson(parsed),
         publishedAt:
           parsed.status === 'PUBLISHED' ? existingPost.publishedAt ?? new Date() : parsed.status === 'ARCHIVED' ? null : existingPost.publishedAt,
         categories: {

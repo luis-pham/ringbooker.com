@@ -1,5 +1,21 @@
 import { z } from 'zod';
 
+import { BLOG_FOOTER_CTA_IDS } from '@/lib/blog/footer-cta-templates';
+
+const blogFooterCtaTemplateIdSchema = z.enum(BLOG_FOOTER_CTA_IDS as unknown as [string, ...string[]]);
+
+const footerCtaEntrySchema = z.object({
+  templateId: blogFooterCtaTemplateIdSchema,
+  href: z
+    .string()
+    .min(1, 'Link is required')
+    .max(2000)
+    .refine((h) => {
+      const t = h.trim();
+      return t.startsWith('/') || /^https?:\/\//i.test(t);
+    }, { message: 'Link must start with / or http(s)://' }),
+});
+
 /** Limits chosen so legacy posts (short excerpts, long titles) still load and save in admin. */
 export const postSchema = z.object({
   title: z.string().min(1).max(200),
@@ -38,6 +54,19 @@ export const postSchema = z.object({
     )
     .max(3),
   readTimeMin: z.number().min(1).max(60),
+  footerCtas: z.array(footerCtaEntrySchema).max(6).superRefine((rows, ctx) => {
+    const seen = new Set<string>();
+    rows.forEach((row, i) => {
+      if (seen.has(row.templateId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Each button template can only be used once',
+          path: [i, 'templateId'],
+        });
+      }
+      seen.add(row.templateId);
+    });
+  }),
 });
 
 export type PostFormData = z.infer<typeof postSchema>;

@@ -8,6 +8,7 @@ import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { postSchema, slugify, type PostFormData } from '@/app/admin/blog/post-schema';
+import { BLOG_FOOTER_CTA_TEMPLATES, type BlogFooterCtaTemplateId } from '@/lib/blog/footer-cta-templates';
 
 import '@uiw/react-md-editor/markdown-editor.css';
 import '@uiw/react-markdown-preview/markdown.css';
@@ -45,6 +46,7 @@ const defaultValues: PostFormData = {
   coverImageUrl: '',
   coverStats: [],
   readTimeMin: 5,
+  footerCtas: [],
 };
 
 export function BlogPostForm(props: BlogPostFormProps) {
@@ -65,6 +67,15 @@ export function BlogPostForm(props: BlogPostFormProps) {
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: 'coverStats',
+  });
+
+  const {
+    fields: footerCtaFields,
+    append: appendFooterCta,
+    remove: removeFooterCta,
+  } = useFieldArray({
+    control: form.control,
+    name: 'footerCtas',
   });
 
   const title = form.watch('title');
@@ -114,7 +125,10 @@ export function BlogPostForm(props: BlogPostFormProps) {
           const payload: PostFormData = {
             ...values,
             tags: normalizedTags,
-            coverStats: values.coverStats.filter((item) => item.num.trim() && item.label.trim()),
+            coverStats: values.coverStats.filter(
+              (item: { num: string; label: string }) => item.num.trim() && item.label.trim(),
+            ),
+            footerCtas: values.footerCtas ?? [],
           };
           startTransition(async () => {
             try {
@@ -302,6 +316,88 @@ export function BlogPostForm(props: BlogPostFormProps) {
             </div>
           </div>
           <FormError message={form.formState.errors.content?.message} />
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">End-of-article buttons</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Optional CTAs shown below the article body on the public post. Pick a label, set the link (relative paths like{' '}
+                <code className="rounded bg-slate-100 px-1">/pricing</code> are fine). Max 6; each template once.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                appendFooterCta({
+                  templateId: BLOG_FOOTER_CTA_TEMPLATES[0].id,
+                  href: BLOG_FOOTER_CTA_TEMPLATES[0].suggestedHref,
+                })
+              }
+              disabled={footerCtaFields.length >= 6}
+              className="shrink-0 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Add button
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {footerCtaFields.length === 0 ? (
+              <p className="text-sm text-slate-500">No footer buttons — the article ends after the markdown body only.</p>
+            ) : null}
+            {footerCtaFields.map((field, index) => {
+              const tid = form.watch(`footerCtas.${index}.templateId`) as BlogFooterCtaTemplateId;
+              const suggested = BLOG_FOOTER_CTA_TEMPLATES.find((t) => t.id === tid)?.suggestedHref ?? '/';
+              const templateIdRegister = form.register(`footerCtas.${index}.templateId`);
+              return (
+                <div key={field.id} className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50/80 p-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] md:items-end">
+                  <label className="space-y-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Button</span>
+                    <select
+                      {...templateIdRegister}
+                      onChange={(e) => {
+                        templateIdRegister.onChange(e);
+                        const id = e.target.value as BlogFooterCtaTemplateId;
+                        const hrefNow = form.getValues(`footerCtas.${index}.href`)?.trim() ?? '';
+                        const prevTemplate = BLOG_FOOTER_CTA_TEMPLATES.find((t) => t.id === tid);
+                        if (!hrefNow || hrefNow === (prevTemplate?.suggestedHref ?? '')) {
+                          const nextS = BLOG_FOOTER_CTA_TEMPLATES.find((t) => t.id === id)?.suggestedHref;
+                          if (nextS) {
+                            form.setValue(`footerCtas.${index}.href`, nextS, { shouldValidate: true, shouldDirty: true });
+                          }
+                        }
+                      }}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none ring-brand-purple/30 transition focus:ring"
+                    >
+                      {BLOG_FOOTER_CTA_TEMPLATES.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                    <FormError message={form.formState.errors.footerCtas?.[index]?.templateId?.message} />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Link</span>
+                    <input
+                      {...form.register(`footerCtas.${index}.href`)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm outline-none ring-brand-purple/30 transition focus:ring"
+                      placeholder={suggested}
+                    />
+                    <FormError message={form.formState.errors.footerCtas?.[index]?.href?.message} />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => removeFooterCta(index)}
+                    className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50 md:mb-0.5"
+                  >
+                    Remove
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-5 md:grid-cols-2">

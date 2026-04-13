@@ -16,6 +16,8 @@ model Post {
   /// Public URL path (e.g. /uploads/blog/...) or absolute https URL for list/detail hero
   coverImageUrl  String?
   coverStats     Json?
+  /// End-of-article CTA buttons: [{ "templateId": "try_live_demo", "href": "/demo" }, ...]
+  footerCtas     Json?
   status      PostStatus @default(DRAFT)
   publishedAt DateTime?
   updatedAt   DateTime   @updatedAt
