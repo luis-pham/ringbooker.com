@@ -1,7 +1,7 @@
 import { PostStatus, Prisma } from '@prisma/client';
 import { z } from 'zod';
 
-import { isBlogPathPrefix } from '@/lib/blog/path-prefixes';
+import { isBlogPathPrefix, isReservedCompareBlogSlug, postPublicPath } from '@/lib/blog/path-prefixes';
 import { prisma } from '@/lib/prisma';
 import type { CategoryWithCount, PostWithRelations } from '@/types/blog';
 
@@ -250,6 +250,31 @@ export async function incrementPostViews(pathPrefix: string, slug: string): Prom
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error';
     throw new Error(`Failed to increment post views: ${message}`);
+  }
+}
+
+/** Canonical `/…` paths for sitemap (Prisma only; excludes unknown prefixes and compare reserved slugs). */
+export async function getPublishedPostSitemapEntries(): Promise<Array<{ path: string; lastModified: Date }>> {
+  if (!hasDatabaseUrl()) {
+    warnMissingDatabaseUrl();
+    return [];
+  }
+  try {
+    const posts = await prisma.post.findMany({
+      where: { status: PostStatus.PUBLISHED },
+      select: { pathPrefix: true, slug: true, updatedAt: true },
+    });
+    return posts
+      .filter((p) => isBlogPathPrefix(p.pathPrefix.trim()))
+      .filter((p) => !(p.pathPrefix.trim() === 'compare' && isReservedCompareBlogSlug(p.slug)))
+      .map((p) => ({
+        path: postPublicPath(p.pathPrefix, p.slug),
+        lastModified: p.updatedAt,
+      }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown error';
+    console.warn(`[blog] getPublishedPostSitemapEntries: ${message}`);
+    return [];
   }
 }
 

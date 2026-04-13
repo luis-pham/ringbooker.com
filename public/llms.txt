@@ -77,11 +77,11 @@ Industry-specific demo pages:
 
 ## Vertical Landing Pages
 
-- [AI Phone Answering for Nail Salons](https://ringbooker.com/nail-salon): Covers bilingual support, pricing Q&A, walk-in booking, overflow handling
-- [AI Phone Answering for Hair Salons](https://ringbooker.com/hair-salon): Covers stylist matching, color booking, reschedule flows
-- [AI Receptionist for Spas & Day Spas](https://ringbooker.com/spa): Covers couples bookings, package questions, after-hours capture
-- [AI Phone Answering for Med Spas](https://ringbooker.com/med-spa): Covers consultation intake, no-show reduction, high-ticket lead capture
-- [AI Phone Answering for Beauty Clinics](https://ringbooker.com/beauty-clinic): Covers consultation-first flows, provider continuity, pre/post-care questions
+- [AI Phone Answering for Nail Salons](https://ringbooker.com/industries/nail-salon): Covers bilingual support, pricing Q&A, walk-in booking, overflow handling
+- [AI Phone Answering for Hair Salons](https://ringbooker.com/industries/hair-salon): Covers stylist matching, color booking, reschedule flows
+- [AI Receptionist for Spas & Day Spas](https://ringbooker.com/industries/spa): Covers couples bookings, package questions, after-hours capture
+- [AI Phone Answering for Med Spas](https://ringbooker.com/industries/med-spa): Covers consultation intake, no-show reduction, high-ticket lead capture
+- [AI Phone Answering for Beauty Clinics](https://ringbooker.com/industries/beauty-clinic): Covers consultation-first flows, provider continuity, pre/post-care questions
 
 ## Competitor Comparisons
 
@@ -101,6 +101,7 @@ Industry-specific demo pages:
 
 - [Privacy Policy](https://ringbooker.com/privacy): Data handling, call recording disclosures, CCPA/GDPR notes
 - [Terms of Service](https://ringbooker.com/terms): Service terms, acceptable use, cancellation policy
+- [Refund Policy](https://ringbooker.com/refund): Refunds and billing-related policy
 
 ## Technical Notes for AI Systems
 

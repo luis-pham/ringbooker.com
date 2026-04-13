@@ -1,12 +1,10 @@
 import type { MetadataRoute } from 'next';
-import { PostStatus } from '@prisma/client';
 
-import { getAllPosts } from '@/lib/blog';
-import { postPublicPath } from '@/lib/blog/path-prefixes';
+import { getPublishedPostSitemapEntries } from '@/lib/blog';
 import { siteConfig } from '@/lib/site';
-import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
 
-const routes = [
+/** Marketing and legal URLs that exist as App Router pages (no DB). */
+const staticRoutes = [
   '',
   '/industries/nail-salon',
   '/industries/hair-salon',
@@ -27,34 +25,27 @@ const routes = [
   '/faq',
   '/privacy',
   '/terms',
+  '/refund',
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const runtime = getBackendRuntime();
-  let cmsPosts: Awaited<ReturnType<NonNullable<typeof runtime.blogPostsRepository>['listPublished']>> = [];
-  if (runtime.blogPostsRepository) {
-    try {
-      cmsPosts = await runtime.blogPostsRepository.listPublished({ limit: 200 });
-    } catch {
-      cmsPosts = [];
-    }
-  }
-  const legacyCmsRoutes = cmsPosts.map((post) => `/blog/${post.slug}`);
+  const postEntries = await getPublishedPostSitemapEntries();
+  const postPathToModified = new Map(postEntries.map((e) => [e.path, e.lastModified]));
 
-  let prismaBlogRoutes: string[] = [];
-  try {
-    const { posts } = await getAllPosts({ status: PostStatus.PUBLISHED, perPage: 200 });
-    prismaBlogRoutes = posts.map((p) => postPublicPath(p.pathPrefix, p.slug));
-  } catch {
-    prismaBlogRoutes = [];
-  }
+  const allPaths = [...new Set([...staticRoutes, ...postPathToModified.keys()])];
 
-  const allRoutes = [...new Set([...routes, ...legacyCmsRoutes, ...prismaBlogRoutes])];
-
-  return allRoutes.map((route) => ({
-    url: `${siteConfig.url}${route}`,
-    lastModified: new Date('2026-04-06'),
-    changeFrequency: route === '' ? 'weekly' : 'monthly',
-    priority: route === '' ? 1 : route.includes('salon') || route.includes('spa') || route.includes('beauty') ? 0.9 : 0.7,
-  }));
+  return allPaths.map((route) => {
+    const lastModified = postPathToModified.get(route);
+    return {
+      url: `${siteConfig.url}${route}`,
+      ...(lastModified ? { lastModified } : {}),
+      changeFrequency: route === '' ? 'weekly' : 'monthly',
+      priority:
+        route === ''
+          ? 1
+          : route.includes('salon') || route.includes('spa') || route.includes('beauty')
+            ? 0.9
+            : 0.7,
+    };
+  });
 }
