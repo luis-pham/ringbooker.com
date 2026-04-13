@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
+
+import { GoogleTagManager } from '@/components/analytics/google-tag-manager';
 import { buildAlternates, siteConfig } from '@/lib/site';
 
 const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
@@ -121,7 +123,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <GoogleTagManager />
+        {children}
+      </body>
     </html>
   );
 }
