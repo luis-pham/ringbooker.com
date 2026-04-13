@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { BlogPostDefaultPageCta } from '@/components/blog/blog-post-page-cta-strip';
 import { PostFooterCtas } from '@/components/blog/post-footer-ctas';
 import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { ShareButtons } from '@/components/blog/ShareButtons';
@@ -168,7 +169,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
             dangerouslySetInnerHTML={{ __html: safeArticleHtml }}
           />
 
-          <PostFooterCtas rows={footerCtas} />
+          {footerCtas.length > 0 ? <PostFooterCtas rows={footerCtas} /> : <BlogPostDefaultPageCta />}
 
           <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-8 font-sans">
             <div className="flex flex-wrap gap-2">
@@ -244,7 +245,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
         </aside>
       </div>
 
-      <section className="mx-auto max-w-6xl px-6 pb-20 md:px-12">
+      <section className="mx-auto max-w-6xl px-6 pb-20 pt-4 md:px-12">
         <h2 className="mb-6 font-sans text-[22px] font-extrabold tracking-tight text-gray-900">Keep Reading</h2>
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {relatedPosts.map((related) => (
@@ -278,34 +279,6 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
               </div>
             </Link>
           ))}
-        </div>
-      </section>
-
-      <section className="px-6 pb-14 md:px-12">
-        <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-r from-violet-700 via-brand-purple to-violet-400 px-6 py-14 text-center md:px-12">
-          <span className="pointer-events-none absolute -right-16 -top-20 h-[300px] w-[300px] rounded-full bg-white/5" />
-          <h2 className="mb-2 text-[clamp(24px,3vw,36px)] font-sans font-extrabold tracking-tight text-white">
-            Ready to stop missing bookings?
-          </h2>
-          <p className="mb-7 font-sans text-[15px] text-white/75">
-            RingBooker answers every call 24/7 — books appointments, sends confirmations, and fills your calendar while you
-            focus on your clients.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/demo"
-              className="inline-flex items-center rounded-full bg-white px-8 py-3.5 text-sm font-extrabold text-violet-800 shadow-lg shadow-black/15 transition hover:scale-[1.04]"
-              data-demo-picker
-            >
-              📞 Try a Live Demo
-            </Link>
-            <Link
-              href="/user/signup"
-              className="inline-flex items-center rounded-full border border-white/40 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white/95 backdrop-blur-sm transition hover:bg-white/20"
-            >
-              Start 14-Day Free Trial →
-            </Link>
-          </div>
         </div>
       </section>
 
