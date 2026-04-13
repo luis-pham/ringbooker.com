@@ -29,6 +29,10 @@ type BlogPostFormProps = {
 const MDEditor = dynamic(() => import('@uiw/react-md-editor'), { ssr: false });
 const MarkdownPreview = dynamic(() => import('@uiw/react-markdown-preview'), { ssr: false });
 
+/** Browser console: set NEXT_PUBLIC_LOG_BLOG_COVER=1 (rebuild) or run `next dev`. */
+const COVER_UPLOAD_DEBUG =
+  process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_LOG_BLOG_COVER === '1';
+
 const defaultValues: PostFormData = {
   title: '',
   slug: '',
@@ -64,6 +68,7 @@ export function BlogPostForm(props: BlogPostFormProps) {
   });
 
   const title = form.watch('title');
+  const slugWatch = form.watch('slug');
   const content = form.watch('content');
   const status = form.watch('status');
   const selectedCategoryIds = form.watch('categoryIds');
@@ -139,14 +144,20 @@ export function BlogPostForm(props: BlogPostFormProps) {
 
           <label className="space-y-1.5">
             <span className="text-sm font-semibold text-slate-700">Slug</span>
-            <input
-              {...form.register('slug')}
-              onChange={(event) => {
-                setSlugTouched(true);
-                form.setValue('slug', slugify(event.target.value), { shouldValidate: true });
-              }}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-brand-purple/30 transition focus:ring"
-              placeholder="ai-receptionist-nail-salon-growth"
+            <Controller
+              control={form.control}
+              name="slug"
+              render={({ field }) => (
+                <input
+                  {...field}
+                  onChange={(event) => {
+                    setSlugTouched(true);
+                    field.onChange(slugify(event.target.value));
+                  }}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-brand-purple/30 transition focus:ring"
+                  placeholder="ai-receptionist-nail-salon-growth"
+                />
+              )}
             />
             <FormError message={form.formState.errors.slug?.message} />
           </label>
@@ -203,9 +214,18 @@ export function BlogPostForm(props: BlogPostFormProps) {
                     });
                     let json: { ok?: boolean; url?: string; error?: string } = {};
                     const text = await res.text();
+                    if (COVER_UPLOAD_DEBUG) {
+                      console.info('[rb-cover-upload]', {
+                        httpStatus: res.status,
+                        bodyPreview: text.slice(0, 400),
+                      });
+                    }
                     try {
                       json = text ? (JSON.parse(text) as typeof json) : {};
                     } catch {
+                      if (COVER_UPLOAD_DEBUG) {
+                        console.warn('[rb-cover-upload] response is not JSON', { httpStatus: res.status });
+                      }
                       throw new Error(`Upload failed (${res.status}). Check server logs.`);
                     }
                     if (!res.ok || !json.ok || !json.url) {
@@ -227,7 +247,13 @@ export function BlogPostForm(props: BlogPostFormProps) {
                       shouldDirty: true,
                       shouldTouch: true,
                     });
+                    if (COVER_UPLOAD_DEBUG) {
+                      console.info('[rb-cover-upload] set coverImageUrl', { url: json.url });
+                    }
                   } catch (err) {
+                    if (COVER_UPLOAD_DEBUG) {
+                      console.warn('[rb-cover-upload] catch', err);
+                    }
                     setError(err instanceof Error ? err.message : 'Cover upload failed');
                   } finally {
                     setCoverUploading(false);
@@ -393,7 +419,7 @@ export function BlogPostForm(props: BlogPostFormProps) {
           <div className="flex items-center gap-2">
             {isEdit && props.postId ? (
               <Link
-                href={`/blog/${form.getValues('slug')}`}
+                href={`/blog/${encodeURIComponent(slugWatch)}`}
                 target="_blank"
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
