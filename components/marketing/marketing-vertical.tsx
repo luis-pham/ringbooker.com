@@ -181,7 +181,10 @@ function HowItWorks({ steps, accentBg }: { steps: HowItWorksStep[]; accentBg: st
       <p className="mt-2 max-w-xl text-[15px] text-slate-500">No new phone number needed. Works with your existing line in minutes.</p>
       <div className="mt-8 grid gap-5 md:grid-cols-3">
         {steps.map((s) => (
-          <div key={s.n} className="relative rounded-3xl border border-slate-200 bg-white p-6 text-center">
+          <div
+            key={s.n}
+            className="relative rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+          >
             <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-extrabold text-white`}>{s.n}</div>
             <p className="text-[15px] font-bold text-slate-900">{s.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-500">{s.body}</p>
@@ -198,7 +201,10 @@ function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
     <section className="mx-auto mt-14 max-w-6xl px-6">
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((s) => (
-          <article key={s.label} className="rounded-3xl border border-slate-200 bg-white p-6 text-center">
+          <article
+            key={s.label}
+            className="rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+          >
             <p className={`text-5xl font-extrabold tracking-tight ${accent}`}>{s.value}</p>
             <p className="mt-2 text-base font-bold text-slate-900">{s.label}</p>
             <p className="mt-1 text-[13.5px] leading-6 text-slate-500">{s.sub}</p>
@@ -217,7 +223,10 @@ function PainPoints({ points, heading }: { points: PainPoint[]; heading: string 
       <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {points.map((p) => (
-          <article key={p.title} className="rounded-3xl border border-slate-200 bg-slate-50 p-6">
+          <article
+            key={p.title}
+            className="rounded-3xl border border-slate-200 bg-slate-50 p-6 transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg"
+          >
             {p.icon && <div className="mb-3 text-2xl">{p.icon}</div>}
             <p className="text-[15px] font-bold text-slate-900">{p.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-600">{p.body}</p>
@@ -236,7 +245,10 @@ function FeatureGrid({ features, accent }: { features: FeatureItem[]; accent: st
       <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">Every feature you need, built in</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
-          <article key={f.title} className="flex flex-col items-center text-center rounded-3xl border border-slate-200 bg-white p-6 transition hover:-translate-y-0.5 hover:shadow-lg">
+          <article
+            key={f.title}
+            className="flex flex-col items-center rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+          >
             <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${accent}`}>{f.icon}</div>
             <p className="text-[15px] font-bold text-slate-900">{f.title}</p>
             <p className="mt-1.5 text-[13px] leading-6 text-slate-500">{f.body}</p>
@@ -433,33 +445,29 @@ function HairPage() {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6">
-        <div className="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-white p-8 lg:p-12">
-          <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-            <div>
-              <div className="inline-flex rounded-full bg-amber-100 px-3.5 py-1.5 text-[12px] font-bold text-amber-700">
-                Built for Hair Salons
-              </div>
-              <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-                AI Phone Answering Service for Hair Salons
-              </h1>
-              <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-                While your stylists are in-chair, callers asking about color slots, preferred stylists, or reschedules can't get through. RingBooker handles hair salon calls so your team stays focused — and your books stay full.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <a href="/demo/hair-salon" className={DEMO_CTA_CLASS}>
-                  Try a Live Demo Call
-                </a>
-                <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
-                  Start Free Trial →
-                </Link>
-              </div>
-              <IntegrationRow />
-            </div>
-            <div className="hidden lg:block">
-              <CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} />
-            </div>
+      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
+        <div>
+          <div className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-[12px] font-bold text-amber-700">
+            Built for Hair Salons
           </div>
+          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+            AI Phone Answering Service for Hair Salons
+          </h1>
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+            While your stylists are in-chair, callers asking about color slots, preferred stylists, or reschedules can't get through. RingBooker handles hair salon calls so your team stays focused — and your books stay full.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href="/demo/hair-salon" className={DEMO_CTA_CLASS}>
+              Try a Live Demo Call
+            </a>
+            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+              Start Free Trial →
+            </Link>
+          </div>
+          <IntegrationRow />
+        </div>
+        <div className="hidden lg:block">
+          <CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} />
         </div>
       </section>
 
@@ -542,31 +550,29 @@ function SpaPage() {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6">
-        <div className="grid gap-8 rounded-3xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-white p-8 lg:grid-cols-[1fr_340px] lg:p-12">
-          <div>
-            <div className="inline-flex rounded-full bg-teal-100 px-3.5 py-1.5 text-[12px] font-bold text-teal-700">
-              For Day Spas & Wellness Studios
-            </div>
-            <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-              AI Receptionist for Spas and Day Spas
-            </h1>
-            <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-              Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can't interrupt that. RingBooker captures every spa call without compromising your in-room guest experience.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <a href="/demo/day-spa" className={DEMO_CTA_CLASS}>
-                Try a Live Demo Call
-              </a>
-              <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
-                Start Free Trial →
-              </Link>
-            </div>
-            <IntegrationRow />
+      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
+        <div>
+          <div className="inline-flex rounded-full border border-teal-200 bg-teal-50 px-3.5 py-1.5 text-[12px] font-bold text-teal-700">
+            For Day Spas & Wellness Studios
           </div>
-          <div className="hidden lg:block">
-            <CallPreviewPlayer {...CALL_PREVIEWS['spa']} />
+          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+            AI Receptionist for Spas and Day Spas
+          </h1>
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can't interrupt that. RingBooker captures every spa call without compromising your in-room guest experience.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href="/demo/day-spa" className={DEMO_CTA_CLASS}>
+              Try a Live Demo Call
+            </a>
+            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+              Start Free Trial →
+            </Link>
           </div>
+          <IntegrationRow />
+        </div>
+        <div className="hidden lg:block">
+          <CallPreviewPlayer {...CALL_PREVIEWS['spa']} />
         </div>
       </section>
 
@@ -649,33 +655,29 @@ function MedSpaPage() {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6">
-        <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-white p-8 lg:p-12">
-          <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-            <div>
-              <div className="inline-flex rounded-full bg-indigo-100 px-3.5 py-1.5 text-[12px] font-bold text-indigo-700">
-                For Med Spas & Aesthetic Practices
-              </div>
-              <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-                AI Phone Answering Service for Med Spas
-              </h1>
-              <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-                Every missed consultation call at a med spa is a high-value lead lost. RingBooker captures after-hours and overflow consult calls on your current number, routes inquiry intent, and keeps your pipeline full — without a live receptionist on standby.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <a href="/demo/med-spa" className={DEMO_CTA_CLASS}>
-                  Try a Live Demo Call
-                </a>
-                <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
-                  Start Free Trial →
-                </Link>
-              </div>
-              <IntegrationRow />
-            </div>
-            <div className="hidden lg:block">
-              <CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} />
-            </div>
+      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
+        <div>
+          <div className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-[12px] font-bold text-indigo-700">
+            For Med Spas & Aesthetic Practices
           </div>
+          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+            AI Phone Answering Service for Med Spas
+          </h1>
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+            Every missed consultation call at a med spa is a high-value lead lost. RingBooker captures after-hours and overflow consult calls on your current number, routes inquiry intent, and keeps your pipeline full — without a live receptionist on standby.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href="/demo/med-spa" className={DEMO_CTA_CLASS}>
+              Try a Live Demo Call
+            </a>
+            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+              Start Free Trial →
+            </Link>
+          </div>
+          <IntegrationRow />
+        </div>
+        <div className="hidden lg:block">
+          <CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} />
         </div>
       </section>
 
@@ -758,31 +760,29 @@ function BeautyClinicPage() {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6">
-        <div className="grid gap-8 rounded-3xl border border-fuchsia-100 bg-gradient-to-br from-fuchsia-50 via-white to-white p-8 lg:grid-cols-[1fr_340px] lg:p-12">
-          <div>
-            <div className="inline-flex rounded-full bg-fuchsia-100 px-3.5 py-1.5 text-[12px] font-bold text-fuchsia-700">
-              For Beauty & Aesthetic Clinics
-            </div>
-            <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-              AI Phone Answering for Beauty and Aesthetic Clinics
-            </h1>
-            <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-              Beauty clinic clients expect a different level of care — consultation-first, provider continuity, and privacy. RingBooker answers calls with the professional tone your clinic brand demands, capturing every booking inquiry and consultation request.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <a href="/demo/beauty-clinic" className={DEMO_CTA_CLASS}>
-                Try a Live Demo Call
-              </a>
-              <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
-                Start Free Trial →
-              </Link>
-            </div>
-            <IntegrationRow />
+      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
+        <div>
+          <div className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3.5 py-1.5 text-[12px] font-bold text-fuchsia-700">
+            For Beauty & Aesthetic Clinics
           </div>
-          <div className="hidden lg:block">
-            <CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} />
+          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+            AI Phone Answering for Beauty and Aesthetic Clinics
+          </h1>
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+            Beauty clinic clients expect a different level of care — consultation-first, provider continuity, and privacy. RingBooker answers calls with the professional tone your clinic brand demands, capturing every booking inquiry and consultation request.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a href="/demo/beauty-clinic" className={DEMO_CTA_CLASS}>
+              Try a Live Demo Call
+            </a>
+            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+              Start Free Trial →
+            </Link>
           </div>
+          <IntegrationRow />
+        </div>
+        <div className="hidden lg:block">
+          <CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} />
         </div>
       </section>
 
