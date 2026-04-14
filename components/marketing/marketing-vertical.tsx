@@ -56,11 +56,74 @@ const BOOKING_TOOL_INTEGRATIONS: BookingToolIntegration[] = [
   { id: 'booksy', name: 'Booksy', logoSrc: '/images/booksy.png', status: 'soon' },
 ];
 
-/** Primary = live demo (gradient); secondary = free trial (outline). */
-const DEMO_CTA_CLASS =
-  'inline-flex items-center justify-center rounded-full bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 px-7 py-3.5 text-[14px] font-extrabold text-white shadow-[0_10px_36px_rgba(91,33,182,0.32)] transition hover:scale-[1.03] hover:brightness-[1.06]';
-const TRIAL_CTA_CLASS =
-  'inline-flex items-center justify-center rounded-full border border-slate-200 bg-transparent px-6 py-3 text-[14px] font-semibold text-slate-900 transition hover:border-violet-500 hover:text-violet-600';
+const TRIAL_CTA_BASE =
+  'inline-flex items-center justify-center rounded-full border border-slate-200 bg-transparent px-6 py-3 text-[14px] font-semibold text-slate-900 transition';
+
+const DEMO_CTA_BASE =
+  'inline-flex items-center justify-center rounded-full px-7 py-3.5 text-[14px] font-extrabold text-white transition hover:scale-[1.03] hover:brightness-[1.06]';
+
+export type IndustryLandingTheme = {
+  /** Page background wash behind hero + sections */
+  pageShellBg: string;
+  /** Bottom “Try demo” banner gradient */
+  finalCtaGradient: string;
+  /** Text color on white primary button inside final CTA */
+  finalCtaPrimaryBtnText: string;
+  /** Hero primary demo button */
+  demoCtaClass: string;
+  /** Hero secondary trial link */
+  trialCtaClass: string;
+  /** FAQ “+” and VsTable “With RingBooker” column accent */
+  accentClass: string;
+};
+
+const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
+  'nail-salon': {
+    pageShellBg:
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
+    finalCtaGradient: 'bg-[linear-gradient(125deg,#5b21b6_0%,#7c3aed_50%,#a78bfa_100%)]',
+    finalCtaPrimaryBtnText: 'text-violet-900',
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_10px_36px_rgba(91,33,182,0.32)]`,
+    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-violet-500 hover:text-violet-600`,
+    accentClass: 'text-violet-600',
+  },
+  'hair-salon': {
+    pageShellBg:
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ffedd5_0%,#fffbeb_42%,#ffffff_68%)]',
+    finalCtaGradient: 'bg-[linear-gradient(125deg,#9a3412_0%,#d97706_48%,#f59e0b_100%)]',
+    finalCtaPrimaryBtnText: 'text-amber-950',
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_10px_36px_rgba(180,83,9,0.35)]`,
+    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-amber-500 hover:text-amber-800`,
+    accentClass: 'text-amber-600',
+  },
+  spa: {
+    pageShellBg:
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ccfbf1_0%,#f0fdfa_44%,#ffffff_70%)]',
+    finalCtaGradient: 'bg-[linear-gradient(125deg,#115e59_0%,#0d9488_50%,#14b8a6_100%)]',
+    finalCtaPrimaryBtnText: 'text-teal-950',
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_10px_36px_rgba(13,148,136,0.35)]`,
+    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-teal-500 hover:text-teal-800`,
+    accentClass: 'text-teal-600',
+  },
+  'med-spa': {
+    pageShellBg:
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#e0e7ff_0%,#eef2ff_46%,#ffffff_72%)]',
+    finalCtaGradient: 'bg-[linear-gradient(125deg,#312e81_0%,#4f46e5_52%,#818cf8_100%)]',
+    finalCtaPrimaryBtnText: 'text-indigo-950',
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_10px_36px_rgba(67,56,202,0.38)]`,
+    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-indigo-500 hover:text-indigo-800`,
+    accentClass: 'text-indigo-600',
+  },
+  'beauty-clinic': {
+    pageShellBg:
+      'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#fae8ff_0%,#fdf4ff_46%,#ffffff_72%)]',
+    finalCtaGradient: 'bg-[linear-gradient(125deg,#86198f_0%,#c026d3_50%,#e879f9_100%)]',
+    finalCtaPrimaryBtnText: 'text-fuchsia-950',
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_10px_36px_rgba(192,38,211,0.35)]`,
+    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-fuchsia-500 hover:text-fuchsia-800`,
+    accentClass: 'text-fuchsia-600',
+  },
+};
 
 const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessName: string; accent: string }> = {
   'nail-salon': {
@@ -152,7 +215,7 @@ function IntegrationRow() {
   );
 }
 
-function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
+function Faq({ items, accentClass }: { items: Array<{ q: string; a: string }>; accentClass: string }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6">
       <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Common Questions</div>
@@ -162,7 +225,7 @@ function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
           <details key={item.q} className="group border-b border-slate-100 p-5 last:border-b-0" open={index === 0}>
             <summary className="cursor-pointer list-none pr-8 text-base font-bold text-slate-900">
               {item.q}
-              <span className="float-right text-violet-600 transition group-open:rotate-45">+</span>
+              <span className={`float-right transition group-open:rotate-45 ${accentClass}`}>+</span>
             </summary>
             <p className="mt-3 text-[14px] leading-7 text-slate-600">{item.a}</p>
           </details>
@@ -259,7 +322,7 @@ function FeatureGrid({ features, accent }: { features: FeatureItem[]; accent: st
   );
 }
 
-function VsTable({ rows }: { rows: Array<{ scenario: string; without: string; with: string }> }) {
+function VsTable({ rows, accentClass }: { rows: Array<{ scenario: string; without: string; with: string }>; accentClass: string }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6">
       <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Before vs. After</div>
@@ -269,7 +332,7 @@ function VsTable({ rows }: { rows: Array<{ scenario: string; without: string; wi
           <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-bold uppercase tracking-wider text-slate-400">
             <span>Scenario</span>
             <span>Without RingBooker</span>
-            <span className="text-violet-600">With RingBooker</span>
+            <span className={accentClass}>With RingBooker</span>
           </div>
           {rows.map((row) => (
             <div
@@ -302,15 +365,19 @@ function FinalCta({
   title,
   subtitle,
   demoPath,
+  shellGradientClass,
+  primaryBtnTextClass,
 }: {
   label: string;
   title: string;
   subtitle: string;
   demoPath: string;
+  shellGradientClass: string;
+  primaryBtnTextClass: string;
 }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6 pb-10">
-      <div className="relative overflow-hidden rounded-3xl bg-[linear-gradient(125deg,#6D28D9_0%,#8B5CF6_55%,#A78BFA_100%)] px-8 py-14 text-center text-white md:px-14">
+      <div className={`relative overflow-hidden rounded-3xl px-8 py-14 text-center text-white md:px-14 ${shellGradientClass}`}>
         <div className="pointer-events-none absolute -right-8 -top-10 h-72 w-72 rounded-full bg-white/10" />
         <p className="relative text-[12px] font-bold uppercase tracking-[0.18em] text-white/70">{label}</p>
         <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-extrabold leading-[1.1] tracking-tight">{title}</h2>
@@ -318,7 +385,7 @@ function FinalCta({
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
           <a
             href={demoPath}
-            className="inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-[14px] font-extrabold text-violet-900 shadow-md shadow-black/10 transition hover:scale-[1.04]"
+            className={`inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-[14px] font-extrabold shadow-md shadow-black/10 transition hover:scale-[1.04] ${primaryBtnTextClass}`}
           >
             Try a Live Demo Call
           </a>
@@ -336,7 +403,7 @@ function FinalCta({
 
 // ─── NAIL SALON ────────────────────────────────────────────────────────────────
 
-function NailPage() {
+function NailPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
@@ -352,10 +419,10 @@ function NailPage() {
             Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won't wait. RingBooker answers every call on your current number, supports English and Vietnamese, and captures booking intent 24/7.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href="/demo/nail-salon" className={DEMO_CTA_CLASS}>
+            <a href="/demo/nail-salon" className={theme.demoCtaClass}>
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+            <Link href="/user/signup" className={theme.trialCtaClass}>
               Start Free 14-Day Trial →
             </Link>
           </div>
@@ -428,6 +495,7 @@ function NailPage() {
 
       {/* VS Table */}
       <VsTable
+        accentClass={theme.accentClass}
         rows={[
           { scenario: 'After-hours pricing call', without: 'Voicemail — caller hangs up', with: 'Answered, price given, booking captured' },
           { scenario: 'Weekend overflow', without: 'Call drops, client calls next salon', with: 'Every call answered in queue' },
@@ -441,7 +509,7 @@ function NailPage() {
 
 // ─── HAIR SALON ────────────────────────────────────────────────────────────────
 
-function HairPage() {
+function HairPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
@@ -457,10 +525,10 @@ function HairPage() {
             While your stylists are in-chair, callers asking about color slots, preferred stylists, or reschedules can't get through. RingBooker handles hair salon calls so your team stays focused — and your books stay full.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href="/demo/hair-salon" className={DEMO_CTA_CLASS}>
+            <a href="/demo/hair-salon" className={theme.demoCtaClass}>
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+            <Link href="/user/signup" className={theme.trialCtaClass}>
               Start Free Trial →
             </Link>
           </div>
@@ -533,6 +601,7 @@ function HairPage() {
 
       {/* VS Table */}
       <VsTable
+        accentClass={theme.accentClass}
         rows={[
           { scenario: 'Caller wants their usual stylist', without: 'Voicemail — caller books elsewhere', with: 'Stylist offered, alternative suggested, booking held' },
           { scenario: 'Balayage slot inquiry', without: 'Phone rings, no answer', with: 'Duration clarified, correct slot booked' },
@@ -546,7 +615,7 @@ function HairPage() {
 
 // ─── SPA ───────────────────────────────────────────────────────────────────────
 
-function SpaPage() {
+function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
@@ -562,10 +631,10 @@ function SpaPage() {
             Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can't interrupt that. RingBooker captures every spa call without compromising your in-room guest experience.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href="/demo/day-spa" className={DEMO_CTA_CLASS}>
+            <a href="/demo/day-spa" className={theme.demoCtaClass}>
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+            <Link href="/user/signup" className={theme.trialCtaClass}>
               Start Free Trial →
             </Link>
           </div>
@@ -638,6 +707,7 @@ function SpaPage() {
 
       {/* VS Table */}
       <VsTable
+        accentClass={theme.accentClass}
         rows={[
           { scenario: 'Couples massage inquiry Saturday', without: 'Voicemail — couple books elsewhere', with: 'Suite booked, confirmation sent' },
           { scenario: 'After-hours package question', without: 'No answer, caller doesn\'t call back', with: 'Question answered, booking intent captured' },
@@ -651,7 +721,7 @@ function SpaPage() {
 
 // ─── MED SPA ──────────────────────────────────────────────────────────────────
 
-function MedSpaPage() {
+function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
@@ -667,10 +737,10 @@ function MedSpaPage() {
             Every missed consultation call at a med spa is a high-value lead lost. RingBooker captures after-hours and overflow consult calls on your current number, routes inquiry intent, and keeps your pipeline full — without a live receptionist on standby.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href="/demo/med-spa" className={DEMO_CTA_CLASS}>
+            <a href="/demo/med-spa" className={theme.demoCtaClass}>
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+            <Link href="/user/signup" className={theme.trialCtaClass}>
               Start Free Trial →
             </Link>
           </div>
@@ -743,6 +813,7 @@ function MedSpaPage() {
 
       {/* VS Table */}
       <VsTable
+        accentClass={theme.accentClass}
         rows={[
           { scenario: 'After-hours Botox inquiry', without: 'Voicemail — lead cools, books competitor', with: 'Consultation booked, intent captured' },
           { scenario: 'Front desk busy during treatments', without: 'Phone rings out, caller hangs up', with: 'Answered immediately, consult scheduled' },
@@ -756,7 +827,7 @@ function MedSpaPage() {
 
 // ─── BEAUTY CLINIC ────────────────────────────────────────────────────────────
 
-function BeautyClinicPage() {
+function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
@@ -772,10 +843,10 @@ function BeautyClinicPage() {
             Beauty clinic clients expect a different level of care — consultation-first, provider continuity, and privacy. RingBooker answers calls with the professional tone your clinic brand demands, capturing every booking inquiry and consultation request.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <a href="/demo/beauty-clinic" className={DEMO_CTA_CLASS}>
+            <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={TRIAL_CTA_CLASS}>
+            <Link href="/user/signup" className={theme.trialCtaClass}>
               Start Free Trial →
             </Link>
           </div>
@@ -848,6 +919,7 @@ function BeautyClinicPage() {
 
       {/* VS Table */}
       <VsTable
+        accentClass={theme.accentClass}
         rows={[
           { scenario: 'Returning patient books next laser session', without: 'Front desk unavailable — patient calls elsewhere', with: 'Session booked with same provider, confirmed' },
           { scenario: 'After-hours pre-care question', without: 'No answer — patient anxious before treatment', with: 'Pre-care guidance given, patient reassured' },
@@ -997,11 +1069,12 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
 // ─── PAGE ASSEMBLY ─────────────────────────────────────────────────────────────
 
 function PageBody({ vertical }: { vertical: MarketingVerticalKey }) {
-  if (vertical === 'nail-salon') return <NailPage />;
-  if (vertical === 'hair-salon') return <HairPage />;
-  if (vertical === 'spa') return <SpaPage />;
-  if (vertical === 'med-spa') return <MedSpaPage />;
-  return <BeautyClinicPage />;
+  const theme = INDUSTRY_THEME[vertical];
+  if (vertical === 'nail-salon') return <NailPage theme={theme} />;
+  if (vertical === 'hair-salon') return <HairPage theme={theme} />;
+  if (vertical === 'spa') return <SpaPage theme={theme} />;
+  if (vertical === 'med-spa') return <MedSpaPage theme={theme} />;
+  return <BeautyClinicPage theme={theme} />;
 }
 
 const DEMO_PATH: Record<MarketingVerticalKey, string> = {
@@ -1013,6 +1086,7 @@ const DEMO_PATH: Record<MarketingVerticalKey, string> = {
 };
 
 export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVerticalKey }) {
+  const theme = INDUSTRY_THEME[vertical];
   const faq = FAQ_BY_VERTICAL[vertical];
   const faqSchema = {
     '@context': 'https://schema.org',
@@ -1074,14 +1148,16 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
     <>
       <MarketingChromeStyles />
       <MarketingHeader active="industry" />
-      <main className="bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fff_60%)] pb-16 pt-28">
+      <main className={`${theme.pageShellBg} pb-16 pt-28`}>
         <PageBody vertical={vertical} />
-        <Faq items={faq} />
+        <Faq accentClass={theme.accentClass} items={faq} />
         <FinalCta
-          label={ctaMap[vertical].label}
-          title={ctaMap[vertical].title}
-          subtitle={ctaMap[vertical].subtitle}
           demoPath={DEMO_PATH[vertical]}
+          label={ctaMap[vertical].label}
+          primaryBtnTextClass={theme.finalCtaPrimaryBtnText}
+          shellGradientClass={theme.finalCtaGradient}
+          subtitle={ctaMap[vertical].subtitle}
+          title={ctaMap[vertical].title}
         />
       </main>
       <MarketingFooter />
