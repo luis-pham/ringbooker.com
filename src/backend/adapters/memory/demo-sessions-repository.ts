@@ -5,6 +5,7 @@ import type {
   DemoMode,
   DemoSessionsRepository,
   DemoSessionStatus,
+  SipDemoSessionEnrichment,
 } from '@/src/backend/ports/repositories';
 
 type MemoryDemoSession = {
@@ -180,6 +181,48 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
     occurredAt?: Date;
   }): Promise<void> {
     this.statusEvents.push({ ...params, occurredAt: params.occurredAt ?? new Date() });
+  }
+
+  async findLatestSipDemoContext(params: {
+    callerPhone: string;
+    now?: Date;
+  }): Promise<SipDemoSessionEnrichment | null> {
+    const now = params.now ?? new Date();
+    let best: MemoryDemoSession | null = null;
+    for (const s of this.sessionsById.values()) {
+      if (s.callbackPhone !== params.callerPhone) continue;
+      if (s.expiresAt <= now) continue;
+      if (!best || s.createdAt > best.createdAt) best = s;
+    }
+    if (!best) return null;
+    const cfg = this.businessConfigsBySessionId.get(best.id);
+    const servicesRaw = this.servicesBySessionId.get(best.id) ?? [];
+    const staffArr = Array.isArray(cfg?.staff) ? (cfg!.staff as unknown[]).filter((x): x is string => typeof x === 'string') : [];
+    const hours =
+      cfg?.businessHours && typeof cfg.businessHours === 'object' && !Array.isArray(cfg.businessHours)
+        ? (cfg.businessHours as Record<string, unknown>)
+        : {};
+    const primaryHours = typeof hours.primaryHours === 'string' ? hours.primaryHours : undefined;
+    const secondaryHours = typeof hours.secondaryHours === 'string' ? hours.secondaryHours : undefined;
+    const services = servicesRaw.map((row) => ({
+      category: String((row as { category?: string }).category ?? ''),
+      name: String((row as { name?: string }).name ?? ''),
+      price: (row as { price?: number | null }).price ?? null,
+      duration: (row as { duration?: string | null }).duration ?? null,
+      enabled: (row as { enabled?: boolean }).enabled ?? true,
+    }));
+    return {
+      shopName: cfg?.businessName ?? 'Demo',
+      verticalSlug: best.verticalSlug,
+      notes: cfg?.notes ?? null,
+      demoConfig: {
+        city: cfg?.city ?? null,
+        primaryHours,
+        secondaryHours,
+        staffNames: staffArr,
+        services,
+      },
+    };
   }
 
   async findCallRunByRequestId(requestId: string): Promise<DemoCallRunRecord | null> {

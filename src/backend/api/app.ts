@@ -8,12 +8,7 @@ import type { RealtimeAgentRuntime } from '@/src/agent/realtime/types';
 import { handleRealtimeDispatch, parseRealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
 import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
 import { createInboundAgentSession } from '@/src/agent/runtime/session';
-import {
-  composeVoicePrompt,
-  inferVerticalFromBusinessConfig,
-  renderPublicDemoFallbackCustomInstructions,
-  type VoicePromptVertical,
-} from '@/src/agent/prompts';
+import { buildPublicDemoSystemPrompt } from '@/src/backend/demo/public-demo-system-prompt';
 import {
   CAPABILITY_MIN_PLAN,
   CAPABILITY_LABELS,
@@ -64,6 +59,7 @@ import { hashPassword, verifyPassword } from '@/src/backend/security/password';
 import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
 import { verifyTurnstileToken } from '@/src/backend/security/turnstile';
 import { handlePaddleWebhook } from '@/src/backend/webhooks/paddle';
+import { handleOpenAiRealtimeSipWebhook } from '@/src/backend/webhooks/openai-realtime-sip';
 import { handleTelnyxWebhook } from '@/src/backend/webhooks/telnyx';
 import {
   encodeSquareConnectionCredentials,
@@ -861,188 +857,6 @@ function normalizePhone(phone: string | null | undefined): string | null {
   return normalized.length >= 8 && normalized.length <= 15 ? `+${normalized}` : null;
 }
 
-type DemoConfigInput = {
-  city?: string;
-  primaryHours?: string;
-  secondaryHours?: string;
-  staffNames?: string[];
-  services?: Array<{
-    category: string;
-    name: string;
-    price?: number | null;
-    duration?: string | null;
-    enabled?: boolean;
-  }>;
-};
-
-/** Default demo data per vertical — used when demoConfig fields are missing */
-const VERTICAL_DEMO_DEFAULTS: Record<string, {
-  city: string;
-  primaryHours: string;
-  secondaryHours: string;
-  staffNames: string[];
-  services: Array<{ category: string; name: string; price: number; duration: string }>;
-}> = {
-  'nail-salon': {
-    city: 'Garden Grove, CA',
-    primaryHours: 'Mon–Sat 9am–7pm',
-    secondaryHours: 'Sun 10am–5pm',
-    staffNames: ['Lan', 'Mai', 'Thu'],
-    services: [
-      { category: 'Manicure', name: 'Regular Manicure', price: 18, duration: '30 min' },
-      { category: 'Manicure', name: 'Gel Manicure', price: 32, duration: '45 min' },
-      { category: 'Manicure', name: 'Dip Powder', price: 40, duration: '60 min' },
-      { category: 'Manicure', name: 'Acrylic Full Set', price: 50, duration: '75 min' },
-      { category: 'Pedicure', name: 'Regular Pedicure', price: 28, duration: '35 min' },
-      { category: 'Pedicure', name: 'Gel Pedicure', price: 42, duration: '50 min' },
-      { category: 'Pedicure', name: 'Deluxe Pedicure', price: 55, duration: '60 min' },
-    ],
-  },
-  'hair-salon': {
-    city: 'Austin, TX',
-    primaryHours: 'Tue–Sat 9am–6pm',
-    secondaryHours: 'Sun–Mon closed',
-    staffNames: ['Mia', 'Jordan', 'Alex'],
-    services: [
-      { category: 'Cut & Style', name: "Women's Haircut", price: 65, duration: '60 min' },
-      { category: 'Cut & Style', name: "Men's Haircut", price: 40, duration: '45 min' },
-      { category: 'Cut & Style', name: 'Blowout', price: 45, duration: '45 min' },
-      { category: 'Color', name: 'Balayage Consultation', price: 0, duration: '20 min' },
-      { category: 'Color', name: 'Partial Highlights', price: 145, duration: '2 hr' },
-      { category: 'Color', name: 'Keratin Treatment', price: 220, duration: '2.5 hr' },
-    ],
-  },
-  'day-spa': {
-    city: 'Scottsdale, AZ',
-    primaryHours: 'Mon–Sat 10am–7pm',
-    secondaryHours: 'Sun 10am–4pm',
-    staffNames: ['Avery', 'Naomi', 'Sam'],
-    services: [
-      { category: 'Massage', name: 'Signature Massage', price: 120, duration: '60 min' },
-      { category: 'Massage', name: 'Deep Tissue Massage', price: 140, duration: '60 min' },
-      { category: 'Massage', name: 'Couples Massage', price: 260, duration: '60 min' },
-      { category: 'Facial', name: 'Hydrating Facial', price: 115, duration: '50 min' },
-      { category: 'Facial', name: 'Spa Day Package', price: 220, duration: '2 hr' },
-    ],
-  },
-  'med-spa': {
-    city: 'Newport Beach, CA',
-    primaryHours: 'Mon–Fri 9am–6pm',
-    secondaryHours: 'Sat 10am–3pm',
-    staffNames: ['Dr. Lee', 'Nurse Ava', 'Morgan'],
-    services: [
-      { category: 'Consults', name: 'Injectables Consultation', price: 0, duration: '20 min' },
-      { category: 'Consults', name: 'Laser Consultation', price: 0, duration: '20 min' },
-      { category: 'Consults', name: 'Skin Consultation', price: 50, duration: '30 min' },
-      { category: 'Treatments', name: 'Botox / Dysport', price: 0, duration: 'Consult required' },
-      { category: 'Treatments', name: 'Microneedling', price: 275, duration: '60 min' },
-    ],
-  },
-  'beauty-clinic': {
-    city: 'Seattle, WA',
-    primaryHours: 'Mon–Fri 8:30am–5:30pm',
-    secondaryHours: 'Sat by appointment',
-    staffNames: ['Dr. Patel', 'Erin', 'Sofia'],
-    services: [
-      { category: 'Appointments', name: 'New Patient Consultation', price: 75, duration: '30 min' },
-      { category: 'Appointments', name: 'Follow-up Visit', price: 0, duration: '20 min' },
-      { category: 'Appointments', name: 'Skin Treatment Session', price: 180, duration: '60 min' },
-    ],
-  },
-};
-
-/** Sanitize a plain-text user input to prevent prompt injection via newlines/separators */
-function sanitizeDemoTextField(value: string | undefined, maxLen = 280): string {
-  if (!value) return '';
-  return value
-    .replace(/[\r\n]+/g, ' ')
-    .replace(/[-]{3,}/g, '--')
-    .trim()
-    .slice(0, maxLen);
-}
-
-function buildPublicDemoSystemPrompt(input: {
-  shopName: string;
-  businessType: string;
-  demoVertical?: VoicePromptVertical;
-  staffName?: string;
-  notes?: string;
-  demoConfig?: DemoConfigInput;
-}) {
-  const businessName = sanitizeDemoTextField(input.shopName, 120) || 'the business';
-  const businessType = sanitizeDemoTextField(input.businessType, 80) || 'business';
-
-  // Resolve vertical: prefer explicit demoVertical, fall back to businessType string match
-  const resolvedVertical = input.demoVertical ?? (businessType.toLowerCase().includes('nail') ? 'nail-salon' : undefined);
-
-  function buildDemoWelcomeMessage(): string {
-    const hour = new Date().getUTCHours(); // UTC fallback; close enough for demo
-    const timeOfDay = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-    switch (resolvedVertical) {
-      case 'nail-salon':    return `Hi, it's Mai at ${businessName} — what can I help with?`;
-      case 'hair-salon':    return `Hi, Maya at ${businessName} — how can I help?`;
-      case 'day-spa':       return `Good ${timeOfDay}, Lily at ${businessName}. What brings you in?`;
-      case 'med-spa':       return `Hi, Alex at ${businessName}. What can I help with today?`;
-      case 'beauty-clinic': return `Hi, Morgan at ${businessName}. How can I help you today?`;
-      default:              return `Hi, you're through to ${businessName} — what would you like to try?`;
-    }
-  }
-  const welcomeMessage = buildDemoWelcomeMessage();
-
-  // Resolve defaults for this vertical — fill in any missing demoConfig fields
-  const defaults = resolvedVertical ? VERTICAL_DEMO_DEFAULTS[resolvedVertical] : undefined;
-
-  // Build providers list: demoConfig → legacy staffName → vertical default
-  const providers: string[] = [];
-  if (input.demoConfig?.staffNames?.length) {
-    providers.push(...input.demoConfig.staffNames.slice(0, 8).map((n) => sanitizeDemoTextField(n, 80)).filter(Boolean));
-  } else if (input.staffName) {
-    providers.push(sanitizeDemoTextField(input.staffName, 80));
-  } else if (defaults?.staffNames?.length) {
-    providers.push(...defaults.staffNames);
-  }
-
-  // Build services: demoConfig → vertical default
-  const rawServices = input.demoConfig?.services?.filter((s) => s.enabled !== false).length
-    ? input.demoConfig.services.filter((s) => s.enabled !== false)
-    : defaults?.services ?? [];
-
-  const services = rawServices.slice(0, 40).map((s) => ({
-    category: sanitizeDemoTextField(s.category, 60),
-    name: sanitizeDemoTextField(s.name, 100),
-    price: typeof s.price === 'number' ? s.price : undefined,
-    duration: s.duration ? sanitizeDemoTextField(s.duration, 60) : undefined,
-  }));
-
-  // Build hours: demoConfig → vertical default
-  const primaryHours = input.demoConfig?.primaryHours || defaults?.primaryHours;
-  const secondaryHours = input.demoConfig?.secondaryHours || defaults?.secondaryHours;
-  const hoursRaw = [primaryHours, secondaryHours].filter(Boolean).map((h) => sanitizeDemoTextField(h, 200)).join(', ');
-
-  // Build city: demoConfig → vertical default
-  const city = input.demoConfig?.city || defaults?.city;
-
-  const business = {
-    businessName,
-    businessType,
-    welcomeMessage,
-    location: city ? sanitizeDemoTextField(city, 120) : undefined,
-    hours: hoursRaw || undefined,
-    providers: providers.length > 0 ? providers : [],
-    languageOptions: (resolvedVertical === 'nail-salon' || resolvedVertical === 'beauty-clinic') ? ['English', 'Vietnamese'] : ['English'],
-    services: services.length > 0 ? services : undefined,
-    demoContext: 'Outbound web demo — isolated from production. No real bookings are written.',
-    customInstructions: renderPublicDemoFallbackCustomInstructions(input.notes),
-  };
-
-  return composeVoicePrompt({
-    vertical: input.demoVertical ?? inferVerticalFromBusinessConfig(business),
-    callType: 'demo_outbound',
-    mode: 'demo',
-    business,
-  });
-}
-
 function deriveDemoCallStage(call: {
   startedAt?: string;
   endedAt?: string;
@@ -1232,6 +1046,8 @@ export function createBackendApp(deps: {
     agentVoiceProviderMode?: 'none' | 'gemini_live' | 'openai_realtime';
   };
   realtimeAgentRuntime?: RealtimeAgentRuntime;
+  /** Test-only: mock OpenAI HTTP for SIP accept/reject. */
+  testingOpenAiFetch?: typeof fetch;
 }) {
   const app = new Hono();
   const path = (route: string) => `${deps.basePath ?? ''}${route}`;
@@ -1424,6 +1240,18 @@ export function createBackendApp(deps: {
       return handlePaddleWebhook(c, {
       providerEventsRepository: deps.providerEventsRepository,
       billingProvider: deps.billingProvider,
+      });
+    })(),
+  );
+
+  app.post(path('/webhooks/openai'), (c) =>
+    (async () => {
+      const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_openai, 'webhook_openai');
+      if (limited) return limited;
+      return handleOpenAiRealtimeSipWebhook(c, {
+        providerEventsRepository: deps.providerEventsRepository,
+        demoSessionsRepository: deps.demoSessionsRepository,
+        fetchImpl: deps.testingOpenAiFetch,
       });
     })(),
   );
@@ -1911,6 +1739,135 @@ export function createBackendApp(deps: {
         'public_demo_request_failed',
       );
       return c.json({ ok: false, error: 'demo_call_failed' }, 502);
+    }
+  });
+
+  /**
+   * Persist marketing demo form context for OpenAI SIP inbound pilot (no outbound call).
+   * Pair with `OPENAI_SIP_*` + Telnyx → OpenAI SIP; caller phone should match `callbackPhone`.
+   */
+  app.post(path('/public/demo/sip-prep'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_sip_prep, 'public_demo_sip_prep');
+    if (limited) return limited;
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = publicDemoRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    }
+
+    if (parsed.data.website && parsed.data.website.trim().length > 0) {
+      securityAudit({
+        action: 'public_demo_honeypot_triggered',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+      });
+      return c.json({ ok: false, error: 'invalid_request' }, 400);
+    }
+
+    const sessionIp = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    const sessionLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_demo_request_session,
+      `public_demo_sip_prep_session:${sessionIp}:${parsed.data.sessionId}`,
+    );
+    if (sessionLimited) return sessionLimited;
+
+    const normalizedPhone = normalizePhone(parsed.data.phoneNumber);
+    if (!normalizedPhone) {
+      return c.json({ ok: false, error: 'invalid_phone' }, 400);
+    }
+
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    const phoneShortLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.public_demo_request_phone_short,
+      `public_demo_sip_prep_phone_short:${normalizedPhone}`,
+    );
+    if (phoneShortLimited) return phoneShortLimited;
+
+    const captcha = await verifyTurnstileToken({
+      token: parsed.data.captchaToken,
+      ip,
+    });
+    if (!captcha.ok) {
+      securityAudit({
+        action: 'public_demo_captcha_failed',
+        actorType: 'public',
+        ip,
+        path: c.req.path,
+        details: { reason: captcha.reason },
+      });
+      return c.json({ ok: false, error: 'captcha_failed' }, 403);
+    }
+
+    if (!deps.demoSessionsRepository) {
+      return c.json({ ok: false, error: 'demo_dependencies_unavailable' }, 503);
+    }
+
+    const demoVertical = parsed.data.demoVertical ?? parsed.data.businessType.toLowerCase().replace(/\s+/g, '-');
+    const demoMode = parsed.data.demoMode ?? 'free-form';
+    const demoSource = `${parsed.data.demoSource ?? 'public_demo'}:sip_prep`;
+
+    const systemPrompt = buildPublicDemoSystemPrompt({
+      shopName: parsed.data.shopName,
+      businessType: parsed.data.businessType,
+      demoVertical: parsed.data.demoVertical,
+      staffName: parsed.data.staffName,
+      notes: parsed.data.notes,
+      demoConfig: parsed.data.demoConfig,
+    });
+
+    const services =
+      parsed.data.demoConfig?.services?.map((s) => ({
+        category: s.category,
+        name: s.name,
+        price: s.price ?? null,
+        duration: s.duration ?? null,
+        enabled: s.enabled ?? true,
+      })) ?? [];
+
+    try {
+      const demoSession = await deps.demoSessionsRepository.createSession({
+        publicSessionId: parsed.data.sessionId,
+        verticalSlug: demoVertical,
+        mode: demoMode,
+        source: demoSource,
+        callbackPhone: normalizedPhone,
+        businessName: parsed.data.shopName,
+        city: parsed.data.demoConfig?.city ?? null,
+        businessHours: {
+          primaryHours: parsed.data.demoConfig?.primaryHours,
+          secondaryHours: parsed.data.demoConfig?.secondaryHours,
+        },
+        staff: parsed.data.demoConfig?.staffNames?.length
+          ? parsed.data.demoConfig.staffNames
+          : parsed.data.staffName
+            ? [parsed.data.staffName]
+            : [],
+        notes: parsed.data.notes ?? null,
+        systemPrompt,
+        services,
+        clientIp: ip,
+        clientCountry: normalizeCfIpCountry(c.req.header('CF-IPCountry')),
+      });
+      await deps.demoSessionsRepository.addStatusEvent({
+        demoSessionId: demoSession.id,
+        eventType: 'sip_demo_context_saved',
+        payload: { demoVertical, demoMode },
+      });
+      securityAudit({
+        action: 'public_demo_sip_prep_saved',
+        actorType: 'public',
+        ip,
+        path: c.req.path,
+        details: { demoVertical },
+      });
+      return c.json({ ok: true, publicSessionId: parsed.data.sessionId });
+    } catch (error) {
+      logger.error({ err: error }, 'public_demo_sip_prep_failed');
+      return c.json({ ok: false, error: 'sip_prep_failed' }, 502);
     }
   });
 

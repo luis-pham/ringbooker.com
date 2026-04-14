@@ -30,6 +30,8 @@ type DemoStatusResponse = {
 };
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
+const sipPilotUi = process.env.NEXT_PUBLIC_OPENAI_SIP_DEMO_UI === 'true';
+const sipPilotNumber = process.env.NEXT_PUBLIC_OPENAI_SIP_DEMO_NUMBER?.trim() ?? '';
 
 const VERTICAL_LANDING: Record<DemoVerticalSlug, string> = {
   'nail-salon': '/industries/nail-salon',
@@ -120,6 +122,13 @@ const styles: string[] = [
   .vd-cta:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
   .vd-cta:disabled{opacity:.55;cursor:not-allowed}
   .vd-cta-note{font-size:12px;color:#9CA3AF;text-align:center;margin-top:8px;line-height:1.5}
+  .vd-sip-panel{margin-top:18px;padding:16px;border-radius:18px;border:1px dashed color-mix(in srgb,var(--va) 35%,#E5E7EB);background:color-mix(in srgb,var(--va) 4%,#fff)}
+  .vd-sip-head{font-size:13px;font-weight:900;color:#111827;margin-bottom:6px}
+  .vd-sip-copy{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--va);margin:6px 0 10px;word-break:break-all}
+  .vd-sip-hint{font-size:12px;color:#6B7280;line-height:1.55;margin-bottom:12px}
+  .vd-sip-secondary{width:100%;border-radius:999px;border:2px solid color-mix(in srgb,var(--va) 45%,#E5E7EB);background:#fff;color:var(--va);padding:14px;font-size:14px;font-weight:900;cursor:pointer;transition:.18s}
+  .vd-sip-secondary:hover:not(:disabled){background:color-mix(in srgb,var(--va) 8%,#fff)}
+  .vd-sip-secondary:disabled{opacity:.5;cursor:not-allowed}
   .vd-captcha{margin-bottom:14px}
 
   /* status */
@@ -259,6 +268,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   const [requestError, setRequestError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [showAllPrompts, setShowAllPrompts] = useState(false);
+  const [sipPrepMessage, setSipPrepMessage] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(!turnstileSiteKey);
   const pollTimerRef = useRef<number | null>(null);
@@ -340,6 +350,53 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     if (!turnstileSiteKey || !turnstileWidgetIdRef.current) return;
     (window as Window & { turnstile?: { reset: (id: string) => void } }).turnstile?.reset(turnstileWidgetIdRef.current);
     setCaptchaToken(null);
+  }
+
+  async function saveSipPilotContext() {
+    const errs = validate();
+    setErrors(errs);
+    setRequestError(null);
+    setSipPrepMessage(null);
+    if (errs.length > 0) return;
+    setSipPrepMessage('Saving…');
+    const payload = {
+      shopName: business.businessName,
+      phoneNumber: normalizePhone(business.phoneNumber),
+      businessType: config.businessType,
+      notes: business.notes || undefined,
+      captchaToken: turnstileSiteKey ? captchaToken : 'dev-turnstile-bypass',
+      sessionId: ensureSessionId(),
+      website: '',
+      demoConfig: {
+        city: business.city || config.defaultCity,
+        primaryHours: business.primaryHours,
+        secondaryHours: business.secondaryHours,
+        staffNames: splitStaff(business.staff),
+        services: business.services.flatMap((c) =>
+          c.items.map((item) => ({ category: c.label, name: item.name, price: item.price, duration: item.duration, enabled: item.enabled })),
+        ),
+      },
+      demoVertical: config.slug,
+      demoMode: 'quick',
+      demoSource: 'vertical_demo_page',
+    };
+    try {
+      const res = await fetch('/api/backend/public/demo/sip-prep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = (await res.json()) as { ok?: boolean; error?: string };
+      if (!body.ok) {
+        setSipPrepMessage(null);
+        setRequestError(body.error ?? 'sip_prep_failed');
+        return;
+      }
+      setSipPrepMessage(`Saved. Call ${sipPilotNumber} from the phone number you entered above so the pilot can match your context.`);
+    } catch {
+      setSipPrepMessage(null);
+      setRequestError('Network error while saving SIP pilot context.');
+    }
   }
 
   async function startDemo() {
@@ -525,6 +582,20 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                     {isSubmitting ? 'Starting…' : 'Call me now →'}
                   </button>
                   <p className="vd-cta-note">Outbound web demo only · Your real phone system is never changed</p>
+                  {sipPilotUi && sipPilotNumber ? (
+                    <div className="vd-sip-panel">
+                      <div className="vd-sip-head">Pilot: inbound call (OpenAI SIP)</div>
+                      <div className="vd-sip-copy">{sipPilotNumber}</div>
+                      <p className="vd-sip-hint">
+                        Optional second path for staging: save your salon context, then dial this number from the same mobile
+                        number you entered above. Your pilot DID must route to OpenAI SIP and hit the RingBooker webhook.
+                      </p>
+                      <button type="button" className="vd-sip-secondary" disabled={isSubmitting} onClick={() => void saveSipPilotContext()}>
+                        Save context for call-in pilot
+                      </button>
+                      {sipPrepMessage ? <p className="vd-cta-note" style={{ marginTop: 10 }}>{sipPrepMessage}</p> : null}
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 /* ── STATUS VIEW ── */

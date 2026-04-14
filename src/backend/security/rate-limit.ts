@@ -267,4 +267,14 @@ export const RATE_LIMIT_POLICIES = {
   agent_dispatch: { name: 'agent_dispatch', limit: 120, windowMs: 60_000 },
   webhook_telnyx: { name: 'webhook_telnyx', limit: 300, windowMs: 60_000 },
   webhook_paddle: { name: 'webhook_paddle', limit: 120, windowMs: 60_000 },
+  /** OpenAI Standard Webhooks (Realtime SIP + other project events) */
+  webhook_openai: { name: 'webhook_openai', limit: 240, windowMs: 60_000 },
+  /** Save demo form context for inbound SIP pilot (no telephony). */
+  public_demo_sip_prep: { name: 'public_demo_sip_prep', limit: 8, windowMs: 15 * 60_000, blockMs: 60 * 60_000 },
+  /** Burst control per OpenAI `call_id` on SIP webhook path */
+  openai_sip_per_call_id: { name: 'openai_sip_per_call_id', limit: 6, windowMs: 60_000 },
+  /** Anti-abuse per PSTN CLI on SIP pilot */
+  openai_sip_per_caller: { name: 'openai_sip_per_caller', limit: 12, windowMs: 60 * 60_000 },
+  /** Per pilot DID */
+  openai_sip_per_did: { name: 'openai_sip_per_did', limit: 60, windowMs: 60_000 },
 } as const;

@@ -48,6 +48,25 @@ export interface DemoCallRunRecord {
 }
 
 /** One marketing demo call run with session context for admin list UIs. */
+export type SipDemoSessionEnrichment = {
+  shopName: string;
+  verticalSlug: string;
+  notes?: string | null;
+  demoConfig?: {
+    city?: string | null;
+    primaryHours?: string | null;
+    secondaryHours?: string | null;
+    staffNames: string[];
+    services: Array<{
+      category: string;
+      name: string;
+      price?: number | null;
+      duration?: string | null;
+      enabled?: boolean;
+    }>;
+  };
+};
+
 export type DemoAdminCallListRow = {
   requestId: string;
   demoSessionId: string;
@@ -128,6 +147,14 @@ export interface DemoSessionsRepository {
     occurredAt?: Date;
   }): Promise<void>;
   findCallRunByRequestId(requestId: string): Promise<DemoCallRunRecord | null>;
+  /**
+   * Latest non-expired demo session for this caller phone (any vertical).
+   * Used for one shared pilot DID: vertical + shop context come from the newest matching session.
+   */
+  findLatestSipDemoContext(params: {
+    callerPhone: string;
+    now?: Date;
+  }): Promise<SipDemoSessionEnrichment | null>;
   expireOlderThan(now: Date): Promise<number>;
   listAdminDemoCallRuns(params: {
     createdAfter: Date;

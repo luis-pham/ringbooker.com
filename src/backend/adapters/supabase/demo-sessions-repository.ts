@@ -7,6 +7,7 @@ import type {
   DemoMode,
   DemoSessionStatus,
   DemoSessionsRepository,
+  SipDemoSessionEnrichment,
 } from '@/src/backend/ports/repositories';
 
 export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
@@ -175,6 +176,76 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
       occurred_at: (params.occurredAt ?? new Date()).toISOString(),
     });
     if (error) throw new Error(`demo_status_event_create_failed:${error.message}`);
+  }
+
+  async findLatestSipDemoContext(params: {
+    callerPhone: string;
+    now?: Date;
+  }): Promise<SipDemoSessionEnrichment | null> {
+    const now = params.now ?? new Date();
+    const { data: session, error: sessionError } = await this.supabase
+      .from('demo_sessions')
+      .select('id,vertical_slug')
+      .eq('callback_phone', params.callerPhone)
+      .gt('expires_at', now.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string; vertical_slug: string }>();
+    if (sessionError) throw new Error(`sip_demo_context_session_failed:${sessionError.message}`);
+    if (!session) return null;
+
+    const { data: cfg, error: cfgError } = await this.supabase
+      .from('demo_business_configs')
+      .select('business_name,city,business_hours,staff,notes')
+      .eq('demo_session_id', session.id)
+      .maybeSingle<{
+        business_name: string;
+        city: string | null;
+        business_hours: Record<string, unknown> | null;
+        staff: unknown;
+        notes: string | null;
+      }>();
+    if (cfgError) throw new Error(`sip_demo_context_config_failed:${cfgError.message}`);
+    if (!cfg) return null;
+
+    const { data: svcRows, error: svcError } = await this.supabase
+      .from('demo_services')
+      .select('category,name,price,duration,enabled')
+      .eq('demo_session_id', session.id);
+    if (svcError) throw new Error(`sip_demo_context_services_failed:${svcError.message}`);
+
+    const staffArr = Array.isArray(cfg.staff)
+      ? (cfg.staff as unknown[]).filter((x): x is string => typeof x === 'string')
+      : [];
+
+    const hours = cfg.business_hours && typeof cfg.business_hours === 'object' ? cfg.business_hours : {};
+    const primaryHours = typeof (hours as { primaryHours?: unknown }).primaryHours === 'string'
+      ? ((hours as { primaryHours: string }).primaryHours as string)
+      : null;
+    const secondaryHours = typeof (hours as { secondaryHours?: unknown }).secondaryHours === 'string'
+      ? ((hours as { secondaryHours: string }).secondaryHours as string)
+      : null;
+
+    const services = (svcRows ?? []).map((r) => ({
+      category: r.category,
+      name: r.name,
+      price: r.price != null ? Number(r.price) : null,
+      duration: r.duration,
+      enabled: r.enabled,
+    }));
+
+    return {
+      shopName: cfg.business_name,
+      verticalSlug: session.vertical_slug,
+      notes: cfg.notes,
+      demoConfig: {
+        city: cfg.city,
+        primaryHours,
+        secondaryHours,
+        staffNames: staffArr,
+        services,
+      },
+    };
   }
 
   async findCallRunByRequestId(requestId: string): Promise<DemoCallRunRecord | null> {

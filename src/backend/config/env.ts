@@ -62,6 +62,33 @@ function createValidatedEnv() {
       OPENAI_ORGANIZATION: z.string().min(1).optional(),
       OPENAI_PROJECT: z.string().min(1).optional(),
 
+      /** Realtime SIP pilot: POST /webhooks/openai when true; false returns 404. */
+      OPENAI_SIP_WEBHOOK_ENABLED: z
+        .string()
+        .optional()
+        .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
+      /** Standard Webhooks signing secret (`whsec_…`). Required when SIP webhook is enabled. */
+      OPENAI_WEBHOOK_SECRET: z.string().min(1).optional(),
+      OPENAI_WEBHOOK_MAX_SKEW_SECONDS: z.coerce.number().int().positive().default(300),
+      /** When true, answer inbound SIP with `accept` (requires OPENAI_API_KEY). */
+      OPENAI_SIP_ACCEPT_ENABLED: z
+        .string()
+        .optional()
+        .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
+      OPENAI_SIP_SIDEBAND_ENABLED: z
+        .string()
+        .optional()
+        .transform((s) => {
+          if (s === undefined || s === null || String(s).trim() === '') return true;
+          const t = String(s).trim().toLowerCase();
+          return !(t === 'false' || t === '0' || t === 'no');
+        }),
+      /** JSON array: `[{ "did": "+1…", "vertical": "nail-salon", "defaultShopName": "…" }]` */
+      OPENAI_SIP_DEMO_DID_MAP_JSON: z.string().optional(),
+      OPENAI_REALTIME_PROJECT_ID: z.string().min(1).optional(),
+      /** Optional: force one Realtime voice for all SIP calls. If unset, voice follows marketing vertical. */
+      OPENAI_REALTIME_SIP_VOICE: z.string().min(1).optional(),
+
       SUPABASE_URL: z.string().url(),
       SUPABASE_SERVICE_KEY: z.string().min(1),
 
@@ -106,4 +133,9 @@ export function getEnv() {
     cachedEnv = createValidatedEnv();
   }
   return cachedEnv;
+}
+
+/** Clears parsed env cache after `process.env` mutations (used in tests). */
+export function resetEnvCacheForTests() {
+  cachedEnv = null;
 }

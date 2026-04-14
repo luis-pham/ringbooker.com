@@ -5,6 +5,7 @@ import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handle
 import {
   compactRealtimeSystemInstruction,
   getOpenAiVietnameseBookingTranscriptionPrompt,
+  openAiRealtimeVoiceForDemoVerticalSlug,
   renderFallbackGreeting,
   renderRealtimeGreetingInstructions,
 } from '@/src/agent/prompts';
@@ -46,22 +47,13 @@ function resolveOpenAIModel(input: RealtimeDispatchInput): string | null {
   return fromMetadata ?? process.env.AGENT_VOICE_MODEL ?? 'gpt-realtime';
 }
 
-const DEMO_VERTICAL_VOICE: Record<string, string> = {
-  'nail-salon':    'shimmer',
-  'hair-salon':    'coral',
-  'day-spa':       'sage',
-  'med-spa':       'ash',
-  'beauty-clinic': 'echo',
-};
-
 function resolveOpenAIVoice(input?: RealtimeDispatchInput): string {
   const demoVertical = (
     input?.realtime.metadata as { dispatchPayload?: { demo?: { vertical?: string } } } | undefined
   )?.dispatchPayload?.demo?.vertical;
 
-  if (demoVertical && DEMO_VERTICAL_VOICE[demoVertical]) {
-    return DEMO_VERTICAL_VOICE[demoVertical]!;
-  }
+  const mapped = openAiRealtimeVoiceForDemoVerticalSlug(demoVertical ?? undefined);
+  if (mapped) return mapped;
 
   return process.env.AGENT_OPENAI_VOICE?.trim() || 'marin';
 }
