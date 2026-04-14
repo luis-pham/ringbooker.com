@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { type VoicePromptVertical, openAiRealtimeVoiceForVertical } from '@/src/agent/prompts';
 import { getEnv } from '@/src/backend/config/env';
-import { buildPublicDemoSystemPrompt } from '@/src/backend/demo/public-demo-system-prompt';
+import { buildPublicDemoSystemPrompt, type DemoConfigInput } from '@/src/backend/demo/public-demo-system-prompt';
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import type { DemoSessionsRepository, ProviderEventsRepository, SipDemoSessionEnrichment } from '@/src/backend/ports/repositories';
@@ -32,6 +32,16 @@ const incomingEventSchema = z.object({
 function asVoiceVertical(slug: string): VoicePromptVertical | undefined {
   const allowed: VoicePromptVertical[] = ['nail-salon', 'hair-salon', 'day-spa', 'med-spa', 'beauty-clinic'];
   return allowed.includes(slug as VoicePromptVertical) ? (slug as VoicePromptVertical) : undefined;
+}
+
+function sipDemoConfigToPromptInput(raw: NonNullable<SipDemoSessionEnrichment['demoConfig']>): DemoConfigInput {
+  return {
+    city: raw.city ?? undefined,
+    primaryHours: raw.primaryHours ?? undefined,
+    secondaryHours: raw.secondaryHours ?? undefined,
+    staffNames: raw.staffNames,
+    services: raw.services,
+  };
 }
 
 async function postOpenAiCallAction(params: {
@@ -219,7 +229,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     demoVertical,
     staffName: enrichment?.demoConfig?.staffNames?.[0],
     notes: enrichment?.notes ?? undefined,
-    demoConfig: enrichment?.demoConfig,
+    demoConfig: enrichment?.demoConfig ? sipDemoConfigToPromptInput(enrichment.demoConfig) : undefined,
     demoChannel: 'inbound_sip',
     voiceCallType: 'inbound_booking',
   });
