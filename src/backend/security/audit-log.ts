@@ -30,6 +30,7 @@ export type SecurityAuditEvent = {
     | 'public_demo_honeypot_triggered'
     | 'public_demo_captcha_failed'
     | 'public_demo_requested'
+    | 'public_demo_sip_prep_saved'
     | 'public_contact_honeypot_triggered'
     | 'public_contact_captcha_failed'
     | 'public_contact_requested'
