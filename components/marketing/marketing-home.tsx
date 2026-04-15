@@ -904,7 +904,11 @@ export function MarketingHomeTemplate() {
               <span className="pulse-dot" />
               After-hours &amp; overflow call answering for salons
             </div>
-            <h1 className="hero-h">Recover Missed Bookings on Your Current Number</h1>
+            <h1 className="hero-h">
+              Recover Missed <span className="hl">Bookings</span>
+              <br />
+              on Your Current Number
+            </h1>
             <p className="hero-sub">
               RingBooker is an AI phone agent for salons, spas, med spas, and beauty clinics. It answers after-hours and peak-hour calls, texts missed callers back, and helps protect revenue without changing your booking system.
             </p>
