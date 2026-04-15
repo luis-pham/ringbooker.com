@@ -98,11 +98,10 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 .hero-blob-1{width:560px;height:560px;background:#C4B5FD;top:-200px;left:-140px}
 .hero-blob-2{width:460px;height:460px;background:#F9A8D4;top:-100px;right:-120px}
 .hero-inner{position:relative;z-index:2;text-align:center;max-width:820px;width:100%}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:14px;font-weight:600;color:var(--purple-dark);margin-bottom:28px;backdrop-filter:blur(8px)}
 .pulse-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
-h1.hero-h{font-size:clamp(32px,5.2vw,68px);font-weight:800;line-height:1.12;letter-spacing:-2.5px;color:var(--text-dark);margin-bottom:20px;word-break:break-word}
-h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--r-pill);padding:2px 22px;margin:0 4px;max-width:100%;box-sizing:border-box}
+h1.hero-h{font-size:clamp(28px,5vw,68px);font-weight:800;line-height:1.12;letter-spacing:-2.5px;color:var(--text-dark);margin-bottom:20px;word-break:break-word}
+h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--r-pill);padding:0.12em 0.55em;margin:0.08em 0.12em;max-width:100%;box-sizing:border-box;line-height:1.2;vertical-align:baseline}
 .hero-sub{font-size:17.5px;color:var(--text-gray);line-height:1.72;max-width:min(640px,100%);margin:0 auto 36px;padding:0 12px}
 .hero-sub a.hero-sub-link{color:var(--purple-dark);font-weight:600;text-decoration:none}
 .hero-sub a.hero-sub-link:hover{color:#5b21b6;text-decoration:none}
@@ -619,7 +618,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
   footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
-  .hero-badge,.industry-tag{backdrop-filter:none}
+  .industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.vc-ring,.user-image-corners::before,.user-image-corners::after{display:none}
   .pulse-dot,.wv span,.vc-wave span,.live-dot,.cta-vc-wave span{animation:none}
   .hero-visual{height:480px}
@@ -639,6 +638,8 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .hero{min-height:auto;padding-top:96px;padding-bottom:36px}
   .hero-visual{height:420px;margin-top:34px}
   .phone-frame{width:216px;height:432px;box-shadow:0 26px 48px rgba(0,0,0,.2)}
+  h1.hero-h{font-size:clamp(26px,7.2vw,40px);letter-spacing:-1.5px;line-height:1.18}
+  h1.hero-h .hl{padding:0.1em 0.42em;margin:0.06em 0.08em;letter-spacing:-0.02em}
   .hero-sub{margin-bottom:26px}
   .deep-s2-outer{padding:28px 18px 32px;gap:26px}
 }
@@ -646,7 +647,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 .legacy-marketing > footer,
 .legacy-marketing > .topbar{display:none !important}
 
-/* Font floor: raise all small text under 14px (except hero badge) */
+/* Font floor: raise all small text under 14px */
 .legacy-marketing .fc-sm,
 .legacy-marketing .fc-tag,
 .legacy-marketing .vc-live-badge,
@@ -898,12 +899,8 @@ export function MarketingHomeTemplate() {
           <div className="hero-blob hero-blob-1" />
           <div className="hero-blob hero-blob-2" />
           <div className="hero-inner">
-            <div className="hero-badge">
-              <span className="pulse-dot" />
-              After-hours &amp; overflow call answering for salons
-            </div>
             <h1 className="hero-h">
-              Stop Losing <span className="hl">Bookings</span>
+              Stop Losing <span className="hl">Bookings & Revenue</span>
               <br />
               on Your Current Number
             </h1>
