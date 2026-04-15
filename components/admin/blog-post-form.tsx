@@ -44,6 +44,7 @@ const defaultValues: PostFormData = {
   title: '',
   slug: '',
   excerpt: '',
+  metaDescription: '',
   content: '',
   status: 'DRAFT',
   categoryIds: [],
@@ -218,6 +219,20 @@ export function BlogPostForm(props: BlogPostFormProps) {
               placeholder="Short SEO summary for the blog post..."
             />
             <FormError message={form.formState.errors.excerpt?.message} />
+          </label>
+
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="text-sm font-semibold text-slate-700">Meta description (SEO)</span>
+            <textarea
+              {...form.register('metaDescription')}
+              rows={2}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-brand-purple/30 transition focus:ring"
+              placeholder="Optional. Shown in search results and link previews when set. Plain text, ~155–160 characters is ideal."
+            />
+            <p className="text-xs text-slate-500">
+              Leave blank to use the excerpt (and body fallbacks) for meta tags and structured data — same as before.
+            </p>
+            <FormError message={form.formState.errors.metaDescription?.message} />
           </label>
         </section>
 

@@ -33,6 +33,8 @@ export const postSchema = z
       message: 'Slug may only use lowercase letters, digits, hyphens, and underscores',
     }),
   excerpt: z.string().min(1).max(500),
+  /** Optional; used for meta / OG / JSON-LD when non-empty. Plain text, max ~2 tweets. */
+  metaDescription: z.string().max(320),
   content: z.string().min(1),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
   categoryIds: z.array(z.string()).min(1),

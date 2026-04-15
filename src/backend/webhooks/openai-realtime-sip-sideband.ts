@@ -12,8 +12,10 @@ function compactToolOutput(output: unknown): string {
 }
 
 /**
- * Minimal sideband: connect to Realtime WS for an accepted SIP call, handle `demo_noop` tool, then exit.
- * Fire-and-forget from the webhook handler; errors are logged only.
+ * Sideband: connect to Realtime WS for an accepted SIP call on the same `call_id`.
+ * OpenAI Realtime SIP does not speak until a client sends `response.create` on this socket
+ * (see Realtime SIP guide — WebSocket monitor section).
+ * Optionally handles `demo_noop` tool replies. Fire-and-forget; errors are logged only.
  */
 export function startOpenAiRealtimeSipSideband(params: {
   callId: string;
@@ -44,6 +46,12 @@ export function startOpenAiRealtimeSipSideband(params: {
       } catch {
         /* ignore */
       }
+      return;
+    }
+    try {
+      ws.send(JSON.stringify({ type: 'response.create' }));
+    } catch (err) {
+      logger.warn({ err, callId: params.callId }, 'openai_sip_sideband_initial_response_create_failed');
     }
   });
 

@@ -9,6 +9,7 @@ import { TableOfContents } from '@/components/blog/TableOfContents';
 import { ViewCounter } from '@/components/blog/ViewCounter';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { extractToc } from '@/lib/extractToc';
+import { buildBlogDetailJsonLd } from '@/lib/blog/blog-jsonld';
 import { getPostByPathPrefixAndSlug, getRelatedPosts, incrementPostViews } from '@/lib/blog';
 import { parseStoredFooterCtas } from '@/lib/blog/footer-cta-templates';
 import { BLOG_PATH_PREFIX_LABEL, isBlogPathPrefix, postPublicPath } from '@/lib/blog/path-prefixes';
@@ -58,8 +59,24 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
 
   const relatedHref = (p: PostWithRelations) => postPublicPath(p.pathPrefix, p.slug);
 
+  const structuredData = buildBlogDetailJsonLd(post);
+
   return (
     <>
+      {structuredData ? (
+        <>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData.blogPosting) }}
+          />
+          {structuredData.faqPage ? (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData.faqPage) }}
+            />
+          ) : null}
+        </>
+      ) : null}
       <ReadingProgressBar />
       <MarketingChromeStyles />
       <MarketingHeader />

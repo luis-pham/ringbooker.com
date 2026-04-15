@@ -14,6 +14,8 @@ model Post {
   slug           String
   title          String
   excerpt        String
+  /// Optional search / social meta description (plain text). When empty, excerpt + body fallbacks apply.
+  metaDescription String?   @db.Text
   content        String     @db.Text
   /// Public URL path (e.g. /uploads/blog/...) or absolute https URL for list/detail hero
   coverImageUrl  String?

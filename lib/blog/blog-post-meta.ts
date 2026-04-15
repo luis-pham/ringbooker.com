@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { PostStatus } from '@prisma/client';
 
 import { getAllPosts, getPostByPathPrefixAndSlug } from '@/lib/blog';
+import { buildPostSeoDescription } from '@/lib/blog/post-seo-description';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { absoluteOgImageUrl, buildAlternates, defaultSiteOgImage, siteConfig, siteOgImageEntry } from '@/lib/site';
 
@@ -22,14 +23,16 @@ export async function buildBlogPostMetadata(pathPrefix: string, slug: string): P
     ? [{ url: shareImageUrl, alt: post.title }]
     : [siteOgImageEntry(absoluteOgImageUrl(defaultSiteOgImage))];
 
+  const description = buildPostSeoDescription(post);
+
   return {
     metadataBase: new URL(siteConfig.url),
     title: `${post.title} — RingBooker Blog`,
-    description: post.excerpt,
+    description,
     alternates: buildAlternates(path),
     openGraph: {
       title: post.title,
-      description: post.excerpt,
+      description,
       url: canonicalUrl,
       siteName: siteConfig.name,
       locale: 'en_US',
@@ -38,7 +41,7 @@ export async function buildBlogPostMetadata(pathPrefix: string, slug: string): P
       authors: [post.author.name],
       images: ogImages,
     },
-    twitter: { card: 'summary_large_image', images: [shareImageUrl] },
+    twitter: { card: 'summary_large_image', description, images: [shareImageUrl] },
   };
 }
 
