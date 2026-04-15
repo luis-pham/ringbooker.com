@@ -395,7 +395,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       setSipPrepMessage(`Saved. Call ${sipPilotNumber} from the phone number you entered above so the pilot can match your context.`);
     } catch {
       setSipPrepMessage(null);
-      setRequestError('Network error while saving SIP pilot context.');
+      setRequestError('Network error while saving call-in pilot context.');
     }
   }
 
@@ -584,11 +584,11 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   <p className="vd-cta-note">Outbound web demo only · Your real phone system is never changed</p>
                   {sipPilotUi && sipPilotNumber ? (
                     <div className="vd-sip-panel">
-                      <div className="vd-sip-head">Pilot: inbound call (OpenAI SIP)</div>
+                      <div className="vd-sip-head">Pilot: inbound call</div>
                       <div className="vd-sip-copy">{sipPilotNumber}</div>
                       <p className="vd-sip-hint">
                         Optional second path for staging: save your salon context, then dial this number from the same mobile
-                        number you entered above. Your pilot DID must route to OpenAI SIP and hit the RingBooker webhook.
+                        number you entered above. Your pilot inbound line must reach RingBooker so we can load the context you saved here.
                       </p>
                       <button type="button" className="vd-sip-secondary" disabled={isSubmitting} onClick={() => void saveSipPilotContext()}>
                         Save context for call-in pilot
