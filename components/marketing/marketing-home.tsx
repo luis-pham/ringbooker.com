@@ -906,8 +906,12 @@ export function MarketingHomeTemplate() {
             </h1>
             <p className="hero-sub">
               An AI phone agent for{' '}
+              <Link className="hero-sub-link" href="/industries/nail-salon">
+                nail salons
+              </Link>
+              ,{' '}
               <Link className="hero-sub-link" href="/industries/hair-salon">
-                salons
+                hair salons
               </Link>
               ,{' '}
               <Link className="hero-sub-link" href="/industries/spa">
