@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -64,7 +65,7 @@ const softwareJsonLd = {
     priceCurrency: 'USD',
   },
   description:
-    'AI phone answering service for nail salons, hair salons, spas, and med spas. Answers after-hours and overflow calls, recovers missed bookings, and handles reschedules on your current number.',
+    'AI phone answering and call recovery for nail salons, hair salons, spas, and med spas: after-hours and peak-hour overflow coverage, missed-call text back, and booking capture on your current number — no new booking system.',
 };
 
 const styles: string[] = [
@@ -243,6 +244,12 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .sec-title{font-size:clamp(32px,4vw,48px);font-weight:800;line-height:1.12;letter-spacing:-1.6px;text-align:center;margin-bottom:14px}
 .sec-title-air{margin-bottom:60px}
 .sec-sub{font-size:16px;color:var(--text-gray);text-align:center;margin-bottom:52px;line-height:1.65}
+.home-seo-links{font-size:15px;color:var(--text-gray);text-align:center;margin:-38px auto 48px;line-height:1.75;max-width:720px;padding:0 12px}
+.home-seo-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.home-seo-links a:hover{color:#5b21b6}
+.hero-inline-links{font-size:15px;color:var(--text-gray);max-width:640px;margin:-22px auto 36px;line-height:1.75;text-align:center;padding:0 12px}
+.hero-inline-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.hero-inline-links a:hover{color:#5b21b6}
 .emphasis-5min{color:var(--purple-dark);font-weight:800}
 
 /* ─── FEATURES GRID ─── */
@@ -876,7 +883,7 @@ setPriceSafe('monthly')
 `,
 ];
 
-export const templateTitle = 'RingBooker — AI Phone Answering Service for Salons, Nail Shops & Spas';
+export const templateTitle = 'RingBooker | Missed-Call & After-Hours Booking Recovery for Salons & Spas';
 
 export function MarketingHomeTemplate() {
   return (
@@ -900,6 +907,17 @@ export function MarketingHomeTemplate() {
             </div>
             <h1 className="hero-h">Never Miss a<br /><span className="hl">Booking Call</span> on Your Current Number.</h1>
             <p className="hero-sub">RingBooker answers after-hours and overflow calls for nail salons, hair salons, spas, and clinics — recovering missed bookings, handling reschedules, and texting callers back. No new number. No new software.</p>
+            <p className="hero-inline-links">
+              <Link href="/after-hours-calls">After-hours call answering</Link>
+              {' · '}
+              <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
+              {' · '}
+              <Link href="/missed-call-recovery">Missed-call recovery</Link>
+              {' · '}
+              <Link href="/how-it-works">How it works</Link>
+              {' · '}
+              <Link href="/pricing">Pricing</Link>
+            </p>
             <div className="hero-btns">
               <a href="/demo" className="btn-hero-live" data-demo-picker>
                 📞 Try a Live Demo Call
@@ -1006,6 +1024,18 @@ export function MarketingHomeTemplate() {
             <div className="sec-label">Missed-Call Recovery</div>
             <h2 className="sec-title reveal">Your team is great. But your phone is leaking bookings every day.</h2>
             <p className="sec-sub reveal">RingBooker covers the moments your front desk cannot: after hours, during services, at lunch, on weekends, and when two callers ring at once.</p>
+            <p className="home-seo-links reveal">
+              See how we protect revenue in each scenario:{' '}
+              <Link href="/after-hours-calls">after-hours calls</Link>,{' '}
+              <Link href="/peak-hour-overflow-calls">peak-hour overflow</Link>, and{' '}
+              <Link href="/missed-call-recovery">missed-call recovery</Link>
+              {' — '}
+              <Link href="/how-it-works">how it works on your current number</Link>
+              {' · '}
+              <Link href="/pricing">pricing</Link>
+              {' · '}
+              <Link href="/contact">book a demo</Link>
+            </p>
             <div className="leak-grid">
               {[
                 ['💅', 'Your team is with a client', 'RingBooker answers without forcing your staff to pause a manicure, color service, treatment, or consultation.'],
@@ -1075,7 +1105,7 @@ export function MarketingHomeTemplate() {
               </a>
               <a href="/industries/hair-salon" className="industry-card" data-index={1}>
                 <div className="industry-thumb">
-                  <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI receptionist answers overflow calls for hair salon bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
+                  <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI phone answering captures overflow and in-service calls for bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Hair</span>
                 </div>
                 <div className="industry-title">Hair Salon</div>

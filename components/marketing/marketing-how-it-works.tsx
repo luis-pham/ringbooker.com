@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
@@ -12,7 +14,7 @@ const HOW_IT_WORKS_FAQS = [
   },
   {
     q: 'What kinds of calls can RingBooker handle?',
-    a: 'RingBooker helps with after-hours calls, overflow calls, routine booking requests, reschedules, cancellations, missed-call text back, and clean human handoff when a caller needs special help.',
+    a: 'RingBooker is built for nail salons, hair salons, spas, med spas, and clinics: after-hours calls, peak-hour overflow, routine booking requests, reschedules, cancellations, missed-call text back, and clean human handoff when a caller needs special help.',
   },
   {
     q: 'What happens if the caller needs a real person?',
@@ -67,6 +69,9 @@ a{text-decoration:none;color:inherit}
 @keyframes hiwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hiw-hero h1{font-size:clamp(40px,5vw,62px);font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:18px}
 .hiw-hero p{font-size:17px;color:var(--text-gray);max-width:650px;margin-bottom:26px;line-height:1.75}
+.hiw-playbook-links{font-size:15px;color:var(--text-gray);max-width:1100px;margin:8px auto 0;padding:0 48px;line-height:1.75;text-align:center}
+.hiw-playbook-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.hiw-playbook-links a:hover{color:#5b21b6}
 .hiw-actions{display:flex;gap:12px;flex-wrap:wrap}
 .hiw-btn-dark,.hiw-btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:15px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:all .2s}
 .hiw-btn-dark{background:var(--text-dark);color:#fff}
@@ -155,6 +160,7 @@ a{text-decoration:none;color:inherit}
 .legacy-marketing > .topbar{display:none !important}
 @media(max-width:960px){
   .hiw-hero,.hiw-section,.hiw-cta{padding-left:22px;padding-right:22px}
+  .hiw-playbook-links{padding-left:22px;padding-right:22px}
   .hiw-hero-grid,.hiw-grid-2,.hiw-grid-3,.hiw-handle-grid,.hiw-no-replace,.hiw-experience,.hiw-cta-box{grid-template-columns:1fr}
   .hiw-hero{padding-top:104px}
   .hiw-summary{padding:22px}
@@ -164,6 +170,7 @@ a{text-decoration:none;color:inherit}
 @media(max-width:640px){
   .hiw-hero{padding-bottom:46px}
   .hiw-hero h1{font-size:38px}
+  .hiw-playbook-links{padding-left:22px;padding-right:22px;font-size:14px}
   .hiw-actions,.hiw-cta .hiw-actions{flex-direction:column;align-items:stretch}
   .hiw-btn-dark,.hiw-btn-outline{width:100%}
   .hiw-section{padding-top:68px;padding-bottom:68px}
@@ -173,7 +180,7 @@ a{text-decoration:none;color:inherit}
 
 const scripts: string[] = [];
 
-export const templateTitle = 'How RingBooker Works';
+export const templateTitle = 'How RingBooker Works — Current Number, No Booking Software Migration';
 
 export function MarketingHowItWorksTemplate() {
   return (
@@ -194,9 +201,9 @@ export function MarketingHowItWorksTemplate() {
             <div className="hiw-container hiw-hero-grid">
               <div>
                 <div className="hiw-badge"><span className="hiw-dot" />How RingBooker works</div>
-                <h1>How RingBooker works on your current number.</h1>
+                <h1>How RingBooker recovers booking calls on your current number.</h1>
                 <p>
-                  RingBooker is an AI phone answering and booking recovery layer for salons, spas, med spas, and beauty clinics. It answers after-hours and overflow calls, helps with booking requests, reschedules, cancellations, and missed-call text back, while your existing booking tools stay in place.
+                  Missed rings often become missed bookings and lost revenue. RingBooker is an AI phone answering and call recovery layer for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours coverage, peak-hour overflow, missed-call text back, and routine reschedules without replacing your booking software.
                 </p>
                 <div className="hiw-actions">
                   <a href="/demo" className="hiw-btn-dark" data-demo-picker>Try a Live Demo Call</a>
@@ -205,14 +212,25 @@ export function MarketingHowItWorksTemplate() {
               </div>
               <aside className="hiw-summary" aria-label="RingBooker summary">
                 <div className="hiw-summary-label">Plain-language summary</div>
-                <h2>Keep your number. Recover more booking calls.</h2>
+                <h2>Keep your number. Stop revenue leaking to voicemail.</h2>
                 <div className="hiw-summary-list">
-                  <div className="hiw-summary-item"><span className="hiw-summary-icon">1</span><span>Most businesses forward their current line to RingBooker for coverage.</span></div>
+                  <div className="hiw-summary-item"><span className="hiw-summary-icon">1</span><span>Most businesses forward their current line to RingBooker for after-hours, overflow, or missed-call coverage.</span></div>
                   <div className="hiw-summary-item"><span className="hiw-summary-icon">2</span><span>A dedicated RingBooker number is available if you want a separate booking line.</span></div>
-                  <div className="hiw-summary-item"><span className="hiw-summary-icon">3</span><span>RingBooker handles routine call work and keeps human handoff clear for special cases.</span></div>
+                  <div className="hiw-summary-item"><span className="hiw-summary-icon">3</span><span>RingBooker handles routine call work and keeps human handoff clear when the booking or consult needs a person.</span></div>
                 </div>
               </aside>
             </div>
+            <p className="hiw-playbook-links">
+              <Link href="/after-hours-calls">After-hours call answering</Link>
+              {' · '}
+              <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
+              {' · '}
+              <Link href="/missed-call-recovery">Missed-call recovery</Link>
+              {' · '}
+              <Link href="/pricing">Pricing</Link>
+              {' · '}
+              <Link href="/faq">FAQ</Link>
+            </p>
           </section>
 
           <section className="hiw-section">
@@ -255,7 +273,7 @@ export function MarketingHowItWorksTemplate() {
             <div className="hiw-container">
               <div className="hiw-label">3-step flow</div>
               <h2 className="hiw-title">A phone-first workflow your team can understand quickly.</h2>
-              <p className="hiw-sub">RingBooker sits between the call and your business workflow. It does not ask you to rebuild your booking operation.</p>
+              <p className="hiw-sub">RingBooker sits between the caller and your team: it captures intent and summaries so you recover bookings faster — without migrating calendars or changing the number clients already dial.</p>
               <div className="hiw-grid-3 hiw-flow">
                 <article className="hiw-card hiw-step">
                   <h3>Connect coverage</h3>
@@ -277,7 +295,7 @@ export function MarketingHowItWorksTemplate() {
             <div className="hiw-container">
               <div className="hiw-label">What it handles</div>
               <h2 className="hiw-title">Built for the calls that usually leak bookings.</h2>
-              <p className="hiw-sub">RingBooker is focused on the phone moments that hurt appointment-based beauty businesses: busy service windows, after-hours callers, reschedules, cancellations, and people who hang up before voicemail.</p>
+              <p className="hiw-sub">RingBooker targets the phone moments that cost salons and clinics revenue: busy service windows, after-hours buying intent, peak overflow, reschedules, cancellations, and callers who hang up instead of leaving voicemail.</p>
               <div className="hiw-handle-grid">
                 <div className="hiw-handle"><div className="hiw-handle-icon amber">🌙</div><strong>After-hours calls</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
                 <div className="hiw-handle"><div className="hiw-handle-icon blue">📞</div><strong>Overflow calls</strong><p>Step in when your team is with a client, at the chair, in a treatment room, or handling another call.</p></div>
@@ -326,7 +344,7 @@ export function MarketingHowItWorksTemplate() {
             <div className="hiw-container">
               <div className="hiw-label">FAQ</div>
               <h2 className="hiw-title">Common setup questions.</h2>
-              <p className="hiw-sub">Short answers for business owners, and clear summaries for search engines and AI answer systems.</p>
+              <p className="hiw-sub">Short answers for owners and managers comparing call recovery options — current number, no forced booking migration, and what happens on real salon and clinic calls.</p>
               <div className="hiw-faq">
                 {HOW_IT_WORKS_FAQS.map((item) => (
                   <details key={item.q}>
@@ -341,8 +359,8 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-cta">
             <div className="hiw-cta-box">
               <div>
-                <h2>See how it works on a real call.</h2>
-                <p>Try a live demo or talk through how RingBooker would cover after-hours, overflow, reschedules, cancellations, and missed-call follow-up for your business.</p>
+                <h2>See the revenue recovery flow on a real call.</h2>
+                <p>Try a live demo or talk through how RingBooker covers after-hours intent, peak-hour overflow, reschedules, cancellations, and missed-call text back on your line — still the number clients already use.</p>
               </div>
               <div className="hiw-actions">
                 <a href="/demo" className="hiw-btn-dark" data-demo-picker>Try a Live Demo Call</a>

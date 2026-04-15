@@ -299,7 +299,7 @@ export function MarketingFooter() {
               RingBooker
             </div>
             <p className="mk-footer-desc">
-              AI phone answering service for salons, nail shops, spas, med spas, and appointment-based businesses. Stop losing after-hours and overflow calls to voicemail.
+              AI phone answering and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number.
             </p>
             {socialLinks.length > 0 ? (
               <div className="mk-footer-social">
@@ -334,6 +334,7 @@ export function MarketingFooter() {
             <a href="/blog">Blog</a>
             <a href="/faq">FAQ</a>
             <a href="/after-hours-calls">After-Hours Calls</a>
+            <a href="/peak-hour-overflow-calls">Peak-Hour Overflow</a>
             <a href="/missed-call-recovery">Missed-Call Recovery</a>
             <a href="/contact">Contact</a>
           </div>

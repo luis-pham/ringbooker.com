@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { MarketingSeoPage } from '@/components/marketing/marketing-seo-page';
 import { buildMetadata } from '@/lib/site';
 
@@ -36,9 +38,9 @@ const serviceJsonLd = {
 };
 
 export const metadata = buildMetadata({
-  title: 'Missed-Call Recovery for Salons and Spas',
+  title: 'Missed-Call Recovery for Salons & Spas — Text Back & Booking Capture',
   description:
-    'Recover missed salon booking calls with AI text back, smart callback workflows, call summaries, and current-number forwarding from RingBooker.',
+    'Most missed callers never leave voicemail. RingBooker combines missed-call text back, callback workflows, and summaries so nail salons, spas, and clinics recover booking revenue on their current number.',
   path: '/missed-call-recovery',
 });
 
@@ -47,7 +49,7 @@ export default function MissedCallRecoveryPage() {
     <MarketingSeoPage
       badge="Missed-call recovery"
       title="Recover Booking Calls That Would Have Gone Silent"
-      intro="Most missed callers do not leave a useful voicemail. RingBooker helps salons and spas keep those booking opportunities alive with instant follow-up and clear next steps."
+      intro="Most missed callers do not leave a useful voicemail. RingBooker helps beauty businesses turn missed rings into recovered bookings with fast text back, clear next steps, and call summaries your team can act on — still on your current number."
       sections={[
         {
           heading: 'The missed-call problem',
@@ -73,6 +75,21 @@ export default function MissedCallRecoveryPage() {
       ]}
       faqs={faqs}
       articleJsonLd={serviceJsonLd}
+      customContent={
+        <div className="seo-internal-links">
+          <p>
+            <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
+            {' · '}
+            <Link href="/after-hours-calls">After-hours call answering</Link>
+            {' · '}
+            <Link href="/how-it-works">How RingBooker works</Link>
+            {' · '}
+            <Link href="/pricing">Pricing</Link>
+            {' · '}
+            <Link href="/contact">Book a demo</Link>
+          </p>
+        </div>
+      }
     />
   );
 }

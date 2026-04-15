@@ -12,6 +12,7 @@ const staticRoutes = [
   '/industries/med-spa',
   '/industries/beauty-clinic',
   '/after-hours-calls',
+  '/peak-hour-overflow-calls',
   '/missed-call-recovery',
   '/compare',
   '/compare/vs-truelark',

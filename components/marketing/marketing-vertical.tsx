@@ -22,10 +22,10 @@ const SERVICE_BY_VERTICAL: Record<
       'AI call answering for hair salons that handles overflow calls, stylist-match requests, color and extension booking slots, reschedules, cancellation recovery, and appointment confirmations.',
   },
   spa: {
-    name: 'AI Receptionist for Spas and Day Spas',
+    name: 'AI Phone Answering for Day Spas and Wellness Studios',
     serviceType: 'Spa answering service',
     description:
-      'After-hours and overflow AI receptionist for spas and day spas, covering treatment-aware booking scripts, couples massage scheduling, package questions, missed-call recovery, and SMS follow-up.',
+      'After-hours and overflow AI phone answering for day spas and wellness studios — treatment-aware booking scripts, couples massage scheduling, package questions, missed-call recovery, and SMS follow-up on your current number.',
   },
   'med-spa': {
     name: 'AI Phone Answering Service for Med Spas',
@@ -410,13 +410,13 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
           <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3.5 py-1.5 text-[12px] font-bold text-violet-700">
-            #1 AI Receptionist for Nail Salons
+            AI phone answering &amp; call recovery for nail salons
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
             AI Phone Answering Service for Nail Salons
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won't wait. RingBooker answers every call on your current number, supports English and Vietnamese, and captures booking intent 24/7.
+            Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won&apos;t wait. RingBooker answers overflow and after-hours calls on your current number, supports English and Vietnamese, and captures booking intent so missed rings don&apos;t become lost revenue.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/nail-salon" className={theme.demoCtaClass}>
@@ -625,10 +625,10 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
             For Day Spas & Wellness Studios
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-            AI Receptionist for Spas and Day Spas
+            AI Phone Answering for Day Spas &amp; Wellness Studios
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can't interrupt that. RingBooker captures every spa call without compromising your in-room guest experience.
+            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking revenue does not leak to voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/day-spa" className={theme.demoCtaClass}>
@@ -1068,6 +1068,64 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
 
 // ─── PAGE ASSEMBLY ─────────────────────────────────────────────────────────────
 
+const ALL_VERTICALS: MarketingVerticalKey[] = ['nail-salon', 'hair-salon', 'spa', 'med-spa', 'beauty-clinic'];
+
+function VerticalRelatedPlaybooks({ vertical }: { vertical: MarketingVerticalKey }) {
+  const otherVerticals = ALL_VERTICALS.filter((v) => v !== vertical);
+  return (
+    <section
+      aria-label="Related call recovery guides"
+      className="mx-auto mt-14 max-w-3xl rounded-2xl border border-slate-200/80 bg-white/90 px-5 py-6 text-center shadow-sm backdrop-blur-sm sm:px-8"
+    >
+      <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">Playbooks</p>
+      <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
+        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/after-hours-calls">
+          After-hours call answering
+        </Link>
+        {' · '}
+        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/peak-hour-overflow-calls">
+          Peak-hour overflow coverage
+        </Link>
+        {' · '}
+        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/missed-call-recovery">
+          Missed-call recovery
+        </Link>
+        {' · '}
+        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/how-it-works">
+          How it works
+        </Link>
+        {' · '}
+        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/pricing">
+          Pricing
+        </Link>
+        {' · '}
+        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/contact">
+          Book a demo
+        </Link>
+      </p>
+      <p className="mt-4 text-[14px] leading-relaxed text-slate-500">
+        More verticals:{' '}
+        {otherVerticals.map((v, i) => (
+          <span key={v}>
+            {i > 0 ? ' · ' : null}
+            <Link className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-violet-800" href={`/industries/${v}`}>
+              {v === 'nail-salon'
+                ? 'Nail salon'
+                : v === 'hair-salon'
+                  ? 'Hair salon'
+                  : v === 'spa'
+                    ? 'Spa / day spa'
+                    : v === 'med-spa'
+                      ? 'Med spa'
+                      : 'Beauty clinic'}
+            </Link>
+          </span>
+        ))}
+      </p>
+    </section>
+  );
+}
+
 function PageBody({ vertical }: { vertical: MarketingVerticalKey }) {
   const theme = INDUSTRY_THEME[vertical];
   if (vertical === 'nail-salon') return <NailPage theme={theme} />;
@@ -1150,6 +1208,9 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
       <MarketingHeader active="industry" />
       <main className={`${theme.pageShellBg} pb-16 pt-28`}>
         <PageBody vertical={vertical} />
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <VerticalRelatedPlaybooks vertical={vertical} />
+        </div>
         <Faq accentClass={theme.accentClass} items={faq} />
         <FinalCta
           demoPath={DEMO_PATH[vertical]}

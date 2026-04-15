@@ -24,29 +24,29 @@ export function marketingSegmentToVertical(segment: string): MarketingVerticalKe
 
 const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; description: string }> = {
   'nail-salon': {
-    title: 'AI Phone Answering for Nail Salons & Shops',
+    title: 'Nail Salon Missed Calls & After-Hours Booking Recovery | RingBooker',
     description:
-      'AI phone answering for nail salons: answer after-hours and overflow calls on your current number, handle prices, walk-ins, reschedules, and Vietnamese callers.',
+      'Recover nail salon booking calls during services and after hours: peak-hour overflow, same-day walk-ins, pricing questions, reschedules, English + Vietnamese — on your current number, no new booking software.',
   },
   'hair-salon': {
-    title: 'AI Phone Answering for Hair Salons & Stylists',
+    title: 'Hair Salon Overflow & Reschedule Call Answering | RingBooker',
     description:
-      'AI phone answering for hair salons: capture overflow and after-hours calls, handle stylist requests, color bookings, reschedules, and SMS confirmations.',
+      'Protect hair salon revenue when stylists are in-chair: after-hours and overflow call answering, stylist-match and color-slot capture, reschedule handling — same business line, works with your existing booking tools.',
   },
   spa: {
-    title: 'AI Receptionist for Day Spas & Wellness',
+    title: 'Day Spa After-Hours & Overflow Call Answering | RingBooker',
     description:
-      'AI receptionist for day spas: answer after-hours and overflow calls, handle couples massage, package questions, reschedules, and SMS confirmations.',
+      'Capture spa booking calls while therapists are in-room: couples and package inquiries, after-hours intent, peak-hour overflow, SMS confirmations — current number, no booking platform migration.',
   },
   'med-spa': {
-    title: 'AI Phone Answering for Med Spas & Clinics',
+    title: 'Med Spa Consultation Call Recovery & After-Hours Answering | RingBooker',
     description:
-      'AI phone answering for med spas: capture consultation calls, route Botox, filler, and laser inquiries, reduce no-shows, and keep your current number.',
+      'Never lose a high-value med spa consult to voicemail: after-hours and overflow answering for Botox, filler, and laser inquiries, no-show reduction context, same number forwarding.',
   },
   'beauty-clinic': {
-    title: 'AI Phone Answering for Beauty Clinics',
+    title: 'Beauty Clinic Consultation Call Answering | RingBooker',
     description:
-      'AI phone answering for beauty clinics: capture consultation calls, provider requests, pre-care questions, and after-hours inquiries on your current number.',
+      'Consultation-first phone layer for aesthetic clinics: provider continuity, pre- and post-care questions, after-hours inquiries, missed-call follow-up — on your current clinic number.',
   },
 };
 
@@ -54,7 +54,11 @@ export function marketingIndustryLandingMetadata(segment: string): Metadata {
   const key = segment as MarketingIndustryUrlSegment;
   const m = LANDING_META[key];
   if (!m) {
-    return buildMetadata({ title: 'RingBooker', description: 'AI phone answering for salons and spas.', path: '/industries' });
+    return buildMetadata({
+      title: 'RingBooker',
+      description: 'AI phone answering and call recovery for beauty businesses — after-hours, overflow, and missed-call coverage on your current number.',
+      path: '/industries',
+    });
   }
   return buildMetadata({ ...m, path: industryLandingPath(segment) });
 }

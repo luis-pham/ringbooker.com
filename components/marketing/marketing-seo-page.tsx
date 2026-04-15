@@ -104,6 +104,10 @@ export function MarketingSeoPage({
 .seo-faq-card{border:1px solid #ece7ff;background:#faf9ff;border-radius:14px;padding:14px}
 .seo-faq-card h3{font-size:16px;font-weight:900;line-height:1.4;color:#111827;margin:0 0 6px;letter-spacing:-.2px}
 .seo-faq-card p{font-size:15px;line-height:1.65;color:#4b5563;margin:0}
+.seo-internal-links{font-size:15px;line-height:1.68;color:#4b5563}
+.seo-internal-links p{margin:0}
+.seo-internal-links a{color:#5b21b6;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.seo-internal-links a:hover{color:#4c1d95}
 @media (max-width: 860px){
   .seo-shell{padding-top:96px}
   .seo-article{padding:20px 16px}

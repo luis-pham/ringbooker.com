@@ -1,10 +1,12 @@
+import Link from 'next/link';
+
 import { MarketingSeoPage } from '@/components/marketing/marketing-seo-page';
 import { buildMetadata } from '@/lib/site';
 
 const faqs = [
   {
     q: 'What is RingBooker?',
-    a: 'RingBooker is an AI phone answering service for salons, nail shops, spas, med spas, and booking-heavy local service businesses.',
+    a: 'RingBooker is an AI phone answering and call recovery layer for nail salons, hair salons, day spas, med spas, and beauty clinics — built for after-hours calls, peak-hour overflow, missed-call text back, and booking capture on your current number.',
   },
   {
     q: 'Can RingBooker work with my current phone number?',
@@ -44,7 +46,7 @@ const faqs = [
   },
   {
     q: 'What businesses is RingBooker best for?',
-    a: 'RingBooker is best for nail salons, hair salons, spas, med spas, beauty clinics, and other local appointment-based businesses that lose bookings to missed calls.',
+    a: 'RingBooker is best for nail salons, hair salons, day spas, med spas, and beauty or aesthetic clinics — anywhere phone calls still drive bookings, reschedules, and consultation demand, and missed rings mean lost revenue.',
   },
   {
     q: 'How long does setup take?',
@@ -53,9 +55,9 @@ const faqs = [
 ];
 
 export const metadata = buildMetadata({
-  title: 'RingBooker FAQ — AI Phone Answering for Salons',
+  title: 'RingBooker FAQ — Current Number, After-Hours & Missed-Call Recovery',
   description:
-    'Answers to common questions about RingBooker: current-number forwarding, after-hours calls, missed-call recovery, booking tools, Vietnamese support, and human handoff.',
+    'Answers about keeping your current number, after-hours and overflow call answering, missed-call recovery, working alongside Square and other booking tools, Vietnamese support, and human handoff.',
   path: '/faq',
 });
 
@@ -63,18 +65,35 @@ export default function FaqPage() {
   return (
     <MarketingSeoPage
       badge="FAQ"
-      title="RingBooker FAQ"
-      intro="Quick answers for salon and spa owners evaluating AI phone answering, missed-call recovery, current-number forwarding, and booking call automation."
+      title="RingBooker FAQ — Salons, Spas & Clinics"
+      intro="Quick answers for nail salons, hair salons, day spas, med spas, and aesthetic clinics evaluating AI phone answering, missed-call recovery, after-hours and peak-hour overflow coverage, and how RingBooker recovers booking revenue without replacing your booking software."
       sections={[
         {
           heading: 'The short version',
           content: [
-            'RingBooker helps appointment-based businesses stop losing calls to voicemail. It answers after-hours and overflow calls, captures booking intent, sends SMS follow-up, and summarizes calls for your team.',
-            'You can keep your current phone number, keep your existing booking workflow, and use human handoff when the caller needs something complex.',
+            'RingBooker is a call recovery layer for beauty businesses: it answers after-hours and overflow calls, captures booking and consultation intent, sends missed-call text back, and summarizes outcomes for your team — so missed rings are less likely to become lost revenue.',
+            'You keep your current phone number, keep your existing booking workflow, and use human handoff when the caller needs something your rules say a person should handle.',
           ],
         },
       ]}
       faqs={faqs}
+      customContent={
+        <div className="seo-internal-links">
+          <p>
+            <Link href="/how-it-works">How RingBooker works</Link>
+            {' · '}
+            <Link href="/after-hours-calls">After-hours call answering</Link>
+            {' · '}
+            <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
+            {' · '}
+            <Link href="/missed-call-recovery">Missed-call recovery</Link>
+            {' · '}
+            <Link href="/pricing">Pricing</Link>
+            {' · '}
+            <Link href="/contact">Book a demo</Link>
+          </p>
+        </div>
+      }
     />
   );
 }

@@ -114,6 +114,7 @@ export const footerNav = {
     { href: '/pricing', label: 'Pricing' },
     { href: '/how-it-works', label: 'How It Works' },
     { href: '/after-hours-calls', label: 'After-Hours Calls' },
+    { href: '/peak-hour-overflow-calls', label: 'Peak-Hour Overflow' },
     { href: '/missed-call-recovery', label: 'Missed-Call Recovery' },
   ],
   company: [

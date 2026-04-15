@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { MarketingSeoPage } from '@/components/marketing/marketing-seo-page';
 import { buildMetadata } from '@/lib/site';
 
@@ -32,13 +34,13 @@ const serviceJsonLd = {
   },
   areaServed: 'United States',
   description:
-    'AI phone answering service that helps nail salons, hair salons, spas, and med spas answer after-hours and weekend calls on their current number.',
+    'AI phone answering for nail salons, hair salons, spas, and med spas that captures after-hours booking intent on your current number — voicemail is where revenue leaks.',
 };
 
 export const metadata = buildMetadata({
-  title: 'After-Hours Call Answering for Salons',
+  title: 'After-Hours Call Answering for Salons & Spas — Recover Night & Weekend Bookings',
   description:
-    'RingBooker answers after-hours and weekend calls for salons and spas on your current number, captures booking intent, and texts callers back automatically.',
+    'After-hours calls are still buying signals. RingBooker answers nights and weekends on your current salon or spa number, captures booking intent, and follows up by SMS so revenue does not leak to voicemail.',
   path: '/after-hours-calls',
 });
 
@@ -47,7 +49,7 @@ export default function AfterHoursCallsPage() {
     <MarketingSeoPage
       badge="After-hours calls"
       title="After-Hours Salon Calls Should Not Go to Voicemail"
-      intro="Many booking calls happen when your team is closed, serving a client, or unable to reach the phone. RingBooker gives those callers a helpful answer on the number they already dial."
+      intro="Many booking calls happen when your team is closed, serving a client, or unable to reach the phone. RingBooker answers on the number clients already dial so after-hours intent turns into recovered bookings instead of lost revenue."
       sections={[
         {
           heading: 'Why after-hours calls matter',
@@ -73,6 +75,21 @@ export default function AfterHoursCallsPage() {
       ]}
       faqs={faqs}
       articleJsonLd={serviceJsonLd}
+      customContent={
+        <div className="seo-internal-links">
+          <p>
+            <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
+            {' · '}
+            <Link href="/missed-call-recovery">Missed-call recovery</Link>
+            {' · '}
+            <Link href="/how-it-works">How RingBooker works</Link>
+            {' · '}
+            <Link href="/pricing">Pricing</Link>
+            {' · '}
+            <Link href="/contact">Book a demo</Link>
+          </p>
+        </div>
+      }
     />
   );
 }

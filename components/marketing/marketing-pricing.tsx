@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
@@ -32,6 +34,9 @@ a{text-decoration:none;color:inherit}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hero-copy h1{font-size:clamp(40px,5vw,64px);font-weight:800;line-height:1.04;letter-spacing:-2.2px;margin-bottom:18px}
 .hero-copy p{font-size:17px;color:var(--text-gray);max-width:780px;margin:0 auto 28px;line-height:1.75}
+.pricing-playbook-links{font-size:15px;color:var(--text-gray);max-width:780px;margin:-8px auto 0;line-height:1.75;text-align:center}
+.pricing-playbook-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.pricing-playbook-links a:hover{color:#5b21b6}
 .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
 .btn-dark,.btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:15px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:all .2s}
 .btn-dark{background:var(--text-dark);color:#fff}
@@ -118,6 +123,7 @@ a{text-decoration:none;color:inherit}
   .hero-copy{text-align:left}
   .hero-copy h1{font-size:40px}
   .hero-copy p{margin-left:0;margin-right:0}
+  .pricing-playbook-links{text-align:left;margin-left:0;margin-right:0}
   .hero-actions{justify-content:flex-start}
   .trust-pill{justify-content:flex-start}
   .pt-toggle{width:100%;max-width:380px}
@@ -151,7 +157,7 @@ const scripts: string[] = [
 `,
 ];
 
-export const templateTitle = "RingBooker Pricing";
+export const templateTitle = 'RingBooker Pricing — Call Recovery & Revenue Protection for Salons';
 
 const plans = [
   {
@@ -161,7 +167,7 @@ const plans = [
     description: 'For smaller salons, spas, and clinics that need reliable after-hours and overflow call coverage.',
     priceId: 'pricing-starter-price',
     price: '$79',
-    note: 'Best when you want the core booking recovery layer live quickly.',
+    note: 'Best when you want core after-hours, overflow, and missed-call recovery live quickly.',
     cta: 'Start free trial',
     href: '/user/signup',
     featured: false,
@@ -245,8 +251,8 @@ export function MarketingPricingTemplate() {
             <div className="container">
               <div className="hero-copy">
                 <div className="badge"><span className="pulse-dot" />Pricing for booking call recovery</div>
-                <h1>Plans for recovering more booking calls on your current number.</h1>
-                <p>RingBooker handles after-hours and overflow calls, reschedules, cancellations, and missed-call text back without replacing your booking software. Most businesses keep their current number; a dedicated RingBooker line is optional.</p>
+                <h1>Pricing that backs up missed-call and overflow revenue recovery.</h1>
+                <p>Every plan is built around the same ladder: missed calls → missed bookings → lost revenue. RingBooker answers after-hours and peak overflow, runs missed-call text back, and handles routine reschedules and cancellations — on your current number, without replacing Square, Vagaro, Booksy, or Mindbody.</p>
                 <div className="hero-actions">
                   <a className="btn-demo-live" href="/demo" data-demo-picker>Try a live demo call</a>
                   <a className="btn-trial-soft" href="/user/signup">Start free trial →</a>
@@ -257,6 +263,19 @@ export function MarketingPricingTemplate() {
                   <div className="trust-pill"><span>📅</span> No booking migration</div>
                   <div className="trust-pill"><span>☎️</span> Optional dedicated line</div>
                 </div>
+                <p className="pricing-playbook-links">
+                  <Link href="/how-it-works">How it works</Link>
+                  {' · '}
+                  <Link href="/after-hours-calls">After-hours</Link>
+                  {' · '}
+                  <Link href="/peak-hour-overflow-calls">Peak-hour overflow</Link>
+                  {' · '}
+                  <Link href="/missed-call-recovery">Missed-call recovery</Link>
+                  {' · '}
+                  <Link href="/contact">Book a demo</Link>
+                  {' · '}
+                  <Link href="/faq">FAQ</Link>
+                </p>
               </div>
             </div>
           </section>
@@ -265,7 +284,7 @@ export function MarketingPricingTemplate() {
             <div className="container">
               <div className="sec-label">Plans</div>
               <h2 className="sec-title">Choose the right level of call recovery.</h2>
-              <p className="sec-sub">Starter covers the core missed-call problem. Professional adds more context and follow-up. Custom is for complex routing, higher volume, and multi-location rollouts.</p>
+              <p className="sec-sub">Starter protects revenue from the most common leaks: after-hours, overflow, and silent hang-ups. Professional adds caller context and stronger follow-up for busier desks. Custom is for complex routing, higher volume, and multi-location rollouts.</p>
               <div className="pt-toggle">
                 <button className="pt-btn on" id="pricing-tog-m" type="button">Monthly</button>
                 <button className="pt-btn" id="pricing-tog-a" type="button">Annual</button>
@@ -315,7 +334,7 @@ export function MarketingPricingTemplate() {
             <div className="container">
               <div className="sec-label">Every plan</div>
               <h2 className="sec-title">What RingBooker handles in every plan.</h2>
-              <p className="sec-sub">The core product stays focused: recover phone demand that would otherwise become voicemail, abandoned calls, or missed booking opportunities.</p>
+              <p className="sec-sub">The product stays focused on beauty-industry phone behavior: turn more rings into recovered bookings and fewer dead-end voicemails — without asking you to replace your calendar stack.</p>
               <div className="feature-grid">
                 {everyPlanFeatures.map(([icon, title, body]) => (
                   <div className="feature-card" key={title}><div className="feature-icon">{icon}</div><h3>{title}</h3><p>{body}</p></div>
@@ -397,7 +416,7 @@ export function MarketingPricingTemplate() {
                 <div className="faq-card"><h3>Which plan is right for me?</h3><p>Start with Starter if your main issue is missed after-hours or overflow calls. Choose Professional if you need stronger follow-up, caller context, and provider continuity.</p></div>
                 <div className="faq-card"><h3>Can it handle reschedules and cancellations?</h3><p>Yes, for routine cases. RingBooker can understand the request, capture context, confirm next steps, and escalate edge cases when a person should step in.</p></div>
                 <div className="faq-card"><h3>What happens when a caller needs a real person?</h3><p>RingBooker keeps a human path clear and can hand off the context so your team does not have to restart the conversation.</p></div>
-                <div className="faq-card"><h3>Is this just a generic AI receptionist?</h3><p>No. RingBooker is positioned for beauty and wellness phone booking recovery: salons, spas, med spas, clinics, and appointment-heavy teams.</p></div>
+                <div className="faq-card"><h3>Is this a generic AI receptionist for any business?</h3><p>No. RingBooker is AI phone answering and call recovery for nail salons, hair salons, day spas, med spas, and beauty clinics — after-hours intent, overflow, consult calls, and missed-call follow-up, not a broad SMB chatbot.</p></div>
               </div>
             </div>
           </section>
@@ -407,7 +426,7 @@ export function MarketingPricingTemplate() {
               <div className="cta-box">
                 <div>
                   <h2>Stop letting booking calls leak after hours or during busy windows.</h2>
-                  <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that helps recover missed demand.</p>
+                  <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that turns more calls into recovered bookings and protected revenue.</p>
                 </div>
                 <div className="cta-actions">
                   <a className="btn-demo-live" href="/demo" data-demo-picker>Try a live demo call</a>
