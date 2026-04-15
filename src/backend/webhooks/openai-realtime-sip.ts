@@ -144,7 +144,11 @@ export async function handleOpenAiRealtimeSipWebhook(
   const sipTo = extractSipHeader(data.sip_headers, 'To');
   const sipFrom = extractSipHeader(data.sip_headers, 'From');
   const didMap = parseOpenAiSipDidMapJson(env.OPENAI_SIP_DEMO_DID_MAP_JSON);
-  const didCtx = resolveOpenAiSipDidContext({ map: didMap, sipToValue: sipTo });
+  const didCtx = resolveOpenAiSipDidContext({
+    map: didMap,
+    sipToValue: sipTo,
+    openAiRealtimeProjectId: env.OPENAI_REALTIME_PROJECT_ID,
+  });
 
   const fetchImpl = deps.fetchImpl ?? fetch;
   const apiKey = env.OPENAI_API_KEY?.trim();

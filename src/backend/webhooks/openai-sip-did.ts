@@ -76,11 +76,42 @@ export function parseOpenAiSipDidMapJson(json: string | undefined): Map<string, 
   return out;
 }
 
+/**
+ * When Telnyx TeXML `<Dial><Sip>sip:proj_…@sip.api.openai.com</Sip></Dial>` is used, OpenAI's
+ * `realtime.call.incoming` webhook puts that URI in `To`, not the PSTN DID. Extract `proj_…` user part.
+ */
+export function parseOpenAiProjectUserFromSipTo(sipToValue: string | null | undefined): string | null {
+  if (!sipToValue?.trim()) return null;
+  const m = sipToValue.trim().match(/sip:([^@;>\s]+)@sip\.api\.openai\.com/i);
+  const user = m?.[1]?.replace(/^["']|["']$/g, '') ?? '';
+  if (!user.startsWith('proj_')) return null;
+  return user;
+}
+
+function normalizeConfiguredOpenAiProjectId(raw: string | null | undefined): string | null {
+  const t = raw?.trim();
+  if (!t) return null;
+  return t.startsWith('proj_') ? t : `proj_${t}`;
+}
+
 export function resolveOpenAiSipDidContext(params: {
   map: Map<string, OpenAiSipDidContext>;
   sipToValue: string | null;
+  /** Must match `To` user when using TeXML → OpenAI SIP (see `parseOpenAiProjectUserFromSipTo`). */
+  openAiRealtimeProjectId?: string | null;
 }): OpenAiSipDidContext | null {
   const e164 = params.sipToValue ? normalizeE164FromSipUri(params.sipToValue) : null;
-  if (!e164) return null;
-  return params.map.get(e164) ?? null;
+  if (e164) {
+    const byPhone = params.map.get(e164);
+    if (byPhone) return byPhone;
+  }
+
+  const sipUser = parseOpenAiProjectUserFromSipTo(params.sipToValue);
+  const configured = normalizeConfiguredOpenAiProjectId(params.openAiRealtimeProjectId ?? undefined);
+  if (sipUser && configured && sipUser === configured && params.map.size > 0) {
+    const first = params.map.values().next().value;
+    return first ?? null;
+  }
+
+  return null;
 }
