@@ -269,6 +269,8 @@ export const RATE_LIMIT_POLICIES = {
   webhook_paddle: { name: 'webhook_paddle', limit: 120, windowMs: 60_000 },
   /** OpenAI Standard Webhooks (Realtime SIP + other project events) */
   webhook_openai: { name: 'webhook_openai', limit: 240, windowMs: 60_000 },
+  /** Telnyx TeXML Voice URL → OpenAI SIP dial (isolated from JSON `webhooks/telnyx`). */
+  texml_telnyx_openai_inbound: { name: 'texml_telnyx_openai_inbound', limit: 180, windowMs: 60_000 },
   /** Save demo form context for inbound SIP pilot (no telephony). */
   public_demo_sip_prep: { name: 'public_demo_sip_prep', limit: 8, windowMs: 15 * 60_000, blockMs: 60 * 60_000 },
   /** Burst control per OpenAI `call_id` on SIP webhook path */

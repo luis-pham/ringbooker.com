@@ -61,6 +61,7 @@ import { verifyTurnstileToken } from '@/src/backend/security/turnstile';
 import { handlePaddleWebhook } from '@/src/backend/webhooks/paddle';
 import { handleOpenAiRealtimeSipWebhook } from '@/src/backend/webhooks/openai-realtime-sip';
 import { handleTelnyxWebhook } from '@/src/backend/webhooks/telnyx';
+import { handleTelnyxTexmlOpenAiInbound } from '@/src/backend/webhooks/telnyx-texml-openai-inbound';
 import {
   encodeSquareConnectionCredentials,
   parseSquareConnectionCredentials,
@@ -1232,6 +1233,11 @@ export function createBackendApp(deps: {
       });
     })(),
   );
+
+  // NEW: Telnyx TeXML inbound (Voice URL) → <Dial><Sip>OPENAI_SIP_URI</Sip></Dial> → OpenAI SIP (see telnyx-texml-openai-inbound.ts).
+  // EXISTING: JSON Telnyx webhooks stay on POST /webhooks/telnyx; OpenAI realtime SIP stays on POST /webhooks/openai.
+  app.post(path('/telnyx/texml/inbound'), (c) => handleTelnyxTexmlOpenAiInbound(c));
+  app.get(path('/telnyx/texml/inbound'), (c) => handleTelnyxTexmlOpenAiInbound(c));
 
   app.post(path('/webhooks/paddle'), (c) =>
     (async () => {

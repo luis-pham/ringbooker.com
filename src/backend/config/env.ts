@@ -86,6 +86,8 @@ function createValidatedEnv() {
       /** JSON array: `[{ "did": "+1…", "vertical": "nail-salon", "defaultShopName": "…" }]` */
       OPENAI_SIP_DEMO_DID_MAP_JSON: z.string().optional(),
       OPENAI_REALTIME_PROJECT_ID: z.string().min(1).optional(),
+      /** Telnyx TeXML: full OpenAI SIP URI for Dial/Sip (see /telnyx/texml/inbound). */
+      OPENAI_SIP_URI: z.string().min(1).optional(),
       /** Optional: force one Realtime voice for all SIP calls. If unset, voice follows marketing vertical. */
       OPENAI_REALTIME_SIP_VOICE: z.string().min(1).optional(),
 

@@ -42,3 +42,4 @@ export * from '@/src/backend/services/email/types';
 export * from '@/src/backend/services/telephony/types';
 export * from '@/src/backend/webhooks/paddle';
 export * from '@/src/backend/webhooks/telnyx';
+export * from '@/src/backend/webhooks/telnyx-texml-openai-inbound';
