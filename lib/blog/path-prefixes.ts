@@ -2,6 +2,7 @@
 
 export const BLOG_PATH_PREFIXES = [
   'blog',
+  'works-with',
   'phone-booking-recovery',
   'current-number',
   'industries',
@@ -18,6 +19,7 @@ export type BlogPathPrefix = (typeof BLOG_PATH_PREFIXES)[number];
 
 export const BLOG_PATH_PREFIX_LABEL: Record<BlogPathPrefix, string> = {
   blog: 'Blog',
+  'works-with': 'Works with',
   'phone-booking-recovery': 'Phone booking recovery',
   'current-number': 'Current number',
   industries: 'Industries (general)',
