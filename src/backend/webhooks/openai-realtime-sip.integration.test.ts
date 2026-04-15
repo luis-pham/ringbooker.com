@@ -114,6 +114,6 @@ test('openai SIP webhook dedupes webhook-id and mocks accept', async () => {
   assert.equal(acceptCalls.length, 1);
   assert.ok(acceptCalls[0].body.includes('"type":"realtime"'));
   assert.ok(acceptCalls[0].body.includes('Pilot Nails'));
-  const acceptJson = JSON.parse(acceptCalls[0].body) as { voice?: string };
-  assert.equal(acceptJson.voice, 'shimmer', 'nail-salon DID map → vertical voice');
+  const acceptJson = JSON.parse(acceptCalls[0].body) as { audio?: { output?: { voice?: string } } };
+  assert.equal(acceptJson.audio?.output?.voice, 'shimmer', 'nail-salon DID map → vertical voice');
 });

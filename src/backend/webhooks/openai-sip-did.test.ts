@@ -40,3 +40,17 @@ test('resolveOpenAiSipDidContext matches TeXML OpenAI SIP To using first map ent
   assert.equal(ctx?.vertical, 'hair-salon');
   assert.equal(ctx?.defaultShopName, 'Pilot');
 });
+
+test('resolveOpenAiSipDidContext TeXML match when project id only comes from OPENAI_SIP_URI-style string', () => {
+  const map = parseOpenAiSipDidMapJson(
+    JSON.stringify([{ did: '+10000000000', vertical: 'day-spa', defaultShopName: 'Spa' }]),
+  );
+  const sipUri = 'sip:proj_from_uri_only@sip.api.openai.com;transport=tls';
+  const ctx = resolveOpenAiSipDidContext({
+    map,
+    sipToValue: `<sip:proj_from_uri_only@sip.api.openai.com;transport=tls>;tag=x`,
+    openAiRealtimeProjectId: parseOpenAiProjectUserFromSipTo(sipUri),
+  });
+  assert.ok(ctx);
+  assert.equal(ctx?.vertical, 'day-spa');
+});

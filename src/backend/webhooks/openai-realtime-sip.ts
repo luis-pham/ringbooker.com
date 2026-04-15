@@ -14,6 +14,7 @@ import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-acce
 import {
   extractSipHeader,
   parseE164FromSipValue,
+  parseOpenAiProjectUserFromSipTo,
   parseOpenAiSipDidMapJson,
   resolveOpenAiSipDidContext,
 } from '@/src/backend/webhooks/openai-sip-did';
@@ -144,10 +145,13 @@ export async function handleOpenAiRealtimeSipWebhook(
   const sipTo = extractSipHeader(data.sip_headers, 'To');
   const sipFrom = extractSipHeader(data.sip_headers, 'From');
   const didMap = parseOpenAiSipDidMapJson(env.OPENAI_SIP_DEMO_DID_MAP_JSON);
+  /** TeXML pilots often set `OPENAI_SIP_URI` but omit `OPENAI_REALTIME_PROJECT_ID` — derive proj id from URI. */
+  const openAiProjectIdForDid =
+    env.OPENAI_REALTIME_PROJECT_ID?.trim() || parseOpenAiProjectUserFromSipTo(env.OPENAI_SIP_URI ?? null) || null;
   const didCtx = resolveOpenAiSipDidContext({
     map: didMap,
     sipToValue: sipTo,
-    openAiRealtimeProjectId: env.OPENAI_REALTIME_PROJECT_ID,
+    openAiRealtimeProjectId: openAiProjectIdForDid,
   });
 
   const fetchImpl = deps.fetchImpl ?? fetch;
@@ -166,6 +170,16 @@ export async function handleOpenAiRealtimeSipWebhook(
   }
 
   if (!didCtx) {
+    if (sipTo?.toLowerCase().includes('sip.api.openai.com')) {
+      logger.warn(
+        {
+          mapEntries: didMap.size,
+          projectIdForResolve: openAiProjectIdForDid ?? null,
+          sipToParsedUser: parseOpenAiProjectUserFromSipTo(sipTo),
+        },
+        'openai_sip_unknown_did_texml_debug',
+      );
+    }
     if (apiKey) {
       await rejectCall(603, 'unknown_did');
     }

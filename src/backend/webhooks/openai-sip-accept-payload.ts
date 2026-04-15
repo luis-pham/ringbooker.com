@@ -6,7 +6,12 @@ export type OpenAiRealtimeAcceptBody = {
   type: 'realtime';
   model: string;
   instructions: string;
-  voice?: string;
+  /** Output TTS voice (OpenAI accept-call expects this under `audio.output`, not top-level). */
+  audio?: {
+    output?: {
+      voice?: string;
+    };
+  };
   tools?: Array<{
     type: 'function';
     name: string;
@@ -41,7 +46,11 @@ export function buildOpenAiSipAcceptBody(params: {
     type: 'realtime',
     model: params.model,
     instructions: params.instructions,
-    voice: params.voice,
+    audio: {
+      output: {
+        voice: params.voice,
+      },
+    },
     ...(tools ? { tools } : {}),
   };
 }
