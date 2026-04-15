@@ -101,14 +101,11 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:14px;font-weight:600;color:var(--purple-dark);margin-bottom:28px;backdrop-filter:blur(8px)}
 .pulse-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
-h1.hero-h{font-size:clamp(42px,6vw,68px);font-weight:800;line-height:1.08;letter-spacing:-2.5px;color:var(--text-dark);margin-bottom:20px}
-h1.hero-h .hero-h-line1{display:inline-block;white-space:nowrap;max-width:100%}
-h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--r-pill);padding:2px 22px;margin:0 4px}
-.hero-sub{font-size:17.5px;color:var(--text-gray);line-height:1.72;max-width:540px;margin:0 auto 36px}
-.hero-industry-links{font-size:15px;color:var(--text-gray);max-width:720px;margin:-18px auto 28px;line-height:1.75;text-align:center;padding:0 12px}
-.hero-industry-links .hero-industry-label{color:var(--text-light);font-weight:600;margin-right:6px}
-.hero-industry-links a{color:var(--purple-dark);font-weight:600;text-decoration:none}
-.hero-industry-links a:hover{color:#5b21b6;text-decoration:none}
+h1.hero-h{font-size:clamp(32px,5.2vw,68px);font-weight:800;line-height:1.12;letter-spacing:-2.5px;color:var(--text-dark);margin-bottom:20px;word-break:break-word}
+h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--r-pill);padding:2px 22px;margin:0 4px;max-width:100%;box-sizing:border-box}
+.hero-sub{font-size:17.5px;color:var(--text-gray);line-height:1.72;max-width:min(640px,100%);margin:0 auto 36px;padding:0 12px}
+.hero-sub a.hero-sub-link{color:var(--purple-dark);font-weight:600;text-decoration:none}
+.hero-sub a.hero-sub-link:hover{color:#5b21b6;text-decoration:none}
 	.hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:0}
 	.btn-dark{background:var(--text-dark);color:#fff;padding:14px 30px;border-radius:var(--r-pill);font-size:15px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:10px;transition:transform .15s,background .2s}
 	.btn-dark:hover{background:#1f2937;transform:scale(1.03)}
@@ -906,26 +903,28 @@ export function MarketingHomeTemplate() {
               After-hours &amp; overflow call answering for salons
             </div>
             <h1 className="hero-h">
-              <span className="hero-h-line1">
-                Recover Missed <span className="hl">Bookings</span>
-              </span>
+              Stop Losing <span className="hl">Bookings</span>
               <br />
               on Your Current Number
             </h1>
             <p className="hero-sub">
-              An AI phone agent for salons, spas, med spas, and beauty clinics — built to handle after-hours calls, peak-hour overflow, and missed-call recovery without changing your booking tools.
-            </p>
-            <p className="hero-industry-links">
-              <span className="hero-industry-label">By industry:</span>
-              <Link href="/industries/nail-salon">Nail salon</Link>
-              {' · '}
-              <Link href="/industries/hair-salon">Hair salon</Link>
-              {' · '}
-              <Link href="/industries/spa">Spa / day spa</Link>
-              {' · '}
-              <Link href="/industries/med-spa">Med spa</Link>
-              {' · '}
-              <Link href="/industries/beauty-clinic">Beauty clinic</Link>
+              An AI phone agent for{' '}
+              <Link className="hero-sub-link" href="/industries/hair-salon">
+                salons
+              </Link>
+              ,{' '}
+              <Link className="hero-sub-link" href="/industries/spa">
+                spas
+              </Link>
+              ,{' '}
+              <Link className="hero-sub-link" href="/industries/med-spa">
+                med spas
+              </Link>
+              , and{' '}
+              <Link className="hero-sub-link" href="/industries/beauty-clinic">
+                beauty clinics
+              </Link>{' '}
+              — built for after-hours calls, peak-hour overflow, and missed-call recovery. Works with your booking tools.
             </p>
             <div className="hero-btns">
               <a href="/demo" className="btn-hero-live" data-demo-picker>
