@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
@@ -69,9 +67,6 @@ a{text-decoration:none;color:inherit}
 @keyframes hiwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hiw-hero h1{font-size:clamp(40px,5vw,62px);font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:18px}
 .hiw-hero p{font-size:17px;color:var(--text-gray);max-width:650px;margin-bottom:26px;line-height:1.75}
-.hiw-playbook-links{font-size:15px;color:var(--text-gray);max-width:1100px;margin:8px auto 0;padding:0 48px;line-height:1.75;text-align:center}
-.hiw-playbook-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.hiw-playbook-links a:hover{color:#5b21b6}
 .hiw-actions{display:flex;gap:12px;flex-wrap:wrap}
 .hiw-btn-dark,.hiw-btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:15px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:all .2s}
 .hiw-btn-dark{background:var(--text-dark);color:#fff}
@@ -160,7 +155,6 @@ a{text-decoration:none;color:inherit}
 .legacy-marketing > .topbar{display:none !important}
 @media(max-width:960px){
   .hiw-hero,.hiw-section,.hiw-cta{padding-left:22px;padding-right:22px}
-  .hiw-playbook-links{padding-left:22px;padding-right:22px}
   .hiw-hero-grid,.hiw-grid-2,.hiw-grid-3,.hiw-handle-grid,.hiw-no-replace,.hiw-experience,.hiw-cta-box{grid-template-columns:1fr}
   .hiw-hero{padding-top:104px}
   .hiw-summary{padding:22px}
@@ -170,7 +164,6 @@ a{text-decoration:none;color:inherit}
 @media(max-width:640px){
   .hiw-hero{padding-bottom:46px}
   .hiw-hero h1{font-size:38px}
-  .hiw-playbook-links{padding-left:22px;padding-right:22px;font-size:14px}
   .hiw-actions,.hiw-cta .hiw-actions{flex-direction:column;align-items:stretch}
   .hiw-btn-dark,.hiw-btn-outline{width:100%}
   .hiw-section{padding-top:68px;padding-bottom:68px}
@@ -221,19 +214,6 @@ export function MarketingHowItWorksTemplate() {
                 </div>
               </aside>
             </div>
-            <p className="hiw-playbook-links">
-              <Link href="/after-hours-calls">After-hours call answering</Link>
-              {' · '}
-              <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
-              {' · '}
-              <Link href="/missed-call-recovery">Missed-call recovery</Link>
-              {' · '}
-              <Link href="/pricing">Pricing</Link>
-              {' · '}
-              <Link href="/faq">FAQ</Link>
-              {' · '}
-              <Link href="/contact">Book a demo</Link>
-            </p>
           </section>
 
           <section className="hiw-section">

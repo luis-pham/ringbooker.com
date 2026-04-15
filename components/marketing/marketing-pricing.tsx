@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
@@ -34,9 +32,6 @@ a{text-decoration:none;color:inherit}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hero-copy h1{font-size:clamp(40px,5vw,64px);font-weight:800;line-height:1.04;letter-spacing:-2.2px;margin-bottom:18px}
 .hero-copy p{font-size:17px;color:var(--text-gray);max-width:780px;margin:0 auto 28px;line-height:1.75}
-.pricing-playbook-links{font-size:15px;color:var(--text-gray);max-width:780px;margin:-8px auto 0;line-height:1.75;text-align:center}
-.pricing-playbook-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.pricing-playbook-links a:hover{color:#5b21b6}
 .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:24px}
 .btn-dark,.btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:15px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:all .2s}
 .btn-dark{background:var(--text-dark);color:#fff}
@@ -123,7 +118,6 @@ a{text-decoration:none;color:inherit}
   .hero-copy{text-align:left}
   .hero-copy h1{font-size:40px}
   .hero-copy p{margin-left:0;margin-right:0}
-  .pricing-playbook-links{text-align:left;margin-left:0;margin-right:0}
   .hero-actions{justify-content:flex-start}
   .trust-pill{justify-content:flex-start}
   .pt-toggle{width:100%;max-width:380px}
@@ -266,19 +260,6 @@ export function MarketingPricingTemplate() {
                   <div className="trust-pill"><span>📅</span> No booking migration</div>
                   <div className="trust-pill"><span>☎️</span> Optional dedicated line</div>
                 </div>
-                <p className="pricing-playbook-links">
-                  <Link href="/how-it-works">How it works</Link>
-                  {' · '}
-                  <Link href="/after-hours-calls">After-hours call answering</Link>
-                  {' · '}
-                  <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
-                  {' · '}
-                  <Link href="/missed-call-recovery">Missed-call recovery</Link>
-                  {' · '}
-                  <Link href="/contact">Book a demo</Link>
-                  {' · '}
-                  <Link href="/faq">FAQ</Link>
-                </p>
               </div>
             </div>
           </section>

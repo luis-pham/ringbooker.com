@@ -1068,10 +1068,9 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
 
 // ─── PAGE ASSEMBLY ─────────────────────────────────────────────────────────────
 
-const ALL_VERTICALS: MarketingVerticalKey[] = ['nail-salon', 'hair-salon', 'spa', 'med-spa', 'beauty-clinic'];
-
-function VerticalRelatedPlaybooks({ vertical }: { vertical: MarketingVerticalKey }) {
-  const otherVerticals = ALL_VERTICALS.filter((v) => v !== vertical);
+function VerticalRelatedPlaybooks() {
+  const linkClass =
+    'font-semibold text-violet-700 no-underline decoration-transparent hover:text-violet-900 hover:no-underline';
   return (
     <section
       aria-label="Related call recovery guides"
@@ -1079,52 +1078,33 @@ function VerticalRelatedPlaybooks({ vertical }: { vertical: MarketingVerticalKey
     >
       <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">Playbooks</p>
       <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
-        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/after-hours-calls">
+        <Link className={linkClass} href="/after-hours-calls">
           After-hours call answering
         </Link>
         {' · '}
-        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/peak-hour-overflow-calls">
+        <Link className={linkClass} href="/peak-hour-overflow-calls">
           Peak-hour overflow coverage
         </Link>
         {' · '}
-        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/missed-call-recovery">
+        <Link className={linkClass} href="/missed-call-recovery">
           Missed-call recovery
         </Link>
         {' · '}
-        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/how-it-works">
+        <Link className={linkClass} href="/how-it-works">
           How it works
         </Link>
         {' · '}
-        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/pricing">
+        <Link className={linkClass} href="/pricing">
           Pricing
         </Link>
         {' · '}
-        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/faq">
+        <Link className={linkClass} href="/faq">
           FAQ
         </Link>
         {' · '}
-        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/contact">
+        <Link className={linkClass} href="/contact">
           Book a demo
         </Link>
-      </p>
-      <p className="mt-4 text-[14px] leading-relaxed text-slate-500">
-        More verticals:{' '}
-        {otherVerticals.map((v, i) => (
-          <span key={v}>
-            {i > 0 ? ' · ' : null}
-            <Link className="font-medium text-slate-700 underline decoration-slate-300 underline-offset-4 hover:text-violet-800" href={`/industries/${v}`}>
-              {v === 'nail-salon'
-                ? 'Nail salon'
-                : v === 'hair-salon'
-                  ? 'Hair salon'
-                  : v === 'spa'
-                    ? 'Spa / day spa'
-                    : v === 'med-spa'
-                      ? 'Med spa'
-                      : 'Beauty clinic'}
-            </Link>
-          </span>
-        ))}
       </p>
     </section>
   );
@@ -1213,7 +1193,7 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
       <main className={`${theme.pageShellBg} pb-16 pt-28`}>
         <PageBody vertical={vertical} />
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <VerticalRelatedPlaybooks vertical={vertical} />
+          <VerticalRelatedPlaybooks />
         </div>
         <Faq accentClass={theme.accentClass} items={faq} />
         <FinalCta

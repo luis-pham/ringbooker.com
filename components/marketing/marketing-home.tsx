@@ -104,6 +104,10 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 h1.hero-h{font-size:clamp(42px,6vw,68px);font-weight:800;line-height:1.08;letter-spacing:-2.5px;color:var(--text-dark);margin-bottom:20px}
 h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--r-pill);padding:2px 22px;margin:0 4px}
 .hero-sub{font-size:17.5px;color:var(--text-gray);line-height:1.72;max-width:540px;margin:0 auto 36px}
+.hero-industry-links{font-size:15px;color:var(--text-gray);max-width:720px;margin:-18px auto 28px;line-height:1.75;text-align:center;padding:0 12px}
+.hero-industry-links .hero-industry-label{color:var(--text-light);font-weight:600;margin-right:6px}
+.hero-industry-links a{color:var(--purple-dark);font-weight:600;text-decoration:none}
+.hero-industry-links a:hover{color:#5b21b6;text-decoration:none}
 	.hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:0}
 	.btn-dark{background:var(--text-dark);color:#fff;padding:14px 30px;border-radius:var(--r-pill);font-size:15px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:10px;transition:transform .15s,background .2s}
 	.btn-dark:hover{background:#1f2937;transform:scale(1.03)}
@@ -244,14 +248,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .sec-title{font-size:clamp(32px,4vw,48px);font-weight:800;line-height:1.12;letter-spacing:-1.6px;text-align:center;margin-bottom:14px}
 .sec-title-air{margin-bottom:60px}
 .sec-sub{font-size:16px;color:var(--text-gray);text-align:center;margin-bottom:52px;line-height:1.65}
-.home-seo-links{font-size:15px;color:var(--text-gray);text-align:center;margin:-38px auto 48px;line-height:1.75;max-width:720px;padding:0 12px}
-.home-seo-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.home-seo-links a:hover{color:#5b21b6}
-.hero-inline-links{font-size:15px;color:var(--text-gray);max-width:720px;margin:-22px auto 0;line-height:1.75;text-align:center;padding:0 12px}
-.hero-inline-links+.hero-inline-links{margin-top:10px;margin-bottom:36px}
-.hero-inline-links .hero-inline-label{color:var(--text-light);font-weight:600;margin-right:4px}
-.hero-inline-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.hero-inline-links a:hover{color:#5b21b6}
 .emphasis-5min{color:var(--purple-dark);font-weight:800}
 
 /* ─── FEATURES GRID ─── */
@@ -908,31 +904,12 @@ export function MarketingHomeTemplate() {
               <span className="pulse-dot" />
               After-hours &amp; overflow call answering for salons
             </div>
-            <h1 className="hero-h">
-              Recover Missed <span className="hl">Bookings</span>
-              <br />
-              on Your Current Number
-            </h1>
+            <h1 className="hero-h">Recover Missed Bookings on Your Current Number</h1>
             <p className="hero-sub">
-              RingBooker is an AI phone agent for nail salons, hair salons, day spas, med spas, and beauty clinics — it answers after-hours and peak-hour overflow calls, runs missed-call text back, and helps protect revenue without replacing your booking tools. Same number. No new booking system.
+              RingBooker is an AI phone agent for salons, spas, med spas, and beauty clinics. It answers after-hours and peak-hour calls, texts missed callers back, and helps protect revenue without changing your booking system.
             </p>
-            <p className="hero-inline-links">
-              <Link href="/pricing">Pricing</Link>
-              {' · '}
-              <Link href="/how-it-works">How it works</Link>
-              {' · '}
-              <Link href="/after-hours-calls">After-hours call answering</Link>
-              {' · '}
-              <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
-              {' · '}
-              <Link href="/missed-call-recovery">Missed-call recovery</Link>
-              {' · '}
-              <Link href="/contact">Book a demo</Link>
-              {' · '}
-              <Link href="/faq">FAQ</Link>
-            </p>
-            <p className="hero-inline-links">
-              <span className="hero-inline-label">By industry:</span>{' '}
+            <p className="hero-industry-links">
+              <span className="hero-industry-label">By industry:</span>
               <Link href="/industries/nail-salon">Nail salon</Link>
               {' · '}
               <Link href="/industries/hair-salon">Hair salon</Link>
@@ -1049,18 +1026,6 @@ export function MarketingHomeTemplate() {
             <div className="sec-label">Missed-Call Recovery</div>
             <h2 className="sec-title reveal">Your team is great. But your phone is leaking bookings every day.</h2>
             <p className="sec-sub reveal">RingBooker covers the moments your front desk cannot: after hours, during services, at lunch, on weekends, and when two callers ring at once.</p>
-            <p className="home-seo-links reveal">
-              See how we protect revenue in each scenario:{' '}
-              <Link href="/after-hours-calls">after-hours calls</Link>,{' '}
-              <Link href="/peak-hour-overflow-calls">peak-hour overflow</Link>, and{' '}
-              <Link href="/missed-call-recovery">missed-call recovery</Link>
-              {' — '}
-              <Link href="/how-it-works">how it works on your current number</Link>
-              {' · '}
-              <Link href="/pricing">pricing</Link>
-              {' · '}
-              <Link href="/contact">book a demo</Link>
-            </p>
             <div className="leak-grid">
               {[
                 ['💅', 'Your team is with a client', 'RingBooker answers without forcing your staff to pause a manicure, color service, treatment, or consultation.'],
