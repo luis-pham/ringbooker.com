@@ -910,7 +910,7 @@ export function MarketingHomeTemplate() {
               on Your Current Number
             </h1>
             <p className="hero-sub">
-              RingBooker is an AI phone agent for salons, spas, med spas, and beauty clinics. It answers after-hours and peak-hour calls, texts missed callers back, and helps protect revenue without changing your booking system.
+              An AI phone agent for salons, spas, med spas, and beauty clinics — built to handle after-hours calls, peak-hour overflow, and missed-call recovery without changing your booking tools.
             </p>
             <p className="hero-industry-links">
               <span className="hero-industry-label">By industry:</span>
