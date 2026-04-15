@@ -38,9 +38,9 @@ const serviceJsonLd = {
 };
 
 export const metadata = buildMetadata({
-  title: 'Missed-Call Recovery for Salons & Spas — Text Back & Booking Capture',
+  title: 'Missed Call Recovery for Salons & Spas | Turn Lost Calls into Recovered Revenue',
   description:
-    'Most missed callers never leave voicemail. RingBooker combines missed-call text back, callback workflows, and summaries so nail salons, spas, and clinics recover booking revenue on their current number.',
+    'RingBooker helps salons and spas turn missed calls into recovered bookings with AI phone answering, missed-call text back, and fast callback workflows.',
   path: '/missed-call-recovery',
 });
 
@@ -48,8 +48,8 @@ export default function MissedCallRecoveryPage() {
   return (
     <MarketingSeoPage
       badge="Missed-call recovery"
-      title="Recover Booking Calls That Would Have Gone Silent"
-      intro="Most missed callers do not leave a useful voicemail. RingBooker helps beauty businesses turn missed rings into recovered bookings with fast text back, clear next steps, and call summaries your team can act on — still on your current number."
+      title="Every Missed Call Is a Revenue Leak"
+      intro="Most missed callers never leave voicemail — speed matters before they dial a competitor. RingBooker uses missed-call text back, callback paths, and summaries so booking intent is recovered on your current number, not lost in a silent hang-up."
       sections={[
         {
           heading: 'The missed-call problem',
@@ -87,6 +87,16 @@ export default function MissedCallRecoveryPage() {
             <Link href="/pricing">Pricing</Link>
             {' · '}
             <Link href="/contact">Book a demo</Link>
+            {' · '}
+            <Link href="/industries/nail-salon">Nail salon</Link>
+            {' · '}
+            <Link href="/industries/hair-salon">Hair salon</Link>
+            {' · '}
+            <Link href="/industries/spa">Spa</Link>
+            {' · '}
+            <Link href="/industries/med-spa">Med spa</Link>
+            {' · '}
+            <Link href="/industries/beauty-clinic">Beauty clinic</Link>
           </p>
         </div>
       }

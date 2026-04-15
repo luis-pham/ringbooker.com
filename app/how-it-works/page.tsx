@@ -2,9 +2,9 @@ import { MarketingHowItWorksTemplate } from '@/components/marketing/marketing-ho
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'How RingBooker Works — Current Number, No Booking Software Migration',
+  title: 'How RingBooker Works on Your Current Number | Recover After-Hours and Missed Call Revenue',
   description:
-    'Forward from your existing salon or spa line. RingBooker answers after-hours, peak-hour overflow, and missed-call follow-up while you keep Square, Vagaro, or Booksy — no migration.',
+    'See how RingBooker answers after-hours calls, covers peak-hour overflow, texts missed callers back, and helps salons recover revenue without changing their phone number or booking system.',
   path: '/how-it-works',
 });
 

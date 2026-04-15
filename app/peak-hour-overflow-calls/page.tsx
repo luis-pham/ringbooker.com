@@ -37,9 +37,9 @@ const serviceJsonLd = {
 };
 
 export const metadata = buildMetadata({
-  title: 'Peak-Hour & Overflow Call Answering for Salons & Spas',
+  title: 'Peak-Hour Call Answering for Salons | Stop Overflow Calls from Becoming Lost Revenue',
   description:
-    'When the front desk is slammed, second callers still need an answer. RingBooker handles peak-hour overflow on your current number so busy signals do not become lost bookings.',
+    'When your front desk is busy with clients, RingBooker answers overflow calls, captures booking intent, and helps salons recover revenue lost during peak service hours.',
   path: '/peak-hour-overflow-calls',
 });
 
@@ -47,8 +47,8 @@ export default function PeakHourOverflowCallsPage() {
   return (
     <MarketingSeoPage
       badge="Peak-hour overflow"
-      title="Peak-Hour Overflow Calls Are Booking Calls Too"
-      intro="When every stylist or tech is with a client, the phone still rings — often twice at once. RingBooker gives overflow callers a real response on your current number so peak demand does not leak revenue."
+      title="Peak Hours Are When Salons Lose the Most Phone Revenue"
+      intro="Technicians and stylists cannot always pick up; the second caller often gets a busy line or endless ring. RingBooker acts as overflow coverage on your current number so peak-hour calls are less likely to become missed bookings and lost revenue."
       sections={[
         {
           heading: 'Why overflow is a revenue problem',
@@ -83,6 +83,8 @@ export default function PeakHourOverflowCallsPage() {
       customContent={
         <div className="seo-internal-links">
           <p>
+            <Link href="/">Home</Link>
+            {' · '}
             <Link href="/after-hours-calls">After-hours call answering</Link>
             {' · '}
             <Link href="/missed-call-recovery">Missed-call recovery</Link>

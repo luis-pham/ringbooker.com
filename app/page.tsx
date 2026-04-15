@@ -2,9 +2,9 @@ import { MarketingHomeTemplate } from '@/components/marketing/marketing-home';
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'RingBooker | Missed-Call & After-Hours Booking Recovery for Salons & Spas',
+  title: 'AI Phone Answering for Salons, Spas & Clinics | Recover Missed Bookings & Revenue',
   description:
-    'Missed calls become missed bookings and lost revenue. RingBooker answers after-hours, peak-hour overflow, and second-line calls on your current number — no new booking software. 14-day free trial.',
+    'RingBooker helps salons, spas, med spas, and clinics recover missed bookings, answer after-hours and peak-hour calls, and protect revenue on their current number without changing booking software.',
   path: '/',
 });
 

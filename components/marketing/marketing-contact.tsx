@@ -238,7 +238,7 @@ const scripts: string[] = [
 `,
 ];
 
-export const templateTitle = 'Book a Demo — See Missed-Call & Booking Recovery on Your Line';
+export const templateTitle = 'Book a RingBooker Demo | See How to Recover Missed Bookings and Revenue';
 
 export function MarketingContactTemplate() {
   return (
@@ -259,7 +259,7 @@ export function MarketingContactTemplate() {
               <div className="contact-grid">
                 <div className="hero-copy">
                   <div className="badge"><span className="pulse-dot" />Book a RingBooker demo</div>
-                  <h1>Book a demo: see missed-call and booking recovery on your current number.</h1>
+                  <h1>See How RingBooker Stops Booking Revenue from Leaking</h1>
                   <p>Tell us how calls behave today — after-hours rings, busy Saturday overflow, consult inquiries, reschedules — and we’ll walk through how RingBooker captures that demand without changing your booking system.</p>
                   <div className="trust-list">
                     <div className="trust-item"><div className="trust-icon">🏪</div><div><strong>Works with your current number</strong><span>Forward the line clients already dial; a dedicated RingBooker number stays optional.</span></div></div>

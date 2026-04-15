@@ -65,7 +65,7 @@ const softwareJsonLd = {
     priceCurrency: 'USD',
   },
   description:
-    'AI phone answering and call recovery for nail salons, hair salons, spas, and med spas: after-hours and peak-hour overflow coverage, missed-call text back, and booking capture on your current number — no new booking system.',
+    'AI phone answering and booking recovery for salons, spas, med spas, and clinics: after-hours and peak-hour overflow, missed-call text back, and protected revenue on your current number — no booking software migration.',
 };
 
 const styles: string[] = [
@@ -247,7 +247,9 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .home-seo-links{font-size:15px;color:var(--text-gray);text-align:center;margin:-38px auto 48px;line-height:1.75;max-width:720px;padding:0 12px}
 .home-seo-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
 .home-seo-links a:hover{color:#5b21b6}
-.hero-inline-links{font-size:15px;color:var(--text-gray);max-width:640px;margin:-22px auto 36px;line-height:1.75;text-align:center;padding:0 12px}
+.hero-inline-links{font-size:15px;color:var(--text-gray);max-width:720px;margin:-22px auto 0;line-height:1.75;text-align:center;padding:0 12px}
+.hero-inline-links+.hero-inline-links{margin-top:10px;margin-bottom:36px}
+.hero-inline-links .hero-inline-label{color:var(--text-light);font-weight:600;margin-right:4px}
 .hero-inline-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
 .hero-inline-links a:hover{color:#5b21b6}
 .emphasis-5min{color:var(--purple-dark);font-weight:800}
@@ -883,7 +885,8 @@ setPriceSafe('monthly')
 `,
 ];
 
-export const templateTitle = 'RingBooker | Missed-Call & After-Hours Booking Recovery for Salons & Spas';
+export const templateTitle =
+  'AI Phone Answering for Salons, Spas & Clinics | Recover Missed Bookings & Revenue';
 
 export function MarketingHomeTemplate() {
   return (
@@ -905,18 +908,40 @@ export function MarketingHomeTemplate() {
               <span className="pulse-dot" />
               After-hours &amp; overflow call answering for salons
             </div>
-            <h1 className="hero-h">Never Miss a<br /><span className="hl">Booking Call</span> on Your Current Number.</h1>
-            <p className="hero-sub">RingBooker answers after-hours and overflow calls for nail salons, hair salons, spas, and clinics — recovering missed bookings, handling reschedules, and texting callers back. No new number. No new software.</p>
+            <h1 className="hero-h">
+              Recover Missed <span className="hl">Bookings</span>
+              <br />
+              on Your Current Number
+            </h1>
+            <p className="hero-sub">
+              RingBooker is an AI phone agent for nail salons, hair salons, day spas, med spas, and beauty clinics — it answers after-hours and peak-hour overflow calls, runs missed-call text back, and helps protect revenue without replacing your booking tools. Same number. No new booking system.
+            </p>
             <p className="hero-inline-links">
+              <Link href="/pricing">Pricing</Link>
+              {' · '}
+              <Link href="/how-it-works">How it works</Link>
+              {' · '}
               <Link href="/after-hours-calls">After-hours call answering</Link>
               {' · '}
               <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
               {' · '}
               <Link href="/missed-call-recovery">Missed-call recovery</Link>
               {' · '}
-              <Link href="/how-it-works">How it works</Link>
+              <Link href="/contact">Book a demo</Link>
               {' · '}
-              <Link href="/pricing">Pricing</Link>
+              <Link href="/faq">FAQ</Link>
+            </p>
+            <p className="hero-inline-links">
+              <span className="hero-inline-label">By industry:</span>{' '}
+              <Link href="/industries/nail-salon">Nail salon</Link>
+              {' · '}
+              <Link href="/industries/hair-salon">Hair salon</Link>
+              {' · '}
+              <Link href="/industries/spa">Spa / day spa</Link>
+              {' · '}
+              <Link href="/industries/med-spa">Med spa</Link>
+              {' · '}
+              <Link href="/industries/beauty-clinic">Beauty clinic</Link>
             </p>
             <div className="hero-btns">
               <a href="/demo" className="btn-hero-live" data-demo-picker>

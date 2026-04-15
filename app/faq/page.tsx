@@ -52,12 +52,20 @@ const faqs = [
     q: 'How long does setup take?',
     a: 'The goal is a quick setup: add your services, hours, rules, and phone forwarding, then test the live call flow before using it with customers.',
   },
+  {
+    q: 'How does RingBooker help recover lost bookings?',
+    a: 'It answers or follows up on calls that would otherwise hit voicemail or busy signals: after-hours intent, peak-hour overflow, and missed-call text back keep the conversation moving so callers are less likely to book elsewhere.',
+  },
+  {
+    q: 'How does RingBooker help protect revenue?',
+    a: 'By reducing the gap between a ringing phone and a captured booking or consult: summaries and SMS give your team actionable next steps, so high-intent callers are less likely to become silent hang-ups and lost revenue.',
+  },
 ];
 
 export const metadata = buildMetadata({
-  title: 'RingBooker FAQ — Current Number, After-Hours & Missed-Call Recovery',
+  title: 'Salon AI Phone Answering FAQ | Current Number, Missed Calls, After-Hours & Revenue Recovery',
   description:
-    'Answers about keeping your current number, after-hours and overflow call answering, missed-call recovery, working alongside Square and other booking tools, Vietnamese support, and human handoff.',
+    'Answers to common questions about using RingBooker with your current number, covering after-hours calls, peak-hour overflow, missed-call recovery, and salon revenue protection.',
   path: '/faq',
 });
 
@@ -65,7 +73,7 @@ export default function FaqPage() {
   return (
     <MarketingSeoPage
       badge="FAQ"
-      title="RingBooker FAQ — Salons, Spas & Clinics"
+      title="Questions Salon Owners Ask Before Replacing Voicemail"
       intro="Quick answers for nail salons, hair salons, day spas, med spas, and aesthetic clinics evaluating AI phone answering, missed-call recovery, after-hours and peak-hour overflow coverage, and how RingBooker recovers booking revenue without replacing your booking software."
       sections={[
         {

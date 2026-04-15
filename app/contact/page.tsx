@@ -2,9 +2,9 @@ import { MarketingContactTemplate } from '@/components/marketing/marketing-conta
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'Book a Demo — See Missed-Call & Booking Recovery on Your Line',
+  title: 'Book a RingBooker Demo | See How to Recover Missed Bookings and Revenue',
   description:
-    'Book a RingBooker walkthrough for nail salons, hair salons, spas, med spas, and beauty clinics. See how after-hours answering, overflow coverage, and missed-call text back recover revenue on your current number.',
+    'Book a RingBooker demo to see how after-hours answering, peak-hour overflow coverage, and missed-call recovery can protect revenue for your salon, spa, or clinic.',
   path: '/contact',
 });
 

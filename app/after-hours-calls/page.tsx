@@ -38,9 +38,9 @@ const serviceJsonLd = {
 };
 
 export const metadata = buildMetadata({
-  title: 'After-Hours Call Answering for Salons & Spas — Recover Night & Weekend Bookings',
+  title: 'After-Hours Call Answering for Salons | Recover Missed Bookings and Revenue',
   description:
-    'After-hours calls are still buying signals. RingBooker answers nights and weekends on your current salon or spa number, captures booking intent, and follows up by SMS so revenue does not leak to voicemail.',
+    'RingBooker answers salon calls after hours, captures booking intent, and helps recover revenue that would otherwise go to voicemail or competitors.',
   path: '/after-hours-calls',
 });
 
@@ -48,8 +48,8 @@ export default function AfterHoursCallsPage() {
   return (
     <MarketingSeoPage
       badge="After-hours calls"
-      title="After-Hours Salon Calls Should Not Go to Voicemail"
-      intro="Many booking calls happen when your team is closed, serving a client, or unable to reach the phone. RingBooker answers on the number clients already dial so after-hours intent turns into recovered bookings instead of lost revenue."
+      title="After-Hours Calls Are Still Buying Signals"
+      intro="Callers after closing are often ready to book — voicemail trains them to move on. RingBooker answers on your current number, captures intent, and follows up by SMS so after-hours rings are less likely to become missed bookings and revenue leakage."
       sections={[
         {
           heading: 'Why after-hours calls matter',
@@ -87,6 +87,16 @@ export default function AfterHoursCallsPage() {
             <Link href="/pricing">Pricing</Link>
             {' · '}
             <Link href="/contact">Book a demo</Link>
+            {' · '}
+            <Link href="/industries/nail-salon">Nail salon</Link>
+            {' · '}
+            <Link href="/industries/hair-salon">Hair salon</Link>
+            {' · '}
+            <Link href="/industries/spa">Spa</Link>
+            {' · '}
+            <Link href="/industries/med-spa">Med spa</Link>
+            {' · '}
+            <Link href="/industries/beauty-clinic">Beauty clinic</Link>
           </p>
         </div>
       }

@@ -413,7 +413,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             AI phone answering &amp; call recovery for nail salons
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-            AI Phone Answering Service for Nail Salons
+            Nail Salon Calls Get Missed Most During Busy Service Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
             Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won&apos;t wait. RingBooker answers overflow and after-hours calls on your current number, supports English and Vietnamese, and captures booking intent so missed rings don&apos;t become lost revenue.
@@ -519,10 +519,10 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
             Built for Hair Salons
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-            AI Phone Answering Service for Hair Salons
+            Recover Hair Salon Revenue Lost During Services and Peak Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            While your stylists are in-chair, callers asking about color slots, preferred stylists, or reschedules can't get through. RingBooker handles hair salon calls so your team stays focused — and your books stay full.
+            While stylists are cutting or coloring, callers asking for preferred stylists, color slots, extensions, or reschedules cannot always get through. RingBooker handles overflow and after-hours hair salon calls on your current number — no booking migration — so high-value openings are less likely to waste on missed rings.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
@@ -571,7 +571,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '🔄',
             title: 'Cancellations go unrecovered',
-            body: 'When a color appointment cancels with short notice, that slot is hard to fill unless someone can immediately reach the next caller. An AI answering service can capture and route those recovery calls in real time.',
+            body: 'When a color appointment cancels with short notice, that slot is hard to fill unless someone can immediately reach the next caller. RingBooker can capture and route those recovery calls in real time.',
           },
         ]}
       />
@@ -625,7 +625,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
             For Day Spas & Wellness Studios
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-            AI Phone Answering for Day Spas &amp; Wellness Studios
+            After-Hours Spa Calls Should Not Turn Into Lost Revenue
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
             Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking revenue does not leak to voicemail.
@@ -677,7 +677,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '🔁',
             title: 'Package and pricing questions repeat constantly',
-            body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "Do you offer prenatal massage?" An AI answering service handles these instantly, every time.',
+            body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "Do you offer prenatal massage?" RingBooker handles these instantly, every time.',
           },
         ]}
       />
@@ -731,10 +731,10 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
             For Med Spas & Aesthetic Practices
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-            AI Phone Answering Service for Med Spas
+            Every Missed Med Spa Consultation Call Can Mean Lost Revenue
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Every missed consultation call at a med spa is a high-value lead lost. RingBooker captures after-hours and overflow consult calls on your current number, routes inquiry intent, and keeps your pipeline full — without a live receptionist on standby.
+            Consultation-first med spa journeys mean after-hours and peak-hour calls compare providers fast — missed first contact is lost revenue. RingBooker captures overflow and after-hours consult intent on your current number, with no booking migration, and hands off context when a human should close the consult.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
@@ -837,10 +837,10 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
             For Beauty & Aesthetic Clinics
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-            AI Phone Answering for Beauty and Aesthetic Clinics
+            Beauty Clinic Calls Need More Than Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Beauty clinic clients expect a different level of care — consultation-first, provider continuity, and privacy. RingBooker answers calls with the professional tone your clinic brand demands, capturing every booking inquiry and consultation request.
+            Consultation-first journeys, provider continuity, and privacy-conscious phone handling still have to compete with busy desks and after-hours inquiries. RingBooker is an AI phone answering and booking recovery layer on your current number — capturing missed consultation calls and follow-ups so revenue is less likely to leak when no one can pick up.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
@@ -1097,6 +1097,10 @@ function VerticalRelatedPlaybooks({ vertical }: { vertical: MarketingVerticalKey
         {' · '}
         <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/pricing">
           Pricing
+        </Link>
+        {' · '}
+        <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/faq">
+          FAQ
         </Link>
         {' · '}
         <Link className="font-semibold text-violet-700 underline decoration-violet-300 underline-offset-4 hover:text-violet-900" href="/contact">

@@ -180,7 +180,8 @@ a{text-decoration:none;color:inherit}
 
 const scripts: string[] = [];
 
-export const templateTitle = 'How RingBooker Works — Current Number, No Booking Software Migration';
+export const templateTitle =
+  'How RingBooker Works on Your Current Number | Recover After-Hours and Missed Call Revenue';
 
 export function MarketingHowItWorksTemplate() {
   return (
@@ -201,9 +202,9 @@ export function MarketingHowItWorksTemplate() {
             <div className="hiw-container hiw-hero-grid">
               <div>
                 <div className="hiw-badge"><span className="hiw-dot" />How RingBooker works</div>
-                <h1>How RingBooker recovers booking calls on your current number.</h1>
+                <h1>How RingBooker Recovers Lost Bookings Without Changing Your Number</h1>
                 <p>
-                  Missed rings often become missed bookings and lost revenue. RingBooker is an AI phone answering and call recovery layer for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours coverage, peak-hour overflow, missed-call text back, and routine reschedules without replacing your booking software.
+                  Forward from your existing line: RingBooker is a booking recovery layer that answers after-hours calls, covers peak-hour overflow, sends missed-call text back, and captures intent so missed rings are less likely to become lost revenue — without a new booking system and without reprinting your number everywhere.
                 </p>
                 <div className="hiw-actions">
                   <a href="/demo" className="hiw-btn-dark" data-demo-picker>Try a Live Demo Call</a>
@@ -230,6 +231,8 @@ export function MarketingHowItWorksTemplate() {
               <Link href="/pricing">Pricing</Link>
               {' · '}
               <Link href="/faq">FAQ</Link>
+              {' · '}
+              <Link href="/contact">Book a demo</Link>
             </p>
           </section>
 

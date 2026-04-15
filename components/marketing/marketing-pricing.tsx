@@ -157,7 +157,8 @@ const scripts: string[] = [
 `,
 ];
 
-export const templateTitle = 'RingBooker Pricing — Call Recovery & Revenue Protection for Salons';
+export const templateTitle =
+  'Salon Call Recovery Pricing | After-Hours, Peak-Hour & Missed-Call Revenue Protection';
 
 const plans = [
   {
@@ -251,8 +252,10 @@ export function MarketingPricingTemplate() {
             <div className="container">
               <div className="hero-copy">
                 <div className="badge"><span className="pulse-dot" />Pricing for booking call recovery</div>
-                <h1>Pricing that backs up missed-call and overflow revenue recovery.</h1>
-                <p>Every plan is built around the same ladder: missed calls → missed bookings → lost revenue. RingBooker answers after-hours and peak overflow, runs missed-call text back, and handles routine reschedules and cancellations — on your current number, without replacing Square, Vagaro, Booksy, or Mindbody.</p>
+                <h1>Pricing for Missed-Call Recovery and Revenue Protection</h1>
+                <p>
+                  You are not paying for generic AI — you are paying to reduce missed bookings and revenue leakage. Every plan includes the same ladder: missed calls → missed bookings → lost revenue, and RingBooker → recovered bookings → protected revenue. After-hours answering, peak-hour overflow, and missed-call text back stay centered on your current number, with no booking migration.
+                </p>
                 <div className="hero-actions">
                   <a className="btn-demo-live" href="/demo" data-demo-picker>Try a live demo call</a>
                   <a className="btn-trial-soft" href="/user/signup">Start free trial →</a>
@@ -266,9 +269,9 @@ export function MarketingPricingTemplate() {
                 <p className="pricing-playbook-links">
                   <Link href="/how-it-works">How it works</Link>
                   {' · '}
-                  <Link href="/after-hours-calls">After-hours</Link>
+                  <Link href="/after-hours-calls">After-hours call answering</Link>
                   {' · '}
-                  <Link href="/peak-hour-overflow-calls">Peak-hour overflow</Link>
+                  <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
                   {' · '}
                   <Link href="/missed-call-recovery">Missed-call recovery</Link>
                   {' · '}

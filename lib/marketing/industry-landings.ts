@@ -24,29 +24,29 @@ export function marketingSegmentToVertical(segment: string): MarketingVerticalKe
 
 const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; description: string }> = {
   'nail-salon': {
-    title: 'Nail Salon Missed Calls & After-Hours Booking Recovery | RingBooker',
+    title: 'Missed Call Recovery for Nail Salons | After-Hours, Peak-Hour & Revenue Protection',
     description:
-      'Recover nail salon booking calls during services and after hours: peak-hour overflow, same-day walk-ins, pricing questions, reschedules, English + Vietnamese — on your current number, no new booking software.',
+      'RingBooker helps nail salons answer after-hours and peak-hour calls, recover missed bookings, and protect daily revenue on their current business number.',
   },
   'hair-salon': {
-    title: 'Hair Salon Overflow & Reschedule Call Answering | RingBooker',
+    title: 'AI Call Recovery for Hair Salons | Missed Calls, Reschedules & Revenue Protection',
     description:
-      'Protect hair salon revenue when stylists are in-chair: after-hours and overflow call answering, stylist-match and color-slot capture, reschedule handling — same business line, works with your existing booking tools.',
+      'RingBooker helps hair salons handle after-hours inquiries, peak-hour overflow, stylist requests, and missed booking calls without changing their current number.',
   },
   spa: {
-    title: 'Day Spa After-Hours & Overflow Call Answering | RingBooker',
+    title: 'After-Hours Call Answering for Spas | Recover Missed Bookings and Protect Revenue',
     description:
-      'Capture spa booking calls while therapists are in-room: couples and package inquiries, after-hours intent, peak-hour overflow, SMS confirmations — current number, no booking platform migration.',
+      'RingBooker helps spas answer after-hours and overflow calls, capture package and appointment inquiries, and recover revenue from missed booking opportunities.',
   },
   'med-spa': {
-    title: 'Med Spa Consultation Call Recovery & After-Hours Answering | RingBooker',
+    title: 'Missed Call Recovery for Med Spas | Protect High-Value Consultation Revenue',
     description:
-      'Never lose a high-value med spa consult to voicemail: after-hours and overflow answering for Botox, filler, and laser inquiries, no-show reduction context, same number forwarding.',
+      'RingBooker helps med spas answer after-hours and peak-hour consultation calls, recover lost leads, and protect high-value revenue on their current number.',
   },
   'beauty-clinic': {
-    title: 'Beauty Clinic Consultation Call Answering | RingBooker',
+    title: 'AI Phone Answering for Beauty Clinics | Recover Consultation Revenue and Missed Calls',
     description:
-      'Consultation-first phone layer for aesthetic clinics: provider continuity, pre- and post-care questions, after-hours inquiries, missed-call follow-up — on your current clinic number.',
+      'RingBooker helps beauty clinics handle after-hours inquiries, provider requests, and missed consultation calls while protecting revenue on their current number.',
   },
 };
 
