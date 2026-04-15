@@ -102,6 +102,7 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 .pulse-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 h1.hero-h{font-size:clamp(42px,6vw,68px);font-weight:800;line-height:1.08;letter-spacing:-2.5px;color:var(--text-dark);margin-bottom:20px}
+h1.hero-h .hero-h-line1{display:inline-block;white-space:nowrap;max-width:100%}
 h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--r-pill);padding:2px 22px;margin:0 4px}
 .hero-sub{font-size:17.5px;color:var(--text-gray);line-height:1.72;max-width:540px;margin:0 auto 36px}
 .hero-industry-links{font-size:15px;color:var(--text-gray);max-width:720px;margin:-18px auto 28px;line-height:1.75;text-align:center;padding:0 12px}
@@ -905,7 +906,9 @@ export function MarketingHomeTemplate() {
               After-hours &amp; overflow call answering for salons
             </div>
             <h1 className="hero-h">
-              Recover Missed <span className="hl">Bookings</span>
+              <span className="hero-h-line1">
+                Recover Missed <span className="hl">Bookings</span>
+              </span>
               <br />
               on Your Current Number
             </h1>
