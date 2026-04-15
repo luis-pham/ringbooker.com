@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import Script from 'next/script';
 
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
@@ -36,9 +35,6 @@ a{text-decoration:none;color:inherit}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hero-copy h1{font-size:clamp(40px,5vw,62px);font-weight:800;line-height:1.04;letter-spacing:-2px;margin-bottom:18px}
 .hero-copy p{font-size:17px;color:var(--text-gray);max-width:540px;margin-bottom:24px;line-height:1.75}
-.contact-playbook-links{font-size:14.5px;color:var(--text-gray);max-width:540px;margin-top:18px;line-height:1.75}
-.contact-playbook-links a{color:var(--purple-dark);font-weight:600;text-decoration:underline;text-underline-offset:3px}
-.contact-playbook-links a:hover{color:#5b21b6}
 .trust-list{display:grid;gap:12px;margin-top:22px;max-width:520px}
 .trust-item{display:flex;gap:12px;align-items:flex-start;border:1px solid rgba(139,92,246,.13);background:rgba(255,255,255,.72);border-radius:18px;padding:14px 15px;box-shadow:0 10px 28px rgba(17,24,39,.04)}
 .trust-icon{width:36px;height:36px;border-radius:13px;background:var(--purple-ultra);display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -266,18 +262,6 @@ export function MarketingContactTemplate() {
                     <div className="trust-item"><div className="trust-icon">📅</div><div><strong>No new booking software</strong><span>RingBooker is the phone layer alongside Square, Vagaro, Booksy, Mindbody, and your existing workflow.</span></div></div>
                     <div className="trust-item"><div className="trust-icon">💬</div><div><strong>Call recovery, not generic chat</strong><span>After-hours answering, overflow coverage, and missed-call text back tuned for salon and clinic call patterns.</span></div></div>
                   </div>
-                  <p className="contact-playbook-links">
-                    Before we talk:{' '}
-                    <Link href="/how-it-works">How it works</Link>
-                    {' · '}
-                    <Link href="/after-hours-calls">After-hours</Link>
-                    {' · '}
-                    <Link href="/peak-hour-overflow-calls">Peak overflow</Link>
-                    {' · '}
-                    <Link href="/missed-call-recovery">Missed-call recovery</Link>
-                    {' · '}
-                    <Link href="/pricing">Pricing</Link>
-                  </p>
                 </div>
 
                 <div className="formshell" id="book-demo">
