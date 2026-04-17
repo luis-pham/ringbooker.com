@@ -1150,7 +1150,7 @@ export const trustHub: ContentHubPageConfig = {
     },
     {
       kind: 'step_track',
-      html: { section: 'leak', stepsCentered4: true },
+      html: { section: 'leak', stepsCentered4: true, eyebrow: 'Phased Adoption' },
       heading: 'What a low-risk rollout looks like',
       sub: 'You do not have to do everything at once.',
       steps: [

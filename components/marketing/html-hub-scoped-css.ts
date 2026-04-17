@@ -718,6 +718,11 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page .step{position:relative;padding:24px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg)}
 .html-hub-page .step::before{counter-increment:step;content:counter(step);position:absolute;top:-14px;left:20px;background:var(--purple);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+/* Center step number badge on top of each card (works-with Getting Started, trust rollout, etc.) */
+.html-hub-page .steps.steps--centered-4 .step::before{
+  left:50%;
+  transform:translateX(-50%);
+}
 .html-hub-page .step h4{font-size:15px;font-weight:700;margin-bottom:8px;padding-top:8px;color:var(--navy)}
 .html-hub-page .step p{font-size:13px;color:var(--gray-600);line-height:1.5}
 
