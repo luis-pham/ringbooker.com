@@ -277,7 +277,7 @@ export function MarketingPricingTemplate() {
                 <div className="badge"><span className="pulse-dot" />Pricing for booking call recovery</div>
                 <h1>Pricing for Missed-Call Recovery and Revenue Protection</h1>
                 <p>
-                  You are not paying for generic AI — you are paying to reduce missed bookings and revenue leakage. Every plan includes the same ladder: missed calls → missed bookings → lost revenue, and RingBooker → recovered bookings → protected revenue. After-hours answering, peak-hour overflow, and missed-call text back stay centered on your current number, with no booking migration.
+                  You are not paying for generic AI — you are paying to reduce missed bookings and protect booking revenue. Every plan starts from the same ladder: missed calls → missed bookings → lost revenue, and RingBooker → recovered intent → protected revenue. Configure the essentials in about 15 minutes, then add after-hours answering, peak-hour overflow, and missed-call text back on your current number.
                 </p>
                 <div className="hero-actions">
                   <a className="btn-demo-live" href="/demo" data-demo-picker>
@@ -435,7 +435,7 @@ export function MarketingPricingTemplate() {
               <div className="cta-box">
                 <div>
                   <h2>Stop letting booking calls leak after hours or during busy windows.</h2>
-                  <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that turns more calls into recovered bookings and protected revenue.</p>
+                  <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that helps turn missed calls into recovered bookings and protected revenue.</p>
                 </div>
                 <div className="cta-actions">
                   <a className="btn-demo-live" href="/demo" data-demo-picker>

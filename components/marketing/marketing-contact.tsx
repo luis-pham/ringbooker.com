@@ -255,11 +255,11 @@ export function MarketingContactTemplate() {
                 <div className="hero-copy">
                   <div className="badge"><span className="pulse-dot" />Book a RingBooker demo</div>
                   <h1>See How RingBooker Stops Booking Revenue from Leaking</h1>
-                  <p>Tell us how calls behave today — after-hours rings, busy Saturday overflow, consult inquiries, reschedules — and we’ll walk through how RingBooker captures that demand without changing your booking system.</p>
+                  <p>Tell us how calls behave today — after-hours rings, busy Saturday overflow, consult inquiries, reschedules — and we’ll show how RingBooker protects booking revenue with a setup your team can configure in about 15 minutes.</p>
                   <div className="trust-list">
                     <div className="trust-item"><div className="trust-icon">🏪</div><div><strong>Works with your current number</strong><span>Forward the line clients already dial; a dedicated RingBooker number stays optional.</span></div></div>
                     <div className="trust-item"><div className="trust-icon">📅</div><div><strong>No new booking software</strong><span>Square Appointments is live today; other booking tools can start with summaries and handoff while your workflow stays in place.</span></div></div>
-                    <div className="trust-item"><div className="trust-icon">💬</div><div><strong>Call recovery, not generic chat</strong><span>After-hours answering, overflow coverage, and missed-call text back tuned for salon and clinic call patterns.</span></div></div>
+                    <div className="trust-item"><div className="trust-icon">💬</div><div><strong>Revenue recovery, not generic chat</strong><span>After-hours answering, overflow coverage, and missed-call text back tuned to recover booking intent.</span></div></div>
                   </div>
                 </div>
 
@@ -267,7 +267,7 @@ export function MarketingContactTemplate() {
                   <div className="form-head">
                     <div>
                       <h2>Request a walkthrough</h2>
-                      <p>Most people finish this in under a minute. We’ll review your setup and focus the call on the revenue you’re losing to voicemail, busy lines, and hang-ups.</p>
+                      <p>Most people finish this in under a minute. We’ll review your setup and focus the call on recovering revenue lost to voicemail, busy lines, and hang-ups.</p>
                     </div>
                     <span className="form-chip">Low-pressure walkthrough</span>
                   </div>
