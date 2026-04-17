@@ -66,6 +66,8 @@ export type HubBlockHtmlMeta = {
   midCardSplit?: number;
   /** `leak` card grid, `alt_link_grid`, `situation_grid` — force 3 columns on wide viewports (2 → 1 on smaller) */
   hubGridCols3?: boolean;
+  /** `compare_strip` — four cards in one row on wide screens (2 → 1 on smaller) */
+  compareStripGridCols4?: boolean;
 };
 
 /** Rich sections aligned with legacy HTML hub templates (cards, grids, flows). */
@@ -430,7 +432,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
-                <div className="card-grid">
+                <div
+                  className={`card-grid${block.html?.compareStripGridCols4 ? ' card-grid--cols-4' : ''}`}
+                >
                   {block.cards.map((c) => (
                     <div className="card" key={c.title}>
                       <div className="card-icon" aria-hidden>

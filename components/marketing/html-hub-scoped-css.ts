@@ -538,6 +538,22 @@ export const HTML_HUB_SCOPED_CSS = `
 
 /* Cards */
 .html-hub-page .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+/* compare_strip: exactly four cards in one row (phone-booking-recovery “Gap” section) */
+.html-hub-page .hub-center-stack .card-grid.card-grid--cols-4{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  max-width:1100px;
+  width:100%;
+}
+@media(max-width:1100px){
+  .html-hub-page .hub-center-stack .card-grid.card-grid--cols-4{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:560px){
+  .html-hub-page .hub-center-stack .card-grid.card-grid--cols-4{
+    grid-template-columns:1fr;
+  }
+}
 .html-hub-page .card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;transition:box-shadow .2s,transform .2s}
 .html-hub-page .card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
 .html-hub-page .card-icon{font-size:28px;margin-bottom:14px}

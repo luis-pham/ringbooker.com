@@ -151,7 +151,11 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
     },
     {
       kind: 'compare_strip',
-      html: { eyebrow: 'The Gap in Existing Solutions', eyebrowTone: 'dark' },
+      html: {
+        eyebrow: 'The Gap in Existing Solutions',
+        eyebrowTone: 'dark',
+        compareStripGridCols4: true,
+      },
       heading: 'Why missed-call handling alone is not enough',
       sub: 'Voicemail, text-back tools, and generic answering services each address part of the problem. None address the full booking recovery challenge.',
       cards: [
