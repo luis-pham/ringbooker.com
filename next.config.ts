@@ -1,8 +1,61 @@
 import type { NextConfig } from 'next';
 
+/** Canonical host for SEO: https://ringbooker.com (non-www). See redirects below. */
+const WWW_HOST = 'www.ringbooker.com';
+const APEX_HOST = 'ringbooker.com';
+
 const nextConfig: NextConfig = {
   async redirects() {
     return [
+      // --- Host canonicalization (production) ---
+      // LIVE issue: https://www.ringbooker.com was returning 200 — must 301/308 to apex.
+      // Legacy verticals on www: one hop to final /industries/* (avoid www → apex → legacy chain).
+      {
+        source: '/beauty-clinic',
+        has: [{ type: 'host', value: WWW_HOST }],
+        destination: `https://${APEX_HOST}/industries/beauty-clinic`,
+        permanent: true,
+      },
+      {
+        source: '/med-spa',
+        has: [{ type: 'host', value: WWW_HOST }],
+        destination: `https://${APEX_HOST}/industries/med-spa`,
+        permanent: true,
+      },
+      {
+        source: '/hair-salon',
+        has: [{ type: 'host', value: WWW_HOST }],
+        destination: `https://${APEX_HOST}/industries/hair-salon`,
+        permanent: true,
+      },
+      {
+        source: '/spa',
+        has: [{ type: 'host', value: WWW_HOST }],
+        destination: `https://${APEX_HOST}/industries/spa`,
+        permanent: true,
+      },
+      {
+        source: '/nail-salon',
+        has: [{ type: 'host', value: WWW_HOST }],
+        destination: `https://${APEX_HOST}/industries/nail-salon`,
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: WWW_HOST }],
+        destination: `https://${APEX_HOST}/:path*`,
+        permanent: true,
+      },
+      {
+        source: '/:path*',
+        has: [
+          { type: 'host', value: APEX_HOST },
+          { type: 'header', key: 'x-forwarded-proto', value: 'http' },
+        ],
+        destination: `https://${APEX_HOST}/:path*`,
+        permanent: true,
+      },
+
       { source: '/after-hours-calls', destination: '/phone-booking-recovery/after-hours-calls', permanent: true },
       {
         source: '/peak-hour-overflow-calls',

@@ -9,7 +9,7 @@ const trustDescription =
   'How RingBooker approaches reliable AI phone answering for salons and spas: human fallback, phased rollout, and clear expectations.';
 
 export const metadata = buildMetadata({
-  title: 'Trust, Reliability & Transparent AI Call Handling | RingBooker',
+  title: 'Trust, Reliability & Human-Friendly AI | RingBooker',
   description: trustDescription,
   path: '/trust',
 });

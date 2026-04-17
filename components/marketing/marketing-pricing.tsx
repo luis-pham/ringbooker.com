@@ -14,7 +14,7 @@ const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
   },
   {
     q: 'Which plan is right for me?',
-    a: 'Start with Starter if your main issue is missed after-hours or overflow calls. Choose Professional if you need stronger follow-up, caller context, and provider continuity.',
+    a: 'Start with Starter if your main issue is missed after-hours or overflow calls. Choose Professional if you need stronger follow-up, caller context, and provider preference capture.',
   },
   {
     q: 'Can it handle reschedules and cancellations?',
@@ -142,7 +142,8 @@ a{text-decoration:none;color:inherit}
 @media(max-width:960px){
   .hero-page,.section{padding-left:22px;padding-right:22px}
   .trust-row,.plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.cta-box{grid-template-columns:1fr}
-  .hero-page{padding-top:54px;padding-bottom:52px}
+  /* Clear fixed .mk-nav (68px + 1px border) + breathing room — matches topic hub mobile rhythm */
+  .hero-page{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:52px}
   .hero-copy{text-align:left}
   .hero-copy h1{font-size:40px}
   .hero-copy p{margin-left:0;margin-right:0}
@@ -208,7 +209,7 @@ const plans = [
     name: 'Professional',
     kicker: 'Busy location',
     icon: '⚡',
-    description: 'For busier teams that need stronger follow-up, caller context, and provider-aware handling.',
+    description: 'For busier teams that need stronger follow-up, caller context, and provider preference capture.',
     priceId: 'pricing-pro-price',
     price: '$149',
     note: 'Best for multi-provider teams with higher call volume and repeat clients.',
@@ -218,10 +219,10 @@ const plans = [
     benefits: [
       ['✅', 'Everything in Starter'],
       ['⏰', 'Reminder SMS and stronger follow-up'],
-      ['🧠', 'Returning caller context and preferences'],
-      ['✂️', 'Preferred stylist or provider continuity'],
-      ['🌐', 'Bilingual summaries where available'],
-      ['📊', 'Weekly performance summary'],
+      ['🧠', 'Returning caller notes and preferences'],
+      ['✂️', 'Preferred stylist or provider context'],
+      ['🌐', 'Bilingual workflows where configured'],
+      ['📊', 'Call recovery insights'],
       ['📈', 'Advanced call insights'],
       ['⚡', 'Priority support'],
     ],

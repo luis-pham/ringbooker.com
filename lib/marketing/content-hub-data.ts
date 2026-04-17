@@ -53,7 +53,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Missed Calls'),
   ),
   intro:
-    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they miss revenue. Phone booking recovery helps capture those missed opportunities before they book elsewhere.',
+    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking intent. Phone booking recovery captures that intent before it disappears into voicemail or a competitor call.',
   pills: [
     'After-hours calls captured',
     'Peak-hour overflow handled',
@@ -71,7 +71,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
         {
           icon: '📵',
           title: 'Missed call = lost revenue',
-          body: 'Most callers who do not reach you will not leave a voicemail. They will call your competitor instead. Recovery intercepts that loss before it becomes permanent.',
+          body: 'Many callers who do not reach you will not leave a voicemail. They often keep searching, call another business, or try again later with less urgency.',
         },
         {
           icon: '🌙',
@@ -81,7 +81,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
         {
           icon: '⚡',
           title: 'Overflow during peak hours',
-          body: 'Saturdays, lunch rushes, holiday weeks — when two calls arrive at once and your team is mid-service, the second caller often leaves and does not call back.',
+          body: 'Saturdays, lunch rushes, holiday weeks — when two calls arrive at once and your team is mid-service, the second caller can disappear before anyone knows what they wanted.',
         },
         {
           icon: '🔄',
@@ -117,13 +117,13 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
         {
           icon: '⏳',
           title: 'Missed callback windows',
-          body: 'Voicemail leads to a callback hours later — the client has already booked somewhere else.',
+          body: 'Voicemail leads to a callback hours later — often after the client has cooled off, tried online booking again, or called another provider.',
           tag: 'Heaviest impact: all verticals',
         },
         {
           icon: '📭',
           title: 'Voicemail dead ends',
-          body: 'Most callers do not leave messages. The booking intent evaporates.',
+          body: 'Many callers do not leave messages. The booking intent evaporates before your team can recover it.',
           tag: 'Heaviest impact: nail salons, day spas',
         },
       ],
@@ -132,7 +132,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
       kind: 'intent_stats',
       html: { eyebrow: 'What Callers Want' },
       heading: 'Common caller intents that get lost',
-      sub: 'It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up.',
+      sub: 'It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up. The patterns below describe typical front-desk behavior, not a single survey statistic.',
       intents: [
         { emoji: '📅', label: 'New appointment booking' },
         { emoji: '🔄', label: 'Reschedule request' },
@@ -144,9 +144,9 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
         { emoji: '📞', label: 'Follow-up call' },
       ],
       stats: [
-        { value: '67%', label: 'Callers who do not leave voicemail' },
-        { value: '3×', label: 'More likely to book if answered immediately' },
-        { value: '80%', label: 'Of beauty bookings still involve a phone call' },
+        { value: 'Often', label: 'Callers hang up instead of voicemail' },
+        { value: 'Fast', label: 'First response wins the booking' },
+        { value: 'Still', label: 'Phone calls drive real booking intent' },
       ],
     },
     {
@@ -207,7 +207,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
         {
           icon: '🔌',
           title: 'Works with your booking tools',
-          body: 'Compatible with Square Appointments, Vagaro, Booksy, Mindbody, and more.',
+          body: 'Square Appointments is live today. Other tools can start with workflow-compatible summaries and handoff while deeper integrations expand.',
           link: { href: '/works-with', label: 'See compatibility →' },
         },
       ],
@@ -244,7 +244,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
     {
       emoji: '✨',
       title: 'Beauty clinic',
-      body: 'Trust-sensitive inquiries and provider continuity.',
+      body: 'Trust-sensitive inquiries and provider preference context.',
       href: '/industries/beauty-clinic',
     },
   ],
@@ -298,7 +298,7 @@ export const currentNumberHub: ContentHubPageConfig = {
   pills: [
     'No number migration needed',
     'Works via call forwarding',
-    'Live in about 15 minutes',
+    'Guided forwarding setup',
     'Zero client disruption',
   ],
   sections: [],
@@ -405,7 +405,7 @@ export const currentNumberHub: ContentHubPageConfig = {
         {
           icon: '🔌',
           title: 'Works with existing tools',
-          body: 'Square, Vagaro, Booksy, Mindbody — your booking software stays.',
+          body: 'Your booking software stays. Square can connect directly today; other tools can start with summaries and handoff.',
           link: { href: '/works-with', label: 'See compatibility →' },
         },
         {
@@ -480,7 +480,7 @@ export const worksWithHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Booking Tools'),
   ),
   intro:
-    'RingBooker is not a replacement — it is a phone layer. It sits alongside Square Appointments, Vagaro, Booksy, Mindbody, and the workflow your team already uses. No migration required.',
+    'RingBooker is not a replacement — it is a phone layer. Square Appointments is live today; Vagaro, Booksy, Mindbody, and other tools can start with workflow-compatible summaries and handoff. No migration required.',
   pills: [
     'No system replacement required',
     'Start with call forwarding',
@@ -503,7 +503,7 @@ export const worksWithHub: ContentHubPageConfig = {
         {
           icon: '🗓️',
           title: 'Booking tools',
-          body: 'Keep your existing software to manage appointments; RingBooker complements it. Square Appointments (live), plus Vagaro, Booksy, Mindbody — workflow-compatible setups.',
+          body: 'Keep your existing software to manage appointments; RingBooker complements it. Square Appointments is live, and other tools can start with workflow-compatible summaries and handoff.',
         },
         {
           icon: '👥',
@@ -521,13 +521,13 @@ export const worksWithHub: ContentHubPageConfig = {
       kind: 'tool_strip',
       html: { eyebrow: 'Booking Tool Compatibility', eyebrowTone: 'blue' },
       heading: 'Tools beauty businesses already use',
-      sub: 'From Square Appointments to Booksy — RingBooker is built to sit alongside the software your team already knows.',
+      sub: 'Square Appointments can connect directly today. Other booking tools can still work with RingBooker through call capture, summaries, and handoff while deeper integrations expand.',
       tools: [
         {
           href: '/works-with/square-appointments',
           logo: '⬛',
           title: 'Square Appointments',
-          body: 'Live integration — captured call intent can flow into your scheduling workflow.',
+          body: 'Live integration — captured booking intent can flow into your scheduling workflow.',
           status: '✓ Live integration',
           statusKind: 'live',
         },
@@ -552,7 +552,7 @@ export const worksWithHub: ContentHubPageConfig = {
           logo: '🧘',
           title: 'Mindbody',
           body: 'Common in spas and wellness — after-hours and overflow coverage alongside Mindbody workflows.',
-          status: 'Integration expanding',
+          status: 'Coming soon',
           statusKind: 'soon',
         },
       ],
@@ -578,7 +578,7 @@ export const worksWithHub: ContentHubPageConfig = {
         },
         {
           title: 'Keep your booking workflow',
-          body: 'Your team still uses Square, Vagaro, or Booksy — nothing in scheduling has to change.',
+          body: 'Your team still uses the scheduling workflow it knows. Square can connect directly; other tools can start with summaries.',
         },
         {
           title: 'Review summaries and expand',
@@ -595,7 +595,7 @@ export const worksWithHub: ContentHubPageConfig = {
         {
           icon: '🔌',
           title: 'Do I need to replace my booking software?',
-          body: 'No. Square Appointments, Vagaro, Booksy, and Mindbody stay in place — RingBooker handles the phone layer.',
+          body: 'No. Square Appointments can connect directly today; other tools can stay in place while RingBooker captures calls, summaries, and handoff context.',
         },
         {
           icon: '👥',
@@ -638,15 +638,15 @@ export const worksWithHub: ContentHubPageConfig = {
   resourceEyebrow: 'In this topic',
   resourceHeading: 'Articles on tools & compatibility',
   resourceSub:
-    'Square, Vagaro, Booksy, Mindbody, and rollout — published under the same path as this hub (/works-with/…).',
+    'Square, booking workflows, and rollout — published under the same path as this hub (/works-with/…).',
   faqs: [
     {
       q: 'Do I need to replace my booking software?',
-      a: 'No. RingBooker is designed to work alongside Square Appointments, Vagaro, Booksy, Mindbody, and others. No system replacement is required to start.',
+      a: 'No. RingBooker is designed to work alongside your existing workflow. Square Appointments is live today; Vagaro, Booksy, Mindbody, and others can start with summaries and handoff while deeper integrations expand.',
     },
     {
       q: 'What does “works with” mean exactly?',
-      a: 'It means compatibility with your phone workflow, booking tools, and operations — from forwarding-only to deeper workflows as you scale.',
+      a: 'It means compatibility at the workflow level: forwarding, call capture, summaries, manual handoff, or direct integration depending on the booking tool.',
     },
     {
       q: 'Can I start without a full integration?',
@@ -677,12 +677,12 @@ export const compareHub: ContentHubPageConfig = {
   title: createElement(
     Fragment,
     null,
-    'RingBooker vs.',
+    'Compare RingBooker With',
     createElement('br'),
-    createElement('span', { className: 'hl' }, 'Every Other Option'),
+    createElement('span', { className: 'hl' }, 'Your Phone Options'),
   ),
   intro:
-    'Most salons choose between voicemail, missed-call text-back, an answering service, hiring more front-desk help, or a general-purpose phone AI. This page compares those paths side by side with RingBooker’s beauty-focused answering — after hours, peak overflow, and human handoff when it matters — so you can decide from real trade-offs, not a generic feature list.',
+    'Most salons choose between voicemail, missed-call text-back, an answering service, hiring more front-desk help, or a general-purpose phone AI. This page compares those paths side by side with RingBooker’s beauty-focused answering — after hours, peak overflow, and callback or handoff with context when it matters.',
   pills: [
     'Voicemail vs. AI',
     'Answering services',
@@ -818,7 +818,7 @@ export const compareHub: ContentHubPageConfig = {
           ],
         },
         {
-          criterion: 'Human handoff when needed',
+          criterion: 'Human callback or handoff with context',
           cells: [
             { tone: 'cross', label: 'No' },
             { tone: 'cross', label: 'No' },
@@ -912,7 +912,7 @@ export const compareHub: ContentHubPageConfig = {
         {
           prefix: 'If your biggest issue is…',
           title: 'Not wanting to replace booking software',
-          body: 'RingBooker sits alongside Square, Vagaro, Booksy, and Mindbody.',
+          body: 'RingBooker sits alongside your existing tools. Square is live today; other workflows can start with summaries and handoff.',
           cta: { href: '/works-with', label: 'Compatibility hub →' },
         },
         {
@@ -1139,7 +1139,7 @@ export const trustHub: ContentHubPageConfig = {
         {
           icon: '🔌',
           title: 'What if I need it to fit existing tools?',
-          body: 'Works alongside Square, Vagaro, Booksy, and Mindbody — no forced replacement.',
+          body: 'Works alongside your current workflow. Square Appointments is live today; other tools can start with summaries and handoff.',
         },
         {
           icon: '💬',

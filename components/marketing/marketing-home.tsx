@@ -14,7 +14,7 @@ const HOME_FAQS = [
   },
   {
     q: 'Does RingBooker replace my booking software?',
-    a: 'No. RingBooker works alongside Square Appointments today and is designed to support tools like Vagaro, Booksy, and Mindbody as integrations expand. It handles the phone layer while your booking workflow stays familiar.',
+    a: 'No. RingBooker handles the phone layer while your booking workflow stays familiar. Square Appointments is live today; other booking tools can start with call summaries and handoff while deeper integrations expand.',
   },
   {
     q: 'Can it handle reschedule and cancellation calls?',
@@ -1006,8 +1006,8 @@ export function MarketingHomeTemplate() {
           <div className="proofbar-inner">
             {[
               ['☎️', 'Keep your current phone number', 'proof-purple'],
-              ['🔌', 'Works with Square, Vagaro, Booksy & existing booking tools', 'proof-green'],
-              ['⚡', 'Live in about 15 minutes — no tech setup', 'proof-amber'],
+              ['🔌', 'Square live today; booking workflows stay', 'proof-green'],
+              ['⚡', 'Guided setup — no big migration', 'proof-amber'],
               ['💅', 'Built for nail salons, hair salons, spas, and clinics', 'proof-pink'],
             ].map(([icon, item, tone]) => (
               <div className="proof-item" key={item}>
@@ -1139,7 +1139,7 @@ export function MarketingHomeTemplate() {
           <div className="steps-inner">
             <div className="sec-label">How It Works</div>
             <h2 className="sec-title reveal">Get your AI phone agent live<br />in three simple steps.</h2>
-            <p className="sec-sub reveal">Built for busy beauty businesses that want to go live in about <span className="emphasis-5min">15 minutes</span>, not get stuck in more software complexity.</p>
+            <p className="sec-sub reveal">Built for busy beauty businesses that want a guided, low-friction rollout — not another software migration project.</p>
             <div className="home-carousel" id="howCarousel">
               <div className="steps-grid home-carousel-track">
                 <div className="step-card reveal home-carousel-slide">
@@ -1163,7 +1163,7 @@ export function MarketingHomeTemplate() {
                     <div className="step-icon">🤖</div>
                     <div className="step-num">Step 03</div>
                   </div>
-                  <h3>RingBooker handles calls, confirms bookings, and texts your clients — automatically.</h3>
+                  <h3>RingBooker handles calls, captures booking intent, and texts your clients when configured.</h3>
                   <p>After-hours and overflow callers get help right away, while your team gets the call summary and next action in the dashboard.</p>
                 </div>
               </div>
@@ -1311,7 +1311,7 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="test-card home-carousel-slide">
                   <div className="test-qq">"</div>
-                  <p>We kept our existing number, took about 15 minutes to set up, and clients still reach us the way they always have.</p>
+                  <p>We kept our existing number, started with a simple forwarding setup, and clients still reach us the way they always have.</p>
                   <div className="test-author">
                     <div className="test-av">JK</div>
                     <div><div className="test-name">Jenny K.</div><div className="test-role">Day Spa — Dallas</div></div>
@@ -1341,7 +1341,7 @@ export function MarketingHomeTemplate() {
               <div className="user-copy">
                 <div className="sec-label sec-label-left">Call Context</div>
                 <h2>Know who called, what they needed, and who needs follow-up.</h2>
-                <p>RingBooker keeps the useful context — call summaries, booking intent, preferred provider notes, and callback needs — without asking your team to manage another booking platform.</p>
+                <p>RingBooker keeps the useful context — call summaries, booking intent, provider preferences, and callback needs — without asking your team to manage another booking platform.</p>
               </div>
               <div className="user-shot">
                 <div className="user-shell user-image-corners">
@@ -1374,7 +1374,7 @@ export function MarketingHomeTemplate() {
                   <li>After-hours and overflow call handling</li>
                   <li>Missed-call text back</li>
                   <li>Basic call summaries</li>
-                  <li>Vietnamese onboarding support</li>
+                  <li>Vietnamese onboarding support for nail salons</li>
                 </ul>
                 <a className="plan-btn pb-outline" href="/user/signup">Start Free Trial →</a>
               </div>
@@ -1387,8 +1387,8 @@ export function MarketingHomeTemplate() {
                 <ul className="plan-feats">
                   <li>Everything in Starter</li>
                   <li>Reminder and follow-up SMS workflows</li>
-                  <li>Returning customer and preferred provider notes</li>
-                  <li>Weekly performance summary</li>
+                  <li>Returning caller and provider preference notes</li>
+                  <li>Call recovery insights</li>
                   <li>Priority support</li>
                 </ul>
                 <a className="plan-btn pb-dark" href="/user/signup">Start Free Trial →</a>

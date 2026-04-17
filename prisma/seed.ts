@@ -51,10 +51,10 @@ const tags = [
 
 const posts: SeedPost[] = [
   {
-    slug: 'why-62-percent-of-salon-calls-go-unanswered',
-    title: "Why 62% of Salon Calls Go Unanswered — And the $45,000 Problem You're Ignoring",
+    slug: 'why-salon-calls-go-unanswered',
+    title: "Why Salon Calls Go Unanswered — And the Booking Intent You're Missing",
     excerpt:
-      "Every time your phone rings while you're mid-balayage, you're facing an impossible choice. Here's what the data says about missed calls and how much they cost.",
+      "Every time your phone rings while you're mid-service, you're facing an impossible choice. Here's why missed calls become lost booking intent and how to estimate the impact.",
     content: `
 <h2 id="the-math">The Math Behind Missed Calls</h2>
 <p>Most salon owners think of a missed call as one lost appointment. In reality it is often a lost long-term client.</p>
@@ -63,9 +63,9 @@ const posts: SeedPost[] = [
 <p>The first fix is simple: make sure every call gets answered with business-aware context and booking options.</p>
 `,
     coverStats: [
-      { num: '62%', label: 'Calls unanswered' },
-      { num: '$45K', label: 'Lost annually' },
-      { num: '85%', label: 'Never call back' },
+      { num: 'Peak', label: 'Calls missed in service hours' },
+      { num: 'Estimate', label: 'Impact depends on ticket size' },
+      { num: 'Fast', label: 'First response protects intent' },
     ],
     status: PostStatus.PUBLISHED,
     publishedAt: new Date('2025-06-12T08:00:00.000Z'),

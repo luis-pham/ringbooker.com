@@ -59,6 +59,36 @@ export function buildAlternates(path = '/'): Metadata['alternates'] {
   };
 }
 
+/**
+ * Collapses repeated trailing brand suffixes (e.g. legacy double-append from layout template).
+ */
+export function normalizeSeoTitle(raw: string): string {
+  return raw
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/(\s*\|\s*RingBooker)+$/i, ' | RingBooker');
+}
+
+/**
+ * Single source of truth for `<title>` when using `buildMetadata`:
+ * - Appends `| RingBooker` once when missing (so root `title.template` is not relied on).
+ * - Skips append when the title is brand-first (`RingBooker | …`) or already ends with `| RingBooker`.
+ */
+export function finalizeDocumentTitle(raw: string): string {
+  const brand = siteConfig.name;
+  let t = raw.replace(/\s+/g, ' ').trim();
+  if (t.toLowerCase() === brand.toLowerCase()) {
+    return `${brand} | AI phone answering for beauty businesses`;
+  }
+  if (new RegExp(`^${brand}\\s*\\|`, 'i').test(t)) {
+    return normalizeSeoTitle(t);
+  }
+  if (new RegExp(`\\|\\s*${brand}\\s*$`, 'i').test(t)) {
+    return normalizeSeoTitle(t);
+  }
+  return normalizeSeoTitle(`${t} | ${brand}`);
+}
+
 export function buildMetadata({
   title,
   description,
@@ -74,15 +104,17 @@ export function buildMetadata({
   const url = new URL(path, siteConfig.url).toString();
   const shareSrc = image?.trim() || defaultSiteOgImage;
   const ogImages = [siteOgImageEntry(shareSrc)];
+  const documentTitle = finalizeDocumentTitle(title);
 
   return {
-    title,
+    // Bypass root `title.template` so we never append "| RingBooker" twice when the string already includes the brand.
+    title: { absolute: documentTitle },
     description,
     keywords: siteConfig.keywords,
     metadataBase: new URL(siteConfig.url),
     alternates: buildAlternates(path),
     openGraph: {
-      title,
+      title: documentTitle,
       description,
       url,
       siteName: siteConfig.name,
@@ -92,7 +124,7 @@ export function buildMetadata({
     },
     twitter: {
       card: 'summary_large_image',
-      title,
+      title: documentTitle,
       description,
       images: [shareSrc],
     },

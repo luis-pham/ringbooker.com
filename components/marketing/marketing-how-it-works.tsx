@@ -149,7 +149,7 @@ a{text-decoration:none;color:inherit}
 @media(max-width:960px){
   .hiw-hero,.hiw-section,.hiw-cta{padding-left:22px;padding-right:22px}
   .hiw-hero-grid,.hiw-grid-2,.hiw-grid-3,.hiw-handle-grid,.hiw-no-replace,.hiw-experience,.hiw-cta-box{grid-template-columns:1fr}
-  .hiw-hero{padding-top:54px;padding-bottom:52px}
+  .hiw-hero{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:52px}
   .hiw-summary{padding:22px}
   .hiw-no-replace,.hiw-cta-box{padding:28px}
   .hiw-cta-box{gap:18px}

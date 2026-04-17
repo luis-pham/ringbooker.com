@@ -9,14 +9,17 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { getAllCategories, getAllPosts, getFeaturedPost } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
+import { finalizeDocumentTitle } from '@/lib/site';
 import type { PostWithRelations } from '@/types/blog';
 
+const blogTitle = finalizeDocumentTitle('Blog | Growth Resources');
+
 export const metadata: Metadata = {
-  title: 'Blog — RingBooker | Growth Resources',
+  title: { absolute: blogTitle },
   description:
     'Practical guides and tips for appointment-based businesses to capture more calls, book more appointments, and increase revenue with AI.',
   openGraph: {
-    title: 'Blog — RingBooker | Growth Resources',
+    title: blogTitle,
     description:
       'Practical guides and tips for appointment-based businesses to capture more calls, book more appointments, and increase revenue with AI.',
     type: 'website',

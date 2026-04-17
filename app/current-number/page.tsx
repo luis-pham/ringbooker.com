@@ -11,7 +11,7 @@ const currentNumberDescription =
   'Add AI call answering on the number clients already know. RingBooker uses forwarding — no new digits, no listing updates, no workflow reset.';
 
 export const metadata = buildMetadata({
-  title: 'Keep Your Current Business Phone Number | RingBooker',
+  title: 'Keep Your Current Business Number | RingBooker',
   description: currentNumberDescription,
   path: '/current-number',
 });

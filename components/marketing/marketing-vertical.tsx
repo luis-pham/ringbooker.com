@@ -15,13 +15,13 @@ const SERVICE_BY_VERTICAL: Record<
     name: 'AI Phone Answering Service for Nail Salons',
     serviceType: 'Nail salon answering service',
     description:
-      'After-hours and overflow AI call answering for nail salons, including current-number forwarding, missed-call text back, bilingual English and Vietnamese support, booking intent capture, walk-in handling, pricing questions, and reschedule management.',
+      'After-hours and overflow AI call answering for nail salons, including current-number forwarding, missed-call text back, configurable English and Vietnamese workflows, booking intent capture, walk-in handling, pricing questions, and reschedule support.',
   },
   'hair-salon': {
     name: 'AI Phone Answering Service for Hair Salons',
     serviceType: 'Hair salon answering service',
     description:
-      'AI call answering for hair salons that handles overflow calls, stylist-match requests, color and extension booking slots, reschedules, cancellation recovery, and appointment confirmations.',
+      'AI call answering for hair salons that handles overflow calls, stylist preference capture, color and extension booking questions, reschedules, cancellation intent, and appointment confirmations.',
   },
   spa: {
     name: 'AI Phone Answering for Day Spas and Wellness Studios',
@@ -33,13 +33,13 @@ const SERVICE_BY_VERTICAL: Record<
     name: 'AI Phone Answering Service for Med Spas',
     serviceType: 'Med spa answering service',
     description:
-      'AI phone answering for med spas that captures consultation calls, routes high-value inquiries after hours, reduces no-show loss, collects deposit intent, and supports Botox, filler, and laser booking workflows.',
+      'AI phone answering for med spas that captures consultation calls, routes high-value inquiries after hours, supports reminder workflows, and handles Botox, filler, and laser booking questions with consultation-first guardrails.',
   },
   'beauty-clinic': {
     name: 'AI Phone Answering Service for Beauty and Aesthetic Clinics',
     serviceType: 'Beauty clinic answering service',
     description:
-      'AI call answering for beauty and aesthetic clinics with consultation-first intake, premium call scripts, treatment continuity context, provider routing, pre-care and post-care question handling, and call outcome summaries.',
+      'AI call answering for beauty and aesthetic clinics with consultation-first intake, premium call scripts, treatment continuity context, provider preference capture, approved pre-care and post-care guidance, and call outcome summaries.',
   },
 };
 
@@ -237,7 +237,7 @@ function HowItWorks({ steps, accentBg }: { steps: HowItWorksStep[]; accentBg: st
     <section className="mx-auto mt-20 max-w-6xl px-6">
       <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
       <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">How RingBooker Works</h2>
-      <p className="mt-2 max-w-xl text-[15px] text-slate-500">No new phone number needed. Works with your existing line in minutes.</p>
+      <p className="mt-2 max-w-xl text-[15px] text-slate-500">No new phone number needed. Works with your existing line through a guided forwarding setup.</p>
       <div className="mt-8 grid gap-5 md:grid-cols-3">
         {steps.map((s) => (
           <div
@@ -413,7 +413,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             Nail Salon Calls Get Missed Most During Busy Service Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won&apos;t wait. RingBooker answers overflow and after-hours calls on your current number, supports English and Vietnamese, and captures booking intent so missed rings don&apos;t become lost revenue.
+            Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won&apos;t wait. RingBooker answers overflow and after-hours calls on your current number, supports configurable English and Vietnamese workflows, and captures booking intent before missed rings become lost opportunities.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/nail-salon" className={theme.demoCtaClass}>
@@ -435,9 +435,21 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       <StatStrip
         accent="text-violet-600"
         stats={[
-          { value: '62%', label: 'Calls go unanswered', sub: 'Nail techs are with clients and physically cannot pick up the phone.' },
-          { value: '85%', label: 'Don\'t call back', sub: 'One missed call and most callers move on to the next salon in seconds.' },
-          { value: '$8,400+', label: 'Per year in missed revenue', sub: 'Missed bookings across peak weekends compound fast over 12 months.' },
+          {
+            value: 'Peak',
+            label: 'Calls missed in service hours',
+            sub: 'When techs are with clients, the desk often cannot pick up — overflow and pricing calls roll to voicemail or the next shop.',
+          },
+          {
+            value: 'Rare',
+            label: 'Voicemail callbacks',
+            sub: 'Many nail clients move on quickly if they do not reach a live answer — especially for price and same-day availability.',
+          },
+          {
+            value: 'Adds up',
+            label: 'Lost booking value',
+            sub: 'Even a few missed high-intent calls per week compounds — exact impact depends on your ticket size and call volume.',
+          },
         ]}
       />
 
@@ -473,10 +485,10 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="bg-violet-50 text-violet-600"
         features={[
           { icon: '📞', title: 'Works on your current number', body: 'No new phone number needed — just forward overflow or after-hours calls.' },
-          { icon: '🇻🇳', title: 'English + Vietnamese support', body: 'Handles callers in both languages naturally, right from the start of the call.' },
-          { icon: '💅', title: 'Pricing questions answered instantly', body: 'Full set, gel, acrylic, dip, pedicure — all answered with your shop\'s actual prices.' },
+          { icon: '🇻🇳', title: 'English + Vietnamese workflows', body: 'Can be configured for bilingual call flows, summaries, and salon-specific scripts.' },
+          { icon: '💅', title: 'Pricing questions answered clearly', body: 'Full set, gel, acrylic, dip, pedicure — answered from your configured service menu and prices.' },
           { icon: '📅', title: 'Same-day and walk-in booking', body: 'Captures high-intent callers who want a slot today or this weekend.' },
-          { icon: '🔄', title: 'Reschedule and cancel handling', body: 'Handles reschedule calls without tying up staff time.' },
+          { icon: '🔄', title: 'Reschedule and cancel support', body: 'Captures routine change requests and routes anything uncertain with context for your team.' },
           { icon: '💬', title: 'SMS confirmation and follow-up', body: 'Sends booking confirmation texts so clients don\'t slip through the cracks.' },
         ]}
       />
@@ -485,9 +497,9 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-violet-600"
         steps={[
-          { n: '1', title: 'Forward calls to RingBooker', body: 'Set up call forwarding on your current salon number — for overflow, after-hours, or full-time. Takes under 5 minutes.' },
+          { n: '1', title: 'Forward calls to RingBooker', body: 'Set up call forwarding on your current salon number — for overflow, after-hours, or full-time. Setup time depends on your phone provider.' },
           { n: '2', title: 'RingBooker answers with your shop info', body: 'Your services, pricing, hours, and staff are loaded in. The AI handles real callers immediately.' },
-          { n: '3', title: 'Bookings captured, SMS sent, you review', body: 'Every captured booking and call summary lands in your dashboard. Confirmations go to the client automatically.' },
+          { n: '3', title: 'Intent captured, SMS sent, you review', body: 'Captured booking intent and call summaries land in your dashboard. Confirmations can go to the client when the flow is configured.' },
         ]}
       />
 
@@ -496,9 +508,9 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         accentClass={theme.accentClass}
         rows={[
           { scenario: 'After-hours pricing call', without: 'Voicemail — caller hangs up', with: 'Answered, price given, booking captured' },
-          { scenario: 'Weekend overflow', without: 'Call drops, client calls next salon', with: 'Every call answered in queue' },
-          { scenario: 'Vietnamese-speaking caller', without: 'Language barrier, lost booking', with: 'Fluent Vietnamese response' },
-          { scenario: 'Same-day walk-in request', without: 'Missed — tech can\'t pick up', with: 'Slot confirmed, SMS sent to client' },
+          { scenario: 'Weekend overflow', without: 'Call drops, client calls next salon', with: 'Overflow intent captured instead of disappearing' },
+          { scenario: 'Vietnamese-speaking caller', without: 'Language barrier, lost booking', with: 'Bilingual workflow or summary support when configured' },
+          { scenario: 'Same-day walk-in request', without: 'Missed — tech can\'t pick up', with: 'Availability captured or booked when connected' },
         ]}
       />
     </>
@@ -520,7 +532,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
             Recover Hair Salon Revenue Lost During Services and Peak Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            While stylists are cutting or coloring, callers asking for preferred stylists, color slots, extensions, or reschedules cannot always get through. RingBooker handles overflow and after-hours hair salon calls on your current number — no booking migration — so high-value openings are less likely to waste on missed rings.
+            While stylists are cutting or coloring, callers asking for preferred stylists, color slots, extensions, or reschedules cannot always get through. RingBooker covers those calls on your current number so reschedule intent, stylist preference, and color inquiries do not disappear into voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
@@ -542,9 +554,21 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       <StatStrip
         accent="text-amber-600"
         stats={[
-          { value: '58%', label: 'Calls go to voicemail', sub: 'Stylists can\'t pick up mid-color service. Most callers won\'t leave a message.' },
-          { value: '3x', label: 'Higher cancellation risk', sub: 'Long appointment slots are more damaging when callers can\'t reach someone to reschedule.' },
-          { value: '72%', label: 'Prefer phone for rescheduling', sub: 'Hair clients want to talk through reschedule options — especially for color and extension services.' },
+          {
+            value: 'In-service',
+            label: 'Hard to answer mid-appointment',
+            sub: 'Color and extension visits run long — stylists often cannot break away when the phone rings.',
+          },
+          {
+            value: 'High',
+            label: 'Reschedule urgency',
+            sub: 'When plans change, callers want a quick answer — voicemail often means they move on or book elsewhere.',
+          },
+          {
+            value: 'Common',
+            label: 'Phone-first changes',
+            sub: 'Many clients still call to adjust timing or stylist preference — especially for longer services.',
+          },
         ]}
       />
 
@@ -579,11 +603,11 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-amber-50 text-amber-600"
         features={[
-          { icon: '👩‍🎨', title: 'Stylist-match routing', body: 'Asks for preferred stylist and routes to alternatives when they\'re unavailable.' },
-          { icon: '🎨', title: 'Color appointment handling', body: 'Books the right slot length for balayage, keratin, extensions, and other timed services.' },
-          { icon: '🔄', title: 'Reschedule and cancel flows', body: 'Handles reschedule calls gracefully and preserves stylist preference.' },
+          { icon: '👩‍🎨', title: 'Stylist preference capture', body: 'Asks for preferred stylist and flags alternatives based on your rules when needed.' },
+          { icon: '🎨', title: 'Color appointment context', body: 'Captures service type and timing needs for balayage, keratin, extensions, and other longer services.' },
+          { icon: '🔄', title: 'Reschedule and cancel support', body: 'Captures change requests gracefully and preserves stylist preference in the call context.' },
           { icon: '📞', title: 'Works on your current number', body: 'Forward overflow and after-hours — no new number, no disruption to existing clients.' },
-          { icon: '💬', title: 'SMS confirmations', body: 'Clients receive instant booking confirmations by text so nothing falls through.' },
+          { icon: '💬', title: 'SMS confirmations', body: 'Clients can receive booking confirmations by text when the booking flow is configured.' },
           { icon: '📅', title: '24/7 booking coverage', body: 'Captures after-hours calls when clients browse social media and decide to book late.' },
         ]}
       />
@@ -594,7 +618,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
         steps={[
           { n: '1', title: 'Connect your salon number', body: 'Forward overflow or after-hours calls. Your existing number stays the same for all clients.' },
           { n: '2', title: 'Load your services and stylists', body: 'Add your team, service list, and booking rules. RingBooker handles calls with that context immediately.' },
-          { n: '3', title: 'Every call captured and confirmed', body: 'Booking summaries go to your dashboard. SMS confirmations go to the client.' },
+          { n: '3', title: 'Every call captured for follow-up', body: 'Booking summaries go to your dashboard. SMS confirmations can go to the client when the flow is configured.' },
         ]}
       />
 
@@ -602,9 +626,9 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         rows={[
-          { scenario: 'Caller wants their usual stylist', without: 'Voicemail — caller books elsewhere', with: 'Stylist offered, alternative suggested, booking held' },
-          { scenario: 'Balayage slot inquiry', without: 'Phone rings, no answer', with: 'Duration clarified, correct slot booked' },
-          { scenario: 'Same-day reschedule', without: 'No one picks up, slot lost', with: 'Reschedule handled, slot preserved' },
+          { scenario: 'Caller wants their usual stylist', without: 'Voicemail — caller books elsewhere', with: 'Stylist preference captured and routed with context' },
+          { scenario: 'Balayage slot inquiry', without: 'Phone rings, no answer', with: 'Duration and service details captured clearly' },
+          { scenario: 'Same-day reschedule', without: 'No one picks up, slot lost', with: 'Change request captured with stylist preference' },
           { scenario: 'After-hours booking inquiry', without: 'Voicemail — no conversion', with: 'Booking intent captured, confirmed next morning' },
         ]}
       />
@@ -627,7 +651,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
             After-Hours Spa Calls Should Not Turn Into Lost Revenue
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking revenue does not leak to voicemail.
+            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking intent does not disappear into voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/day-spa" className={theme.demoCtaClass}>
@@ -649,9 +673,21 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <StatStrip
         accent="text-teal-600"
         stats={[
-          { value: '54%', label: 'Spa calls go unanswered', sub: 'Therapists are in treatment sessions — they can\'t leave clients to answer the phone.' },
-          { value: '78%', label: 'Book on first contact', sub: 'Spa clients who reach a real response book in the same interaction. Those who don\'t often don\'t call back.' },
-          { value: '40%', label: 'After-hours call volume', sub: 'A significant share of spa booking intent happens outside business hours, especially weekends.' },
+          {
+            value: 'Rooms full',
+            label: 'Desk unmanned during sessions',
+            sub: 'When every therapist is in treatment, the front line often cannot pick up — calls roll to voicemail.',
+          },
+          {
+            value: 'Same-day',
+            label: 'First touch closes intent',
+            sub: 'Spa callers asking about packages or availability usually want resolution in one conversation.',
+          },
+          {
+            value: 'Evenings',
+            label: 'High-intent windows',
+            sub: 'Many people browse and call outside 9–5 — especially weekends — when your desk may be closed.',
+          },
         ]}
       />
 
@@ -667,7 +703,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '💑',
             title: 'Couples and group bookings require real conversation',
-            body: 'Booking two or more people at the same time, with matching therapist availability and room availability, is complex. Voicemail can\'t handle that — but an AI with your schedule context can.',
+            body: 'Booking two or more people at the same time, with matching therapist availability and room availability, is complex. RingBooker can capture the details and check availability when connected to your scheduling workflow.',
           },
           {
             icon: '🌙',
@@ -677,7 +713,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '🔁',
             title: 'Package and pricing questions repeat constantly',
-            body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "Do you offer prenatal massage?" RingBooker handles these instantly, every time.',
+            body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "Do you offer prenatal massage?" RingBooker can answer from your approved service menu or route anything uncertain to your team.',
           },
         ]}
       />
@@ -687,11 +723,11 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="bg-teal-50 text-teal-600"
         features={[
           { icon: '🧖', title: 'Treatment-aware call scripts', body: 'Knows your service menu, durations, and room types so answers feel natural and accurate.' },
-          { icon: '💑', title: 'Couples and group booking', body: 'Handles multi-person bookings with room and therapist availability in mind.' },
+          { icon: '💑', title: 'Couples and group booking details', body: 'Captures guest count, preferred times, and room needs; checks availability when connected.' },
           { icon: '🌙', title: '24/7 call coverage', body: 'Captures evening, weekend, and after-hours calls when booking intent is highest.' },
           { icon: '📞', title: 'Current-number forwarding', body: 'Clients call the number they already know. No change from their perspective.' },
-          { icon: '💬', title: 'SMS booking confirmations', body: 'Confirmation texts go out instantly after booking so clients don\'t forget.' },
-          { icon: '🔔', title: 'Reminder workflows', body: 'Reduces no-shows with automated appointment reminders via text.' },
+          { icon: '💬', title: 'SMS booking confirmations', body: 'Confirmation texts can go out after booking so clients have a clear next step.' },
+          { icon: '🔔', title: 'Reminder workflows', body: 'Automated appointment reminders can help reduce last-minute confusion and no-shows.' },
         ]}
       />
 
@@ -701,7 +737,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
         steps={[
           { n: '1', title: 'Set your services and availability windows', body: 'Load your treatment menu, room types, and hours. RingBooker learns your spa\'s context.' },
           { n: '2', title: 'Forward calls during busy or off hours', body: 'Route overflow while sessions are running, or go full-time for always-on coverage.' },
-          { n: '3', title: 'Bookings confirmed, summaries in your dashboard', body: 'Every captured booking gets logged. SMS confirmation goes to the client automatically.' },
+          { n: '3', title: 'Bookings and summaries in your dashboard', body: 'Captured bookings and booking intent are logged. SMS confirmation can go to the client when configured.' },
         ]}
       />
 
@@ -709,10 +745,10 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         rows={[
-          { scenario: 'Couples massage inquiry Saturday', without: 'Voicemail — couple books elsewhere', with: 'Suite booked, confirmation sent' },
+          { scenario: 'Couples massage inquiry Saturday', without: 'Voicemail — couple books elsewhere', with: 'Guest count and preferred time captured' },
           { scenario: 'After-hours package question', without: 'No answer, caller doesn\'t call back', with: 'Question answered, booking intent captured' },
-          { scenario: 'Therapist-specific request', without: 'Staff unavailable to check', with: 'Availability checked, alternative offered' },
-          { scenario: 'No-show risk reminder', without: 'No system in place', with: 'Automated reminder sent day before' },
+          { scenario: 'Therapist-specific request', without: 'Staff unavailable to check', with: 'Preference captured and availability checked when connected' },
+          { scenario: 'No-show risk reminder', without: 'No system in place', with: 'Reminder workflow available when configured' },
         ]}
       />
     </>
@@ -731,10 +767,10 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
             For Med Spas & Aesthetic Practices
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
-            Every Missed Med Spa Consultation Call Can Mean Lost Revenue
+            When Med Spa Consult Calls Go Unanswered, High-Intent Leads Move On
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Consultation-first med spa journeys mean after-hours and peak-hour calls compare providers fast — missed first contact is lost revenue. RingBooker captures overflow and after-hours consult intent on your current number, with no booking migration, and hands off context when a human should close the consult.
+            Clients often research after hours, then call when intent is high. If the line goes to voicemail during a busy desk or off-hours, that consult lead may cool off before your team can respond. RingBooker captures overflow and after-hours consult intent on your current number — no booking migration — and hands off context when a human should close the consult.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
@@ -756,9 +792,21 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <StatStrip
         accent="text-indigo-600"
         stats={[
-          { value: '$42K+', label: 'Annual no-show exposure', sub: 'Every unfilled high-ticket slot is direct revenue lost. No-show rates average 15–20% without reminders.' },
-          { value: '37%', label: 'Consultation calls missed', sub: 'Front desk handles too many tasks to catch every inbound consult inquiry, especially at peak hours.' },
-          { value: '35×', label: 'Estimated ROI potential', sub: 'A single captured Botox consult converts to hundreds in treatment. Capturing 5 extra per month adds up fast.' },
+          {
+            value: 'High',
+            label: 'Ticket value at stake',
+            sub: 'Unfilled consult or treatment slots are costly for med spas — impact depends on your menu, pricing, and schedule density.',
+          },
+          {
+            value: 'Often',
+            label: 'Calls slip at the desk',
+            sub: 'Front desks juggle check-in, checkout, and phones — high-intent consult calls can be delayed or missed during peak treatment hours.',
+          },
+          {
+            value: 'After hours',
+            label: 'Research → call window',
+            sub: 'Many clients browse providers at night and call when they are ready — coverage outside desk hours helps capture that intent.',
+          },
         ]}
       />
 
@@ -768,23 +816,23 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
         points={[
           {
             icon: '💸',
-            title: 'Missed consultation calls = real dollar losses',
-            body: 'At a med spa, a missed call isn\'t just a missed booking — it\'s a potential $800+ Botox or filler patient walking to a competitor. After-hours research calls have especially high intent and zero patience for voicemail.',
+            title: 'Missed consultation calls can become lost demand',
+            body: 'At a med spa, a missed call is often a high-intent consultation inquiry. If that first contact goes to voicemail, the caller may cool off or contact another provider.',
           },
           {
             icon: '😰',
-            title: 'Front desk overload crushes inbound conversion',
-            body: 'Your front desk juggles check-ins, checkout, upsells, and phones simultaneously. During treatment hours, high-intent consultation calls get delayed, rushed, or dropped entirely — destroying conversion before it starts.',
+            title: 'Front desk overload weakens inbound conversion',
+            body: 'Your front desk juggles check-ins, checkout, patient questions, and phones simultaneously. During treatment hours, high-intent consultation calls can be delayed, rushed, or missed.',
           },
           {
             icon: '🌙',
             title: 'After-hours research intent is your biggest opportunity',
-            body: 'Med spa clients often research at night and call first thing in the morning — or late in the evening after work. A 24/7 answering layer captures that intent before it cools off and moves to a competitor.',
+            body: 'Med spa clients often research at night and call first thing in the morning — or late in the evening after work. An answering layer helps capture that intent before it cools off.',
           },
           {
             icon: '⚠️',
-            title: 'No-shows and late cancels destroy high-ticket schedule economics',
-            body: 'A 90-minute laser or filler slot that cancels same-day is almost impossible to fill. Reminder workflows and deposit-capture conversations during the booking call are the best prevention.',
+            title: 'No-shows and late cancels hurt high-ticket schedules',
+            body: 'A longer treatment slot that cancels same-day is hard to fill. Reminder workflows and clear handoff notes can help your team protect the schedule.',
           },
         ]}
       />
@@ -793,11 +841,11 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-indigo-50 text-indigo-600"
         features={[
-          { icon: '💉', title: 'Consultation call capture', body: 'Answers Botox, filler, laser, and consultation inquiry calls with professional, brand-safe scripting.' },
+          { icon: '💉', title: 'Consultation call capture', body: 'Captures Botox, filler, laser, and consultation inquiry intent with professional, brand-safe scripting.' },
           { icon: '🌙', title: 'After-hours lead capture', body: 'Captures high-intent after-hours callers who research at night and need to reach someone.' },
           { icon: '📞', title: 'Current-number answering', body: 'No new number — forward overflow or after-hours on your existing line.' },
-          { icon: '🔔', title: 'No-show reduction reminders', body: 'Automated reminders before high-ticket appointments reduce cancellation and no-show rates.' },
-          { icon: '👥', title: 'Multi-provider routing', body: 'Routes callers to specific providers or their preferred injector when available.' },
+          { icon: '🔔', title: 'Reminder workflows', body: 'Automated reminders before high-ticket appointments can help reduce missed appointments.' },
+          { icon: '👥', title: 'Provider preference capture', body: 'Captures preferred injector or provider requests and routes them based on your configured workflow.' },
           { icon: '📊', title: 'Call transcripts and analytics', body: 'Every call logged with outcome, intent, and action so your team has full context on follow-up.' },
         ]}
       />
@@ -807,8 +855,8 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
         accentBg="bg-indigo-600"
         steps={[
           { n: '1', title: 'Configure your services and providers', body: 'Add your treatment list, providers, and consultation flow. RingBooker handles calls with that context.' },
-          { n: '2', title: 'Forward overflow and after-hours calls', body: 'During treatments, busy windows, or full-time — calls are answered professionally every time.' },
-          { n: '3', title: 'Leads captured, transcripts in your CRM', body: 'Every consultation intent is logged. Your team follows up with warm context, not cold leads.' },
+          { n: '2', title: 'Forward overflow and after-hours calls', body: 'During treatments, busy windows, or full-time — calls get a professional response instead of a dead end.' },
+          { n: '3', title: 'Leads captured with follow-up context', body: 'Every consultation intent is logged with call context so your team can follow up from a warmer starting point.' },
         ]}
       />
 
@@ -816,10 +864,10 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         rows={[
-          { scenario: 'After-hours Botox inquiry', without: 'Voicemail — lead cools, books competitor', with: 'Consultation booked, intent captured' },
-          { scenario: 'Front desk busy during treatments', without: 'Phone rings out, caller hangs up', with: 'Answered immediately, consult scheduled' },
-          { scenario: 'High-ticket appointment no-show risk', without: 'No reminder system, slot wasted', with: 'Reminder sent, cancellation recovered' },
-          { scenario: 'Caller wants specific injector', without: 'No one to check availability', with: 'Injector availability checked, booking confirmed' },
+          { scenario: 'After-hours Botox inquiry', without: 'Voicemail — lead cools', with: 'Consultation intent captured for follow-up or booking' },
+          { scenario: 'Front desk busy during treatments', without: 'Phone rings out, caller hangs up', with: 'Answered and routed with consult context' },
+          { scenario: 'High-ticket appointment no-show risk', without: 'No reminder system, slot wasted', with: 'Reminder workflow available when configured' },
+          { scenario: 'Caller wants specific injector', without: 'No one to check availability', with: 'Provider preference captured and routed' },
         ]}
       />
     </>
@@ -841,7 +889,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
             Beauty Clinic Calls Need More Than Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Consultation-first journeys, provider continuity, and privacy-conscious phone handling still have to compete with busy desks and after-hours inquiries. RingBooker is an AI phone answering and booking recovery layer on your current number — capturing missed consultation calls and follow-ups so revenue is less likely to leak when no one can pick up.
+            Consultation-first journeys, provider continuity, and privacy-conscious phone handling still have to compete with busy desks and after-hours inquiries. RingBooker is an AI phone answering and booking recovery layer on your current number — capturing missed consultation, reschedule, and follow-up intent with clinic-appropriate handoff context.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
@@ -863,9 +911,21 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <StatStrip
         accent="text-fuchsia-600"
         stats={[
-          { value: '77%', label: 'Prefer calling for booking changes', sub: 'Beauty clinic clients choose the phone when rescheduling or asking about treatment continuity.' },
-          { value: '62%', label: 'Don\'t call back after one miss', sub: 'First impression matters. If no one answers the first call, most clinic callers move on.' },
-          { value: '55%', label: 'Comfortable with AI assistance', sub: 'Over half of beauty clinic clients are comfortable with AI-assisted booking when the experience is professional.' },
+          {
+            value: 'Phone',
+            label: 'Continuity and changes',
+            sub: 'Many clients still call for reschedules, provider preference, and pre/post-care questions — not only new bookings.',
+          },
+          {
+            value: 'First try',
+            label: 'Trust starts on the line',
+            sub: 'If the first call goes unanswered, some callers will try another clinic rather than chase a callback.',
+          },
+          {
+            value: 'Professional',
+            label: 'Expect a calm voice',
+            sub: 'Clinic-appropriate tone matters — callers judge quality from the first answer.',
+          },
         ]}
       />
 
@@ -891,7 +951,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '📋',
             title: 'Pre-care and post-care questions repeat and consume front-desk time',
-            body: 'Staff spend significant time answering the same questions about what to do before and after treatments. An AI answering layer handles this consistently and instantly, freeing your team for in-clinic work.',
+            body: 'Staff spend significant time answering the same questions about what to do before and after treatments. An AI answering layer can share approved instructions or route anything clinical to your team.',
           },
         ]}
       />
@@ -901,10 +961,10 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="bg-fuchsia-50 text-fuchsia-600"
         features={[
           { icon: '✨', title: 'Premium, clinic-appropriate tone', body: 'Scripts are built for beauty clinic standards — professional, warm, and never salesy.' },
-          { icon: '🔁', title: 'Treatment continuity booking', body: 'Handles returning patient calls and routes to their provider or fills in context for the next session.' },
+          { icon: '🔁', title: 'Treatment continuity context', body: 'Captures returning patient calls, provider preference, and session context for follow-up or booking.' },
           { icon: '📋', title: 'Consultation intake capture', body: 'Captures caller intent, treatment interest, and preferred timing before the consultation is booked.' },
           { icon: '📞', title: 'Works on your current number', body: 'No new number needed — just forward overflow or off-hours calls to RingBooker.' },
-          { icon: '👥', title: 'Multi-provider routing', body: 'Routes callers to preferred providers and handles alternatives when they\'re unavailable.' },
+          { icon: '👥', title: 'Provider preference capture', body: 'Captures preferred provider requests and handles alternatives based on your configured workflow.' },
           { icon: '📊', title: 'Call analytics and transcripts', body: 'Full call logs and summaries so your team has context on every inbound inquiry.' },
         ]}
       />
@@ -923,10 +983,10 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         rows={[
-          { scenario: 'Returning patient books next laser session', without: 'Front desk unavailable — patient calls elsewhere', with: 'Session booked with same provider, confirmed' },
-          { scenario: 'After-hours pre-care question', without: 'No answer — patient anxious before treatment', with: 'Pre-care guidance given, patient reassured' },
+          { scenario: 'Returning patient books next laser session', without: 'Front desk unavailable — patient calls elsewhere', with: 'Provider preference and session context captured' },
+          { scenario: 'After-hours pre-care question', without: 'No answer — patient anxious before treatment', with: 'Approved instructions shared or routed to your team' },
           { scenario: 'Consultation inquiry call', without: 'Rushed or missed, intent lost', with: 'Intent captured, consultation booked with context' },
-          { scenario: 'Multi-session treatment follow-up', without: 'No continuity, patient drifts', with: 'Provider matched, continuity maintained' },
+          { scenario: 'Multi-session treatment follow-up', without: 'No continuity, patient drifts', with: 'Provider preference and continuity notes preserved' },
         ]}
       />
     </>
@@ -943,11 +1003,11 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Can it handle bilingual English and Vietnamese callers?',
-      a: 'Yes. RingBooker supports English and Vietnamese call handling natively, which is especially valuable for nail salons with Vietnamese-speaking staff or clients.',
+      a: 'Yes. RingBooker supports configurable English and Vietnamese call flows, summaries, and salon-specific scripts, which is especially valuable for nail salons with Vietnamese-speaking staff or clients.',
     },
     {
       q: 'Can it answer pricing questions for my services?',
-      a: 'Yes. You load your service menu and prices during setup. RingBooker answers "how much for a full set?" or "what\'s the price for dip powder?" instantly, with your actual prices.',
+      a: 'Yes. You load your service menu and prices during setup. RingBooker can answer "how much for a full set?" or "what\'s the price for dip powder?" from your configured prices.',
     },
     {
       q: 'Can it handle same-day and walk-in booking requests?',
@@ -965,15 +1025,15 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
   'hair-salon': [
     {
       q: 'Can RingBooker route callers to a specific stylist?',
-      a: 'Yes. RingBooker asks about stylist preference and routes the caller accordingly. If the preferred stylist is unavailable, it offers qualified alternatives so the booking isn\'t lost.',
+      a: 'Yes. RingBooker asks about stylist preference and can route, flag, or summarize that preference based on your configured workflow. If the preferred stylist is unavailable, it can capture whether the caller is open to alternatives.',
     },
     {
       q: 'Can it handle color appointment bookings correctly?',
-      a: 'Yes. Service duration and type are configurable, so balayage, keratin, extensions, and other timed services get the right slot length. Callers won\'t get the wrong appointment.',
+      a: 'Yes. Service duration and type are configurable, so balayage, keratin, extensions, and other timed services can be captured with the right context before booking or handoff.',
     },
     {
       q: 'Does it support reschedule and cancellation calls?',
-      a: 'Yes. RingBooker handles reschedule flows and cancellation calls, preserving stylist preference and offering alternative slots where possible.',
+      a: 'Yes. RingBooker captures reschedule and cancellation intent, preserves stylist preference in the call context, and can offer alternative slots when connected to the right scheduling workflow.',
     },
     {
       q: 'Will it work on my existing salon number?',
@@ -985,13 +1045,13 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Can RingBooker handle multiple stylists?',
-      a: 'Yes. You configure your stylist list, their specialties, and availability rules. RingBooker routes callers based on that context.',
+      a: 'Yes. You configure your stylist list, specialties, and availability rules. RingBooker uses that context to capture preferences, route requests, or summarize next steps.',
     },
   ],
   spa: [
     {
       q: 'Can RingBooker book couples massages and multi-person appointments?',
-      a: 'Yes. Couples and group bookings are supported. RingBooker asks about the number of guests, preferred time, and room availability to confirm the right slot.',
+      a: 'Yes. Couples and group booking flows are supported. RingBooker asks about the number of guests, preferred time, and room needs, then checks availability when connected or routes a clear summary to your team.',
     },
     {
       q: 'Can it handle treatment package questions?',
@@ -1003,7 +1063,7 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Does it send reminders to reduce no-shows?',
-      a: 'Yes. Automated SMS reminders are sent before appointments to reduce last-minute cancellations and no-shows.',
+      a: 'Yes. Automated SMS reminders can be configured before appointments to help reduce last-minute confusion and no-shows.',
     },
     {
       q: 'Does it work on our existing spa phone number?',
@@ -1017,7 +1077,7 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
   'med-spa': [
     {
       q: 'Can RingBooker handle consultation inquiry calls professionally?',
-      a: 'Yes. RingBooker answers Botox, filler, laser, and general consultation calls with professional, clinic-appropriate scripting. It captures intent and books consultations based on your configuration.',
+      a: 'Yes. RingBooker captures Botox, filler, laser, and general consultation intent with professional, clinic-appropriate scripting. It can book consultations or route the request based on your configuration.',
     },
     {
       q: 'Does it support after-hours consultation call capture?',
@@ -1025,11 +1085,11 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Can it help reduce no-shows for high-ticket appointments?',
-      a: 'Yes. Automated reminder workflows are sent before treatment appointments, significantly reducing no-show rates for Botox, filler, and laser sessions.',
+      a: 'Yes. Automated reminder workflows can be sent before treatment appointments to help reduce missed appointments and last-minute confusion.',
     },
     {
       q: 'Can it route callers to a specific injector or provider?',
-      a: 'Yes. Multi-provider routing is supported. Callers can be directed to their preferred provider or offered alternatives based on availability.',
+      a: 'Yes. Provider preference capture is supported. Callers can request a preferred provider, and RingBooker can route, summarize, or offer alternatives based on your configured workflow.',
     },
     {
       q: 'Does it work on the existing med spa phone number?',
@@ -1047,15 +1107,15 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Can it maintain provider continuity for returning clients?',
-      a: 'Yes. RingBooker can ask about provider preference and route returning clients to their existing provider or note the preference for your team.',
+      a: 'Yes. RingBooker can ask about provider preference and route or note the preference for your team based on your configured workflow.',
     },
     {
       q: 'Does it handle pre-care and post-care questions?',
-      a: 'Yes. Common pre-care and post-care questions can be configured into the response scripts so callers get accurate, consistent answers every time.',
+      a: 'Yes. Approved pre-care and post-care information can be configured into response scripts. Questions requiring clinical judgment should be routed to your team.',
     },
     {
       q: 'Can it handle multi-session treatment booking?',
-      a: 'Yes. Returning clients booking their next session in a treatment course are handled with context, including provider preference and session continuity.',
+      a: 'Yes. Returning clients booking their next session can be handled with context, including provider preference and session continuity notes.',
     },
     {
       q: 'Does it work on our existing clinic phone number?',
@@ -1164,27 +1224,27 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
     'nail-salon': {
       label: 'For Nail Salons',
       title: 'Stop losing bookings to missed calls.',
-      subtitle: 'Answer after-hours and overflow calls on your current number with bilingual AI support built for nail salons.',
+      subtitle: 'Answer after-hours and overflow calls on your current number with configurable bilingual workflows built for nail salons.',
     },
     'hair-salon': {
       label: 'For Hair Salons',
       title: 'Keep chairs full and stylists focused.',
-      subtitle: 'Convert color, stylist-match, and reschedule calls into confirmed bookings while your team stays in-service.',
+      subtitle: 'Capture color, stylist preference, and reschedule calls while your team stays in-service.',
     },
     spa: {
       label: 'For Spas & Day Spas',
       title: 'Protect your guest experience — and your bookings.',
-      subtitle: 'Capture every treatment call, couples booking, and after-hours inquiry without interrupting in-room sessions.',
+      subtitle: 'Capture treatment calls, couples booking details, and after-hours inquiries without interrupting in-room sessions.',
     },
     'med-spa': {
       label: 'For Med Spas',
       title: 'Capture high-value consultation demand.',
-      subtitle: 'Answer after-hours and overflow consult calls before competitors do, and reduce no-show loss on high-ticket slots.',
+      subtitle: 'Capture after-hours and overflow consult intent with professional handoff context and reminder workflows.',
     },
     'beauty-clinic': {
       label: 'For Beauty & Aesthetic Clinics',
       title: 'Deliver the premium experience your clinic demands.',
-      subtitle: 'Handle consultation calls, provider continuity requests, and treatment questions with clinic-appropriate AI scripting.',
+      subtitle: 'Handle consultation calls, provider preference requests, and approved treatment information with clinic-appropriate AI scripting.',
     },
   };
 

@@ -258,7 +258,7 @@ export function MarketingContactTemplate() {
                   <p>Tell us how calls behave today — after-hours rings, busy Saturday overflow, consult inquiries, reschedules — and we’ll walk through how RingBooker captures that demand without changing your booking system.</p>
                   <div className="trust-list">
                     <div className="trust-item"><div className="trust-icon">🏪</div><div><strong>Works with your current number</strong><span>Forward the line clients already dial; a dedicated RingBooker number stays optional.</span></div></div>
-                    <div className="trust-item"><div className="trust-icon">📅</div><div><strong>No new booking software</strong><span>RingBooker is the phone layer alongside Square, Vagaro, Booksy, Mindbody, and your existing workflow.</span></div></div>
+                    <div className="trust-item"><div className="trust-icon">📅</div><div><strong>No new booking software</strong><span>Square Appointments is live today; other booking tools can start with summaries and handoff while your workflow stays in place.</span></div></div>
                     <div className="trust-item"><div className="trust-icon">💬</div><div><strong>Call recovery, not generic chat</strong><span>After-hours answering, overflow coverage, and missed-call text back tuned for salon and clinic call patterns.</span></div></div>
                   </div>
                 </div>
