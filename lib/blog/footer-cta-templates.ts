@@ -35,7 +35,12 @@ export const BLOG_FOOTER_BUTTONS: readonly BlogFooterButtonDefinition[] = [
   { id: 'start_free_trial', label: 'Start Free Trial', variant: 'solid', suggestedHref: '/user/signup' },
   { id: 'try_live_demo', label: 'Try a Live Demo', variant: 'gradient', suggestedHref: '/demo' },
   { id: 'see_how_it_works', label: 'See How It Works', variant: 'soft', suggestedHref: '/how-it-works' },
-  { id: 'reduce_missed_calls', label: 'Reduce Missed Calls', variant: 'soft', suggestedHref: '/missed-call-recovery' },
+  {
+    id: 'reduce_missed_calls',
+    label: 'Reduce Missed Calls',
+    variant: 'soft',
+    suggestedHref: '/phone-booking-recovery/missed-call-recovery',
+  },
   { id: 'keep_your_number', label: 'Keep Your Number', variant: 'soft', suggestedHref: '/pricing' },
   { id: 'compare_options', label: 'Compare Options', variant: 'soft', suggestedHref: '/compare' },
   { id: 'for_nail_salons', label: 'For Nail Salons', variant: 'soft', suggestedHref: '/industries/nail-salon' },

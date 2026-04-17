@@ -682,7 +682,7 @@ export const compareHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Every Other Option'),
   ),
   intro:
-    'Voicemail. Answering services. Hiring more staff. Generic AI receptionists. Here’s an honest comparison of how each one handles beauty business call management — and where each one falls short.',
+    'Most salons choose between voicemail, missed-call text-back, an answering service, hiring more front-desk help, or a general-purpose phone AI. This page compares those paths side by side with RingBooker’s beauty-focused answering — after hours, peak overflow, and human handoff when it matters — so you can decide from real trade-offs, not a generic feature list.',
   pills: [
     'Voicemail vs. AI',
     'Answering services',
@@ -1150,7 +1150,12 @@ export const trustHub: ContentHubPageConfig = {
     },
     {
       kind: 'step_track',
-      html: { section: 'leak', stepsCentered4: true, eyebrow: 'Phased Adoption' },
+      html: {
+        section: 'leak',
+        stepsCentered4: true,
+        eyebrow: 'Phased Adoption',
+        eyebrowTone: 'green',
+      },
       heading: 'What a low-risk rollout looks like',
       sub: 'You do not have to do everything at once.',
       steps: [

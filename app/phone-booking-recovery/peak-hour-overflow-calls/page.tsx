@@ -1,4 +1,5 @@
 import Link from 'next/link';
+
 import { MarketingSeoPage } from '@/components/marketing/marketing-seo-page';
 import { buildMetadata } from '@/lib/site';
 
@@ -40,7 +41,7 @@ export const metadata = buildMetadata({
   title: 'Peak-Hour Call Answering for Salons | Stop Overflow Calls from Becoming Lost Revenue',
   description:
     'When your front desk is busy with clients, RingBooker answers overflow calls, captures booking intent, and helps salons recover revenue lost during peak service hours.',
-  path: '/peak-hour-overflow-calls',
+  path: '/phone-booking-recovery/peak-hour-overflow-calls',
 });
 
 export default function PeakHourOverflowCallsPage() {
@@ -85,9 +86,9 @@ export default function PeakHourOverflowCallsPage() {
           <p>
             <Link href="/">Home</Link>
             {' · '}
-            <Link href="/after-hours-calls">After-hours call answering</Link>
+            <Link href="/phone-booking-recovery/after-hours-calls">After-hours call answering</Link>
             {' · '}
-            <Link href="/missed-call-recovery">Missed-call recovery</Link>
+            <Link href="/phone-booking-recovery/missed-call-recovery">Missed-call recovery</Link>
             {' · '}
             <Link href="/how-it-works">How RingBooker works</Link>
             {' · '}

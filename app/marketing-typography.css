@@ -1,0 +1,59 @@
+/**
+ * Public marketing typography — shared across home, pricing, contact, demos,
+ * how-it-works, SEO/legal shells, topic hubs (.html-hub-page), and FAQ.
+ * Use these variables in embedded page CSS so font sizes stay aligned.
+ */
+:root {
+  --mk-font-body: 16px;
+  --mk-leading-body: 1.6;
+
+  --mk-hero-title: clamp(36px, 5.2vw, 58px);
+  --mk-hero-title-lh: 1.1;
+  --mk-hero-title-track: -1.75px;
+  /* Slightly roomier hero for landing/home (optional) */
+  --mk-hero-title-home-lh: 1.12;
+  --mk-hero-title-home-track: -2px;
+
+  --mk-hero-lead: 17px;
+  --mk-hero-lead-lh: 1.72;
+
+  --mk-badge: 14px;
+
+  --mk-eyebrow: 12px;
+  --mk-eyebrow-ls: 0.08em;
+
+  --mk-section-h2: clamp(32px, 4vw, 48px);
+  --mk-section-h2-lh: 1.12;
+  --mk-section-h2-track: -1.4px;
+
+  --mk-section-lead: 16px;
+  --mk-section-lead-lh: 1.7;
+
+  --mk-card-title: 17px;
+  --mk-body: 14px;
+  --mk-body-lh: 1.65;
+  --mk-body-md: 14.5px;
+  --mk-body-sm: 13px;
+
+  --mk-btn: 15px;
+  --mk-btn-lg: 16px;
+  --mk-btn-sm: 14px;
+
+  --mk-article-h1: clamp(32px, 4.6vw, 50px);
+  --mk-article-h1-lh: 1.06;
+  --mk-article-h1-track: -1.3px;
+  --mk-article-intro: 17px;
+  --mk-article-intro-lh: 1.68;
+  --mk-article-h2: clamp(24px, 2.8vw, 28px);
+  --mk-article-h2-lh: 1.15;
+  --mk-article-h2-track: -0.6px;
+  --mk-article-body: 16px;
+  --mk-article-body-lh: 1.74;
+
+  --mk-legal-h1: clamp(34px, 5vw, 52px);
+  --mk-legal-h1-track: -1.4px;
+  --mk-legal-h2: 20px;
+
+  --mk-meta: 13px;
+  --mk-caption: 12.5px;
+}

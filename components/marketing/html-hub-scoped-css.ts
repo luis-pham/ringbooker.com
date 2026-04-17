@@ -52,10 +52,10 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .hero{padding:80px 24px 96px;text-align:center;position:relative;overflow:hidden}
 .html-hub-page .hero::before{content:'';position:absolute;inset:0;pointer-events:none}
 .html-hub-page .hero-inner{max-width:820px;margin:0 auto;position:relative;z-index:1}
-.html-hub-page .pill-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-pill);font-size:13px;font-weight:600;margin-bottom:24px}
-.html-hub-page .hero h1{font-size:clamp(36px,5.5vw,64px);font-weight:800;line-height:1.1;letter-spacing:-1.5px;margin-bottom:20px;color:var(--navy)}
+.html-hub-page .pill-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-pill);font-size:var(--mk-badge);font-weight:600;margin-bottom:24px}
+.html-hub-page .hero h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:20px;color:var(--navy)}
 .html-hub-page .hero h1 mark{border-radius:12px;padding:2px 14px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
-.html-hub-page .hero-sub{font-size:clamp(16px,2vw,19px);color:var(--gray-600);max-width:640px;margin:0 auto 36px;line-height:1.65}
+.html-hub-page .hero-sub{font-size:var(--mk-hero-lead);color:var(--gray-600);max-width:640px;margin:0 auto 36px;line-height:var(--mk-hero-lead-lh)}
 .html-hub-page .hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .html-hub-page .hero-tags{margin-top:40px;display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
 .html-hub-page .hero-tag{font-size:13px;color:var(--gray-600);display:flex;align-items:center;gap:6px}
@@ -77,19 +77,19 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .hero-landing-shell{position:relative;z-index:2;width:100%;max-width:1100px;margin:0 auto;padding:30px 48px 72px;box-sizing:border-box}
 .html-hub-page .hero-landing-shell .breadcrumb{align-self:stretch}
 .html-hub-page .hero.hero--landing .hero-inner{position:relative;z-index:2;max-width:820px;width:100%;margin:0 auto}
-.html-hub-page .hero.hero--landing h1.hero-h{font-size:clamp(28px,5vw,68px);font-weight:800;line-height:1.12;letter-spacing:-2.5px;color:var(--gray-800);margin-bottom:20px;word-break:break-word}
+.html-hub-page .hero.hero--landing h1.hero-h{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-home-lh);letter-spacing:var(--mk-hero-title-home-track);color:var(--gray-800);margin-bottom:20px;word-break:break-word}
 .html-hub-page .hero.hero--landing h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--radius-pill);padding:0.12em 0.55em;margin:0.08em 0.12em;max-width:100%;box-sizing:border-box;line-height:1.2;vertical-align:baseline}
-.html-hub-page .hero.hero--landing .hero-sub{font-size:17.5px;color:var(--gray-600);line-height:1.72;max-width:min(640px,100%);margin:0 auto 36px;padding:0 12px}
+.html-hub-page .hero.hero--landing .hero-sub{font-size:var(--mk-hero-lead);color:var(--gray-600);line-height:var(--mk-hero-lead-lh);max-width:min(640px,100%);margin:0 auto 36px;padding:0 12px}
 .html-hub-page .hero.hero--landing .hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:0}
-.html-hub-page .hero.hero--landing .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:16px 34px;border-radius:var(--radius-pill);font-size:16px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 36px rgba(91,33,182,.32);border:none;transition:transform .15s,filter .2s,box-shadow .2s;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.html-hub-page .hero.hero--landing .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:16px 34px;border-radius:var(--radius-pill);font-size:var(--mk-btn-lg);font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 36px rgba(91,33,182,.32);border:none;transition:transform .15s,filter .2s,box-shadow .2s;font-family:inherit;cursor:pointer;box-sizing:border-box}
 .html-hub-page .hero.hero--landing .btn-hero-live:hover{filter:brightness(1.06);transform:scale(1.04);box-shadow:0 14px 44px rgba(91,33,182,.38)}
 .html-hub-page .hero.hero--landing .btn-hero-live svg{width:16px;height:16px;flex-shrink:0}
 .html-hub-page .hero.hero--landing .btn-hero-live .btn-hero-live-phone{width:18px;height:18px}
 .html-hub-page .hero.hero--landing .btn-hero-live .btn-hero-live-phone path{fill:#FACC15}
 .html-hub-page .hero.hero--landing .btn-hero-live .btn-hero-live-arrow{color:#fff}
-.html-hub-page .hero.hero--landing .btn-outline{background:transparent;color:var(--gray-800);padding:14px 26px;border-radius:var(--radius-pill);font-size:15px;font-weight:600;text-decoration:none;border:1.5px solid var(--border);display:inline-flex;align-items:center;gap:8px;transition:all .2s;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.html-hub-page .hero.hero--landing .btn-outline{background:transparent;color:var(--gray-800);padding:14px 26px;border-radius:var(--radius-pill);font-size:var(--mk-btn);font-weight:600;text-decoration:none;border:1.5px solid var(--border);display:inline-flex;align-items:center;gap:8px;transition:all .2s;font-family:inherit;cursor:pointer;box-sizing:border-box}
 .html-hub-page .hero.hero--landing .btn-outline:hover{border-color:var(--purple);color:var(--purple)}
-.html-hub-page .hero.hero--landing .btn-hero-trial{padding:11px 20px;font-size:14px;font-weight:600}
+.html-hub-page .hero.hero--landing .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
 @media(max-width:640px){
   .html-hub-page .hero-landing-shell{padding-left:24px;padding-right:24px;padding-top:34px;padding-bottom:64px}
 }
@@ -523,16 +523,16 @@ export const HTML_HUB_SCOPED_CSS = `
 /* Marketing-home leak-section (Missed-Call Recovery) — paired with .leak-grid / .leak-card */
 .html-hub-page .section-leak{background:linear-gradient(180deg,#fff,#F9FAFB)}
 
-.html-hub-page .section-label{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:var(--radius-pill);font-size:12px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+.html-hub-page .section-label{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:var(--radius-pill);font-size:var(--mk-eyebrow);font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:var(--mk-eyebrow-ls);margin-bottom:16px}
 .html-hub-page .section-label.green{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
 .html-hub-page .section-label.purple{background:var(--purple-bg);border-color:var(--purple-border);color:var(--purple)}
 .html-hub-page .section-label.blue{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)}
 .html-hub-page .section-label.amber{background:var(--amber-bg);border-color:#FDE68A;color:var(--amber)}
 .html-hub-page .section-label.dark{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.8)}
 
-.html-hub-page .section h2{font-size:clamp(26px,4vw,42px);font-weight:800;line-height:1.15;letter-spacing:-1px;margin-bottom:16px;color:var(--navy)}
+.html-hub-page .section h2{font-size:var(--mk-section-h2);font-weight:800;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);margin-bottom:16px;color:var(--navy)}
 .html-hub-page .section h3{font-size:18px;font-weight:700;margin-bottom:8px}
-.html-hub-page .section-sub{font-size:clamp(15px,1.8vw,18px);color:var(--gray-600);max-width:600px;line-height:1.65;margin-bottom:48px}
+.html-hub-page .section-sub{font-size:var(--mk-section-lead);color:var(--gray-600);max-width:600px;line-height:var(--mk-section-lead-lh);margin-bottom:48px}
 .html-hub-page .section-dark h2{color:#fff}
 .html-hub-page .section-dark .section-sub{color:rgba(255,255,255,.65)}
 

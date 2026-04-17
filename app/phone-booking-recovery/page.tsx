@@ -7,10 +7,12 @@ import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { phoneBookingRecoveryHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
+const phoneBookingRecoveryDescription =
+  'Recover revenue lost to missed calls: after-hours and peak-hour coverage so beauty businesses capture booking intent before callers book elsewhere.';
+
 export const metadata = buildMetadata({
   title: 'Phone Booking Recovery for Beauty Businesses | RingBooker',
-  description:
-    'Recover revenue lost to missed calls: after-hours and peak-hour coverage so beauty businesses capture booking intent before callers book elsewhere.',
+  description: phoneBookingRecoveryDescription,
   path: '/phone-booking-recovery',
 });
 
@@ -26,6 +28,11 @@ export default async function PhoneBookingRecoveryHubPage() {
       {...phoneBookingRecoveryHub}
       resourceLinks={resourceLinks}
       heroActions={<ContentHubHeroActionsHomeStyle />}
+      seoHub={{
+        path: '/phone-booking-recovery',
+        webPageName: 'Phone booking recovery for beauty businesses',
+        description: phoneBookingRecoveryDescription,
+      }}
     />
   );
 }

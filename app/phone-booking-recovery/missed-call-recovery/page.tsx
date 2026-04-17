@@ -41,7 +41,7 @@ export const metadata = buildMetadata({
   title: 'Missed Call Recovery for Salons & Spas | Turn Lost Calls into Recovered Revenue',
   description:
     'RingBooker helps salons and spas turn missed calls into recovered bookings with AI phone answering, missed-call text back, and fast callback workflows.',
-  path: '/missed-call-recovery',
+  path: '/phone-booking-recovery/missed-call-recovery',
 });
 
 export default function MissedCallRecoveryPage() {
@@ -78,9 +78,9 @@ export default function MissedCallRecoveryPage() {
       customContent={
         <div className="seo-internal-links">
           <p>
-            <Link href="/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
+            <Link href="/phone-booking-recovery/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
             {' · '}
-            <Link href="/after-hours-calls">After-hours call answering</Link>
+            <Link href="/phone-booking-recovery/after-hours-calls">After-hours call answering</Link>
             {' · '}
             <Link href="/how-it-works">How RingBooker works</Link>
             {' · '}

@@ -1080,15 +1080,15 @@ function VerticalRelatedPlaybooks() {
     >
       <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">Playbooks</p>
       <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
-        <Link className={linkClass} href="/after-hours-calls">
+        <Link className={linkClass} href="/phone-booking-recovery/after-hours-calls">
           After-hours call answering
         </Link>
         {' · '}
-        <Link className={linkClass} href="/peak-hour-overflow-calls">
+        <Link className={linkClass} href="/phone-booking-recovery/peak-hour-overflow-calls">
           Peak-hour overflow coverage
         </Link>
         {' · '}
-        <Link className={linkClass} href="/missed-call-recovery">
+        <Link className={linkClass} href="/phone-booking-recovery/missed-call-recovery">
           Missed-call recovery
         </Link>
         {' · '}

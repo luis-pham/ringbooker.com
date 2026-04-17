@@ -48,7 +48,8 @@ export function MarketingChromeStyles() {
 .mk-nav-cta:hover{background:#1f2937;transform:scale(1.03)}
 .mk-footer{background:#F9FAFB;border-top:1px solid #E5E7EB;padding:60px 48px 32px}
 .mk-footer-inner{max-width:1100px;margin:0 auto}
-.mk-footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:50px}
+.mk-footer-brand-block{max-width:440px;margin-bottom:48px}
+.mk-footer-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:48px;margin-bottom:50px}
 .mk-footer-brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;margin-bottom:14px}
 .mk-footer-logo{width:34px;height:34px}
 .mk-footer-logo .mk-nav-ripple-3{width:34px;height:34px}
@@ -189,11 +190,14 @@ export function MarketingChromeStyles() {
   /* visitor trial + auth primary CTA live in drawer / avatar; keep bar minimal */
   .mk-nav-cta-hide-sm{display:none !important}
   .mk-footer{padding-left:22px;padding-right:22px}
-  .mk-footer-grid{grid-template-columns:1fr}
+  .mk-footer-links{grid-template-columns:repeat(2,minmax(0,1fr));gap:32px 28px}
   .mk-footer-bottom{flex-direction:column;align-items:flex-start}
   .mk-avatar-menu{right:0;min-width:260px}
   /* hide upgrade pill on mobile to keep nav clean */
   .mk-nav-upgrade{display:none}
+}
+@media(max-width:560px){
+  .mk-footer-links{grid-template-columns:1fr}
 }
 `,
       }}
@@ -286,59 +290,59 @@ export function MarketingFooter() {
     <>
     <footer className="mk-footer">
       <div className="mk-footer-inner">
-        <div className="mk-footer-grid">
-          <div>
-            <div className="mk-footer-brand">
-              <div className="mk-nav-logo-icon mk-footer-logo">
-                <div className="mk-nav-ripple mk-nav-ripple-3" />
-                <div className="mk-nav-ripple mk-nav-ripple-2" />
-                <div className="mk-nav-ripple-core">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
-                  </svg>
-                </div>
+        <div className="mk-footer-brand-block">
+          <div className="mk-footer-brand">
+            <div className="mk-nav-logo-icon mk-footer-logo">
+              <div className="mk-nav-ripple mk-nav-ripple-3" />
+              <div className="mk-nav-ripple mk-nav-ripple-2" />
+              <div className="mk-nav-ripple-core">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+                </svg>
               </div>
-              RingBooker
             </div>
-            <p className="mk-footer-desc">
-              AI phone answering and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number.
-            </p>
-            {socialLinks.length > 0 ? (
-              <div className="mk-footer-social">
-                {socialLinks.map((link) => (
-                  <a
-                    key={link.label}
-                    className="mk-soc-btn"
-                    href={link.href}
-                    aria-label={`${siteConfig.name} on ${link.label}`}
-                    rel="me noopener noreferrer"
-                    target="_blank"
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={link.icon} />
-                    </svg>
-                  </a>
-                ))}
-              </div>
-            ) : null}
+            RingBooker
           </div>
+          <p className="mk-footer-desc">
+            AI phone answering and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number.
+          </p>
+          {socialLinks.length > 0 ? (
+            <div className="mk-footer-social">
+              {socialLinks.map((link) => (
+                <a
+                  key={link.label}
+                  className="mk-soc-btn"
+                  href={link.href}
+                  aria-label={`${siteConfig.name} on ${link.label}`}
+                  rel="me noopener noreferrer"
+                  target="_blank"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d={link.icon} />
+                  </svg>
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
+        <nav className="mk-footer-links" aria-label="Footer">
           <div className="mk-footer-col">
             <h4>Product</h4>
             <a href="/#features">Features</a>
-            <a href="/#industries">Industries</a>
             <a href="/pricing">Pricing</a>
             <a href="/how-it-works">How It Works</a>
-            <a href="/demo" data-demo-picker>Live Demo</a>
+            <a href="/demo" data-demo-picker>
+              Live Demo
+            </a>
             <a href="/user/login">Sign In</a>
           </div>
           <div className="mk-footer-col">
-            <h4>Resources</h4>
-            <a href="/blog">Blog</a>
-            <a href="/faq">FAQ</a>
-            <a href="/after-hours-calls">After-Hours Calls</a>
-            <a href="/peak-hour-overflow-calls">Peak-Hour Overflow</a>
-            <a href="/missed-call-recovery">Missed-Call Recovery</a>
-            <a href="/contact">Contact</a>
+            <h4>Solutions</h4>
+            <a href="/phone-booking-recovery">Booking Recovery</a>
+            <a href="/current-number">Current Number</a>
+            <a href="/works-with">Works With</a>
+            <a href="/compare">Compare</a>
+            <a href="/trust">Trust</a>
           </div>
           <div className="mk-footer-col">
             <h4>Industries</h4>
@@ -348,7 +352,13 @@ export function MarketingFooter() {
               </a>
             ))}
           </div>
-        </div>
+          <div className="mk-footer-col">
+            <h4>Resources</h4>
+            <a href="/blog">Blog</a>
+            <a href="/faq">FAQ</a>
+            <a href="/contact">Contact</a>
+          </div>
+        </nav>
         <div className="mk-footer-bottom">
           <p className="mk-footer-copy">© 2025 RingBooker — All rights reserved.</p>
           <div className="mk-footer-bottom-right">

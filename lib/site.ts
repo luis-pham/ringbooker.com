@@ -113,9 +113,9 @@ export const footerNav = {
     { href: '/demo', label: 'Demo' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/how-it-works', label: 'How It Works' },
-    { href: '/after-hours-calls', label: 'After-Hours Calls' },
-    { href: '/peak-hour-overflow-calls', label: 'Peak-Hour Overflow' },
-    { href: '/missed-call-recovery', label: 'Missed-Call Recovery' },
+    { href: '/phone-booking-recovery/after-hours-calls', label: 'After-Hours Calls' },
+    { href: '/phone-booking-recovery/peak-hour-overflow-calls', label: 'Peak-Hour Overflow' },
+    { href: '/phone-booking-recovery/missed-call-recovery', label: 'Missed-Call Recovery' },
   ],
   company: [
     { href: '/contact', label: 'Book Demo' },

@@ -5,6 +5,7 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { HtmlHubFaq } from '@/components/marketing/html-hub-faq';
 import { HTML_HUB_SCOPED_CSS } from '@/components/marketing/html-hub-scoped-css';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
+import { siteConfig } from '@/lib/site';
 
 export type ContentHubSection = {
   heading: string;
@@ -205,6 +206,15 @@ export type MarketingContentHubProps = {
   heroLayout?: 'hub' | 'landing';
   /** Extra classes on `<main>` (e.g. `hub-compare-index` for /compare grid locks). */
   mainExtraClassName?: string;
+  /**
+   * Emits WebPage + BreadcrumbList JSON-LD (`path` must match `buildMetadata` canonical).
+   * Use the same `description` as the page meta description for consistency.
+   */
+  seoHub?: {
+    path: string;
+    webPageName: string;
+    description: string;
+  };
 };
 
 /** Default primary/secondary CTAs — class names match static hub HTML (`btn`, `btn-purple`, `btn-lg`). */
@@ -864,8 +874,55 @@ export function MarketingContentHub({
   breadcrumbLabel,
   heroLayout = 'hub',
   mainExtraClassName,
+  seoHub,
 }: MarketingContentHubProps) {
   const faqAccentResolved = faqAccent ?? (variant === 'green' || variant === 'teal' ? 'green' : 'purple');
+
+  const hubSeoJsonLd =
+    seoHub != null
+      ? (() => {
+          const base = siteConfig.url.replace(/\/$/, '');
+          const path = seoHub.path.startsWith('/') ? seoHub.path : `/${seoHub.path}`;
+          const pageUrl = `${base}${path}`;
+          const graph: Record<string, unknown>[] = [
+            {
+              '@type': 'WebPage',
+              '@id': `${pageUrl}#webpage`,
+              url: pageUrl,
+              name: seoHub.webPageName,
+              description: seoHub.description,
+              isPartOf: {
+                '@type': 'WebSite',
+                name: siteConfig.name,
+                url: `${base}/`,
+              },
+            },
+          ];
+          if (breadcrumbLabel) {
+            graph.push({
+              '@type': 'BreadcrumbList',
+              itemListElement: [
+                {
+                  '@type': 'ListItem',
+                  position: 1,
+                  name: 'Home',
+                  item: `${base}/`,
+                },
+                {
+                  '@type': 'ListItem',
+                  position: 2,
+                  name: breadcrumbLabel,
+                  item: pageUrl,
+                },
+              ],
+            });
+          }
+          return {
+            '@context': 'https://schema.org',
+            '@graph': graph,
+          };
+        })()
+      : null;
 
   const faqJsonLd =
     faqs.length > 0
@@ -1078,6 +1135,9 @@ export function MarketingContentHub({
         </nav>
       </main>
       <MarketingFooter />
+      {hubSeoJsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(hubSeoJsonLd) }} />
+      ) : null}
       {articleJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       ) : null}

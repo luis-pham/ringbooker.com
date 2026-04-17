@@ -85,9 +85,9 @@ export function MarketingFaqAccordion({
   align-items:center;
   padding:5px 12px;
   border-radius:9999px;
-  font-size:12px;
+  font-size:var(--mk-eyebrow);
   font-weight:700;
-  letter-spacing:.5px;
+  letter-spacing:var(--mk-eyebrow-ls);
   text-transform:uppercase;
   color:var(--mfaq-purple);
   background:#F5F3FF;
@@ -96,19 +96,19 @@ export function MarketingFaqAccordion({
   text-align:center;
 }
 .mfaq-title{
-  font-size:clamp(26px,4vw,42px);
+  font-size:var(--mk-section-h2);
   font-weight:800;
-  letter-spacing:-1px;
+  letter-spacing:var(--mk-section-h2-track);
   margin:0 0 16px;
   text-align:center;
   color:var(--mfaq-text);
-  line-height:1.15;
+  line-height:var(--mk-section-h2-lh);
 }
 .mfaq-sub{
-  font-size:15px;
+  font-size:var(--mk-section-lead);
   color:#6B7280;
   margin:0 auto 40px;
-  line-height:1.6;
+  line-height:var(--mk-section-lead-lh);
   max-width:560px;
   text-align:center;
 }
@@ -130,7 +130,7 @@ export function MarketingFaqAccordion({
   background:none;
   border:none;
   padding:20px 24px;
-  font-size:15px;
+  font-size:var(--mk-btn);
   font-weight:600;
   color:var(--mfaq-text);
   text-align:left;
@@ -162,9 +162,9 @@ export function MarketingFaqAccordion({
 .mfaq-a p{
   margin:0;
   padding:0 24px 20px;
-  font-size:14px;
+  font-size:var(--mk-body);
   color:var(--mfaq-muted);
-  line-height:1.65;
+  line-height:var(--mk-body-lh);
   text-align:left;
 }
 .mfaq-item[open] .mfaq-a{max-height:2000px}

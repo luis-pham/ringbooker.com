@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 @import '@fontsource-variable/mona-sans';
+@import './marketing-typography.css';
 
 :root {
   color-scheme: light;

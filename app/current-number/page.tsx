@@ -7,10 +7,12 @@ import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { currentNumberHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
+const currentNumberDescription =
+  'Add AI call answering on the number clients already know. RingBooker uses forwarding — no new digits, no listing updates, no workflow reset.';
+
 export const metadata = buildMetadata({
   title: 'Keep Your Current Business Phone Number | RingBooker',
-  description:
-    'Add AI call answering on the number clients already know. RingBooker uses forwarding — no new digits, no listing updates, no workflow reset.',
+  description: currentNumberDescription,
   path: '/current-number',
 });
 
@@ -26,6 +28,11 @@ export default async function CurrentNumberHubPage() {
       {...currentNumberHub}
       resourceLinks={resourceLinks}
       heroActions={<ContentHubHeroActionsHomeStyle />}
+      seoHub={{
+        path: '/current-number',
+        webPageName: 'Keep your current business phone number with AI call answering',
+        description: currentNumberDescription,
+      }}
     />
   );
 }
