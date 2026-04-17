@@ -1,6 +1,6 @@
 # RingBooker
 
-> RingBooker is an AI phone answering and booking recovery layer built for beauty and wellness businesses — nail salons, hair salons, day spas, med spas, and beauty clinics — that answers missed and overflow calls on the business's existing phone number, captures booking intent, supports reschedules and cancellations, and sends SMS follow-up when configured.
+> RingBooker is an AI phone answering and booking revenue recovery layer built for beauty and wellness businesses — nail salons, hair salons, day spas, med spas, and beauty clinics — that answers missed and overflow calls on the business's existing phone number, captures booking intent, supports reschedules and cancellations, and sends SMS follow-up when configured.
 
 ## What RingBooker Does
 
@@ -39,7 +39,7 @@ RingBooker is purpose-built for five categories of beauty and wellness businesse
 4. Booking intent and call summaries are logged to the business dashboard
 5. SMS confirmation or follow-up is sent to the caller when configured
 
-Setup uses guided call forwarding and requires no new public phone number or hardware. Timing depends on the business phone provider and workflow scope.
+RingBooker includes a customer-facing setup interface designed so businesses can configure the essentials in about 15 minutes. Call forwarding requires no new public phone number or hardware, though timing can vary by phone provider and workflow scope.
 
 ## Integrations
 

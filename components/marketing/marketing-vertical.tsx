@@ -237,7 +237,7 @@ function HowItWorks({ steps, accentBg }: { steps: HowItWorksStep[]; accentBg: st
     <section className="mx-auto mt-20 max-w-6xl px-6">
       <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
       <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">How RingBooker Works</h2>
-      <p className="mt-2 max-w-xl text-[15px] text-slate-500">No new phone number needed. Works with your existing line through a guided forwarding setup.</p>
+      <p className="mt-2 max-w-xl text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
       <div className="mt-8 grid gap-5 md:grid-cols-3">
         {steps.map((s) => (
           <div
@@ -413,7 +413,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             Nail Salon Calls Get Missed Most During Busy Service Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won&apos;t wait. RingBooker answers overflow and after-hours calls on your current number, supports configurable English and Vietnamese workflows, and captures booking intent before missed rings become lost opportunities.
+            Your techs are with clients — and callers asking for prices, walk-ins, or same-day bookings won&apos;t wait. RingBooker answers overflow and after-hours calls on your current number, supports configurable English and Vietnamese workflows, and captures booking intent before missed rings become lost booking revenue.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/nail-salon" className={theme.demoCtaClass}>
@@ -532,7 +532,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
             Recover Hair Salon Revenue Lost During Services and Peak Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            While stylists are cutting or coloring, callers asking for preferred stylists, color slots, extensions, or reschedules cannot always get through. RingBooker covers those calls on your current number so reschedule intent, stylist preference, and color inquiries do not disappear into voicemail.
+            While stylists are cutting or coloring, callers asking for preferred stylists, color slots, extensions, or reschedules cannot always get through. RingBooker covers those calls on your current number so revenue-bearing reschedules, stylist preferences, and color inquiries do not disappear into voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
@@ -651,7 +651,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
             After-Hours Spa Calls Should Not Turn Into Lost Revenue
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking intent does not disappear into voicemail.
+            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking revenue is not left sitting in voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/day-spa" className={theme.demoCtaClass}>
@@ -770,7 +770,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
             When Med Spa Consult Calls Go Unanswered, High-Intent Leads Move On
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Clients often research after hours, then call when intent is high. If the line goes to voicemail during a busy desk or off-hours, that consult lead may cool off before your team can respond. RingBooker captures overflow and after-hours consult intent on your current number — no booking migration — and hands off context when a human should close the consult.
+            Clients often research after hours, then call when intent is high. If the line goes to voicemail during a busy desk or off-hours, that consult lead may cool off before your team can respond. RingBooker captures overflow and after-hours consult intent on your current number to protect high-value demand and hand off context when a human should close the consult.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
@@ -889,7 +889,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
             Beauty Clinic Calls Need More Than Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Consultation-first journeys, provider continuity, and privacy-conscious phone handling still have to compete with busy desks and after-hours inquiries. RingBooker is an AI phone answering and booking recovery layer on your current number — capturing missed consultation, reschedule, and follow-up intent with clinic-appropriate handoff context.
+            Consultation-first journeys, provider continuity, and privacy-conscious phone handling still have to compete with busy desks and after-hours inquiries. RingBooker is an AI phone answering and booking recovery layer on your current number — protecting consultation revenue by capturing missed consult, reschedule, and follow-up intent with clinic-appropriate handoff context.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>

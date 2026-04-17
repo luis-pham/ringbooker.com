@@ -8,7 +8,7 @@ import { phoneBookingRecoveryHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
 const phoneBookingRecoveryDescription =
-  'Recover revenue lost to missed calls: after-hours and peak-hour coverage so beauty businesses capture booking intent before callers book elsewhere.';
+  'Recover and protect revenue lost to missed calls: after-hours and peak-hour coverage so beauty businesses capture booking intent before callers book elsewhere.';
 
 export const metadata = buildMetadata({
   title: 'Phone Booking Recovery for Beauty Businesses | RingBooker',

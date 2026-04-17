@@ -53,12 +53,12 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Missed Calls'),
   ),
   intro:
-    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking intent. Phone booking recovery captures that intent before it disappears into voicemail or a competitor call.',
+    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Phone booking recovery captures that intent before it disappears into voicemail or a competitor call.',
   pills: [
     'After-hours calls captured',
     'Peak-hour overflow handled',
     'No number change needed',
-    'Works with existing tools',
+    'Protects booking revenue',
   ],
   sections: [],
   hubBlocks: [
@@ -66,7 +66,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
       kind: 'card_grid',
       html: { eyebrow: 'The Core Problem', cardGridStyle: 'leak', leakGridColumns: 4 },
       heading: 'What “phone booking recovery” actually means',
-      sub: 'It is not just about answering calls. It is about recapturing booking opportunities that would otherwise disappear when a caller hangs up or reaches voicemail.',
+      sub: 'It is not just about answering calls. It is about recapturing booking opportunities and protecting revenue that would otherwise disappear when a caller hangs up or reaches voicemail.',
       cards: [
         {
           icon: '📵',
@@ -76,7 +76,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
         {
           icon: '🌙',
           title: 'After-hours opportunity window',
-          body: 'A significant share of beauty booking calls come outside business hours. Without a system to capture that intent, those are appointments you will never know you missed.',
+          body: 'A significant share of beauty booking calls come outside business hours. Without a system to capture that intent, those are revenue opportunities you may never know you missed.',
         },
         {
           icon: '⚡',
@@ -294,11 +294,11 @@ export const currentNumberHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Current Number'),
   ),
   intro:
-    'Clients keep dialing the line they already trust. RingBooker layers after-hours and overflow answering through call forwarding — no new digits, no listing churn, and no reset to how your team works the phone.',
+    'Clients keep dialing the line they already trust. RingBooker layers after-hours and overflow answering through call forwarding — no new digits, no listing churn, and a guided customer setup flow built to configure the essentials in about 15 minutes.',
   pills: [
     'No number migration needed',
     'Works via call forwarding',
-    'Guided forwarding setup',
+    'Guided 15-minute setup',
     'Zero client disruption',
   ],
   sections: [],
@@ -307,7 +307,7 @@ export const currentNumberHub: ContentHubPageConfig = {
       kind: 'flow',
       html: { eyebrow: 'How It Works', eyebrowTone: 'purple' },
       heading: 'Your number stays. The coverage expands.',
-      sub: 'Call forwarding means RingBooker activates only when your current setup cannot answer — after hours, during overflow, or when staff are with a client. Your public number never changes.',
+      sub: 'Call forwarding means RingBooker activates only when your current setup cannot answer — after hours, during overflow, or when staff are with a client. Your public number never changes, and setup starts from a guided customer interface.',
       steps: [
         { icon: '📱', label: 'Client calls', line: 'Your existing number', badge: 'No change', badgeStyle: 'green' },
         { icon: '☎️', label: 'Your front desk', line: 'Answers if available', badge: 'Current workflow', badgeStyle: 'green' },

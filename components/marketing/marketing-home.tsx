@@ -67,7 +67,7 @@ const softwareJsonLd = {
     priceCurrency: 'USD',
   },
   description:
-    'AI phone answering and booking recovery for salons, spas, med spas, and clinics: after-hours and peak-hour overflow, missed-call text back, and protected revenue on your current number — no booking software migration.',
+    'AI phone answering and booking revenue recovery for salons, spas, med spas, and clinics: after-hours and peak-hour overflow, missed-call text back, protected revenue, and guided setup in about 15 minutes on your current number.',
 };
 
 const styles: string[] = [
@@ -913,7 +913,7 @@ export function MarketingHomeTemplate() {
               <Link className="hero-sub-link" href="/industries/beauty-clinic">
                 beauty clinics
               </Link>{' '}
-              — built for after-hours calls, peak-hour overflow, and missed-call recovery. Works with your booking tools.
+              — built to recover missed bookings, protect revenue, and cover after-hours calls or peak-hour overflow. Guided setup in about 15 minutes.
             </p>
             <div className="hero-btns">
               <a href="/demo" className="btn-hero-live" data-demo-picker>
@@ -1007,7 +1007,7 @@ export function MarketingHomeTemplate() {
             {[
               ['☎️', 'Keep your current phone number', 'proof-purple'],
               ['🔌', 'Square live today; booking workflows stay', 'proof-green'],
-              ['⚡', 'Guided setup — no big migration', 'proof-amber'],
+              ['⚡', 'Guided 15-minute setup — no big migration', 'proof-amber'],
               ['💅', 'Built for nail salons, hair salons, spas, and clinics', 'proof-pink'],
             ].map(([icon, item, tone]) => (
               <div className="proof-item" key={item}>
@@ -1139,7 +1139,7 @@ export function MarketingHomeTemplate() {
           <div className="steps-inner">
             <div className="sec-label">How It Works</div>
             <h2 className="sec-title reveal">Get your AI phone agent live<br />in three simple steps.</h2>
-            <p className="sec-sub reveal">Built for busy beauty businesses that want a guided, low-friction rollout — not another software migration project.</p>
+            <p className="sec-sub reveal">Built for busy beauty businesses that want to configure call recovery in about <span className="emphasis-5min">15 minutes</span> — not get stuck in another software migration project.</p>
             <div className="home-carousel" id="howCarousel">
               <div className="steps-grid home-carousel-track">
                 <div className="step-card reveal home-carousel-slide">
@@ -1311,7 +1311,7 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="test-card home-carousel-slide">
                   <div className="test-qq">"</div>
-                  <p>We kept our existing number, started with a simple forwarding setup, and clients still reach us the way they always have.</p>
+                  <p>We kept our existing number, configured the basics in about 15 minutes, and clients still reach us the way they always have.</p>
                   <div className="test-author">
                     <div className="test-av">JK</div>
                     <div><div className="test-name">Jenny K.</div><div className="test-role">Day Spa — Dallas</div></div>
@@ -1356,7 +1356,7 @@ export function MarketingHomeTemplate() {
           <div className="pricing-inner">
             <div className="sec-label sec-label-center">Pricing</div>
             <h2 className="sec-title reveal">Start with the coverage you need.</h2>
-            <p className="sec-sub reveal">Choose a lightweight phone answering layer now, then upgrade when you want more follow-up, reporting, and team support.</p>
+            <p className="sec-sub reveal">Choose a lightweight phone answering layer now to recover and protect booking revenue, then upgrade when you want more follow-up, reporting, and team support.</p>
             <div className="price-toggle">
               <button className="pt-btn on" id="tog-m" type="button">Monthly</button>
               <button className="pt-btn" id="tog-a" type="button">Annual</button>
@@ -1422,7 +1422,7 @@ export function MarketingHomeTemplate() {
             <div className="cta-banner reveal">
               <div className="cta-text">
                 <h2>Keep your number.<br />Cover the calls your team can’t.</h2>
-                <p>Go live quickly with an AI phone answering layer for after-hours, overflow, missed-call recovery, and human handoff when needed.</p>
+                <p>Configure the essentials in about 15 minutes, then start recovering booking intent from after-hours calls, overflow, missed rings, and human handoff moments.</p>
               </div>
               <div className="cta-actions">
                 <a href="/demo" className="btn-white" data-demo-picker>
