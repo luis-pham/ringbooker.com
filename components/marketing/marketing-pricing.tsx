@@ -1,5 +1,34 @@
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
+
+const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
+  {
+    q: 'Do I need a new number?',
+    a: 'No. Current-number setup is the primary path. A dedicated RingBooker line is available only if you prefer a separate line.',
+  },
+  {
+    q: 'Do I need to change booking software?',
+    a: 'No. RingBooker works alongside your current booking tools. It captures the call context and helps move routine scheduling requests forward.',
+  },
+  {
+    q: 'Which plan is right for me?',
+    a: 'Start with Starter if your main issue is missed after-hours or overflow calls. Choose Professional if you need stronger follow-up, caller context, and provider continuity.',
+  },
+  {
+    q: 'Can it handle reschedules and cancellations?',
+    a: 'Yes, for routine cases. RingBooker can understand the request, capture context, confirm next steps, and escalate edge cases when a person should step in.',
+  },
+  {
+    q: 'What happens when a caller needs a real person?',
+    a: 'RingBooker keeps a human path clear and can hand off the context so your team does not have to restart the conversation.',
+  },
+  {
+    q: 'Is this a generic AI receptionist for any business?',
+    a: 'No. RingBooker is AI phone answering and call recovery for nail salons, hair salons, day spas, med spas, and beauty clinics — after-hours intent, overflow, consult calls, and missed-call follow-up, not a broad SMB chatbot.',
+  },
+];
 
 const styles: string[] = [
   String.raw`
@@ -73,13 +102,13 @@ a{text-decoration:none;color:inherit}
 .plan ul{list-style:none;display:flex;flex-direction:column;gap:10px;flex:1;margin-bottom:24px}
 .plan li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.5;color:#374151}
 .benefit-icon{width:21px;flex-shrink:0;text-align:center}
-.self-grid,.feature-grid,.upgrade-grid,.faq-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.self-card,.feature-card,.upgrade-card,.faq-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:var(--shadow);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
-.self-card:hover,.feature-card:hover,.upgrade-card:hover,.faq-card:hover{transform:translateY(-2px);box-shadow:0 20px 40px -8px rgba(17,24,39,.1),0 8px 16px -6px rgba(17,24,39,.06);border-color:#d1d5db}
+.self-grid,.feature-grid,.upgrade-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.self-card,.feature-card,.upgrade-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:var(--shadow);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.self-card:hover,.feature-card:hover,.upgrade-card:hover{transform:translateY(-2px);box-shadow:0 20px 40px -8px rgba(17,24,39,.1),0 8px 16px -6px rgba(17,24,39,.06);border-color:#d1d5db}
 .self-card{text-align:center}
 .self-card .feature-icon,.feature-card .feature-icon{margin:0 auto 13px}
-.self-card h3,.feature-card h3,.upgrade-card h3,.faq-card h3{font-size:16px;font-weight:800;line-height:1.3;letter-spacing:-.25px;margin-bottom:8px}
-.self-card p,.feature-card p,.upgrade-card p,.faq-card p{font-size:14px;color:var(--text-gray);line-height:1.65}
+.self-card h3,.feature-card h3,.upgrade-card h3{font-size:16px;font-weight:800;line-height:1.3;letter-spacing:-.25px;margin-bottom:8px}
+.self-card p,.feature-card p,.upgrade-card p{font-size:14px;color:var(--text-gray);line-height:1.65}
 .feature-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .feature-card{text-align:center}
 .upgrade-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -101,7 +130,6 @@ a{text-decoration:none;color:inherit}
 .note-box ul{list-style:none;display:grid;gap:10px}
 .note-box li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--text-gray);line-height:1.6}
 .note-box li::before{content:"✓";color:var(--purple);font-weight:900}
-.faq-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 .cta-box{border-radius:34px;padding:42px;background:linear-gradient(135deg,#111827 0%,#24133f 52%,#4c1d95 100%);color:#fff;display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center;box-shadow:0 24px 70px rgba(17,24,39,.24)}
 .cta-box h2{font-size:clamp(30px,4vw,46px);font-weight:800;line-height:1.1;letter-spacing:-1.3px;margin-bottom:12px}
 .cta-box p{color:rgba(255,255,255,.78);line-height:1.75}
@@ -113,7 +141,7 @@ a{text-decoration:none;color:inherit}
 .cta-box .btn-trial-soft:hover{border-color:rgba(255,255,255,.45);color:#fff}
 @media(max-width:960px){
   .hero-page,.section{padding-left:22px;padding-right:22px}
-  .trust-row,.plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.faq-grid,.cta-box{grid-template-columns:1fr}
+  .trust-row,.plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.cta-box{grid-template-columns:1fr}
   .hero-page{padding-top:54px;padding-bottom:52px}
   .hero-copy{text-align:left}
   .hero-copy h1{font-size:40px}
@@ -251,7 +279,10 @@ export function MarketingPricingTemplate() {
                   You are not paying for generic AI — you are paying to reduce missed bookings and revenue leakage. Every plan includes the same ladder: missed calls → missed bookings → lost revenue, and RingBooker → recovered bookings → protected revenue. After-hours answering, peak-hour overflow, and missed-call text back stay centered on your current number, with no booking migration.
                 </p>
                 <div className="hero-actions">
-                  <a className="btn-demo-live" href="/demo" data-demo-picker>Try a live demo call</a>
+                  <a className="btn-demo-live" href="/demo" data-demo-picker>
+                    <DemoCtaPhoneIcon width={18} height={18} />
+                    Try a live demo call
+                  </a>
                   <a className="btn-trial-soft" href="/user/signup">Start free trial →</a>
                 </div>
                 <div className="trust-row">
@@ -391,18 +422,11 @@ export function MarketingPricingTemplate() {
           </section>
 
           <section className="section gray">
-            <div className="container">
-              <div className="sec-label">FAQ</div>
-              <h2 className="sec-title">Pricing questions, answered plainly.</h2>
-              <div className="faq-grid">
-                <div className="faq-card"><h3>Do I need a new number?</h3><p>No. Current-number setup is the primary path. A dedicated RingBooker line is available only if you prefer a separate line.</p></div>
-                <div className="faq-card"><h3>Do I need to change booking software?</h3><p>No. RingBooker works alongside your current booking tools. It captures the call context and helps move routine scheduling requests forward.</p></div>
-                <div className="faq-card"><h3>Which plan is right for me?</h3><p>Start with Starter if your main issue is missed after-hours or overflow calls. Choose Professional if you need stronger follow-up, caller context, and provider continuity.</p></div>
-                <div className="faq-card"><h3>Can it handle reschedules and cancellations?</h3><p>Yes, for routine cases. RingBooker can understand the request, capture context, confirm next steps, and escalate edge cases when a person should step in.</p></div>
-                <div className="faq-card"><h3>What happens when a caller needs a real person?</h3><p>RingBooker keeps a human path clear and can hand off the context so your team does not have to restart the conversation.</p></div>
-                <div className="faq-card"><h3>Is this a generic AI receptionist for any business?</h3><p>No. RingBooker is AI phone answering and call recovery for nail salons, hair salons, day spas, med spas, and beauty clinics — after-hours intent, overflow, consult calls, and missed-call follow-up, not a broad SMB chatbot.</p></div>
-              </div>
-            </div>
+            <MarketingFaqAccordion
+              items={PRICING_FAQ_ITEMS}
+              title="Pricing questions, answered plainly."
+              subtitle={null}
+            />
           </section>
 
           <section className="section">
@@ -413,7 +437,10 @@ export function MarketingPricingTemplate() {
                   <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that turns more calls into recovered bookings and protected revenue.</p>
                 </div>
                 <div className="cta-actions">
-                  <a className="btn-demo-live" href="/demo" data-demo-picker>Try a live demo call</a>
+                  <a className="btn-demo-live" href="/demo" data-demo-picker>
+                    <DemoCtaPhoneIcon width={18} height={18} />
+                    Try a live demo call
+                  </a>
                   <a className="btn-trial-soft" href="/user/signup">Start free trial →</a>
                 </div>
               </div>

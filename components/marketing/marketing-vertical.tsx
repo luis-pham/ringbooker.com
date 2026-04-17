@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { CallPreviewPlayer, type CallLine } from '@/components/marketing/call-preview-player';
 
@@ -60,7 +62,7 @@ const TRIAL_CTA_BASE =
   'inline-flex items-center justify-center rounded-full border border-slate-200 bg-transparent px-6 py-3 text-[14px] font-semibold text-slate-900 transition';
 
 const DEMO_CTA_BASE =
-  'inline-flex items-center justify-center rounded-full px-7 py-3.5 text-[14px] font-extrabold text-white transition hover:scale-[1.03] hover:brightness-[1.06]';
+  'inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-extrabold text-white transition hover:scale-[1.03] hover:brightness-[1.06]';
 
 export type IndustryLandingTheme = {
   /** Page background wash behind hero + sections */
@@ -215,23 +217,17 @@ function IntegrationRow() {
   );
 }
 
-function Faq({ items, accentClass }: { items: Array<{ q: string; a: string }>; accentClass: string }) {
+function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
   return (
-    <section className="mx-auto mt-20 max-w-6xl px-6">
-      <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Common Questions</div>
-      <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">Frequently Asked Questions</h2>
-      <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white">
-        {items.map((item, index) => (
-          <details key={item.q} className="group border-b border-slate-100 p-5 last:border-b-0" open={index === 0}>
-            <summary className="cursor-pointer list-none pr-8 text-base font-bold text-slate-900">
-              {item.q}
-              <span className={`float-right transition group-open:rotate-45 ${accentClass}`}>+</span>
-            </summary>
-            <p className="mt-3 text-[14px] leading-7 text-slate-600">{item.a}</p>
-          </details>
-        ))}
-      </div>
-    </section>
+    <div className="mx-auto mt-20 max-w-6xl px-6">
+      <MarketingFaqAccordion
+        items={items}
+        embedded
+        eyebrow="Common Questions"
+        title="Frequently Asked Questions"
+        subtitle={null}
+      />
+    </div>
   );
 }
 
@@ -385,8 +381,9 @@ function FinalCta({
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
           <a
             href={demoPath}
-            className={`inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-[14px] font-extrabold shadow-md shadow-black/10 transition hover:scale-[1.04] ${primaryBtnTextClass}`}
+            className={`inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-[14px] font-extrabold shadow-md shadow-black/10 transition hover:scale-[1.04] ${primaryBtnTextClass}`}
           >
+            <DemoCtaPhoneIcon width={18} height={18} />
             Try a Live Demo Call
           </a>
           <Link
@@ -420,6 +417,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/nail-salon" className={theme.demoCtaClass}>
+              <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
@@ -526,6 +524,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
+              <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
@@ -632,6 +631,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/day-spa" className={theme.demoCtaClass}>
+              <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
@@ -738,6 +738,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
+              <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
@@ -844,6 +845,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
+              <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
@@ -1195,7 +1197,7 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <VerticalRelatedPlaybooks />
         </div>
-        <Faq accentClass={theme.accentClass} items={faq} />
+        <Faq items={faq} />
         <FinalCta
           demoPath={DEMO_PATH[vertical]}
           label={ctaMap[vertical].label}

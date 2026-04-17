@@ -44,6 +44,7 @@ export function MarketingChromeStyles() {
 .mk-nav-signin{padding:9px 16px;border-radius:999px;border:1px solid #E5E7EB;font-size:14px;font-weight:600;color:#374151;text-decoration:none;background:#fff;transition:border-color .2s,color .2s,background .2s}
 .mk-nav-signin:hover{border-color:#D1D5DB;color:#111827;background:#F9FAFB}
 .mk-nav-cta{background:#111827;color:#fff;padding:10px 22px;border-radius:999px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;transition:background .2s,transform .15s;white-space:nowrap;text-decoration:none}
+.mk-nav-cta .demo-cta-phone{flex-shrink:0}
 .mk-nav-cta:hover{background:#1f2937;transform:scale(1.03)}
 .mk-footer{background:#F9FAFB;border-top:1px solid #E5E7EB;padding:60px 48px 32px}
 .mk-footer-inner{max-width:1100px;margin:0 auto}
@@ -106,7 +107,7 @@ export function MarketingChromeStyles() {
 .mk-drawer-navlink:hover .mk-drawer-navlink-chevron,.mk-drawer-navlink:focus-visible .mk-drawer-navlink-chevron{border-color:#A78BFA}
 .mk-drawer-navlink.active .mk-drawer-navlink-chevron{border-color:#7C3AED}
 .mk-drawer-foot{flex-shrink:0;padding:20px calc(20px + env(safe-area-inset-right,0)) calc(22px + env(safe-area-inset-bottom,0)) calc(20px + env(safe-area-inset-left,0));border-top:1px solid #EEF0F3;background:linear-gradient(180deg,#FAFBFC 0%,#F4F5F7 100%);display:flex;flex-direction:column;gap:12px}
-.mk-drawer-btn-demo{width:100%;box-sizing:border-box;padding:16px 18px;border-radius:14px;border:none;background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:-.02em;transition:transform .12s,box-shadow .15s,filter .15s;box-shadow:0 8px 28px rgba(91,33,182,.35)}
+.mk-drawer-btn-demo{width:100%;box-sizing:border-box;padding:16px 18px;border-radius:14px;border:none;background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:-.02em;transition:transform .12s,box-shadow .15s,filter .15s;box-shadow:0 8px 28px rgba(91,33,182,.35);display:flex;align-items:center;justify-content:center;gap:10px}
 .mk-drawer-btn-demo:hover{filter:brightness(1.06);box-shadow:0 10px 32px rgba(91,33,182,.42)}
 .mk-drawer-btn-demo:active{transform:scale(.99)}
 .mk-drawer-btn-cta{width:100%;box-sizing:border-box;padding:14px 18px;border-radius:14px;background:transparent;color:#111827;font-size:14px;font-weight:600;text-align:center;text-decoration:none;letter-spacing:-.02em;border:2px solid #E5E7EB;transition:border-color .15s,background .15s,transform .12s}
@@ -122,7 +123,8 @@ export function MarketingChromeStyles() {
 @keyframes dpmSlideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 .dpm-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid #E5E7EB;background:#F9FAFB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;transition:all .15s}
 .dpm-close:hover{background:#F3F4F6;color:#111827}
-.dpm-eyebrow{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8B5CF6;margin-bottom:8px}
+.dpm-eyebrow{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8B5CF6;margin-bottom:8px}
+.dpm-eyebrow .demo-cta-phone{flex-shrink:0}
 .dpm-title{font-size:20px;font-weight:800;color:#111827;letter-spacing:-.4px;margin-bottom:6px;line-height:1.3}
 .dpm-sub{font-size:14px;color:#6B7280;margin-bottom:22px;line-height:1.6}
 .dpm-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:20px}

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<!-- Static reference only. Production hub: app/phone-booking-recovery/page.tsx + components/marketing/marketing-content-hub.tsx -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phone Booking Recovery for Beauty Businesses | RingBooker</title>
+<meta name="description" content="Discover how beauty businesses lose bookings through missed calls — and how phone booking recovery with AI answering solves after-hours, overflow, and voicemail dead ends.">
+<link rel="canonical" href="https://ringbooker.com/phone-booking-recovery/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type":"Question","name":"What is phone booking recovery?","acceptedAnswer":{"@type":"Answer","text":"Phone booking recovery is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients."}},
+    {"@type":"Question","name":"Is booking recovery only for missed calls?","acceptedAnswer":{"@type":"Answer","text":"No. It covers all situations where a caller's intent isn't captured: after-hours calls, overflow when staff are busy, voicemail dead ends, and callers who hang up before leaving a message."}},
+    {"@type":"Question","name":"Does phone booking recovery help after-hours calls?","acceptedAnswer":{"@type":"Answer","text":"Yes. After-hours coverage is one of the most impactful use cases. RingBooker captures booking intent when the salon is closed and routes the information to your team for next-day follow-up."}},
+    {"@type":"Question","name":"Can booking recovery work alongside existing staff?","acceptedAnswer":{"@type":"Answer","text":"Yes. RingBooker is designed to complement your team, not replace it. It handles the calls your staff cannot reach — not the calls they're already managing well."}},
+    {"@type":"Question","name":"Is booking recovery different for nail salons vs. med spas?","acceptedAnswer":{"@type":"Answer","text":"Yes. Nail salons typically lose bookings during peak-hour overload, while med spas are more vulnerable to after-hours consultation inquiries. Each vertical has its own call pattern and recovery approach."}}
+  ]
+}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --purple:#7C3AED;--purple-light:#8B5CF6;--purple-bg:#F5F3FF;--purple-border:#DDD6FE;
+  --green:#059669;--green-bg:#ECFDF5;--green-border:#A7F3D0;
+  --navy:#0F0F1A;--gray-800:#1F2937;--gray-600:#4B5563;--gray-400:#9CA3AF;
+  --gray-100:#F9FAFB;--border:#E5E7EB;--white:#FFFFFF;
+  --radius:12px;--radius-lg:20px;--radius-pill:9999px;
+  --shadow:0 1px 3px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.06);
+  --shadow-lg:0 8px 32px rgba(124,58,237,.12);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Plus Jakarta Sans',sans-serif;color:var(--navy);background:#fff;-webkit-font-smoothing:antialiased;line-height:1.6}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 24px}
+.nav-inner{max-width:1200px;margin:0 auto;height:64px;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.nav-logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px;color:var(--navy);text-decoration:none}
+.nav-logo svg{width:32px;height:32px}
+.nav-links{display:flex;align-items:center;gap:28px;list-style:none}
+.nav-links a{font-size:14px;font-weight:500;color:var(--gray-600);text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--navy)}
+.nav-ctas{display:flex;gap:10px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:var(--radius-pill);font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;border:1.5px solid transparent}
+.btn-ghost{color:var(--gray-800);border-color:var(--border);background:transparent}
+.btn-ghost:hover{border-color:var(--gray-400)}
+.btn-dark{background:var(--navy);color:#fff}
+.btn-dark:hover{opacity:.88}
+.btn-purple{background:var(--purple);color:#fff;box-shadow:0 2px 12px rgba(124,58,237,.25)}
+.btn-purple:hover{background:#6D28D9}
+.btn-outline{color:var(--navy);border-color:var(--navy);background:transparent}
+.btn-outline:hover{background:var(--navy);color:#fff}
+.btn-lg{padding:14px 28px;font-size:15px}
+
+/* ── BREADCRUMB ── */
+.breadcrumb{max-width:1200px;margin:0 auto;padding:20px 24px 0;font-size:13px;color:var(--gray-400)}
+.breadcrumb a{color:var(--gray-400);text-decoration:none}.breadcrumb a:hover{color:var(--purple)}
+.breadcrumb span{margin:0 6px}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(160deg,#F5F3FF 0%,#ffffff 50%,#FDF2F8 100%);padding:80px 24px 96px;text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 40% at 30% 20%,rgba(124,58,237,.06) 0%,transparent 70%),radial-gradient(ellipse 50% 35% at 75% 70%,rgba(236,72,153,.05) 0%,transparent 70%)}
+.hero-inner{max-width:820px;margin:0 auto;position:relative}
+.pill-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:var(--radius-pill);font-size:13px;font-weight:600;color:var(--purple);margin-bottom:24px}
+.hero h1{font-size:clamp(36px,5.5vw,64px);font-weight:800;line-height:1.1;letter-spacing:-1.5px;margin-bottom:20px}
+.hero h1 mark{background:var(--purple);color:#fff;border-radius:12px;padding:2px 14px;-webkit-box-decoration-break:clone}
+.hero-sub{font-size:clamp(16px,2vw,19px);color:var(--gray-600);max-width:620px;margin:0 auto 36px;line-height:1.65}
+.hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero-tags{margin-top:40px;display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
+.hero-tag{font-size:13px;color:var(--gray-600);display:flex;align-items:center;gap:6px}
+.hero-tag::before{content:'✓';color:var(--green);font-weight:700}
+
+/* ── SECTIONS ── */
+.section{padding:80px 24px}
+.section-inner{max-width:1200px;margin:0 auto}
+.section-alt{background:var(--gray-100)}
+.section-dark{background:var(--navy);color:#fff}
+.section-purple-soft{background:var(--purple-bg)}
+
+.section-label{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:var(--radius-pill);font-size:12px;font-weight:700;color:var(--purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px}
+.section-label.green{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+.section-label.dark{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.8)}
+
+h2{font-size:clamp(26px,4vw,42px);font-weight:800;line-height:1.15;letter-spacing:-1px;margin-bottom:16px}
+h3{font-size:18px;font-weight:700;margin-bottom:8px}
+.section-sub{font-size:clamp(15px,1.8vw,18px);color:var(--gray-600);max-width:600px;line-height:1.65;margin-bottom:48px}
+.section-dark .section-sub{color:rgba(255,255,255,.65)}
+.section-dark h2{color:#fff}
+
+/* ── CARDS ── */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;transition:box-shadow .2s,transform .2s}
+.card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
+.card-icon{font-size:28px;margin-bottom:14px}
+.card h3{font-size:17px;font-weight:700;margin-bottom:8px;color:var(--navy)}
+.card p{font-size:14px;color:var(--gray-600);line-height:1.6}
+.card-accent{border-top:3px solid var(--purple)}
+.card-green{border-top:3px solid var(--green)}
+.card .badge{display:inline-block;padding:3px 10px;background:var(--purple-bg);color:var(--purple);font-size:12px;font-weight:600;border-radius:var(--radius-pill);margin-bottom:12px}
+.card .badge.green{background:var(--green-bg);color:var(--green)}
+
+/* ── SCENARIO GRID ── */
+.scenario-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.scenario{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px 26px;display:grid;grid-template-columns:44px 1fr;gap:16px;align-items:start;transition:box-shadow .2s}
+.scenario:hover{box-shadow:var(--shadow)}
+.scenario-icon{width:44px;height:44px;border-radius:10px;background:var(--purple-bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.scenario h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.scenario p{font-size:13px;color:var(--gray-600);line-height:1.5}
+.scenario .who{font-size:12px;color:var(--purple);font-weight:600;margin-top:6px}
+
+/* ── INTENT LIST ── */
+.intent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.intent-item{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--gray-800)}
+.intent-item span{font-size:18px}
+
+/* ── COMPARISON TABLE ── */
+.compare-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)}
+.compare-header{background:var(--purple);color:#fff;text-align:center;padding:14px;font-weight:700;font-size:13px;border-radius:0}
+.compare-cell{background:#fff;padding:14px 16px;font-size:13px;color:var(--gray-700)}
+.compare-cell.bad{color:#EF4444}.compare-cell.good{color:var(--green);font-weight:600}
+.compare-label{background:var(--gray-100);padding:14px 16px;font-size:13px;font-weight:600;color:var(--navy)}
+.compare-wrap{border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+
+/* ── INDUSTRY CARDS ── */
+.industry-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+.industry-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px;text-align:center;text-decoration:none;color:var(--navy);transition:all .2s;display:block}
+.industry-card:hover{border-color:var(--purple);box-shadow:var(--shadow-lg);transform:translateY(-2px)}
+.industry-card .emoji{font-size:32px;margin-bottom:12px}
+.industry-card h3{font-size:15px;font-weight:700;margin-bottom:6px}
+.industry-card p{font-size:12px;color:var(--gray-600);line-height:1.5}
+.industry-card .arrow{font-size:13px;color:var(--purple);font-weight:600;margin-top:10px;display:block}
+
+/* ── ARTICLE LINKS ── */
+.article-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.article-link{display:flex;align-items:center;gap:12px;padding:16px 18px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);text-decoration:none;color:var(--navy);font-size:14px;font-weight:500;transition:all .2s}
+.article-link:hover{border-color:var(--purple);color:var(--purple)}
+.article-link::before{content:'→';color:var(--purple);font-weight:700;font-size:16px;flex-shrink:0}
+
+/* ── FAQ ── */
+.faq-list{display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-item:last-child{border-bottom:none}
+.faq-q{width:100%;background:none;border:none;padding:20px 24px;text-align:left;font-family:inherit;font-size:15px;font-weight:600;color:var(--navy);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.faq-q:hover{background:var(--gray-100)}
+.faq-icon{font-size:20px;color:var(--purple);transition:transform .25s;flex-shrink:0}
+.faq-a{padding:0 24px;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .3s}
+.faq-a p{font-size:14px;color:var(--gray-600);line-height:1.65;padding-bottom:20px}
+.faq-item.open .faq-a{max-height:200px}
+.faq-item.open .faq-icon{transform:rotate(45deg)}
+
+/* ── CTA BAND ── */
+.cta-band{background:var(--navy);padding:80px 24px;text-align:center}
+.cta-band h2{color:#fff;margin-bottom:12px}
+.cta-band p{color:rgba(255,255,255,.6);margin-bottom:36px;max-width:500px;margin-left:auto;margin-right:auto}
+.cta-group{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
+/* ── FOOTER ── */
+footer{background:#0A0A12;color:rgba(255,255,255,.5);padding:40px 24px;text-align:center;font-size:13px}
+footer a{color:rgba(255,255,255,.5);text-decoration:none}.footer-links{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;margin-bottom:16px}
+footer strong{color:#fff}
+
+/* ── DIVIDER ── */
+.divider{height:1px;background:var(--border);margin:0}
+
+/* ── STAT ROW ── */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:24px;margin-top:48px}
+.stat{text-align:center}
+.stat-num{font-size:40px;font-weight:800;color:var(--purple);letter-spacing:-1px}
+.stat-label{font-size:13px;color:var(--gray-600);margin-top:4px}
+
+@media(max-width:768px){
+  .nav-links,.nav-ctas .btn-ghost{display:none}
+  .scenario-grid{grid-template-columns:1fr}
+  .industry-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a href="https://ringbooker.com" class="nav-logo">
+      <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#7C3AED"/><path d="M10 22c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="12" r="3" fill="#fff"/></svg>
+      RingBooker
+    </a>
+    <ul class="nav-links">
+      <li><a href="https://ringbooker.com/#features">Features</a></li>
+      <li><a href="https://ringbooker.com/#industries">Industries</a></li>
+      <li><a href="https://ringbooker.com/pricing">Pricing</a></li>
+      <li><a href="https://ringbooker.com/how-it-works">How It Works</a></li>
+    </ul>
+    <div class="nav-ctas">
+      <a href="https://ringbooker.com/user/signin" class="btn btn-ghost">Sign In</a>
+      <a href="https://ringbooker.com/demo" class="btn btn-dark">Try a Live Demo →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb" aria-label="Breadcrumb">
+  <a href="https://ringbooker.com">Home</a><span>›</span>
+  <span>Phone Booking Recovery</span>
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="hero-inner">
+    <div class="pill-badge">📞 Pain-Point Hub</div>
+    <h1>Stop Losing Bookings<br>to <mark>Missed Phone Calls</mark></h1>
+    <p class="hero-sub">Beauty businesses lose revenue every day — not because clients stop calling, but because calls go unanswered after hours, during peak service, and when staff can't reach the phone in time. Phone booking recovery fixes that.</p>
+    <div class="hero-ctas">
+      <a href="https://ringbooker.com/demo" class="btn btn-purple btn-lg">📞 See How It Works</a>
+      <a href="https://ringbooker.com/demo" class="btn btn-outline btn-lg">Try a Live Demo Call</a>
+    </div>
+    <div class="hero-tags">
+      <span class="hero-tag">After-hours calls captured</span>
+      <span class="hero-tag">Peak-hour overflow handled</span>
+      <span class="hero-tag">No number change needed</span>
+      <span class="hero-tag">Works with existing tools</span>
+    </div>
+  </div>
+</header>
+
+<!-- SECTION 1: WHAT IS BOOKING RECOVERY -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label">The Core Problem</div>
+    <h2>What "Phone Booking Recovery" Actually Means</h2>
+    <p class="section-sub">It's not just about answering calls. It's about recapturing booking opportunities that would otherwise disappear — permanently — the moment a caller hangs up or reaches voicemail.</p>
+    <div class="card-grid">
+      <div class="card card-accent">
+        <div class="card-icon">📵</div>
+        <h3>Missed Call = Lost Revenue</h3>
+        <p>Most callers who don't reach you will not leave a voicemail. They'll call your competitor instead. Recovery is about intercepting that loss before it becomes permanent.</p>
+      </div>
+      <div class="card card-accent">
+        <div class="card-icon">🌙</div>
+        <h3>After-Hours Opportunity Window</h3>
+        <p>A significant share of beauty booking calls come outside business hours. Without a system to capture that intent, those are booked appointments you'll never know you missed.</p>
+      </div>
+      <div class="card card-accent">
+        <div class="card-icon">⚡</div>
+        <h3>Overflow During Peak Hours</h3>
+        <p>Saturdays. Lunch rushes. Holiday weeks. When two calls arrive at once and your team is mid-service, the second caller often decides not to wait — and doesn't call back.</p>
+      </div>
+      <div class="card card-accent">
+        <div class="card-icon">🔄</div>
+        <h3>More Than Just New Bookings</h3>
+        <p>Recovery also covers reschedules, cancellation handling, service questions, and price inquiries — any caller whose intent gets lost when no one picks up.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 2: WHERE BUSINESSES LOSE BOOKINGS -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-label">The 5 Loss Scenarios</div>
+    <h2>Where Beauty Businesses Lose Bookings by Phone</h2>
+    <p class="section-sub">These are the five situations where booking loss happens most often — and where recovery makes the biggest difference.</p>
+    <div class="scenario-grid">
+      <div class="scenario">
+        <div class="scenario-icon">🌙</div>
+        <div>
+          <h3>After-Hours Calls</h3>
+          <p>Clients call in the evening or on days you're closed. Without anyone to answer, the booking intent disappears entirely.</p>
+          <div class="who">Heaviest impact: Spas, Day Spas, Beauty Clinics</div>
+        </div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-icon">📈</div>
+        <div>
+          <h3>Peak-Hour Overflow</h3>
+          <p>Saturday mornings. Holiday rushes. Staff are all with clients — and the phone rings for the third time with no one free to answer.</p>
+          <div class="who">Heaviest impact: Nail Salons, Hair Salons</div>
+        </div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-icon">🖥️</div>
+        <div>
+          <h3>Front-Desk Overload</h3>
+          <p>Your receptionist is checking someone in, running a card, and the phone is ringing simultaneously. Something gets dropped — usually the call.</p>
+          <div class="who">Heaviest impact: Med Spas, Hair Salons</div>
+        </div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-icon">⏳</div>
+        <div>
+          <h3>Missed Callback Windows</h3>
+          <p>Someone leaves a voicemail. Your team tries to call back hours later. The client has already booked somewhere else.</p>
+          <div class="who">Heaviest impact: All verticals</div>
+        </div>
+      </div>
+      <div class="scenario">
+        <div class="scenario-icon">📭</div>
+        <div>
+          <h3>Voicemail Dead Ends</h3>
+          <p>Most callers don't leave messages. A voicemail system captures the call but not the client. The booking intent evaporates.</p>
+          <div class="who">Heaviest impact: Nail Salons, Day Spas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: CALLER INTENTS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label">What Callers Want</div>
+    <h2>Common Caller Intents That Get Lost</h2>
+    <p class="section-sub">It's not only new bookings at risk. Every one of these caller intents represents a relationship — and a revenue opportunity — that gets lost when no one picks up.</p>
+    <div class="intent-grid">
+      <div class="intent-item"><span>📅</span> New appointment booking</div>
+      <div class="intent-item"><span>🔄</span> Reschedule request</div>
+      <div class="intent-item"><span>❌</span> Cancellation call</div>
+      <div class="intent-item"><span>❓</span> Service question</div>
+      <div class="intent-item"><span>💰</span> Price & availability inquiry</div>
+      <div class="intent-item"><span>💆</span> Treatment inquiry</div>
+      <div class="intent-item"><span>👤</span> Provider preference</div>
+      <div class="intent-item"><span>📞</span> Follow-up call</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-num">67%</div><div class="stat-label">Callers who don't leave voicemail</div></div>
+      <div class="stat"><div class="stat-num">3×</div><div class="stat-label">More likely to book if answered immediately</div></div>
+      <div class="stat"><div class="stat-num">80%</div><div class="stat-label">Of beauty bookings still involve a phone call</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 4: WHY VOICEMAIL ISN'T ENOUGH -->
+<section class="section section-dark">
+  <div class="section-inner">
+    <div class="section-label dark">The Gap in Existing Solutions</div>
+    <h2>Why Missed-Call Handling Alone Isn't Enough</h2>
+    <p class="section-sub">Voicemail, text-back tools, and generic answering services each address part of the problem. None address the full booking recovery challenge.</p>
+    <div class="card-grid">
+      <div class="card" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)">
+        <div class="card-icon">📼</div>
+        <h3 style="color:#fff">Voicemail</h3>
+        <p style="color:rgba(255,255,255,.6)">Most callers won't leave one. Those who do still require a manual callback. The intent is not captured — it's deferred and often lost.</p>
+      </div>
+      <div class="card" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)">
+        <div class="card-icon">📱</div>
+        <h3 style="color:#fff">Text-Back Only</h3>
+        <p style="color:rgba(255,255,255,.6)">Helpful, but text-back can't complete a booking conversation or answer service questions. It keeps the lead warm — it doesn't close it.</p>
+      </div>
+      <div class="card" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)">
+        <div class="card-icon">📋</div>
+        <h3 style="color:#fff">Generic Answering Service</h3>
+        <p style="color:rgba(255,255,255,.6)">Can answer calls but typically doesn't understand beauty workflows, peak patterns, or how to handle service-specific questions from clients.</p>
+      </div>
+      <div class="card" style="background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.1)">
+        <div class="card-icon">👩</div>
+        <h3 style="color:#fff">Hiring More Staff</h3>
+        <p style="color:rgba(255,255,255,.6)">Doesn't solve after-hours coverage. Doesn't scale during overflow. Adds overhead without addressing the root timing problem.</p>
+      </div>
+    </div>
+    <div style="margin-top:36px;text-align:center">
+      <a href="/compare/" class="btn btn-purple btn-lg">Compare All Alternatives →</a>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 5: HOW RINGBOOKER FITS -->
+<section class="section section-purple-soft">
+  <div class="section-inner">
+    <div class="section-label">The RingBooker Approach</div>
+    <h2>How RingBooker Fits Into Booking Recovery</h2>
+    <p class="section-sub">RingBooker is designed to sit alongside your existing operations — not replace them. It handles the calls your team cannot reach, so no booking intent is lost.</p>
+    <div class="scenario-grid">
+      <div class="scenario" style="background:#fff">
+        <div class="scenario-icon">☎️</div>
+        <div>
+          <h3>Keeps Your Current Number</h3>
+          <p>No number change required. Clients continue to call the same number they've always known. <a href="/current-number/" style="color:var(--purple);font-weight:600">Learn more →</a></p>
+        </div>
+      </div>
+      <div class="scenario" style="background:#fff">
+        <div class="scenario-icon">🌙</div>
+        <div>
+          <h3>After-Hours Call Capture</h3>
+          <p>Answers calls when the salon is closed, captures booking intent, and routes the summary to your team for next-day action.</p>
+        </div>
+      </div>
+      <div class="scenario" style="background:#fff">
+        <div class="scenario-icon">⚡</div>
+        <div>
+          <h3>Overflow During Busy Hours</h3>
+          <p>When staff are with clients, RingBooker handles the overflow call instead of letting it ring through to voicemail.</p>
+        </div>
+      </div>
+      <div class="scenario" style="background:#fff">
+        <div class="scenario-icon">🔌</div>
+        <div>
+          <h3>Works with Your Booking Tools</h3>
+          <p>Compatible with Square Appointments, Vagaro, Booksy, Mindbody, and more. <a href="/works-with/" style="color:var(--purple);font-weight:600">See compatibility →</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 6: INDUSTRY LINKS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-label">Explore by Industry</div>
+    <h2>Booking Recovery by Business Type</h2>
+    <p class="section-sub">Each beauty vertical has its own call patterns, peak times, and booking loss scenarios. See how recovery applies to your specific business.</p>
+    <div class="industry-grid">
+      <a href="https://ringbooker.com/industries/nail-salon" class="industry-card">
+        <div class="emoji">💅</div>
+        <h3>Nail Salon</h3>
+        <p>Peak-hour overflow and walk-in booking calls during service hours</p>
+        <span class="arrow">Explore →</span>
+      </a>
+      <a href="https://ringbooker.com/industries/hair-salon" class="industry-card">
+        <div class="emoji">✂️</div>
+        <h3>Hair Salon</h3>
+        <p>Schedule changes and calls during active color and cut services</p>
+        <span class="arrow">Explore →</span>
+      </a>
+      <a href="https://ringbooker.com/industries/spa" class="industry-card">
+        <div class="emoji">🧖</div>
+        <h3>Day Spa</h3>
+        <p>After-hours inquiry handling and couples booking calls</p>
+        <span class="arrow">Explore →</span>
+      </a>
+      <a href="https://ringbooker.com/industries/med-spa" class="industry-card">
+        <div class="emoji">💉</div>
+        <h3>Med Spa</h3>
+        <p>Consultation-sensitive calls with high-ticket booking intent</p>
+        <span class="arrow">Explore →</span>
+      </a>
+      <a href="https://ringbooker.com/industries/beauty-clinic" class="industry-card">
+        <div class="emoji">✨</div>
+        <h3>Beauty Clinic</h3>
+        <p>Trust-sensitive appointment inquiries and provider continuity calls</p>
+        <span class="arrow">Explore →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 7: ARTICLE LINKS -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-label">Booking Recovery Guides</div>
+    <h2>Featured Articles in This Cluster</h2>
+    <p class="section-sub">Deep guides on each dimension of beauty business booking recovery.</p>
+    <div class="article-list">
+      <a href="/blog/missed-salon-calls/" class="article-link">Why Nail Salons Miss More Calls During Peak Hours</a>
+      <a href="/blog/after-hours-booking-calls/" class="article-link">How to Capture After-Hours Booking Intent</a>
+      <a href="/blog/peak-hour-overflow/" class="article-link">Peak-Hour Overflow: What Beauty Businesses Lose</a>
+      <a href="/blog/voicemail-dead-end/" class="article-link">Why Voicemail Is a Dead End for Salon Bookings</a>
+      <a href="/blog/beauty-booking-loss/" class="article-link">How Much Revenue Do Salons Lose to Missed Calls?</a>
+      <a href="/blog/callback-delay/" class="article-link">The Cost of Callback Delay for Beauty Businesses</a>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section">
+  <div class="section-inner" style="max-width:760px">
+    <div class="section-label">Common Questions</div>
+    <h2>Frequently Asked Questions</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          What is phone booking recovery?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Phone booking recovery is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients. Instead of losing the caller, the system captures their intent and routes it to your team.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Is booking recovery only for missed calls?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>No. It covers all situations where a caller's intent isn't captured: after-hours calls, overflow when staff are busy, voicemail dead ends, and callers who hang up before leaving a message. Reschedules, cancellations, and service inquiries are all part of phone booking recovery.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Does this help after-hours calls?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Yes. After-hours coverage is one of the most impactful use cases. RingBooker captures booking intent when your salon is closed and routes it to your team for next-day action — so no opportunity disappears overnight.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Can this work alongside my existing staff?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Yes. RingBooker is designed to complement your team, not replace them. It handles the calls your staff cannot reach — not the calls they're already managing well. You stay in control of which calls it handles.</p></div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggleFaq(this)">
+          Is booking recovery different for nail salons vs. med spas?
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-a"><p>Yes. Nail salons typically lose bookings during peak-hour overload on weekends. Med spas are more vulnerable to after-hours consultation inquiries that require careful handling. Each vertical has its own call pattern — which is why RingBooker offers industry-specific setups.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BAND -->
+<div class="cta-band">
+  <div style="max-width:600px;margin:0 auto">
+    <h2>Ready to Recover the Bookings You're Losing?</h2>
+    <p>See how RingBooker handles after-hours, overflow, and missed-call recovery for your beauty business.</p>
+    <div class="cta-group">
+      <a href="https://ringbooker.com/demo" class="btn btn-purple btn-lg">📞 Try a Live Demo Call</a>
+      <a href="https://ringbooker.com/#industries" class="btn" style="color:#fff;border-color:rgba(255,255,255,.3)">See Your Industry</a>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-links">
+    <a href="/phone-booking-recovery/">Booking Recovery</a>
+    <a href="/current-number/">Current Number</a>
+    <a href="/works-with/">Works With</a>
+    <a href="/compare/">Compare</a>
+    <a href="/trust/">Trust & Reliability</a>
+  </div>
+  <p>© 2025 <strong>RingBooker</strong> · AI phone answering for beauty businesses · <a href="https://ringbooker.com">ringbooker.com</a></p>
+</footer>
+
+<script>
+function toggleFaq(btn){
+  const item=btn.closest('.faq-item');
+  const wasOpen=item.classList.contains('open');
+  document.querySelectorAll('.faq-item.open').forEach(i=>i.classList.remove('open'));
+  if(!wasOpen)item.classList.add('open');
+}
+</script>
+</body>
+</html>

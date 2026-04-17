@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
@@ -113,7 +115,10 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.btn-outline:hover{border-color:var(--purple);color:var(--purple)}
 	.hero-btns .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:16px 34px;border-radius:var(--r-pill);font-size:16px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 36px rgba(91,33,182,.32);border:none;transition:transform .15s,filter .2s,box-shadow .2s}
 	.hero-btns .btn-hero-live:hover{filter:brightness(1.06);transform:scale(1.04);box-shadow:0 14px 44px rgba(91,33,182,.38)}
-	.hero-btns .btn-hero-live svg{width:16px;height:16px;fill:#fff}
+	.hero-btns .btn-hero-live svg{width:16px;height:16px;flex-shrink:0}
+	.hero-btns .btn-hero-live .btn-hero-live-phone{width:18px;height:18px}
+	.hero-btns .btn-hero-live .btn-hero-live-phone path{fill:#FACC15}
+	.hero-btns .btn-hero-live .btn-hero-live-arrow{color:#fff}
 	.hero-btns .btn-hero-trial{padding:11px 20px;font-size:14px;font-weight:600}
 
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
@@ -534,24 +539,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .user-image-corners::before{top:-36px;right:-36px}
 .user-image-corners::after{bottom:-42px;left:-42px}
 
-/* ─── FAQ ─── */
-.faq-section{padding:88px 48px;max-width:760px;margin:0 auto;text-align:center}
-.faq-section h2{font-size:clamp(28px,3.2vw,42px);font-weight:800;letter-spacing:-1.2px;margin-bottom:10px;text-align:center}
-.faq-section .sub{font-size:15px;color:var(--text-gray);margin-bottom:40px;line-height:1.6}
-.faq-section .faq-item{text-align:left}
-.faq-item{border:1px solid var(--border);border-radius:var(--r-md);margin-bottom:10px;overflow:hidden}
-.faq-q{width:100%;background:none;border:none;padding:18px 24px;font-size:14.5px;font-weight:600;color:var(--text-dark);text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:inherit;transition:background .2s;gap:12px}
-.faq-q:hover{background:var(--bg-gray)}
-.faq-plus{width:24px;height:24px;min-width:24px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;transition:transform .3s,background .2s,border-color .2s}
-.faq-plus svg{width:12px;height:12px;fill:var(--text-gray);transition:fill .2s}
-.faq-item[open] .faq-plus{transform:rotate(45deg);background:var(--purple);border-color:var(--purple)}
-.faq-item[open] .faq-plus svg{fill:#fff}
-.faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease}
-.faq-a p{padding:0 24px 18px;font-size:14px;color:var(--text-gray);line-height:1.72}
-.faq-item[open] .faq-a{max-height:220px}
-.faq-q{list-style:none}
-.faq-q::-webkit-details-marker{display:none}
-
 /* ─── CTA BANNER ─── */
 .cta-outer{padding:0 48px 88px;display:flex;justify-content:center}
 .cta-inner{width:100%;max-width:1100px}
@@ -562,7 +549,8 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .cta-text p{font-size:14px;color:rgba(255,255,255,.75);line-height:1.65;max-width:380px}
 .cta-actions{display:flex;flex-direction:column;gap:10px;position:relative;z-index:2;min-width:210px}
 .btn-white{background:#fff;color:var(--purple-dark);padding:13px 26px;border-radius:var(--r-pill);font-size:14.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:transform .15s;justify-content:center}
-.btn-white svg{width:16px;height:16px;fill:var(--purple-dark)}
+.btn-white .btn-white-arrow{width:16px;height:16px;color:var(--purple-dark);flex-shrink:0}
+.btn-white .demo-cta-phone path{fill:#FACC15}
 .btn-white:hover{transform:scale(1.04)}
 .btn-ghost-w{background:rgba(255,255,255,.14);color:#fff;padding:13px 26px;border-radius:var(--r-pill);font-size:14px;font-weight:600;text-decoration:none;text-align:center;border:1px solid rgba(255,255,255,.28);transition:background .2s;display:block}
 .btn-ghost-w:hover{background:rgba(255,255,255,.22)}
@@ -617,7 +605,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
-  footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.faq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
+  footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.mfaq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
   .industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.vc-ring,.user-image-corners::before,.user-image-corners::after{display:none}
   .pulse-dot,.wv span,.vc-wave span,.live-dot,.cta-vc-wave span{animation:none}
@@ -929,9 +917,10 @@ export function MarketingHomeTemplate() {
             </p>
             <div className="hero-btns">
               <a href="/demo" className="btn-hero-live" data-demo-picker>
-                📞 Try a Live Demo Call
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
+                Try a Live Demo Call
+                <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                 </svg>
               </a>
               <a href="/user/signup" className="btn-outline btn-hero-trial">
@@ -1426,18 +1415,7 @@ export function MarketingHomeTemplate() {
             </div>
           </div>
         </section>
-        {/* FAQ */}
-        <section className="faq-section" id="faq">
-          <div className="sec-label">FAQ</div>
-          <h2 className="reveal">Frequently asked<br />questions.</h2>
-          <p className="sub reveal">Everything you need to know before getting started.</p>
-          {HOME_FAQS.map((faq) => (
-            <details className="faq-item" key={faq.q}>
-              <summary className="faq-q">{faq.q}<div className="faq-plus"><svg viewBox="0 0 24 24"><path d="M19 13H13v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg></div></summary>
-              <div className="faq-a"><p>{faq.a}</p></div>
-            </details>
-          ))}
-        </section>
+        <MarketingFaqAccordion items={HOME_FAQS} />
         {/* CTA BANNER */}
         <div className="cta-outer">
           <div className="cta-inner">
@@ -1448,8 +1426,11 @@ export function MarketingHomeTemplate() {
               </div>
               <div className="cta-actions">
                 <a href="/demo" className="btn-white" data-demo-picker>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" /></svg>
+                  <DemoCtaPhoneIcon width={16} height={16} />
                   Try a Live Demo Call
+                  <svg className="btn-white-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                  </svg>
                 </a>
                 <a href="#pricing" className="btn-ghost-w">
                   Start 14-Day Free Trial

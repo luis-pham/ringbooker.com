@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+
 /** Same scale as the former “Ready to stop missing bookings?” line on blog detail. */
 const ctaHeadlineClass =
   'relative z-10 mx-auto max-w-3xl px-1 font-sans text-[clamp(24px,3vw,36px)] font-extrabold leading-[1.2] tracking-tight text-white';
@@ -16,7 +18,7 @@ const decoOrbClass =
   'pointer-events-none absolute -right-16 -top-20 h-[300px] w-[300px] rounded-full bg-white/5';
 
 const primaryBtnClass =
-  'inline-flex items-center justify-center rounded-full bg-white px-8 py-3.5 text-sm font-extrabold text-violet-800 shadow-lg shadow-black/15 transition hover:scale-[1.04]';
+  'inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-extrabold text-violet-800 shadow-lg shadow-black/15 transition hover:scale-[1.04]';
 
 const secondaryBtnClass =
   'inline-flex items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white/95 backdrop-blur-sm transition hover:bg-white/20';
@@ -25,11 +27,8 @@ function isExternal(href: string): boolean {
   return /^https?:\/\//i.test(href);
 }
 
-function withDemoEmoji(label: string, isDemo: boolean): string {
-  if (!isDemo) return label;
-  const t = label.trim();
-  if (t.startsWith('📞')) return t;
-  return `📞 ${t}`;
+function stripLeadingPhoneEmoji(label: string): string {
+  return label.replace(/^📞\s*/, '').trim();
 }
 
 export type PageCtaButtonProps = {
@@ -46,20 +45,27 @@ export function PageCtaButtonPair(props: { primary: PageCtaButtonProps; secondar
   const pExtra = p.demoPicker ? { 'data-demo-picker': true as const } : {};
   const sExtra = s.demoPicker ? { 'data-demo-picker': true as const } : {};
 
-  const primaryLabel = withDemoEmoji(p.label, Boolean(p.demoPicker));
-  const secondaryLabel = withDemoEmoji(s.label, Boolean(s.demoPicker));
+  const primaryContent =
+    p.demoPicker === true ? (
+      <>
+        <DemoCtaPhoneIcon width={18} height={18} />
+        {stripLeadingPhoneEmoji(p.label)}
+      </>
+    ) : (
+      p.label
+    );
 
   const renderPrimary = () => {
     if (isExternal(p.href)) {
       return (
         <a href={p.href} className={primaryBtnClass} rel="noopener noreferrer" target="_blank" {...pExtra}>
-          {primaryLabel}
+          {primaryContent}
         </a>
       );
     }
     return (
       <Link href={p.href} className={primaryBtnClass} {...pExtra}>
-        {primaryLabel}
+        {primaryContent}
       </Link>
     );
   };
@@ -68,13 +74,13 @@ export function PageCtaButtonPair(props: { primary: PageCtaButtonProps; secondar
     if (isExternal(s.href)) {
       return (
         <a href={s.href} className={secondaryBtnClass} rel="noopener noreferrer" target="_blank" {...sExtra}>
-          {secondaryLabel}
+          {s.label}
         </a>
       );
     }
     return (
       <Link href={s.href} className={secondaryBtnClass} {...sExtra}>
-        {secondaryLabel}
+        {s.label}
       </Link>
     );
   };

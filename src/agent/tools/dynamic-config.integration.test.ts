@@ -43,17 +43,17 @@ test('dynamic shop config gates tool behavior and reminder job enqueueing', asyn
 
   assert.ok(session);
 
-  const transferResult = await session.runTool('transfer_to_user', {
+  const transferResult = (await session.runTool('transfer_to_user', {
     reason: 'Caller wants a human.',
-  });
+  })) as Record<string, unknown>;
   assert.equal('success' in transferResult, false);
-  assert.equal((transferResult as { code?: string }).code, 'TRANSFER_FAILED');
+  assert.equal(transferResult.code, 'TRANSFER_FAILED');
 
-  const callbackResult = await session.runTool('schedule_callback', {
+  const callbackResult = (await session.runTool('schedule_callback', {
     reason: 'Need a follow up call.',
-  });
+  })) as Record<string, unknown>;
   assert.equal('success' in callbackResult, false);
-  assert.equal((callbackResult as { code?: string }).code, 'RATE_LIMITED');
+  assert.equal(callbackResult.code, 'RATE_LIMITED');
 
   const bookingResult = await session.runTool('create_booking', {
     date: '2099-01-02',

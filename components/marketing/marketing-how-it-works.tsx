@@ -1,3 +1,5 @@
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
@@ -136,15 +138,6 @@ a{text-decoration:none;color:inherit}
 .hiw-call-step span{width:30px;height:30px;border-radius:12px;background:var(--purple-ultra);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .hiw-call-step strong{display:block;margin-bottom:3px}
 .hiw-call-step p{font-size:14px;color:var(--text-gray);line-height:1.6}
-.hiw-faq{max-width:820px;margin:0 auto;display:grid;gap:10px}
-.hiw-faq details{background:#fff;border:1px solid var(--border);border-radius:18px;padding:0;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
-.hiw-faq details:hover{transform:translateY(-2px);box-shadow:0 16px 40px -8px rgba(17,24,39,.1);border-color:#ddd6fe}
-.hiw-faq details[open]:hover{transform:none;box-shadow:var(--shadow)}
-.hiw-faq summary{cursor:pointer;list-style:none;padding:18px 22px;font-weight:800;display:flex;justify-content:space-between;gap:16px}
-.hiw-faq summary::-webkit-details-marker{display:none}
-.hiw-faq summary::after{content:"+";font-size:20px;color:var(--purple);line-height:1}
-.hiw-faq details[open] summary::after{content:"×"}
-.hiw-faq p{padding:0 22px 20px;color:var(--text-gray);font-size:14.5px;line-height:1.75}
 .hiw-cta{padding:78px 48px;background:#fff}
 .hiw-cta-box{max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#7C3AED 0%,#A855F7 100%);color:#fff;border-radius:32px;padding:42px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;box-shadow:0 24px 70px rgba(124,58,237,.24)}
 .hiw-cta h2{font-size:clamp(28px,3.6vw,42px);font-weight:800;line-height:1.12;letter-spacing:-1.2px;margin-bottom:10px}
@@ -200,7 +193,10 @@ export function MarketingHowItWorksTemplate() {
                   Forward from your existing line: RingBooker is a booking recovery layer that answers after-hours calls, covers peak-hour overflow, sends missed-call text back, and captures intent so missed rings are less likely to become lost revenue — without a new booking system and without reprinting your number everywhere.
                 </p>
                 <div className="hiw-actions">
-                  <a href="/demo" className="hiw-btn-dark" data-demo-picker>Try a Live Demo Call</a>
+                  <a href="/demo" className="hiw-btn-dark" data-demo-picker>
+                    <DemoCtaPhoneIcon width={18} height={18} />
+                    Try a Live Demo Call
+                  </a>
                   <a href="/contact" className="hiw-btn-outline">Talk through setup</a>
                 </div>
               </div>
@@ -325,17 +321,12 @@ export function MarketingHowItWorksTemplate() {
 
           <section className="hiw-section gray">
             <div className="hiw-container">
-              <div className="hiw-label">FAQ</div>
-              <h2 className="hiw-title">Common setup questions.</h2>
-              <p className="hiw-sub">Short answers for owners and managers comparing call recovery options — current number, no forced booking migration, and what happens on real salon and clinic calls.</p>
-              <div className="hiw-faq">
-                {HOW_IT_WORKS_FAQS.map((item) => (
-                  <details key={item.q}>
-                    <summary>{item.q}</summary>
-                    <p>{item.a}</p>
-                  </details>
-                ))}
-              </div>
+              <MarketingFaqAccordion
+                items={HOW_IT_WORKS_FAQS}
+                embedded
+                title="Common setup questions."
+                subtitle="Short answers for owners and managers comparing call recovery options — current number, no forced booking migration, and what happens on real salon and clinic calls."
+              />
             </div>
           </section>
 
@@ -346,7 +337,10 @@ export function MarketingHowItWorksTemplate() {
                 <p>Try a live demo or talk through how RingBooker covers after-hours intent, peak-hour overflow, reschedules, cancellations, and missed-call text back on your line — still the number clients already use.</p>
               </div>
               <div className="hiw-actions">
-                <a href="/demo" className="hiw-btn-dark" data-demo-picker>Try a Live Demo Call</a>
+                <a href="/demo" className="hiw-btn-dark" data-demo-picker>
+                  <DemoCtaPhoneIcon width={18} height={18} />
+                  Try a Live Demo Call
+                </a>
                 <a href="/contact" className="hiw-btn-outline">Talk to us</a>
               </div>
             </div>

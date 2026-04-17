@@ -1,29 +1,24 @@
-import { MarketingSeoPage } from '@/components/marketing/marketing-seo-page';
+import {
+  ContentHubHeroActionsHomeStyle,
+  MarketingContentHub,
+} from '@/components/marketing/marketing-content-hub';
+import { compareHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'RingBooker Alternatives and Comparisons',
+  title: 'RingBooker Comparisons — vs Voicemail, Generic AI & Alternatives',
   description:
-    'Compare RingBooker with other AI receptionist tools for nail salons, hair salons, spas, and med spas.',
+    'Compare RingBooker with other AI receptionist options and traditional choices for nail salons, hair salons, spas, and med spas.',
   path: '/compare',
 });
 
 export default function CompareIndexPage() {
+  const c = compareHub;
   return (
-    <MarketingSeoPage
-      badge="Compare"
-      title="RingBooker Comparison Hub"
-      intro="If you are evaluating AI receptionist tools, start here. These pages break down differences by salon workflow, booking depth, and day-to-day front desk impact."
-      sections={[
-        {
-          heading: 'Available comparison pages',
-          content: [
-            '1. /compare/vs-truelark',
-            '2. /compare/vs-my-ai-front-desk',
-            '3. /compare/vs-goodcall',
-          ],
-        },
-      ]}
+    <MarketingContentHub
+      {...c}
+      heroActions={<ContentHubHeroActionsHomeStyle />}
+      mainExtraClassName="hub-compare-index"
     />
   );
 }

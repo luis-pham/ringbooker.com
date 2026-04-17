@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CategoryFilter } from '@/components/blog/CategoryFilter';
 import { PostCard } from '@/components/blog/PostCard';
 import { SearchBar } from '@/components/blog/SearchBar';
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { getAllCategories, getAllPosts, getFeaturedPost } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
@@ -310,10 +311,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/demo"
-                className="inline-flex items-center rounded-full bg-white px-7 py-3.5 text-sm font-extrabold text-violet-800 shadow-md shadow-black/15 transition hover:scale-[1.04]"
+                className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-extrabold text-violet-800 shadow-md shadow-black/15 transition hover:scale-[1.04]"
                 data-demo-picker
               >
-                📞 Try a Live Demo
+                <DemoCtaPhoneIcon width={18} height={18} />
+                Try a Live Demo
               </Link>
               <Link
                 href="/user/signup"

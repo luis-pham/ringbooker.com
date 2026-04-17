@@ -182,7 +182,8 @@ export async function createOpenAIRealtimeVoiceBridge(
   const outputSampleRate = parseSampleRate(process.env.AGENT_OPENAI_OUTPUT_SAMPLE_RATE, 24000);
   const inputTranscriptionModel = process.env.AGENT_OPENAI_TRANSCRIPTION_MODEL?.trim() || 'gpt-4o-mini-transcribe';
   const enableInputTranscription = parseBoolean(process.env.AGENT_OPENAI_INPUT_TRANSCRIPTION_ENABLED, true);
-  const useServerVad = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
+  /** Misnamed env: `true` = send `turn_detection` (semantic or server per `AGENT_OPENAI_TURN_DETECTION`); `false` = `turn_detection: null` (VAD off). */
+  const turnDetectionEnabled = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
   const turnDetectionMode = parseTurnDetectionMode(process.env.AGENT_OPENAI_TURN_DETECTION);
   const vadSilenceMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_SILENCE_MS, 120);
   const vadPrefixMs = parseSampleRate(process.env.AGENT_OPENAI_VAD_PREFIX_MS, 120);
@@ -401,7 +402,7 @@ export async function createOpenAIRealtimeVoiceBridge(
             },
           }
         : {}),
-      turn_detection: useServerVad
+      turn_detection: turnDetectionEnabled
         ? turnDetectionMode === 'semantic_vad'
           ? {
               type: 'semantic_vad',

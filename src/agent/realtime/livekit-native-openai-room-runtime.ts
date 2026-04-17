@@ -324,8 +324,9 @@ function buildTurnDetectionConfig(): {
   create_response: boolean;
   interrupt_response: boolean;
 } | null {
-  const enabled = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
-  if (!enabled) return null;
+  /** Misnamed env: `true` = enable turn detection; mode is `semantic_vad` vs `server_vad` from `AGENT_OPENAI_TURN_DETECTION`. `false` = no turn detection. */
+  const turnDetectionEnabled = parseBoolean(process.env.AGENT_OPENAI_SERVER_VAD_ENABLED, true);
+  if (!turnDetectionEnabled) return null;
 
   const mode = process.env.AGENT_OPENAI_TURN_DETECTION?.trim().toLowerCase() === 'semantic_vad'
     ? 'semantic_vad'

@@ -1,0 +1,1217 @@
+import { createElement, Fragment, type ReactNode } from 'react';
+
+import type {
+  ContentHubBlock,
+  ContentHubFaq,
+  ContentHubIndustryCard,
+  ContentHubResourceLink,
+  ContentHubSection,
+  ContentHubVariant,
+} from '@/components/marketing/marketing-content-hub';
+
+export type ContentHubPageConfig = {
+  variant: ContentHubVariant;
+  badge: string;
+  /** Match static HTML hero `<h1>` (line breaks + optional `<mark>`). */
+  title: ReactNode;
+  intro: string;
+  /** Optional: marketing-home-style hero (blobs, `hero-h` / `.hl`). */
+  heroLayout?: 'hub' | 'landing';
+  pills?: string[];
+  sections: ContentHubSection[];
+  hubBlocks?: ContentHubBlock[];
+  industryHeading?: string;
+  industrySub?: string;
+  industryEyebrow?: string;
+  industryCards?: ContentHubIndustryCard[];
+  resourceHeading?: string;
+  resourceSub?: string;
+  resourceEyebrow?: string;
+  resourceLinks?: ContentHubResourceLink[];
+  faqs: ContentHubFaq[];
+  faqEyebrow?: string | null;
+  faqTitle?: ReactNode;
+  faqAccent?: 'purple' | 'green';
+  faqSectionClass?: string;
+  breadcrumbLabel: string;
+  cta: {
+    title: string;
+    subtitle: string;
+    primary: { href: string; label: string };
+    secondary?: { href: string; label: string };
+  };
+};
+
+export const phoneBookingRecoveryHub: ContentHubPageConfig = {
+  variant: 'purple',
+  badge: '📞 Pain-Point Hub',
+  heroLayout: 'landing',
+  title: createElement(
+    Fragment,
+    null,
+    'Recover Revenue Lost to ',
+    createElement('span', { className: 'hl' }, 'Missed Calls'),
+  ),
+  intro:
+    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they miss revenue. Phone booking recovery helps capture those missed opportunities before they book elsewhere.',
+  pills: [
+    'After-hours calls captured',
+    'Peak-hour overflow handled',
+    'No number change needed',
+    'Works with existing tools',
+  ],
+  sections: [],
+  hubBlocks: [
+    {
+      kind: 'card_grid',
+      html: { eyebrow: 'The Core Problem', cardGridStyle: 'leak', leakGridColumns: 4 },
+      heading: 'What “phone booking recovery” actually means',
+      sub: 'It is not just about answering calls. It is about recapturing booking opportunities that would otherwise disappear when a caller hangs up or reaches voicemail.',
+      cards: [
+        {
+          icon: '📵',
+          title: 'Missed call = lost revenue',
+          body: 'Most callers who do not reach you will not leave a voicemail. They will call your competitor instead. Recovery intercepts that loss before it becomes permanent.',
+        },
+        {
+          icon: '🌙',
+          title: 'After-hours opportunity window',
+          body: 'A significant share of beauty booking calls come outside business hours. Without a system to capture that intent, those are appointments you will never know you missed.',
+        },
+        {
+          icon: '⚡',
+          title: 'Overflow during peak hours',
+          body: 'Saturdays, lunch rushes, holiday weeks — when two calls arrive at once and your team is mid-service, the second caller often leaves and does not call back.',
+        },
+        {
+          icon: '🔄',
+          title: 'More than new bookings',
+          body: 'Recovery also covers reschedules, cancellations, service questions, and price inquiries — any intent lost when no one picks up.',
+        },
+      ],
+    },
+    {
+      kind: 'scenario_grid',
+      html: { eyebrow: 'The 5 Loss Scenarios' },
+      heading: 'Where beauty businesses lose bookings by phone',
+      sub: 'Five situations where booking loss happens most often — and where recovery makes the biggest difference.',
+      items: [
+        {
+          icon: '🌙',
+          title: 'After-hours calls',
+          body: 'Clients call in the evening or on days you are closed. Without anyone to answer, the booking intent disappears entirely.',
+          tag: 'Heaviest impact: spas, day spas, beauty clinics',
+        },
+        {
+          icon: '📈',
+          title: 'Peak-hour overflow',
+          body: 'Saturday mornings, holiday rushes — staff are all with clients and the phone rings with no one free to answer.',
+          tag: 'Heaviest impact: nail salons, hair salons',
+        },
+        {
+          icon: '🖥️',
+          title: 'Front-desk overload',
+          body: 'Checking someone in, running a card, and the phone rings — something gets dropped, usually the call.',
+          tag: 'Heaviest impact: med spas, hair salons',
+        },
+        {
+          icon: '⏳',
+          title: 'Missed callback windows',
+          body: 'Voicemail leads to a callback hours later — the client has already booked somewhere else.',
+          tag: 'Heaviest impact: all verticals',
+        },
+        {
+          icon: '📭',
+          title: 'Voicemail dead ends',
+          body: 'Most callers do not leave messages. The booking intent evaporates.',
+          tag: 'Heaviest impact: nail salons, day spas',
+        },
+      ],
+    },
+    {
+      kind: 'intent_stats',
+      html: { eyebrow: 'What Callers Want' },
+      heading: 'Common caller intents that get lost',
+      sub: 'It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up.',
+      intents: [
+        { emoji: '📅', label: 'New appointment booking' },
+        { emoji: '🔄', label: 'Reschedule request' },
+        { emoji: '❌', label: 'Cancellation call' },
+        { emoji: '❓', label: 'Service question' },
+        { emoji: '💰', label: 'Price & availability inquiry' },
+        { emoji: '💆', label: 'Treatment inquiry' },
+        { emoji: '👤', label: 'Provider preference' },
+        { emoji: '📞', label: 'Follow-up call' },
+      ],
+      stats: [
+        { value: '67%', label: 'Callers who do not leave voicemail' },
+        { value: '3×', label: 'More likely to book if answered immediately' },
+        { value: '80%', label: 'Of beauty bookings still involve a phone call' },
+      ],
+    },
+    {
+      kind: 'compare_strip',
+      html: { eyebrow: 'The Gap in Existing Solutions', eyebrowTone: 'dark' },
+      heading: 'Why missed-call handling alone is not enough',
+      sub: 'Voicemail, text-back tools, and generic answering services each address part of the problem. None address the full booking recovery challenge.',
+      cards: [
+        {
+          icon: '📼',
+          title: 'Voicemail',
+          body: 'Most callers will not leave one. Those who do still need a manual callback — intent is deferred and often lost.',
+        },
+        {
+          icon: '📱',
+          title: 'Text-back only',
+          body: 'Helpful, but text-back cannot complete a booking conversation or answer service questions. It keeps the lead warm — it does not close it.',
+        },
+        {
+          icon: '📋',
+          title: 'Generic answering service',
+          body: 'May answer calls but typically does not understand beauty workflows, peak patterns, or service-specific questions.',
+        },
+        {
+          icon: '👩',
+          title: 'Hiring more staff',
+          body: 'Does not solve after-hours coverage or scale during overflow — and adds overhead without fixing timing.',
+        },
+      ],
+      footerLink: { href: '/compare', label: 'Compare all alternatives →' },
+    },
+    {
+      kind: 'feature_scenarios',
+      html: { eyebrow: 'The RingBooker Approach', scenarioGrid2x2: true },
+      heading: 'How RingBooker fits into booking recovery',
+      sub: 'RingBooker sits alongside your operations — not replacing them. It handles calls your team cannot reach so intent is not lost.',
+      items: [
+        {
+          icon: '☎️',
+          title: 'Keeps your current number',
+          body: 'No number change required. Clients keep calling the same line they already know.',
+          link: { href: '/current-number', label: 'Learn more →' },
+        },
+        {
+          icon: '🌙',
+          title: 'After-hours call capture',
+          body: 'Answers when the salon is closed, captures booking intent, and routes a summary to your team for next-day action.',
+        },
+        {
+          icon: '⚡',
+          title: 'Overflow during busy hours',
+          body: 'When staff are with clients, RingBooker handles the overflow instead of sending callers to voicemail.',
+        },
+        {
+          icon: '🔌',
+          title: 'Works with your booking tools',
+          body: 'Compatible with Square Appointments, Vagaro, Booksy, Mindbody, and more.',
+          link: { href: '/works-with', label: 'See compatibility →' },
+        },
+      ],
+    },
+  ],
+  industryEyebrow: 'Explore by Industry',
+  industryHeading: 'Booking recovery by business type',
+  industrySub: 'Each beauty vertical has its own call patterns, peak times, and booking loss scenarios. See how recovery applies to your specific business.',
+  industryCards: [
+    {
+      emoji: '💅',
+      title: 'Nail salon',
+      body: 'Peak-hour overflow and walk-in booking calls during service hours.',
+      href: '/industries/nail-salon',
+    },
+    {
+      emoji: '✂️',
+      title: 'Hair salon',
+      body: 'Schedule changes and calls during active color and cut services.',
+      href: '/industries/hair-salon',
+    },
+    {
+      emoji: '🧖',
+      title: 'Day spa',
+      body: 'After-hours inquiries and couples or package booking calls.',
+      href: '/industries/spa',
+    },
+    {
+      emoji: '💉',
+      title: 'Med spa',
+      body: 'Consultation-sensitive calls with high-ticket booking intent.',
+      href: '/industries/med-spa',
+    },
+    {
+      emoji: '✨',
+      title: 'Beauty clinic',
+      body: 'Trust-sensitive inquiries and provider continuity.',
+      href: '/industries/beauty-clinic',
+    },
+  ],
+  /** Eyebrow / headings — list items come from DB in `app/phone-booking-recovery/page.tsx` (posts with pathPrefix `phone-booking-recovery`). */
+  resourceEyebrow: 'In this topic',
+  resourceHeading: 'Articles on booking recovery',
+  resourceSub: 'Posts published under this topic use the same URL prefix as this hub (/phone-booking-recovery/…).',
+  faqs: [
+    {
+      q: 'What is phone booking recovery?',
+      a: 'Phone booking recovery is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients.',
+    },
+    {
+      q: 'Is booking recovery only for missed calls?',
+      a: 'No. It covers all situations where a caller’s intent is not captured: after-hours calls, overflow when staff are busy, voicemail dead ends, and callers who hang up before leaving a message.',
+    },
+    {
+      q: 'Does phone booking recovery help after-hours calls?',
+      a: 'Yes. After-hours coverage is one of the most impactful use cases. RingBooker captures booking intent when the salon is closed and routes the information to your team for follow-up.',
+    },
+    {
+      q: 'Can booking recovery work alongside existing staff?',
+      a: 'Yes. RingBooker is designed to complement your team, not replace it. It handles the calls your staff cannot reach — not the calls they are already managing well.',
+    },
+    {
+      q: 'Is booking recovery different for nail salons vs. med spas?',
+      a: 'Yes. Nail salons often lose bookings during peak-hour overload; med spas are more vulnerable to after-hours consultation inquiries. Each vertical has its own call pattern and recovery approach.',
+    },
+  ],
+  breadcrumbLabel: 'Phone booking recovery',
+  cta: {
+    title: 'Ready to recover bookings you are losing today?',
+    subtitle: 'See how RingBooker handles after-hours, overflow, and missed-call follow-up for your beauty business.',
+    primary: { href: '/demo', label: 'Try a live demo call' },
+    secondary: { href: '/contact', label: 'Book a walkthrough' },
+  },
+};
+
+export const currentNumberHub: ContentHubPageConfig = {
+  variant: 'teal',
+  badge: '☎️ Objection Hub',
+  heroLayout: 'landing',
+  title: createElement(
+    Fragment,
+    null,
+    'Add AI Coverage on Your ',
+    createElement('span', { className: 'hl' }, 'Current Number'),
+  ),
+  intro:
+    'Clients keep dialing the line they already trust. RingBooker layers after-hours and overflow answering through call forwarding — no new digits, no listing churn, and no reset to how your team works the phone.',
+  pills: [
+    'No number migration needed',
+    'Works via call forwarding',
+    'Live in about 15 minutes',
+    'Zero client disruption',
+  ],
+  sections: [],
+  hubBlocks: [
+    {
+      kind: 'flow',
+      html: { eyebrow: 'How It Works', eyebrowTone: 'purple' },
+      heading: 'Your number stays. The coverage expands.',
+      sub: 'Call forwarding means RingBooker activates only when your current setup cannot answer — after hours, during overflow, or when staff are with a client. Your public number never changes.',
+      steps: [
+        { icon: '📱', label: 'Client calls', line: 'Your existing number', badge: 'No change', badgeStyle: 'green' },
+        { icon: '☎️', label: 'Your front desk', line: 'Answers if available', badge: 'Current workflow', badgeStyle: 'green' },
+        { icon: '🤖', label: 'RingBooker covers', line: 'After-hours & overflow', badge: 'AI layer', badgeStyle: 'purple' },
+        { icon: '📋', label: 'Your team gets', line: 'Call summary & intent', badge: 'Full context', badgeStyle: 'green' },
+      ],
+    },
+    {
+      kind: 'card_grid',
+      html: { eyebrow: 'Why It Matters', cardGridStyle: 'leak', leakGridColumns: 4 },
+      heading: 'Why beauty businesses do not want a new number',
+      sub: 'A phone number is tied to years of client relationships, signage, listings, and trust. Changing it creates friction — not value.',
+      cards: [
+        {
+          icon: '👥',
+          title: 'Clients already know it',
+          body: 'Long-term clients have your number saved. Some still dial from memory. Changing it means re-educating everyone.',
+        },
+        {
+          icon: '📍',
+          title: 'It is across all your channels',
+          body: 'Google Business Profile, Yelp, Instagram, cards, signage — one missed update hurts more than not changing at all.',
+        },
+        {
+          icon: '🔀',
+          title: 'Staff are used to the workflow',
+          body: 'Your team knows which line to answer and how clients expect to be greeted. A new number disrupts routines.',
+        },
+        {
+          icon: '🧪',
+          title: 'You want to test first',
+          body: 'Keeping your number lets you trial AI coverage without a full operational reset.',
+        },
+      ],
+    },
+    {
+      kind: 'scenario_grid',
+      html: { eyebrow: 'Common Questions' },
+      heading: 'Real concerns owners have about numbers',
+      sub: 'Common objections from salon and spa owners — and how keeping your current number addresses each one.',
+      items: [
+        {
+          icon: '❓',
+          title: 'Will my clients get confused if something changes?',
+          body: 'Nothing client-facing changes. They still call the same number — AI handles overflow or after-hours instead of voicemail.',
+        },
+        {
+          icon: '📍',
+          title: 'What about my Google Business Profile listing?',
+          body: 'Your GBP number stays as-is. No listing changes; local SEO consistency is preserved.',
+        },
+        {
+          icon: '🪧',
+          title: 'What about printed cards, flyers, and window signage?',
+          body: 'No reprint needed. The number on your window and ads keeps working.',
+        },
+        {
+          icon: '☎️',
+          title: 'What if my staff still need to use the phone?',
+          body: 'RingBooker is a layer on top. Staff answer the way they always do; RingBooker activates only when your team cannot reach the call in time.',
+        },
+        {
+          icon: '🧪',
+          title: 'Can I test this without fully switching?',
+          body: 'Yes. Many owners start with after-hours-only or overflow while the primary flow stays unchanged.',
+        },
+        {
+          icon: '👥',
+          title: 'Will old clients still be able to reach me?',
+          body: 'Yes. Long-time clients dialing a saved number still reach you — with better coverage when the desk is slammed or closed.',
+        },
+      ],
+    },
+    {
+      kind: 'feature_scenarios',
+      html: { featureLayout: 'use_cases', eyebrow: 'No-Reset Adoption' },
+      heading: 'How RingBooker fits without a full reset',
+      sub: 'Most tools ask you to migrate or replace. RingBooker integrates where your current coverage stops.',
+      items: [
+        {
+          icon: '🔀',
+          title: 'Forwarding-based setup',
+          body: 'Forward your line for after-hours and overflow — no system migration.',
+        },
+        {
+          icon: '🧪',
+          title: 'Start with one use case',
+          body: 'Begin after-hours only; add overflow when you are comfortable.',
+        },
+        {
+          icon: '👥',
+          title: 'Staff still handle key calls',
+          body: 'Your team keeps the calls they always have; RingBooker covers the gap.',
+        },
+        {
+          icon: '🔌',
+          title: 'Works with existing tools',
+          body: 'Square, Vagaro, Booksy, Mindbody — your booking software stays.',
+          link: { href: '/works-with', label: 'See compatibility →' },
+        },
+        {
+          icon: '📋',
+          title: 'Full call context for your team',
+          body: 'Every AI-handled call produces a summary and intent note for follow-up.',
+        },
+        {
+          icon: '🛡️',
+          title: 'Low-risk rollout',
+          body: 'Adjust what RingBooker handles without touching your public number.',
+          link: { href: '/trust', label: 'Trust & reliability →' },
+        },
+      ],
+    },
+  ],
+  /** Single industry section (linked cards) — avoids duplicating the same five verticals as a separate “By Business Type” grid above. */
+  industryEyebrow: 'By business type',
+  industryHeading: 'Same number — different call pressures by vertical',
+  industrySub: 'Why continuity matters varies by vertical — explore how setup and call patterns differ.',
+  industryCards: [
+    { emoji: '💅', title: 'Nail salon', body: 'High weekend call volume; overflow is common.', href: '/industries/nail-salon' },
+    { emoji: '✂️', title: 'Hair salon', body: 'Long services mean phones ring while stylists are on the floor.', href: '/industries/hair-salon' },
+    { emoji: '🧖', title: 'Day spa', body: 'After-hours booking and package questions.', href: '/industries/spa' },
+    { emoji: '💉', title: 'Med spa', body: 'Consult calls that need careful capture.', href: '/industries/med-spa' },
+    { emoji: '✨', title: 'Beauty clinic', body: 'Trust-sensitive inquiries on the line you already publish.', href: '/industries/beauty-clinic' },
+  ],
+  /** List items: loaded in `app/current-number/page.tsx` from posts with `pathPrefix` `current-number`. */
+  resourceEyebrow: 'In this topic',
+  resourceHeading: 'Articles on your current number',
+  resourceSub:
+    'Deep dives on forwarding, listings, and rollout — published under the same path as this hub (/current-number/…).',
+  faqs: [
+    {
+      q: 'Do I need a new phone number to use RingBooker?',
+      a: 'No. RingBooker is designed to work with your existing business phone number via call forwarding. There is no requirement to switch your public-facing number.',
+    },
+    {
+      q: 'Can I test without changing my public number?',
+      a: 'Yes. You can configure RingBooker for specific call types — such as after-hours or overflow — while the rest of your routing stays unchanged.',
+    },
+    {
+      q: 'Does this replace my current phone setup?',
+      a: 'No. RingBooker sits alongside your existing phone system. Your number, staff workflow, and desk setup stay in place.',
+    },
+    {
+      q: 'What if staff still answer some calls?',
+      a: 'That is supported. You choose which situations RingBooker handles and which still ring through to your team first.',
+    },
+    {
+      q: 'Can I keep my number and my booking tools?',
+      a: 'Yes. Keeping your current number and booking tools is the default. RingBooker complements what you already use.',
+    },
+  ],
+  breadcrumbLabel: 'Current number',
+  cta: {
+    title: 'Keep your number. Add coverage.',
+    subtitle: 'Walk through forwarding options and a rollout plan that fits your desk.',
+    primary: { href: '/demo', label: 'Try a live demo call' },
+    secondary: { href: '/how-it-works', label: 'How it works' },
+  },
+};
+
+export const worksWithHub: ContentHubPageConfig = {
+  variant: 'beautyClinic',
+  badge: '🔌 Compatibility Hub',
+  heroLayout: 'landing',
+  title: createElement(
+    Fragment,
+    null,
+    'Works Alongside Your ',
+    createElement('span', { className: 'hl' }, 'Booking Tools'),
+  ),
+  intro:
+    'RingBooker is not a replacement — it is a phone layer. It sits alongside Square Appointments, Vagaro, Booksy, Mindbody, and the workflow your team already uses. No migration required.',
+  pills: [
+    'No system replacement required',
+    'Start with call forwarding',
+    'Workflow-compatible setups',
+    'Current number supported',
+  ],
+  sections: [],
+  hubBlocks: [
+    {
+      kind: 'card_grid',
+      html: { eyebrow: 'Clarity First', cardGridStyle: 'leak', leakGridColumns: 4 },
+      heading: 'Four layers of compatibility',
+      sub: 'RingBooker is designed to fit how beauty businesses already operate — phone, booking tools, front desk, and rollout pace.',
+      cards: [
+        {
+          icon: '📞',
+          title: 'Phone workflow',
+          body: 'Works via call forwarding on your current number — no phone system replacement. After-hours handling, overflow coverage, and your published number stay intact.',
+        },
+        {
+          icon: '🗓️',
+          title: 'Booking tools',
+          body: 'Keep your existing software to manage appointments; RingBooker complements it. Square Appointments (live), plus Vagaro, Booksy, Mindbody — workflow-compatible setups.',
+        },
+        {
+          icon: '👥',
+          title: 'Front-desk workflow',
+          body: 'Staff keep the calls they always take; RingBooker covers the gap. Your team answers as usual; AI handles overflow and after-hours with full context at handoff.',
+        },
+        {
+          icon: '🚀',
+          title: 'Phased adoption',
+          body: 'Start with one use case — like after-hours only — and expand when you are ready. Start small, avoid a big-bang migration, and adjust anytime.',
+        },
+      ],
+    },
+    {
+      kind: 'tool_strip',
+      html: { eyebrow: 'Booking Tool Compatibility', eyebrowTone: 'blue' },
+      heading: 'Tools beauty businesses already use',
+      sub: 'From Square Appointments to Booksy — RingBooker is built to sit alongside the software your team already knows.',
+      tools: [
+        {
+          href: '/works-with/square-appointments',
+          logo: '⬛',
+          title: 'Square Appointments',
+          body: 'Live integration — captured call intent can flow into your scheduling workflow.',
+          status: '✓ Live integration',
+          statusKind: 'live',
+        },
+        {
+          href: '/works-with/vagaro',
+          logo: '💜',
+          title: 'Vagaro',
+          body: 'Workflow-compatible: capture intent and route summaries for manual booking entry.',
+          status: 'Workflow compatible',
+          statusKind: 'workflow',
+        },
+        {
+          href: '/works-with/booksy',
+          logo: '📋',
+          title: 'Booksy',
+          body: 'Popular with nail and hair stylists — RingBooker handles calls online booking does not capture.',
+          status: 'Workflow compatible',
+          statusKind: 'workflow',
+        },
+        {
+          href: '/works-with/mindbody',
+          logo: '🧘',
+          title: 'Mindbody',
+          body: 'Common in spas and wellness — after-hours and overflow coverage alongside Mindbody workflows.',
+          status: 'Integration expanding',
+          statusKind: 'soon',
+        },
+      ],
+    },
+    {
+      kind: 'step_track',
+      html: {
+        eyebrow: 'Getting Started',
+        eyebrowTone: 'green',
+        section: 'leak',
+        stepsCentered4: true,
+      },
+      heading: 'How businesses usually start',
+      sub: 'Most teams adopt in stages — starting where booking loss is clearest.',
+      steps: [
+        {
+          title: 'Forward your current number',
+          body: 'Route after-hours (or overflow) to RingBooker. The desk keeps answering during business hours.',
+        },
+        {
+          title: 'Start with after-hours or overflow',
+          body: 'Pick the lowest-risk, highest-impact call types first.',
+        },
+        {
+          title: 'Keep your booking workflow',
+          body: 'Your team still uses Square, Vagaro, or Booksy — nothing in scheduling has to change.',
+        },
+        {
+          title: 'Review summaries and expand',
+          body: 'When you are ready, widen coverage or tighten integration.',
+        },
+      ],
+    },
+    {
+      kind: 'scenario_grid',
+      html: { eyebrow: 'Common Questions' },
+      heading: 'Common compatibility concerns',
+      sub: 'Typical questions from owners and managers — and how RingBooker fits alongside the tools you already use.',
+      items: [
+        {
+          icon: '🔌',
+          title: 'Do I need to replace my booking software?',
+          body: 'No. Square Appointments, Vagaro, Booksy, and Mindbody stay in place — RingBooker handles the phone layer.',
+        },
+        {
+          icon: '👥',
+          title: 'What if my staff still handle some calls?',
+          body: 'That is the default. Staff answer during the day; RingBooker activates for overflow and after-hours.',
+        },
+        {
+          icon: '🌙',
+          title: 'What if I only want after-hours first?',
+          body: 'That is the most common start — configure after-hours only, then expand.',
+        },
+        {
+          icon: '☎️',
+          title: 'Does it work with my current phone number?',
+          body: 'Yes — forwarding on the line you already publish.',
+        },
+        {
+          icon: '💅',
+          title: 'Does it work the same for nail salons and med spas?',
+          body: 'Compatibility applies to every vertical; call types differ — see industry pages for specifics.',
+        },
+        {
+          icon: '🧩',
+          title: 'Can I start without booking software integration?',
+          body: 'Yes. Forwarding and after-hours work with zero integration — summaries go to your team.',
+        },
+      ],
+    },
+  ],
+  industryHeading: 'By industry',
+  industrySub: 'Tooling varies; phone behavior is where RingBooker focuses.',
+  industryCards: [
+    { emoji: '💅', title: 'Nail salon', body: 'High-volume booking and reschedule calls.', href: '/industries/nail-salon' },
+    { emoji: '✂️', title: 'Hair salon', body: 'Stylist-specific and same-day change requests.', href: '/industries/hair-salon' },
+    { emoji: '🧖', title: 'Day spa', body: 'Packages, couples, and duration questions.', href: '/industries/spa' },
+    { emoji: '💉', title: 'Med spa', body: 'Consultation and treatment questions before booking.', href: '/industries/med-spa' },
+    { emoji: '✨', title: 'Beauty clinic', body: 'Provider continuity and trust-sensitive calls.', href: '/industries/beauty-clinic' },
+  ],
+  /** List items: loaded in `app/works-with/page.tsx` from posts with `pathPrefix` `works-with`. */
+  resourceEyebrow: 'In this topic',
+  resourceHeading: 'Articles on tools & compatibility',
+  resourceSub:
+    'Square, Vagaro, Booksy, Mindbody, and rollout — published under the same path as this hub (/works-with/…).',
+  faqs: [
+    {
+      q: 'Do I need to replace my booking software?',
+      a: 'No. RingBooker is designed to work alongside Square Appointments, Vagaro, Booksy, Mindbody, and others. No system replacement is required to start.',
+    },
+    {
+      q: 'What does “works with” mean exactly?',
+      a: 'It means compatibility with your phone workflow, booking tools, and operations — from forwarding-only to deeper workflows as you scale.',
+    },
+    {
+      q: 'Can I start without a full integration?',
+      a: 'Yes. Many businesses start with call forwarding and after-hours coverage, which does not require booking software integration.',
+    },
+    {
+      q: 'Does this work with my current phone number?',
+      a: 'Yes. RingBooker works via forwarding on your current number.',
+    },
+    {
+      q: 'Can I use RingBooker with my existing receptionist workflow?',
+      a: 'Yes. RingBooker handles calls your team cannot reach while your in-person workflow stays in place.',
+    },
+  ],
+  breadcrumbLabel: 'Works with',
+  cta: {
+    title: 'See RingBooker alongside your stack',
+    subtitle: 'No rip-and-replace — start with the phone layer and expand when you are ready.',
+    primary: { href: '/demo', label: 'Try a live demo call' },
+    secondary: { href: '/pricing', label: 'View pricing' },
+  },
+};
+
+export const compareHub: ContentHubPageConfig = {
+  variant: 'beautyClinic',
+  badge: '⚖️ Decision Hub',
+  heroLayout: 'landing',
+  title: createElement(
+    Fragment,
+    null,
+    'RingBooker vs.',
+    createElement('br'),
+    createElement('span', { className: 'hl' }, 'Every Other Option'),
+  ),
+  intro:
+    'Voicemail. Answering services. Hiring more staff. Generic AI receptionists. Here’s an honest comparison of how each one handles beauty business call management — and where each one falls short.',
+  pills: [
+    'Voicemail vs. AI',
+    'Answering services',
+    'Front-desk hiring',
+    'Generic AI tools',
+  ],
+  sections: [],
+  hubBlocks: [
+    {
+      kind: 'card_grid',
+      html: {
+        eyebrow: 'The Landscape',
+        section: 'leak',
+        cardGridStyle: 'leak',
+        leakGridColumns: 3,
+        hubGridCols3: true,
+      },
+      heading: 'The landscape of phone solutions',
+      sub: 'Most salons are not choosing between “AI or nothing.” They are choosing between voicemail, text-back, services, headcount, generic AI — or a beauty-specific layer.',
+      cards: [
+        {
+          icon: '📼',
+          title: 'Voicemail',
+          body: 'The default fallback. Works for motivated callers — loses everyone who hangs up at the beep.',
+        },
+        {
+          icon: '📱',
+          title: 'Missed-call text-back',
+          body: 'Re-engages silent callers — but cannot complete a booking or answer nuanced service questions.',
+        },
+        {
+          icon: '☎️',
+          title: 'Answering service',
+          body: 'A human answers — but may not know your services, pricing, staff, or beauty workflows.',
+        },
+        {
+          icon: '👩',
+          title: 'Hire more staff',
+          body: 'Full control — but expensive, does not cover after-hours the same way, and overflow still spikes.',
+        },
+        {
+          icon: '🤖',
+          title: 'Generic AI receptionist',
+          body: 'Always on — but not tuned for nail vs. med spa patterns or peak-hour reality.',
+        },
+        {
+          icon: '💜',
+          title: 'RingBooker',
+          body: 'Beauty-specific AI answering: after-hours and overflow, your current number, booking tools in place, team stays in control.',
+        },
+      ],
+    },
+    {
+      kind: 'compare_table_matrix',
+      html: { eyebrow: 'Side by Side' },
+      heading: 'Quick Comparison — What Matters for Beauty Businesses',
+      sub:
+        "The right comparison isn't just about features. It's about which option fits the actual way beauty businesses receive and lose bookings.",
+      headers: [
+        'Criterion',
+        'Voicemail',
+        'Text-Back',
+        'Answering Svc',
+        'More Staff',
+        'Generic AI',
+        'RingBooker',
+      ],
+      rows: [
+        {
+          criterion: 'After-hours call coverage',
+          cells: [
+            { tone: 'partial', label: 'Partial' },
+            { tone: 'partial', label: 'Partial' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'cross', label: 'No' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'check', label: 'Yes' },
+          ],
+        },
+        {
+          criterion: 'Peak-hour overflow handling',
+          cells: [
+            { tone: 'cross', label: 'No' },
+            { tone: 'cross', label: 'No' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Partial' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'check', label: 'Yes' },
+          ],
+        },
+        {
+          criterion: 'Beauty-specific call fit',
+          cells: [
+            { tone: 'cross', label: 'No' },
+            { tone: 'cross', label: 'No' },
+            { tone: 'cross', label: 'No' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Partial' },
+            { tone: 'check', label: 'Yes' },
+          ],
+        },
+        {
+          criterion: 'Current number continuity',
+          cells: [
+            { tone: 'check', label: 'Yes' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Varies' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Varies' },
+            { tone: 'check', label: 'Yes' },
+          ],
+        },
+        {
+          criterion: 'Works with existing booking tools',
+          cells: [
+            { tone: 'check', label: 'Yes' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Manual' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Varies' },
+            { tone: 'check', label: 'Yes' },
+          ],
+        },
+        {
+          criterion: 'Captures caller intent in real time',
+          cells: [
+            { tone: 'cross', label: 'No' },
+            { tone: 'partial', label: 'Limited' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Varies' },
+            { tone: 'check', label: 'Yes' },
+          ],
+        },
+        {
+          criterion: 'Human handoff when needed',
+          cells: [
+            { tone: 'cross', label: 'No' },
+            { tone: 'cross', label: 'No' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Varies' },
+            { tone: 'check', label: 'Yes' },
+          ],
+        },
+        {
+          criterion: 'Low operational disruption',
+          cells: [
+            { tone: 'check', label: 'Yes' },
+            { tone: 'check', label: 'Yes' },
+            { tone: 'partial', label: 'Partial' },
+            { tone: 'cross', label: 'No' },
+            { tone: 'partial', label: 'Varies' },
+            { tone: 'check', label: 'Yes' },
+          ],
+        },
+        {
+          criterion: 'Practical starting cost',
+          cells: [
+            { tone: 'check', label: 'Free' },
+            { tone: 'check', label: 'Low' },
+            { tone: 'cross', label: 'High' },
+            { tone: 'cross', label: 'Very high' },
+            { tone: 'partial', label: 'Varies' },
+            { tone: 'check', label: 'From $79/mo' },
+          ],
+        },
+      ],
+    },
+    {
+      kind: 'alt_link_grid',
+      html: { eyebrow: 'Deep Comparisons', hubGridCols3: true },
+      heading: 'Compare RingBooker by Alternative',
+      sub: 'Each comparison goes deeper into the specific trade-offs, use cases, and who each option is actually right for.',
+      links: [
+        {
+          href: '/compare/ringbooker-vs-voicemail/',
+          title: 'RingBooker vs. Voicemail',
+          body: 'Why voicemail fails as a booking capture tool — and what a real-time AI alternative does differently for after-hours callers.',
+        },
+        {
+          href: '/compare/ringbooker-vs-answering-service/',
+          title: 'RingBooker vs. Answering Service',
+          body: 'Human agents vs. AI — where each one wins, where generic services miss beauty-specific call context, and when each makes sense.',
+        },
+        {
+          href: '/compare/ringbooker-vs-front-desk-hiring/',
+          title: 'RingBooker vs. Hiring More Staff',
+          body: 'Adding headcount does not solve after-hours or overflow. Here is why the math often favors a different approach for peak coverage.',
+        },
+        {
+          href: '/compare/ringbooker-vs-generic-ai/',
+          title: 'RingBooker vs. Generic AI Receptionist',
+          body: 'Not all AI answering is the same. Here is how beauty-specific training changes the caller experience vs. a general-purpose AI tool.',
+        },
+        {
+          href: '/compare/ringbooker-vs-text-back-only/',
+          title: 'RingBooker vs. Text-Back Only',
+          body: 'Text-back re-engages silent callers — but it cannot complete a booking. Here is what happens in the gap between text-back and booked appointment.',
+        },
+      ],
+    },
+    {
+      kind: 'situation_grid',
+      html: { section: 'purple-soft', eyebrow: 'Decision Guide', hubGridCols3: true },
+      heading: 'Compare by Your Current Situation',
+      sub: 'The right next step depends on where booking loss hurts most.',
+      items: [
+        {
+          prefix: 'If your biggest issue is…',
+          title: 'After-hours calls going to voicemail',
+          body: 'Voicemail and text-back both fall short. You need something that answers and captures intent in real time.',
+          cta: { href: '/phone-booking-recovery', label: 'Booking recovery hub →' },
+        },
+        {
+          prefix: 'If your biggest issue is…',
+          title: 'Front-desk overload during peak hours',
+          body: 'More staff helps but does not flex the same way. Overflow coverage is often the cost-effective layer.',
+          cta: { href: '/how-it-works', label: 'How it works →' },
+        },
+        {
+          prefix: 'If your biggest issue is…',
+          title: 'Not wanting to change your phone number',
+          body: 'Call forwarding keeps your public number — see how setup works.',
+          cta: { href: '/current-number', label: 'Current number hub →' },
+        },
+        {
+          prefix: 'If your biggest issue is…',
+          title: 'Not wanting to replace booking software',
+          body: 'RingBooker sits alongside Square, Vagaro, Booksy, and Mindbody.',
+          cta: { href: '/works-with', label: 'Compatibility hub →' },
+        },
+        {
+          prefix: 'If your biggest issue is…',
+          title: 'Reliability concerns about AI',
+          body: 'Phased rollout and boundaries matter — especially for med spas and clinics.',
+          cta: { href: '/trust', label: 'Trust hub →' },
+        },
+        {
+          prefix: 'If your biggest issue is…',
+          title: 'Wanting a low-risk starting point',
+          body: 'Start after-hours only; keep daytime workflow; expand when you are ready.',
+          cta: { href: '/demo', label: 'Try a live demo call' },
+        },
+      ],
+    },
+    {
+      kind: 'compare_strip',
+      html: { eyebrow: 'Industry Context', eyebrowTone: 'dark' },
+      heading: 'Why beauty businesses need a different comparison lens',
+      sub: 'Salons and spas are not generic local businesses. The right comparison has to be operational — not just feature-based.',
+      cards: [
+        {
+          icon: '⏱️',
+          title: 'Timing is everything',
+          body: 'Saturday at 11am means stations are full — generic tools do not model that reality.',
+        },
+        {
+          icon: '💆',
+          title: 'Service questions are specific',
+          body: 'Callers ask about gel vs. dip, balayage, fillers — generic AI or agents often miss nuance.',
+        },
+        {
+          icon: '👤',
+          title: 'Trust is part of the product',
+          body: 'A caller who feels mishandled will not book. Comparison has to include caller experience quality.',
+        },
+      ],
+    },
+  ],
+  resourceHeading: 'Comparison pages',
+  resourceSub: 'Product vs product and conceptual guides.',
+  resourceLinks: [
+    { href: '/compare/vs-truelark', label: 'RingBooker vs Truelark' },
+    { href: '/compare/vs-my-ai-front-desk', label: 'RingBooker vs My AI Front Desk' },
+    { href: '/compare/vs-goodcall', label: 'RingBooker vs Goodcall' },
+  ],
+  faqs: [
+    {
+      q: 'Is RingBooker better than voicemail for salons?',
+      a: 'For capturing booking intent, yes. Voicemail fails when callers do not leave messages. RingBooker captures intent in real time and routes it to your team.',
+    },
+    {
+      q: 'How is RingBooker different from an answering service?',
+      a: 'Generic answering services may not understand beauty workflows or service-specific questions. RingBooker is built for salon and clinic call patterns.',
+    },
+    {
+      q: 'Do I still need front-desk staff?',
+      a: 'In most cases, yes. RingBooker handles calls your staff cannot reach — it is designed to complement your team.',
+    },
+    {
+      q: 'What if I only need after-hours support?',
+      a: 'That is a common starting point. You can scope coverage to nights and weekends before expanding.',
+    },
+    {
+      q: 'How is RingBooker different from a generic AI receptionist?',
+      a: 'Generic products optimize for any business. RingBooker focuses on beauty-industry call behavior, peaks, and booking flows.',
+    },
+  ],
+  breadcrumbLabel: 'Compare',
+  cta: {
+    title: 'Still deciding?',
+    subtitle: 'Run a live call on the demo, then compare notes with our comparison pages above.',
+    primary: { href: '/demo', label: 'Try a live demo call' },
+    secondary: { href: '/contact', label: 'Talk to us' },
+  },
+};
+
+export const trustHub: ContentHubPageConfig = {
+  variant: 'trust',
+  badge: '🛡️ Trust & Reliability Hub',
+  heroLayout: 'landing',
+  title: createElement(
+    Fragment,
+    null,
+    'Built for',
+    createElement('br'),
+    createElement('span', { className: 'hl' }, 'Reliable Call Handling'),
+    createElement('br'),
+    'in Beauty Businesses',
+  ),
+  intro:
+    'Trust isn’t a feature. It’s a requirement — especially for beauty businesses where every client interaction reflects on your reputation. Here’s exactly what RingBooker does, what it doesn’t claim, and how to start with confidence.',
+  pills: [
+    'Transparent expectations',
+    'Human fallback control',
+    'Phased adoption support',
+    'No overnight overhaul',
+  ],
+  sections: [],
+  hubBlocks: [
+    {
+      kind: 'card_grid',
+      html: {
+        eyebrow: 'What Trust Means Here',
+        section: 'leak',
+        cardGridStyle: 'leak',
+        leakGridColumns: 4,
+      },
+      heading: 'Trust in the context of AI call handling',
+      sub: 'For beauty businesses, trust means four specific things — none of them are AI hype.',
+      cards: [
+        {
+          icon: '🎯',
+          title: 'Consistency',
+          body: 'Every after-hours caller gets a clear response — not great sometimes and confusing other times.',
+        },
+        {
+          icon: '🔍',
+          title: 'Clarity',
+          body: 'RingBooker can identify as a virtual assistant — transparency with callers builds trust.',
+        },
+        {
+          icon: '🔧',
+          title: 'Practical control',
+          body: 'You decide what it handles, adjust coverage, and keep control with your team.',
+        },
+        {
+          icon: '📐',
+          title: 'Realistic scope',
+          body: 'Built for predictable workflows — not claiming perfect handling for every edge case.',
+        },
+      ],
+    },
+    {
+      kind: 'feature_scenarios',
+      html: {
+        section: 'purple-soft',
+        featureLayout: 'principles',
+        eyebrow: 'How It Works in Practice',
+      },
+      heading: 'Reliability principles behind RingBooker',
+      sub: 'Design choices — not slogans — that define behavior on every call.',
+      items: [
+        {
+          icon: '📞',
+          title: 'Answers after-hours and overflow consistently',
+          body: 'When you are closed or your team is with a client, callers get a real response — not silence.',
+        },
+        {
+          icon: '🎭',
+          title: 'Transparent AI identity',
+          body: 'No pretending to be a human team member — honesty supports long-term trust.',
+        },
+        {
+          icon: '🔄',
+          title: 'Fallback, then clean handoff',
+          body: 'If a request is out of scope, collect context and route to your team instead of looping.',
+        },
+        {
+          icon: '📋',
+          title: 'Every call produces a summary',
+          body: 'Intent notes and action items land in your dashboard — no black-box calls.',
+        },
+        {
+          icon: '🎛️',
+          title: 'Designed to be adjusted',
+          body: 'Hours, services, and staff change — configuration can change with you.',
+        },
+      ],
+    },
+    {
+      kind: 'split_expectations',
+      html: { eyebrow: 'Honest Expectations' },
+      heading: 'Transparency and realistic expectations',
+      sub: 'A clear picture of what RingBooker is built for — and what your team still owns.',
+      left: {
+        title: '✓ What RingBooker is designed for',
+        items: [
+          'After-hours and overflow answering',
+          'Appointment booking, reschedule, and cancellation calls',
+          'Service questions and price inquiries',
+          'Missed-call text-back and callback workflows',
+          'Consistent handling during predictable call patterns',
+        ],
+      },
+      right: {
+        title: '→ What your team still handles',
+        items: [
+          'Complex medical or treatment consultations',
+          'Sensitive or escalated client concerns',
+          'Unusual requests outside configured workflows',
+          'Calls you want staff to take personally',
+          'VIP relationships that need a human touch',
+        ],
+      },
+    },
+    {
+      kind: 'scenario_grid',
+      html: { eyebrow: 'Common Concerns' },
+      heading: 'Risk concerns business owners have',
+      sub: 'Common trust questions before teams start.',
+      items: [
+        {
+          icon: '❓',
+          title: 'What if a caller asks something unusual?',
+          body: 'RingBooker follows a fallback path: offer callback, collect details, route cleanly — without confusing loops.',
+        },
+        {
+          icon: '👥',
+          title: 'What if I still want staff involved?',
+          body: 'That is the default — configure specific call types only; your team keeps the rest.',
+        },
+        {
+          icon: '🧪',
+          title: 'What if I want to start small?',
+          body: 'After-hours only for a few weeks, then reassess. Most teams expand when quality feels right.',
+        },
+        {
+          icon: '☎️',
+          title: 'What if I need to keep my current number?',
+          body: 'Your number does not change — RingBooker uses forwarding on the line you already publish.',
+        },
+        {
+          icon: '🔌',
+          title: 'What if I need it to fit existing tools?',
+          body: 'Works alongside Square, Vagaro, Booksy, and Mindbody — no forced replacement.',
+        },
+        {
+          icon: '💬',
+          title: 'What if clients ask if they are talking to AI?',
+          body: 'Designed to be transparent when relevant — most callers accept that for routine booking tasks.',
+        },
+      ],
+    },
+    {
+      kind: 'step_track',
+      html: { section: 'leak', stepsCentered4: true },
+      heading: 'What a low-risk rollout looks like',
+      sub: 'You do not have to do everything at once.',
+      steps: [
+        {
+          title: 'Week 1–2: After-hours only',
+          body: 'Forward when closed. Zero daytime change. Review summaries daily.',
+        },
+        {
+          title: 'Week 3–4: Add overflow',
+          body: 'Staff answer first; RingBooker takes the second call when needed.',
+        },
+        {
+          title: 'Month 2: Refine setup',
+          body: 'Tune services, rules, and handoff triggers from real call data.',
+        },
+        {
+          title: 'Ongoing: Expand or hold',
+          body: 'Add integrations or reporting — or stay on the configuration that works.',
+        },
+      ],
+    },
+  ],
+  industryHeading: 'Trust by vertical',
+  industrySub: 'Different businesses worry about different risks — the rollout pattern is the same.',
+  industryCards: [
+    { emoji: '💅', title: 'Nail salon', body: 'Speed and clarity on busy Saturdays.', href: '/industries/nail-salon' },
+    { emoji: '✂️', title: 'Hair salon', body: 'Stylist requests and changes without dropped context.', href: '/industries/hair-salon' },
+    { emoji: '🧖', title: 'Day spa', body: 'Calm, accurate capture for multi-service asks.', href: '/industries/spa' },
+    { emoji: '💉', title: 'Med spa', body: 'Careful boundaries on consult and treatment questions.', href: '/industries/med-spa' },
+    { emoji: '✨', title: 'Beauty clinic', body: 'Trust-forward intake before human follow-up.', href: '/industries/beauty-clinic' },
+  ],
+  resourceHeading: 'Related hubs',
+  resourceLinks: [
+    { href: '/how-it-works', label: 'How it works' },
+    { href: '/faq', label: 'FAQ' },
+    { href: '/contact', label: 'Book a demo' },
+    { href: '/privacy', label: 'Privacy' },
+  ],
+  faqs: [
+    {
+      q: 'Can AI handle salon booking calls reliably?',
+      a: 'For after-hours and overflow, where the alternative is often voicemail or no answer, RingBooker is built for appointment-style workflows in beauty businesses.',
+    },
+    {
+      q: 'Will RingBooker replace my team?',
+      a: 'No. It is designed for calls your team cannot reach. Your team stays in control of the conversations they want to own.',
+    },
+    {
+      q: 'What if I only want after-hours coverage at first?',
+      a: 'That is the most common starting point — minimal disruption to daytime workflow.',
+    },
+    {
+      q: 'Can I keep my current number?',
+      a: 'Yes. RingBooker works with your existing number via forwarding.',
+    },
+    {
+      q: 'How do I reduce rollout risk?',
+      a: 'Start after-hours only, review summaries, then expand to overflow when you are satisfied with quality.',
+    },
+  ],
+  breadcrumbLabel: 'Trust',
+  cta: {
+    title: 'Questions about fit and rollout?',
+    subtitle: 'We will walk through scope, boundaries, and a phased plan that matches your team.',
+    primary: { href: '/contact', label: 'Book a walkthrough' },
+    secondary: { href: '/faq', label: 'Read the FAQ' },
+  },
+};

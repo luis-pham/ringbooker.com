@@ -7,6 +7,7 @@ import { ReadingProgressBar } from '@/components/blog/ReadingProgressBar';
 import { ShareButtons } from '@/components/blog/ShareButtons';
 import { TableOfContents } from '@/components/blog/TableOfContents';
 import { ViewCounter } from '@/components/blog/ViewCounter';
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { extractToc } from '@/lib/extractToc';
 import { buildBlogDetailJsonLd } from '@/lib/blog/blog-jsonld';
@@ -200,10 +201,11 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
             </p>
             <Link
               href="/demo"
-              className="block rounded-[10px] bg-white px-3 py-3.5 text-center text-sm font-extrabold text-violet-800 shadow-md transition hover:opacity-95"
+              className="flex items-center justify-center gap-2 rounded-[10px] bg-white px-3 py-3.5 text-center text-sm font-extrabold text-violet-800 shadow-md transition hover:opacity-95"
               data-demo-picker
             >
-              📞 Try a Live Demo
+              <DemoCtaPhoneIcon width={18} height={18} />
+              Try a Live Demo
             </Link>
             <Link
               href="/user/signup"

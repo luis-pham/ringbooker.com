@@ -1,0 +1,31 @@
+import {
+  ContentHubHeroActionsHomeStyle,
+  MarketingContentHub,
+} from '@/components/marketing/marketing-content-hub';
+import { getPublishedPostsByPathPrefix } from '@/lib/blog';
+import { postPublicPath } from '@/lib/blog/path-prefixes';
+import { phoneBookingRecoveryHub } from '@/lib/marketing/content-hub-data';
+import { buildMetadata } from '@/lib/site';
+
+export const metadata = buildMetadata({
+  title: 'Phone Booking Recovery for Beauty Businesses | RingBooker',
+  description:
+    'Recover revenue lost to missed calls: after-hours and peak-hour coverage so beauty businesses capture booking intent before callers book elsewhere.',
+  path: '/phone-booking-recovery',
+});
+
+export default async function PhoneBookingRecoveryHubPage() {
+  const posts = await getPublishedPostsByPathPrefix('phone-booking-recovery', { limit: 48 });
+  const resourceLinks = posts.map((p) => ({
+    href: postPublicPath(p.pathPrefix, p.slug),
+    label: p.title,
+  }));
+
+  return (
+    <MarketingContentHub
+      {...phoneBookingRecoveryHub}
+      resourceLinks={resourceLinks}
+      heroActions={<ContentHubHeroActionsHomeStyle />}
+    />
+  );
+}

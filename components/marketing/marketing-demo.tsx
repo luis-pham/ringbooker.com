@@ -1,5 +1,6 @@
 import Script from 'next/script';
 
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
@@ -582,6 +583,7 @@ export function MarketingDemoTemplate() {
             <div className="nav-actions">
               <a href="/user/login" className="nav-signin">Sign In</a>
               <a href="/demo" className="nav-demo-live" data-demo-picker>
+                <DemoCtaPhoneIcon width={16} height={16} />
                 Try Live Demo →
               </a>
               <a href="/user/signup" className="nav-trial-outline">

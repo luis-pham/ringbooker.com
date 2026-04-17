@@ -3,6 +3,8 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+
 // ─── State Model ──────────────────────────────────────────────────────────────
 
 export type NavStateType =
@@ -336,6 +338,7 @@ export function NavActionsClient() {
       <div className="mk-nav-actions">
         <a href="/user/login" className="mk-nav-signin">Sign In</a>
         <a href="/demo" className="mk-nav-cta mk-nav-cta-hide-sm" data-demo-picker>
+          <DemoCtaPhoneIcon width={16} height={16} />
           Try a Live Demo →
         </a>
       </div>

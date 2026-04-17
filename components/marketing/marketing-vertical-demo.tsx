@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { DEMO_VERTICALS, type DemoServiceCategory, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
@@ -66,7 +67,8 @@ const styles: string[] = [
   }
 
   /* phone field — hero */
-  .vd-phone-label{display:block;font-size:13px;font-weight:800;color:#111827;margin-bottom:7px}
+  .vd-phone-label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:#111827;margin-bottom:7px}
+  .vd-phone-label .demo-cta-phone{flex-shrink:0}
   .vd-phone-input{width:100%;border:2px solid color-mix(in srgb,var(--va) 40%,#E5E7EB);border-radius:16px;padding:14px 16px;font-size:17px;font-weight:700;color:#111827;background:#fff;outline:none;transition:border-color .18s,box-shadow .18s;box-shadow:0 2px 8px color-mix(in srgb,var(--va) 10%,transparent);-webkit-appearance:none;margin-bottom:14px}
   .vd-phone-input:focus{border-color:var(--va);box-shadow:0 0 0 4px color-mix(in srgb,var(--va) 14%,transparent)}
   .vd-phone-input::placeholder{color:#C4C9D4}
@@ -479,7 +481,10 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
               {!isActive ? (
                 <div className="vd-form-card">
                   {/* Phone — primary hero field */}
-                  <label className="vd-phone-label" htmlFor="vd-phone">📞 Your phone number — we call you</label>
+                  <label className="vd-phone-label" htmlFor="vd-phone">
+                    <DemoCtaPhoneIcon width={16} height={16} />
+                    Your phone number — we call you
+                  </label>
                   <input
                     ref={phoneRef}
                     id="vd-phone"

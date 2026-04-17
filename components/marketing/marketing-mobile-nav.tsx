@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { useNavState } from '@/components/marketing/nav-actions-client';
 import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
 
@@ -158,6 +159,7 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
               data-demo-picker
               onClick={() => setOpen(false)}
             >
+              <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </button>
             {state.type === 'visitor' ? (

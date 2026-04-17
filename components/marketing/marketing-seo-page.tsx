@@ -1,3 +1,4 @@
+import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import type { ReactNode } from 'react';
 
@@ -66,17 +67,7 @@ export function MarketingSeoPage({
           ))}
 
           {faqs.length > 0 ? (
-            <section className="seo-section" id="faq">
-              <h2>FAQ</h2>
-              <div className="seo-faq-grid">
-                {faqs.map((faq) => (
-                  <div className="seo-faq-card" key={faq.q}>
-                    <h3>{faq.q}</h3>
-                    <p>{faq.a}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <MarketingFaqAccordion items={faqs} embedded eyebrow={null} title="FAQ" subtitle={null} />
           ) : null}
 
           {customContent ? <section className="seo-section">{customContent}</section> : null}
@@ -100,10 +91,6 @@ export function MarketingSeoPage({
 .seo-section{padding-top:18px}
 .seo-section h2{font-size:28px;line-height:1.15;letter-spacing:-.6px;color:#111827;margin:0 0 10px}
 .seo-section p{font-size:16px;line-height:1.74;color:#4b5563;margin:0 0 10px}
-.seo-faq-grid{display:grid;grid-template-columns:1fr;gap:10px}
-.seo-faq-card{border:1px solid #ece7ff;background:#faf9ff;border-radius:14px;padding:14px}
-.seo-faq-card h3{font-size:16px;font-weight:900;line-height:1.4;color:#111827;margin:0 0 6px;letter-spacing:-.2px}
-.seo-faq-card p{font-size:15px;line-height:1.65;color:#4b5563;margin:0}
 .seo-internal-links{font-size:15px;line-height:1.68;color:#4b5563}
 .seo-internal-links p{margin:0}
 .seo-internal-links a{color:#5b21b6;font-weight:600;text-decoration:underline;text-underline-offset:3px}
@@ -113,7 +100,7 @@ export function MarketingSeoPage({
   .seo-article{padding:20px 16px}
   .seo-intro{font-size:15px}
   .seo-section h2{font-size:24px}
-  .seo-section p,.seo-faq-card p{font-size:14px}
+  .seo-section p{font-size:14px}
 }
 `,
         }}
