@@ -248,10 +248,11 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
       href: '/industries/beauty-clinic',
     },
   ],
-  /** Eyebrow / headings — list items come from DB in `app/phone-booking-recovery/page.tsx` (posts with pathPrefix `phone-booking-recovery`). */
-  resourceEyebrow: 'In this topic',
-  resourceHeading: 'Articles on booking recovery',
-  resourceSub: 'Posts published under this topic use the same URL prefix as this hub (/phone-booking-recovery/…).',
+  /** Resource section headings — article list from DB in `app/phone-booking-recovery/page.tsx` (pathPrefix `phone-booking-recovery`). */
+  resourceEyebrow: 'In this hub',
+  resourceHeading: 'Explore booking recovery articles',
+  resourceSub:
+    'Browse articles on missed calls, after-hours calls, peak-hour overflow, and booking recovery for beauty businesses.',
   faqs: [
     {
       q: 'What is phone booking recovery?',
@@ -433,11 +434,11 @@ export const currentNumberHub: ContentHubPageConfig = {
     { emoji: '💉', title: 'Med spa', body: 'Consult calls that need careful capture.', href: '/industries/med-spa' },
     { emoji: '✨', title: 'Beauty clinic', body: 'Trust-sensitive inquiries on the line you already publish.', href: '/industries/beauty-clinic' },
   ],
-  /** List items: loaded in `app/current-number/page.tsx` from posts with `pathPrefix` `current-number`. */
-  resourceEyebrow: 'In this topic',
-  resourceHeading: 'Articles on your current number',
+  /** Resource section — article list from `app/current-number/page.tsx` (pathPrefix `current-number`). */
+  resourceEyebrow: 'In this hub',
+  resourceHeading: 'Current number guides',
   resourceSub:
-    'Deep dives on forwarding, listings, and rollout — published under the same path as this hub (/current-number/…).',
+    'Explore articles about keeping your current business number, reducing rollout risk, and fitting RingBooker into your existing phone workflow.',
   faqs: [
     {
       q: 'Do I need a new phone number to use RingBooker?',
@@ -634,11 +635,11 @@ export const worksWithHub: ContentHubPageConfig = {
     { emoji: '💉', title: 'Med spa', body: 'Consultation and treatment questions before booking.', href: '/industries/med-spa' },
     { emoji: '✨', title: 'Beauty clinic', body: 'Provider continuity and trust-sensitive calls.', href: '/industries/beauty-clinic' },
   ],
-  /** List items: loaded in `app/works-with/page.tsx` from posts with `pathPrefix` `works-with`. */
-  resourceEyebrow: 'In this topic',
-  resourceHeading: 'Articles on tools & compatibility',
+  /** Resource section — article list from `app/works-with/page.tsx` (pathPrefix `works-with`). */
+  resourceEyebrow: 'In this hub',
+  resourceHeading: 'Booking tool compatibility guides',
   resourceSub:
-    'Square, booking workflows, and rollout — published under the same path as this hub (/works-with/…).',
+    'Explore articles on Square, Vagaro, Booksy, Mindbody, and how RingBooker fits existing beauty-business workflows.',
   faqs: [
     {
       q: 'Do I need to replace my booking software?',
@@ -953,13 +954,11 @@ export const compareHub: ContentHubPageConfig = {
       ],
     },
   ],
-  resourceHeading: 'Comparison pages',
-  resourceSub: 'Product vs product and conceptual guides.',
-  resourceLinks: [
-    { href: '/compare/vs-truelark', label: 'RingBooker vs Truelark' },
-    { href: '/compare/vs-my-ai-front-desk', label: 'RingBooker vs My AI Front Desk' },
-    { href: '/compare/vs-goodcall', label: 'RingBooker vs Goodcall' },
-  ],
+  resourceEyebrow: 'In this hub',
+  resourceHeading: 'Comparison guides',
+  resourceSub:
+    'Explore articles that compare RingBooker with voicemail, answering services, front-desk staffing, and other ways beauty businesses handle missed calls.',
+  /** Article links: loaded in `app/compare/page.tsx` from posts with `pathPrefix` `compare`. */
   faqs: [
     {
       q: 'Is RingBooker better than voicemail for salons?',
@@ -1187,13 +1186,11 @@ export const trustHub: ContentHubPageConfig = {
     { emoji: '💉', title: 'Med spa', body: 'Careful boundaries on consult and treatment questions.', href: '/industries/med-spa' },
     { emoji: '✨', title: 'Beauty clinic', body: 'Trust-forward intake before human follow-up.', href: '/industries/beauty-clinic' },
   ],
-  resourceHeading: 'Related hubs',
-  resourceLinks: [
-    { href: '/how-it-works', label: 'How it works' },
-    { href: '/faq', label: 'FAQ' },
-    { href: '/contact', label: 'Book a demo' },
-    { href: '/privacy', label: 'Privacy' },
-  ],
+  resourceEyebrow: 'In this hub',
+  resourceHeading: 'Trust and reliability guides',
+  resourceSub:
+    'Explore articles about reliable AI call handling, human-friendly rollout, operational control, and how RingBooker helps beauty businesses adopt AI with more confidence.',
+  /** Article links: loaded in `app/trust/page.tsx` from posts with `pathPrefix` `trust`. */
   faqs: [
     {
       q: 'Can AI handle salon booking calls reliably?',

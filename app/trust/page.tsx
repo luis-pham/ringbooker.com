@@ -2,6 +2,8 @@ import {
   ContentHubHeroActionsHomeStyle,
   MarketingContentHub,
 } from '@/components/marketing/marketing-content-hub';
+import { getPublishedPostsByPathPrefix } from '@/lib/blog';
+import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { trustHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
@@ -14,11 +16,18 @@ export const metadata = buildMetadata({
   path: '/trust',
 });
 
-export default function TrustHubPage() {
+export default async function TrustHubPage() {
+  const posts = await getPublishedPostsByPathPrefix('trust', { limit: 48 });
+  const resourceLinks = posts.map((p) => ({
+    href: postPublicPath(p.pathPrefix, p.slug),
+    label: p.title,
+  }));
+
   const c = trustHub;
   return (
     <MarketingContentHub
       {...c}
+      resourceLinks={resourceLinks}
       heroActions={<ContentHubHeroActionsHomeStyle />}
       seoHub={{
         path: '/trust',

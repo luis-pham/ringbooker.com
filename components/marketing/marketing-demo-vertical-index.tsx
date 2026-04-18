@@ -165,10 +165,16 @@ const styles = [
     .demo-hub-step{
       background:#fff;border:1px solid var(--demo-hub-border);border-radius:var(--r-lg);padding:22px 20px;
       box-shadow:0 4px 20px rgba(17,24,39,.04);
+      text-align:center;
     }
+    /* Match how-it-works `.hiw-step::before` — purple circle, white number, centered */
     .demo-hub-step-num{
-      width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#EDE9FE,#F5F3FF);
-      color:var(--demo-hub-purple-dark);font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-bottom:14px;
+      width:36px;height:36px;border-radius:50%;
+      background:var(--demo-hub-purple);
+      color:#fff;font-size:14px;font-weight:900;
+      display:flex;align-items:center;justify-content:center;
+      margin:0 auto 18px;
+      box-shadow:0 12px 24px rgba(139,92,246,.24);
     }
     .demo-hub-step h3{margin:0 0 8px;font-size:16px;font-weight:800;color:var(--demo-hub-text)}
     .demo-hub-step p{margin:0;font-size:14px;line-height:1.55;color:var(--demo-hub-muted)}
