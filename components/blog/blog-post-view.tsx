@@ -33,7 +33,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
   if (!post) notFound();
 
   const categoryIds = post.categories.map((c) => c.categoryId);
-  const relatedPosts = await getRelatedPosts(post.id, categoryIds, 3);
+  const relatedPosts = await getRelatedPosts(post.id, categoryIds, 3, { pathPrefix: post.pathPrefix });
   const toc = extractToc(post.content);
 
   void incrementPostViews(post.pathPrefix, post.slug).catch(() => undefined);
@@ -215,32 +215,34 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
             </Link>
           </div>
 
-          <div className="rounded-3xl border border-gray-200 bg-gray-50 p-5">
-            <h4 className="mb-3.5 font-sans text-[12.5px] font-bold uppercase tracking-wider text-gray-900">Related Articles</h4>
-            <div className="space-y-0">
-              {relatedPosts.map((related) => (
-                <Link
-                  key={related.id}
-                  href={relatedHref(related)}
-                  className="flex gap-3 border-b border-gray-200 py-2.5 last:border-b-0 hover:opacity-75"
-                >
-                  <span className="relative h-11 w-14 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-violet-900 to-violet-700">
-                    {related.coverImageUrl?.trim() ? (
-                      <img
-                        src={related.coverImageUrl.trim()}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    ) : null}
-                  </span>
-                  <span>
-                    <span className="block font-sans text-[12.5px] font-semibold leading-5 text-gray-900">{related.title}</span>
-                    <span className="mt-0.5 block font-sans text-[11.5px] text-gray-400">{related.readTimeMin} min read</span>
-                  </span>
-                </Link>
-              ))}
+          {relatedPosts.length > 0 ? (
+            <div className="rounded-3xl border border-gray-200 bg-gray-50 p-5">
+              <h4 className="mb-3.5 font-sans text-[12.5px] font-bold uppercase tracking-wider text-gray-900">Related Articles</h4>
+              <div className="space-y-0">
+                {relatedPosts.map((related) => (
+                  <Link
+                    key={related.id}
+                    href={relatedHref(related)}
+                    className="flex gap-3 border-b border-gray-200 py-2.5 last:border-b-0 hover:opacity-75"
+                  >
+                    <span className="relative h-11 w-14 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-violet-900 to-violet-700">
+                      {related.coverImageUrl?.trim() ? (
+                        <img
+                          src={related.coverImageUrl.trim()}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      ) : null}
+                    </span>
+                    <span>
+                      <span className="block font-sans text-[12.5px] font-semibold leading-5 text-gray-900">{related.title}</span>
+                      <span className="mt-0.5 block font-sans text-[11.5px] text-gray-400">{related.readTimeMin} min read</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
         </aside>
 
         <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-2">
@@ -268,42 +270,44 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
         </div>
       </div>
 
-      <section className="mx-auto max-w-6xl px-6 pb-20 pt-4 md:px-12">
-        <h2 className="mb-6 font-sans text-[22px] font-extrabold tracking-tight text-gray-900">Keep Reading</h2>
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {relatedPosts.map((related) => (
-            <Link
-              key={related.id}
-              href={relatedHref(related)}
-              className="block overflow-hidden rounded-3xl border border-gray-200 bg-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,.07)]"
-            >
-              <div className="relative h-36 overflow-hidden bg-gradient-to-br from-violet-900 to-violet-700">
-                {related.coverImageUrl?.trim() ? (
-                  <>
-                    <img
-                      src={related.coverImageUrl.trim()}
-                      alt=""
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  </>
-                ) : (
-                  <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-25">📘</span>
-                )}
-              </div>
-              <div className="p-4">
-                <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-purple">
-                  {related.categories[0]?.category.name ?? 'Article'}
+      {relatedPosts.length > 0 ? (
+        <section className="mx-auto max-w-6xl px-6 pb-20 pt-4 md:px-12">
+          <h2 className="mb-6 font-sans text-[22px] font-extrabold tracking-tight text-gray-900">Keep Reading</h2>
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {relatedPosts.map((related) => (
+              <Link
+                key={related.id}
+                href={relatedHref(related)}
+                className="block overflow-hidden rounded-3xl border border-gray-200 bg-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,.07)]"
+              >
+                <div className="relative h-36 overflow-hidden bg-gradient-to-br from-violet-900 to-violet-700">
+                  {related.coverImageUrl?.trim() ? (
+                    <>
+                      <img
+                        src={related.coverImageUrl.trim()}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    </>
+                  ) : (
+                    <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-25">📘</span>
+                  )}
                 </div>
-                <h3 className="mb-2 text-[14.5px] font-bold leading-6 text-gray-900">{related.title}</h3>
-                <div className="text-xs text-gray-400">
-                  {formatDate(related.publishedAt ?? related.createdAt)} · {related.readTimeMin} min read
+                <div className="p-4">
+                  <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-purple">
+                    {related.categories[0]?.category.name ?? 'Article'}
+                  </div>
+                  <h3 className="mb-2 text-[14.5px] font-bold leading-6 text-gray-900">{related.title}</h3>
+                  <div className="text-xs text-gray-400">
+                    {formatDate(related.publishedAt ?? related.createdAt)} · {related.readTimeMin} min read
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <MarketingFooter />
     </>

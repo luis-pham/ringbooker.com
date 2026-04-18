@@ -109,7 +109,7 @@ export function BlogPostForm(props: BlogPostFormProps) {
   const isEdit = props.mode === 'edit';
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10">
+    <div className="mx-auto w-[80%] min-w-0 max-w-none px-6 py-10">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{isEdit ? 'Edit blog post' : 'Create new blog post'}</h1>

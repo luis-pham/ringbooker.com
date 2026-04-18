@@ -26,12 +26,19 @@ const postInclude = {
 
 const listOptionsSchema = z.object({
   status: z.nativeEnum(PostStatus).optional(),
+  /** Limit list to one URL cluster (`Post.pathPrefix`), e.g. `blog` for /blog marketing page. */
+  pathPrefix: z.string().trim().min(1).optional(),
   categorySlug: z.string().trim().min(1).optional(),
   tagSlug: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   perPage: z.coerce.number().int().min(1).max(100).optional().default(12),
   featured: z.boolean().optional(),
+});
+
+const categoriesListSchema = z.object({
+  /** When set, counts and category list only include published posts in this cluster. */
+  pathPrefix: z.string().trim().min(1).optional(),
 });
 
 const slugSchema = z.string().trim().min(1, 'slug is required');
@@ -44,6 +51,7 @@ function buildPostWhere(input: z.infer<typeof listOptionsSchema>): Prisma.PostWh
   const where: Prisma.PostWhereInput = {};
 
   if (input.status) where.status = input.status;
+  if (input.pathPrefix) where.pathPrefix = input.pathPrefix;
   if (typeof input.featured === 'boolean') where.featured = input.featured;
   if (input.categorySlug) {
     where.categories = { some: { category: { slug: input.categorySlug } } };
@@ -64,6 +72,7 @@ function buildPostWhere(input: z.infer<typeof listOptionsSchema>): Prisma.PostWh
 
 export async function getAllPosts(options?: {
   status?: PostStatus;
+  pathPrefix?: string;
   categorySlug?: string;
   tagSlug?: string;
   search?: string;
@@ -174,16 +183,18 @@ export async function getPostBySlug(slug: string): Promise<PostWithRelations | n
   return getPostByPathPrefixAndSlug('blog', slug);
 }
 
-export async function getFeaturedPost(): Promise<PostWithRelations | null> {
+export async function getFeaturedPost(options?: { pathPrefix?: string }): Promise<PostWithRelations | null> {
   if (!hasDatabaseUrl()) {
     warnMissingDatabaseUrl();
     return null;
   }
   try {
+    const prefix = options?.pathPrefix?.trim();
     const post = await prisma.post.findFirst({
       where: {
         featured: true,
         status: PostStatus.PUBLISHED,
+        ...(prefix ? { pathPrefix: prefix } : {}),
       },
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
       include: postInclude,
@@ -199,6 +210,7 @@ export async function getRelatedPosts(
   postId: string,
   categoryIds: string[],
   limit?: number,
+  options?: { pathPrefix?: string },
 ): Promise<PostWithRelations[]> {
   if (!hasDatabaseUrl()) {
     warnMissingDatabaseUrl();
@@ -208,11 +220,13 @@ export async function getRelatedPosts(
     const parsedPostId = postIdSchema.parse(postId);
     const parsedCategoryIds = categoryIdsSchema.parse(categoryIds);
     const parsedLimit = relatedLimitSchema.parse(limit);
+    const sameCluster = options?.pathPrefix?.trim();
 
     const posts = await prisma.post.findMany({
       where: {
         id: { not: parsedPostId },
         status: PostStatus.PUBLISHED,
+        ...(sameCluster ? { pathPrefix: sameCluster } : {}),
         OR: [
           { relatedFrom: { some: { id: parsedPostId } } },
           { relatedTo: { some: { id: parsedPostId } } },
@@ -242,17 +256,38 @@ export async function getRelatedPosts(
   }
 }
 
-export async function getAllCategories(): Promise<CategoryWithCount[]> {
+export async function getAllCategories(options?: { pathPrefix?: string }): Promise<CategoryWithCount[]> {
   if (!hasDatabaseUrl()) {
     warnMissingDatabaseUrl();
     return [];
   }
   try {
+    const { pathPrefix } = categoriesListSchema.parse(options ?? {});
+    const postInCluster: Prisma.PostWhereInput | undefined =
+      pathPrefix && pathPrefix.length > 0
+        ? { pathPrefix, status: PostStatus.PUBLISHED }
+        : undefined;
+
     const categories = await prisma.category.findMany({
+      where: postInCluster
+        ? {
+            posts: {
+              some: {
+                post: postInCluster,
+              },
+            },
+          }
+        : undefined,
       include: {
         _count: {
           select: {
-            posts: true,
+            posts: postInCluster
+              ? {
+                  where: {
+                    post: postInCluster,
+                  },
+                }
+              : true,
           },
         },
       },

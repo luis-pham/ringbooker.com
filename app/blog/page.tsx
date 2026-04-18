@@ -236,13 +236,14 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const [{ posts, total, totalPages }, categories, featuredPost] = await Promise.all([
     getAllPosts({
       status: PostStatus.PUBLISHED,
+      pathPrefix: 'blog',
       categorySlug: params.category,
       search: params.search,
       page,
       perPage: 9,
     }),
-    getAllCategories(),
-    getFeaturedPost(),
+    getAllCategories({ pathPrefix: 'blog' }),
+    getFeaturedPost({ pathPrefix: 'blog' }),
   ]);
 
   const visiblePosts = featuredPost ? posts.filter((post) => post.id !== featuredPost.id) : posts;
