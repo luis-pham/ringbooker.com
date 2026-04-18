@@ -683,9 +683,10 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .category-card li::before{content:'·';color:var(--purple);font-size:16px;font-weight:700}
 
 .html-hub-page .tool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px}
-.html-hub-page .tool-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;text-decoration:none;color:var(--navy);transition:all .2s;display:block;position:relative}
+.html-hub-page .tool-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;text-decoration:none;color:var(--navy);transition:all .2s;display:block;position:relative;text-align:center}
 .html-hub-page .tool-card:hover{border-color:var(--purple);box-shadow:var(--shadow-lg);transform:translateY(-2px)}
-.html-hub-page .tool-card .tool-logo{width:48px;height:48px;border-radius:10px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:16px}
+.html-hub-page .tool-card .tool-logo{width:48px;height:48px;border-radius:10px;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 16px;overflow:hidden}
+.html-hub-page .tool-card .tool-logo img{max-width:100%;max-height:100%;object-fit:contain;padding:4px}
 .html-hub-page .tool-card h3{font-size:17px;font-weight:700;margin-bottom:8px}
 .html-hub-page .tool-card p{font-size:13px;color:var(--gray-600);line-height:1.5;margin-bottom:14px}
 .html-hub-page .status-badge{display:inline-block;padding:4px 10px;border-radius:var(--radius-pill);font-size:11px;font-weight:700}

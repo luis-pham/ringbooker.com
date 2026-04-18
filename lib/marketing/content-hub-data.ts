@@ -526,7 +526,7 @@ export const worksWithHub: ContentHubPageConfig = {
       tools: [
         {
           href: '/works-with/square-appointments',
-          logo: '⬛',
+          logoSrc: '/images/square.png',
           title: 'Square Appointments',
           body: 'Live integration — captured booking intent can flow into your scheduling workflow.',
           status: '✓ Live integration',
@@ -534,7 +534,7 @@ export const worksWithHub: ContentHubPageConfig = {
         },
         {
           href: '/works-with/vagaro',
-          logo: '💜',
+          logoSrc: '/images/vagaro.png',
           title: 'Vagaro',
           body: 'Workflow-compatible: capture intent and route summaries for manual booking entry.',
           status: 'Workflow compatible',
@@ -542,7 +542,7 @@ export const worksWithHub: ContentHubPageConfig = {
         },
         {
           href: '/works-with/booksy',
-          logo: '📋',
+          logoSrc: '/images/booksy.png',
           title: 'Booksy',
           body: 'Popular with nail and hair stylists — RingBooker handles calls online booking does not capture.',
           status: 'Workflow compatible',
@@ -550,7 +550,7 @@ export const worksWithHub: ContentHubPageConfig = {
         },
         {
           href: '/works-with/mindbody',
-          logo: '🧘',
+          logoSrc: '/images/mindbody.webp',
           title: 'Mindbody',
           body: 'Common in spas and wellness — after-hours and overflow coverage alongside Mindbody workflows.',
           status: 'Coming soon',

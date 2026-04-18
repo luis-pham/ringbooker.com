@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { Fragment, type ReactNode } from 'react';
 
@@ -133,7 +134,16 @@ type ContentHubBlockCore =
       kind: 'tool_strip';
       heading: string;
       sub?: string;
-      tools: { href: string; logo: string; title: string; body: string; status: string; statusKind?: 'live' | 'workflow' | 'soon' }[];
+      /** `logoSrc` = real asset under `/public` (same as industry vertical heroes). `logo` = emoji fallback. */
+      tools: {
+        href: string;
+        title: string;
+        body: string;
+        status: string;
+        statusKind?: 'live' | 'workflow' | 'soon';
+        logoSrc?: string;
+        logo?: string;
+      }[];
     }
   | {
       kind: 'step_track';
@@ -679,7 +689,19 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                       <span className="tool-arrow" aria-hidden>
                         →
                       </span>
-                      <div className="tool-logo">{t.logo}</div>
+                      <div className="tool-logo">
+                        {t.logoSrc ? (
+                          <Image
+                            src={t.logoSrc}
+                            alt=""
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 object-contain"
+                          />
+                        ) : (
+                          t.logo
+                        )}
+                      </div>
                       <h3>{t.title}</h3>
                       <p>{t.body}</p>
                       <span
