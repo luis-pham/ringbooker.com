@@ -94,7 +94,14 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 
 /* Primary site nav is MarketingHeader (.mk-nav in marketing-chrome). Legacy duplicate nav CSS removed — bare "nav{}" selectors were overriding .mk-nav on this page only. */
 
-/* ─── HERO ─── */
+/* ─── HOME HERO + PROOF BAR: one continuous background (eliminates seam between sections) ─── */
+.home-hero-shell{
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.08) 28%,rgba(255,255,255,0.42) 46%,rgba(255,255,255,0.82) 62%,rgba(255,255,255,0.98) 76%,#ffffff 88%,#ffffff 100%),
+    radial-gradient(ellipse 96% 78% at 50% -22%,#EDE9FE 0%,#EDE9FE 14%,#F5F0FF 34%,#FDF4FF 52%,rgba(253,244,255,0.65) 72%,rgba(255,255,255,0.99) 94%,#ffffff 100%);
+}
 .hero{
   min-height:100vh;
   padding:100px 48px 60px;
@@ -103,10 +110,7 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
   justify-content:center;
   position:relative;
   overflow:hidden;
-  /* Soft wash at top + long fade to white so the next section does not show a hard color break */
-  background:
-    linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.06) 32%,rgba(255,255,255,0.45) 52%,rgba(255,255,255,0.88) 72%,#ffffff 88%,#ffffff 100%),
-    radial-gradient(ellipse 88% 65% at 50% -12%,#EDE9FE 0%,#F3E8FF 28%,#FDF4FF 52%,rgba(253,244,255,.97) 72%,rgba(255,255,255,.995) 88%,#ffffff 100%);
+  background:transparent;
 }
 .hero-blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.3;pointer-events:none}
 .hero-blob-1{width:560px;height:560px;background:#C4B5FD;top:-200px;left:-140px}
@@ -134,7 +138,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.hero-btns .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
 
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
-	.proofbar{padding:28px 48px 56px;background:#fff}
+	.proofbar{padding:28px 48px 56px;background:transparent}
 	.proofbar-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 	.proof-item{display:flex;align-items:center;gap:12px;border:1px solid #E9D5FF;background:linear-gradient(145deg,#fff 0%,#FBFAFF 100%);border-radius:20px;padding:15px 16px;font-size:var(--mk-body);font-weight:800;color:#3F2A68;line-height:1.35;box-shadow:0 10px 28px rgba(124,58,237,.06);transition:transform .2s,box-shadow .2s,border-color .2s}
 	.proof-item:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(124,58,237,.10);border-color:#DDD6FE}
@@ -895,6 +899,7 @@ export function MarketingHomeTemplate() {
         <MarketingHeader />
         <div className="legacy-marketing">
         {/* HERO — primary nav is MarketingHeader (state-aware); legacy duplicate nav removed */}
+        <div className="home-hero-shell">
         <section className="hero">
           <div className="hero-blob hero-blob-1" />
           <div className="hero-blob hero-blob-2" />
@@ -1029,6 +1034,7 @@ export function MarketingHomeTemplate() {
             ))}
           </div>
         </section>
+        </div>
         <section className="leak-section" id="missed-calls">
           <div className="leak-inner">
             <div className="sec-label">Missed-Call Recovery</div>
