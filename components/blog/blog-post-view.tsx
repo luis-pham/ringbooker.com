@@ -13,7 +13,12 @@ import { extractToc } from '@/lib/extractToc';
 import { buildBlogDetailJsonLd } from '@/lib/blog/blog-jsonld';
 import { getPostByPathPrefixAndSlug, getRelatedPosts, incrementPostViews } from '@/lib/blog';
 import { parseStoredFooterCtas } from '@/lib/blog/footer-cta-templates';
-import { BLOG_PATH_PREFIX_LABEL, isBlogPathPrefix, postPublicPath } from '@/lib/blog/path-prefixes';
+import {
+  BLOG_PATH_PREFIX_LABEL,
+  isBlogPathPrefix,
+  pathPrefixToHubHref,
+  postPublicPath,
+} from '@/lib/blog/path-prefixes';
 import { renderMarkdownToSafeHtml } from '@/lib/blog/markdown';
 import type { PostWithRelations } from '@/types/blog';
 
@@ -38,10 +43,10 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
 
   void incrementPostViews(post.pathPrefix, post.slug).catch(() => undefined);
 
-  const primaryCategory = post.categories[0]?.category?.name ?? 'Article';
-  const sectionLabel = isBlogPathPrefix(post.pathPrefix)
+  const hubLabel = isBlogPathPrefix(post.pathPrefix)
     ? BLOG_PATH_PREFIX_LABEL[post.pathPrefix]
     : post.pathPrefix;
+  const clusterHubHref = pathPrefixToHubHref(post.pathPrefix);
 
   const stats = Array.isArray(post.coverStats)
     ? post.coverStats
@@ -89,36 +94,42 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
             <Link href="/" className="text-[13px] font-medium text-gray-500 transition hover:text-brand-purple">
               Home
             </Link>
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-gray-400">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-gray-400" aria-hidden>
               <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
             </svg>
-            <Link href="/blog" className="text-[13px] font-medium text-gray-500 transition hover:text-brand-purple">
-              Blog
+            <Link
+              href={clusterHubHref}
+              className="text-[13px] font-medium text-gray-500 transition hover:text-brand-purple"
+            >
+              {hubLabel}
             </Link>
-            {post.pathPrefix !== 'blog' ? (
-              <>
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-gray-400">
-                  <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                </svg>
-                <span className="text-[13px] font-medium text-gray-600">{sectionLabel}</span>
-              </>
-            ) : null}
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-gray-400">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-gray-400" aria-hidden>
               <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
             </svg>
-            <span className="text-[13px] text-gray-400">{primaryCategory}</span>
+            <span className="line-clamp-2 max-w-[min(100%,28rem)] text-[13px] text-gray-400" aria-current="page">
+              {post.title}
+            </span>
           </div>
 
           <div className="mb-5 flex flex-wrap gap-2">
-            {post.categories.map((entry) => (
-              <Link
-                key={entry.categoryId}
-                href={`/blog?category=${encodeURIComponent(entry.category.slug)}`}
-                className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700"
-              >
-                {entry.category.name}
-              </Link>
-            ))}
+            {post.categories.map((entry) =>
+              post.pathPrefix === 'blog' ? (
+                <Link
+                  key={entry.categoryId}
+                  href={`/blog?category=${encodeURIComponent(entry.category.slug)}`}
+                  className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700"
+                >
+                  {entry.category.name}
+                </Link>
+              ) : (
+                <span
+                  key={entry.categoryId}
+                  className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700"
+                >
+                  {entry.category.name}
+                </span>
+              ),
+            )}
           </div>
 
           <h1 className="mb-4 font-serif text-[clamp(28px,4vw,44px)] font-bold leading-[1.18] tracking-tight text-gray-900">

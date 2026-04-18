@@ -49,3 +49,13 @@ export function postPublicPath(pathPrefix: string, slug: string): string {
   const base = p.split('/').filter(Boolean).join('/');
   return `/${base}/${s}`;
 }
+
+/**
+ * Public index URL for a post cluster (listing / hub), e.g. `blog` → `/blog`, `phone-booking-recovery` → `/phone-booking-recovery`.
+ * Nested: `industries/nail-salon` → `/industries/nail-salon`.
+ */
+export function pathPrefixToHubHref(pathPrefix: string): string {
+  const p = (pathPrefix || 'blog').trim().replace(/^\/+|\/+$/g, '') || 'blog';
+  const base = p.split('/').filter(Boolean).join('/');
+  return base ? `/${base}` : '/blog';
+}
