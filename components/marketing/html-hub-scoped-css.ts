@@ -631,7 +631,8 @@ export const HTML_HUB_SCOPED_CSS = `
 /* Flow */
 .html-hub-page .flow-visual{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:40px 24px;display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;margin-bottom:48px;overflow:hidden}
 .html-hub-page .flow-step{text-align:center;padding:20px 16px;flex:1;min-width:140px}
-.html-hub-page .flow-step .icon{font-size:32px;margin-bottom:10px;line-height:1}
+.html-hub-page .flow-step .icon{font-size:32px;margin-bottom:10px;line-height:1;display:flex;align-items:center;justify-content:center;min-height:40px}
+.html-hub-page .flow-step .icon img.flow-step-logo-img{width:40px;height:40px;object-fit:contain;display:block}
 .html-hub-page .flow-step .label{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px}
 .html-hub-page .flow-step .sub{font-size:12px;color:var(--gray-600)}
 .html-hub-page .flow-arrow{font-size:24px;color:var(--purple);padding:0 8px;align-self:center;flex-shrink:0}

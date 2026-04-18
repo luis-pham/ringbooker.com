@@ -312,7 +312,13 @@ export const currentNumberHub: ContentHubPageConfig = {
       steps: [
         { icon: '📱', label: 'Client calls', line: 'Your existing number', badge: 'No change', badgeStyle: 'green' },
         { icon: '☎️', label: 'Your front desk', line: 'Answers if available', badge: 'Current workflow', badgeStyle: 'green' },
-        { icon: '🤖', label: 'RingBooker covers', line: 'After-hours & overflow', badge: 'AI layer', badgeStyle: 'purple' },
+        {
+          iconSrc: '/images/logo.svg',
+          label: 'RingBooker covers',
+          line: 'After-hours & overflow',
+          badge: 'AI layer',
+          badgeStyle: 'purple',
+        },
         { icon: '📋', label: 'Your team gets', line: 'Call summary & intent', badge: 'Full context', badgeStyle: 'green' },
       ],
     },

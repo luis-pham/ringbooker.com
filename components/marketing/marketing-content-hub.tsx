@@ -116,7 +116,15 @@ type ContentHubBlockCore =
       kind: 'flow';
       heading: string;
       sub?: string;
-      steps: { icon: string; label: string; line: string; badge?: string; badgeStyle?: 'green' | 'purple' }[];
+      steps: {
+        icon?: string;
+        /** Raster/SVG under `/public` — shown instead of `icon` when set (e.g. RingBooker logo). */
+        iconSrc?: string;
+        label: string;
+        line: string;
+        badge?: string;
+        badgeStyle?: 'green' | 'purple';
+      }[];
     }
   | {
       kind: 'objections';
@@ -598,7 +606,17 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                     <Fragment key={s.label}>
                       <div className="flow-step">
                         <div className="icon" aria-hidden>
-                          {s.icon}
+                          {s.iconSrc ? (
+                            <Image
+                              src={s.iconSrc}
+                              alt=""
+                              width={40}
+                              height={40}
+                              className="flow-step-logo-img"
+                            />
+                          ) : (
+                            s.icon
+                          )}
                         </div>
                         <div className="label">{s.label}</div>
                         <div className="sub">{s.line}</div>
