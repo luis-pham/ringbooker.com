@@ -28,12 +28,13 @@ const authors = [
 ];
 
 const categories = [
+  { name: 'AI Receptionists', slug: 'ai-receptionists' },
   { name: 'Missed Calls', slug: 'missed-calls' },
-  { name: 'AI for Salons', slug: 'ai-for-salons' },
+  { name: 'After-Hours Calls', slug: 'after-hours-calls' },
   { name: 'Booking Tips', slug: 'booking-tips' },
+  { name: 'Salon Operations', slug: 'salon-operations' },
   { name: 'Revenue Growth', slug: 'revenue-growth' },
   { name: 'Case Studies', slug: 'case-studies' },
-  { name: 'Vietnamese Owners', slug: 'vietnamese-owners' },
 ];
 
 const tags = [
@@ -103,7 +104,7 @@ const posts: SeedPost[] = [
     views: 8700,
     featured: false,
     authorInitials: 'JM',
-    categories: ['AI for Salons'],
+    categories: ['AI Receptionists'],
     tags: ['AI Receptionist', 'Booking', 'Hair Salon', 'Operations'],
     relatedSlugs: ['why-62-percent-of-salon-calls-go-unanswered', 'will-your-clients-know-they-are-talking-to-ai'],
   },
@@ -180,7 +181,7 @@ const posts: SeedPost[] = [
     views: 4300,
     featured: false,
     authorInitials: 'VN',
-    categories: ['Vietnamese Owners'],
+    categories: ['Salon Operations'],
     tags: ['Vietnamese', 'Nail Salon', 'AI Receptionist'],
     relatedSlugs: ['from-voicemail-to-fully-booked-dallas-nail-salon'],
   },
@@ -232,7 +233,7 @@ const posts: SeedPost[] = [
     views: 4800,
     featured: false,
     authorInitials: 'RB',
-    categories: ['AI for Salons'],
+    categories: ['AI Receptionists'],
     tags: ['AI Receptionist', 'Operations', 'Booking'],
     relatedSlugs: ['how-ai-receptionists-change-the-game-for-busy-hair-stylists'],
   },
@@ -273,6 +274,40 @@ function slugify(input: string) {
     .replace(/^-+|-+$/g, '');
 }
 
+/** Re-point posts from legacy category slugs to the new set; drops empty legacy categories. */
+async function remapCategorySlugsByJoin(map: Record<string, string>) {
+  for (const [fromSlug, toSlug] of Object.entries(map)) {
+    if (fromSlug === toSlug) continue;
+    const from = await prisma.category.findUnique({ where: { slug: fromSlug }, select: { id: true } });
+    const to = await prisma.category.findUnique({ where: { slug: toSlug }, select: { id: true } });
+    if (!from || !to) continue;
+
+    const links = await prisma.categoryOnPost.findMany({ where: { categoryId: from.id } });
+    for (const link of links) {
+      const duplicate = await prisma.categoryOnPost.findUnique({
+        where: { postId_categoryId: { postId: link.postId, categoryId: to.id } },
+      });
+      if (duplicate) {
+        await prisma.categoryOnPost.delete({
+          where: { postId_categoryId: { postId: link.postId, categoryId: from.id } },
+        });
+      } else {
+        await prisma.$transaction([
+          prisma.categoryOnPost.delete({
+            where: { postId_categoryId: { postId: link.postId, categoryId: from.id } },
+          }),
+          prisma.categoryOnPost.create({ data: { postId: link.postId, categoryId: to.id } }),
+        ]);
+      }
+    }
+
+    const stillLinked = await prisma.categoryOnPost.count({ where: { categoryId: from.id } });
+    if (stillLinked === 0) {
+      await prisma.category.delete({ where: { id: from.id } }).catch(() => undefined);
+    }
+  }
+}
+
 async function main() {
   const authorByInitials = new Map<string, { id: string }>();
 
@@ -293,6 +328,11 @@ async function main() {
       create: category,
     });
   }
+
+  await remapCategorySlugsByJoin({
+    'ai-for-salons': 'ai-receptionists',
+    'vietnamese-owners': 'salon-operations',
+  });
 
   for (const tag of tags) {
     await prisma.tag.upsert({

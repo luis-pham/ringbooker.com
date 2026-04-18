@@ -80,13 +80,24 @@ async function upsertTags(tagValues: string[]) {
   return records;
 }
 
+function hubIndexPath(pathPrefix: string): string {
+  const base = (pathPrefix || 'blog').trim().replace(/^\/+|\/+$/g, '') || 'blog';
+  return `/${base.split('/').filter(Boolean).join('/')}`;
+}
+
 function revalidateBlogPostPaths(opts: { slug: string; pathPrefix: string; oldSlug?: string; oldPathPrefix?: string }) {
   const prefix = opts.pathPrefix || 'blog';
   revalidatePath('/blog', 'layout');
   revalidatePath(`/${prefix}/${opts.slug}`);
+  /** Hub index lists posts by prefix (/compare, /works-with, /blog, …) — must refresh when posts change. */
+  revalidatePath(hubIndexPath(prefix));
   revalidatePath('/admin/blog');
   if (opts.oldSlug && (opts.oldSlug !== opts.slug || (opts.oldPathPrefix ?? 'blog') !== prefix)) {
     revalidatePath(`/${opts.oldPathPrefix ?? 'blog'}/${opts.oldSlug}`);
+    const oldPref = opts.oldPathPrefix ?? 'blog';
+    if (oldPref !== prefix) {
+      revalidatePath(hubIndexPath(oldPref));
+    }
   }
 }
 
@@ -130,6 +141,7 @@ export async function createPost(data: PostFormData): Promise<{ id: string }> {
       content: parsed.content,
       status: parsed.status,
       featured: parsed.featured,
+      showInHub: parsed.showInHub,
       readTimeMin: parsed.readTimeMin,
       coverImageUrl: normalizeCoverImageUrl(parsed.coverImageUrl),
       coverStats: normalizeCoverStats(parsed),
@@ -185,6 +197,7 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
         content: parsed.content,
         status: parsed.status,
         featured: parsed.featured,
+        showInHub: parsed.showInHub,
         readTimeMin: parsed.readTimeMin,
         coverImageUrl: normalizeCoverImageUrl(parsed.coverImageUrl),
         coverStats: normalizeCoverStats(parsed),

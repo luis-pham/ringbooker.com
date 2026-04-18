@@ -29,6 +29,8 @@ model Post {
   readTimeMin Int        @default(5)
   views       Int        @default(0)
   featured    Boolean    @default(false)
+  /// When the post uses a hub `pathPrefix`, controls listing on that hub’s index (e.g. "In this hub" block).
+  showInHub   Boolean    @default(true)
 
   authorId String
   author   Author @relation(fields: [authorId], references: [id], onDelete: Restrict)

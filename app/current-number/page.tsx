@@ -16,6 +16,8 @@ export const metadata = buildMetadata({
   path: '/current-number',
 });
 
+export const dynamic = 'force-dynamic';
+
 export default async function CurrentNumberHubPage() {
   const posts = await getPublishedPostsByPathPrefix('current-number', { limit: 48 });
   const resourceLinks = posts.map((p) => ({

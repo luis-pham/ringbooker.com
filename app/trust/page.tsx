@@ -16,6 +16,8 @@ export const metadata = buildMetadata({
   path: '/trust',
 });
 
+export const dynamic = 'force-dynamic';
+
 export default async function TrustHubPage() {
   const posts = await getPublishedPostsByPathPrefix('trust', { limit: 48 });
   const resourceLinks = posts.map((p) => ({

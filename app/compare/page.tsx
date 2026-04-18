@@ -17,6 +17,9 @@ export const metadata = buildMetadata({
 const compareWebPageDescription =
   'See how voicemail, missed-call text-back, answering services, extra staff, and generic phone AI stack up against beauty-focused call answering — so you can choose what fits your salon or spa.';
 
+/** Listing is driven by CMS posts; avoid stale caches after publish (see admin blog revalidatePath). */
+export const dynamic = 'force-dynamic';
+
 export default async function CompareIndexPage() {
   const posts = await getPublishedPostsByPathPrefix('compare', { limit: 48 });
   const resourceLinks = posts.map((p) => ({

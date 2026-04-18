@@ -16,6 +16,9 @@ export const metadata = buildMetadata({
   path: '/phone-booking-recovery',
 });
 
+/** Hub listing from CMS — match cache behavior with other marketing hubs */
+export const dynamic = 'force-dynamic';
+
 export default async function PhoneBookingRecoveryHubPage() {
   const posts = await getPublishedPostsByPathPrefix('phone-booking-recovery', { limit: 48 });
   const resourceLinks = posts.map((p) => ({

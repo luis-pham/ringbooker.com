@@ -40,6 +40,7 @@ export const postSchema = z
   categoryIds: z.array(z.string()).min(1),
   tags: z.array(z.string()),
   featured: z.boolean(),
+  showInHub: z.boolean(),
   coverImageUrl: z
     .string()
     .max(2000)

@@ -16,6 +16,8 @@ export const metadata = buildMetadata({
   path: '/works-with',
 });
 
+export const dynamic = 'force-dynamic';
+
 export default async function WorksWithHubPage() {
   const posts = await getPublishedPostsByPathPrefix('works-with', { limit: 48 });
   const resourceLinks = posts.map((p) => ({

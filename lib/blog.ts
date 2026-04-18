@@ -126,6 +126,7 @@ export async function getAllPosts(options?: {
 /**
  * Published posts under one URL segment, e.g. `phone-booking-recovery` → `/phone-booking-recovery/{slug}`.
  * In the CMS this is the post’s **path prefix** (topic cluster / content series for that hub).
+ * Excludes posts with `showInHub: false` (hidden from hub index / “In this hub” blocks).
  */
 export async function getPublishedPostsByPathPrefix(
   pathPrefix: string,
@@ -143,7 +144,7 @@ export async function getPublishedPostsByPathPrefix(
   const limit = Math.min(Math.max(options?.limit ?? 48, 1), 100);
   try {
     const posts = await prisma.post.findMany({
-      where: { pathPrefix: raw, status: PostStatus.PUBLISHED },
+      where: { pathPrefix: raw, status: PostStatus.PUBLISHED, showInHub: true },
       orderBy: [{ featured: 'desc' }, { publishedAt: 'desc' }, { createdAt: 'desc' }],
       take: limit,
       include: postInclude,

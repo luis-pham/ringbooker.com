@@ -55,6 +55,7 @@ const defaultValues: PostFormData = {
   readTimeMin: 5,
   pathPrefix: 'blog',
   footerCtas: [],
+  showInHub: true,
 };
 
 export function BlogPostForm(props: BlogPostFormProps) {
@@ -516,6 +517,11 @@ export function BlogPostForm(props: BlogPostFormProps) {
           <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 md:col-span-2">
             <input type="checkbox" {...form.register('featured')} className="h-4 w-4 rounded border-slate-300 text-brand-purple focus:ring-brand-purple" />
             Feature this post
+          </label>
+
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+            <input type="checkbox" {...form.register('showInHub')} className="h-4 w-4 rounded border-slate-300 text-brand-purple focus:ring-brand-purple" />
+            Show in hub index (&quot;In this hub&quot; and related list when the URL prefix is a marketing hub)
           </label>
 
           <div className="md:col-span-2">
