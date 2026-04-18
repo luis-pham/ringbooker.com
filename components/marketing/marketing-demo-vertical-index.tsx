@@ -167,7 +167,7 @@ const styles = [
       box-shadow:0 4px 20px rgba(17,24,39,.04);
       text-align:center;
     }
-    /* Match how-it-works `.hiw-step::before` — purple circle, white number, centered */
+    /* Match how-it-works .hiw-step::before — purple circle, white number, centered */
     .demo-hub-step-num{
       width:36px;height:36px;border-radius:50%;
       background:var(--demo-hub-purple);
