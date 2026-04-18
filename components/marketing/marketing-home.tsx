@@ -95,7 +95,19 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 /* Primary site nav is MarketingHeader (.mk-nav in marketing-chrome). Legacy duplicate nav CSS removed — bare "nav{}" selectors were overriding .mk-nav on this page only. */
 
 /* ─── HERO ─── */
-.hero{min-height:100vh;padding:100px 48px 60px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%)}
+.hero{
+  min-height:100vh;
+  padding:100px 48px 60px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  overflow:hidden;
+  /* Soft wash at top + long fade to white so the next section does not show a hard color break */
+  background:
+    linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.06) 32%,rgba(255,255,255,0.45) 52%,rgba(255,255,255,0.88) 72%,#ffffff 88%,#ffffff 100%),
+    radial-gradient(ellipse 88% 65% at 50% -12%,#EDE9FE 0%,#F3E8FF 28%,#FDF4FF 52%,rgba(253,244,255,.97) 72%,rgba(255,255,255,.995) 88%,#ffffff 100%);
+}
 .hero-blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.3;pointer-events:none}
 .hero-blob-1{width:560px;height:560px;background:#C4B5FD;top:-200px;left:-140px}
 .hero-blob-2{width:460px;height:460px;background:#F9A8D4;top:-100px;right:-120px}
