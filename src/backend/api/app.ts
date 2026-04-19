@@ -9,6 +9,7 @@ import { handleRealtimeDispatch, parseRealtimeDispatchInput } from '@/src/agent/
 import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
 import { createInboundAgentSession } from '@/src/agent/runtime/session';
 import { buildPublicDemoSystemPrompt } from '@/src/backend/demo/public-demo-system-prompt';
+import { effectiveDemoClientCountry, resolveDemoClientCountryForPersistence } from '@/src/backend/lib/demo-client-country';
 import {
   CAPABILITY_MIN_PLAN,
   CAPABILITY_LABELS,
@@ -1614,7 +1615,7 @@ export function createBackendApp(deps: {
         systemPrompt,
         services: [],
         clientIp: ip,
-        clientCountry: normalizeCfIpCountry(c.req.header('CF-IPCountry')),
+        clientCountry: resolveDemoClientCountryForPersistence(normalizeCfIpCountry(c.req.header('CF-IPCountry')), normalizedPhone),
       });
       await deps.demoSessionsRepository.createCallRun({
         demoSessionId: demoSession.id,
@@ -1856,7 +1857,7 @@ export function createBackendApp(deps: {
         systemPrompt,
         services,
         clientIp: ip,
-        clientCountry: normalizeCfIpCountry(c.req.header('CF-IPCountry')),
+        clientCountry: resolveDemoClientCountryForPersistence(normalizeCfIpCountry(c.req.header('CF-IPCountry')), normalizedPhone),
       });
       await deps.demoSessionsRepository.addStatusEvent({
         demoSessionId: demoSession.id,
@@ -3895,6 +3896,7 @@ export function createBackendApp(deps: {
       const meta = transcriptMeta.get(row.requestId);
       return {
         ...row,
+        clientCountry: effectiveDemoClientCountry(row.clientCountry, row.callbackPhone),
         demoDurationSeconds: demoCallDurationSeconds(row),
         transcriptStatus: meta?.transcriptStatus,
         hasTranscriptText: meta?.hasTranscriptText ?? false,

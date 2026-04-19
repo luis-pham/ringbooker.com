@@ -240,8 +240,8 @@ export function AdminDemosLive() {
             <div className="page-title">
               <h1>Marketing demo calls</h1>
               <p>
-                Filter by UTC date range, inspect IP and country captured at request time, and open transcripts from the
-                demo shop call log.
+                Filter by UTC date range, inspect IP and country (CF-IPCountry when present, otherwise inferred from
+                callback number), and open transcripts from the demo shop call log.
               </p>
             </div>
             <div className="top-actions">
@@ -574,7 +574,7 @@ export function AdminDemosLive() {
                           <h4>Country</h4>
                           <p>
                             {transcriptDialogRow.clientCountry ??
-                              'Not available (needs CF-IPCountry or future geo lookup)'}
+                              'Not available (no valid CF-IPCountry and number did not map to a country code)'}
                           </p>
                         </div>
                       </div>
