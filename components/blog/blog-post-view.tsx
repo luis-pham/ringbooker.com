@@ -167,29 +167,31 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
         </div>
       </section>
 
-      <div className="mx-auto max-w-6xl px-6 pt-9 md:px-12">
-        <div className="relative flex h-[360px] items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95]">
-          {cover ? (
-            <>
-              <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-black/20" />
-            </>
-          ) : (
-            <>
-              <span className="absolute right-16 top-5 h-[300px] w-[300px] rounded-full border border-white/10" />
-              <span className="absolute right-24 top-12 h-[180px] w-[180px] rounded-full bg-violet-400/25 blur-[40px]" />
-            </>
-          )}
-          <div className="relative z-10 flex gap-10">
-            {stats.map((item) => (
-              <div key={`${item.num}-${item.label}`} className="text-center">
-                <div className="text-[52px] font-extrabold leading-none tracking-[-0.04em] text-white">{item.num}</div>
-                <div className="mt-1.5 text-xs text-white/60">{item.label}</div>
-              </div>
-            ))}
+      {stats.length > 0 ? (
+        <div className="mx-auto max-w-6xl px-6 pt-9 md:px-12">
+          <div className="relative flex h-[360px] items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95]">
+            {cover ? (
+              <>
+                <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-black/20" />
+              </>
+            ) : (
+              <>
+                <span className="absolute right-16 top-5 h-[300px] w-[300px] rounded-full border border-white/10" />
+                <span className="absolute right-24 top-12 h-[180px] w-[180px] rounded-full bg-violet-400/25 blur-[40px]" />
+              </>
+            )}
+            <div className="relative z-10 flex flex-wrap justify-center gap-8 md:gap-10">
+              {stats.map((item) => (
+                <div key={`${item.num}-${item.label}`} className="text-center">
+                  <div className="text-[52px] font-extrabold leading-none tracking-[-0.04em] text-white">{item.num}</div>
+                  <div className="mt-1.5 text-xs text-white/60">{item.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="mx-auto flex max-w-6xl flex-col gap-14 px-6 pb-20 pt-12 md:px-12 lg:grid lg:grid-cols-[1fr_380px] lg:grid-rows-[auto_auto_auto] lg:items-start lg:gap-14">
         <article className="article-body min-w-0 font-serif text-[17.5px] leading-[1.82] text-gray-700 lg:col-start-1 lg:row-start-1 lg:self-start">
@@ -234,21 +236,10 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
                   <Link
                     key={related.id}
                     href={relatedHref(related)}
-                    className="flex gap-3 border-b border-gray-200 py-2.5 last:border-b-0 hover:opacity-75"
+                    className="block border-b border-gray-200 py-2.5 last:border-b-0 hover:opacity-75"
                   >
-                    <span className="relative h-11 w-14 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-violet-900 to-violet-700">
-                      {related.coverImageUrl?.trim() ? (
-                        <img
-                          src={related.coverImageUrl.trim()}
-                          alt=""
-                          className="absolute inset-0 h-full w-full object-cover"
-                        />
-                      ) : null}
-                    </span>
-                    <span>
-                      <span className="block font-sans text-[12.5px] font-semibold leading-5 text-gray-900">{related.title}</span>
-                      <span className="mt-0.5 block font-sans text-[11.5px] text-gray-400">{related.readTimeMin} min read</span>
-                    </span>
+                    <span className="block font-sans text-[12.5px] font-semibold leading-5 text-gray-900">{related.title}</span>
+                    <span className="mt-0.5 block font-sans text-[11.5px] text-gray-400">{related.readTimeMin} min read</span>
                   </Link>
                 ))}
               </div>
@@ -289,30 +280,14 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
               <Link
                 key={related.id}
                 href={relatedHref(related)}
-                className="block overflow-hidden rounded-3xl border border-gray-200 bg-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,.07)]"
+                className="block rounded-3xl border border-gray-200 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,.07)]"
               >
-                <div className="relative h-36 overflow-hidden bg-gradient-to-br from-violet-900 to-violet-700">
-                  {related.coverImageUrl?.trim() ? (
-                    <>
-                      <img
-                        src={related.coverImageUrl.trim()}
-                        alt=""
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                    </>
-                  ) : (
-                    <span className="absolute inset-0 flex items-center justify-center text-3xl opacity-25">📘</span>
-                  )}
+                <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-purple">
+                  {related.categories[0]?.category.name ?? 'Article'}
                 </div>
-                <div className="p-4">
-                  <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-purple">
-                    {related.categories[0]?.category.name ?? 'Article'}
-                  </div>
-                  <h3 className="mb-2 text-[14.5px] font-bold leading-6 text-gray-900">{related.title}</h3>
-                  <div className="text-xs text-gray-400">
-                    {formatDate(related.publishedAt ?? related.createdAt)} · {related.readTimeMin} min read
-                  </div>
+                <h3 className="mb-2 text-[14.5px] font-bold leading-6 text-gray-900">{related.title}</h3>
+                <div className="text-xs text-gray-400">
+                  {formatDate(related.publishedAt ?? related.createdAt)} · {related.readTimeMin} min read
                 </div>
               </Link>
             ))}
