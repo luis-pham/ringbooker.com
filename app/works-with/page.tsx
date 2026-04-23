@@ -8,10 +8,10 @@ import { worksWithHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
 const worksWithDescription =
-  'RingBooker works alongside your existing salon workflow. Square Appointments is live today; other booking tools can start with call summaries and handoff.';
+  'RingBooker works alongside your booking workflow. Square Appointments is live, while Vagaro, Booksy, and Mindbody can start with workflow-compatible call handling and handoff.';
 
 export const metadata = buildMetadata({
-  title: 'Works With Your Current Booking Tools | RingBooker',
+  title: 'Works With Square Appointments and Your Booking Tools | RingBooker',
   description: worksWithDescription,
   path: '/works-with',
 });

@@ -9,7 +9,7 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { getAllCategories, getAllPosts, getFeaturedPost } from '@/lib/blog';
-import { postPublicPath } from '@/lib/blog/path-prefixes';
+import { BLOG_PATH_PREFIX_LABEL, isBlogPathPrefix, postPublicPath } from '@/lib/blog/path-prefixes';
 import { buildMetadata } from '@/lib/site';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 import type { PostWithRelations } from '@/types/blog';
@@ -53,6 +53,8 @@ interface BlogPageProps {
     category?: string;
     search?: string;
     page?: string;
+    /** Topic cluster (`Post.pathPrefix`), e.g. `missed-booking-protection`. Default: `blog`. */
+    cluster?: string;
   }>;
 }
 
@@ -69,12 +71,17 @@ function buildPageHref({
   page,
   category,
   search,
+  cluster,
 }: {
   page: number;
   category?: string;
   search?: string;
+  /** Omit or `blog` → default growth blog listing (clean URL). */
+  cluster?: string;
 }) {
   const params = new URLSearchParams();
+  const c = cluster?.trim();
+  if (c && c !== 'blog') params.set('cluster', c);
   if (category) params.set('category', category);
   if (search) params.set('search', search);
   if (page > 1) params.set('page', String(page));
@@ -155,16 +162,62 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
   );
 }
 
+function BlogClusterStrip({
+  activePathPrefix,
+  category,
+  search,
+}: {
+  activePathPrefix: string;
+  category?: string;
+  search?: string;
+}) {
+  const clusters = [
+    { pathPrefix: 'blog' as const, label: BLOG_PATH_PREFIX_LABEL.blog },
+    { pathPrefix: 'missed-booking-protection' as const, label: BLOG_PATH_PREFIX_LABEL['missed-booking-protection'] },
+  ];
+
+  return (
+    <div className="mx-auto mt-4 flex max-w-6xl flex-wrap items-center justify-center gap-2 px-6 md:px-12">
+      <span className="mr-1 text-[11px] font-bold uppercase tracking-wider text-gray-400">Series</span>
+      {clusters.map(({ pathPrefix, label }) => {
+        const active = activePathPrefix === pathPrefix;
+        const href = buildPageHref({
+          page: 1,
+          category,
+          search,
+          cluster: pathPrefix === 'blog' ? undefined : pathPrefix,
+        });
+        return (
+          <Link
+            key={pathPrefix}
+            href={href}
+            className={[
+              'rounded-full border px-4 py-2 text-xs font-semibold transition sm:text-sm',
+              active
+                ? 'border-brand-purple bg-brand-purple text-white'
+                : 'border-gray-200 bg-white text-gray-500 hover:border-brand-purple hover:text-brand-purple',
+            ].join(' ')}
+          >
+            {label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function Pagination({
   page,
   totalPages,
   category,
   search,
+  cluster,
 }: {
   page: number;
   totalPages: number;
   category?: string;
   search?: string;
+  cluster?: string;
 }) {
   if (totalPages <= 1) return null;
 
@@ -177,7 +230,7 @@ function Pagination({
   return (
     <div className="mx-auto mb-24 flex max-w-6xl items-center justify-center gap-2 px-6 md:px-12">
       <Link
-        href={buildPageHref({ page: Math.max(1, page - 1), category, search })}
+        href={buildPageHref({ page: Math.max(1, page - 1), category, search, cluster })}
         aria-disabled={page <= 1}
         className={[
           'inline-flex h-10 items-center gap-1 rounded-xl border border-gray-200 px-4 text-sm font-semibold',
@@ -195,7 +248,7 @@ function Pagination({
       {start > 1 ? (
         <>
           <Link
-            href={buildPageHref({ page: 1, category, search })}
+            href={buildPageHref({ page: 1, category, search, cluster })}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 transition hover:border-brand-purple hover:bg-brand-purple hover:text-white"
           >
             1
@@ -207,7 +260,7 @@ function Pagination({
       {pages.map((p) => (
         <Link
           key={p}
-          href={buildPageHref({ page: p, category, search })}
+          href={buildPageHref({ page: p, category, search, cluster })}
           className={[
             'flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold',
             p === page
@@ -223,7 +276,7 @@ function Pagination({
         <>
           <span className="px-1 text-sm text-gray-400">…</span>
           <Link
-            href={buildPageHref({ page: totalPages, category, search })}
+            href={buildPageHref({ page: totalPages, category, search, cluster })}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 transition hover:border-brand-purple hover:bg-brand-purple hover:text-white"
           >
             {totalPages}
@@ -232,7 +285,7 @@ function Pagination({
       ) : null}
 
       <Link
-        href={buildPageHref({ page: Math.min(totalPages, page + 1), category, search })}
+        href={buildPageHref({ page: Math.min(totalPages, page + 1), category, search, cluster })}
         aria-disabled={page >= totalPages}
         className={[
           'inline-flex h-10 items-center gap-1 rounded-xl border border-gray-200 px-4 text-sm font-semibold',
@@ -253,18 +306,21 @@ function Pagination({
 export default async function BlogPage({ searchParams }: BlogPageProps) {
   const params = (await searchParams) ?? {};
   const page = Number(params.page) > 0 ? Number(params.page) : 1;
+  const rawCluster = typeof params.cluster === 'string' ? params.cluster.trim() : '';
+  const listPathPrefix = isBlogPathPrefix(rawCluster) ? rawCluster : 'blog';
+  const clusterQuery = listPathPrefix === 'blog' ? undefined : listPathPrefix;
 
   const [{ posts, total, totalPages }, categories, featuredPost] = await Promise.all([
     getAllPosts({
       status: PostStatus.PUBLISHED,
-      pathPrefix: 'blog',
+      pathPrefix: listPathPrefix,
       categorySlug: params.category,
       search: params.search,
       page,
       perPage: 9,
     }),
-    getAllCategories({ pathPrefix: 'blog' }),
-    getFeaturedPost({ pathPrefix: 'blog' }),
+    getAllCategories({ pathPrefix: listPathPrefix }),
+    getFeaturedPost({ pathPrefix: listPathPrefix }),
   ]);
 
   const visiblePosts = featuredPost ? posts.filter((post) => post.id !== featuredPost.id) : posts;
@@ -296,6 +352,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           </div>
 
           <SearchBar initialValue={params.search ?? ''} />
+          <BlogClusterStrip
+            activePathPrefix={listPathPrefix}
+            category={params.category}
+            search={params.search}
+          />
           <CategoryFilter categories={categories} />
         </section>
 
@@ -322,7 +383,13 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           )}
         </div>
 
-        <Pagination page={page} totalPages={totalPages} category={params.category} search={params.search} />
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          category={params.category}
+          search={params.search}
+          cluster={clusterQuery}
+        />
 
         <MarketingFaqAccordion
           items={BLOG_INDEX_FAQ_ITEMS}

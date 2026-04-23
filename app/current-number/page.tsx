@@ -8,10 +8,10 @@ import { currentNumberHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
 const currentNumberDescription =
-  'Add AI call answering on the number clients already know. RingBooker uses forwarding — no new digits, no listing updates, no workflow reset.';
+  'Keep your current business number and add AI coverage through call forwarding. RingBooker helps salons and spas start with after-hours or overflow without listing churn.';
 
 export const metadata = buildMetadata({
-  title: 'Keep Your Current Business Number | RingBooker',
+  title: 'Keep Your Current Salon Number | AI Call Forwarding Setup | RingBooker',
   description: currentNumberDescription,
   path: '/current-number',
 });

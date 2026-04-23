@@ -24,9 +24,9 @@ export function marketingSegmentToVertical(segment: string): MarketingVerticalKe
 
 const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; description: string }> = {
   'nail-salon': {
-    title: 'AI Phone Answering for Nail Salons | RingBooker',
+    title: 'AI Phone Answering for Nail Salons | English & Vietnamese Call Coverage | RingBooker',
     description:
-      'RingBooker helps nail salons answer after-hours and peak-hour calls, recover missed bookings, and protect daily revenue on their current business number.',
+      'RingBooker helps nail salons answer English and Vietnamese calls, handle peak-hour overflow, and protect missed bookings on the current business number.',
   },
   'hair-salon': {
     title: 'AI Phone Answering for Hair Salons | RingBooker',
@@ -39,14 +39,14 @@ const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; descrip
       'RingBooker helps spas answer after-hours and overflow calls, capture package and appointment inquiries, and recover revenue from missed booking opportunities.',
   },
   'med-spa': {
-    title: 'AI Phone Answering for Med Spas | RingBooker',
+    title: 'AI Phone Answering for Med Spas | After-Hours Consultation Calls | RingBooker',
     description:
-      'RingBooker helps med spas answer after-hours and peak-hour consultation calls, recover lost leads, and protect high-value revenue on their current number.',
+      'RingBooker helps med spas capture after-hours consultation calls, protect high-intent demand on the current number, and handle overflow without forcing a workflow reset.',
   },
   'beauty-clinic': {
-    title: 'AI Phone Answering for Beauty Clinics | RingBooker',
+    title: 'Beauty Clinic AI Phone Answering | Aesthetic Clinic Missed Call Coverage | RingBooker',
     description:
-      'RingBooker helps beauty clinics handle after-hours inquiries, provider requests, and missed consultation calls while protecting revenue on their current number.',
+      'RingBooker helps beauty and aesthetic clinics capture consultation calls, reduce missed-call leakage, and handle overflow on the current number with a more professional caller experience.',
   },
 };
 

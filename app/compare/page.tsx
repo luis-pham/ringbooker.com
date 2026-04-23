@@ -8,14 +8,14 @@ import { compareHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'Compare RingBooker With Voicemail, Answering Services & More',
+  title: 'Salon Voicemail vs AI Receptionist | Compare RingBooker, Hiring, and Answering Services',
   description:
-    'See how voicemail, missed-call text-back, answering services, extra staff, and generic phone AI stack up against beauty-focused call answering — so you can choose what fits your salon or spa.',
+    'Compare RingBooker with voicemail, answering services, extra front-desk hiring, and generic AI to see what fits after-hours coverage, overflow, and missed booking protection.',
   path: '/compare',
 });
 
 const compareWebPageDescription =
-  'See how voicemail, missed-call text-back, answering services, extra staff, and generic phone AI stack up against beauty-focused call answering — so you can choose what fits your salon or spa.';
+  'Compare RingBooker with voicemail, answering services, extra front-desk hiring, and generic AI to see what fits after-hours coverage, overflow, and missed booking protection.';
 
 /** Listing is driven by CMS posts; avoid stale caches after publish (see admin blog revalidatePath). */
 export const dynamic = 'force-dynamic';

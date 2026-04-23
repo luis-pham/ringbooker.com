@@ -296,7 +296,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Current Number'),
   ),
   intro:
-    'Clients keep dialing the line they already trust. RingBooker layers after-hours and overflow answering through call forwarding — no new digits, no listing churn, and a guided customer setup flow built to configure the essentials in about 15 minutes.',
+    'RingBooker works through call forwarding, so clients keep calling the number they already know. You do not need to change the number on your Google Business Profile, signage, cards, or booking links. Most businesses start with after-hours or overflow first, then expand once the workflow feels right.',
   pills: [
     'No number migration needed',
     'Works via call forwarding',
@@ -392,7 +392,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     {
       kind: 'feature_scenarios',
       html: { featureLayout: 'use_cases', eyebrow: 'No-Reset Adoption' },
-      heading: 'How RingBooker fits without a full reset',
+      heading: 'How RingBooker fits through call forwarding',
       sub: 'Most tools ask you to migrate or replace. RingBooker integrates where your current coverage stops.',
       items: [
         {
@@ -448,20 +448,20 @@ export const currentNumberHub: ContentHubPageConfig = {
     'Explore articles about keeping your current business number, reducing rollout risk, and fitting RingBooker into your existing phone workflow.',
   faqs: [
     {
-      q: 'Do I need a new phone number to use RingBooker?',
-      a: 'No. RingBooker is designed to work with your existing business phone number via call forwarding. There is no requirement to switch your public-facing number.',
+      q: 'Can you forward salon calls to AI?',
+      a: 'Yes. RingBooker works through call forwarding, so your current salon number stays public while AI covers selected calls.',
     },
     {
-      q: 'Can I test without changing my public number?',
-      a: 'Yes. You can configure RingBooker for specific call types — such as after-hours or overflow — while the rest of your routing stays unchanged.',
+      q: 'How do I set up call forwarding for a nail salon?',
+      a: 'Most salons start by forwarding after-hours or overflow calls first, then widen coverage once the setup is tested.',
+    },
+    {
+      q: 'Can I start with after-hours only?',
+      a: 'Yes. That is one of the cleanest ways to test RingBooker without changing your daytime phone workflow.',
     },
     {
       q: 'Does this replace my current phone setup?',
       a: 'No. RingBooker sits alongside your existing phone system. Your number, staff workflow, and desk setup stay in place.',
-    },
-    {
-      q: 'What if staff still answer some calls?',
-      a: 'That is supported. You choose which situations RingBooker handles and which still ring through to your team first.',
     },
     {
       q: 'Can I keep my number and my booking tools?',
@@ -488,7 +488,7 @@ export const worksWithHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Booking Tools'),
   ),
   intro:
-    'RingBooker is not a replacement — it is a phone layer. Square Appointments is live today; Vagaro, Booksy, Mindbody, and other tools can start with workflow-compatible summaries and handoff. No migration required.',
+    'RingBooker is the phone layer that sits alongside the booking tools your team already uses. Square Appointments is live today, while Vagaro, Booksy, Mindbody, and other tools can start with workflow-compatible call capture, summaries, and handoff. The goal is simple: no forced migration and no workflow reset just to protect missed calls.',
   pills: [
     'No system replacement required',
     'Start with call forwarding',
@@ -649,24 +649,24 @@ export const worksWithHub: ContentHubPageConfig = {
     'Explore articles on Square, Vagaro, Booksy, Mindbody, and how RingBooker fits existing beauty-business workflows.',
   faqs: [
     {
+      q: 'Does RingBooker work with Square Appointments for nail salons?',
+      a: 'Yes. Square Appointments is the clearest live compatibility story on this page.',
+    },
+    {
+      q: 'What does workflow-compatible mean for Vagaro or Booksy?',
+      a: 'It means RingBooker fits the call workflow and handoff process even where the page is not claiming a live direct integration.',
+    },
+    {
+      q: 'Can salons keep their current workflow?',
+      a: 'Yes. RingBooker complements the booking workflow instead of replacing it.',
+    },
+    {
       q: 'Do I need to replace my booking software?',
       a: 'No. RingBooker is designed to work alongside your existing workflow. Square Appointments is live today; Vagaro, Booksy, Mindbody, and others can start with summaries and handoff while deeper integrations expand.',
     },
     {
-      q: 'What does “works with” mean exactly?',
-      a: 'It means compatibility at the workflow level: forwarding, call capture, summaries, manual handoff, or direct integration depending on the booking tool.',
-    },
-    {
-      q: 'Can I start without a full integration?',
-      a: 'Yes. Many businesses start with call forwarding and after-hours coverage, which does not require booking software integration.',
-    },
-    {
       q: 'Does this work with my current phone number?',
       a: 'Yes. RingBooker works via forwarding on your current number.',
-    },
-    {
-      q: 'Can I use RingBooker with my existing receptionist workflow?',
-      a: 'Yes. RingBooker handles calls your team cannot reach while your in-person workflow stays in place.',
     },
   ],
   breadcrumbLabel: 'Works with',
@@ -685,12 +685,11 @@ export const compareHub: ContentHubPageConfig = {
   title: createElement(
     Fragment,
     null,
-    'Compare RingBooker With',
-    createElement('br'),
-    createElement('span', { className: 'hl' }, 'Your Phone Options'),
+    'Compare RingBooker With ',
+    createElement('span', { className: 'hl' }, 'Voicemail, Hiring, and Generic AI'),
   ),
   intro:
-    'Most salons choose between voicemail, missed-call text-back, an answering service, hiring more front-desk help, or a general-purpose phone AI. This page compares those paths side by side with RingBooker’s beauty-focused answering — after hours, peak overflow, and callback or handoff with context when it matters.',
+    'Most salons are not comparing AI with nothing. They are comparing voicemail, missed-call text back, answering services, extra front-desk help, and generic AI tools. This page helps beauty businesses compare those options against RingBooker’s beauty-specific phone answering for after-hours calls, peak-hour overflow, and missed booking protection.',
   pills: [
     'Voicemail vs. AI',
     'Answering services',
@@ -708,7 +707,7 @@ export const compareHub: ContentHubPageConfig = {
         leakGridColumns: 3,
         hubGridCols3: true,
       },
-      heading: 'The landscape of phone solutions',
+      heading: 'Voicemail, answering services, hiring, or AI?',
       sub: 'Most salons are not choosing between “AI or nothing.” They are choosing between voicemail, text-back, services, headcount, generic AI — or a beauty-specific layer.',
       cards: [
         {
@@ -968,8 +967,16 @@ export const compareHub: ContentHubPageConfig = {
   /** Article links: loaded in `app/compare/page.tsx` from posts with `pathPrefix` `compare`. */
   faqs: [
     {
-      q: 'Is RingBooker better than voicemail for salons?',
-      a: 'For capturing booking intent, yes. Voicemail fails when callers do not leave messages. RingBooker captures intent in real time and routes it to your team.',
+      q: 'Is salon voicemail enough if calls come in after hours?',
+      a: 'Usually not. Voicemail can save some intent, but it does not answer questions or move the booking conversation forward in real time.',
+    },
+    {
+      q: 'How does AI compare with hiring another receptionist?',
+      a: 'Hiring adds coverage, but it does not solve after-hours or overflow in the same way. RingBooker is the lighter-weight layer for missed booking protection.',
+    },
+    {
+      q: 'Is RingBooker relevant if I am comparing tools like TrueLark?',
+      a: 'Yes. That comparison can appear naturally in body copy and FAQ without turning this page into a dedicated competitor page.',
     },
     {
       q: 'How is RingBooker different from an answering service?',
@@ -978,14 +985,6 @@ export const compareHub: ContentHubPageConfig = {
     {
       q: 'Do I still need front-desk staff?',
       a: 'In most cases, yes. RingBooker handles calls your staff cannot reach — it is designed to complement your team.',
-    },
-    {
-      q: 'What if I only need after-hours support?',
-      a: 'That is a common starting point. You can scope coverage to nights and weekends before expanding.',
-    },
-    {
-      q: 'How is RingBooker different from a generic AI receptionist?',
-      a: 'Generic products optimize for any business. RingBooker focuses on beauty-industry call behavior, peaks, and booking flows.',
     },
   ],
   breadcrumbLabel: 'Compare',
