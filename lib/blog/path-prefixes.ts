@@ -32,8 +32,8 @@ export const BLOG_PATH_PREFIX_LABEL: Record<BlogPathPrefix, string> = {
   compare: 'Compare',
 };
 
-/** Slugs reserved under `/compare/*` by static marketing pages. */
-export const COMPARE_RESERVED_SLUGS = new Set(['vs-truelark', 'vs-my-ai-front-desk', 'vs-goodcall']);
+/** Slugs reserved under `/compare/*` by static marketing pages (block CMS from taking the same slug). */
+export const COMPARE_RESERVED_SLUGS = new Set<string>();
 
 export function isReservedCompareBlogSlug(slug: string): boolean {
   return COMPARE_RESERVED_SLUGS.has(slug.trim().toLowerCase());

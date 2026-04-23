@@ -85,12 +85,9 @@ Industry-specific demo pages:
 - [AI Phone Answering for Med Spas](https://ringbooker.com/industries/med-spa): Covers consultation intake, no-show reduction, high-ticket lead capture
 - [AI Phone Answering for Beauty Clinics](https://ringbooker.com/industries/beauty-clinic): Covers consultation-first flows, provider preference, approved pre/post-care information
 
-## Competitor Comparisons
+## Comparisons
 
-- [RingBooker vs TrueLark](https://ringbooker.com/compare/vs-truelark): Side-by-side comparison of features, pricing, and use case fit
-- [RingBooker vs My AI Front Desk](https://ringbooker.com/compare/vs-my-ai-front-desk): Comparison focused on beauty industry fit and call quality
-- [RingBooker vs GoodCall](https://ringbooker.com/compare/vs-goodcall): Comparison on setup simplicity, vertical depth, and integrations
-- [All Comparisons](https://ringbooker.com/compare): Overview comparison page
+- [All Comparisons](https://ringbooker.com/compare): Overview comparison page and deep-dive guides (including voicemail vs AI receptionist)
 
 ## Blog
 

@@ -531,7 +531,7 @@ export const worksWithHub: ContentHubPageConfig = {
       sub: 'Square Appointments can connect directly today. Other booking tools can still work with RingBooker through call capture, summaries, and handoff while deeper integrations expand.',
       tools: [
         {
-          href: '/works-with/square-appointments',
+          href: '/works-with/does-ringbooker-work-with-square-appointments',
           logoSrc: '/images/square.png',
           title: 'Square Appointments',
           body: 'Live integration — captured booking intent can flow into your scheduling workflow.',
@@ -539,7 +539,7 @@ export const worksWithHub: ContentHubPageConfig = {
           statusKind: 'live',
         },
         {
-          href: '/works-with/vagaro',
+          href: '/works-with/can-ringbooker-work-with-vagaro-without-changing-your-setup',
           logoSrc: '/images/vagaro.png',
           title: 'Vagaro',
           body: 'Workflow-compatible: capture intent and route summaries for manual booking entry.',
@@ -547,20 +547,20 @@ export const worksWithHub: ContentHubPageConfig = {
           statusKind: 'workflow',
         },
         {
-          href: '/works-with/booksy',
-          logoSrc: '/images/booksy.png',
-          title: 'Booksy',
-          body: 'Popular with nail and hair stylists — RingBooker handles calls online booking does not capture.',
-          status: 'Workflow compatible',
-          statusKind: 'workflow',
-        },
-        {
-          href: '/works-with/mindbody',
+          href: '/works-with/does-ringbooker-work-with-mindbody-for-spa-and-med-spa-calls',
           logoSrc: '/images/mindbody.webp',
           title: 'Mindbody',
           body: 'Common in spas and wellness — after-hours and overflow coverage alongside Mindbody workflows.',
           status: 'Coming soon',
           statusKind: 'soon',
+        },
+        {
+          href: '/works-with/how-ringbooker-fits-beauty-businesses-using-booksy',
+          logoSrc: '/images/booksy.png',
+          title: 'Booksy',
+          body: 'Popular with nail and hair stylists — RingBooker handles calls online booking does not capture.',
+          status: 'Workflow compatible',
+          statusKind: 'workflow',
         },
       ],
     },
@@ -866,7 +866,7 @@ export const compareHub: ContentHubPageConfig = {
       sub: 'Each comparison goes deeper into the specific trade-offs, use cases, and who each option is actually right for.',
       links: [
         {
-          href: '/compare/ringbooker-vs-voicemail/',
+          href: '/compare/ai-receptionist-vs-voicemail-for-busy-salons',
           title: 'RingBooker vs. Voicemail',
           body: 'Why voicemail fails as a booking capture tool — and what a real-time AI alternative does differently for after-hours callers.',
         },
