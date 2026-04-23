@@ -1,8 +1,12 @@
 import { MarketingLegalPage } from '@/components/marketing/marketing-legal';
+import { buildMetadata } from '@/lib/site';
 
-export const metadata = {
+export const metadata = buildMetadata({
   title: 'Refund Policy',
-};
+  description:
+    'When and how RingBooker issues refunds for subscription plans and add-ons purchased through the platform.',
+  path: '/refund',
+});
 
 export default function RefundPage() {
   return (

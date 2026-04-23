@@ -683,11 +683,10 @@ export function UserSettingsLive() {
                         <div className="calendar-int-logo-wrap">
                           <img
                             src={logoSrc}
-                            alt=""
+                            alt={`${provider.label} logo`}
                             width={52}
                             height={52}
                             loading="lazy"
-                            aria-hidden
                           />
                         </div>
                         <span className="calendar-int-name">{provider.label}</span>

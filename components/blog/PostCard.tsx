@@ -47,7 +47,7 @@ export function PostCard({ post }: { post: PostWithRelations }) {
       <div className="relative h-44 overflow-hidden">
         {cover ? (
           <>
-            <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={cover} alt={`Cover image: ${post.title}`} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent" />
           </>
         ) : (

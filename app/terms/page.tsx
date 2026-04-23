@@ -1,8 +1,11 @@
 import { MarketingLegalPage } from '@/components/marketing/marketing-legal';
+import { buildMetadata } from '@/lib/site';
 
-export const metadata = {
+export const metadata = buildMetadata({
   title: 'Terms of Service',
-};
+  description: 'RingBooker terms of service, acceptable use, and subscription rules for the AI phone answering platform.',
+  path: '/terms',
+});
 
 export default function TermsPage() {
   return (

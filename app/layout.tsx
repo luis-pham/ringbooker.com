@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 import { GoogleTagManagerBody, GoogleTagManagerHead } from '@/components/analytics/google-tag-manager';
-import { buildAlternates, defaultSiteOgImage, siteConfig, siteOgImageEntry } from '@/lib/site';
+import { defaultSiteOgImage, siteConfig, siteOgImageEntry } from '@/lib/site';
 
 const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
 
@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   keywords: siteConfig.keywords,
   metadataBase: new URL(siteConfig.url),
-  alternates: buildAlternates('/'),
   applicationName: siteConfig.name,
   category: 'business software',
   openGraph: {

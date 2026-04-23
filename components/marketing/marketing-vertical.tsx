@@ -191,7 +191,7 @@ function IntegrationRow() {
             <div key={item.id} className="flex items-start gap-2.5">
               <img
                 src={item.logoSrc}
-                alt=""
+                alt={`${item.name} logo`}
                 width={40}
                 height={40}
                 className="h-10 w-10 shrink-0 object-contain"

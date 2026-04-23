@@ -172,7 +172,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
           <div className="relative flex h-[360px] items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95]">
             {cover ? (
               <>
-                <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <img src={cover} alt={`Cover image: ${post.title}`} className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/35 to-black/20" />
               </>
             ) : (

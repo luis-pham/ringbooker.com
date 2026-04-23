@@ -1,8 +1,12 @@
 import { MarketingLegalPage } from '@/components/marketing/marketing-legal';
+import { buildMetadata } from '@/lib/site';
 
-export const metadata = {
+export const metadata = buildMetadata({
   title: 'Privacy Policy',
-};
+  description:
+    'How RingBooker collects, uses, stores, and protects personal data when you use our website, demos, and AI phone agent platform.',
+  path: '/privacy',
+});
 
 export default function PrivacyPage() {
   return (

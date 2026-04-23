@@ -609,7 +609,7 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                           {s.iconSrc ? (
                             <Image
                               src={s.iconSrc}
-                              alt=""
+                              alt={`${s.label} — step icon`}
                               width={40}
                               height={40}
                               className="flow-step-logo-img"
@@ -711,7 +711,7 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                         {t.logoSrc ? (
                           <Image
                             src={t.logoSrc}
-                            alt=""
+                            alt={`${t.title} logo`}
                             width={40}
                             height={40}
                             className="h-10 w-10 object-contain"

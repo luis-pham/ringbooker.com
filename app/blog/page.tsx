@@ -9,23 +9,17 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { getAllCategories, getAllPosts, getFeaturedPost } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
-import { finalizeDocumentTitle } from '@/lib/site';
+import { buildMetadata } from '@/lib/site';
 import type { PostWithRelations } from '@/types/blog';
 
-const blogTitle = finalizeDocumentTitle('Blog | Growth Resources');
+const blogDescription =
+  'Practical guides and tips for appointment-based businesses to capture more calls, book more appointments, and increase revenue with AI.';
 
-export const metadata: Metadata = {
-  title: { absolute: blogTitle },
-  description:
-    'Practical guides and tips for appointment-based businesses to capture more calls, book more appointments, and increase revenue with AI.',
-  openGraph: {
-    title: blogTitle,
-    description:
-      'Practical guides and tips for appointment-based businesses to capture more calls, book more appointments, and increase revenue with AI.',
-    type: 'website',
-    url: '/blog',
-  },
-};
+export const metadata: Metadata = buildMetadata({
+  title: 'Blog | Growth Resources',
+  description: blogDescription,
+  path: '/blog',
+});
 
 interface BlogPageProps {
   searchParams?: Promise<{
@@ -72,7 +66,7 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
       <div className="relative flex min-h-[220px] flex-col justify-end bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95] p-9 lg:min-h-[340px]">
         {cover ? (
           <>
-            <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={cover} alt={`Cover image: ${post.title}`} className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-black/25" />
           </>
         ) : (

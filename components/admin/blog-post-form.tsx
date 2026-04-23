@@ -250,7 +250,11 @@ export function BlogPostForm(props: BlogPostFormProps) {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="relative h-44 w-full max-w-md shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
               {coverImageUrl?.trim() ? (
-                <img src={coverImageUrl} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={coverImageUrl}
+                  alt={title?.trim() ? `Cover preview: ${title.trim()}` : 'Blog post cover preview'}
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <div className="flex h-full items-center justify-center text-sm text-slate-400">No cover image</div>
               )}
