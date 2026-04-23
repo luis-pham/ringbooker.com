@@ -10,7 +10,7 @@ const HOW_IT_WORKS_FAQS = [
   },
   {
     q: 'Does RingBooker replace my booking software?',
-    a: 'No. RingBooker is a phone answering and booking recovery layer. It works alongside your existing booking tools and call workflow instead of replacing your booking platform.',
+    a: 'No. RingBooker is a phone answering and missed booking protection layer. It works alongside your existing booking tools and call workflow instead of replacing your booking platform.',
   },
   {
     q: 'What kinds of calls can RingBooker handle?',
@@ -191,7 +191,7 @@ export function MarketingHowItWorksTemplate() {
                 <div className="hiw-badge"><span className="hiw-dot" />How RingBooker works</div>
                 <h1>How RingBooker Recovers Lost Bookings Without Changing Your Number</h1>
                 <p>
-                  Forward from your existing line: RingBooker is a booking recovery layer that answers after-hours calls, covers peak-hour overflow, sends missed-call text back, and captures intent so missed rings are less likely to become lost revenue — without a new booking system and without reprinting your number everywhere.
+                  Forward from your existing line: RingBooker is a missed booking protection layer that answers after-hours calls, covers peak-hour overflow, sends missed-call text back, and captures intent so missed rings are less likely to become lost revenue — without a new booking system and without reprinting your number everywhere.
                 </p>
                 <div className="hiw-actions">
                   <a href="/demo" className="hiw-btn-dark" data-demo-picker>

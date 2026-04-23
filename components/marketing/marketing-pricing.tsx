@@ -2,6 +2,7 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
+import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
 const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
@@ -261,6 +262,8 @@ const everyPlanFeatures = [
   ['☎️', 'Optional line', 'Add a dedicated RingBooker line if preferred.'],
 ];
 
+const pricingFaqJsonLd = buildFaqPageJsonLd(PRICING_FAQ_ITEMS);
+
 export function MarketingPricingTemplate() {
   return (
     <MarketingLayout
@@ -380,7 +383,7 @@ export function MarketingPricingTemplate() {
             <div className="container">
               <div className="sec-label">Number setup</div>
               <h2 className="sec-title">Current number first. Dedicated line if you prefer.</h2>
-              <p className="sec-sub">RingBooker is a phone booking recovery layer, not a phone system replacement. Your deployment choice should match how callers already reach your business.</p>
+              <p className="sec-sub">RingBooker is a missed booking protection layer, not a phone system replacement. Your deployment choice should match how callers already reach your business.</p>
               <div className="line-choice">
                 <div className="line-card recommended">
                   <div className="line-card-head"><div className="plan-icon">🏪</div><span className="pill">Recommended</span></div>
@@ -450,6 +453,9 @@ export function MarketingPricingTemplate() {
           </section>
         </main>
         <MarketingFooter />
+        {pricingFaqJsonLd ? (
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingFaqJsonLd) }} />
+        ) : null}
       </>
     </MarketingLayout>
   );

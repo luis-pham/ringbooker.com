@@ -1,5 +1,29 @@
 import { MarketingLegalPage } from '@/components/marketing/marketing-legal';
+import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { buildMetadata } from '@/lib/site';
+
+const termsOfServiceFaqs: MarketingFaqItem[] = [
+  {
+    q: 'By using RingBooker, what am I agreeing to?',
+    a: 'You agree to these Terms of Service, acceptable use rules, billing terms for paid plans, and the related policies linked from the site, including the Privacy Policy where applicable.',
+  },
+  {
+    q: 'Can RingBooker change pricing or features?',
+    a: 'RingBooker may update services, features, and pricing with reasonable notice as described in your subscription terms. Material changes are communicated through account notices or email where appropriate.',
+  },
+  {
+    q: 'What happens if I stop paying for a subscription?',
+    a: 'Non-payment may result in suspension or cancellation of paid features according to these terms and your plan. Data handling after termination follows the Privacy Policy and contractual obligations.',
+  },
+  {
+    q: 'Can my account be suspended?',
+    a: 'Yes. Accounts may be suspended or terminated for material breach, abuse, non-payment, or legal risk, as described in the Termination section of these terms.',
+  },
+  {
+    q: 'Who do I contact for legal questions about these terms?',
+    a: 'Contact support@ringbooker.com for contract or legal inquiries related to RingBooker services.',
+  },
+];
 
 export const metadata = buildMetadata({
   title: 'Terms of Service',
@@ -105,6 +129,7 @@ export default function TermsPage() {
           ),
         },
       ]}
+      faqs={termsOfServiceFaqs}
     />
   );
 }

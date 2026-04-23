@@ -6,11 +6,38 @@ import { CategoryFilter } from '@/components/blog/CategoryFilter';
 import { PostCard } from '@/components/blog/PostCard';
 import { SearchBar } from '@/components/blog/SearchBar';
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { getAllCategories, getAllPosts, getFeaturedPost } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { buildMetadata } from '@/lib/site';
+import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 import type { PostWithRelations } from '@/types/blog';
+
+const BLOG_INDEX_FAQ_ITEMS: MarketingFaqItem[] = [
+  {
+    q: 'What topics does the RingBooker blog cover?',
+    a: 'Practical guides for appointment-based businesses: capturing more calls, after-hours and overflow coverage, missed-call follow-up, booking workflows, and revenue protection ideas for salons, spas, and clinics.',
+  },
+  {
+    q: 'How do I find articles for my business type?',
+    a: 'Use category filters and search on this page, or browse industry hubs and topic hubs linked from the site navigation.',
+  },
+  {
+    q: 'Are blog articles the same as product documentation?',
+    a: 'Blog posts are educational. For setup steps, billing, and account help, use FAQ, contact, or in-app help when you are logged in.',
+  },
+  {
+    q: 'How often is the blog updated?',
+    a: 'New guides publish as they are ready. Featured and latest posts appear on this page when available.',
+  },
+  {
+    q: 'Can I try RingBooker without reading every article?',
+    a: 'Yes. Start with a live demo call or the pricing page, then come back to the blog for deeper playbooks when you want them.',
+  },
+];
+
+const blogIndexFaqJsonLd = buildFaqPageJsonLd(BLOG_INDEX_FAQ_ITEMS);
 
 const blogDescription =
   'Practical guides and tips for appointment-based businesses to capture more calls, book more appointments, and increase revenue with AI.';
@@ -297,6 +324,14 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
         <Pagination page={page} totalPages={totalPages} category={params.category} search={params.search} />
 
+        <MarketingFaqAccordion
+          items={BLOG_INDEX_FAQ_ITEMS}
+          eyebrow="Common Questions"
+          title="About this blog"
+          subtitle={null}
+          embedded
+        />
+
         <section className="px-6 pb-14 md:px-12">
           <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-r from-violet-700 via-brand-purple to-violet-400 px-6 py-14 text-center md:px-12">
             <span className="pointer-events-none absolute -right-16 -top-20 h-[300px] w-[300px] rounded-full bg-white/5" />
@@ -327,6 +362,9 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       </main>
 
       <MarketingFooter />
+      {blogIndexFaqJsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogIndexFaqJsonLd) }} />
+      ) : null}
     </>
   );
 }

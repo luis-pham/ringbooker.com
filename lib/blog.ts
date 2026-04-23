@@ -124,7 +124,7 @@ export async function getAllPosts(options?: {
 }
 
 /**
- * Published posts under one URL segment, e.g. `phone-booking-recovery` → `/phone-booking-recovery/{slug}`.
+ * Published posts under one URL segment, e.g. `missed-booking-protection` → `/missed-booking-protection/{slug}`.
  * In the CMS this is the post’s **path prefix** (topic cluster / content series for that hub).
  * Excludes posts with `showInHub: false` (hidden from hub index / “In this hub” blocks).
  */

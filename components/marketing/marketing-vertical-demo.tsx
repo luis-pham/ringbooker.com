@@ -5,9 +5,12 @@ import Script from 'next/script';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
+import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { DEMO_VERTICALS, type DemoServiceCategory, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
+import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
 
@@ -34,6 +37,31 @@ const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '
 const sipPilotUi = process.env.NEXT_PUBLIC_OPENAI_SIP_DEMO_UI === 'true';
 const sipPilotNumber = process.env.NEXT_PUBLIC_OPENAI_SIP_DEMO_NUMBER?.trim() ?? '';
 
+const VERTICAL_DEMO_FAQ_ITEMS: MarketingFaqItem[] = [
+  {
+    q: 'Does this demo use my real business phone line?',
+    a: 'No. The demo places a one-time outbound call to the number you enter so you can hear the experience. It does not change forwarding or settings on your live business line.',
+  },
+  {
+    q: 'How long does a demo call take?',
+    a: 'Most demos take about two to three minutes. You can try natural booking, reschedule, or pricing-style questions during the call.',
+  },
+  {
+    q: 'Is the demo free?',
+    a: 'Yes. Live web demos are free and intended to help you evaluate tone, pacing, and call handling before you start a trial.',
+  },
+  {
+    q: 'What if the call does not connect?',
+    a: 'Check your number format, try again, and confirm your phone can receive the outbound call. If it still fails, use the contact page and we can help troubleshoot.',
+  },
+  {
+    q: 'Will RingBooker work with my current number later?',
+    a: 'Yes. Production setup uses call forwarding on your existing business number. The demo is only a preview experience.',
+  },
+];
+
+const verticalDemoFaqJsonLd = buildFaqPageJsonLd(VERTICAL_DEMO_FAQ_ITEMS);
+
 const VERTICAL_LANDING: Record<DemoVerticalSlug, string> = {
   'nail-salon': '/industries/nail-salon',
   'hair-salon': '/industries/hair-salon',
@@ -45,6 +73,7 @@ const VERTICAL_LANDING: Record<DemoVerticalSlug, string> = {
 const styles: string[] = [
   String.raw`
   /* ─── base ─────────────────────────────────────────────── */
+  .vd-faq-outer{background:linear-gradient(180deg,#fafafa 0%,#fff 100%);border-top:1px solid #E5E7EB;padding:8px 0 28px}
   .vd-page{padding-top:80px;background:linear-gradient(160deg,color-mix(in srgb,var(--va) 7%,#fff) 0%,#fff 55%);min-height:100dvh}
   .vd-theme-nail-salon{--va:#7C3AED}
   .vd-theme-hair-salon{--va:#B45309}
@@ -714,7 +743,23 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
           </div>
         </div>
 
+        <div className="vd-faq-outer">
+          <MarketingFaqAccordion
+            items={VERTICAL_DEMO_FAQ_ITEMS}
+            eyebrow="Common Questions"
+            title="About this live demo"
+            subtitle={null}
+            embedded
+          />
+        </div>
+
         <MarketingFooter />
+        {verticalDemoFaqJsonLd ? (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(verticalDemoFaqJsonLd) }}
+          />
+        ) : null}
       </>
     </MarketingLayout>
   );

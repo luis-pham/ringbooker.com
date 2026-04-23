@@ -1,5 +1,29 @@
 import { MarketingLegalPage } from '@/components/marketing/marketing-legal';
+import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { buildMetadata } from '@/lib/site';
+
+const refundPolicyFaqs: MarketingFaqItem[] = [
+  {
+    q: 'When am I eligible for a refund?',
+    a: 'Eligibility depends on your plan, billing channel, and the refund windows described in this policy. Read the Subscription Plans and Refund Windows sections for specifics.',
+  },
+  {
+    q: 'How do I request a refund?',
+    a: 'Contact support@ringbooker.com with your account email, invoice reference, and reason for the request. The team will confirm eligibility under this policy.',
+  },
+  {
+    q: 'Do free trials have refunds?',
+    a: 'Trials and promotional credits are generally not refundable because no purchase price applies. Paid conversions after a trial follow the paid plan rules in this policy.',
+  },
+  {
+    q: 'What if I cancel mid-cycle?',
+    a: 'Cancellation timing and whether any prorated credit applies are described in this policy and your plan terms. When in doubt, contact support with your invoice details.',
+  },
+  {
+    q: 'How long do refund decisions take?',
+    a: 'Timing depends on your payment provider and bank. RingBooker will confirm eligibility and initiate approved refunds according to processor timelines.',
+  },
+];
 
 export const metadata = buildMetadata({
   title: 'Refund Policy',
@@ -94,6 +118,7 @@ export default function RefundPage() {
           ),
         },
       ]}
+      faqs={refundPolicyFaqs}
     />
   );
 }

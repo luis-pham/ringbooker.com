@@ -889,7 +889,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
             Beauty Clinic Calls Need More Than Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Consultation-first journeys, provider continuity, and privacy-conscious phone handling still have to compete with busy desks and after-hours inquiries. RingBooker is an AI phone answering and booking recovery layer on your current number — protecting consultation revenue by capturing missed consult, reschedule, and follow-up intent with clinic-appropriate handoff context.
+            Consultation-first journeys, provider continuity, and privacy-conscious phone handling still have to compete with busy desks and after-hours inquiries. RingBooker is an AI phone answering and missed booking protection layer on your current number — protecting consultation revenue by capturing missed consult, reschedule, and follow-up intent with clinic-appropriate handoff context.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
@@ -1140,15 +1140,15 @@ function VerticalRelatedPlaybooks() {
     >
       <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">Playbooks</p>
       <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
-        <Link className={linkClass} href="/phone-booking-recovery/after-hours-calls">
+        <Link className={linkClass} href="/missed-booking-protection/after-hours-calls">
           After-hours call answering
         </Link>
         {' · '}
-        <Link className={linkClass} href="/phone-booking-recovery/peak-hour-overflow-calls">
+        <Link className={linkClass} href="/missed-booking-protection/peak-hour-overflow-calls">
           Peak-hour overflow coverage
         </Link>
         {' · '}
-        <Link className={linkClass} href="/phone-booking-recovery/missed-call-recovery">
+        <Link className={linkClass} href="/missed-booking-protection/missed-call-recovery">
           Missed-call recovery
         </Link>
         {' · '}

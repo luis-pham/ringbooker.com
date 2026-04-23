@@ -39,7 +39,7 @@ export const BLOG_FOOTER_BUTTONS: readonly BlogFooterButtonDefinition[] = [
     id: 'reduce_missed_calls',
     label: 'Reduce Missed Calls',
     variant: 'soft',
-    suggestedHref: '/phone-booking-recovery/missed-call-recovery',
+    suggestedHref: '/missed-booking-protection/missed-call-recovery',
   },
   { id: 'keep_your_number', label: 'Keep Your Number', variant: 'soft', suggestedHref: '/pricing' },
   { id: 'compare_options', label: 'Compare Options', variant: 'soft', suggestedHref: '/compare' },

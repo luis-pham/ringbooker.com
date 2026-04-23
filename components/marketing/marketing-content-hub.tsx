@@ -1156,7 +1156,7 @@ export function MarketingContentHub({
             <p className="html-hub-topic-nav-eyebrow">Explore related hubs</p>
             <ul className="html-hub-topic-nav-list" role="list">
               <li>
-                <Link href="/phone-booking-recovery">Booking recovery</Link>
+                <Link href="/missed-booking-protection">Missed booking protection</Link>
               </li>
               <li>
                 <Link href="/current-number">Current number</Link>

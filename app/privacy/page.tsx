@@ -1,5 +1,29 @@
 import { MarketingLegalPage } from '@/components/marketing/marketing-legal';
+import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { buildMetadata } from '@/lib/site';
+
+const privacyPolicyFaqs: MarketingFaqItem[] = [
+  {
+    q: 'Who is responsible for my data when I use RingBooker?',
+    a: 'For shop customer data handled on calls, RingBooker typically acts as a processor on behalf of your business. For account, billing, and platform administration, RingBooker acts as a controller as described in this policy.',
+  },
+  {
+    q: 'Does RingBooker sell my personal information?',
+    a: 'RingBooker does not sell personal information. Data is used to operate the service, improve reliability and safety, comply with law, and communicate with you about your account.',
+  },
+  {
+    q: 'What data is collected from demo calls?',
+    a: 'Demo flows may collect contact details and call-related metadata needed to place the demo and improve the product experience. Details are described in the sections above.',
+  },
+  {
+    q: 'How can I request access or deletion of my data?',
+    a: 'You can contact support@ringbooker.com for privacy requests. Depending on your location, you may have additional rights such as access, correction, deletion, or export.',
+  },
+  {
+    q: 'Where is data stored?',
+    a: 'Data is processed and stored using infrastructure providers with appropriate safeguards. The policy describes categories of data and purposes of use.',
+  },
+];
 
 export const metadata = buildMetadata({
   title: 'Privacy Policy',
@@ -120,6 +144,7 @@ export default function PrivacyPage() {
           ),
         },
       ]}
+      faqs={privacyPolicyFaqs}
     />
   );
 }

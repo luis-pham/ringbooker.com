@@ -3,7 +3,10 @@ import Link from 'next/link';
 
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { DEMO_VERTICAL_ORDER, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
+import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
+import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
+import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
 /** Hub-only copy: titles, one line, scenario chips (preview, not full prompt lists). */
 const DEMO_HUB: Record<
@@ -36,6 +39,31 @@ const DEMO_HUB: Record<
     chips: ['Treatment consult', 'Session plan', 'Pre-care', 'Reschedule'],
   },
 };
+
+const DEMO_HUB_FAQ_ITEMS: MarketingFaqItem[] = [
+  {
+    q: 'What is a RingBooker live web demo?',
+    a: 'It is a short outbound call to your phone using sample salon or clinic context so you can hear booking-style flows, tone, and pacing before you change anything on your live line.',
+  },
+  {
+    q: 'Does the demo change my business phone setup?',
+    a: 'No. Demos are web-only previews. Production setup uses call forwarding when you are ready, but nothing on your public number changes during the demo itself.',
+  },
+  {
+    q: 'How long does each demo take?',
+    a: 'Most demos take about two to three minutes. Pick the industry that matches your business and answer naturally, like a real caller would.',
+  },
+  {
+    q: 'Which industries have tailored demos?',
+    a: 'Nail salon, hair salon, day spa, med spa, and beauty clinic demos are available from this hub. Each uses different sample services and scenarios.',
+  },
+  {
+    q: 'What should I do after the demo?',
+    a: 'If it is a fit, you can start a free trial, review pricing, or book a walkthrough from the contact page for a deeper setup discussion.',
+  },
+];
+
+const demoHubFaqJsonLd = buildFaqPageJsonLd(DEMO_HUB_FAQ_ITEMS);
 
 function IndustryGlyph({ slug }: { slug: DemoVerticalSlug }) {
   const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.65, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
@@ -190,6 +218,7 @@ const styles = [
       .demo-hub-trust{flex-direction:column;align-items:stretch}
       .demo-hub-chip{justify-content:center}
     }
+    .demo-hub-faq{background:#fff;border-top:1px solid rgba(229,231,235,.85);padding:8px 0 24px}
   `,
 ];
 
@@ -286,8 +315,21 @@ export function MarketingDemoVerticalIndexTemplate() {
               </div>
             </div>
           </section>
+
+          <div className="demo-hub-faq">
+            <MarketingFaqAccordion
+              items={DEMO_HUB_FAQ_ITEMS}
+              eyebrow="Common Questions"
+              title="Live demo hub — quick answers"
+              subtitle={null}
+              embedded
+            />
+          </div>
         </main>
         <MarketingFooter />
+        {demoHubFaqJsonLd ? (
+          <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(demoHubFaqJsonLd) }} />
+        ) : null}
       </>
     </MarketingLayout>
   );

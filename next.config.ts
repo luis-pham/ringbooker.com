@@ -56,13 +56,23 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
 
-      { source: '/after-hours-calls', destination: '/phone-booking-recovery/after-hours-calls', permanent: true },
       {
-        source: '/peak-hour-overflow-calls',
-        destination: '/phone-booking-recovery/peak-hour-overflow-calls',
+        source: '/phone-booking-recovery',
+        destination: '/missed-booking-protection',
         permanent: true,
       },
-      { source: '/missed-call-recovery', destination: '/phone-booking-recovery/missed-call-recovery', permanent: true },
+      {
+        source: '/phone-booking-recovery/:path*',
+        destination: '/missed-booking-protection/:path*',
+        permanent: true,
+      },
+      { source: '/after-hours-calls', destination: '/missed-booking-protection/after-hours-calls', permanent: true },
+      {
+        source: '/peak-hour-overflow-calls',
+        destination: '/missed-booking-protection/peak-hour-overflow-calls',
+        permanent: true,
+      },
+      { source: '/missed-call-recovery', destination: '/missed-booking-protection/missed-call-recovery', permanent: true },
       { source: '/nail-salon', destination: '/industries/nail-salon', permanent: true },
       { source: '/hair-salon', destination: '/industries/hair-salon', permanent: true },
       { source: '/spa', destination: '/industries/spa', permanent: true },

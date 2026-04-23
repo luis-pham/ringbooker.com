@@ -42,7 +42,7 @@ export type ContentHubPageConfig = {
   };
 };
 
-export const phoneBookingRecoveryHub: ContentHubPageConfig = {
+export const missedBookingProtectionHub: ContentHubPageConfig = {
   variant: 'purple',
   badge: '📞 Pain-Point Hub',
   heroLayout: 'landing',
@@ -53,7 +53,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Missed Calls'),
   ),
   intro:
-    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Phone booking recovery captures that intent before it disappears into voicemail or a competitor call.',
+    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Missed booking protection captures that intent before it disappears into voicemail or a competitor call.',
   pills: [
     'After-hours calls captured',
     'Peak-hour overflow handled',
@@ -65,7 +65,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
     {
       kind: 'card_grid',
       html: { eyebrow: 'The Core Problem', cardGridStyle: 'leak', leakGridColumns: 4 },
-      heading: 'What “phone booking recovery” actually means',
+      heading: 'What “missed booking protection” actually means',
       sub: 'It is not just about answering calls. It is about recapturing booking opportunities and protecting revenue that would otherwise disappear when a caller hangs up or reaches voicemail.',
       cards: [
         {
@@ -86,7 +86,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
         {
           icon: '🔄',
           title: 'More than new bookings',
-          body: 'Recovery also covers reschedules, cancellations, service questions, and price inquiries — any intent lost when no one picks up.',
+          body: 'Missed booking protection also covers reschedules, cancellations, service questions, and price inquiries — any intent lost when no one picks up.',
         },
       ],
     },
@@ -94,7 +94,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
       kind: 'scenario_grid',
       html: { eyebrow: 'The 5 Loss Scenarios' },
       heading: 'Where beauty businesses lose bookings by phone',
-      sub: 'Five situations where booking loss happens most often — and where recovery makes the biggest difference.',
+      sub: 'Five situations where booking loss happens most often — and where missed booking protection makes the biggest difference.',
       items: [
         {
           icon: '🌙',
@@ -157,7 +157,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
         compareStripGridCols4: true,
       },
       heading: 'Why missed-call handling alone is not enough',
-      sub: 'Voicemail, text-back tools, and generic answering services each address part of the problem. None address the full booking recovery challenge.',
+      sub: 'Voicemail, text-back tools, and generic answering services each address part of the problem. None fully solve missed booking protection.',
       cards: [
         {
           icon: '📼',
@@ -185,7 +185,7 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
     {
       kind: 'feature_scenarios',
       html: { eyebrow: 'The RingBooker Approach', scenarioGrid2x2: true },
-      heading: 'How RingBooker fits into booking recovery',
+      heading: 'How RingBooker fits into missed booking protection',
       sub: 'RingBooker sits alongside your operations — not replacing them. It handles calls your team cannot reach so intent is not lost.',
       items: [
         {
@@ -214,8 +214,9 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
     },
   ],
   industryEyebrow: 'Explore by Industry',
-  industryHeading: 'Booking recovery by business type',
-  industrySub: 'Each beauty vertical has its own call patterns, peak times, and booking loss scenarios. See how recovery applies to your specific business.',
+  industryHeading: 'Missed booking protection by business type',
+  industrySub:
+    'Each beauty vertical has its own call patterns, peak times, and booking loss scenarios. See how missed booking protection applies to your specific business.',
   industryCards: [
     {
       emoji: '💅',
@@ -248,34 +249,34 @@ export const phoneBookingRecoveryHub: ContentHubPageConfig = {
       href: '/industries/beauty-clinic',
     },
   ],
-  /** Resource section headings — article list from DB in `app/phone-booking-recovery/page.tsx` (pathPrefix `phone-booking-recovery`). */
+  /** Resource section headings — article list from DB in `app/missed-booking-protection/page.tsx` (pathPrefix `missed-booking-protection`). */
   resourceEyebrow: 'In this hub',
-  resourceHeading: 'Explore booking recovery articles',
+  resourceHeading: 'Explore missed booking protection articles',
   resourceSub:
-    'Browse articles on missed calls, after-hours calls, peak-hour overflow, and booking recovery for beauty businesses.',
+    'Browse articles on missed calls, after-hours calls, peak-hour overflow, and missed booking protection for beauty businesses.',
   faqs: [
     {
-      q: 'What is phone booking recovery?',
-      a: 'Phone booking recovery is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients.',
+      q: 'What is missed booking protection?',
+      a: 'Missed booking protection is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients.',
     },
     {
-      q: 'Is booking recovery only for missed calls?',
+      q: 'Is missed booking protection only for missed calls?',
       a: 'No. It covers all situations where a caller’s intent is not captured: after-hours calls, overflow when staff are busy, voicemail dead ends, and callers who hang up before leaving a message.',
     },
     {
-      q: 'Does phone booking recovery help after-hours calls?',
+      q: 'Does missed booking protection help after-hours calls?',
       a: 'Yes. After-hours coverage is one of the most impactful use cases. RingBooker captures booking intent when the salon is closed and routes the information to your team for follow-up.',
     },
     {
-      q: 'Can booking recovery work alongside existing staff?',
+      q: 'Can missed booking protection work alongside existing staff?',
       a: 'Yes. RingBooker is designed to complement your team, not replace it. It handles the calls your staff cannot reach — not the calls they are already managing well.',
     },
     {
-      q: 'Is booking recovery different for nail salons vs. med spas?',
-      a: 'Yes. Nail salons often lose bookings during peak-hour overload; med spas are more vulnerable to after-hours consultation inquiries. Each vertical has its own call pattern and recovery approach.',
+      q: 'Is missed booking protection different for nail salons vs. med spas?',
+      a: 'Yes. Nail salons often lose bookings during peak-hour overload; med spas are more vulnerable to after-hours consultation inquiries. Each vertical has its own call pattern and approach to missed booking protection.',
     },
   ],
-  breadcrumbLabel: 'Phone booking recovery',
+  breadcrumbLabel: 'Missed booking protection',
   cta: {
     title: 'Ready to recover bookings you are losing today?',
     subtitle: 'See how RingBooker handles after-hours, overflow, and missed-call follow-up for your beauty business.',
@@ -902,7 +903,7 @@ export const compareHub: ContentHubPageConfig = {
           prefix: 'If your biggest issue is…',
           title: 'After-hours calls going to voicemail',
           body: 'Voicemail and text-back both fall short. You need something that answers and captures intent in real time.',
-          cta: { href: '/phone-booking-recovery', label: 'Booking recovery hub →' },
+          cta: { href: '/missed-booking-protection', label: 'Missed booking protection hub →' },
         },
         {
           prefix: 'If your biggest issue is…',

@@ -338,7 +338,7 @@ export function MarketingFooter() {
           </div>
           <div className="mk-footer-col">
             <h4>Solutions</h4>
-            <a href="/phone-booking-recovery">Booking Recovery</a>
+            <a href="/missed-booking-protection">Missed booking protection</a>
             <a href="/current-number">Current Number</a>
             <a href="/works-with">Works With</a>
             <a href="/compare">Compare</a>

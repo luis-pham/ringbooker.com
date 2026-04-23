@@ -108,7 +108,7 @@ export type BlogDetailJsonLd = {
 };
 
 /**
- * BlogPosting (+ optional FAQPage) for public article pages. Returns null when the post
+ * BlogPosting + Article (+ optional FAQPage) for public article pages. Returns null when the post
  * is not published (aligns with listing-only published posts; avoids schema for drafts).
  */
 export function buildBlogDetailJsonLd(post: PostWithRelations): BlogDetailJsonLd | null {
@@ -131,9 +131,10 @@ export function buildBlogDetailJsonLd(post: PostWithRelations): BlogDetailJsonLd
   const faqPairs = parseFaqPairsFromMarkdown(post.content ?? '');
   const wc = wordCountFromMarkdown(post.content ?? '');
 
+  /** `BlogPosting` is the specific type; `Article` is included so consumers expecting Article / CreativeWork also match. */
   const blogPosting: Record<string, unknown> = {
     '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
+    '@type': ['BlogPosting', 'Article'],
     headline: post.title,
     description: buildPostSeoDescription(post),
     url: canonicalUrl,

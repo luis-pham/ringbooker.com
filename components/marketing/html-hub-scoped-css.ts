@@ -220,7 +220,7 @@ export const HTML_HUB_SCOPED_CSS = `
   grid-template-columns:repeat(3,minmax(0,1fr));
 }
 
-/* Purple (phone booking recovery default) */
+/* Purple (missed booking protection hub default) */
 .html-hub-page--purple .hero{background:linear-gradient(160deg,#F5F3FF 0%,#ffffff 50%,#FDF2F8 100%)}
 .html-hub-page--purple .hero::before{background:radial-gradient(ellipse 60% 40% at 30% 20%,rgba(124,58,237,.06) 0%,transparent 70%),radial-gradient(ellipse 50% 35% at 75% 70%,rgba(236,72,153,.05) 0%,transparent 70%)}
 .html-hub-page--purple .pill-badge{background:var(--purple-bg);border:1px solid var(--purple-border);color:var(--purple)}
@@ -234,7 +234,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--green .hero h1 mark{background:var(--green);color:#fff}
 .html-hub-page--green .hero-tag::before{content:'✓';color:var(--green);font-weight:700}
 
-/* Teal / emerald — hero/blobs keep spa accents; page shell matches purple hub (white) so section bands read like /phone-booking-recovery */
+/* Teal / emerald — hero/blobs keep spa accents; page shell matches purple hub (white) so section bands read like /missed-booking-protection */
 .html-hub-page--teal{
   background:#fff;
 }
@@ -468,7 +468,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--amber .hub-cta-btn-white{color:#451a03}
 .html-hub-page--amber .hub-cta-btn-white .hub-cta-btn-white-arrow{color:#451a03}
 
-/* Trust — light landing + purple accents (same rhythm as phone-booking-recovery) */
+/* Trust — light landing + purple accents (same rhythm as missed-booking-protection) */
 .html-hub-page--trust{
   background:#fff;
 }
@@ -538,7 +538,7 @@ export const HTML_HUB_SCOPED_CSS = `
 
 /* Cards */
 .html-hub-page .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
-/* compare_strip: exactly four cards in one row (phone-booking-recovery “Gap” section) */
+/* compare_strip: exactly four cards in one row (missed-booking-protection “Gap” section) */
 .html-hub-page .hub-center-stack .card-grid.card-grid--cols-4{
   grid-template-columns:repeat(4,minmax(0,1fr));
   max-width:1100px;

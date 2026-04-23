@@ -3,7 +3,7 @@
 export const BLOG_PATH_PREFIXES = [
   'blog',
   'works-with',
-  'phone-booking-recovery',
+  'missed-booking-protection',
   'current-number',
   'industries',
   'industries/nail-salon',
@@ -20,7 +20,7 @@ export type BlogPathPrefix = (typeof BLOG_PATH_PREFIXES)[number];
 export const BLOG_PATH_PREFIX_LABEL: Record<BlogPathPrefix, string> = {
   blog: 'Blog',
   'works-with': 'Works with',
-  'phone-booking-recovery': 'Phone booking recovery',
+  'missed-booking-protection': 'Missed booking protection',
   'current-number': 'Current number',
   industries: 'Industries (general)',
   'industries/nail-salon': 'Industries — Nail salon',
@@ -51,7 +51,7 @@ export function postPublicPath(pathPrefix: string, slug: string): string {
 }
 
 /**
- * Public index URL for a post cluster (listing / hub), e.g. `blog` → `/blog`, `phone-booking-recovery` → `/phone-booking-recovery`.
+ * Public index URL for a post cluster (listing / hub), e.g. `blog` → `/blog`, `missed-booking-protection` → `/missed-booking-protection`.
  * Nested: `industries/nail-salon` → `/industries/nail-salon`.
  */
 export function pathPrefixToHubHref(pathPrefix: string): string {

@@ -109,7 +109,7 @@ test('buildBlogDetailJsonLd maps BlogPosting fields', () => {
   const post = sampleAuthorPost();
   const out = buildBlogDetailJsonLd(post);
   assert.ok(out);
-  assert.equal(out.blogPosting['@type'], 'BlogPosting');
+  assert.deepEqual(out.blogPosting['@type'], ['BlogPosting', 'Article']);
   assert.equal(out.blogPosting.headline, 'Test Article Title');
   assert.match(String(out.blogPosting.description ?? ''), /forty characters/);
   assert.equal(out.blogPosting.url, 'https://ringbooker.com/blog/test-slug');

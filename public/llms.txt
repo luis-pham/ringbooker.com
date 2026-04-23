@@ -71,10 +71,10 @@ Industry-specific demo pages:
 - [How It Works](https://ringbooker.com/how-it-works): Step-by-step explanation of setup and call flow
 - [Pricing](https://ringbooker.com/pricing): Plan details and free trial information
 - [FAQ](https://ringbooker.com/faq): Common questions about setup, integrations, billing, and call handling
-- [Phone Booking Recovery](https://ringbooker.com/phone-booking-recovery): Hub for after-hours, overflow, and missed-call recovery
-- [After-Hours Calls](https://ringbooker.com/phone-booking-recovery/after-hours-calls): How RingBooker handles calls outside business hours
-- [Peak-Hour Overflow](https://ringbooker.com/phone-booking-recovery/peak-hour-overflow-calls): Answering when the front desk is busy
-- [Missed-Call Recovery](https://ringbooker.com/phone-booking-recovery/missed-call-recovery): How RingBooker follows up on unanswered calls
+- [Missed Booking Protection](https://ringbooker.com/missed-booking-protection): Hub for after-hours, overflow, and missed-call follow-up
+- [After-Hours Calls](https://ringbooker.com/missed-booking-protection/after-hours-calls): How RingBooker handles calls outside business hours
+- [Peak-Hour Overflow](https://ringbooker.com/missed-booking-protection/peak-hour-overflow-calls): Answering when the front desk is busy
+- [Missed-Call Recovery](https://ringbooker.com/missed-booking-protection/missed-call-recovery): How RingBooker follows up on unanswered calls
 - [Contact](https://ringbooker.com/contact): Contact form and demo booking
 
 ## Vertical Landing Pages

@@ -90,11 +90,11 @@ export default function FaqPage() {
           <p>
             <Link href="/how-it-works">How RingBooker works</Link>
             {' · '}
-            <Link href="/phone-booking-recovery/after-hours-calls">After-hours call answering</Link>
+            <Link href="/missed-booking-protection/after-hours-calls">After-hours call answering</Link>
             {' · '}
-            <Link href="/phone-booking-recovery/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
+            <Link href="/missed-booking-protection/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
             {' · '}
-            <Link href="/phone-booking-recovery/missed-call-recovery">Missed-call recovery</Link>
+            <Link href="/missed-booking-protection/missed-call-recovery">Missed-call recovery</Link>
             {' · '}
             <Link href="/pricing">Pricing</Link>
             {' · '}

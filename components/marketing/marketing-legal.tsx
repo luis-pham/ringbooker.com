@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
+import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
 type LegalSection = {
   title: string;
@@ -13,6 +15,8 @@ type MarketingLegalPageProps = {
   subtitle: string;
   updatedAt: string;
   sections: LegalSection[];
+  /** Optional FAQ block + matching FAQPage JSON-LD (must mirror visible Q/A). */
+  faqs?: readonly MarketingFaqItem[];
 };
 
 export function MarketingLegalPage({
@@ -21,7 +25,10 @@ export function MarketingLegalPage({
   subtitle,
   updatedAt,
   sections,
+  faqs = [],
 }: MarketingLegalPageProps) {
+  const faqJsonLd = faqs.length > 0 ? buildFaqPageJsonLd(faqs) : null;
+
   return (
     <>
       <MarketingChromeStyles />
@@ -41,12 +48,28 @@ export function MarketingLegalPage({
             </article>
           ))}
         </section>
+
+        {faqs.length > 0 ? (
+          <div className="legal-faq-wrap">
+            <MarketingFaqAccordion
+              items={[...faqs]}
+              eyebrow="Common Questions"
+              title="Quick answers"
+              subtitle={null}
+              embedded
+            />
+          </div>
+        ) : null}
       </main>
       <MarketingFooter />
+      {faqJsonLd ? (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      ) : null}
       <style
         dangerouslySetInnerHTML={{
           __html: `
 .legal-shell{padding:112px 22px 72px;background:radial-gradient(ellipse 95% 58% at 50% 0%,#f3e8ff 0%,#ffffff 62%);}
+.legal-faq-wrap{max-width:900px;margin:0 auto;padding:0 22px 48px}
 .legal-hero{max-width:900px;margin:0 auto 28px;text-align:left}
 .legal-badge{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;border:1px solid rgba(124,58,237,.28);background:#f5f3ff;color:#6d28d9;font-size:var(--mk-eyebrow);font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-bottom:14px}
 .legal-hero h1{font-size:var(--mk-legal-h1);line-height:1.06;letter-spacing:var(--mk-legal-h1-track);color:#111827;margin:0 0 10px}

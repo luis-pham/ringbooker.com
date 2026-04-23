@@ -41,7 +41,7 @@ export const metadata = buildMetadata({
   title: 'After-Hours Call Answering for Salons | Recover Missed Bookings and Revenue',
   description:
     'RingBooker answers salon calls after hours, captures booking intent, and helps recover revenue that would otherwise go to voicemail or competitors.',
-  path: '/phone-booking-recovery/after-hours-calls',
+  path: '/missed-booking-protection/after-hours-calls',
 });
 
 export default function AfterHoursCallsPage() {
@@ -78,9 +78,9 @@ export default function AfterHoursCallsPage() {
       customContent={
         <div className="seo-internal-links">
           <p>
-            <Link href="/phone-booking-recovery/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
+            <Link href="/missed-booking-protection/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
             {' · '}
-            <Link href="/phone-booking-recovery/missed-call-recovery">Missed-call recovery</Link>
+            <Link href="/missed-booking-protection/missed-call-recovery">Missed-call recovery</Link>
             {' · '}
             <Link href="/how-it-works">How RingBooker works</Link>
             {' · '}
