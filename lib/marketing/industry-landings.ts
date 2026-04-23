@@ -41,12 +41,12 @@ const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; descrip
   'med-spa': {
     title: 'AI Phone Answering for Med Spas | After-Hours Consultation Calls | RingBooker',
     description:
-      'RingBooker helps med spas capture after-hours consultation calls, protect high-intent demand on the current number, and handle overflow without forcing a workflow reset.',
+      'RingBooker helps med spas capture after-hours consultation calls, handle front-desk overflow during treatment hours, and protect high-intent demand on the current number.',
   },
   'beauty-clinic': {
     title: 'Beauty Clinic AI Phone Answering | Aesthetic Clinic Missed Call Coverage | RingBooker',
     description:
-      'RingBooker helps beauty and aesthetic clinics capture consultation calls, reduce missed-call leakage, and handle overflow on the current number with a more professional caller experience.',
+      'RingBooker helps beauty and aesthetic clinics capture consultation calls, handle after-hours missed-call coverage on the current number, and deliver a more professional caller experience.',
   },
 };
 

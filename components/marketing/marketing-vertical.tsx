@@ -797,7 +797,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
             Med Spa Consultation Calls Should Not Go to Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Med spa buyers often research after hours, compare providers quickly, and call when intent is high. That makes consultation calls too valuable to lose to voicemail, a busy front desk, or a delayed callback. RingBooker helps med spas capture after-hours and overflow consultation intent on the current business number and hand off the right context when a human should close the consult.
+            RingBooker is AI phone answering for med spas that need better coverage for after-hours consultation calls and front-desk overflow during treatment hours. Med spa buyers often research after hours, compare providers quickly, and call when intent is high. RingBooker helps capture that consultation demand on your current number, preserve follow-up context, and keep high-intent inquiries from slipping into voicemail or delayed callbacks.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
@@ -892,6 +892,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* VS Table */}
       <VsTable
         accentClass={theme.accentClass}
+        heading="How med spa consultation calls get recovered"
         rows={[
           { scenario: 'After-hours Botox inquiry', without: 'Voicemail — lead cools', with: 'Consultation intent captured for follow-up or booking' },
           { scenario: 'Front desk busy during treatments', without: 'Phone rings out, caller hangs up', with: 'Answered and routed with consult context' },
@@ -1013,6 +1014,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* VS Table */}
       <VsTable
         accentClass={theme.accentClass}
+        heading="How missed beauty clinic calls get handled"
         rows={[
           { scenario: 'Returning patient books next laser session', without: 'Front desk unavailable — patient calls elsewhere', with: 'Provider preference and session context captured' },
           { scenario: 'After-hours pre-care question', without: 'No answer — patient anxious before treatment', with: 'Approved instructions shared or routed to your team' },
@@ -1107,12 +1109,12 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       a: 'Yes. RingBooker is a strong fit for after-hours consultation calls when a busy desk or voicemail would otherwise lose the inquiry.',
     },
     {
-      q: 'Can it capture Botox and filler consultation interest?',
-      a: 'Yes. RingBooker can capture treatment interest and consultation intent, then hand off context for the next step.',
+      q: 'Can RingBooker handle med spa front-desk overflow during treatment hours?',
+      a: 'Yes. RingBooker is a strong fit when the front desk is juggling check-in, checkout, and phone calls during active treatment windows.',
     },
     {
-      q: 'How does RingBooker help protect med spa revenue from missed calls?',
-      a: 'It helps capture high-intent consultation demand earlier, before it disappears into voicemail or a competitor call.',
+      q: 'Can it capture Botox, filler, or laser consultation interest?',
+      a: 'Yes. RingBooker can capture treatment interest and consultation intent, then hand off context for the next step.',
     },
     {
       q: 'Does it work on the existing med spa phone number?',
@@ -1130,15 +1132,15 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     },
     {
       q: 'Can RingBooker help with beauty clinic missed calls?',
-      a: 'Yes. It works well as a missed-call solution for consultation and follow-up intent, not just basic reception.',
+      a: 'Yes. It works well for missed consultation and follow-up calls, not just basic reception.',
     },
     {
       q: 'Can it capture consultation calls on our current number?',
       a: 'Yes. RingBooker works through the current business number, which keeps continuity for callers and staff.',
     },
     {
-      q: 'Does it handle pre-care and post-care questions?',
-      a: 'Yes. Approved pre-care and post-care information can be configured into response scripts. Questions requiring clinical judgment should be routed to your team.',
+      q: 'Can it help with aesthetic clinic post-treatment calls?',
+      a: 'Yes. It can help capture post-treatment questions and route approved follow-up information or handoff context to your team.',
     },
   ],
 };
