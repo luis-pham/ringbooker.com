@@ -92,6 +92,40 @@ async function verifyHs256Jwt(token: string, keyBytes: Uint8Array): Promise<JwtP
   return payload;
 }
 
+/** CMS `Post.redirectTo` — Next.js `permanentRedirect` only supports 308; middleware issues 301 here. */
+async function maybeBlogPostRedirect301(req: NextRequest): Promise<NextResponse | null> {
+  if (req.method !== 'GET') return null;
+  const pathname = req.nextUrl.pathname;
+  if (pathname.startsWith('/api/') || pathname.startsWith('/_next')) return null;
+
+  const segments = pathname.split('/').filter(Boolean);
+  if (segments.length < 2 || segments.length > 3) return null;
+  if (segments.length === 3 && segments[0] !== 'industries') return null;
+
+  const checkUrl = new URL('/api/internal/blog-post-redirect', req.nextUrl.origin);
+  checkUrl.searchParams.set('path', pathname);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(checkUrl, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { redirect?: unknown };
+    const target = data.redirect;
+    if (typeof target !== 'string' || !target.startsWith('/') || target.startsWith('//')) return null;
+    return NextResponse.redirect(new URL(target, req.url), 301);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function withSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
@@ -110,6 +144,10 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
+
+  const blog301 = await maybeBlogPostRedirect301(req);
+  if (blog301) return withSecurityHeaders(blog301);
+
   const isUserRoute = pathname.startsWith('/user');
   const isAdminRoute = pathname.startsWith('/admin');
   const isUserLogin = pathname === '/user/login';

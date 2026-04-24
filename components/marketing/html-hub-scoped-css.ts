@@ -1015,4 +1015,19 @@ export const HTML_HUB_SCOPED_CSS = `
     grid-template-columns:1fr!important;
   }
 }
+
+/* /compare index — hero: no pill on .hl; purple text only (readable on light landing hero). */
+.hub-compare-index h1.hero-h .hl{
+  display:inline;
+  background:none;
+  color:var(--purple);
+  border-radius:0;
+  padding:0;
+  margin:0;
+  max-width:none;
+  box-sizing:content-box;
+  line-height:inherit;
+  letter-spacing:inherit;
+  vertical-align:baseline;
+}
 `;

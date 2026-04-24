@@ -78,7 +78,7 @@ export default function FaqPage() {
       sections={[
         {
           heading: 'The short version',
-          content: [
+          paragraphs: [
             'RingBooker is a call recovery layer for beauty businesses: it answers after-hours and overflow calls, captures booking and consultation intent, sends missed-call text back, and summarizes outcomes for your team — so missed rings are less likely to become lost revenue.',
             'You keep your current phone number, keep your existing booking workflow, and use human handoff when the caller needs something your rules say a person should handle.',
           ],

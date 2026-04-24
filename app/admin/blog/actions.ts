@@ -1,11 +1,12 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { cookies } from 'next/headers';
 
 import { prisma } from '@/lib/prisma';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/src/backend/security/session';
 
+import { BLOG_POST_REDIRECT_CACHE_TAG } from '@/lib/blog/resolve-blog-post-redirect-from-pathname';
 import { normalizePostRedirectTo } from '@/lib/blog/post-redirect';
 
 import { postSchema, slugify, type PostFormData } from './post-schema';
@@ -101,6 +102,7 @@ function revalidateBlogPostPaths(opts: { slug: string; pathPrefix: string; oldSl
       revalidatePath(hubIndexPath(oldPref));
     }
   }
+  revalidateTag(BLOG_POST_REDIRECT_CACHE_TAG);
 }
 
 function parsePostSchema(data: PostFormData) {

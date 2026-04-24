@@ -39,7 +39,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
   const prefix = isBlogPathPrefix(pathPrefix.trim()) ? pathPrefix.trim() : 'blog';
   const post = await getPostByPathPrefixAndSlug(prefix, slug);
   if (!post) notFound();
-
+  /** Primary: middleware issues HTTP 301. Fallback here (308) if that path did not run. */
   if (post.status !== PostStatus.DRAFT) {
     const redirectTarget = resolvePostRedirectTargetOrNull(post.redirectTo, post.pathPrefix, post.slug);
     if (redirectTarget) permanentRedirect(redirectTarget);

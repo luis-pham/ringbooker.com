@@ -91,73 +91,58 @@ function buildPageHref({
 
 function FeaturedPost({ post }: { post: PostWithRelations }) {
   const category = post.categories[0]?.category;
-  const cover = post.coverImageUrl?.trim() ?? '';
+  const stats = (Array.isArray(post.coverStats) ? post.coverStats : []).slice(0, 3);
+
   return (
     <Link
       href={postPublicPath(post.pathPrefix, post.slug)}
-      className="mb-14 grid overflow-hidden rounded-3xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(0,0,0,.08)] lg:grid-cols-[1.15fr_1fr]"
+      className="mb-14 block overflow-hidden rounded-3xl border border-gray-200 bg-white px-7 py-8 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(0,0,0,.08)] sm:px-11 sm:py-10"
     >
-      <div className="relative flex min-h-[220px] flex-col justify-end bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95] p-9 lg:min-h-[340px]">
-        {cover ? (
-          <>
-            <img src={cover} alt={`Cover image: ${post.title}`} className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/40 to-black/25" />
-          </>
-        ) : (
-          <div className="absolute inset-0 overflow-hidden">
-            <span className="absolute right-10 top-5 h-60 w-60 rounded-full border border-white/10" />
-            <span className="absolute right-20 top-14 h-36 w-36 rounded-full bg-violet-400/20 blur-2xl" />
-          </div>
-        )}
-        <span className="relative z-10 mb-auto inline-flex w-fit items-center rounded-full border border-white/20 bg-white/15 px-3 py-1 text-xs font-bold text-white backdrop-blur">
-          🔥 Featured · {category?.name ?? 'Insights'}
-        </span>
-        <div className="relative z-10 flex flex-wrap gap-6">
-          {(Array.isArray(post.coverStats) ? post.coverStats : []).slice(0, 3).map((item, index) => {
+      <span className="mb-5 inline-flex w-fit items-center rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-bold text-brand-purple">
+        🔥 Featured · {category?.name ?? 'Insights'}
+      </span>
+      {stats.length > 0 ? (
+        <div className="mb-6 flex flex-wrap gap-8 border-b border-gray-100 pb-6">
+          {stats.map((item, index) => {
             if (!item || typeof item !== 'object') return null;
             const stat = item as { num?: unknown; label?: unknown };
             const num = typeof stat.num === 'string' ? stat.num : `${index + 1}`;
             const label = typeof stat.label === 'string' ? stat.label : 'Metric';
             return (
               <div className="text-center" key={`${num}-${label}-${index}`}>
-                <div className="text-3xl font-extrabold leading-none text-white">{num}</div>
-                <div className="mt-0.5 text-[10px] text-white/60">{label}</div>
+                <div className="text-2xl font-extrabold leading-none text-gray-900 sm:text-3xl">{num}</div>
+                <div className="mt-1 text-[11px] font-medium text-gray-400">{label}</div>
               </div>
             );
           })}
         </div>
-      </div>
-
-      <div className="flex flex-col justify-center px-7 py-8 sm:px-11">
-        <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-gray-400">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-brand-purple">
-            {category?.name ?? 'Article'}
-          </span>
-          <span className="h-1 w-1 rounded-full bg-gray-300" />
-          <span>{formatDate(post.publishedAt ?? post.createdAt)}</span>
-          <span className="h-1 w-1 rounded-full bg-gray-300" />
-          <span>{post.readTimeMin} min read</span>
-        </div>
-        <h2 className="mb-3 text-2xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-3xl">
-          {post.title}
-        </h2>
-        <p className="mb-6 text-sm leading-7 text-gray-500 sm:text-[15px]">{post.excerpt}</p>
-        <div className="mb-7 flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple to-pink-500 text-xs font-bold text-white">
-            {post.author.initials}
-          </span>
-          <div>
-            <div className="text-sm font-bold text-gray-900">{post.author.name}</div>
-            <div className="text-xs text-gray-400">{post.author.role}</div>
-          </div>
-        </div>
-        <span className="inline-flex w-fit items-center gap-2 rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white transition hover:scale-[1.03] hover:bg-gray-800">
-          Read Article
-          <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white">
-            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
-          </svg>
+      ) : null}
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-purple">
+          {category?.name ?? 'Article'}
         </span>
+        <span className="h-1 w-1 rounded-full bg-gray-300" />
+        <span>{formatDate(post.publishedAt ?? post.createdAt)}</span>
+        <span className="h-1 w-1 rounded-full bg-gray-300" />
+        <span>{post.readTimeMin} min read</span>
       </div>
+      <h2 className="mb-3 text-2xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-3xl">{post.title}</h2>
+      <p className="mb-6 text-sm leading-7 text-gray-500 sm:text-[15px]">{post.excerpt}</p>
+      <div className="mb-7 flex items-center gap-2.5">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple to-pink-500 text-xs font-bold text-white">
+          {post.author.initials}
+        </span>
+        <div>
+          <div className="text-sm font-bold text-gray-900">{post.author.name}</div>
+          <div className="text-xs text-gray-400">{post.author.role}</div>
+        </div>
+      </div>
+      <span className="inline-flex w-fit items-center gap-2 rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white transition hover:scale-[1.03] hover:bg-gray-800">
+        Read Article
+        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white">
+          <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+        </svg>
+      </span>
     </Link>
   );
 }
