@@ -535,6 +535,8 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .section h2{font-size:var(--mk-section-h2);font-weight:800;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);margin-bottom:16px;color:var(--navy)}
 .html-hub-page .section h3{font-size:18px;font-weight:700;margin-bottom:8px}
 .html-hub-page .section-sub{font-size:var(--mk-section-lead);color:var(--gray-600);max-width:600px;line-height:var(--mk-section-lead-lh);margin-bottom:48px}
+/* Visible entity definition (same rhythm as .section-sub; slightly stronger for extraction / scan) */
+.html-hub-page .hub-entity-definition{color:var(--gray-800);font-weight:500;margin-bottom:20px}
 .html-hub-page .section-dark h2{color:#fff}
 .html-hub-page .section-dark .section-sub{color:rgba(255,255,255,.65)}
 
@@ -579,7 +581,9 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .leak-card:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(124,58,237,.10);border-color:#DDD6FE}
 .html-hub-page .leak-icon{font-size:26px;margin-bottom:10px;text-align:center}
 .html-hub-page .leak-card h3{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px;text-align:center;color:#3F2A68}
+.html-hub-page .leak-card-stat{font-size:13px;font-weight:700;line-height:1.5;text-align:center;color:#1f2937;margin:0 0 10px;padding:0 2px}
 .html-hub-page .leak-card p{font-size:14px;color:var(--gray-600);line-height:1.7}
+.html-hub-page .card-stat{font-size:13px;font-weight:700;line-height:1.5;color:#1f2937;margin:0 0 10px}
 
 .html-hub-page .card-accent{border-top:3px solid var(--purple)}
 .html-hub-page .card-green{border-top:3px solid var(--green)}
@@ -608,6 +612,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .scenario:hover{box-shadow:var(--shadow)}
 .html-hub-page .scenario-icon{width:44px;height:44px;border-radius:10px;background:var(--purple-bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .html-hub-page .scenario h3{font-size:15px;font-weight:700;margin-bottom:4px;color:var(--navy)}
+.html-hub-page .scenario-stat{font-size:12px;font-weight:700;line-height:1.45;color:#1f2937;margin:0 0 8px}
 .html-hub-page .scenario p{font-size:13px;color:var(--gray-600);line-height:1.5}
 .html-hub-page .scenario .who{font-size:12px;color:var(--purple);font-weight:600;margin-top:6px}
 .html-hub-page .section-purple-soft .scenario{background:#fff}
@@ -950,20 +955,26 @@ export const HTML_HUB_SCOPED_CSS = `
   margin:0;
   padding:0;
 }
-.html-hub-page .html-hub-topic-nav-list li{display:inline-flex}
+.html-hub-page .html-hub-topic-nav-list li{display:inline-flex;flex-shrink:0}
+/* Long labels (e.g. Missed booking protection) wrap — keep same optical size as short pills */
 .html-hub-page .html-hub-topic-nav-list a{
   display:inline-flex;
   align-items:center;
+  justify-content:center;
   padding:10px 18px;
   border-radius:var(--radius-pill);
-  font-size:15px;
+  font-size:16px;
   font-weight:600;
+  line-height:1.3;
+  text-align:center;
   color:var(--gray-700);
   text-decoration:none;
   border:1px solid var(--border);
   background:#fff;
   box-shadow:0 1px 2px rgba(15,23,42,.04);
   transition:border-color .2s,color .2s,box-shadow .2s,transform .15s;
+  flex-shrink:0;
+  max-width:min(100%,22em);
 }
 .html-hub-page .html-hub-topic-nav-list a:hover{
   border-color:#C4B5FD;
@@ -975,7 +986,7 @@ export const HTML_HUB_SCOPED_CSS = `
 @media(max-width:640px){
   .html-hub-page .html-hub-topic-nav{padding:44px 20px 56px}
   .html-hub-page--landing-width .html-hub-topic-nav{padding-left:24px;padding-right:24px}
-  .html-hub-page .html-hub-topic-nav-list a{padding:9px 14px;font-size:14px}
+  .html-hub-page .html-hub-topic-nav-list a{padding:10px 16px;font-size:15px}
 }
 
 /* Text sections (legacy prose blocks) */

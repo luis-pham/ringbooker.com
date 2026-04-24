@@ -77,14 +77,23 @@ type ContentHubBlockCore =
   | {
       kind: 'card_grid';
       heading: string;
+      /** Plain definition under the heading (visible, not accordion) — e.g. for entity / AI citation. */
+      definition?: string;
       sub?: string;
-      cards: { icon: string; title: string; body: string }[];
+      cards: { icon: string; title: string; body: string; /** Optional data point / citation line above body */ stat?: string }[];
     }
   | {
       kind: 'scenario_grid';
       heading: string;
       sub?: string;
-      items: { icon: string; title: string; body: string; tag?: string }[];
+      items: {
+        icon: string;
+        title: string;
+        body: string;
+        tag?: string;
+        /** Optional cited data line (shown under title, above body). */
+        stat?: string;
+      }[];
     }
   | {
       kind: 'intent_stats';
@@ -368,6 +377,7 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                         {c.icon}
                       </div>
                       <h3>{c.title}</h3>
+                      {c.stat ? <p className="leak-card-stat">{c.stat}</p> : null}
                       <p>{c.body}</p>
                     </article>
                   ))}
@@ -378,6 +388,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <>
                   <HubEyebrow html={block.html} />
                   <h2>{block.heading}</h2>
+                  {block.definition ? (
+                    <p className="section-sub hub-entity-definition">{block.definition}</p>
+                  ) : null}
                   {block.sub ? <p className="section-sub">{block.sub}</p> : null}
                   {aboveEyebrow ? (
                     <div className="section-label section-label--between-rows">{aboveEyebrow}</div>
@@ -394,6 +407,9 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
               <>
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
+                {block.definition ? (
+                  <p className="section-sub hub-entity-definition">{block.definition}</p>
+                ) : null}
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
                 <div className="card-grid">
                   {block.cards.map((c) => (
@@ -402,6 +418,7 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                         {c.icon}
                       </div>
                       <h3>{c.title}</h3>
+                      {c.stat ? <p className="card-stat">{c.stat}</p> : null}
                       <p>{c.body}</p>
                     </div>
                   ))}
@@ -423,6 +440,7 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                       </div>
                       <div>
                         <h3>{s.title}</h3>
+                        {s.stat ? <p className="scenario-stat">{s.stat}</p> : null}
                         <p>{s.body}</p>
                         {s.tag ? <div className="who">{s.tag}</div> : null}
                       </div>
@@ -918,6 +936,15 @@ export function MarketingContentHub({
 }: MarketingContentHubProps) {
   const faqAccentResolved = faqAccent ?? (variant === 'green' || variant === 'teal' ? 'green' : 'purple');
 
+  const faqMainEntity = faqs.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.a,
+    },
+  }));
+
   const hubSeoJsonLd =
     seoHub != null
       ? (() => {
@@ -957,6 +984,14 @@ export function MarketingContentHub({
               ],
             });
           }
+          if (faqs.length > 0) {
+            graph.push({
+              '@type': 'FAQPage',
+              '@id': `${pageUrl}#faqpage`,
+              isPartOf: { '@id': `${pageUrl}#webpage` },
+              mainEntity: faqMainEntity,
+            });
+          }
           return {
             '@context': 'https://schema.org',
             '@graph': graph,
@@ -964,19 +999,13 @@ export function MarketingContentHub({
         })()
       : null;
 
+  /** Standalone FAQPage only when there is no `seoHub` graph (hubs merge FAQ into `hubSeoJsonLd`). */
   const faqJsonLd =
-    faqs.length > 0
+    faqs.length > 0 && seoHub == null
       ? {
           '@context': 'https://schema.org',
           '@type': 'FAQPage',
-          mainEntity: faqs.map((item) => ({
-            '@type': 'Question',
-            name: item.q,
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: item.a,
-            },
-          })),
+          mainEntity: faqMainEntity,
         }
       : null;
 

@@ -42,6 +42,10 @@ export type ContentHubPageConfig = {
   };
 };
 
+/** Same copy as FAQ “What is missed booking protection?” — also surfaced as visible body text for entity / AI citation. */
+const MISSED_BOOKING_PROTECTION_DEFINITION =
+  'Missed booking protection is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients.';
+
 export const missedBookingProtectionHub: ContentHubPageConfig = {
   variant: 'purple',
   badge: '📞 Pain-Point Hub',
@@ -53,7 +57,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Missed Calls'),
   ),
   intro:
-    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Missed booking protection captures that intent before it disappears into voicemail or a competitor call.',
+    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Beauty businesses lose an average of $26,000–$45,000 per year to missed calls and voicemail dead ends. Missed booking protection captures that intent before it disappears into voicemail or a competitor call.',
   pills: [
     'After-hours calls captured',
     'Peak-hour overflow handled',
@@ -66,7 +70,8 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
       kind: 'card_grid',
       html: { eyebrow: 'The Core Problem', cardGridStyle: 'leak', leakGridColumns: 4 },
       heading: 'What “missed booking protection” actually means',
-      sub: 'It is not just about answering calls. It is about recapturing booking opportunities and protecting revenue that would otherwise disappear when a caller hangs up or reaches voicemail.',
+      definition: MISSED_BOOKING_PROTECTION_DEFINITION,
+      sub: 'It is not just about answering calls — it is about protecting revenue that would otherwise disappear when a caller hangs up or reaches voicemail.',
       cards: [
         {
           icon: '📵',
@@ -99,30 +104,35 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
         {
           icon: '🌙',
           title: 'After-hours calls',
+          stat: '40% of beauty appointments booked outside business hours (SalonLife 2024)',
           body: 'Clients call in the evening or on days you are closed. Without anyone to answer, the booking intent disappears entirely.',
           tag: 'Heaviest impact: spas, day spas, beauty clinics',
         },
         {
           icon: '📈',
           title: 'Peak-hour overflow',
+          stat: '82% of missed calls happen during business hours (Zenoti 2025)',
           body: 'Saturday mornings, holiday rushes — staff are all with clients and the phone rings with no one free to answer.',
           tag: 'Heaviest impact: nail salons, hair salons',
         },
         {
           icon: '🖥️',
           title: 'Front-desk overload',
+          stat: '37% of all salon calls are missed (Zenoti 2025)',
           body: 'Checking someone in, running a card, and the phone rings — something gets dropped, usually the call.',
           tag: 'Heaviest impact: med spas, hair salons',
         },
         {
           icon: '⏳',
           title: 'Missed callback windows',
+          stat: '85% of voicemail callers never call back (Ambs Call Center 2025)',
           body: 'Voicemail leads to a callback hours later — often after the client has cooled off, tried online booking again, or called another provider.',
           tag: 'Heaviest impact: all verticals',
         },
         {
           icon: '📭',
           title: 'Voicemail dead ends',
+          stat: '$45,000 average annual loss to missed calls (Etisia 2026)',
           body: 'Many callers do not leave messages. The booking intent evaporates before your team can recover it.',
           tag: 'Heaviest impact: nail salons, day spas',
         },
@@ -132,7 +142,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
       kind: 'intent_stats',
       html: { eyebrow: 'What Callers Want' },
       heading: 'Common caller intents that get lost',
-      sub: 'It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up. The patterns below describe typical front-desk behavior, not a single survey statistic.',
+      sub: 'It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up. The stats row cites third-party research on caller and salon behavior.',
       intents: [
         { emoji: '📅', label: 'New appointment booking' },
         { emoji: '🔄', label: 'Reschedule request' },
@@ -144,9 +154,18 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
         { emoji: '📞', label: 'Follow-up call' },
       ],
       stats: [
-        { value: 'Often', label: 'Callers hang up instead of voicemail' },
-        { value: 'Fast', label: 'First response wins the booking' },
-        { value: 'Still', label: 'Phone calls drive real booking intent' },
+        {
+          value: '80%',
+          label: 'of callers who reach voicemail hang up without leaving a message (Ambs Call Center 2025)',
+        },
+        {
+          value: '77%',
+          label: 'of salon clients prefer calling to reschedule (Zenoti 2025)',
+        },
+        {
+          value: '37%',
+          label: 'of all salon calls are missed — 82% during business hours (Zenoti 2025)',
+        },
       ],
     },
     {
@@ -249,7 +268,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
       href: '/industries/beauty-clinic',
     },
   ],
-  /** Resource section headings — article list from DB in `app/missed-booking-protection/page.tsx` (pathPrefix `missed-booking-protection`). */
+  /** Resource section headings — links built in `app/missed-booking-protection/page.tsx`: three static solution pages first, then CMS posts (`pathPrefix` `missed-booking-protection`). */
   resourceEyebrow: 'In this hub',
   resourceHeading: 'Explore missed booking protection articles',
   resourceSub:
@@ -257,7 +276,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
   faqs: [
     {
       q: 'What is missed booking protection?',
-      a: 'Missed booking protection is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients.',
+      a: MISSED_BOOKING_PROTECTION_DEFINITION,
     },
     {
       q: 'Is missed booking protection only for missed calls?',
@@ -1004,14 +1023,12 @@ export const trustHub: ContentHubPageConfig = {
   title: createElement(
     Fragment,
     null,
-    'Built for',
+    'AI Phone Answering Built for ',
     createElement('br'),
-    createElement('span', { className: 'hl' }, 'Reliable Call Handling'),
-    createElement('br'),
-    'in Beauty Businesses',
+    createElement('span', { className: 'hl' }, 'Trust in Beauty Businesses'),
   ),
   intro:
-    'Trust isn’t a feature. It’s a requirement — especially for beauty businesses where every client interaction reflects on your reputation. Here’s exactly what RingBooker does, what it doesn’t claim, and how to start with confidence.',
+    "Trust isn't a feature — it's a requirement. 55% of salon clients and 71% of med spa clients are comfortable with AI phone handling when it's accurate and honest. Here's exactly what RingBooker does, what it doesn't, and how to start with confidence.",
   pills: [
     'Transparent expectations',
     'Human fallback control',
@@ -1034,11 +1051,13 @@ export const trustHub: ContentHubPageConfig = {
         {
           icon: '🎯',
           title: 'Consistency',
+          stat: '82% of consumers abandon businesses after a poor experience (Salesforce).',
           body: 'Every after-hours caller gets a clear response — not great sometimes and confusing other times.',
         },
         {
           icon: '🔍',
           title: 'Clarity',
+          stat: 'Maine Chatbot Disclosure Act 2025 — AI must identify itself.',
           body: 'RingBooker can identify as a virtual assistant — transparency with callers builds trust.',
         },
         {
@@ -1049,6 +1068,7 @@ export const trustHub: ContentHubPageConfig = {
         {
           icon: '📐',
           title: 'Realistic scope',
+          stat: '71% of med spa clients comfortable with AI when experience is accurate (Zenoti 2025).',
           body: 'Built for predictable workflows — not claiming perfect handling for every edge case.',
         },
       ],

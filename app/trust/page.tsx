@@ -11,7 +11,7 @@ const trustDescription =
   'How RingBooker approaches reliable AI phone answering for salons and spas: human fallback, phased rollout, and clear expectations.';
 
 export const metadata = buildMetadata({
-  title: 'Trust, Reliability & Human-Friendly AI | RingBooker',
+  title: 'AI Phone Answering for Salons — Honest, Reliable, Human-Friendly | RingBooker',
   description: trustDescription,
   path: '/trust',
 });
