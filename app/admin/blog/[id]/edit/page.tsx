@@ -66,6 +66,7 @@ export default async function AdminBlogEditPage({ params }: PageProps) {
     readTimeMin: post.readTimeMin,
     pathPrefix: isBlogPathPrefix(post.pathPrefix) ? post.pathPrefix : 'blog',
     footerCtas: parseStoredFooterCtas(post.footerCtas),
+    redirectTo: post.redirectTo ?? '',
   };
 
   async function saveAction(data: PostFormData) {

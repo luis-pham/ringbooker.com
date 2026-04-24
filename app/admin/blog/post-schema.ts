@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { BLOG_FOOTER_ARTICLE_KIND_IDS } from '@/lib/blog/footer-cta-templates';
-import { BLOG_PATH_PREFIXES, isReservedCompareBlogSlug } from '@/lib/blog/path-prefixes';
+import { normalizePostRedirectTo } from '@/lib/blog/post-redirect';
+import { BLOG_PATH_PREFIXES, isReservedCompareBlogSlug, postPublicPath } from '@/lib/blog/path-prefixes';
 
 const blogFooterArticleKindSchema = z.enum(BLOG_FOOTER_ARTICLE_KIND_IDS as unknown as [string, ...string[]]);
 const blogPathPrefixSchema = z.enum(BLOG_PATH_PREFIXES as unknown as [string, ...string[]]);
@@ -77,6 +78,18 @@ export const postSchema = z
       seen.add(row.kind);
     });
   }),
+  /** Empty, or same-site path starting with `/` (not `//…`). Visitors get a permanent redirect when the post is not a draft. */
+  redirectTo: z
+    .string()
+    .max(2048)
+    .refine(
+      (v) => {
+        const t = v.trim();
+        if (!t) return true;
+        return t.startsWith('/') && !t.startsWith('//') && !/[\x00-\x1f\x7f]/.test(t);
+      },
+      { message: 'Leave empty or use a site path starting with / (not //…)' },
+    ),
 })
   .superRefine((data, ctx) => {
     if (data.pathPrefix === 'compare' && isReservedCompareBlogSlug(data.slug)) {
@@ -85,6 +98,26 @@ export const postSchema = z
         message: 'This slug is reserved for a static page under /compare',
         path: ['slug'],
       });
+    }
+    const target = normalizePostRedirectTo(data.redirectTo);
+    if (target) {
+      try {
+        const pathname = new URL(target, 'https://placeholder.invalid').pathname;
+        const selfPath = postPublicPath(data.pathPrefix, data.slug.trim().toLowerCase());
+        if (pathname === selfPath) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Redirect cannot point to this post’s own URL',
+            path: ['redirectTo'],
+          });
+        }
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid redirect path',
+          path: ['redirectTo'],
+        });
+      }
     }
   });
 

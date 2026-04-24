@@ -119,6 +119,7 @@ export default async function AdminBlogPage(props: AdminBlogPageProps) {
       publishedAt: true,
       updatedAt: true,
       views: true,
+      redirectTo: true,
     },
   });
 
@@ -261,6 +262,11 @@ export default async function AdminBlogPage(props: AdminBlogPageProps) {
                 <td className="px-4 py-3">
                   <p className="font-semibold text-slate-900">{post.title}</p>
                   <p className="font-mono text-xs text-slate-500">{postPublicPath(post.pathPrefix, post.slug)}</p>
+                  {post.redirectTo?.trim() ? (
+                    <p className="mt-1 font-mono text-xs text-amber-800">
+                      → <span className="font-semibold">Redirect</span> to {post.redirectTo.trim()}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-xs text-slate-400">
                     Updated{' '}
                     {new Intl.DateTimeFormat('en-US', {

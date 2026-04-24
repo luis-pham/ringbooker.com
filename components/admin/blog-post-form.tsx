@@ -56,6 +56,7 @@ const defaultValues: PostFormData = {
   pathPrefix: 'blog',
   footerCtas: [],
   showInHub: true,
+  redirectTo: '',
 };
 
 export function BlogPostForm(props: BlogPostFormProps) {
@@ -209,6 +210,25 @@ export function BlogPostForm(props: BlogPostFormProps) {
                 Preview: {postPublicPath(pathPrefixWatch ?? 'blog', slugWatch)}
               </p>
             ) : null}
+          </label>
+
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="text-sm font-semibold text-slate-700">Redirect to (optional)</span>
+            <p className="mb-1.5 text-xs text-slate-500">
+              When set, visitors opening this post’s public URL get a permanent redirect to this path (same site only:
+              must start with <code className="rounded bg-slate-100 px-1">/</code>, not{' '}
+              <code className="rounded bg-slate-100 px-1">//</code>). Use for merged or moved articles — e.g. paste the
+              target article path like <code className="rounded bg-slate-100 px-1">/blog/new-slug</code> or{' '}
+              <code className="rounded bg-slate-100 px-1">/missed-booking-protection/other-slug</code>. Draft posts never
+              redirect until published. This post is hidden from public listings while a redirect is set.
+            </p>
+            <input
+              {...form.register('redirectTo')}
+              className="w-full max-w-2xl rounded-lg border border-slate-300 px-3 py-2 font-mono text-sm outline-none ring-brand-purple/30 transition focus:ring"
+              placeholder="/blog/target-slug"
+              autoComplete="off"
+            />
+            <FormError message={form.formState.errors.redirectTo?.message} />
           </label>
 
           <label className="space-y-1.5 md:col-span-2">

@@ -31,6 +31,8 @@ model Post {
   featured    Boolean    @default(false)
   /// When the post uses a hub `pathPrefix`, controls listing on that hub’s index (e.g. "In this hub" block).
   showInHub   Boolean    @default(true)
+  /// When set, published/archived public URL responds with a permanent redirect to this path (must start with `/`, same origin — not `//`).
+  redirectTo  String?    @db.Text
 
   authorId String
   author   Author @relation(fields: [authorId], references: [id], onDelete: Restrict)

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { PostStatus } from '@prisma/client';
 
 import { getAllPosts, getPostByPathPrefixAndSlug } from '@/lib/blog';
+import { resolvePostRedirectTargetOrNull } from '@/lib/blog/post-redirect';
 import { buildPostSeoDescription } from '@/lib/blog/post-seo-description';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { absoluteOgImageUrl, buildAlternates, defaultSiteOgImage, normalizeSeoTitle, siteConfig, siteOgImageEntry } from '@/lib/site';
@@ -13,7 +14,11 @@ export async function buildBlogPostMetadata(pathPrefix: string, slug: string): P
   const post = await getPostByPathPrefixAndSlug(pathPrefix, slug).catch(() => null);
   if (!post) return { title: 'Post Not Found' };
 
-  const path = postPublicPath(pathPrefix, post.slug);
+  const redirectPath =
+    post.status !== PostStatus.DRAFT
+      ? resolvePostRedirectTargetOrNull(post.redirectTo, post.pathPrefix, post.slug)
+      : null;
+  const path = redirectPath ?? postPublicPath(pathPrefix, post.slug);
   const canonicalUrl = new URL(path, siteConfig.url).toString();
 
   const cover = post.coverImageUrl?.trim();

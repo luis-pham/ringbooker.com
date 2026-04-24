@@ -67,6 +67,11 @@ function buildPostWhere(input: z.infer<typeof listOptionsSchema>): Prisma.PostWh
     ];
   }
 
+  /** URL-alias posts that only redirect should not appear in public listings. */
+  if (input.status === PostStatus.PUBLISHED) {
+    where.redirectTo = null;
+  }
+
   return where;
 }
 
@@ -144,7 +149,7 @@ export async function getPublishedPostsByPathPrefix(
   const limit = Math.min(Math.max(options?.limit ?? 48, 1), 100);
   try {
     const posts = await prisma.post.findMany({
-      where: { pathPrefix: raw, status: PostStatus.PUBLISHED, showInHub: true },
+      where: { pathPrefix: raw, status: PostStatus.PUBLISHED, showInHub: true, redirectTo: null },
       orderBy: [{ featured: 'desc' }, { publishedAt: 'desc' }, { createdAt: 'desc' }],
       take: limit,
       include: postInclude,
@@ -195,6 +200,7 @@ export async function getFeaturedPost(options?: { pathPrefix?: string }): Promis
       where: {
         featured: true,
         status: PostStatus.PUBLISHED,
+        redirectTo: null,
         ...(prefix ? { pathPrefix: prefix } : {}),
       },
       orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
@@ -227,6 +233,7 @@ export async function getRelatedPosts(
       where: {
         id: { not: parsedPostId },
         status: PostStatus.PUBLISHED,
+        redirectTo: null,
         ...(sameCluster ? { pathPrefix: sameCluster } : {}),
         OR: [
           { relatedFrom: { some: { id: parsedPostId } } },
@@ -266,7 +273,7 @@ export async function getAllCategories(options?: { pathPrefix?: string }): Promi
     const { pathPrefix } = categoriesListSchema.parse(options ?? {});
     const postInCluster: Prisma.PostWhereInput | undefined =
       pathPrefix && pathPrefix.length > 0
-        ? { pathPrefix, status: PostStatus.PUBLISHED }
+        ? { pathPrefix, status: PostStatus.PUBLISHED, redirectTo: null }
         : undefined;
 
     const categories = await prisma.category.findMany({
@@ -330,7 +337,7 @@ export async function getPublishedPostSitemapEntries(): Promise<Array<{ path: st
   }
   try {
     const posts = await prisma.post.findMany({
-      where: { status: PostStatus.PUBLISHED },
+      where: { status: PostStatus.PUBLISHED, redirectTo: null },
       select: { pathPrefix: true, slug: true, updatedAt: true },
     });
     return posts

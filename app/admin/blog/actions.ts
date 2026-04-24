@@ -6,6 +6,8 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from '@/src/backend/security/session';
 
+import { normalizePostRedirectTo } from '@/lib/blog/post-redirect';
+
 import { postSchema, slugify, type PostFormData } from './post-schema';
 
 async function assertAdminSession(): Promise<void> {
@@ -146,6 +148,7 @@ export async function createPost(data: PostFormData): Promise<{ id: string }> {
       coverImageUrl: normalizeCoverImageUrl(parsed.coverImageUrl),
       coverStats: normalizeCoverStats(parsed),
       footerCtas: normalizeFooterCtasJson(parsed),
+      redirectTo: normalizePostRedirectTo(parsed.redirectTo),
       authorId,
       publishedAt: parsed.status === 'PUBLISHED' ? new Date() : null,
       categories: {
@@ -202,6 +205,7 @@ export async function updatePost(id: string, data: PostFormData): Promise<void> 
         coverImageUrl: normalizeCoverImageUrl(parsed.coverImageUrl),
         coverStats: normalizeCoverStats(parsed),
         footerCtas: normalizeFooterCtasJson(parsed),
+        redirectTo: normalizePostRedirectTo(parsed.redirectTo),
         publishedAt:
           parsed.status === 'PUBLISHED' ? existingPost.publishedAt ?? new Date() : parsed.status === 'ARCHIVED' ? null : existingPost.publishedAt,
         categories: {

@@ -1,5 +1,7 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
+
+import { PostStatus } from '@prisma/client';
 
 import { BlogPostDefaultPageCta } from '@/components/blog/blog-post-page-cta-strip';
 import { PostFooterCtas } from '@/components/blog/post-footer-ctas';
@@ -12,6 +14,7 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 import { extractToc } from '@/lib/extractToc';
 import { buildBlogDetailJsonLd } from '@/lib/blog/blog-jsonld';
 import { getPostByPathPrefixAndSlug, getRelatedPosts, incrementPostViews } from '@/lib/blog';
+import { resolvePostRedirectTargetOrNull } from '@/lib/blog/post-redirect';
 import { parseStoredFooterCtas } from '@/lib/blog/footer-cta-templates';
 import {
   BLOG_PATH_PREFIX_LABEL,
@@ -36,6 +39,11 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
   const prefix = isBlogPathPrefix(pathPrefix.trim()) ? pathPrefix.trim() : 'blog';
   const post = await getPostByPathPrefixAndSlug(prefix, slug);
   if (!post) notFound();
+
+  if (post.status !== PostStatus.DRAFT) {
+    const redirectTarget = resolvePostRedirectTargetOrNull(post.redirectTo, post.pathPrefix, post.slug);
+    if (redirectTarget) permanentRedirect(redirectTarget);
+  }
 
   const categoryIds = post.categories.map((c) => c.categoryId);
   const relatedPosts = await getRelatedPosts(post.id, categoryIds, 3, { pathPrefix: post.pathPrefix });
