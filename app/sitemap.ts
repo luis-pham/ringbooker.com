@@ -30,17 +30,29 @@ const staticRoutes = [
   '/refund',
 ];
 
+function parseStaticSitemapLastMod(): Date {
+  const raw = process.env.SITEMAP_STATIC_LASTMOD?.trim();
+  if (raw) {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  /** When unset: generation time (typically build/deploy) so every URL still emits W3C `<lastmod>`. */
+  return new Date();
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const postEntries = await getPublishedPostSitemapEntries();
   const postPathToModified = new Map(postEntries.map((e) => [e.path, e.lastModified]));
+  const staticLastMod = parseStaticSitemapLastMod();
 
   const allPaths = [...new Set([...staticRoutes, ...postPathToModified.keys()])];
 
   return allPaths.map((route) => {
-    const lastModified = postPathToModified.get(route);
+    /** CMS posts: `Post.updatedAt`. Marketing/static routes: `SITEMAP_STATIC_LASTMOD` or generation time. */
+    const lastModified = postPathToModified.get(route) ?? staticLastMod;
     return {
       url: `${siteConfig.url}${route}`,
-      ...(lastModified ? { lastModified } : {}),
+      lastModified,
       changeFrequency: route === '' ? 'weekly' : 'monthly',
       priority:
         route === ''

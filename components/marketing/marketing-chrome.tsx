@@ -63,7 +63,7 @@ export function MarketingChromeStyles() {
 .mk-soc-btn svg{width:14px;height:14px;fill:#6B7280}
 .mk-soc-btn:hover svg{fill:#8B5CF6}
 .mk-footer-col h4{font-size:11.5px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px}
-.mk-footer-col a{display:block;font-size:13.5px;color:#6B7280;text-decoration:none;margin-bottom:10px;transition:color .2s}
+.mk-footer-col a{display:block;font-size:14px;color:#6B7280;text-decoration:none;margin-bottom:10px;transition:color .2s;line-height:1.45}
 .mk-footer-col a:hover{color:#111827}
 .mk-footer-bottom{border-top:1px solid #E5E7EB;padding-top:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px 28px}
 .mk-footer-bottom p,.mk-footer-copy,.mk-footer-tagline{font-size:14px;color:#9CA3AF;margin:0}

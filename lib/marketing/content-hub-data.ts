@@ -686,7 +686,8 @@ export const compareHub: ContentHubPageConfig = {
     Fragment,
     null,
     'Compare RingBooker With ',
-    createElement('span', { className: 'hl' }, 'Voicemail, Hiring, and Generic AI'),
+    /** No `span.hl` pill — purple accent only (see `.hub-compare-index h1 .hub-compare-hero-accent` in html-hub-scoped-css). */
+    createElement('strong', { className: 'hub-compare-hero-accent' }, 'Voicemail, Hiring, and Generic AI'),
   ),
   intro:
     'Most salons are not comparing AI with nothing. They are comparing voicemail, missed-call text back, answering services, extra front-desk help, and generic AI tools. This page helps beauty businesses compare those options against RingBooker’s beauty-specific phone answering for after-hours calls, peak-hour overflow, and missed booking protection.',

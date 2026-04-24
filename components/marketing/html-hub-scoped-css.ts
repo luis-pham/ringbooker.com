@@ -42,10 +42,12 @@ export const HTML_HUB_SCOPED_CSS = `
 /* Hairline (~1–2px) between nav and hero: pull first hero up so gradient overlaps padding band (subpixel + border). */
 .html-hub-page > .hero:first-child{margin-top:-2px;position:relative;z-index:0}
 
-.html-hub-page .breadcrumb{font-size:13px;color:var(--gray-400)}
-.html-hub-page .breadcrumb a{color:var(--gray-400);text-decoration:none}
+/* Breadcrumb: previous 13px read smaller than hero; bump base + emphasize current hub label */
+.html-hub-page .breadcrumb{font-size:15px;line-height:1.35;color:var(--gray-500)}
+.html-hub-page .breadcrumb a{color:var(--gray-500);text-decoration:none;font-weight:500}
 .html-hub-page .breadcrumb a:hover{color:var(--purple)}
-.html-hub-page .breadcrumb span{margin:0 6px}
+.html-hub-page .breadcrumb > span{margin:0 6px}
+.html-hub-page .breadcrumb > span:last-child{font-size:16px;font-weight:700;color:var(--gray-800)}
 .html-hub-page .hero .breadcrumb{margin:0 0 20px;padding:0;text-align:left;max-width:100%}
 
 /* ── Hero base ── */
@@ -954,7 +956,7 @@ export const HTML_HUB_SCOPED_CSS = `
   align-items:center;
   padding:10px 18px;
   border-radius:var(--radius-pill);
-  font-size:14px;
+  font-size:15px;
   font-weight:600;
   color:var(--gray-700);
   text-decoration:none;
@@ -973,7 +975,7 @@ export const HTML_HUB_SCOPED_CSS = `
 @media(max-width:640px){
   .html-hub-page .html-hub-topic-nav{padding:44px 20px 56px}
   .html-hub-page--landing-width .html-hub-topic-nav{padding-left:24px;padding-right:24px}
-  .html-hub-page .html-hub-topic-nav-list a{padding:9px 14px;font-size:13px}
+  .html-hub-page .html-hub-topic-nav-list a{padding:9px 14px;font-size:14px}
 }
 
 /* Text sections (legacy prose blocks) */
@@ -1016,18 +1018,9 @@ export const HTML_HUB_SCOPED_CSS = `
   }
 }
 
-/* /compare index — hero: no pill on .hl; purple text only (readable on light landing hero). */
-.hub-compare-index h1.hero-h .hl{
-  display:inline;
-  background:none;
+/* /compare index — hero accent: same purple as legacy .hl text-on-pill, no pill (title uses strong.hub-compare-hero-accent). */
+.hub-compare-index h1.hero-h .hub-compare-hero-accent{
   color:var(--purple);
-  border-radius:0;
-  padding:0;
-  margin:0;
-  max-width:none;
-  box-sizing:content-box;
-  line-height:inherit;
-  letter-spacing:inherit;
-  vertical-align:baseline;
+  font-weight:800;
 }
 `;
