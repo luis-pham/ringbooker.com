@@ -42,12 +42,12 @@ export const HTML_HUB_SCOPED_CSS = `
 /* Hairline (~1–2px) between nav and hero: pull first hero up so gradient overlaps padding band (subpixel + border). */
 .html-hub-page > .hero:first-child{margin-top:-2px;position:relative;z-index:0}
 
-/* Breadcrumb: keep one consistent size/weight across labels */
-.html-hub-page .breadcrumb{font-size:15px;line-height:1.35;color:var(--gray-600);font-weight:600}
-.html-hub-page .breadcrumb a{color:var(--gray-600);text-decoration:none;font-weight:600}
+/* Breadcrumb */
+.html-hub-page .breadcrumb{font-size:15px;line-height:1.35;color:var(--gray-500)}
+.html-hub-page .breadcrumb a{color:var(--gray-500);text-decoration:none;font-weight:500}
 .html-hub-page .breadcrumb a:hover{color:var(--purple)}
 .html-hub-page .breadcrumb > span{margin:0 6px}
-.html-hub-page .breadcrumb > span:last-child{font-size:inherit;font-weight:inherit;color:var(--gray-600)}
+.html-hub-page .breadcrumb > span:last-child{font-size:15px;font-weight:500;color:var(--gray-500)}
 .html-hub-page .hero .breadcrumb{margin:0 0 20px;padding:0;text-align:left;max-width:100%}
 
 /* ── Hero base ── */

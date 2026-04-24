@@ -723,9 +723,7 @@ export const compareHub: ContentHubPageConfig = {
     createElement('strong', { className: 'hub-compare-hero-accent' }, 'Voicemail, Hiring, and Generic AI'),
   ),
   intro:
-    "The average beauty business loses $126,000 annually to missed calls. Most salons are not comparing AI with nothing — they are comparing voicemail, missed-call text-back, answering services, extra front-desk help, and generic AI tools. This page helps beauty businesses compare those options against RingBooker's beauty-specific phone answering for after-hours calls, peak-hour overflow, and missed booking protection.",
-  heroEntityDefinition:
-    'What this page covers: A side-by-side comparison of every major phone coverage option for beauty businesses — voicemail, text-back, answering services, front-desk hiring, generic AI, and beauty-specific AI — across the criteria that actually matter for salons, spas, and med spas.',
+    "The average beauty business loses $126,000 annually to missed calls. This page compares every phone coverage option — voicemail, text-back, answering services, extra staff, and generic AI — against RingBooker's beauty-specific answering for after-hours calls, peak-hour overflow, and missed booking protection, across the criteria that actually matter for salons, spas, and med spas.",
   pills: [
     'Voicemail vs. AI',
     'Answering services',
