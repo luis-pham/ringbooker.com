@@ -564,7 +564,9 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
             Recover Hair Salon Revenue Lost During Services and Peak Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            While stylists are cutting or coloring, callers asking for preferred stylists, color slots, extensions, or reschedules cannot always get through. RingBooker covers those calls on your current number so revenue-bearing reschedules, stylist preferences, and color inquiries do not disappear into voicemail.
+            RingBooker is AI phone answering for hair salons — preferred stylist requests, color slot inquiries, and
+            reschedule calls covered on your current number. 37% of hair salon calls are missed, 82% during business
+            hours. 77% of clients still prefer calling to reschedule, even with online booking available.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
@@ -587,19 +589,19 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="text-amber-600"
         stats={[
           {
-            value: 'In-service',
-            label: 'Hard to answer mid-appointment',
-            sub: 'Color and extension visits run long — stylists often cannot break away when the phone rings.',
+            value: '37%',
+            label: 'of hair salon calls are missed — 82% during business hours',
+            sub: 'Zenoti 2025: most missed calls happen while stylists are mid-service, not after closing.',
           },
           {
-            value: 'High',
-            label: 'Reschedule urgency',
-            sub: 'When plans change, callers want a quick answer — voicemail often means they move on or book elsewhere.',
+            value: '77%',
+            label: 'of clients prefer calling to reschedule',
+            sub: 'Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel.',
           },
           {
-            value: 'Common',
-            label: 'Phone-first changes',
-            sub: 'Many clients still call to adjust timing or stylist preference — especially for longer services.',
+            value: '41%',
+            label: 'of US salon service revenue comes from color appointments',
+            sub: 'Kline via MUSE Data 2020: these longer services create the exact phone gaps where calls are missed.',
           },
         ]}
       />
