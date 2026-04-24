@@ -42,11 +42,41 @@ const blogIndexFaqJsonLd = buildFaqPageJsonLd(BLOG_INDEX_FAQ_ITEMS);
 const blogDescription =
   'Practical guides and tips for appointment-based businesses to capture more calls, book more appointments, and increase revenue with AI.';
 
-export const metadata: Metadata = buildMetadata({
-  title: 'Blog | Growth Resources',
-  description: blogDescription,
-  path: '/blog',
-});
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    category?: string;
+    search?: string;
+    page?: string;
+    cluster?: string;
+  }>;
+}): Promise<Metadata> {
+  const params = (await searchParams) ?? {};
+  const page = Number(params.page) > 0 ? Number(params.page) : 1;
+  const rawCluster = typeof params.cluster === 'string' ? params.cluster.trim() : '';
+  const listPathPrefix = isBlogPathPrefix(rawCluster) ? rawCluster : 'blog';
+  const clusterQuery = listPathPrefix === 'blog' ? undefined : listPathPrefix;
+
+  const titleStem =
+    listPathPrefix === 'blog'
+      ? 'Blog | Growth Resources'
+      : `${BLOG_PATH_PREFIX_LABEL[listPathPrefix]} | Growth Resources`;
+  const title = page > 1 ? `${titleStem} · Page ${page}` : titleStem;
+
+  const path = buildPageHref({
+    page,
+    category: params.category,
+    search: params.search,
+    cluster: clusterQuery,
+  });
+
+  return buildMetadata({
+    title,
+    description: blogDescription,
+    path,
+  });
+}
 
 interface BlogPageProps {
   searchParams?: Promise<{

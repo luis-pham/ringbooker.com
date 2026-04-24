@@ -4,10 +4,18 @@ import { PostStatus } from '@prisma/client';
 import { getAllPosts, getPostByPathPrefixAndSlug } from '@/lib/blog';
 import { resolvePostRedirectTargetOrNull } from '@/lib/blog/post-redirect';
 import { buildPostSeoDescription } from '@/lib/blog/post-seo-description';
-import { postPublicPath } from '@/lib/blog/path-prefixes';
+import { BLOG_PATH_PREFIX_LABEL, isBlogPathPrefix, postPublicPath } from '@/lib/blog/path-prefixes';
 import { absoluteOgImageUrl, buildAlternates, defaultSiteOgImage, normalizeSeoTitle, siteConfig, siteOgImageEntry } from '@/lib/site';
 
 const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+
+/** `<title>` segment after the post headline: cluster-specific instead of always "RingBooker Blog". */
+function titleSuffixForPostPathPrefix(pathPrefix: string): string {
+  const p = (pathPrefix || 'blog').trim().replace(/^\/+|\/+$/g, '') || 'blog';
+  if (p === 'blog') return `${siteConfig.name} Blog`;
+  if (isBlogPathPrefix(p)) return `${BLOG_PATH_PREFIX_LABEL[p]} | ${siteConfig.name}`;
+  return `${siteConfig.name} Blog`;
+}
 
 export async function buildBlogPostMetadata(pathPrefix: string, slug: string): Promise<Metadata> {
   if (!hasDatabaseUrl) return { title: 'RingBooker Blog' };
@@ -30,7 +38,7 @@ export async function buildBlogPostMetadata(pathPrefix: string, slug: string): P
 
   const description = buildPostSeoDescription(post);
 
-  const documentTitle = normalizeSeoTitle(`${post.title} | ${siteConfig.name} Blog`);
+  const documentTitle = normalizeSeoTitle(`${post.title} | ${titleSuffixForPostPathPrefix(post.pathPrefix)}`);
 
   return {
     metadataBase: new URL(siteConfig.url),
