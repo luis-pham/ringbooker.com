@@ -439,12 +439,10 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             Nail Salon Calls Get Missed Most During Busy Service Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            RingBooker is AI phone answering for nail salons that need help during busy service hours, after hours, and weekend overflow. It works on your current number, supports English and Vietnamese call flows, and helps capture booking intent before missed calls turn into lost revenue.
-          </p>
-          <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-slate-800">
-            What this page covers: nail-salon call-loss patterns (37% missed calls, 82% during business hours, and 80% no
-            voicemail), plus how RingBooker captures after-hours, overflow, pricing, and reschedule calls on your current
-            number without replacing your booking platform.
+            RingBooker is AI phone answering for nail salons — after hours, peak-hour overflow, and weekend rushes. Works
+            on your current number, supports English and Vietnamese call flows, and captures booking intent before missed
+            calls become lost revenue. 37% of nail salon calls are missed, 82% during business hours, and 80% of callers
+            never leave voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/nail-salon" className={theme.demoCtaClass}>
@@ -1154,90 +1152,6 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
 
 // ─── PAGE ASSEMBLY ─────────────────────────────────────────────────────────────
 
-const RELATED_LINKS_BY_VERTICAL: Partial<Record<MarketingVerticalKey, Array<{ href: string; label: string }>>> = {
-  'nail-salon': [
-    { href: '/works-with', label: 'See how RingBooker works with booking tools' },
-    { href: '/current-number', label: 'See how current-number setup works' },
-    { href: '/trust', label: 'See trust and handoff details' },
-  ],
-  'med-spa': [
-    { href: '/trust', label: 'See trust and handoff guardrails' },
-    { href: '/current-number', label: 'See how current-number rollout works' },
-    { href: '/compare', label: 'Compare RingBooker with other options' },
-  ],
-  'beauty-clinic': [
-    { href: '/trust', label: 'See trust and caller experience' },
-    { href: '/current-number', label: 'See how current-number setup works' },
-    { href: '/works-with', label: 'See booking tool compatibility' },
-  ],
-};
-
-function VerticalQuickLinks({ vertical }: { vertical: MarketingVerticalKey }) {
-  const links = RELATED_LINKS_BY_VERTICAL[vertical];
-  if (!links?.length) return null;
-  return (
-    <section
-      aria-label="Related RingBooker links"
-      className="mx-auto mt-12 max-w-3xl rounded-2xl border border-slate-200/80 bg-white/90 px-5 py-6 text-center shadow-sm backdrop-blur-sm sm:px-8"
-    >
-      <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">Explore next</p>
-      <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-[15px] leading-relaxed text-slate-600">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            className="font-semibold text-violet-700 no-underline decoration-transparent hover:text-violet-900 hover:no-underline"
-            href={link.href}
-          >
-            {link.label}
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function VerticalRelatedPlaybooks() {
-  const linkClass =
-    'font-semibold text-violet-700 no-underline decoration-transparent hover:text-violet-900 hover:no-underline';
-  return (
-    <section
-      aria-label="Related call recovery guides"
-      className="mx-auto mt-14 max-w-3xl rounded-2xl border border-slate-200/80 bg-white/90 px-5 py-6 text-center shadow-sm backdrop-blur-sm sm:px-8"
-    >
-      <p className="text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">Playbooks</p>
-      <p className="mt-2 text-[15px] leading-relaxed text-slate-600">
-        <Link className={linkClass} href="/missed-booking-protection/after-hours-calls">
-          After-hours call answering
-        </Link>
-        {' · '}
-        <Link className={linkClass} href="/missed-booking-protection/peak-hour-overflow-calls">
-          Peak-hour overflow coverage
-        </Link>
-        {' · '}
-        <Link className={linkClass} href="/missed-booking-protection/missed-call-recovery">
-          Missed-call recovery
-        </Link>
-        {' · '}
-        <Link className={linkClass} href="/how-it-works">
-          How it works
-        </Link>
-        {' · '}
-        <Link className={linkClass} href="/pricing">
-          Pricing
-        </Link>
-        {' · '}
-        <Link className={linkClass} href="/faq">
-          FAQ
-        </Link>
-        {' · '}
-        <Link className={linkClass} href="/contact">
-          Book a demo
-        </Link>
-      </p>
-    </section>
-  );
-}
-
 function VerticalHubArticles({
   vertical,
   links,
@@ -1363,10 +1277,8 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
         <PageBody vertical={vertical} />
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <VerticalHubArticles vertical={vertical} links={hubArticleLinks} />
-          <VerticalRelatedPlaybooks />
         </div>
         <Faq items={faq} />
-        <VerticalQuickLinks vertical={vertical} />
         <FinalCta
           demoPath={DEMO_PATH[vertical]}
           label={ctaMap[vertical].label}
