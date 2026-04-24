@@ -1152,6 +1152,29 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
 
 // ─── PAGE ASSEMBLY ─────────────────────────────────────────────────────────────
 
+const VERTICAL_HUB_COPY: Record<MarketingVerticalKey, { heading: string; sub: string }> = {
+  'nail-salon': {
+    heading: 'Nail salon guides and playbooks',
+    sub: 'Explore in-depth guides for missed calls, overflow windows, bilingual handling, and revenue recovery workflows built specifically for nail salons.',
+  },
+  'hair-salon': {
+    heading: 'Hair salon guides and playbooks',
+    sub: 'Explore practical guides for stylist-schedule calls, peak-hour overflow, color-service questions, and booking recovery workflows for hair salons.',
+  },
+  spa: {
+    heading: 'Spa and day spa guides',
+    sub: 'Explore treatment-aware phone coverage guides for couples bookings, package questions, after-hours demand, and missed-call recovery at spas.',
+  },
+  'med-spa': {
+    heading: 'Med spa call-handling guides',
+    sub: 'Explore consultation-first call handling, after-hours inquiry capture, overflow workflows, and trust-focused rollout guides for med spas.',
+  },
+  'beauty-clinic': {
+    heading: 'Beauty clinic call workflow guides',
+    sub: 'Explore clinic-ready guides for consultation calls, provider preference capture, after-hours demand, and handoff quality in beauty clinics.',
+  },
+};
+
 function VerticalHubArticles({
   vertical,
   links,
@@ -1159,18 +1182,14 @@ function VerticalHubArticles({
   vertical: MarketingVerticalKey;
   links: Array<{ href: string; label: string }>;
 }) {
-  if (vertical !== 'nail-salon' || links.length === 0) return null;
+  if (links.length === 0) return null;
+  const copy = VERTICAL_HUB_COPY[vertical];
   return (
     <section className="mt-12 rounded-3xl bg-slate-50 px-5 py-10 sm:px-8" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
         <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">In this hub</p>
-        <h2 className="text-[clamp(24px,3.2vw,34px)] font-extrabold tracking-tight text-slate-900">
-          Nail salon guides and playbooks
-        </h2>
-        <p className="mt-2 max-w-3xl text-[15px] leading-7 text-slate-600">
-          Explore in-depth guides for missed calls, overflow windows, bilingual handling, and revenue recovery workflows
-          built specifically for nail salons.
-        </p>
+        <h2 className="text-[clamp(24px,3.2vw,34px)] font-extrabold tracking-tight text-slate-900">{copy.heading}</h2>
+        <p className="mt-2 max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
           {links.map((link) => (
             <Link
