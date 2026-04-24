@@ -4,6 +4,8 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { CallPreviewPlayer, type CallLine } from '@/components/marketing/call-preview-player';
+import { getPublishedPostsByPathPrefix } from '@/lib/blog';
+import { postPublicPath } from '@/lib/blog/path-prefixes';
 
 export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic';
 
@@ -439,6 +441,11 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
             RingBooker is AI phone answering for nail salons that need help during busy service hours, after hours, and weekend overflow. It works on your current number, supports English and Vietnamese call flows, and helps capture booking intent before missed calls turn into lost revenue.
           </p>
+          <p className="mt-3 max-w-2xl text-[15px] font-medium leading-7 text-slate-800">
+            What this page covers: nail-salon call-loss patterns (37% missed calls, 82% during business hours, and 80% no
+            voicemail), plus how RingBooker captures after-hours, overflow, pricing, and reschedule calls on your current
+            number without replacing your booking platform.
+          </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/nail-salon" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
@@ -460,19 +467,19 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="text-violet-600"
         stats={[
           {
-            value: 'Peak',
-            label: 'Calls missed in service hours',
-            sub: 'When techs are with clients, the desk often cannot pick up — overflow and pricing calls roll to voicemail or the next shop.',
+            value: '37%',
+            label: 'of nail salon calls are missed',
+            sub: 'Zenoti 2025: missed-call volume is already high before you factor in overflow spikes.',
           },
           {
-            value: 'Rare',
-            label: 'Voicemail callbacks',
-            sub: 'Many nail clients move on quickly if they do not reach a live answer — especially for price and same-day availability.',
+            value: '82%',
+            label: 'happen during business hours',
+            sub: 'Zenoti 2025: most loss happens while you are open, when staff are busy with clients.',
           },
           {
-            value: 'Adds up',
-            label: 'Lost booking value',
-            sub: 'Even a few missed high-intent calls per week compounds — exact impact depends on your ticket size and call volume.',
+            value: '80%',
+            label: "of callers don't leave voicemail",
+            sub: 'Ambs Call Center 2025: silent hang-ups are common, so callbacks alone rarely recover demand.',
           },
         ]}
       />
@@ -1231,6 +1238,44 @@ function VerticalRelatedPlaybooks() {
   );
 }
 
+function VerticalHubArticles({
+  vertical,
+  links,
+}: {
+  vertical: MarketingVerticalKey;
+  links: Array<{ href: string; label: string }>;
+}) {
+  if (vertical !== 'nail-salon' || links.length === 0) return null;
+  return (
+    <section className="mt-12 rounded-3xl bg-slate-50 px-5 py-10 sm:px-8" aria-label="In this hub">
+      <div className="mx-auto max-w-5xl">
+        <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">In this hub</p>
+        <h2 className="text-[clamp(24px,3.2vw,34px)] font-extrabold tracking-tight text-slate-900">
+          Nail salon guides and playbooks
+        </h2>
+        <p className="mt-2 max-w-3xl text-[15px] leading-7 text-slate-600">
+          Explore in-depth guides for missed calls, overflow windows, bilingual handling, and revenue recovery workflows
+          built specifically for nail salons.
+        </p>
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-medium text-slate-800 no-underline transition hover:border-violet-300 hover:text-violet-700"
+            >
+              <span className="text-violet-600" aria-hidden>
+                →
+              </span>
+              {link.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PageBody({ vertical }: { vertical: MarketingVerticalKey }) {
   const theme = INDUSTRY_THEME[vertical];
   if (vertical === 'nail-salon') return <NailPage theme={theme} />;
@@ -1248,7 +1293,7 @@ const DEMO_PATH: Record<MarketingVerticalKey, string> = {
   'beauty-clinic': '/demo/beauty-clinic',
 };
 
-export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVerticalKey }) {
+export async function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVerticalKey }) {
   const theme = INDUSTRY_THEME[vertical];
   const faq = FAQ_BY_VERTICAL[vertical];
   const faqSchema = {
@@ -1261,6 +1306,9 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
     })),
   };
   const serviceConfig = SERVICE_BY_VERTICAL[vertical];
+  const pathPrefix = `industries/${vertical}`;
+  const hubPosts = await getPublishedPostsByPathPrefix(pathPrefix, { limit: 24 }).catch(() => []);
+  const hubArticleLinks = hubPosts.map((p) => ({ href: postPublicPath(p.pathPrefix, p.slug), label: p.title }));
   const serviceSchema = {
     '@context': 'https://schema.org',
     '@type': 'Service',
@@ -1314,6 +1362,7 @@ export function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVer
       <main className={`${theme.pageShellBg} pb-16 pt-28`}>
         <PageBody vertical={vertical} />
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <VerticalHubArticles vertical={vertical} links={hubArticleLinks} />
           <VerticalRelatedPlaybooks />
         </div>
         <Faq items={faq} />
