@@ -40,6 +40,10 @@ export type ContentHubPageConfig = {
     primary: { href: string; label: string };
     secondary?: { href: string; label: string };
   };
+  /** Plain paragraph directly under hero intro (entity / how-it-works for citations). */
+  heroEntityDefinition?: string;
+  /** 1–2 FAQ pairs shown as plain text above the accordion (same Q/A as in `faqs`). */
+  faqPinnedExcerpts?: ContentHubFaq[];
 };
 
 /** Same copy as FAQ “What is missed booking protection?” — also surfaced as visible body text for entity / AI citation. */
@@ -304,6 +308,16 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
   },
 };
 
+const CURRENT_NUMBER_FAQ_FORWARDING: ContentHubFaq = {
+  q: 'Can you forward salon calls to AI?',
+  a: 'Yes. RingBooker works through call forwarding, so your current salon number stays public while AI covers selected calls.',
+};
+
+const CURRENT_NUMBER_FAQ_REPLACE_SETUP: ContentHubFaq = {
+  q: 'Does this replace my current phone setup?',
+  a: 'No. RingBooker sits alongside your existing phone system. Your number, staff workflow, and desk setup stay in place.',
+};
+
 export const currentNumberHub: ContentHubPageConfig = {
   variant: 'teal',
   badge: '☎️ Objection Hub',
@@ -315,7 +329,10 @@ export const currentNumberHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Current Number'),
   ),
   intro:
-    'RingBooker works through call forwarding, so clients keep calling the number they already know. You do not need to change the number on your Google Business Profile, signage, cards, or booking links. Most businesses start with after-hours or overflow first, then expand once the workflow feels right.',
+    'Changing a business phone number creates NAP inconsistency across an average of 46+ online citations — including Google Business Profile, Yelp, Apple Maps, and directories clients use to find you. RingBooker works through call forwarding so none of that changes.',
+  heroEntityDefinition:
+    'How it works: RingBooker uses conditional call forwarding — your current number stays public and unchanged. Clients, Google Business Profile, and all your listings keep the same number. RingBooker activates only when your team cannot answer: after hours, during peak overflow, or when the desk is occupied.',
+  faqPinnedExcerpts: [CURRENT_NUMBER_FAQ_FORWARDING, CURRENT_NUMBER_FAQ_REPLACE_SETUP],
   pills: [
     'No number migration needed',
     'Works via call forwarding',
@@ -351,22 +368,25 @@ export const currentNumberHub: ContentHubPageConfig = {
         {
           icon: '👥',
           title: 'Clients already know it',
+          stat: '77% of salon clients prefer calling to reschedule — on the number they already have (Zenoti 2025)',
           body: 'Long-term clients have your number saved. Some still dial from memory. Changing it means re-educating everyone.',
         },
         {
           icon: '📍',
           title: 'It is across all your channels',
+          stat: 'Inconsistent NAP across listings reduces local search visibility significantly (BrightLocal)',
           body: 'Google Business Profile, Yelp, Instagram, cards, signage — one missed update hurts more than not changing at all.',
         },
         {
           icon: '🔀',
-          title: 'Staff are used to the workflow',
-          body: 'Your team knows which line to answer and how clients expect to be greeted. A new number disrupts routines.',
+          title: 'Local SEO consistency',
+          stat: '62% of local businesses have inconsistent NAP data online (BrightLocal 2023)',
+          body: 'When your name, address, and phone drift across directories, clients see conflicting information — and local search systems may treat inconsistent listings as less trustworthy.',
         },
         {
           icon: '🧪',
           title: 'You want to test first',
-          body: 'Keeping your number lets you trial AI coverage without a full operational reset.',
+          body: 'Keeping your number lets you trial AI coverage without a full operational reset. Your team keeps the same line, greeting, and habits clients expect — a new number disrupts that flow.',
         },
       ],
     },
@@ -384,7 +404,7 @@ export const currentNumberHub: ContentHubPageConfig = {
         {
           icon: '📍',
           title: 'What about my Google Business Profile listing?',
-          body: 'Your GBP number stays as-is. No listing changes; local SEO consistency is preserved.',
+          body: 'Google may flag your profile for re-verification when key contact information changes — temporarily reducing your visibility in local search during the review period. With RingBooker, your GBP number stays as-is: no listing changes, so local SEO consistency is preserved and that re-verification risk from a number change does not apply.',
         },
         {
           icon: '🪧',
@@ -466,10 +486,7 @@ export const currentNumberHub: ContentHubPageConfig = {
   resourceSub:
     'Explore articles about keeping your current business number, reducing rollout risk, and fitting RingBooker into your existing phone workflow.',
   faqs: [
-    {
-      q: 'Can you forward salon calls to AI?',
-      a: 'Yes. RingBooker works through call forwarding, so your current salon number stays public while AI covers selected calls.',
-    },
+    CURRENT_NUMBER_FAQ_FORWARDING,
     {
       q: 'How do I set up call forwarding for a nail salon?',
       a: 'Most salons start by forwarding after-hours or overflow calls first, then widen coverage once the setup is tested.',
@@ -478,10 +495,7 @@ export const currentNumberHub: ContentHubPageConfig = {
       q: 'Can I start with after-hours only?',
       a: 'Yes. That is one of the cleanest ways to test RingBooker without changing your daytime phone workflow.',
     },
-    {
-      q: 'Does this replace my current phone setup?',
-      a: 'No. RingBooker sits alongside your existing phone system. Your number, staff workflow, and desk setup stay in place.',
-    },
+    CURRENT_NUMBER_FAQ_REPLACE_SETUP,
     {
       q: 'Can I keep my number and my booking tools?',
       a: 'Yes. Keeping your current number and booking tools is the default. RingBooker complements what you already use.',
@@ -507,7 +521,7 @@ export const worksWithHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Booking Tools'),
   ),
   intro:
-    'RingBooker is the phone layer that sits alongside the booking tools your team already uses. Square Appointments is live today, while Vagaro, Booksy, Mindbody, and other tools can start with workflow-compatible call capture, summaries, and handoff. The goal is simple: no forced migration and no workflow reset just to protect missed calls.',
+    'RingBooker is the phone layer that sits alongside the booking tools your team already uses. Square Appointments is live today, while Vagaro, Booksy, Mindbody, and other tools can start with workflow-compatible call capture, summaries, and handoff. The goal is simple: no forced migration and no workflow reset just to protect missed calls. 77% of salon clients still prefer calling to reschedule — even when their booking platform has a self-service option. RingBooker covers those calls without changing the platform your team already runs. (Zenoti 2025)',
   pills: [
     'No system replacement required',
     'Start with call forwarding',
@@ -709,7 +723,9 @@ export const compareHub: ContentHubPageConfig = {
     createElement('strong', { className: 'hub-compare-hero-accent' }, 'Voicemail, Hiring, and Generic AI'),
   ),
   intro:
-    'Most salons are not comparing AI with nothing. They are comparing voicemail, missed-call text back, answering services, extra front-desk help, and generic AI tools. This page helps beauty businesses compare those options against RingBooker’s beauty-specific phone answering for after-hours calls, peak-hour overflow, and missed booking protection.',
+    "The average beauty business loses $126,000 annually to missed calls. Most salons are not comparing AI with nothing — they are comparing voicemail, missed-call text-back, answering services, extra front-desk help, and generic AI tools. This page helps beauty businesses compare those options against RingBooker's beauty-specific phone answering for after-hours calls, peak-hour overflow, and missed booking protection.",
+  heroEntityDefinition:
+    'What this page covers: A side-by-side comparison of every major phone coverage option for beauty businesses — voicemail, text-back, answering services, front-desk hiring, generic AI, and beauty-specific AI — across the criteria that actually matter for salons, spas, and med spas.',
   pills: [
     'Voicemail vs. AI',
     'Answering services',
@@ -878,6 +894,10 @@ export const compareHub: ContentHubPageConfig = {
           ],
         },
       ],
+      footnotes: [
+        '* More Staff: based on BLS median receptionist wage $17.90/hr x part-time 20hr/week + payroll tax = ~$23,400/year minimum.',
+        '** Generic AI: Smith.ai AI starts $95/50 calls; GoodCall $79/100 unique customers + $0.50 overage; AgentZap $109 + $399 setup + $0.85/min overage.',
+      ],
     },
     {
       kind: 'alt_link_grid',
@@ -909,6 +929,21 @@ export const compareHub: ContentHubPageConfig = {
           href: '/compare/ringbooker-vs-text-back-only/',
           title: 'RingBooker vs. Text-Back Only',
           body: 'Text-back re-engages silent callers — but it cannot complete a booking. Here is what happens in the gap between text-back and booked appointment.',
+        },
+        {
+          href: '/compare/ringbooker-vs-goodcall/',
+          title: 'RingBooker vs. GoodCall',
+          body: 'Real pricing data including GoodCall’s unique customer cap and number-porting limitation for beauty teams comparing long-term fit.',
+        },
+        {
+          href: '/compare/ringbooker-vs-bookingbee/',
+          title: 'RingBooker vs. BookingBee',
+          body: 'The two most directly comparable beauty-specific tools compared on pricing, Vietnamese support, and feature scope.',
+        },
+        {
+          href: '/compare/ringbooker-vs-agentzap/',
+          title: 'RingBooker vs. AgentZap',
+          body: 'First-year cost breakdown: $948 for RingBooker vs. $1,707 minimum for AgentZap, with coverage and workflow trade-offs.',
         },
       ],
     },

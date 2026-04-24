@@ -63,7 +63,7 @@ export function MarketingChromeStyles() {
 .mk-soc-btn svg{width:14px;height:14px;fill:#6B7280}
 .mk-soc-btn:hover svg{fill:#8B5CF6}
 .mk-footer-col h4{font-size:11.5px;font-weight:700;color:#111827;text-transform:uppercase;letter-spacing:.07em;margin-bottom:16px}
-.mk-footer-col a{display:block;font-size:14px;color:#6B7280;text-decoration:none;margin-bottom:10px;transition:color .2s;line-height:1.45}
+.mk-footer-col a{display:block;font-size:15px;font-weight:600;color:#4B5563;text-decoration:none;margin-bottom:10px;transition:color .2s;line-height:1.45;letter-spacing:-0.01em}
 .mk-footer-col a:hover{color:#111827}
 .mk-footer-bottom{border-top:1px solid #E5E7EB;padding-top:22px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px 28px}
 .mk-footer-bottom p,.mk-footer-copy,.mk-footer-tagline{font-size:14px;color:#9CA3AF;margin:0}
@@ -338,7 +338,7 @@ export function MarketingFooter() {
           </div>
           <div className="mk-footer-col">
             <h4>Solutions</h4>
-            <a href="/missed-booking-protection">Missed booking protection</a>
+            <a href="/missed-booking-protection">Missed Booking Protection</a>
             <a href="/current-number">Current Number</a>
             <a href="/works-with">Works With</a>
             <a href="/compare">Compare</a>

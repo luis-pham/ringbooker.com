@@ -42,12 +42,12 @@ export const HTML_HUB_SCOPED_CSS = `
 /* Hairline (~1–2px) between nav and hero: pull first hero up so gradient overlaps padding band (subpixel + border). */
 .html-hub-page > .hero:first-child{margin-top:-2px;position:relative;z-index:0}
 
-/* Breadcrumb: previous 13px read smaller than hero; bump base + emphasize current hub label */
-.html-hub-page .breadcrumb{font-size:15px;line-height:1.35;color:var(--gray-500)}
-.html-hub-page .breadcrumb a{color:var(--gray-500);text-decoration:none;font-weight:500}
+/* Breadcrumb: keep one consistent size/weight across labels */
+.html-hub-page .breadcrumb{font-size:15px;line-height:1.35;color:var(--gray-600);font-weight:600}
+.html-hub-page .breadcrumb a{color:var(--gray-600);text-decoration:none;font-weight:600}
 .html-hub-page .breadcrumb a:hover{color:var(--purple)}
 .html-hub-page .breadcrumb > span{margin:0 6px}
-.html-hub-page .breadcrumb > span:last-child{font-size:16px;font-weight:700;color:var(--gray-800)}
+.html-hub-page .breadcrumb > span:last-child{font-size:inherit;font-weight:inherit;color:var(--gray-600)}
 .html-hub-page .hero .breadcrumb{margin:0 0 20px;padding:0;text-align:left;max-width:100%}
 
 /* ── Hero base ── */
@@ -58,6 +58,15 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .hero h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:20px;color:var(--navy)}
 .html-hub-page .hero h1 mark{border-radius:12px;padding:2px 14px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 .html-hub-page .hero-sub{font-size:var(--mk-hero-lead);color:var(--gray-600);max-width:640px;margin:0 auto 36px;line-height:var(--mk-hero-lead-lh)}
+.html-hub-page .hero-entity-definition{
+  font-size:clamp(15px,1.5vw,16px);
+  font-weight:500;
+  line-height:1.65;
+  color:var(--gray-800);
+  max-width:640px;
+  margin:-12px auto 28px;
+  text-align:center;
+}
 .html-hub-page .hero-ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .html-hub-page .hero-tags{margin-top:40px;display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
 .html-hub-page .hero-tag{font-size:13px;color:var(--gray-600);display:flex;align-items:center;gap:6px}
@@ -82,6 +91,12 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .hero.hero--landing h1.hero-h{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-home-lh);letter-spacing:var(--mk-hero-title-home-track);color:var(--gray-800);margin-bottom:20px;word-break:break-word}
 .html-hub-page .hero.hero--landing h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--radius-pill);padding:0.12em 0.55em;margin:0.08em 0.12em;max-width:100%;box-sizing:border-box;line-height:1.2;vertical-align:baseline}
 .html-hub-page .hero.hero--landing .hero-sub{font-size:var(--mk-hero-lead);color:var(--gray-600);line-height:var(--mk-hero-lead-lh);max-width:min(640px,100%);margin:0 auto 36px;padding:0 12px}
+.html-hub-page .hero.hero--landing .hero-entity-definition{
+  max-width:min(680px,100%);
+  margin:-8px auto 28px;
+  padding:0 12px;
+  text-align:center;
+}
 .html-hub-page .hero.hero--landing .hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:0}
 .html-hub-page .hero.hero--landing .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:16px 34px;border-radius:var(--radius-pill);font-size:var(--mk-btn-lg);font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 36px rgba(91,33,182,.32);border:none;transition:transform .15s,filter .2s,box-shadow .2s;font-family:inherit;cursor:pointer;box-sizing:border-box}
 .html-hub-page .hero.hero--landing .btn-hero-live:hover{filter:brightness(1.06);transform:scale(1.04);box-shadow:0 14px 44px rgba(91,33,182,.38)}
@@ -756,6 +771,8 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .compare-table .cross{color:var(--red);font-weight:700}
 .html-hub-page .compare-table .partial{color:var(--amber);font-weight:700}
 .html-hub-page .section-sub--compare-matrix{margin-bottom:32px}
+.html-hub-page .compare-matrix-footnotes{max-width:980px;margin:14px auto 0;text-align:left}
+.html-hub-page .compare-matrix-footnotes p{margin:6px 0 0;font-size:12px;line-height:1.55;color:var(--gray-600)}
 
 /* Situation grid */
 .html-hub-page .situation-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
@@ -812,6 +829,30 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .article-link::before{content:'→';color:var(--purple);font-weight:700;font-size:16px;flex-shrink:0}
 .html-hub-page--green .article-link:hover{border-color:var(--green);color:var(--green)}
 .html-hub-page--green .article-link::before{color:var(--green)}
+
+/* FAQ — pinned excerpts (always visible; accordion below may repeat same Q/A) */
+.html-hub-page .hub-faq-pinned{
+  max-width:640px;
+  margin:0 auto 24px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  text-align:left;
+}
+.html-hub-page .hub-faq-pinned-item{
+  padding:16px 18px;
+  border-radius:var(--radius);
+  border:1px solid var(--border);
+  background:var(--gray-100);
+}
+.html-hub-page .hub-faq-pinned-q{
+  font-size:14px;
+  font-weight:700;
+  color:var(--navy);
+  margin:0 0 8px;
+  line-height:1.35;
+}
+.html-hub-page .hub-faq-pinned-a{font-size:14px;color:var(--gray-600);line-height:1.65;margin:0}
 
 /* FAQ */
 .html-hub-page .faq-list{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
@@ -956,16 +997,16 @@ export const HTML_HUB_SCOPED_CSS = `
   padding:0;
 }
 .html-hub-page .html-hub-topic-nav-list li{display:inline-flex;flex-shrink:0}
-/* Long labels (e.g. Missed booking protection) wrap — keep same optical size as short pills */
+/* Hub pills: one weight/size so short labels (e.g. Works with) do not read heavier than wrapped long labels */
 .html-hub-page .html-hub-topic-nav-list a{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   padding:10px 18px;
   border-radius:var(--radius-pill);
-  font-size:16px;
-  font-weight:600;
-  line-height:1.3;
+  font-size:15px;
+  font-weight:500;
+  line-height:1.35;
   text-align:center;
   color:var(--gray-700);
   text-decoration:none;
@@ -986,7 +1027,7 @@ export const HTML_HUB_SCOPED_CSS = `
 @media(max-width:640px){
   .html-hub-page .html-hub-topic-nav{padding:44px 20px 56px}
   .html-hub-page--landing-width .html-hub-topic-nav{padding-left:24px;padding-right:24px}
-  .html-hub-page .html-hub-topic-nav-list a{padding:10px 16px;font-size:15px}
+  .html-hub-page .html-hub-topic-nav-list a{padding:10px 16px;font-size:14px}
 }
 
 /* Text sections (legacy prose blocks) */

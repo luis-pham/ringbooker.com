@@ -175,6 +175,8 @@ type ContentHubBlockCore =
       /** First column = criterion; remaining = one header each (last column is RingBooker). */
       headers: string[];
       rows: { criterion: string; cells: CompareMatrixCell[] }[];
+      /** Optional footnotes shown under the table. */
+      footnotes?: string[];
     }
   | {
       kind: 'split_expectations';
@@ -197,6 +199,8 @@ export type MarketingContentHubProps = {
   badge: string;
   title: ReactNode;
   intro: string;
+  /** Visible plain text under intro — entity / how-it-works (optional). */
+  heroEntityDefinition?: string;
   pills?: string[];
   /** Optional hero CTAs (e.g. demo + how-it-works) */
   heroActions?: ReactNode;
@@ -210,6 +214,8 @@ export type MarketingContentHubProps = {
   resourceSub?: string;
   resourceLinks?: ContentHubResourceLink[];
   faqs: ContentHubFaq[];
+  /** Shown above accordion; use same Q/A as entries in `faqs` (optional, 1–2 items). */
+  faqPinnedExcerpts?: ContentHubFaq[];
   cta?: {
     title: string;
     subtitle: string;
@@ -809,6 +815,13 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                     </tbody>
                   </table>
                 </div>
+                {block.footnotes && block.footnotes.length > 0 ? (
+                  <div className="compare-matrix-footnotes" aria-label="Comparison notes">
+                    {block.footnotes.map((note, idx) => (
+                      <p key={`${idx}-${note.slice(0, 24)}`}>{note}</p>
+                    ))}
+                  </div>
+                ) : null}
               </div>,
             );
           case 'split_expectations':
@@ -910,6 +923,7 @@ export function MarketingContentHub({
   badge,
   title,
   intro,
+  heroEntityDefinition,
   pills = [],
   heroActions,
   sections,
@@ -923,6 +937,7 @@ export function MarketingContentHub({
   resourceLinks,
   resourceEyebrow,
   faqs,
+  faqPinnedExcerpts,
   faqEyebrow,
   faqTitle = 'Frequently Asked Questions',
   faqAccent,
@@ -1025,6 +1040,9 @@ export function MarketingContentHub({
               <div className="hero-inner">
                 <h1 className="hero-h">{title}</h1>
                 <p className="hero-sub">{intro}</p>
+                {heroEntityDefinition ? (
+                  <p className="hero-entity-definition">{heroEntityDefinition}</p>
+                ) : null}
                 {heroActions ? <div className="hero-btns">{heroActions}</div> : null}
                 {pills.length > 0 ? (
                   <div className="hero-tags">
@@ -1045,6 +1063,9 @@ export function MarketingContentHub({
               <div className="pill-badge">{badge}</div>
               <h1>{title}</h1>
               <p className="hero-sub">{intro}</p>
+              {heroEntityDefinition ? (
+                <p className="hero-entity-definition">{heroEntityDefinition}</p>
+              ) : null}
               {heroActions ? <div className="hero-ctas">{heroActions}</div> : null}
               {pills.length > 0 ? (
                 <div className="hero-tags">
@@ -1120,6 +1141,16 @@ export function MarketingContentHub({
                 </div>
               ) : null}
               <h2>{faqTitle}</h2>
+              {faqPinnedExcerpts && faqPinnedExcerpts.length > 0 ? (
+                <div className="hub-faq-pinned" aria-label="Key answers at a glance">
+                  {faqPinnedExcerpts.map((pin) => (
+                    <div className="hub-faq-pinned-item" key={pin.q}>
+                      <p className="hub-faq-pinned-q">{pin.q}</p>
+                      <p className="hub-faq-pinned-a">{pin.a}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <HtmlHubFaq items={faqs} accent={faqAccentResolved} />
             </div>
           </section>
@@ -1185,19 +1216,19 @@ export function MarketingContentHub({
             <p className="html-hub-topic-nav-eyebrow">Explore related hubs</p>
             <ul className="html-hub-topic-nav-list" role="list">
               <li>
-                <Link href="/missed-booking-protection">Missed booking protection</Link>
+                <Link href="/missed-booking-protection">Missed Booking Protection</Link>
               </li>
               <li>
-                <Link href="/current-number">Current number</Link>
+                <Link href="/current-number">Current Number</Link>
               </li>
               <li>
-                <Link href="/works-with">Works with</Link>
+                <Link href="/works-with">Works With</Link>
               </li>
               <li>
                 <Link href="/compare">Compare</Link>
               </li>
               <li>
-                <Link href="/trust">Trust &amp; reliability</Link>
+                <Link href="/trust">Trust &amp; Reliability</Link>
               </li>
             </ul>
           </div>
