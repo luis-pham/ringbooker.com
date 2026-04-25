@@ -221,7 +221,7 @@ function IntegrationRow() {
 
 function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
   return (
-    <div className="mx-auto mt-20 max-w-6xl px-6">
+    <div className="mx-auto mt-24 max-w-6xl px-6">
       <MarketingFaqAccordion
         items={items}
         embedded
@@ -244,7 +244,7 @@ function HowItWorks({
   heading?: string;
 }) {
   return (
-    <section className="mx-auto mt-20 max-w-6xl px-6">
+    <section className="mx-auto mt-24 max-w-6xl px-6">
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
       <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <p className="mx-auto mt-2 max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
@@ -267,7 +267,7 @@ function HowItWorks({
 type StatItem = { value: string; label: string; sub: string };
 function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
   return (
-    <section className="mx-auto mt-14 max-w-6xl px-6">
+    <section className="mx-auto mt-20 max-w-6xl px-6">
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((s) => (
           <article
@@ -287,7 +287,7 @@ function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
 type PainPoint = { icon?: string; title: string; body: string };
 function PainPoints({ points, heading }: { points: PainPoint[]; heading: string }) {
   return (
-    <section className="mx-auto mt-20 max-w-6xl px-6">
+    <section className="mx-auto mt-24 max-w-6xl px-6">
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Why Calls Get Missed</div>
       <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
@@ -317,7 +317,7 @@ function FeatureGrid({
   heading?: string;
 }) {
   return (
-    <section className="mx-auto mt-20 max-w-6xl px-6">
+    <section className="mx-auto mt-24 max-w-6xl px-6">
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">What RingBooker Does</div>
       <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -346,7 +346,7 @@ function VsTable({
   heading?: string;
 }) {
   return (
-    <section className="mx-auto mt-20 max-w-6xl px-6">
+    <section className="mx-auto mt-24 max-w-6xl px-6">
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Before vs. After</div>
       <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
@@ -398,7 +398,7 @@ function FinalCta({
   primaryBtnTextClass: string;
 }) {
   return (
-    <section className="mx-auto mt-20 max-w-6xl px-6 pb-10">
+    <section className="mx-auto mt-24 max-w-6xl px-6 pb-12">
       <div className={`relative overflow-hidden rounded-3xl px-8 py-14 text-center text-white md:px-14 ${shellGradientClass}`}>
         <div className="pointer-events-none absolute -right-8 -top-10 h-72 w-72 rounded-full bg-white/10" />
         <p className="relative text-[12px] font-bold uppercase tracking-[0.18em] text-white/70">{label}</p>
@@ -1197,7 +1197,7 @@ function VerticalHubArticles({
   if (links.length === 0) return null;
   const copy = VERTICAL_HUB_COPY[vertical];
   return (
-    <section className="mt-12 rounded-3xl bg-slate-50 px-5 py-10 sm:px-8" aria-label="In this hub">
+    <section className="mt-16 rounded-3xl bg-slate-50 px-5 py-12 sm:px-8" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
         <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">In this hub</p>
         <h2 className="text-[clamp(24px,3.2vw,34px)] font-extrabold tracking-tight text-slate-900">{copy.heading}</h2>
