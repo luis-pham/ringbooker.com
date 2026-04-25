@@ -685,7 +685,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
             After-Hours Spa Calls Should Not Turn Into Lost Revenue
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking revenue is not left sitting in voicemail.
+            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. 52% of spa customers hang up after just 3 minutes on hold. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking revenue is not left sitting in voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/day-spa" className={theme.demoCtaClass}>
@@ -708,18 +708,18 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="text-teal-600"
         stats={[
           {
-            value: 'Rooms full',
-            label: 'Desk unmanned during sessions',
-            sub: 'When every therapist is in treatment, the front line often cannot pick up — calls roll to voicemail.',
+            value: '82%',
+            label: 'of missed spa calls happen during business hours',
+            sub: "Therapists can't leave treatment rooms for calls, so demand is lost while your team is actively in service.",
           },
           {
-            value: 'Same-day',
-            label: 'First touch closes intent',
-            sub: 'Spa callers asking about packages or availability usually want resolution in one conversation.',
+            value: '52%',
+            label: 'of spa callers hang up after 3 minutes on hold',
+            sub: 'Spa callers asking about packages or availability want resolution in one conversation — not a long hold or voicemail.',
           },
           {
-            value: 'Evenings',
-            label: 'High-intent windows',
+            value: '30%',
+            label: "of spa bookings happen when you're closed",
             sub: 'Many people browse and call outside 9–5 — especially weekends — when your desk may be closed.',
           },
         ]}
@@ -759,6 +759,11 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           { icon: '🧖', title: 'Treatment-aware call scripts', body: 'Knows your service menu, durations, and room types so answers feel natural and accurate.' },
           { icon: '💑', title: 'Couples and group booking details', body: 'Captures guest count, preferred times, and room needs; checks availability when connected.' },
           { icon: '🌙', title: '24/7 call coverage', body: 'Captures evening, weekend, and after-hours calls when booking intent is highest.' },
+          {
+            icon: '📦',
+            title: 'Package and pricing call handling',
+            body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "What\'s included in the couples package?" RingBooker answers from your approved service menu — instantly, accurately, every time.',
+          },
           { icon: '📞', title: 'Current-number forwarding', body: 'Clients call the number they already know. No change from their perspective.' },
           { icon: '💬', title: 'SMS booking confirmations', body: 'Confirmation texts can go out after booking so clients have a clear next step.' },
           { icon: '🔔', title: 'Reminder workflows', body: 'Automated appointment reminders can help reduce last-minute confusion and no-shows.' },
@@ -783,6 +788,11 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           { scenario: 'After-hours package question', without: 'No answer, caller doesn\'t call back', with: 'Question answered, booking intent captured' },
           { scenario: 'Therapist-specific request', without: 'Staff unavailable to check', with: 'Preference captured and availability checked when connected' },
           { scenario: 'No-show risk reminder', without: 'No system in place', with: 'Reminder workflow available when configured' },
+          {
+            scenario: 'Gift certificate inquiry after hours',
+            without: 'No answer, caller books elsewhere',
+            with: 'Pricing confirmed, intent captured for morning follow-up',
+          },
         ]}
       />
     </>

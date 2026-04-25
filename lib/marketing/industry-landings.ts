@@ -26,27 +26,27 @@ const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; descrip
   'nail-salon': {
     title: 'AI Phone Answering for Nail Salons | English & Vietnamese Call Coverage | RingBooker',
     description:
-      'RingBooker helps nail salons answer English and Vietnamese calls, handle peak-hour overflow, and protect missed bookings on the current business number.',
+      'RingBooker answers pricing questions, walk-in availability, and Vietnamese call flows for nail salons — 37% of calls are missed during business hours — on the current number, no changes needed.',
   },
   'hair-salon': {
     title: 'AI Phone Answering for Hair Salons | RingBooker',
     description:
-      'RingBooker helps hair salons handle after-hours inquiries, peak-hour overflow, stylist requests, and missed booking calls without changing their current number.',
+      'RingBooker captures preferred stylist requests, color service inquiries, and reschedule calls for hair salons — 77% of clients still prefer calling over the app — on the current number without workflow changes.',
   },
   spa: {
-    title: 'AI Phone Answering for Spas | RingBooker',
+    title: 'AI Phone Answering for Day Spas — Couples Bookings, After Hours & Package Calls | RingBooker',
     description:
-      'RingBooker helps spas answer after-hours and overflow calls, capture package and appointment inquiries, and recover revenue from missed booking opportunities.',
+      "RingBooker answers couples massage inquiries, package questions, and after-hours spa calls on your current number — so 52% of callers don't hang up while therapists are in treatment.",
   },
   'med-spa': {
     title: 'AI Phone Answering for Med Spas | After-Hours Consultation Calls | RingBooker',
     description:
-      'RingBooker helps med spas capture after-hours consultation calls, handle front-desk overflow during treatment hours, and protect high-intent demand on the current number.',
+      'RingBooker captures consultation inquiries, after-hours calls, and peak-hour overflow for med spas on the current number — 3 missed calls per day can cost $130,000+ in annual revenue.',
   },
   'beauty-clinic': {
     title: 'Beauty Clinic AI Phone Answering | Aesthetic Clinic Missed Call Coverage | RingBooker',
     description:
-      'RingBooker helps beauty and aesthetic clinics capture consultation calls, handle after-hours missed-call coverage on the current number, and deliver a more professional caller experience.',
+      "RingBooker captures consultation calls and after-hours booking intent for beauty and aesthetic clinics on the current number — so high-value callers don't hit voicemail and book elsewhere.",
   },
 };
 
