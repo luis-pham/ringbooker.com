@@ -125,6 +125,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
                 <Link
                   key={entry.categoryId}
                   href={`/blog?category=${encodeURIComponent(entry.category.slug)}`}
+                  rel="nofollow"
                   className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700"
                 >
                   {entry.category.name}
@@ -266,6 +267,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
                 <Link
                   key={entry.tagId}
                   href={`/blog?search=${encodeURIComponent(entry.tag.name)}`}
+                  rel="nofollow"
                   className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-[12.5px] font-semibold text-gray-500 transition hover:border-brand-purple hover:text-brand-purple"
                 >
                   {entry.tag.name}

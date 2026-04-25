@@ -45,7 +45,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const postPathToModified = new Map(postEntries.map((e) => [e.path, e.lastModified]));
   const staticLastMod = parseStaticSitemapLastMod();
 
-  const allPaths = [...new Set([...staticRoutes, ...postPathToModified.keys()])];
+  /** Safety: never emit query-parameter URLs (e.g. `/blog?...`) in sitemap. */
+  const allPaths = [...new Set([...staticRoutes, ...postPathToModified.keys()])].filter((route) => !route.includes('?'));
 
   return allPaths.map((route) => {
     /** CMS posts: `Post.updatedAt`. Marketing/static routes: `SITEMAP_STATIC_LASTMOD` or generation time. */

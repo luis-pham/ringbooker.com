@@ -9,6 +9,7 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { getAllCategories, getAllPosts, getFeaturedPost } from '@/lib/blog';
+import { getBlogIndexSeoDirectives } from '@/lib/blog/blog-index-seo';
 import { BLOG_PATH_PREFIX_LABEL, isBlogPathPrefix, postPublicPath } from '@/lib/blog/path-prefixes';
 import { buildMetadata } from '@/lib/site';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
@@ -64,18 +65,20 @@ export async function generateMetadata({
       : `${BLOG_PATH_PREFIX_LABEL[listPathPrefix]} | Growth Resources`;
   const title = page > 1 ? `${titleStem} · Page ${page}` : titleStem;
 
-  const path = buildPageHref({
-    page,
-    category: params.category,
-    search: params.search,
-    cluster: clusterQuery,
-  });
-
-  return buildMetadata({
+  const baseMetadata = buildMetadata({
     title,
     description: blogDescription,
-    path,
+    path: '/blog',
   });
+  const seo = getBlogIndexSeoDirectives(params);
+  return {
+    ...baseMetadata,
+    robots: seo.robots,
+    alternates: {
+      ...baseMetadata.alternates,
+      canonical: seo.canonical,
+    },
+  };
 }
 
 interface BlogPageProps {
@@ -206,6 +209,7 @@ function BlogClusterStrip({
           <Link
             key={pathPrefix}
             href={href}
+            rel={href.includes('?') ? 'nofollow' : undefined}
             className={[
               'rounded-full border px-4 py-2 text-sm font-semibold leading-snug transition sm:text-[15px]',
               active
@@ -246,6 +250,7 @@ function Pagination({
     <div className="mx-auto mb-24 flex max-w-6xl items-center justify-center gap-2 px-6 md:px-12">
       <Link
         href={buildPageHref({ page: Math.max(1, page - 1), category, search, cluster })}
+        rel="nofollow"
         aria-disabled={page <= 1}
         className={[
           'inline-flex h-10 items-center gap-1 rounded-xl border border-gray-200 px-4 text-sm font-semibold',
@@ -264,6 +269,7 @@ function Pagination({
         <>
           <Link
             href={buildPageHref({ page: 1, category, search, cluster })}
+            rel="nofollow"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 transition hover:border-brand-purple hover:bg-brand-purple hover:text-white"
           >
             1
@@ -276,6 +282,7 @@ function Pagination({
         <Link
           key={p}
           href={buildPageHref({ page: p, category, search, cluster })}
+          rel="nofollow"
           className={[
             'flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold',
             p === page
@@ -292,6 +299,7 @@ function Pagination({
           <span className="px-1 text-sm text-gray-400">…</span>
           <Link
             href={buildPageHref({ page: totalPages, category, search, cluster })}
+            rel="nofollow"
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 transition hover:border-brand-purple hover:bg-brand-purple hover:text-white"
           >
             {totalPages}
@@ -301,6 +309,7 @@ function Pagination({
 
       <Link
         href={buildPageHref({ page: Math.min(totalPages, page + 1), category, search, cluster })}
+        rel="nofollow"
         aria-disabled={page >= totalPages}
         className={[
           'inline-flex h-10 items-center gap-1 rounded-xl border border-gray-200 px-4 text-sm font-semibold',

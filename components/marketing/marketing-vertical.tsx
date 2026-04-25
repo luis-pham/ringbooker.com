@@ -762,7 +762,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '📦',
             title: 'Package and pricing call handling',
-            body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "What\'s included in the couples package?" RingBooker answers from your approved service menu — instantly, accurately, every time.',
+            body: 'Your front desk answers the same questions dozens of times a week. RingBooker handles them from your approved service menu — instantly, every time.',
           },
           { icon: '📞', title: 'Current-number forwarding', body: 'Clients call the number they already know. No change from their perspective.' },
           { icon: '💬', title: 'SMS booking confirmations', body: 'Confirmation texts can go out after booking so clients have a clear next step.' },
