@@ -39,9 +39,9 @@ const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; descrip
       "RingBooker answers couples massage inquiries, package questions, and after-hours spa calls on your current number — so 52% of callers don't hang up while therapists are in treatment.",
   },
   'med-spa': {
-    title: 'AI Phone Answering for Med Spas | After-Hours Consultation Calls | RingBooker',
+    title: 'AI Phone Answering for Med Spas | Botox, Filler & Consultation Call Coverage | RingBooker',
     description:
-      'RingBooker captures consultation inquiries, after-hours calls, and peak-hour overflow for med spas on the current number — 3 missed calls per day can cost $130,000+ in annual revenue.',
+      'RingBooker captures Botox, filler, and aesthetic consultation calls for med spas — after hours, during treatments, on the current number. 3 missed calls/day costs $130,000+ annually.',
   },
   'beauty-clinic': {
     title: 'Beauty Clinic AI Phone Answering | Aesthetic Clinic Missed Call Coverage | RingBooker',

@@ -814,7 +814,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
             Med Spa Consultation Calls Should Not Go to Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            RingBooker is AI phone answering for med spas that need better coverage for after-hours consultation calls and front-desk overflow during treatment hours. Med spa buyers often research after hours, compare providers quickly, and call when intent is high. RingBooker helps capture that consultation demand on your current number, preserve follow-up context, and keep high-intent inquiries from slipping into voicemail or delayed callbacks.
+            RingBooker is AI phone answering for med spas that need better coverage for after-hours consultation calls and front-desk overflow during treatment hours. 3 missed consultation calls per day can cost $130,000+ in annual revenue. RingBooker helps capture that demand on your current number before it cools off or moves to a competitor.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
@@ -837,19 +837,19 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="text-indigo-600"
         stats={[
           {
-            value: 'High',
-            label: 'Ticket value at stake',
-            sub: 'Unfilled consult or treatment slots are costly for med spas — impact depends on your menu, pricing, and schedule density.',
+            value: '$130,000+',
+            label: 'annual revenue at risk',
+            sub: '3 missed consultation calls per day at a $600 average booking costs $130,000+ annually (Lani AI, March 2026). Unfilled slots are hard to fill same-day at med spa ticket values.',
           },
           {
-            value: 'Often',
-            label: 'Calls slip at the desk',
-            sub: 'Front desks juggle check-in, checkout, and phones — high-intent consult calls can be delayed or missed during peak treatment hours.',
+            value: '10–15/month',
+            label: 'high-value consult requests missed',
+            sub: 'Med spas miss 10–15 high-value consultation requests per month during treatment hours or after closing (NoLo Automation, 2025). Front desks juggle check-in, checkout, and phones simultaneously.',
           },
           {
-            value: 'After hours',
-            label: 'Research → call window',
-            sub: 'Many clients browse providers at night and call when they are ready — coverage outside desk hours helps capture that intent.',
+            value: '71% comfortable',
+            label: 'with AI call handling',
+            sub: '71% of med spa clients are comfortable with AI handling their calls — the highest comfort rate of any beauty vertical (Zenoti, 2025). Many research at night and call when ready — coverage outside desk hours captures that intent.',
           },
         ]}
       />
@@ -861,7 +861,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '💸',
             title: 'Missed consultation calls can become lost demand',
-            body: 'At a med spa, a missed call is often a high-intent consultation inquiry. If that first contact goes to voicemail, the caller may cool off or contact another provider.',
+            body: 'At a med spa, a missed call is often a high-intent consultation inquiry. At a $600 average consultation value and 30% conversion rate, 3 missed calls per day represents $130,000+ in annual lost revenue (Lani AI, March 2026). If that first contact goes to voicemail, the caller may cool off or contact another provider.',
           },
           {
             icon: '😰',
@@ -871,7 +871,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '🌙',
             title: 'After-hours research intent is your biggest opportunity',
-            body: 'Med spa clients often research at night and call first thing in the morning — or late in the evening after work. An answering layer helps capture that intent before it cools off.',
+            body: 'Med spa clients often research at night — 53% say paid social is their #1 discovery channel (American Med Spa Association, 2025), and they call when ready. An answering layer captures that intent before it cools off.',
           },
           {
             icon: '⚠️',
