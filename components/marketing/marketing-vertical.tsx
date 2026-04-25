@@ -839,17 +839,17 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             value: '$130,000+',
             label: 'annual revenue at risk',
-            sub: '3 missed consultation calls per day at a $600 average booking costs $130,000+ annually (Lani AI, March 2026). Unfilled slots are hard to fill same-day at med spa ticket values.',
+            sub: '3 missed consultation calls per day costs $130,000+ annually at med spa ticket values. (Lani AI, March 2026)',
           },
           {
             value: '10–15/month',
             label: 'high-value consult requests missed',
-            sub: 'Med spas miss 10–15 high-value consultation requests per month during treatment hours or after closing (NoLo Automation, 2025). Front desks juggle check-in, checkout, and phones simultaneously.',
+            sub: 'Med spas miss 10–15 consultation requests monthly — during treatment hours and after closing, when the desk cannot answer. (NoLo Automation, 2025)',
           },
           {
-            value: '71% comfortable',
+            value: '71%',
             label: 'with AI call handling',
-            sub: '71% of med spa clients are comfortable with AI handling their calls — the highest comfort rate of any beauty vertical (Zenoti, 2025). Many research at night and call when ready — coverage outside desk hours captures that intent.',
+            sub: '71% of med spa clients are comfortable with AI answering their calls — the highest of any beauty vertical. (Zenoti, 2025)',
           },
         ]}
       />
