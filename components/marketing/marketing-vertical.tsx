@@ -861,7 +861,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '💸',
             title: 'Missed consultation calls can become lost demand',
-            body: 'At a med spa, a missed call is often a high-intent consultation inquiry. At a $600 average consultation value and 30% conversion rate, 3 missed calls per day represents $130,000+ in annual lost revenue (Lani AI, March 2026). If that first contact goes to voicemail, the caller may cool off or contact another provider.',
+            body: 'At $600 average consultation value, 3 missed calls per day represents $130,000+ in annual lost revenue. (Lani AI, March 2026). If that first contact goes to voicemail, the caller may contact another provider.',
           },
           {
             icon: '😰',
@@ -871,7 +871,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '🌙',
             title: 'After-hours research intent is your biggest opportunity',
-            body: 'Med spa clients often research at night — 53% say paid social is their #1 discovery channel (American Med Spa Association, 2025), and they call when ready. An answering layer captures that intent before it cools off.',
+            body: '53% of med spas say paid social is their #1 discovery channel (AmSpa, 2025) — and those leads call after hours. An answering layer captures that intent before it cools off.',
           },
           {
             icon: '⚠️',
