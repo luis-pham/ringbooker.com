@@ -66,6 +66,21 @@ function IconQuickSettings() {
   );
 }
 
+function IconExternalSmall() {
+  return (
+    <svg viewBox="0 0 16 16" width={12} height={12} aria-hidden>
+      <path
+        d="M6 3h7v7M13 3 5 11"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 /** Top 3 US wireless carriers — official call forwarding help (education only). */
 const US_BIG3_CALL_FORWARDING_GUIDES = [
   {
@@ -244,7 +259,7 @@ export function UserDashboardLive() {
                     <span className="carrier-link-row">
                       <strong>{row.name}</strong>
                       <span className="ext-ico" aria-hidden>
-                        ↗
+                        <IconExternalSmall />
                       </span>
                     </span>
                     <span className="carrier-hint carrier-hint-single">{row.hint}</span>

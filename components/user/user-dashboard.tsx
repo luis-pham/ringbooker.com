@@ -135,7 +135,12 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 .carrier-hint-single{display:block;margin-top:2px}
 .carrier-callcenter-tip{margin-top:12px;padding:12px 14px;border-radius:16px;border:1px dashed #e5e7eb;background:#fafafa}
 .carrier-tip-line{margin:0;font-size:12.5px;line-height:1.55;color:var(--text-gray)}
-.ext-ico{font-size:12px;color:var(--text-light);font-weight:700}
+.ext-ico{
+  width:12px;height:12px;
+  display:inline-flex;align-items:center;justify-content:center;
+  color:var(--text-light);flex-shrink:0;
+}
+.ext-ico svg{display:block;width:12px;height:12px}
 .forward-guide-disclaimer{margin:14px 0 0;font-size:11px;color:var(--text-light);line-height:1.5}
 
 .card,.stat-card{
