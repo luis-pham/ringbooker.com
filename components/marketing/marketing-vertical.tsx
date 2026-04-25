@@ -228,6 +228,7 @@ function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
         eyebrow="Common Questions"
         title="Frequently Asked Questions"
         subtitle={null}
+        openFirstItem
       />
     </div>
   );
@@ -565,8 +566,9 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
             RingBooker is AI phone answering for hair salons — preferred stylist requests, color slot inquiries, and
-            reschedule calls covered on your current number. 37% of hair salon calls are missed, 82% during business
-            hours. 77% of clients still prefer calling to reschedule, even with online booking available.
+            reschedule calls — for multi-chair salons, solo stylists, and booth renters — on your current number. 37%
+            of hair salon calls are missed, 82% during business hours. 77% of clients still prefer calling to
+            reschedule, even with online booking available.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
@@ -613,7 +615,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '✂️',
             title: 'Stylists can\'t answer while in-service',
-            body: 'A colorist mid-application can\'t stop for a 5-minute call. Neither can a stylist during a cut. But callers don\'t know that — they just hear the phone ring and ring, then hang up.',
+            body: 'Most missed calls happen Saturday mornings and weekday lunch rushes when every stylist is mid-service and the desk is managing walk-ins simultaneously. A colorist mid-application can\'t stop for a 5-minute call, and callers who hear ringing usually move on fast.',
           },
           {
             icon: '👩‍🎨',
@@ -756,7 +758,11 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-teal-50 text-teal-600"
         features={[
-          { icon: '🧖', title: 'Treatment-aware call scripts', body: 'Knows your service menu, durations, and room types so answers feel natural and accurate.' },
+          {
+            icon: '🧖',
+            title: 'Treatment-aware call scripts',
+            body: 'Knows your service menu, durations, room types, and prenatal massage policies so answers feel natural and accurate.',
+          },
           { icon: '💑', title: 'Couples and group booking details', body: 'Captures guest count, preferred times, and room needs; checks availability when connected.' },
           { icon: '🌙', title: '24/7 call coverage', body: 'Captures evening, weekend, and after-hours calls when booking intent is highest.' },
           {
@@ -788,6 +794,11 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           { scenario: 'After-hours package question', without: 'No answer, caller doesn\'t call back', with: 'Question answered, booking intent captured' },
           { scenario: 'Therapist-specific request', without: 'Staff unavailable to check', with: 'Preference captured and availability checked when connected' },
           { scenario: 'No-show risk reminder', without: 'No system in place', with: 'Reminder workflow available when configured' },
+          {
+            scenario: 'Reschedule call during session → potential no-show',
+            without: 'Missed — appointment stays confirmed, therapist prepares, client no-shows',
+            with: 'Reschedule captured in real time — slot recovered before appointment date',
+          },
           {
             scenario: 'Gift certificate inquiry after hours',
             without: 'No answer, caller books elsewhere',
@@ -886,7 +897,11 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="bg-indigo-50 text-indigo-600"
         heading="What RingBooker handles for med spa calls"
         features={[
-          { icon: '💉', title: 'Consultation call capture', body: 'Captures Botox, filler, laser, and consultation inquiry intent with professional, brand-safe scripting.' },
+          {
+            icon: '💉',
+            title: 'Consultation call capture',
+            body: 'Captures Botox consultation calls ($600–$1,200), filler inquiries ($800–$2,500), laser bookings, and body contouring consultations ($1,500–$5,000) with professional, brand-safe scripting.',
+          },
           { icon: '🌙', title: 'After-hours lead capture', body: 'Captures high-intent after-hours callers who research at night and need to reach someone.' },
           { icon: '📞', title: 'Current-number answering', body: 'No new number — forward overflow or after-hours on your existing line.' },
           { icon: '🔔', title: 'Reminder workflows', body: 'Automated reminders before high-ticket appointments can help reduce missed appointments.' },
@@ -915,6 +930,21 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           { scenario: 'Front desk busy during treatments', without: 'Phone rings out, caller hangs up', with: 'Answered and routed with consult context' },
           { scenario: 'High-ticket appointment no-show risk', without: 'No reminder system, slot wasted', with: 'Reminder workflow available when configured' },
           { scenario: 'Caller wants specific injector', without: 'No one to check availability', with: 'Provider preference captured and routed' },
+          {
+            scenario: 'Filler consultation missed call after hours',
+            without: 'Caller books competitor within 15 min',
+            with: 'Filler interest, timing, and provider preference captured',
+          },
+          {
+            scenario: 'Body contouring inquiry ($1,500–$5,000)',
+            without: 'High-value lead goes to voicemail',
+            with: 'Consultation intent and treatment area captured with context',
+          },
+          {
+            scenario: 'Med spa after hours consultation AI',
+            without: '69% hang up without leaving a message',
+            with: 'Captured immediately — clinical coordinator follows up with full context',
+          },
         ]}
       />
     </>
@@ -930,13 +960,16 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
           <div className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3.5 py-1.5 text-[12px] font-bold text-fuchsia-700">
-            For Beauty & Aesthetic Clinics
+            For Beauty Clinics, Wax Studios & Lash Studios
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
             Beauty Clinic Calls Need More Than Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            RingBooker is AI phone answering for beauty clinics and aesthetic clinics that still depend on the phone for consultation calls, booking changes, provider continuity, and pre- or post-care questions. It works on your current number, helps capture missed consultation intent during after-hours or busy clinic windows, and gives your team the follow-up context they need without forcing a workflow reset.
+            RingBooker is AI phone answering for beauty clinics, wax studios, lash studios, and aesthetic clinics. 46% of
+            beauty bookings happen outside operating hours (Boulevard, 2025) — and 35–40% of calls go unanswered during
+            service. RingBooker captures that demand on your current number, preserves follow-up context, and keeps
+            high-intent inquiries from hitting voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
@@ -959,19 +992,19 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="text-fuchsia-600"
         stats={[
           {
-            value: 'Phone',
-            label: 'Continuity and changes',
-            sub: 'Many clients still call for reschedules, provider preference, and pre/post-care questions — not only new bookings.',
+            value: '35–40%',
+            label: 'of clinic calls missed during service hours',
+            sub: 'Estheticians, lash techs, and wax specialists cannot answer while with clients. Those callers rarely wait.',
           },
           {
-            value: 'First try',
-            label: 'Trust starts on the line',
-            sub: 'If the first call goes unanswered, some callers will try another clinic rather than chase a callback.',
+            value: '46%',
+            label: 'of beauty bookings happen after hours',
+            sub: 'Consultation calls, lash fill inquiries, and wax requests arrive when your desk is closed (Boulevard, 2025).',
           },
           {
-            value: 'Professional',
-            label: 'Expect a calm voice',
-            sub: 'Clinic-appropriate tone matters — callers judge quality from the first answer.',
+            value: '52%',
+            label: 'hang up after 3 minutes on hold',
+            sub: 'A clinic-appropriate AI tone keeps callers engaged and converts inquiries into booked appointments (Zenoti, 2025).',
           },
         ]}
       />
@@ -983,22 +1016,22 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
           {
             icon: '👑',
             title: 'Clients expect a "patient" experience, not a booking hotline',
-            body: 'Beauty and aesthetic clinic callers are often asking about privacy, treatment continuity, pre-care, post-care, or the number of sessions. They expect considered answers, not rushed scripts or voicemail.',
+            body: 'Beauty and aesthetic clinic callers ask about treatment continuity, pre-care, post-care, and session counts. The global aesthetic medicine market reached $89.64B in 2024 (Grand View Research) — callers expect considered answers, not voicemail.',
           },
           {
             icon: '🤝',
             title: 'Consultation-first calls require handling with care',
-            body: 'A caller asking about laser, skin treatment, or aesthetic procedures is often in a discovery phase. How the call is handled — tone, clarity, and follow-through — directly shapes whether they book a consultation.',
+            body: 'A caller asking about laser, skin treatment, or waxing is often in discovery. How the call is handled — tone, clarity, follow-through — directly shapes whether they book a consultation.',
           },
           {
             icon: '🔁',
             title: 'Provider continuity is a real retention lever',
-            body: 'Returning clients often want to see the same provider. If no one can confirm availability and book continuity in-call, those returning clients start shopping again.',
+            body: 'Returning clients — for lash fills, wax series, or skin treatments — want the same provider. If no one can confirm and book continuity in-call, those clients start shopping again.',
           },
           {
             icon: '📋',
-            title: 'Pre-care and post-care questions repeat and consume front-desk time',
-            body: 'Staff spend significant time answering the same questions about what to do before and after treatments. An AI answering layer can share approved instructions or route anything clinical to your team.',
+            title: 'Pre-care and post-care questions consume front-desk time',
+            body: '"How long before a facial should I stop retinol?" "What to avoid after a wax?" An AI answering layer handles approved instructions or routes clinical questions to your team.',
           },
         ]}
       />
@@ -1010,6 +1043,11 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
         features={[
           { icon: '✨', title: 'Premium, clinic-appropriate tone', body: 'Scripts are built for beauty clinic standards — professional, warm, and never salesy.' },
           { icon: '🔁', title: 'Treatment continuity context', body: 'Captures returning patient calls, provider preference, and session context for follow-up or booking.' },
+          {
+            icon: '💆',
+            title: 'Wax, lash, and facial service coverage',
+            body: 'Estheticians and lash techs cannot answer mid-service. RingBooker covers pricing questions, booking requests, and pre-care questions while they work — on the current clinic number.',
+          },
           { icon: '📋', title: 'Consultation intake capture', body: 'Captures caller intent, treatment interest, and preferred timing before the consultation is booked.' },
           { icon: '📞', title: 'Works on your current number', body: 'No new number needed — just forward overflow or off-hours calls to RingBooker.' },
           { icon: '👥', title: 'Provider preference capture', body: 'Captures preferred provider requests and handles alternatives based on your configured workflow.' },
@@ -1037,6 +1075,16 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
           { scenario: 'After-hours pre-care question', without: 'No answer — patient anxious before treatment', with: 'Approved instructions shared or routed to your team' },
           { scenario: 'Consultation inquiry call', without: 'Rushed or missed, intent lost', with: 'Intent captured, consultation booked with context' },
           { scenario: 'Multi-session treatment follow-up', without: 'No continuity, patient drifts', with: 'Provider preference and continuity notes preserved' },
+          {
+            scenario: 'Wax studio booking call mid-service',
+            without: 'Rings out — caller books elsewhere',
+            with: 'Pricing, availability, and pre-care captured immediately',
+          },
+          {
+            scenario: 'Lash fill inquiry after closing',
+            without: 'Voicemail — 46% of bookings happen after hours',
+            with: 'Fill request captured with timing preference for morning follow-up',
+          },
         ]}
       />
     </>
@@ -1093,6 +1141,14 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       q: 'Can RingBooker handle multiple stylists?',
       a: 'Yes. You configure your stylist list, specialties, and availability rules. RingBooker uses that context to capture preferences, route requests, or summarize next steps.',
     },
+    {
+      q: 'Does RingBooker work for solo stylists and booth renters?',
+      a: 'Yes. Solo stylists and booth renters face the same phone gap as salons — every call arrives when their hands are on a client. RingBooker covers those calls on the current personal number without requiring a new line or booking platform change.',
+    },
+    {
+      q: 'Can it handle bridal party booking calls?',
+      a: 'Yes. Bridal inquiries involving multiple people, stylists, and occasion-specific details are captured with party size, preferred date, service mix, and contact information for the team to confirm.',
+    },
   ],
   spa: [
     {
@@ -1119,6 +1175,14 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       q: 'Can it escalate complex requests to a real person?',
       a: 'Yes. Callback and escalation workflows can be configured for requests that need a human follow-up.',
     },
+    {
+      q: 'Can RingBooker capture gift certificate inquiries after hours?',
+      a: 'Yes. Gift certificate callers are among the highest-conversion after-hours contacts a spa receives — they have already decided to spend and just need pricing and delivery confirmation. RingBooker captures gift certificate interest, package preference, and contact details on the current spa number for morning follow-up.',
+    },
+    {
+      q: 'Can it handle prenatal massage booking calls?',
+      a: 'Yes — for standard intake and FAQ (certification, trimester policy, session structure). Any clinical question is escalated immediately to a qualified staff member with full call context.',
+    },
   ],
   'med-spa': [
     {
@@ -1141,6 +1205,22 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       q: 'Is the scripting safe for a medical aesthetic environment?',
       a: 'Yes. RingBooker is configured with med-spa-appropriate guardrails. It captures intent and routes consultation calls without offering clinical advice or making medical claims.',
     },
+    {
+      q: 'Does RingBooker capture Botox consultation calls after hours?',
+      a: 'Yes. Botox calls ($600–$1,200 per treatment) are the most common high-value after-hours inquiry a med spa receives. RingBooker captures treatment area interest, timing preference, and provider preference on the current number for same-day clinical coordinator follow-up.',
+    },
+    {
+      q: 'Can it capture filler consultation calls that come in when the desk is busy?',
+      a: 'Yes. Filler consultation calls ($800–$2,500 per visit) arrive during peak treatment hours when the front desk cannot answer. RingBooker captures treatment interest, preferred area, and timing — delivering a structured follow-up summary rather than voicemail.',
+    },
+    {
+      q: 'Does it capture injector preference requests?',
+      a: 'Yes. Preferred injector name, treatment interest, and timing preference are captured and routed based on your configured workflow — so the callback reaches the caller with the context they expect.',
+    },
+    {
+      q: 'Does it work for laser and body contouring consultation calls?',
+      a: 'Yes. High-value procedure calls — laser bookings ($300–$600/session) and body contouring consultations ($1,500–$5,000) — are captured with treatment interest and timing preference logged for clinical follow-up.',
+    },
   ],
   'beauty-clinic': [
     {
@@ -1158,6 +1238,18 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     {
       q: 'Can it help with aesthetic clinic post-treatment calls?',
       a: 'Yes. It can help capture post-treatment questions and route approved follow-up information or handoff context to your team.',
+    },
+    {
+      q: 'Does RingBooker work for wax studios?',
+      a: 'Yes. Waxing services run 30–90 minutes — the same structural phone gap as salons. RingBooker answers pricing questions, books appointments, and captures pre-care questions on the current wax studio number while the esthetician is with a client.',
+    },
+    {
+      q: 'Does RingBooker work for lash studios?',
+      a: 'Yes. Lash fill and lash set appointments run 45–90 minutes without natural break windows. RingBooker covers lash pricing inquiries, fill booking requests, and aftercare questions on the current studio number — during service hours and after closing.',
+    },
+    {
+      q: 'What is the beauty clinic missed call solution RingBooker provides?',
+      a: 'RingBooker covers the two windows where beauty clinic calls most commonly go unanswered: during active treatment sessions and after closing hours. It works through call forwarding on the current clinic number — no new number, no workflow change.',
     },
   ],
 };
@@ -1183,7 +1275,7 @@ const VERTICAL_HUB_COPY: Record<MarketingVerticalKey, { heading: string; sub: st
   },
   'beauty-clinic': {
     heading: 'Beauty clinic call workflow guides',
-    sub: 'Explore clinic-ready guides for consultation calls, provider preference capture, after-hours demand, and handoff quality in beauty clinics.',
+    sub: 'Explore call workflow guides for beauty clinics, wax studios, and lash studios — covering consultation calls, missed call solutions, after-hours demand, and provider continuity.',
   },
 };
 
@@ -1291,12 +1383,13 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
     'med-spa': {
       label: 'For Med Spas',
       title: 'Capture high-value consultation demand.',
-      subtitle: 'Capture after-hours and overflow consult intent with professional handoff context and reminder workflows.',
+      subtitle:
+        'Botox, filler, laser, and body contouring consultation calls — covered on your current number. After-hours, peak-hour overflow, and injector preference requests captured with follow-up context.',
     },
     'beauty-clinic': {
-      label: 'For Beauty & Aesthetic Clinics',
-      title: 'Deliver the premium experience your clinic demands.',
-      subtitle: 'Handle consultation calls, provider preference requests, and approved treatment information with clinic-appropriate AI scripting.',
+      label: 'For Beauty Clinics, Wax Studios & Lash Studios',
+      title: 'Beauty clinics, wax studios, and lash studios — covered on your current number.',
+      subtitle: 'Consultation calls, lash fill inquiries, wax booking requests, and after-hours demand captured without voicemail.',
     },
   };
 

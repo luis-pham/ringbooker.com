@@ -20,6 +20,8 @@ export type MarketingFaqAccordionProps = {
    * so spacing matches the home standalone FAQ block without double padding.
    */
   embedded?: boolean;
+  /** Open the first FAQ item on initial render. */
+  openFirstItem?: boolean;
 };
 
 const defaultTitle: ReactNode = 'Frequently Asked Questions';
@@ -36,6 +38,7 @@ export function MarketingFaqAccordion({
   id = 'faq',
   className = '',
   embedded = false,
+  openFirstItem = false,
 }: MarketingFaqAccordionProps) {
   if (items.length === 0) return null;
 
@@ -49,8 +52,8 @@ export function MarketingFaqAccordion({
         <h2 className="mfaq-title">{title}</h2>
         {subtitle != null && subtitle !== '' ? <p className="mfaq-sub">{subtitle}</p> : null}
         <div className="mfaq-list">
-          {items.map((faq) => (
-            <details className="mfaq-item" key={faq.q}>
+          {items.map((faq, i) => (
+            <details className="mfaq-item" key={faq.q} open={openFirstItem && i === 0}>
               <summary className="mfaq-q">
                 {faq.q}
                 <span className="mfaq-icon" aria-hidden>

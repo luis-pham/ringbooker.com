@@ -44,9 +44,9 @@ const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; descrip
       'RingBooker captures Botox, filler, and aesthetic consultation calls for med spas — after hours, during treatments, on the current number. 3 missed calls/day costs $130,000+ annually.',
   },
   'beauty-clinic': {
-    title: 'Beauty Clinic AI Phone Answering | Aesthetic Clinic Missed Call Coverage | RingBooker',
+    title: 'Beauty Clinic AI Phone Answering | Wax Studio, Lash Studio & Aesthetic Clinic Missed Call Coverage | RingBooker',
     description:
-      "RingBooker captures consultation calls and after-hours booking intent for beauty and aesthetic clinics on the current number — so high-value callers don't hit voicemail and book elsewhere.",
+      'RingBooker is AI phone answering for beauty clinics, wax studios, and lash studios — 46% of bookings happen after hours, 35–40% of calls missed during service. Covered on your current number.',
   },
 };
 
