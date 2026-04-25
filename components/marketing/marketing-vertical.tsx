@@ -245,9 +245,9 @@ function HowItWorks({
 }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6">
-      <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
-      <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
-      <p className="mt-2 max-w-xl text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
+      <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
+      <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <p className="mx-auto mt-2 max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
       <div className="mt-8 grid gap-5 md:grid-cols-3">
         {steps.map((s) => (
           <div
@@ -288,8 +288,8 @@ type PainPoint = { icon?: string; title: string; body: string };
 function PainPoints({ points, heading }: { points: PainPoint[]; heading: string }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6">
-      <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Why Calls Get Missed</div>
-      <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Why Calls Get Missed</div>
+      <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {points.map((p) => (
           <article
@@ -318,8 +318,8 @@ function FeatureGrid({
 }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6">
-      <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">What RingBooker Does</div>
-      <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">What RingBooker Does</div>
+      <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
           <article
@@ -347,8 +347,8 @@ function VsTable({
 }) {
   return (
     <section className="mx-auto mt-20 max-w-6xl px-6">
-      <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Before vs. After</div>
-      <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Before vs. After</div>
+      <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
         <div className="min-w-[600px]">
           <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-bold uppercase tracking-wider text-slate-400">
@@ -431,7 +431,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
     <>
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+        <div className="text-center">
           <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3.5 py-1.5 text-[12px] font-bold text-violet-700">
             AI phone answering &amp; call recovery for nail salons
           </div>
@@ -444,7 +444,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             calls become lost revenue. 37% of nail salon calls are missed, 82% during business hours, and 80% of callers
             never leave voicemail.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a href="/demo/nail-salon" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
@@ -556,7 +556,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
     <>
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+        <div className="text-center">
           <div className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-[12px] font-bold text-amber-700">
             Built for Hair Salons
           </div>
@@ -568,7 +568,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
             reschedule calls covered on your current number. 37% of hair salon calls are missed, 82% during business
             hours. 77% of clients still prefer calling to reschedule, even with online booking available.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
@@ -677,7 +677,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
     <>
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+        <div className="text-center">
           <div className="inline-flex rounded-full border border-teal-200 bg-teal-50 px-3.5 py-1.5 text-[12px] font-bold text-teal-700">
             For Day Spas & Wellness Studios
           </div>
@@ -687,7 +687,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
             Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. 52% of spa customers hang up after just 3 minutes on hold. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking revenue is not left sitting in voicemail.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a href="/demo/day-spa" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
@@ -806,7 +806,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
     <>
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+        <div className="text-center">
           <div className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-[12px] font-bold text-indigo-700">
             For Med Spas & Aesthetic Practices
           </div>
@@ -816,7 +816,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
             RingBooker is AI phone answering for med spas that need better coverage for after-hours consultation calls and front-desk overflow during treatment hours. 3 missed consultation calls per day can cost $130,000+ in annual revenue. RingBooker helps capture that demand on your current number before it cools off or moves to a competitor.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
@@ -928,7 +928,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
     <>
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+        <div className="text-center">
           <div className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3.5 py-1.5 text-[12px] font-bold text-fuchsia-700">
             For Beauty & Aesthetic Clinics
           </div>
@@ -938,7 +938,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
             RingBooker is AI phone answering for beauty clinics and aesthetic clinics that still depend on the phone for consultation calls, booking changes, provider continuity, and pre- or post-care questions. It works on your current number, helps capture missed consultation intent during after-hours or busy clinic windows, and gives your team the follow-up context they need without forcing a workflow reset.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
