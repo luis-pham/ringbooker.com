@@ -14,7 +14,7 @@ export type HtmlHubFaqProps = {
  * FAQ list matching static hub HTML (`faq-list` / `faq-q` / `.open` + rotate icon).
  */
 export function HtmlHubFaq({ items, accent = 'purple' }: HtmlHubFaqProps) {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   const toggle = useCallback((index: number) => {
     setOpenIndex((prev) => (prev === index ? null : index));

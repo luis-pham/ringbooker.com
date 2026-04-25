@@ -830,30 +830,6 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--green .article-link:hover{border-color:var(--green);color:var(--green)}
 .html-hub-page--green .article-link::before{color:var(--green)}
 
-/* FAQ — pinned excerpts (always visible; accordion below may repeat same Q/A) */
-.html-hub-page .hub-faq-pinned{
-  max-width:640px;
-  margin:0 auto 24px;
-  display:flex;
-  flex-direction:column;
-  gap:14px;
-  text-align:left;
-}
-.html-hub-page .hub-faq-pinned-item{
-  padding:16px 18px;
-  border-radius:var(--radius);
-  border:1px solid var(--border);
-  background:var(--gray-100);
-}
-.html-hub-page .hub-faq-pinned-q{
-  font-size:14px;
-  font-weight:700;
-  color:var(--navy);
-  margin:0 0 8px;
-  line-height:1.35;
-}
-.html-hub-page .hub-faq-pinned-a{font-size:14px;color:var(--gray-600);line-height:1.65;margin:0}
-
 /* FAQ */
 .html-hub-page .faq-list{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
 .html-hub-page .faq-item{border-bottom:1px solid var(--border)}

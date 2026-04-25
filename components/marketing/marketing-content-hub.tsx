@@ -214,8 +214,6 @@ export type MarketingContentHubProps = {
   resourceSub?: string;
   resourceLinks?: ContentHubResourceLink[];
   faqs: ContentHubFaq[];
-  /** Shown above accordion; use same Q/A as entries in `faqs` (optional, 1–2 items). */
-  faqPinnedExcerpts?: ContentHubFaq[];
   cta?: {
     title: string;
     subtitle: string;
@@ -937,7 +935,6 @@ export function MarketingContentHub({
   resourceLinks,
   resourceEyebrow,
   faqs,
-  faqPinnedExcerpts,
   faqEyebrow,
   faqTitle = 'Frequently Asked Questions',
   faqAccent,
@@ -1141,16 +1138,6 @@ export function MarketingContentHub({
                 </div>
               ) : null}
               <h2>{faqTitle}</h2>
-              {faqPinnedExcerpts && faqPinnedExcerpts.length > 0 ? (
-                <div className="hub-faq-pinned" aria-label="Key answers at a glance">
-                  {faqPinnedExcerpts.map((pin) => (
-                    <div className="hub-faq-pinned-item" key={pin.q}>
-                      <p className="hub-faq-pinned-q">{pin.q}</p>
-                      <p className="hub-faq-pinned-a">{pin.a}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
               <HtmlHubFaq items={faqs} accent={faqAccentResolved} />
             </div>
           </section>

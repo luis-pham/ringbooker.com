@@ -42,8 +42,6 @@ export type ContentHubPageConfig = {
   };
   /** Plain paragraph directly under hero intro (entity / how-it-works for citations). */
   heroEntityDefinition?: string;
-  /** 1–2 FAQ pairs shown as plain text above the accordion (same Q/A as in `faqs`). */
-  faqPinnedExcerpts?: ContentHubFaq[];
 };
 
 /** Same copy as FAQ “What is missed booking protection?” — also surfaced as visible body text for entity / AI citation. */
@@ -74,28 +72,27 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
       kind: 'card_grid',
       html: { eyebrow: 'The Core Problem', cardGridStyle: 'leak', leakGridColumns: 4 },
       heading: 'What “missed booking protection” actually means',
-      definition: MISSED_BOOKING_PROTECTION_DEFINITION,
-      sub: 'It is not just about answering calls — it is about protecting revenue that would otherwise disappear when a caller hangs up or reaches voicemail.',
+      sub: `${MISSED_BOOKING_PROTECTION_DEFINITION} It is not just about answering calls. It is about protecting revenue that disappears when a caller hangs up or reaches voicemail.`,
       cards: [
         {
           icon: '📵',
           title: 'Missed call = lost revenue',
-          body: 'Many callers who do not reach you will not leave a voicemail. They often keep searching, call another business, or try again later with less urgency.',
+          body: "Many callers who don't reach you won't leave a voicemail — they call another business or try again with less urgency.",
         },
         {
           icon: '🌙',
           title: 'After-hours opportunity window',
-          body: 'A significant share of beauty booking calls come outside business hours. Without a system to capture that intent, those are revenue opportunities you may never know you missed.',
+          body: 'A significant share of beauty bookings happen outside business hours. Without coverage, those are revenue opportunities you never knew you missed.',
         },
         {
           icon: '⚡',
           title: 'Overflow during peak hours',
-          body: 'Saturdays, lunch rushes, holiday weeks — when two calls arrive at once and your team is mid-service, the second caller can disappear before anyone knows what they wanted.',
+          body: 'Saturdays, lunch rushes, holiday weeks — when two calls arrive at once and your team is mid-service, the second caller disappears.',
         },
         {
           icon: '🔄',
           title: 'More than new bookings',
-          body: 'Missed booking protection also covers reschedules, cancellations, service questions, and price inquiries — any intent lost when no one picks up.',
+          body: 'Missed booking protection covers reschedules, cancellations, and price inquiries — any intent lost when no one picks up.',
         },
       ],
     },
@@ -108,8 +105,8 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
         {
           icon: '🌙',
           title: 'After-hours calls',
-          stat: '40% of beauty appointments booked outside business hours (SalonLife 2024)',
-          body: 'Clients call in the evening or on days you are closed. Without anyone to answer, the booking intent disappears entirely.',
+          stat: '30% of bookings happen when businesses are closed (Phorest)',
+          body: 'Clients call in the evening or on days you are closed. Without coverage, booking intent disappears entirely.',
           tag: 'Heaviest impact: spas, day spas, beauty clinics',
         },
         {
@@ -129,7 +126,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
         {
           icon: '⏳',
           title: 'Missed callback windows',
-          stat: '85% of voicemail callers never call back (Ambs Call Center 2025)',
+          stat: '69% of callers who reach voicemail do not leave a message (Moneypenny)',
           body: 'Voicemail leads to a callback hours later — often after the client has cooled off, tried online booking again, or called another provider.',
           tag: 'Heaviest impact: all verticals',
         },
@@ -329,10 +326,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Current Number'),
   ),
   intro:
-    'Changing a business phone number creates NAP inconsistency across an average of 46+ online citations — including Google Business Profile, Yelp, Apple Maps, and directories clients use to find you. RingBooker works through call forwarding so none of that changes.',
-  heroEntityDefinition:
-    'How it works: RingBooker uses conditional call forwarding — your current number stays public and unchanged. Clients, Google Business Profile, and all your listings keep the same number. RingBooker activates only when your team cannot answer: after hours, during peak overflow, or when the desk is occupied.',
-  faqPinnedExcerpts: [CURRENT_NUMBER_FAQ_FORWARDING, CURRENT_NUMBER_FAQ_REPLACE_SETUP],
+    'Changing your number creates NAP inconsistency across 46+ online citations — Google Business Profile, Yelp, Apple Maps, and every directory clients use to find you. RingBooker uses conditional call forwarding: your current number stays public and unchanged. Coverage activates only when your team cannot answer — after hours, during peak overflow, or when the desk is occupied.',
   pills: [
     'No number migration needed',
     'Works via call forwarding',
@@ -381,12 +375,12 @@ export const currentNumberHub: ContentHubPageConfig = {
           icon: '🔀',
           title: 'Local SEO consistency',
           stat: '62% of local businesses have inconsistent NAP data online (BrightLocal 2023)',
-          body: 'When your name, address, and phone drift across directories, clients see conflicting information — and local search systems may treat inconsistent listings as less trustworthy.',
+          body: 'When name, address, and phone drift across directories, local search systems may treat your listings as less trustworthy.',
         },
         {
           icon: '🧪',
           title: 'You want to test first',
-          body: 'Keeping your number lets you trial AI coverage without a full operational reset. Your team keeps the same line, greeting, and habits clients expect — a new number disrupts that flow.',
+          body: 'Keeping your number lets you trial AI coverage without a full operational reset — same line, same greeting, same habits clients expect.',
         },
       ],
     },
@@ -404,7 +398,7 @@ export const currentNumberHub: ContentHubPageConfig = {
         {
           icon: '📍',
           title: 'What about my Google Business Profile listing?',
-          body: 'Google may flag your profile for re-verification when key contact information changes — temporarily reducing your visibility in local search during the review period. With RingBooker, your GBP number stays as-is: no listing changes, so local SEO consistency is preserved and that re-verification risk from a number change does not apply.',
+          body: 'With RingBooker, your GBP number stays unchanged — no listing edits, no re-verification risk, local SEO consistency preserved.',
         },
         {
           icon: '🪧',
@@ -1085,24 +1079,24 @@ export const trustHub: ContentHubPageConfig = {
           icon: '🎯',
           title: 'Consistency',
           stat: '82% of consumers abandon businesses after a poor experience (Salesforce).',
-          body: 'Every after-hours caller gets a clear response — not great sometimes and confusing other times.',
+          body: 'Every after-hours caller gets a clear, consistent response.',
         },
         {
           icon: '🔍',
           title: 'Clarity',
           stat: 'Maine Chatbot Disclosure Act 2025 — AI must identify itself.',
-          body: 'RingBooker can identify as a virtual assistant — transparency with callers builds trust.',
+          body: 'RingBooker identifies as a virtual assistant — transparency builds trust.',
         },
         {
           icon: '🔧',
           title: 'Practical control',
-          body: 'You decide what it handles, adjust coverage, and keep control with your team.',
+          body: 'You decide what it handles, adjust coverage, and keep full control with your team.',
         },
         {
           icon: '📐',
           title: 'Realistic scope',
-          stat: '71% of med spa clients comfortable with AI when experience is accurate (Zenoti 2025).',
-          body: 'Built for predictable workflows — not claiming perfect handling for every edge case.',
+          stat: '71% of med spa clients are comfortable with AI when the experience is accurate (Zenoti, 2025).',
+          body: 'Built for predictable workflows, not every edge case.',
         },
       ],
     },
