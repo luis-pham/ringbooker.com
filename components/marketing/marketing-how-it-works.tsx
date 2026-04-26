@@ -87,7 +87,7 @@ a{text-decoration:none;color:inherit}
 .hiw-section{padding:86px 48px}
 .hiw-section.gray{background:var(--bg-gray)}
 .hiw-label{font-size:var(--mk-eyebrow);font-weight:800;color:var(--purple);letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px;text-align:center}
-.hiw-title{font-size:var(--mk-section-h2);font-weight:800;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);text-align:center;margin:0 auto 12px;max-width:820px}
+.hiw-title{font-size:var(--mk-section-h2);font-weight:800;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);text-align:center;margin:0 auto 14px;max-width:820px}
 .hiw-sub{font-size:var(--mk-section-lead);color:var(--text-gray);text-align:center;margin:0 auto 42px;line-height:var(--mk-section-lead-lh);max-width:760px}
 .hiw-grid-2,.hiw-grid-3{display:grid;gap:18px}
 .hiw-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -109,7 +109,8 @@ a{text-decoration:none;color:inherit}
 .hiw-step{position:relative}
 .hiw-step::before{counter-increment:hiwStep;content:counter(hiwStep);width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;margin:0 auto 18px;box-shadow:0 12px 24px rgba(139,92,246,.24)}
 .hiw-steps-mobile-nav{display:none}
-.hiw-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:800;white-space:nowrap}
+.hiw-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:800;white-space:nowrap;transition:all .2s ease}
+.hiw-steps-mobile-nav a.is-active{background:var(--purple);border-color:var(--purple);color:#fff}
 .hiw-step:target{border-color:#c4b5fd;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
 .hiw-handle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .hiw-handle{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
@@ -165,13 +166,60 @@ a{text-decoration:none;color:inherit}
   .hiw-btn-dark,.hiw-btn-outline{width:100%}
   .hiw-section{padding-top:68px;padding-bottom:68px}
   .hiw-steps-mobile-nav{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:0 0 12px}
+  .hiw-steps-mobile-nav{justify-content:center}
   .hiw-grid-3.hiw-flow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px}
   .hiw-grid-3.hiw-flow .hiw-step{min-width:84%;scroll-snap-align:center}
 }
 `,
 ];
 
-const scripts: string[] = [];
+const scripts: string[] = [
+  String.raw`
+(() => {
+  const nav = document.querySelector('.hiw-steps-mobile-nav');
+  const scroller = document.querySelector('.hiw-grid-3.hiw-flow');
+  if (!nav || !scroller) return;
+  const buttons = Array.from(nav.querySelectorAll('a'));
+  const cards = Array.from(scroller.querySelectorAll('.hiw-step'));
+  if (!buttons.length || !cards.length) return;
+
+  const setActive = (idx) => {
+    buttons.forEach((btn, i) => btn.classList.toggle('is-active', i === idx));
+  };
+
+  const updateActiveByScroll = () => {
+    const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
+    let bestIdx = 0;
+    let bestDist = Number.POSITIVE_INFINITY;
+    cards.forEach((card, i) => {
+      const cardCenter = card.offsetLeft + card.clientWidth / 2;
+      const dist = Math.abs(cardCenter - centerX);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    });
+    setActive(bestIdx);
+  };
+
+  buttons.forEach((btn, i) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      cards[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      setActive(i);
+    });
+  });
+
+  let raf = 0;
+  scroller.addEventListener('scroll', () => {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(updateActiveByScroll);
+  }, { passive: true });
+  setActive(0);
+  updateActiveByScroll();
+})();
+`,
+];
 
 export const templateTitle =
   'How RingBooker Works on Your Current Number | Recover After-Hours and Missed Call Revenue';
@@ -261,7 +309,7 @@ export function MarketingHowItWorksTemplate() {
               <h2 className="hiw-title">A phone-first workflow your team can understand quickly.</h2>
               <p className="hiw-sub">RingBooker sits between the caller and your team: it captures intent and summaries so you recover bookings faster — without migrating calendars or changing the number clients already dial.</p>
               <div className="hiw-steps-mobile-nav" role="tablist" aria-label="How it works steps">
-                <a href="#hiw-step-1">Step 1</a>
+                <a href="#hiw-step-1" className="is-active">Step 1</a>
                 <a href="#hiw-step-2">Step 2</a>
                 <a href="#hiw-step-3">Step 3</a>
               </div>

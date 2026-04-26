@@ -65,7 +65,7 @@ a{text-decoration:none;color:inherit}
 .btn-outline{border:1.5px solid var(--border);color:var(--text-dark);background:#fff}
 .section{padding:58px 48px 82px}
 .next-card{border:none;border-radius:30px;background:#fff;box-shadow:none;padding:26px}
-.next-title{font-size:var(--mk-article-h2);line-height:1.2;letter-spacing:var(--mk-article-h2-track);text-align:center;margin-bottom:10px}
+.next-title{font-size:var(--mk-article-h2);line-height:1.2;letter-spacing:var(--mk-article-h2-track);text-align:center;margin-bottom:14px}
 .next-sub{font-size:var(--mk-btn);color:var(--text-gray);text-align:center;line-height:1.7;max-width:660px;margin:0 auto 24px}
 .mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .mini-item{border:1px solid var(--border);border-radius:20px;padding:18px;text-align:center;background:#fff}
@@ -73,7 +73,8 @@ a{text-decoration:none;color:inherit}
 .mini-item strong{display:block;font-size:var(--mk-btn);margin-bottom:5px}
 .mini-item span{font-size:var(--mk-meta);color:var(--text-gray);line-height:1.55}
 .next-steps-mobile-nav{display:none}
-.next-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:800;white-space:nowrap}
+.next-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:800;white-space:nowrap;transition:all .2s ease}
+.next-steps-mobile-nav a.is-active{background:var(--purple);border-color:var(--purple);color:#fff}
 .mini-item:target{border-color:#c4b5fd;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
 .closing-line{margin-top:18px;text-align:center;font-size:var(--mk-body);color:var(--text-gray)}
 @media(max-width:960px){
@@ -85,7 +86,7 @@ a{text-decoration:none;color:inherit}
   .form-head{display:block}
   .form-chip{margin-top:12px}
   .btn-dark{width:100%}
-  .next-steps-mobile-nav{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:0 0 12px}
+  .next-steps-mobile-nav{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:0 0 12px;justify-content:center}
   .mini-grid{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px}
   .mini-item{min-width:84%;scroll-snap-align:center}
 }
@@ -262,6 +263,44 @@ const scripts: string[] = [
   } else {
     renderTurnstile();
   }
+
+  const nextStepsNav = document.querySelector('.next-steps-mobile-nav');
+  const nextStepsScroller = document.querySelector('.mini-grid');
+  if (nextStepsNav && nextStepsScroller) {
+    const buttons = Array.from(nextStepsNav.querySelectorAll('a'));
+    const cards = Array.from(nextStepsScroller.querySelectorAll('.mini-item'));
+    const setActive = (idx) => {
+      buttons.forEach((btn, i) => btn.classList.toggle('is-active', i === idx));
+    };
+    const updateActiveByScroll = () => {
+      const centerX = nextStepsScroller.scrollLeft + nextStepsScroller.clientWidth / 2;
+      let bestIdx = 0;
+      let bestDist = Number.POSITIVE_INFINITY;
+      cards.forEach((card, i) => {
+        const cardCenter = card.offsetLeft + card.clientWidth / 2;
+        const dist = Math.abs(cardCenter - centerX);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = i;
+        }
+      });
+      setActive(bestIdx);
+    };
+    buttons.forEach((btn, i) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        cards[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        setActive(i);
+      });
+    });
+    let raf = 0;
+    nextStepsScroller.addEventListener('scroll', () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateActiveByScroll);
+    }, { passive: true });
+    setActive(0);
+    updateActiveByScroll();
+  }
 })();
 `,
 ];
@@ -361,7 +400,7 @@ export function MarketingContactTemplate() {
                 <h2 className="next-title">What happens next</h2>
                 <p className="next-sub">We keep it practical: confirm your number and booking setup, walk the recovery flow on a sample call, then map whether Starter or Professional fits your overflow and after-hours volume.</p>
                 <div className="next-steps-mobile-nav" role="tablist" aria-label="What happens next steps">
-                  <a href="#contact-next-step-1">Step 1</a>
+                  <a href="#contact-next-step-1" className="is-active">Step 1</a>
                   <a href="#contact-next-step-2">Step 2</a>
                   <a href="#contact-next-step-3">Step 3</a>
                 </div>

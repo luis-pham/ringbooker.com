@@ -786,7 +786,12 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
                 <div className="step-track-mobile-nav" role="tablist" aria-label={`${block.heading} steps`}>
                   {block.steps.map((s, idx) => (
-                    <a key={`${s.title}-nav`} href={`#hub-step-${i}-${idx + 1}`} className="step-track-mobile-nav-btn">
+                    <a
+                      key={`${s.title}-nav`}
+                      href={`#hub-step-${i}-${idx + 1}`}
+                      className={`step-track-mobile-nav-btn${idx === 0 ? ' is-active' : ''}`}
+                      data-step-nav-btn
+                    >
                       Step {idx + 1}
                     </a>
                   ))}
@@ -795,9 +800,10 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                   className={
                     block.html?.stepsCentered4 ? 'steps steps--centered-4' : 'steps'
                   }
+                  data-step-scroller
                 >
                   {block.steps.map((s, idx) => (
-                    <div className="step" key={s.title} id={`hub-step-${i}-${idx + 1}`}>
+                    <div className="step" key={s.title} id={`hub-step-${i}-${idx + 1}`} data-step-card>
                       <h4>{s.title}</h4>
                       <p>{s.body}</p>
                     </div>
@@ -1267,6 +1273,57 @@ export function MarketingContentHub({
       {faqJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       ) : null}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+(() => {
+  const wrappers = document.querySelectorAll('.step-track-mobile-nav');
+  wrappers.forEach((nav) => {
+    const root = nav.parentElement;
+    if (!root) return;
+    const buttons = Array.from(nav.querySelectorAll('[data-step-nav-btn]'));
+    const scroller = root.querySelector('[data-step-scroller]');
+    const cards = scroller ? Array.from(scroller.querySelectorAll('[data-step-card]')) : [];
+    if (!scroller || buttons.length === 0 || cards.length === 0) return;
+
+    const setActive = (idx) => {
+      buttons.forEach((btn, i) => btn.classList.toggle('is-active', i === idx));
+    };
+
+    const updateActiveByScroll = () => {
+      const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
+      let bestIdx = 0;
+      let bestDist = Number.POSITIVE_INFINITY;
+      cards.forEach((card, i) => {
+        const cardCenter = card.offsetLeft + card.clientWidth / 2;
+        const dist = Math.abs(cardCenter - centerX);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = i;
+        }
+      });
+      setActive(bestIdx);
+    };
+
+    buttons.forEach((btn, i) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        cards[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        setActive(i);
+      });
+    });
+
+    let raf = 0;
+    scroller.addEventListener('scroll', () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateActiveByScroll);
+    }, { passive: true });
+    updateActiveByScroll();
+  });
+})();
+`,
+        }}
+      />
       <style dangerouslySetInnerHTML={{ __html: HTML_HUB_SCOPED_CSS }} />
     </>
   );

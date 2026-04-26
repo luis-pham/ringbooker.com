@@ -234,6 +234,57 @@ function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
   );
 }
 
+const verticalStepCarouselScript = `
+(() => {
+  const tracks = document.querySelectorAll('[data-vertical-step-track]');
+  tracks.forEach((track) => {
+    const nav = track.querySelector('[data-vertical-step-nav]');
+    const scroller = track.querySelector('[data-vertical-step-scroller]');
+    if (!nav || !scroller) return;
+    const buttons = Array.from(nav.querySelectorAll('[data-vertical-step-btn]'));
+    const cards = Array.from(scroller.querySelectorAll('[data-vertical-step-card]'));
+    if (!buttons.length || !cards.length) return;
+
+    const setActive = (idx) => {
+      buttons.forEach((btn, i) => {
+        btn.dataset.active = i === idx ? 'true' : 'false';
+      });
+    };
+
+    const updateActiveByScroll = () => {
+      const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
+      let bestIdx = 0;
+      let bestDist = Number.POSITIVE_INFINITY;
+      cards.forEach((card, i) => {
+        const cardCenter = card.offsetLeft + card.clientWidth / 2;
+        const dist = Math.abs(cardCenter - centerX);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = i;
+        }
+      });
+      setActive(bestIdx);
+    };
+
+    buttons.forEach((btn, i) => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        cards[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        setActive(i);
+      });
+    });
+
+    let raf = 0;
+    scroller.addEventListener('scroll', () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updateActiveByScroll);
+    }, { passive: true });
+    setActive(0);
+    updateActiveByScroll();
+  });
+})();
+`;
+
 type HowItWorksStep = { n: string; title: string; body: string };
 function HowItWorks({
   steps,
@@ -245,26 +296,29 @@ function HowItWorks({
   heading?: string;
 }) {
   return (
-    <section className="mx-auto mt-24 max-w-6xl px-6">
+    <section className="mx-auto mt-24 max-w-6xl px-6" data-vertical-step-track>
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
-      <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
-      <p className="mx-auto mt-2 max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
-      <div className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden">
+      <h2 className="mb-4 text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <p className="mx-auto max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
+      <div className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden justify-center" data-vertical-step-nav>
         {steps.map((s) => (
           <a
             key={`vertical-step-nav-${s.n}`}
             href={`#vertical-step-${s.n}`}
-            className="inline-flex min-w-[84px] items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600"
+            data-vertical-step-btn
+            data-active={s.n === '1' ? 'true' : 'false'}
+            className="inline-flex min-w-[84px] items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition data-[active=true]:border-slate-900 data-[active=true]:bg-slate-900 data-[active=true]:text-white"
           >
             Step {s.n}
           </a>
         ))}
       </div>
-      <div className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:pb-0">
+      <div className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:pb-0" data-vertical-step-scroller>
         {steps.map((s) => (
           <div
             key={s.n}
             id={`vertical-step-${s.n}`}
+            data-vertical-step-card
             className="relative w-[84%] shrink-0 snap-center rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg md:w-auto md:shrink md:snap-none"
           >
             <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-extrabold text-white`}>{s.n}</div>
@@ -1304,8 +1358,8 @@ function VerticalHubArticles({
     <section className="mt-16 rounded-3xl bg-slate-50 px-5 py-12 sm:px-8" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
         <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">In this hub</p>
-        <h2 className="text-[clamp(24px,3.2vw,34px)] font-extrabold tracking-tight text-slate-900">{copy.heading}</h2>
-        <p className="mt-2 max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
+        <h2 className="mb-4 text-[clamp(24px,3.2vw,34px)] font-extrabold tracking-tight text-slate-900">{copy.heading}</h2>
+        <p className="max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
           {links.map((link) => (
             <Link
@@ -1436,6 +1490,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
       <MarketingFooter />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
+      <script dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }} />
     </>
   );
 }

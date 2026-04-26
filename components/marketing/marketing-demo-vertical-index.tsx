@@ -146,7 +146,7 @@ const styles = [
 
     /* STEPS */
     .demo-hub-steps{padding:48px 0 88px;background:linear-gradient(180deg,rgba(249,250,251,.65) 0%,#fff 100%)}
-    .demo-hub-steps h2{text-align:center;margin:0 auto 8px;font-size:clamp(22px,3vw,28px);font-weight:800;letter-spacing:-.03em;color:var(--demo-hub-text)}
+    .demo-hub-steps h2{text-align:center;margin:0 auto 14px;font-size:clamp(22px,3vw,28px);font-weight:800;letter-spacing:-.03em;color:var(--demo-hub-text)}
     .demo-hub-steps > .demo-hub-inner > p{margin:0 auto 32px;text-align:center;max-width:520px;font-size:15px;color:var(--demo-hub-muted)}
     .demo-hub-step-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
     .demo-hub-step{

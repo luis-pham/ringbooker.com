@@ -547,7 +547,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .section-label.amber{background:var(--amber-bg);border-color:#FDE68A;color:var(--amber)}
 .html-hub-page .section-label.dark{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.8)}
 
-.html-hub-page .section h2{font-size:var(--mk-section-h2);font-weight:800;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);margin-bottom:16px;color:var(--navy)}
+.html-hub-page .section h2{font-size:var(--mk-section-h2);font-weight:800;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);margin-bottom:14px;color:var(--navy)}
 .html-hub-page .section h3{font-size:18px;font-weight:700;margin-bottom:8px}
 .html-hub-page .section-sub{font-size:var(--mk-section-lead);color:var(--gray-600);max-width:600px;line-height:var(--mk-section-lead-lh);margin-bottom:48px}
 /* Visible entity definition (same rhythm as .section-sub; slightly stronger for extraction / scan) */
@@ -754,8 +754,10 @@ export const HTML_HUB_SCOPED_CSS = `
   display:inline-flex;align-items:center;justify-content:center;
   min-width:84px;padding:8px 12px;border-radius:999px;
   border:1px solid var(--border);background:#fff;color:var(--gray-700);
-  font-size:12px;font-weight:700;white-space:nowrap
+  font-size:12px;font-weight:700;white-space:nowrap;
+  transition:all .2s ease
 }
+.html-hub-page .step-track-mobile-nav-btn.is-active{background:var(--purple);border-color:var(--purple);color:#fff}
 .html-hub-page .step:target{
   border-color:#c4b5fd;
   box-shadow:0 0 0 3px rgba(139,92,246,.12)
@@ -763,6 +765,7 @@ export const HTML_HUB_SCOPED_CSS = `
 @media(max-width:640px){
   .html-hub-page .step-track-mobile-nav{
     display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 0 12px;
+    justify-content:center;
     -webkit-overflow-scrolling:touch
   }
   .html-hub-page .steps,

@@ -408,8 +408,8 @@ export function CurrentNumberCallForwardingTool() {
 
       <section ref={findRef} id="find-setup" className="mx-auto mt-24 max-w-6xl px-6">
         <div className="md:p-2">
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Find your setup</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-slate-900">Find your setup</h2>
+          <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setFilter('popular')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'popular' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Popular countries</button>
             <button type="button" onClick={() => setFilter('voip')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'voip' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Business phone &amp; VoIP</button>
             <button type="button" onClick={() => setFilter('other')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'other' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Other countries</button>
@@ -479,8 +479,8 @@ export function CurrentNumberCallForwardingTool() {
 
           {voipVisible ? (
             <section className="mt-10">
-              <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Business phone &amp; VoIP systems</h3>
-              <p className="mt-1 text-sm text-slate-600">
+              <h3 className="mb-3 text-xl font-extrabold tracking-tight text-slate-900">Business phone &amp; VoIP systems</h3>
+              <p className="text-sm text-slate-600">
                 Already using a virtual number or cloud phone system? Choose your provider to see how to route calls to RingBooker.
               </p>
               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -550,8 +550,8 @@ export function CurrentNumberCallForwardingTool() {
 
       <section className="mx-auto mt-16 max-w-6xl px-6 md:hidden">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Cover missed calls without changing your number</h2>
-          <p className="mt-2 text-[15px] leading-7 text-slate-600">
+          <h2 className="mb-4 text-3xl font-extrabold tracking-tight text-slate-900">Cover missed calls without changing your number</h2>
+          <p className="text-[15px] leading-7 text-slate-600">
             RingBooker helps appointment-based businesses answer after-hours, busy, and unanswered calls while keeping their current public number.
           </p>
           <p className="mt-3 text-sm leading-6 text-slate-600">
