@@ -309,10 +309,11 @@ function genericSetupInstructions(sourceUrls: string[]) {
 
 function buildSetupInstructions(id: string, sourceUrls: string[]) {
   const skipSource = ['https://skipcalls.com/call-forwarding', ...sourceUrls.filter((u) => u.includes('skipcalls.com'))];
-  const byId: Record<string, ReturnType<typeof genericSetupInstructions>> = {
+  type ProviderSetupInstructions = ProviderRecord['setupInstructions'];
+  const byId: Record<string, ProviderSetupInstructions> = {
     verizon: {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/verizon', ...skipSource],
+      verificationStatus: 'official_verified',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/verizon', 'https://www.verizon.com/support/call-forwarding/', ...skipSource],
       options: [
         { type: 'all_calls', label: 'Forward all calls', activationMethod: 'dial_code', activationCode: '*72 + destination number', activationSteps: ['Dial `*72` followed by your RingBooker forwarding number, then press Call.', 'Wait for confirmation tone or message.'], deactivationCode: '*73', deactivationSteps: ['Dial `*73` to turn off forwarding.'], notes: [] },
         { type: 'no_answer', label: 'Forward no-answer calls', activationMethod: 'dial_code', activationCode: '*71 + destination number', activationSteps: ['Dial `*71` followed by your RingBooker forwarding number.', 'Press Call and wait for confirmation.'], deactivationCode: '*73', deactivationSteps: ['Dial `*73` to clear no-answer forwarding.'], notes: [] },
@@ -321,8 +322,8 @@ function buildSetupInstructions(id: string, sourceUrls: string[]) {
       troubleshooting: ['If dial codes fail, check My Verizon app call forwarding settings.', ...BASE_TROUBLESHOOTING],
     },
     att: {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/att', ...skipSource],
+      verificationStatus: 'official_verified',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/att', 'https://www.att.com/support/article/wireless/KM1011513/', ...skipSource],
       options: [
         { type: 'all_calls', label: 'Forward all calls', activationMethod: 'dial_code', activationCode: '*21*[destination]#', activationSteps: ['Dial `*21*<RingBooker number>#` and press Call.'], deactivationCode: '##21#', deactivationSteps: ['Dial `##21#` to disable all-call forwarding.'], notes: [] },
         { type: 'busy', label: 'Forward busy calls', activationMethod: 'dial_code', activationCode: '**67*[destination]#', activationSteps: ['Dial `**67*<RingBooker number>#`.'], deactivationCode: '##67#', deactivationSteps: ['Dial `##67#`.'], notes: [] },
@@ -345,8 +346,8 @@ function buildSetupInstructions(id: string, sourceUrls: string[]) {
       troubleshooting: ['If blocked, call T-Mobile support to enable conditional forwarding to external number.', ...BASE_TROUBLESHOOTING],
     },
     'google-voice-us': {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/google-voice', ...skipSource],
+      verificationStatus: 'official_verified',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/google-voice', 'https://support.google.com/voice/answer/165656', 'https://support.google.com/voice/answer/11420769?hl=en', ...skipSource],
       options: [
         { type: 'dashboard_rule', label: 'Link and verify forwarding number', activationMethod: 'app_setting', activationCode: null, activationSteps: ['Open Google Voice on mobile.', 'Go to Settings > Linked numbers > Add linked number.', 'Use phone-call verification (not SMS).', 'Verify your RingBooker forwarding number and enable forwarding toggle.'], deactivationCode: null, deactivationSteps: ['Turn off forwarding toggle or remove linked RingBooker number.'], notes: ['Use mobile app for smoother verification flow.'] },
       ],
@@ -354,8 +355,8 @@ function buildSetupInstructions(id: string, sourceUrls: string[]) {
       troubleshooting: ['Check Do Not Disturb and custom rules if forwarding does not trigger.', ...BASE_TROUBLESHOOTING],
     },
     'ringcentral-us': {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/ringcentral', ...skipSource],
+      verificationStatus: 'needs_official_verification',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/ringcentral', 'https://support.ringcentral.com/', ...skipSource],
       options: [
         { type: 'dashboard_rule', label: 'Configure call handling in RingCentral', activationMethod: 'admin_portal', activationCode: null, activationSteps: ['Sign in to RingCentral.', 'Open Phone / Call handling for your user or extension.', 'Add external forwarding number (RingBooker).', 'Enable forward-all or schedule-based rules and save.'], deactivationCode: null, deactivationSteps: ['Disable forwarding rule or remove external forwarding number.'], notes: ['Place forwarding rule before voicemail if you want RingBooker to answer first.'] },
       ],
@@ -363,8 +364,8 @@ function buildSetupInstructions(id: string, sourceUrls: string[]) {
       troubleshooting: ['Confirm you edited the active extension or schedule.', ...BASE_TROUBLESHOOTING],
     },
     'openphone-us': {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/openphone', ...skipSource],
+      verificationStatus: 'needs_official_verification',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/openphone', 'https://support.openphone.com/core-concepts/administration/call-flows/call-forwarding', ...skipSource],
       options: [
         { type: 'dashboard_rule', label: 'Configure call flow in OpenPhone / Quo', activationMethod: 'web_dashboard', activationCode: null, activationSteps: ['Sign in to OpenPhone.', 'Open your number Call flow builder.', 'Either enable Forward all calls to RingBooker, or add Forward call step after business-hours/ring-users rule.', 'Save and publish flow.'], deactivationCode: null, deactivationSteps: ['Disable Forward call step or revert to previous flow.'], notes: ['Applies per-number; if multiple numbers exist, configure each one.'] },
       ],
@@ -372,8 +373,8 @@ function buildSetupInstructions(id: string, sourceUrls: string[]) {
       troubleshooting: ['Check for conflicting simultaneous ringing or routing steps.', ...BASE_TROUBLESHOOTING],
     },
     'nextiva-us': {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/nextiva', ...skipSource],
+      verificationStatus: 'needs_official_verification',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/nextiva', 'https://www.nextiva.com/support/', ...skipSource],
       options: [
         { type: 'no_answer', label: 'Forward no-answer calls', activationMethod: 'dial_code', activationCode: '*92 + destination number', activationSteps: ['Dial `*92` followed by RingBooker number.'], deactivationCode: '*92', deactivationSteps: ['Dial `*92` to clear no-answer forwarding.'], notes: [] },
         { type: 'busy', label: 'Forward busy calls', activationMethod: 'dial_code', activationCode: '*90 + destination number', activationSteps: ['Dial `*90` followed by RingBooker number.'], deactivationCode: '*90', deactivationSteps: ['Dial `*90` again to disable busy forwarding.'], notes: [] },
@@ -383,8 +384,8 @@ function buildSetupInstructions(id: string, sourceUrls: string[]) {
       troubleshooting: BASE_TROUBLESHOOTING,
     },
     'vonage-us': {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/vonage', ...skipSource],
+      verificationStatus: 'needs_official_verification',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/vonage', 'https://support.vonage.com/', ...skipSource],
       options: [
         { type: 'dashboard_rule', label: 'Forward calls in Vonage admin', activationMethod: 'web_dashboard', activationCode: null, activationSteps: ['Sign in to Vonage admin.', 'Open call forwarding settings and set RingBooker number.', 'Set ring delay if desired (5-7 seconds often used).', 'If needed, update hunt/call sequence so forwarding path is active.'], deactivationCode: null, deactivationSteps: ['Disable call forwarding in Vonage settings or restore prior sequence.'], notes: [] },
       ],
@@ -392,8 +393,8 @@ function buildSetupInstructions(id: string, sourceUrls: string[]) {
       troubleshooting: BASE_TROUBLESHOOTING,
     },
     'ooma-us': {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/ooma', ...skipSource],
+      verificationStatus: 'needs_official_verification',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/ooma', 'https://support.ooma.com/office/', ...skipSource],
       options: [
         { type: 'all_calls', label: 'Forward all calls', activationMethod: 'dial_code', activationCode: '*72 + destination number#', activationSteps: ['Dial `*72` then RingBooker number and `#`.'], deactivationCode: '*74', deactivationSteps: ['Dial `*74` to disable all-call forwarding.'], notes: [] },
       ],
@@ -401,8 +402,8 @@ function buildSetupInstructions(id: string, sourceUrls: string[]) {
       troubleshooting: BASE_TROUBLESHOOTING,
     },
     'comcast-business': {
-      verificationStatus: 'skipcalls_sourced',
-      sourceUrls: ['https://skipcalls.com/call-forwarding/comcast-business', ...skipSource],
+      verificationStatus: 'official_verified',
+      sourceUrls: ['https://skipcalls.com/call-forwarding/comcast-business', 'https://business.comcast.com/help-and-support/voice/call-forwarding', ...skipSource],
       options: [
         { type: 'all_calls', label: 'Forward all calls', activationMethod: 'dial_code', activationCode: '*72', activationSteps: ['Dial `*72` and follow prompt to enter your RingBooker number.'], deactivationCode: '*73', deactivationSteps: ['Dial `*73`.'], notes: [] },
         { type: 'busy', label: 'Forward busy calls', activationMethod: 'dial_code', activationCode: '*90', activationSteps: ['Dial `*90` and add forwarding destination when prompted.'], deactivationCode: '*91', deactivationSteps: ['Dial `*91`.'], notes: [] },
