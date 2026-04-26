@@ -174,11 +174,11 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-section{padding:88px 48px;background:linear-gradient(180deg,#fff 0%,#fcfbff 48%,#F9FAFB 100%)}
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-	.leak-card{position:relative;background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);border:1.5px solid rgba(196,181,253,.45);border-radius:24px;padding:34px 28px 24px;box-shadow:0 0 0 4px rgba(139,92,246,.05),var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
-	.leak-card:hover{transform:translateY(-2px);box-shadow:0 18px 42px -10px rgba(124,58,237,.16),0 0 0 4px rgba(139,92,246,.08);border-color:#c4b5fd}
+	.leak-card{position:relative;background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);border:1.5px solid rgba(196,181,253,.4);border-radius:24px;padding:34px 28px 24px;box-shadow:0 0 0 4px rgba(139,92,246,.035),var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
+	.leak-card:hover{transform:translateY(-2px);box-shadow:0 0 0 4px rgba(139,92,246,.05),var(--home-shadow-hover);border-color:#c4b5fd}
 	.leak-icon{width:48px;height:48px;margin:0 0 18px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f8ddea,#f4cfe0);border:1px solid rgba(244,114,182,.16);color:#6b2168;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 	.leak-icon .home-line-icon{margin:0}
-	.leak-card h3{font-size:clamp(24px,2.25vw,32px);font-weight:700;line-height:1.16;letter-spacing:-.9px;margin-bottom:14px;text-align:left;color:#2a1f24;max-width:12ch}
+	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.25px;margin-bottom:10px;text-align:left;color:#2a1f24;max-width:18ch}
 	.leak-card p{font-size:15px;color:#6f625f;line-height:1.74;text-align:left}
 	.leak-divider{height:1px;background:linear-gradient(90deg,rgba(221,214,204,.95) 0%,rgba(221,214,204,.72) 82%,rgba(221,214,204,0) 100%);margin:20px 0 16px}
 	.leak-point{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.6;font-weight:700;color:#7b4b78}
@@ -432,17 +432,18 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .home-carousel-dots{display:flex;justify-content:center;gap:8px}
 .home-carousel-dot{width:10px;height:10px;border-radius:999px;background:#d1d5db;border:none;cursor:pointer;transition:all .2s ease}
 .home-carousel-dot.active{width:26px;background:#8b5cf6}
-.steps-section{padding:72px 48px;background:#fff}
+.steps-section{padding:88px 48px;background:linear-gradient(180deg,#fff 0%,#fcfbff 100%)}
 .steps-inner{max-width:1100px;margin:0 auto}
-.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:40px}
-.step-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:24px 22px;box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
-.step-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.5)}
-.step-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-.step-icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--purple-dark);background:linear-gradient(180deg,#fff,#faf9ff);border:1px solid rgba(196,181,253,.4)}
-.step-icon .home-line-icon{flex-shrink:0}
-.step-num{min-width:42px;height:30px;border-radius:999px;background:var(--purple-ultra);color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;padding:0 10px;border:1px solid rgba(196,181,253,.35)}
-.step-card h3{font-size:18px;font-weight:600;letter-spacing:-.35px;margin-bottom:8px;line-height:1.3;color:var(--text-dark)}
-.step-card p{font-size:var(--mk-body);color:var(--text-desc);line-height:1.68;font-weight:400}
+.steps-intro{max-width:760px;margin:0 auto 56px;text-align:center}
+.steps-title{font-size:clamp(46px,5vw,68px);font-weight:700;line-height:1.12;letter-spacing:-1.8px;color:#2a1f24;margin-bottom:18px}
+.steps-copy{font-size:clamp(18px,2vw,20px);color:#8a7d78;line-height:1.68;max-width:640px;margin:0 auto}
+.steps-shell{position:relative;padding-top:42px}
+.steps-rail{position:absolute;left:10%;right:10%;top:68px;height:1px;background:linear-gradient(90deg,rgba(244,114,182,.32) 0%,rgba(221,214,204,.95) 45%,rgba(221,214,204,.95) 100%)}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;position:relative}
+.step-card{position:relative;background:transparent;border:none;border-radius:0;padding:0;text-align:center;box-shadow:none}
+.step-marker{width:52px;height:52px;border-radius:999px;border:2px solid #7b3f74;background:#fff;color:#7b3f74;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;margin:0 auto 28px;position:relative;z-index:2}
+.step-card h3{font-size:clamp(20px,2.2vw,24px);font-weight:500;letter-spacing:-.45px;line-height:1.34;margin-bottom:12px;color:#2a1f24;max-width:300px;margin-left:auto;margin-right:auto}
+.step-card p{font-size:15px;color:#8a7d78;line-height:1.8;max-width:310px;margin:0 auto;font-weight:400}
 
 /* ─── REAL CALL FLOW ─── */
 .flow-section{padding:20px 48px 72px;background:#fff}
@@ -520,6 +521,15 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 
 @media(max-width:960px){
   .steps-grid,.flow-grid,.scope-inner,.user-grid{grid-template-columns:1fr}
+  .steps-section{padding-top:72px;padding-bottom:72px}
+  .steps-intro{margin-bottom:34px}
+  .steps-title{font-size:40px;letter-spacing:-1.2px}
+  .steps-copy{font-size:17px}
+  .steps-shell{padding-top:0}
+  .steps-rail{display:none}
+  .step-marker{margin-bottom:18px}
+  .step-card h3{font-size:22px}
+  .step-card p{max-width:100%}
   .user-shell{aspect-ratio:16/10}
   .industry-card{flex-basis:calc((100% - 16px) / 2)}
   .steps-section,.flow-section,.scope-section,.user-preview,.industries{padding-left:22px;padding-right:22px}
@@ -536,17 +546,14 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .home-carousel-track::-webkit-scrollbar{display:none}
   .home-carousel-slide{scroll-snap-align:start}
   .home-carousel-controls{display:flex}
-  .home-carousel-track .step-card,
   .home-carousel-track .test-card,
   .home-carousel-track .plan{
     margin:0;
     box-sizing:border-box;
     transform:none;
   }
-  .home-carousel-track .step-card{flex:0 0 calc((100% - 16px) / 2)}
   .home-carousel-track .test-card{flex:0 0 calc((100% - 16px) / 2)}
   .home-carousel-track .plan{flex:0 0 calc((100% - 16px) / 2);height:auto}
-  .home-carousel-track .step-card:hover,
   .home-carousel-track .test-card:hover,
   .home-carousel-track .plan:hover{transform:none}
 }
@@ -554,7 +561,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 @media(max-width:640px){
   .industry-card{flex-basis:100%}
   .industries-controls{justify-content:center}
-  .home-carousel-track .step-card,
   .home-carousel-track .test-card,
   .home-carousel-track .plan{flex-basis:100%}
   .home-carousel-controls{justify-content:center}
@@ -865,16 +871,6 @@ setPriceSafe('monthly')
     })
 
     initCarousel({
-      rootId: 'howCarousel',
-      trackSelector: '.home-carousel-track',
-      cardSelector: '.step-card',
-      prevId: 'howPrev',
-      nextId: 'howNext',
-      dotsId: 'howDots',
-      dotClassName: 'home-carousel-dot',
-    })
-
-    initCarousel({
       rootId: 'usersCarousel',
       trackSelector: '.home-carousel-track',
       cardSelector: '.test-card',
@@ -964,24 +960,26 @@ export function MarketingHomeTemplate() {
             <div className="hero-visual">
               {/* Floating cards */}
               <div className="fc fc-1">
-                <div className="fc-big">Current #</div>
-                <div className="fc-sm">No number change</div>
-                <div className="fc-tag">Forward your line</div>
+                <div className="fc-big">24/7</div>
+                <div className="fc-sm">Call coverage</div>
+                <div className="fc-tag">After-hours answered</div>
               </div>
               <div className="fc fc-2">
-                <div className="fc-big green">Overflow</div>
-                <div className="fc-sm">Busy desk covered</div>
-                <div className="fc-tag g">Text-back ready</div>
+                <div className="fc-big green">15 min</div>
+                <div className="fc-sm">Setup time</div>
+                <div className="fc-tag g">Guided onboarding</div>
               </div>
               <div className="fc fc-3">
-                <div className="fc-mini fc-mini-top">AI phone agent active</div>
+                <div className="fc-mini fc-mini-top">Current-number setup</div>
+                <div className="fc-big">100%</div>
+                <div className="fc-sm">Keep your number</div>
                 <div className="wv"><span /><span /><span /><span /><span /><span /><span /></div>
-                <div className="fc-mini fc-mini-bottom">Booking appointment…</div>
+                <div className="fc-mini fc-mini-bottom">No listing churn</div>
               </div>
               <div className="fc fc-4">
-                <div className="fc-big">After-hours</div>
-                <div className="fc-sm">Caller intent captured</div>
-                <div className="fc-tag">Human handoff</div>
+                <div className="fc-big">14 days</div>
+                <div className="fc-sm">Free trial</div>
+                <div className="fc-tag">Start risk-free</div>
               </div>
               {/* PHONE with voice call UI */}
               <div className="phone-wrap">
@@ -1091,6 +1089,103 @@ export function MarketingHomeTemplate() {
             </div>
           </div>
         </section>
+        {/* FEATURES GRID */}
+        <section className="features" id="features">
+          <div className="sec-label">Core coverage</div>
+          <h2 className="sec-title reveal">The phone moments<br />RingBooker covers.</h2>
+          <p className="sec-sub reveal">RingBooker is built around the phone moments where beauty businesses lose bookings.</p>
+            <div className="feat-grid">
+            <div className="feat-card reveal">
+              <div className="feat-ico fi-y" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                </HomeLineIcon>
+              </div>
+              <h3>After-Hours &amp; Overflow Call Answering.</h3>
+              <p>Answers calls when your team is busy, closed, already on another line, or serving a client.</p>
+            </div>
+            <div className="feat-card reveal">
+              <div className="feat-ico fi-g" aria-hidden>
+                <HomeLineIcon>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                </HomeLineIcon>
+              </div>
+              <h3>Reschedule, Cancel &amp; Confirm Call Handling.</h3>
+              <p>Handles common booking changes based on your rules and sends the caller a clear confirmation.</p>
+            </div>
+            <div className="feat-card reveal">
+              <div className="feat-ico fi-p" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </HomeLineIcon>
+              </div>
+              <h3>Missed-Call Text Back &amp; Smart Callback.</h3>
+              <p>Texts callers who hang up or reach you after hours, then queues the right follow-up for your team.</p>
+            </div>
+            <div className="feat-card reveal">
+              <div className="feat-ico fi-y" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                </HomeLineIcon>
+              </div>
+              <h3>Works With Your Current Number &amp; Booking Tools.</h3>
+              <p>Forward your front-desk line and keep using the booking workflow you already know, with Square live today and more integrations expanding.</p>
+            </div>
+            <div className="feat-card reveal">
+              <div className="feat-ico fi-g" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                </HomeLineIcon>
+              </div>
+              <h3>Call Summary &amp; Intent Dashboard for You.</h3>
+              <p>Every call becomes a transcript, summary, and outcome so you can see what happened without replaying voicemail.</p>
+            </div>
+            <div className="feat-card reveal">
+              <div className="feat-ico fi-p" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                </HomeLineIcon>
+              </div>
+              <h3>Human Handoff When the Caller Needs It.</h3>
+              <p>If the request is complex, RingBooker collects context, offers a callback, and hands the conversation back cleanly.</p>
+            </div>
+          </div>
+        </section>
+        {/* HOW IT WORKS */}
+        <section className="steps-section" id="how-it-works">
+          <div className="steps-inner">
+            <div className="steps-intro">
+              <div className="sec-label">How it works</div>
+              <h2 className="steps-title reveal">Live in 15 minutes.<br />No migration needed.</h2>
+              <p className="steps-copy reveal">Keep your current phone number. Keep your booking tools. Just forward your line and RingBooker handles the rest.</p>
+            </div>
+            <div className="steps-shell reveal">
+              <div className="steps-rail" aria-hidden="true" />
+              <div className="steps-grid">
+                <article className="step-card">
+                  <div className="step-marker">1</div>
+                  <h3>01 — Forward your number</h3>
+                  <p>Keep the number your clients know. RingBooker sits behind your line and catches every missed, busy, or after-hours call.</p>
+                </article>
+                <article className="step-card">
+                  <div className="step-marker">2</div>
+                  <h3>02 — Set your rules</h3>
+                  <p>Add your hours, services, and booking workflow. Connect your tools and RingBooker follows your flow.</p>
+                </article>
+                <article className="step-card">
+                  <div className="step-marker">3</div>
+                  <h3>03 — Start recovering bookings</h3>
+                  <p>Callers get help instantly. Your team gets the summary, booking details, and next action.</p>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
         <section className="compare-section" id="ai-phone-agent-differences">
           <div className="compare-inner">
             <div className="sec-label">Why It Feels Different</div>
@@ -1122,7 +1217,7 @@ export function MarketingHomeTemplate() {
                 </div>
               ))}
               </div>
-          </div>
+            </div>
         </section>
         <section className="industries" id="industries">
           <div className="industries-inner">
@@ -1202,126 +1297,6 @@ export function MarketingHomeTemplate() {
                 <div className="industries-dots" id="industriesDots" aria-label="Industries carousel indicators" />
                 <button type="button" id="industriesNext" className="industries-nav-btn" aria-label="Next industry">›</button>
               </div>
-            </div>
-          </div>
-        </section>
-        {/* HOW IT WORKS */}
-        <section className="steps-section" id="how-it-works">
-          <div className="steps-inner">
-            <div className="sec-label">How It Works</div>
-            <h2 className="sec-title reveal">Get your AI phone agent live<br />in three simple steps.</h2>
-            <p className="sec-sub reveal">Built for busy beauty businesses that want to configure call recovery in about <span className="emphasis-5min">15 minutes</span> — not get stuck in another software migration project.</p>
-            <div className="home-carousel" id="howCarousel">
-              <div className="steps-grid home-carousel-track">
-                <div className="step-card reveal home-carousel-slide">
-                  <div className="step-head">
-                    <div className="step-icon" aria-hidden>
-                      <HomeLineIcon>
-                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
-                      </HomeLineIcon>
-                    </div>
-                    <div className="step-num">Step 01</div>
-                  </div>
-                  <h3>Forward your existing number (or get a new one).</h3>
-                  <p>Keep the number your clients already know. RingBooker can sit behind your current front-desk line or use a new number if you prefer.</p>
-                </div>
-                <div className="step-card reveal home-carousel-slide">
-                  <div className="step-head">
-                    <div className="step-icon" aria-hidden>
-                      <HomeLineIcon>
-                        <path d="M4 21v-7M4 10v-7M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4" />
-                      </HomeLineIcon>
-                    </div>
-                    <div className="step-num">Step 02</div>
-                  </div>
-                  <h3>Tell RingBooker your services, hours, and what to say.</h3>
-                  <p>Set your booking rules, service menu, business hours, caller scripts, and handoff rules so the AI follows your front-desk style.</p>
-                </div>
-                <div className="step-card reveal home-carousel-slide">
-                  <div className="step-head">
-                    <div className="step-icon" aria-hidden>
-                      <HomeLineIcon>
-                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                      </HomeLineIcon>
-                    </div>
-                    <div className="step-num">Step 03</div>
-                  </div>
-                  <h3>RingBooker answers calls, captures intent, and texts your team.</h3>
-                  <p>After-hours and overflow callers get help right away, while your team gets the call summary and next action in the dashboard.</p>
-                </div>
-              </div>
-              <div className="home-carousel-controls" aria-label="How it works carousel controls">
-                <button type="button" id="howPrev" className="home-carousel-nav-btn" aria-label="Previous step">‹</button>
-                <div className="home-carousel-dots" id="howDots" aria-label="How it works carousel indicators" />
-                <button type="button" id="howNext" className="home-carousel-nav-btn" aria-label="Next step">›</button>
-              </div>
-            </div>
-          </div>
-        </section>
-        {/* FEATURES GRID */}
-        <section className="features" id="features">
-          <div className="sec-label">Core Features</div>
-          <h2 className="sec-title reveal">Built for beauty businesses.<br />Trained to book.</h2>
-          <p className="sec-sub reveal">Everything you need to stop losing clients to voicemail.</p>
-            <div className="feat-grid">
-            <div className="feat-card reveal">
-              <div className="feat-ico fi-y" aria-hidden>
-                <HomeLineIcon>
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
-                </HomeLineIcon>
-              </div>
-              <h3>After-Hours &amp; Overflow Call Answering.</h3>
-              <p>Answers calls when your team is busy, closed, already on another line, or serving a client.</p>
-            </div>
-            <div className="feat-card reveal">
-              <div className="feat-ico fi-g" aria-hidden>
-                <HomeLineIcon>
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <path d="M16 2v4M8 2v4M3 10h18" />
-                </HomeLineIcon>
-              </div>
-              <h3>Reschedule, Cancel &amp; Confirm Call Handling.</h3>
-              <p>Handles common booking changes based on your rules and sends the caller a clear confirmation.</p>
-            </div>
-            <div className="feat-card reveal">
-              <div className="feat-ico fi-p" aria-hidden>
-                <HomeLineIcon>
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                </HomeLineIcon>
-              </div>
-              <h3>Missed-Call Text Back &amp; Smart Callback.</h3>
-              <p>Texts callers who hang up or reach you after hours, then queues the right follow-up for your team.</p>
-            </div>
-            <div className="feat-card reveal">
-              <div className="feat-ico fi-y" aria-hidden>
-                <HomeLineIcon>
-                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
-                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
-                </HomeLineIcon>
-              </div>
-              <h3>Works With Your Current Number &amp; Booking Tools.</h3>
-              <p>Forward your front-desk line and keep using the booking workflow you already know, with Square live today and more integrations expanding.</p>
-            </div>
-            <div className="feat-card reveal">
-              <div className="feat-ico fi-g" aria-hidden>
-                <HomeLineIcon>
-                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                  <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
-                </HomeLineIcon>
-              </div>
-              <h3>Call Summary &amp; Intent Dashboard for You.</h3>
-              <p>Every call becomes a transcript, summary, and outcome so you can see what happened without replaying voicemail.</p>
-            </div>
-            <div className="feat-card reveal">
-              <div className="feat-ico fi-p" aria-hidden>
-                <HomeLineIcon>
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-                </HomeLineIcon>
-              </div>
-              <h3>Human Handoff When the Caller Needs It.</h3>
-              <p>If the request is complex, RingBooker collects context, offers a callback, and hands the conversation back cleanly.</p>
             </div>
           </div>
         </section>
