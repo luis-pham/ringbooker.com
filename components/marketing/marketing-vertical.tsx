@@ -417,7 +417,7 @@ function FinalCta({
             href="/user/signup"
             className="inline-flex items-center justify-center rounded-full border border-white/35 bg-white/10 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:bg-white/20"
           >
-            Start Free 14-Day Trial →
+            Start Free 14-Day Trial
           </Link>
         </div>
       </div>
@@ -451,7 +451,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
-              Start Free 14-Day Trial →
+              Start Free 14-Day Trial
             </Link>
           </div>
           <IntegrationRow />
@@ -576,7 +576,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
-              Start Free Trial →
+              Start Free Trial
             </Link>
           </div>
           <IntegrationRow />
@@ -695,7 +695,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
-              Start Free Trial →
+              Start Free Trial
             </Link>
           </div>
           <IntegrationRow />
@@ -833,7 +833,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
-              Start Free Trial →
+              Start Free Trial
             </Link>
           </div>
           <IntegrationRow />
@@ -977,7 +977,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
-              Start Free Trial →
+              Start Free Trial
             </Link>
           </div>
           <IntegrationRow />
@@ -1302,7 +1302,16 @@ function VerticalHubArticles({
               className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-medium text-slate-800 no-underline transition hover:border-violet-300 hover:text-violet-700"
             >
               <span className="text-violet-600" aria-hidden>
-                →
+                <svg viewBox="0 0 16 16" width={12} height={12}>
+                  <path
+                    d="M3 8h9M8.5 3.5 13 8l-4.5 4.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </span>
               {link.label}
             </Link>
