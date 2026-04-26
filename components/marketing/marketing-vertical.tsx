@@ -249,11 +249,23 @@ function HowItWorks({
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
       <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <p className="mx-auto mt-2 max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
-      <div className="mt-8 grid gap-5 md:grid-cols-3">
+      <div className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden">
+        {steps.map((s) => (
+          <a
+            key={`vertical-step-nav-${s.n}`}
+            href={`#vertical-step-${s.n}`}
+            className="inline-flex min-w-[84px] items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600"
+          >
+            Step {s.n}
+          </a>
+        ))}
+      </div>
+      <div className="mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:pb-0">
         {steps.map((s) => (
           <div
             key={s.n}
-            className="relative rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            id={`vertical-step-${s.n}`}
+            className="relative w-[84%] shrink-0 snap-center rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg md:w-auto md:shrink md:snap-none"
           >
             <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-extrabold text-white`}>{s.n}</div>
             <p className="text-[15px] font-bold text-slate-900">{s.title}</p>

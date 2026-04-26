@@ -284,12 +284,10 @@ function SetupGuidePanel({
 }
 
 export function CurrentNumberCallForwardingTool() {
-  const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'popular' | 'voip' | 'other'>('popular');
   const [otherCountry, setOtherCountry] = useState<'UK' | 'NZ' | 'IE'>('UK');
   const [selected, setSelected] = useState<ProviderRecord | null>(null);
   const [suggestedCountry, setSuggestedCountry] = useState<'UK' | 'NZ' | 'IE' | null>(null);
-  const [searchTracked, setSearchTracked] = useState(false);
   const [activeHowStep, setActiveHowStep] = useState(0);
   const findRef = useRef<HTMLDivElement | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
@@ -304,21 +302,12 @@ export function CurrentNumberCallForwardingTool() {
     if (lang.includes('en-ie')) setSuggestedCountry('IE');
   }, []);
 
-  const q = search.trim().toLowerCase();
-  const filtered = useMemo(
-    () =>
-      CALL_FORWARDING_PROVIDERS.filter((p) => {
-        if (!q) return true;
-        const haystack = [p.name, p.providerTypeLabel, p.country, p.category, p.marketGroup, ...p.aliases].join(' ').toLowerCase();
-        return haystack.includes(q);
-      }),
-    [q],
-  );
+  const filtered = useMemo(() => CALL_FORWARDING_PROVIDERS, []);
 
   const byCountry = (countryCode: ProviderCountryCode) => filtered.filter((p) => p.countryCode === countryCode);
-  const popularVisible = filter === 'popular' || q.length > 0;
-  const voipVisible = filter === 'voip' || q.length > 0;
-  const otherVisible = filter === 'other' || q.length > 0;
+  const popularVisible = filter === 'popular';
+  const voipVisible = filter === 'voip';
+  const otherVisible = filter === 'other';
 
   useEffect(() => {
     if (!selected || !detailRef.current) return;
@@ -420,19 +409,6 @@ export function CurrentNumberCallForwardingTool() {
       <section ref={findRef} id="find-setup" className="mx-auto mt-24 max-w-6xl px-6">
         <div className="md:p-2">
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Find your setup</h2>
-          <input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              if (!searchTracked && e.target.value.trim().length > 0) {
-                track('call_forwarding_search_used');
-                setSearchTracked(true);
-              }
-            }}
-            placeholder="Search provider, country, or phone system"
-            className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none ring-violet-300 focus:border-violet-500 focus:ring-4"
-          />
-
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" onClick={() => setFilter('popular')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'popular' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Popular countries</button>
             <button type="button" onClick={() => setFilter('voip')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'voip' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Business phone &amp; VoIP</button>
@@ -559,17 +535,6 @@ export function CurrentNumberCallForwardingTool() {
                   ))}
               </div>
             </section>
-          ) : null}
-
-          {filtered.length === 0 ? (
-            <div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5">
-              <p className="text-sm leading-7 text-slate-700">
-                Don&apos;t see your provider? RingBooker can still help you test call forwarding.
-              </p>
-              <Link href="/contact" className="mt-3 inline-flex min-h-10 items-center rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-black">
-                Get guided setup
-              </Link>
-            </div>
           ) : null}
 
           <div ref={detailRef}>{selected ? <SetupGuidePanel provider={selected} onBack={() => setSelected(null)} isMobile /> : null}</div>

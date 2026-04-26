@@ -784,13 +784,20 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 <HubEyebrow html={block.html} />
                 <h2>{block.heading}</h2>
                 {block.sub ? <p className="section-sub">{block.sub}</p> : null}
+                <div className="step-track-mobile-nav" role="tablist" aria-label={`${block.heading} steps`}>
+                  {block.steps.map((s, idx) => (
+                    <a key={`${s.title}-nav`} href={`#hub-step-${i}-${idx + 1}`} className="step-track-mobile-nav-btn">
+                      Step {idx + 1}
+                    </a>
+                  ))}
+                </div>
                 <div
                   className={
                     block.html?.stepsCentered4 ? 'steps steps--centered-4' : 'steps'
                   }
                 >
-                  {block.steps.map((s) => (
-                    <div className="step" key={s.title}>
+                  {block.steps.map((s, idx) => (
+                    <div className="step" key={s.title} id={`hub-step-${i}-${idx + 1}`}>
                       <h4>{s.title}</h4>
                       <p>{s.body}</p>
                     </div>

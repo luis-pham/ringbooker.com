@@ -749,6 +749,37 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page .step h4{font-size:15px;font-weight:700;margin-bottom:8px;padding-top:8px;color:var(--navy)}
 .html-hub-page .step p{font-size:13px;color:var(--gray-600);line-height:1.5}
+.html-hub-page .step-track-mobile-nav{display:none}
+.html-hub-page .step-track-mobile-nav-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:84px;padding:8px 12px;border-radius:999px;
+  border:1px solid var(--border);background:#fff;color:var(--gray-700);
+  font-size:12px;font-weight:700;white-space:nowrap
+}
+.html-hub-page .step:target{
+  border-color:#c4b5fd;
+  box-shadow:0 0 0 3px rgba(139,92,246,.12)
+}
+@media(max-width:640px){
+  .html-hub-page .step-track-mobile-nav{
+    display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 0 12px;
+    -webkit-overflow-scrolling:touch
+  }
+  .html-hub-page .steps,
+  .html-hub-page .steps.steps--centered-4{
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    padding:2px 2px 6px;
+    max-width:100%;
+    justify-content:flex-start;
+  }
+  .html-hub-page .step{
+    min-width:84%;
+    scroll-snap-align:center;
+  }
+}
 
 .html-hub-page .concern-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
 .html-hub-page .concern{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;display:flex;gap:14px}

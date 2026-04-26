@@ -108,6 +108,9 @@ a{text-decoration:none;color:inherit}
 .hiw-flow{counter-reset:hiwStep}
 .hiw-step{position:relative}
 .hiw-step::before{counter-increment:hiwStep;content:counter(hiwStep);width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;margin:0 auto 18px;box-shadow:0 12px 24px rgba(139,92,246,.24)}
+.hiw-steps-mobile-nav{display:none}
+.hiw-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:800;white-space:nowrap}
+.hiw-step:target{border-color:#c4b5fd;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
 .hiw-handle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .hiw-handle{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
 .hiw-handle:hover{transform:translateY(-2px);box-shadow:0 20px 40px -8px rgba(17,24,39,.1),0 8px 16px -6px rgba(17,24,39,.06);border-color:#d1d5db}
@@ -161,6 +164,9 @@ a{text-decoration:none;color:inherit}
   .hiw-actions,.hiw-cta .hiw-actions{flex-direction:column;align-items:stretch}
   .hiw-btn-dark,.hiw-btn-outline{width:100%}
   .hiw-section{padding-top:68px;padding-bottom:68px}
+  .hiw-steps-mobile-nav{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:0 0 12px}
+  .hiw-grid-3.hiw-flow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px}
+  .hiw-grid-3.hiw-flow .hiw-step{min-width:84%;scroll-snap-align:center}
 }
 `,
 ];
@@ -254,16 +260,21 @@ export function MarketingHowItWorksTemplate() {
               <div className="hiw-label">3-step flow</div>
               <h2 className="hiw-title">A phone-first workflow your team can understand quickly.</h2>
               <p className="hiw-sub">RingBooker sits between the caller and your team: it captures intent and summaries so you recover bookings faster — without migrating calendars or changing the number clients already dial.</p>
+              <div className="hiw-steps-mobile-nav" role="tablist" aria-label="How it works steps">
+                <a href="#hiw-step-1">Step 1</a>
+                <a href="#hiw-step-2">Step 2</a>
+                <a href="#hiw-step-3">Step 3</a>
+              </div>
               <div className="hiw-grid-3 hiw-flow">
-                <article className="hiw-card hiw-step">
+                <article className="hiw-card hiw-step" id="hiw-step-1">
                   <h3>Connect coverage</h3>
                   <p>Forward your current business number for after-hours or overflow coverage, or add a dedicated RingBooker line if that fits your rollout better.</p>
                 </article>
-                <article className="hiw-card hiw-step">
+                <article className="hiw-card hiw-step" id="hiw-step-2">
                   <h3>Add services, hours, and rules</h3>
                   <p>Tell RingBooker your services, business hours, staff or provider preferences, booking rules, escalation path, and what should be confirmed by SMS.</p>
                 </article>
-                <article className="hiw-card hiw-step">
+                <article className="hiw-card hiw-step" id="hiw-step-3">
                   <h3>Recover calls and hand off context</h3>
                   <p>RingBooker answers, captures intent, helps with routine booking calls, texts confirmations or callbacks, and gives your team the context when a human should step in.</p>
                 </article>

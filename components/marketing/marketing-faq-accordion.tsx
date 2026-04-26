@@ -123,6 +123,8 @@ export function MarketingFaqAccordion({
   overflow:hidden;
   text-align:left;
 }
+/* Keep a comfortable gap when subtitle is intentionally hidden. */
+.mfaq-title + .mfaq-list{margin-top:28px}
 .mfaq-item{
   border-bottom:1px solid var(--mfaq-border);
   background:#fff;
