@@ -178,22 +178,22 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-card:hover{transform:translateY(-2px);box-shadow:0 0 0 4px rgba(139,92,246,.05),var(--home-shadow-hover);border-color:#c4b5fd}
 	.leak-icon{width:48px;height:48px;margin:0 0 18px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f8ddea,#f4cfe0);border:1px solid rgba(244,114,182,.16);color:#6b2168;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 	.leak-icon .home-line-icon{margin:0}
-	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.25px;margin-bottom:10px;text-align:left;color:#2a1f24;max-width:18ch}
+	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.25px;margin-bottom:10px;text-align:left;color:#2a1f24;white-space:nowrap}
 	.leak-card p{font-size:15px;color:#6f625f;line-height:1.74;text-align:left}
 	.leak-divider{height:1px;background:linear-gradient(90deg,rgba(221,214,204,.95) 0%,rgba(221,214,204,.72) 82%,rgba(221,214,204,0) 100%);margin:20px 0 16px}
 	.leak-point{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.6;font-weight:700;color:#7b4b78}
 	.leak-point-dot{width:8px;height:8px;border-radius:50%;background:#c9a24a;flex-shrink:0;margin-top:8px}
 	.compare-section{padding:72px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
-	.compare-grid{display:grid;gap:0;margin-top:40px;border:1px solid var(--border);border-radius:22px;background:#fff;overflow:hidden;box-shadow:var(--home-shadow-soft)}
+	.compare-grid{display:grid;gap:0;margin-top:28px;border:1px solid var(--border);border-radius:20px;background:#fff;overflow:hidden;box-shadow:var(--home-shadow-soft)}
 	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid rgba(241,245,249,.9)}
 	.compare-row:last-child{border-bottom:none}
-	.compare-cell{padding:17px 20px;background:#fff}
+	.compare-cell{padding:15px 18px;background:#fff}
 	.compare-cell.bad{background:#fafafa;border-right:1px solid rgba(241,245,249,.95)}
 	.compare-cell.good{background:#fafdfb}
-	.compare-eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;color:#94A3B8;display:flex;align-items:center;gap:7px}
+	.compare-eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;color:#94A3B8;display:flex;align-items:center;gap:7px}
 	.compare-cell.good .compare-eyebrow{color:#059669}
 	.compare-cell.bad .compare-eyebrow{color:#DC2626}
-	.compare-cell p{font-size:var(--mk-body-md);line-height:1.68;color:var(--text-desc)}
+	.compare-cell p{font-size:var(--mk-body);line-height:1.58;color:var(--text-desc)}
 	.compare-cell.good p{color:#0f5132}
 	.cmp-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 	.cmp-icon svg{display:block}
@@ -385,42 +385,61 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .pb-dark{background:var(--text-dark);color:#fff}
 .pb-dark:hover{background:#1f2937;transform:translateY(-1px)}
 /* ─── HOW IT WORKS ─── */
-.industries{padding:64px 48px 32px;background:#fff}
-.industries-inner{max-width:1100px;margin:0 auto}
-.industries-carousel{position:relative;max-width:1100px;margin:0 auto;overflow:visible}
-/* overflow-x:auto creates a scrollport that clips shadows; generous padding keeps shadow + hover lift inside the clip */
+.industries{padding:72px 48px 36px;background:#fff}
+.industries-inner{max-width:1180px;margin:0 auto}
+.industries .sec-sub{max-width:760px}
 .industries-track{
-  display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;align-items:stretch;
-  -ms-overflow-style:none;padding:12px 10px 28px;scroll-behavior:smooth;scroll-padding-inline:10px;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:16px;
+  align-items:stretch;
+  margin-top:18px;
 }
-.industries-track::-webkit-scrollbar{display:none}
 .industry-card{
-  flex:0 0 calc((100% - 48px) / 4);display:flex;flex-direction:column;min-height:100%;padding:12px;border-radius:20px;border:1px solid var(--border);background:#fff;
-  box-shadow:var(--home-shadow-soft);transition:box-shadow .25s ease,border-color .25s ease,transform .2s ease,z-index .2s ease;
-  scroll-snap-align:start;text-decoration:none;color:inherit;position:relative;z-index:1;
+  position:relative;
+  display:block;
+  min-height:305px;
+  border-radius:22px;
+  overflow:hidden;
+  text-decoration:none;
+  color:inherit;
+  background:#e9e2e8;
+  box-shadow:var(--home-shadow-soft);
+  transition:transform .24s ease,box-shadow .24s ease;
 }
-.industry-card:hover{border-color:rgba(167,139,250,.55);box-shadow:var(--home-shadow-hover);transform:translateY(-2px);z-index:2}
-.industry-thumb{position:relative;width:100%;aspect-ratio:1/1;border-radius:16px;overflow:hidden;background:linear-gradient(145deg,#faf9ff,#f1f0ff);flex-shrink:0}
-.industry-thumb img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .28s ease}
-.industry-card:hover .industry-thumb img{transform:scale(1.03)}
-.industry-tag{position:absolute;left:10px;top:10px;padding:5px 10px;border-radius:999px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
-  background:rgba(255,255,255,.92);color:#5B21B6;border:1px solid rgba(196,181,253,.45);box-shadow:0 2px 8px rgba(17,24,39,.06);backdrop-filter:blur(6px)}
-.industry-body{display:flex;flex-direction:column;flex:1;min-height:0;padding:4px 2px 2px;gap:6px}
-.industry-title{font-size:15px;font-weight:600;line-height:1.3;color:#111827;letter-spacing:-.2px}
-.industry-sub{font-size:13px;line-height:1.45;color:var(--text-desc);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1;font-weight:400}
-.industry-link{margin-top:auto;display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--purple-dark);font-weight:600;padding-top:4px}
-.industry-link-arrow{display:inline-block;transition:transform .2s ease;font-weight:500}
-.industry-card:hover .industry-link-arrow{transform:translateX(4px)}
-.industries-controls{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:18px}
-.industries-nav-btn{
-  width:36px;height:36px;border-radius:999px;border:1px solid #ddd6fe;background:#fff;color:#6d28d9;
-  display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(124,58,237,.10);position:relative;z-index:2;
+.industry-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover)}
+.industry-thumb{position:absolute;inset:0;background:linear-gradient(145deg,#faf9ff,#f1f0ff)}
+.industry-thumb img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .32s ease}
+.industry-card:hover .industry-thumb img{transform:scale(1.04)}
+.industry-overlay{
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg,rgba(24,16,26,.06) 0%,rgba(34,22,34,.18) 42%,rgba(57,35,59,.58) 100%);
 }
-.industries-nav-btn:hover{background:#f5f3ff}
-.industries-nav-btn[hidden]{display:none}
-.industries-dots{display:flex;justify-content:center;gap:8px}
-.industry-dot{width:10px;height:10px;border-radius:999px;background:#d1d5db;border:none;cursor:pointer;transition:all .2s ease}
-.industry-dot.active{width:26px;background:#8b5cf6}
+.industry-body{
+  position:absolute;
+  left:18px;
+  right:18px;
+  bottom:18px;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.industry-title{
+  font-size:clamp(18px,1.7vw,22px);
+  font-weight:500;
+  line-height:1.2;
+  color:#fff;
+  letter-spacing:-.35px;
+}
+.industry-sub{
+  font-size:14px;
+  line-height:1.55;
+  color:rgba(255,255,255,.86);
+  font-weight:400;
+  max-width:180px;
+}
 .home-carousel{position:relative}
 .home-carousel-controls{display:none;align-items:center;justify-content:center;gap:12px;margin-top:18px}
 .home-carousel-nav-btn{
@@ -435,15 +454,15 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .steps-section{padding:88px 48px;background:linear-gradient(180deg,#fff 0%,#fcfbff 100%)}
 .steps-inner{max-width:1100px;margin:0 auto}
 .steps-intro{max-width:760px;margin:0 auto 56px;text-align:center}
-.steps-title{font-size:clamp(46px,5vw,68px);font-weight:700;line-height:1.12;letter-spacing:-1.8px;color:#2a1f24;margin-bottom:18px}
-.steps-copy{font-size:clamp(18px,2vw,20px);color:#8a7d78;line-height:1.68;max-width:640px;margin:0 auto}
+.steps-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);color:var(--text-dark);margin-bottom:14px}
+.steps-copy{font-size:var(--mk-section-lead);color:var(--text-desc);line-height:var(--mk-section-lead-lh);max-width:720px;margin:0 auto;font-weight:400}
 .steps-shell{position:relative;padding-top:42px}
 .steps-rail{position:absolute;left:10%;right:10%;top:68px;height:1px;background:linear-gradient(90deg,rgba(244,114,182,.32) 0%,rgba(221,214,204,.95) 45%,rgba(221,214,204,.95) 100%)}
 .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;position:relative}
 .step-card{position:relative;background:transparent;border:none;border-radius:0;padding:0;text-align:center;box-shadow:none}
 .step-marker{width:52px;height:52px;border-radius:999px;border:2px solid #7b3f74;background:#fff;color:#7b3f74;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;margin:0 auto 28px;position:relative;z-index:2}
-.step-card h3{font-size:clamp(20px,2.2vw,24px);font-weight:500;letter-spacing:-.45px;line-height:1.34;margin-bottom:12px;color:#2a1f24;max-width:300px;margin-left:auto;margin-right:auto}
-.step-card p{font-size:15px;color:#8a7d78;line-height:1.8;max-width:310px;margin:0 auto;font-weight:400}
+.step-card h3{font-size:var(--mk-card-title);font-weight:600;letter-spacing:-.2px;line-height:1.35;margin-bottom:10px;color:var(--text-dark);max-width:300px;margin-left:auto;margin-right:auto}
+.step-card p{font-size:var(--mk-body);color:var(--text-desc);line-height:var(--mk-body-lh);max-width:310px;margin:0 auto;font-weight:400}
 
 /* ─── REAL CALL FLOW ─── */
 .flow-section{padding:20px 48px 72px;background:#fff}
@@ -523,16 +542,26 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .steps-grid,.flow-grid,.scope-inner,.user-grid{grid-template-columns:1fr}
   .steps-section{padding-top:72px;padding-bottom:72px}
   .steps-intro{margin-bottom:34px}
-  .steps-title{font-size:40px;letter-spacing:-1.2px}
-  .steps-copy{font-size:17px}
+  .steps-title{font-size:34px;letter-spacing:var(--mk-section-h2-track)}
+  .steps-copy{font-size:var(--mk-section-lead)}
   .steps-shell{padding-top:0}
   .steps-rail{display:none}
   .step-marker{margin-bottom:18px}
-  .step-card h3{font-size:22px}
+  .step-card h3{font-size:var(--mk-card-title)}
   .step-card p{max-width:100%}
   .user-shell{aspect-ratio:16/10}
-  .industry-card{flex-basis:calc((100% - 16px) / 2)}
   .steps-section,.flow-section,.scope-section,.user-preview,.industries{padding-left:22px;padding-right:22px}
+  .industries-track{
+    display:flex;
+    gap:14px;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+    padding:8px 2px 6px;
+  }
+  .industries-track::-webkit-scrollbar{display:none}
+  .industry-card{flex:0 0 calc((100% - 14px) / 2);min-height:280px;scroll-snap-align:start}
   .home-carousel-track{
     display:flex;
     gap:16px;
@@ -559,8 +588,8 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 }
 
 @media(max-width:640px){
-  .industry-card{flex-basis:100%}
-  .industries-controls{justify-content:center}
+  .industry-card{flex-basis:84%;min-height:292px}
+  .industry-sub{max-width:190px}
   .home-carousel-track .test-card,
   .home-carousel-track .plan{flex-basis:100%}
   .home-carousel-controls{justify-content:center}
@@ -1092,7 +1121,7 @@ export function MarketingHomeTemplate() {
         {/* FEATURES GRID */}
         <section className="features" id="features">
           <div className="sec-label">Core coverage</div>
-          <h2 className="sec-title reveal">The phone moments<br />RingBooker covers.</h2>
+          <h2 className="sec-title reveal">The phone moments RingBooker covers.</h2>
           <p className="sec-sub reveal">RingBooker is built around the phone moments where beauty businesses lose bookings.</p>
             <div className="feat-grid">
             <div className="feat-card reveal">
@@ -1186,18 +1215,77 @@ export function MarketingHomeTemplate() {
             </div>
           </div>
         </section>
+        <section className="industries" id="industries">
+          <div className="industries-inner">
+            <div className="sec-label">Industries</div>
+            <h2 className="sec-title reveal">Built for beauty<br />appointment workflows.</h2>
+            <p className="sec-sub reveal">Each vertical has different call patterns, from walk-ins to consultation-driven bookings.</p>
+            <div className="industries-carousel" id="industriesCarousel">
+              <div className="industries-track">
+                <a href="/industries/nail-salon" className="industry-card" data-index={0}>
+                  <div className="industry-thumb">
+                    <Image src="/images/nail.webp" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <div className="industry-overlay" aria-hidden="true" />
+                  </div>
+                  <div className="industry-body">
+                    <div className="industry-title">Nail Salon</div>
+                    <div className="industry-sub">Walk-ins, gel, peak-hour calls</div>
+                  </div>
+                </a>
+                <a href="/industries/hair-salon" className="industry-card" data-index={1}>
+                  <div className="industry-thumb">
+                    <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI phone answering captures overflow and in-service calls for bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <div className="industry-overlay" aria-hidden="true" />
+                  </div>
+                  <div className="industry-body">
+                    <div className="industry-title">Hair Salon</div>
+                    <div className="industry-sub">Cuts, color, busy chair time</div>
+                  </div>
+                </a>
+                <a href="/industries/spa" className="industry-card" data-index={2}>
+                  <div className="industry-thumb">
+                    <Image src="/images/spa.webp" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <div className="industry-overlay" aria-hidden="true" />
+                  </div>
+                  <div className="industry-body">
+                    <div className="industry-title">Spa / Day Spa</div>
+                    <div className="industry-sub">Treatment bookings and availability</div>
+                  </div>
+                </a>
+                <a href="/industries/med-spa" className="industry-card" data-index={3}>
+                  <div className="industry-thumb">
+                    <Image src="/images/med_spa.webp" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <div className="industry-overlay" aria-hidden="true" />
+                  </div>
+                  <div className="industry-body">
+                    <div className="industry-title">Med Spa</div>
+                    <div className="industry-sub">Consult-led, high-ticket calls</div>
+                  </div>
+                </a>
+                <a href="/industries/beauty-clinic" className="industry-card" data-index={4}>
+                  <div className="industry-thumb">
+                    <Image src="/images/beauty_clinic.webp" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <div className="industry-overlay" aria-hidden="true" />
+                  </div>
+                  <div className="industry-body">
+                    <div className="industry-title">Beauty Clinic</div>
+                    <div className="industry-sub">Consults &amp; follow-ups</div>
+                  </div>
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
         <section className="compare-section" id="ai-phone-agent-differences">
           <div className="compare-inner">
-            <div className="sec-label">Why It Feels Different</div>
-            <h2 className="sec-title reveal">Most AI phone agents frustrate callers. RingBooker is designed not to.</h2>
-            <p className="sec-sub reveal">The product is built around real salon call behavior: short questions, interruptions, booking changes, and callers who just want a clear next step.</p>
+            <div className="sec-label">Why RingBooker</div>
+            <h2 className="sec-title reveal">Not another generic AI agent.</h2>
+            <p className="sec-sub reveal">Salon calls are fast, messy, and impatient. RingBooker is built around that — not call-center logic.</p>
               <div className="compare-grid">
               {[
-                ['Endless loops when the caller asks something unexpected.', 'A two-strike fallback, callback offer, and clean handoff when the request needs a human.'],
-                ['Pretends to be a real person and breaks trust.', 'Can introduce itself transparently as your virtual assistant while staying warm and useful.'],
-                ['Asks seven questions before helping.', 'Asks only what is needed to book, reschedule, cancel, or summarize the request.'],
-                ['No context when the team follows up.', 'Call summaries and intent notes help your team continue without making the caller repeat everything.'],
-                ['Dead-end voicemail after the caller hangs up.', 'Missed-call text back and smart callback workflows keep the booking alive.'],
+                ['Loops on unexpected questions, then dumps to voicemail.', 'Two-strike fallback with callback offer and clean handoff.'],
+                ['Asks too many questions before doing anything useful.', "Asks only what's needed to book, reschedule, or summarize."],
+                ['No context — your team starts from scratch.', 'Call summaries and intent notes so nobody repeats themselves.'],
               ].map(([bad, good]) => (
                 <div className="compare-row" key={bad}>
                   <div className="compare-cell bad">
@@ -1218,87 +1306,6 @@ export function MarketingHomeTemplate() {
               ))}
               </div>
             </div>
-        </section>
-        <section className="industries" id="industries">
-          <div className="industries-inner">
-            <div className="sec-label">Industries</div>
-            <h2 className="sec-title">Pick your industry and see exactly how RingBooker fits.</h2>
-            <p className="sec-sub">Each page is tailored to real call patterns, booking flow, and conversion goals for that business type.</p>
-            <div className="industries-carousel" id="industriesCarousel">
-              <div className="industries-track">
-              <a href="/industries/nail-salon" className="industry-card" data-index={0}>
-                <div className="industry-thumb">
-                  <Image src="/images/nail.webp" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
-                  <span className="industry-tag">Nail</span>
-                </div>
-                <div className="industry-body">
-                  <div className="industry-title">Nail Salon</div>
-                  <div className="industry-sub">Manicure, pedicure, and gel — walk-ins and peak-hour calls.</div>
-                  <div className="industry-link">
-                    Explore more <span className="industry-link-arrow">→</span>
-                  </div>
-                </div>
-              </a>
-              <a href="/industries/hair-salon" className="industry-card" data-index={1}>
-                <div className="industry-thumb">
-                  <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI phone answering captures overflow and in-service calls for bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
-                  <span className="industry-tag">Hair</span>
-                </div>
-                <div className="industry-body">
-                  <div className="industry-title">Hair Salon</div>
-                  <div className="industry-sub">Cuts, color, and busy lines while clients are in the chair.</div>
-                  <div className="industry-link">
-                    Explore more <span className="industry-link-arrow">→</span>
-                  </div>
-                </div>
-              </a>
-              <a href="/industries/spa" className="industry-card" data-index={2}>
-                <div className="industry-thumb">
-                  <Image src="/images/spa.webp" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
-                  <span className="industry-tag">Spa</span>
-                </div>
-                <div className="industry-body">
-                  <div className="industry-title">Spa / Day Spa</div>
-                  <div className="industry-sub">Treatment bookings and after-hours availability.</div>
-                  <div className="industry-link">
-                    Explore more <span className="industry-link-arrow">→</span>
-                  </div>
-                </div>
-              </a>
-              <a href="/industries/med-spa" className="industry-card" data-index={3}>
-                <div className="industry-thumb">
-                  <Image src="/images/med_spa.webp" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
-                  <span className="industry-tag">Med Spa</span>
-                </div>
-                <div className="industry-body">
-                  <div className="industry-title">Med Spa</div>
-                  <div className="industry-sub">Consult-led calls and high-ticket treatment questions.</div>
-                  <div className="industry-link">
-                    Explore more <span className="industry-link-arrow">→</span>
-                  </div>
-                </div>
-              </a>
-              <a href="/industries/beauty-clinic" className="industry-card" data-index={4}>
-                <div className="industry-thumb">
-                  <Image src="/images/beauty_clinic.webp" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
-                  <span className="industry-tag">Clinic</span>
-                </div>
-                <div className="industry-body">
-                  <div className="industry-title">Beauty / Aesthetic Clinic</div>
-                  <div className="industry-sub">Consultations, follow-ups, and treatment scheduling.</div>
-                  <div className="industry-link">
-                    Explore more <span className="industry-link-arrow">→</span>
-                  </div>
-                </div>
-              </a>
-              </div>
-              <div className="industries-controls" aria-label="Industries carousel controls">
-                <button type="button" id="industriesPrev" className="industries-nav-btn" aria-label="Previous industry">‹</button>
-                <div className="industries-dots" id="industriesDots" aria-label="Industries carousel indicators" />
-                <button type="button" id="industriesNext" className="industries-nav-btn" aria-label="Next industry">›</button>
-              </div>
-            </div>
-          </div>
         </section>
         {/* DEEP SECTION 1 — Line chart */}
         <section className="deep-section">
