@@ -269,7 +269,7 @@ export function ContentHubHeroActionsHomeStyle() {
       <Link href="/demo" className="btn-hero-live" data-demo-picker>
         <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
         Try a live demo
-        <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" aria-hidden="true">
+        <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
         </svg>
       </Link>
@@ -1172,7 +1172,7 @@ export function MarketingContentHub({
                       {cta.primary.href.startsWith('/demo') ? (
                         <DemoCtaPhoneIcon width={16} height={16} />
                       ) : (
-                        <svg className="hub-cta-btn-white-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                        <svg className="hub-cta-btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                           <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                         </svg>
                       )}

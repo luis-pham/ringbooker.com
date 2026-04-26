@@ -281,7 +281,7 @@ export function MarketingDemoVerticalIndexTemplate() {
                       </div>
                       <span className="demo-hub-card-cta">
                         Try demo
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                           <path d="M5 12h14M12 5l7 7-7 7" />
                         </svg>
                       </span>

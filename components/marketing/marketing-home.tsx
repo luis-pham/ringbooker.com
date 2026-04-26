@@ -936,7 +936,7 @@ export function MarketingHomeTemplate() {
               <a href="/demo" className="btn-hero-live" data-demo-picker>
                 <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
                 Try a Live Demo Call
-                <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                   <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                 </svg>
               </a>
@@ -1446,7 +1446,7 @@ export function MarketingHomeTemplate() {
                 <a href="/demo" className="btn-white" data-demo-picker>
                   <DemoCtaPhoneIcon width={16} height={16} />
                   Try a Live Demo Call
-                  <svg className="btn-white-arrow" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg className="btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                     <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                   </svg>
                 </a>
