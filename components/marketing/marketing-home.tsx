@@ -200,6 +200,79 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.compare-cell.bad .cmp-icon{background:#F87171}
 	.compare-cell.good .cmp-icon{background:#34D399}
 
+	.current-number-setup{padding:84px 48px 84px;background:linear-gradient(180deg,#f7f3ff 0%,#f4f0ff 100%)}
+	.current-number-inner{max-width:1120px;margin:0 auto}
+	.current-number-intro{max-width:820px;margin:0 auto 52px;text-align:center}
+	.current-number-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);color:var(--text-dark);margin-bottom:14px}
+	.current-number-copy{font-size:var(--mk-section-lead);color:var(--text-desc);line-height:var(--mk-section-lead-lh);max-width:760px;margin:0 auto;font-weight:400}
+	.current-number-actions{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:28px;flex-wrap:wrap}
+	.current-btn-primary,.current-btn-secondary{
+	  min-width:286px;
+	  padding:15px 28px;
+	  border-radius:999px;
+	  text-decoration:none;
+	  font-size:14px;
+	  font-weight:600;
+	  text-align:center;
+	  transition:transform .18s ease,box-shadow .18s ease,background .18s ease,border-color .18s ease;
+	}
+	.current-btn-primary{background:linear-gradient(135deg,#6d28d9,#7c3aed);color:#fff;box-shadow:0 12px 28px rgba(124,58,237,.18)}
+	.current-btn-primary:hover{transform:translateY(-1px);box-shadow:0 16px 34px rgba(124,58,237,.22)}
+	.current-btn-secondary{background:rgba(255,255,255,.56);color:var(--purple-dark);border:1px solid rgba(196,181,253,.55)}
+	.current-btn-secondary:hover{background:#fff;transform:translateY(-1px)}
+	.current-number-flow{position:relative;padding-top:24px}
+	.current-flow-line{
+	  position:absolute;
+	  left:15%;
+	  right:15%;
+	  top:70px;
+	  height:0;
+	  border-top:2px dashed rgba(148,163,184,.55);
+	}
+	.current-flow-pulse{position:absolute;top:64px;left:15%;width:calc(70% - 12px);height:12px;z-index:2;pointer-events:none}
+	.current-flow-pulse::before{
+	  content:"";
+	  position:absolute;
+	  left:0;
+	  top:0;
+	  width:12px;
+	  height:12px;
+	  border-radius:50%;
+	  background:#10b981;
+	  box-shadow:0 0 0 10px rgba(16,185,129,.08);
+	  animation:current-flow-slide 4.2s linear infinite;
+	}
+	@keyframes current-flow-slide{
+	  0%{transform:translateX(0);opacity:.25}
+	  12%{opacity:1}
+	  88%{opacity:1}
+	  100%{transform:translateX(100%);opacity:.25}
+	}
+	.current-number-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;position:relative}
+	.current-step{text-align:center;position:relative}
+	.current-step-icon{
+	  width:86px;
+	  height:86px;
+	  border-radius:999px;
+	  margin:0 auto 28px;
+	  display:flex;
+	  align-items:center;
+	  justify-content:center;
+	  border:3px solid rgba(59,130,246,.9);
+	  background:rgba(59,130,246,.08);
+	  color:#3166b8;
+	  position:relative;
+	  z-index:3;
+	}
+	.current-step-icon.center{
+	  border-color:#1fa77d;
+	  background:rgba(16,185,129,.10);
+	  color:#16906c;
+	}
+	.current-step-icon .home-line-icon{width:34px;height:34px}
+	.current-step h3{font-size:clamp(24px,2.2vw,30px);font-weight:700;line-height:1.18;letter-spacing:-.6px;margin-bottom:10px;color:var(--text-dark)}
+	.current-step p{font-size:clamp(16px,1.65vw,18px);line-height:1.45;color:#404040;max-width:300px;margin:0 auto}
+
 	/* ─── HERO VISUAL ─── */
 .hero-visual{position:relative;margin-top:56px;height:580px;display:flex;align-items:center;justify-content:center}
 
@@ -385,7 +458,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .pb-dark{background:var(--text-dark);color:#fff}
 .pb-dark:hover{background:#1f2937;transform:translateY(-1px)}
 /* ─── HOW IT WORKS ─── */
-.industries{padding:72px 48px 36px;background:#fff}
+.industries{padding:72px 48px 40px;background:#fff}
 .industries-inner{max-width:1180px;margin:0 auto}
 .industries .sec-sub{max-width:760px}
 .industries-track{
@@ -539,7 +612,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 
 
 @media(max-width:960px){
-  .steps-grid,.flow-grid,.scope-inner,.user-grid{grid-template-columns:1fr}
+  .steps-grid,.flow-grid,.scope-inner,.user-grid,.current-number-grid{grid-template-columns:1fr}
   .steps-section{padding-top:72px;padding-bottom:72px}
   .steps-intro{margin-bottom:34px}
   .steps-title{font-size:34px;letter-spacing:var(--mk-section-h2-track)}
@@ -549,8 +622,17 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .step-marker{margin-bottom:18px}
   .step-card h3{font-size:var(--mk-card-title)}
   .step-card p{max-width:100%}
+  .current-number-setup{padding-top:72px;padding-bottom:72px}
+  .current-number-intro{margin-bottom:34px}
+  .current-number-actions{gap:10px}
+  .current-btn-primary,.current-btn-secondary{min-width:0;width:100%}
+  .current-number-flow{padding-top:0}
+  .current-flow-line,.current-flow-pulse{display:none}
+  .current-step-icon{margin-bottom:18px}
+  .current-step h3{font-size:var(--mk-card-title)}
+  .current-step p{font-size:var(--mk-body);max-width:100%}
   .user-shell{aspect-ratio:16/10}
-  .steps-section,.flow-section,.scope-section,.user-preview,.industries{padding-left:22px;padding-right:22px}
+  .steps-section,.flow-section,.scope-section,.user-preview,.industries,.current-number-setup{padding-left:22px;padding-right:22px}
   .industries-track{
     display:flex;
     gap:14px;
@@ -590,6 +672,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 @media(max-width:640px){
   .industry-card{flex-basis:84%;min-height:292px}
   .industry-sub{max-width:190px}
+  .current-number-actions{margin-top:22px}
   .home-carousel-track .test-card,
   .home-carousel-track .plan{flex-basis:100%}
   .home-carousel-controls{justify-content:center}
@@ -1272,6 +1355,54 @@ export function MarketingHomeTemplate() {
                     <div className="industry-sub">Consults &amp; follow-ups</div>
                   </div>
                 </a>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="current-number-setup" id="current-number-setup">
+          <div className="current-number-inner">
+            <div className="current-number-intro">
+              <div className="sec-label">Current number setup</div>
+              <h2 className="current-number-title reveal">Keep the number your clients already call.</h2>
+              <p className="current-number-copy reveal">Use call forwarding to cover missed, busy, or after-hours calls without changing your Google Business Profile, website, social profiles, or printed phone number.</p>
+              <div className="current-number-actions reveal">
+                <a className="current-btn-primary" href="/how-it-works">View call forwarding setup guides</a>
+                <a className="current-btn-secondary" href="/current-number">Learn about keeping your number</a>
+              </div>
+            </div>
+            <div className="current-number-flow reveal">
+              <div className="current-flow-line" aria-hidden="true" />
+              <div className="current-flow-pulse" aria-hidden="true" />
+              <div className="current-number-grid">
+                <article className="current-step">
+                  <div className="current-step-icon">
+                    <HomeLineIcon>
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </HomeLineIcon>
+                  </div>
+                  <h3>Client calls your number</h3>
+                  <p>Same number on Google, cards, and signs</p>
+                </article>
+                <article className="current-step">
+                  <div className="current-step-icon center">
+                    <HomeLineIcon>
+                      <path d="M17 3h4v4M3 21h4v-4M21 3l-6 6M3 21l6-6" />
+                    </HomeLineIcon>
+                  </div>
+                  <h3>RingBooker handles the call</h3>
+                  <p>Books, reschedules, or captures the request</p>
+                </article>
+                <article className="current-step">
+                  <div className="current-step-icon">
+                    <HomeLineIcon>
+                      <rect x="7" y="3" width="10" height="18" rx="2" />
+                      <path d="M10 7h4M10 11h4M10 15h3M5 7h.01M5 11h.01M5 15h.01" />
+                    </HomeLineIcon>
+                  </div>
+                  <h3>Team sees the result</h3>
+                  <p>Confirmation, summary, and next step — ready to go</p>
+                </article>
               </div>
             </div>
           </div>
