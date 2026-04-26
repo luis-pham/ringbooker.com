@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
@@ -70,6 +71,26 @@ const softwareJsonLd = {
     'AI phone answering and booking revenue recovery for salons, spas, med spas, and clinics: after-hours and peak-hour overflow, missed-call text back, protected revenue, and guided setup in about 15 minutes on your current number.',
 };
 
+/** 24×24 stroke icons — homepage only, matches soft “line” icon treatment */
+function HomeLineIcon({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      className="home-line-icon"
+      viewBox="0 0 24 24"
+      width={22}
+      height={22}
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.65}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {children}
+    </svg>
+  );
+}
+
 const styles: string[] = [
   String.raw`
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -81,9 +102,12 @@ const styles: string[] = [
   --text-dark:#111827;
   --text-gray:#6B7280;
   --text-light:#9CA3AF;
+  --text-desc:#64748B;
   --bg:#fff;
   --bg-gray:#F9FAFB;
-  --border:#E5E7EB;
+  --border:#E8ECF1;
+  --home-shadow-soft:0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04);
+  --home-shadow-hover:0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05);
   --r-pill:999px;
   --r-lg:24px;
   --r-md:16px;
@@ -91,6 +115,15 @@ const styles: string[] = [
 }
 html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:var(--mk-font-body);line-height:var(--mk-leading-body)}
+.home-line-icon{display:block;flex-shrink:0}
+.legacy-marketing{
+  --mk-section-h2:clamp(28px,3.35vw,42px);
+  --mk-section-h2-lh:1.14;
+  --mk-section-h2-track:-1.1px;
+  --mk-section-lead-lh:1.72;
+  --mk-body-lh:1.68;
+  --mk-card-title:16px;
+}
 
 /* Primary site nav is MarketingHeader (.mk-nav in marketing-chrome). Legacy duplicate nav CSS removed — bare "nav{}" selectors were overriding .mk-nav on this page only. */
 
@@ -120,17 +153,17 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 h1.hero-h{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-home-lh);letter-spacing:var(--mk-hero-title-home-track);color:var(--text-dark);margin-bottom:20px;word-break:break-word}
 h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-radius:var(--r-pill);padding:0.12em 0.55em;margin:0.08em 0.12em;max-width:100%;box-sizing:border-box;line-height:1.2;vertical-align:baseline}
-.hero-sub{font-size:var(--mk-hero-lead);color:var(--text-gray);line-height:var(--mk-hero-lead-lh);max-width:min(640px,100%);margin:0 auto 36px;padding:0 12px}
-.hero-sub a.hero-sub-link{color:var(--purple-dark);font-weight:600;text-decoration:none}
+.hero-sub{font-size:var(--mk-hero-lead);color:var(--text-desc);line-height:var(--mk-hero-lead-lh);max-width:min(640px,100%);margin:0 auto 36px;padding:0 12px;font-weight:400}
+.hero-sub a.hero-sub-link{color:var(--purple-dark);font-weight:600;text-decoration:none;transition:color .18s ease}
 .hero-sub a.hero-sub-link:hover{color:#5b21b6;text-decoration:none}
 	.hero-btns{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:0}
-	.btn-dark{background:var(--text-dark);color:#fff;padding:14px 30px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:10px;transition:transform .15s,background .2s}
-	.btn-dark:hover{background:#1f2937;transform:scale(1.03)}
+	.btn-dark{background:var(--text-dark);color:#fff;padding:14px 30px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:10px;transition:transform .15s,background .2s}
+	.btn-dark:hover{background:#1f2937;transform:translateY(-1px)}
 	.btn-dark svg{width:16px;height:16px;fill:#fff}
-	.btn-outline{background:transparent;color:var(--text-dark);padding:14px 26px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:600;text-decoration:none;border:1.5px solid var(--border);display:inline-flex;align-items:center;gap:8px;transition:all .2s}
-	.btn-outline:hover{border-color:var(--purple);color:var(--purple)}
-	.hero-btns .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:16px 34px;border-radius:var(--r-pill);font-size:var(--mk-btn-lg);font-weight:800;text-decoration:none;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 36px rgba(91,33,182,.32);border:none;transition:transform .15s,filter .2s,box-shadow .2s}
-	.hero-btns .btn-hero-live:hover{filter:brightness(1.06);transform:scale(1.04);box-shadow:0 14px 44px rgba(91,33,182,.38)}
+	.btn-outline{background:transparent;color:var(--text-dark);padding:13px 26px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:600;text-decoration:none;border:1px solid var(--border);display:inline-flex;align-items:center;gap:8px;transition:border-color .2s,color .2s,background .2s,transform .15s}
+	.btn-outline:hover{border-color:rgba(139,92,246,.45);color:var(--purple-dark);background:rgba(245,243,255,.5)}
+	.hero-btns .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:15px 32px;border-radius:var(--r-pill);font-size:var(--mk-btn-lg);font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:10px;box-shadow:0 8px 28px rgba(91,33,182,.22),0 2px 8px rgba(91,33,182,.12);border:none;transition:transform .15s,filter .2s,box-shadow .2s}
+	.hero-btns .btn-hero-live:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 12px 36px rgba(91,33,182,.28),0 4px 12px rgba(91,33,182,.14)}
 	.hero-btns .btn-hero-live svg{width:16px;height:16px;flex-shrink:0}
 	.hero-btns .btn-hero-live .btn-hero-live-phone{width:18px;height:18px}
 	.hero-btns .btn-hero-live .btn-hero-live-phone path{fill:#FACC15}
@@ -138,39 +171,42 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.hero-btns .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
 
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
-	.proofbar{padding:28px 48px 56px;background:transparent}
-	.proofbar-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-	.proof-item{display:flex;align-items:center;gap:12px;border:1px solid #E9D5FF;background:linear-gradient(145deg,#fff 0%,#FBFAFF 100%);border-radius:20px;padding:15px 16px;font-size:var(--mk-body);font-weight:800;color:#3F2A68;line-height:1.35;box-shadow:0 10px 28px rgba(124,58,237,.06);transition:transform .2s,box-shadow .2s,border-color .2s}
-	.proof-item:hover{transform:translateY(-2px);box-shadow:0 16px 36px rgba(124,58,237,.10);border-color:#DDD6FE}
-	.proof-icon{width:34px;height:34px;min-width:34px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
+	.proofbar{padding:24px 48px 52px;background:transparent}
+	.proofbar-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+	.proof-item{display:flex;align-items:center;gap:12px;border:1px solid rgba(237,233,254,.95);background:linear-gradient(180deg,#fff 0%,#faf9ff 100%);border-radius:20px;padding:14px 16px;font-size:var(--mk-body);font-weight:600;color:var(--text-dark);line-height:1.45;box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
+	.proof-item:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.65)}
+	.proof-icon{width:36px;height:36px;min-width:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--purple-dark);box-shadow:inset 0 0 0 1px rgba(255,255,255,.6)}
+	.proof-icon .home-line-icon{flex-shrink:0}
+	.proof-text{flex:1;min-width:0}
 	.proof-purple{background:#EDE9FE}
 	.proof-green{background:#D1FAE5}
 	.proof-amber{background:#FEF3C7}
 	.proof-pink{background:#FCE7F3}
-	.leak-section{padding:88px 48px;background:linear-gradient(180deg,#fff,#F9FAFB)}
+	.leak-section{padding:72px 48px;background:linear-gradient(180deg,#fff,#F9FAFB)}
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
-	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-	.leak-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s,box-shadow .2s,border-color .2s}
-	.leak-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.07);border-color:#d8ccfe}
-	.leak-icon{font-size:26px;margin-bottom:10px;text-align:center}
-	.leak-card h3{font-size:17px;font-weight:800;line-height:1.35;margin-bottom:8px;letter-spacing:-.3px;text-align:center}
-	.leak-card p{font-size:14px;color:var(--text-gray);line-height:1.7}
-	.compare-section{padding:88px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
-	.compare-grid{display:grid;gap:0;margin-top:42px;border:1px solid #E5E7EB;border-radius:24px;background:#fff;overflow:hidden;box-shadow:0 14px 38px rgba(17,24,39,.05)}
-	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid #EEF2F7}
+	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+	.leak-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
+	.leak-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.55)}
+	.leak-icon{width:44px;height:44px;margin:0 auto 12px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#faf9ff,#f5f3ff);border:1px solid rgba(196,181,253,.35);color:var(--purple-dark)}
+	.leak-icon .home-line-icon{margin:0}
+	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;margin-bottom:8px;letter-spacing:-.25px;text-align:center;color:var(--text-dark)}
+	.leak-card p{font-size:14px;color:var(--text-desc);line-height:1.68}
+	.compare-section{padding:72px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
+	.compare-grid{display:grid;gap:0;margin-top:40px;border:1px solid var(--border);border-radius:22px;background:#fff;overflow:hidden;box-shadow:var(--home-shadow-soft)}
+	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid rgba(241,245,249,.9)}
 	.compare-row:last-child{border-bottom:none}
-	.compare-cell{padding:18px 22px;background:#fff}
-	.compare-cell.bad{background:#FFFCFC;border-right:1px solid #F1F5F9}
-	.compare-cell.good{background:#FBFFFD}
-	.compare-eyebrow{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;color:#9CA3AF;display:flex;align-items:center;gap:7px}
+	.compare-cell{padding:17px 20px;background:#fff}
+	.compare-cell.bad{background:#fafafa;border-right:1px solid rgba(241,245,249,.95)}
+	.compare-cell.good{background:#fafdfb}
+	.compare-eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px;color:#94A3B8;display:flex;align-items:center;gap:7px}
 	.compare-cell.good .compare-eyebrow{color:#059669}
-	.compare-cell.bad .compare-eyebrow{color:#EF4444}
-	.compare-cell p{font-size:var(--mk-body-md);line-height:1.7;color:#4B5563}
-	.compare-cell.good p{color:#064E3B}
+	.compare-cell.bad .compare-eyebrow{color:#DC2626}
+	.compare-cell p{font-size:var(--mk-body-md);line-height:1.68;color:var(--text-desc)}
+	.compare-cell.good p{color:#0f5132}
 	.cmp-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 	.cmp-icon svg{display:block}
-	.compare-cell.bad .cmp-icon{background:#EF4444}
-	.compare-cell.good .cmp-icon{background:#10B981}
+	.compare-cell.bad .cmp-icon{background:#F87171}
+	.compare-cell.good .cmp-icon{background:#34D399}
 
 	/* ─── HERO VISUAL ─── */
 .hero-visual{position:relative;margin-top:56px;height:580px;display:flex;align-items:center;justify-content:center}
@@ -190,7 +226,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .fc-mini{font-size:11px;color:var(--text-light)}
 .fc-mini-top{margin-bottom:6px}
 .fc-mini-bottom{margin-top:5px}
-.fc-tag{display:inline-flex;align-items:center;gap:5px;background:var(--purple-ultra);color:var(--purple-dark);font-size:11px;font-weight:600;padding:3px 8px;border-radius:var(--r-pill);margin-top:5px}
+.fc-tag{display:inline-flex;align-items:center;gap:5px;background:var(--purple-ultra);color:var(--purple-dark);font-size:11px;font-weight:600;padding:4px 9px;border-radius:var(--r-pill);margin-top:5px;border:1px solid rgba(196,181,253,.35)}
 .fc-tag.g{background:#D1FAE5;color:#065F46}
 .wv{display:flex;align-items:center;gap:2px;height:24px}
 .wv span{width:3px;background:var(--purple);border-radius:2px;animation:wwave 1s ease-in-out infinite}
@@ -251,7 +287,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .live-dot{width:6px;height:6px;border-radius:50%;background:#10B981;animation:pulse 1.5s infinite}
 
 /* ─── TRUSTED ─── */
-.trusted{padding:40px 48px 60px;text-align:center}
+.trusted{padding:36px 48px 56px;text-align:center}
 .trusted-label{font-size:var(--mk-meta);color:var(--text-light);font-weight:500;margin-bottom:28px}
 .logo-row{display:flex;align-items:center;justify-content:center;gap:48px;flex-wrap:wrap}
 .logo-item{display:flex;align-items:center;gap:8px;font-size:var(--mk-body-md);font-weight:700;color:#C4C9D4;transition:color .2s;cursor:default}
@@ -259,144 +295,129 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .logo-ico{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
 
 /* ─── SECTION SHARED ─── */
-.sec-label{font-size:var(--mk-eyebrow);font-weight:700;color:var(--purple);letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:14px;text-align:center}
+.sec-label{font-size:var(--mk-eyebrow);font-weight:600;color:var(--purple-dark);letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px;text-align:center;opacity:.95}
 .sec-label-left{text-align:left}
 .sec-label-center{text-align:center}
 .section-label-wrap{text-align:center;margin-bottom:4px}
-.sec-title{font-size:var(--mk-section-h2);font-weight:800;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);text-align:center;margin-bottom:14px}
-.sec-title-air{margin-bottom:60px}
-.sec-sub{font-size:var(--mk-section-lead);color:var(--text-gray);text-align:center;margin-bottom:52px;line-height:var(--mk-section-lead-lh)}
-.emphasis-5min{color:var(--purple-dark);font-weight:800}
+.sec-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);text-align:center;margin-bottom:14px;color:var(--text-dark)}
+.sec-title-air{margin-bottom:52px}
+.sec-sub{font-size:var(--mk-section-lead);color:var(--text-desc);text-align:center;margin-bottom:40px;line-height:var(--mk-section-lead-lh);font-weight:400;max-width:720px;margin-left:auto;margin-right:auto}
+.emphasis-5min{color:var(--purple-dark);font-weight:700}
 
 /* ─── FEATURES GRID ─── */
-.features{padding:88px 48px;background:var(--bg-gray)}
-.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;max-width:1100px;margin:0 auto}
-.feat-card{background:#fff;border-radius:var(--r-lg);padding:30px 26px;border:1px solid var(--border);transition:transform .2s,box-shadow .2s;text-align:center;display:flex;flex-direction:column;align-items:center}
-.feat-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.07)}
-.feat-ico{width:48px;height:48px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px}
-.fi-y{background:#FEF3C7}.fi-g{background:#D1FAE5}.fi-p{background:#EDE9FE}
-.feat-card h3{font-size:var(--mk-card-title);font-weight:700;margin-bottom:10px;color:var(--text-dark)}
-.feat-card p{font-size:var(--mk-body);color:var(--text-gray);line-height:var(--mk-body-lh);text-align:left;width:100%}
+.features{padding:72px 48px;background:var(--bg-gray)}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1100px;margin:0 auto}
+.feat-card{background:#fff;border-radius:var(--r-lg);padding:26px 22px;border:1px solid var(--border);transition:transform .2s,box-shadow .2s,border-color .2s;text-align:center;display:flex;flex-direction:column;align-items:center;box-shadow:var(--home-shadow-soft)}
+.feat-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.5)}
+.feat-ico{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:var(--purple-dark);border:1px solid rgba(196,181,253,.35);background:linear-gradient(180deg,#fff,#faf9ff)}
+.feat-ico .home-line-icon{flex-shrink:0}
+.fi-y{color:#B45309;background:linear-gradient(180deg,#fffbeb,#fff7ed);border-color:rgba(251,191,36,.25)}.fi-g{color:#047857;background:linear-gradient(180deg,#ecfdf5,#f0fdf4);border-color:rgba(52,211,153,.3)}.fi-p{color:var(--purple-dark);background:linear-gradient(180deg,#faf9ff,#f5f3ff);border-color:rgba(196,181,253,.35)}
+.feat-card h3{font-size:var(--mk-card-title);font-weight:600;line-height:1.35;margin-bottom:8px;color:var(--text-dark);letter-spacing:-.2px}
+.feat-card p{font-size:var(--mk-body);color:var(--text-desc);line-height:var(--mk-body-lh);text-align:left;width:100%;font-weight:400}
 
 /* ─── DEEP SECTIONS ─── */
-.deep-section{padding:88px 48px 0}
-.deep-section-confirmation{padding:27px 48px}
+.deep-section{padding:72px 48px 0}
+.deep-section-confirmation{padding:24px 48px 0}
 .deep-wrap{padding:0 48px;max-width:1200px;margin:0 auto}
 .deep-wrap-flush{padding:0}
-.deep-s1{padding:40px 0 27px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.deep-s1 .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:10px}
-.deep-s1 .d-text p{font-size:var(--mk-body);color:var(--text-gray);line-height:1.7;margin-bottom:16px}
-.deep-s2-outer .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:800;line-height:1.18;letter-spacing:-.7px;margin-bottom:16px}
-.deep-s2-outer .d-text p{font-size:var(--mk-body-md);color:var(--text-gray);line-height:1.72;margin-bottom:24px}
-.checklist{list-style:none;display:flex;flex-direction:column;gap:12px;margin-bottom:30px}
-.checklist li{display:flex;align-items:center;gap:11px;font-size:var(--mk-body);font-weight:600;color:var(--text-dark)}
-.ck-ico{width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center}
-.ck-ico svg{display:none}
-.ck-ico::before{font-size:17px;line-height:1}
-.deep-s1 .checklist li:nth-child(1) .ck-ico::before{content:"🌙"}
-.deep-s1 .checklist li:nth-child(2) .ck-ico::before{content:"☎️"}
-.deep-s1 .checklist li:nth-child(3) .ck-ico::before{content:"🤝"}
-.deep-s2-outer .checklist li:nth-child(1) .ck-ico::before{content:"📲"}
-.deep-s2-outer .checklist li:nth-child(2) .ck-ico::before{content:"📝"}
-.deep-s2-outer .checklist li:nth-child(3) .ck-ico::before{content:"🤝"}
-.chart-wrap{background:#fff;border-radius:var(--r-lg);overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06);border:1px solid var(--border)}
+.deep-s1{padding:36px 0 24px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.deep-s1 .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:700;line-height:1.2;letter-spacing:-.6px;margin-bottom:10px;color:var(--text-dark)}
+.deep-s1 .d-text p{font-size:var(--mk-body);color:var(--text-desc);line-height:1.68;margin-bottom:16px;font-weight:400}
+.deep-s2-outer .d-text h2{font-size:clamp(20px,2vw,27px);font-weight:700;line-height:1.2;letter-spacing:-.6px;margin-bottom:16px;color:var(--text-dark)}
+.deep-s2-outer .d-text p{font-size:var(--mk-body-md);color:var(--text-desc);line-height:1.68;margin-bottom:24px;font-weight:400}
+.checklist{list-style:none;display:flex;flex-direction:column;gap:11px;margin-bottom:28px}
+.checklist li{display:flex;align-items:flex-start;gap:11px;font-size:var(--mk-body);font-weight:500;color:var(--text-dark)}
+.ck-ico{width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.ck-ico svg{display:block;width:18px;height:18px;flex-shrink:0}
+.ck-ico svg path{fill:#8B5CF6}
+.chart-wrap{background:#fff;border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--home-shadow-soft);border:1px solid var(--border)}
 .chart-inner{padding:24px 28px 0}
-.chart-tiny-label{font-size:14px;color:var(--text-gray);font-weight:500;margin-bottom:2px}
+.chart-tiny-label{font-size:13px;color:var(--text-desc);font-weight:500;margin-bottom:2px}
 .chart-big-row{display:flex;align-items:baseline;gap:12px;margin-bottom:20px}
-.chart-big{font-size:36px;font-weight:800;letter-spacing:-1px}
-.chart-badge{background:var(--purple-ultra);color:var(--purple-dark);font-size:var(--mk-badge);font-weight:700;padding:4px 12px;border-radius:var(--r-pill)}
+.chart-big{font-size:34px;font-weight:700;letter-spacing:-.8px;color:var(--text-dark)}
+.chart-badge{background:var(--purple-ultra);color:var(--purple-dark);font-size:var(--mk-badge);font-weight:600;padding:5px 12px;border-radius:var(--r-pill);border:1px solid rgba(196,181,253,.4)}
 .linechart-svg-wrap{position:relative;height:140px;margin:0 -1px}
 .linechart-svg-wrap svg{width:100%;height:100%}
-.x-labels{display:flex;justify-content:space-between;padding:10px 28px 20px;font-size:14px;color:var(--text-light);font-weight:500}
-.x-label-active{font-weight:700;color:#111}
-.deep-s2-outer{background:#EDF9F4;border-radius:var(--r-lg);padding:60px 52px;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
-.convo-card{background:#fff;border-radius:var(--r-lg);padding:26px 26px 30px;box-shadow:0 4px 24px rgba(0,0,0,.06);position:relative}
+.x-labels{display:flex;justify-content:space-between;padding:10px 28px 20px;font-size:13px;color:#94A3B8;font-weight:500}
+.x-label-active{font-weight:600;color:var(--text-dark)}
+.deep-s2-outer{background:linear-gradient(180deg,#ecfdf5 0%,#f0fdf9 45%,#fff 100%);border:1px solid rgba(167,243,208,.55);border-radius:var(--r-lg);padding:52px 48px;display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;box-shadow:var(--home-shadow-soft)}
+.convo-card{background:#fff;border-radius:var(--r-lg);padding:26px 26px 30px;border:1px solid var(--border);box-shadow:var(--home-shadow-soft);position:relative}
 .convo-avatars{display:flex;margin-bottom:20px}
 .convo-avatar{width:38px;height:38px;border-radius:50%;border:2.5px solid #fff;margin-right:-10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
 .convo-avatar:nth-child(1){background:linear-gradient(135deg,#C4B5FD,#93C5FD)}
 .convo-avatar:nth-child(2){background:linear-gradient(135deg,#FCA5A5,#FCD34D)}
 .convo-avatar:nth-child(3){background:linear-gradient(135deg,#6EE7B7,#60A5FA)}
-.convo-quote{font-size:21px;font-weight:800;color:var(--text-dark);line-height:1.25;margin-bottom:18px}
+.convo-quote{font-size:20px;font-weight:700;color:var(--text-dark);line-height:1.3;margin-bottom:18px;letter-spacing:-.35px}
 .convo-wave{height:50px;width:100%;opacity:.15}
 .convo-wave path{fill:none;stroke:var(--text-dark);stroke-width:1.5px}
 /* ─── TESTIMONIALS ─── */
-.testimonials{padding:88px 48px}
+.testimonials{padding:72px 48px}
 .test-inner{max-width:1100px;margin:0 auto}
-.test-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:48px}
+.test-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:40px}
 .test-col{display:flex;flex-direction:column;gap:16px}
-.test-card{background:var(--bg-gray);border-radius:var(--r-lg);padding:26px;border:1px solid var(--border)}
-.test-qq{font-size:24px;color:var(--purple);font-weight:800;line-height:1;margin-bottom:10px}
-.test-card p{font-size:var(--mk-body);color:var(--text-dark);line-height:1.72;margin-bottom:16px}
-.test-card p.lg{font-size:16px;font-weight:600}
+.test-card{background:#fff;border-radius:var(--r-lg);padding:24px;border:1px solid var(--border);box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
+.test-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.45)}
+.test-qq{font-size:22px;color:var(--purple);font-weight:700;line-height:1;margin-bottom:8px;opacity:.85}
+.test-card p{font-size:var(--mk-body);color:var(--text-desc);line-height:1.68;margin-bottom:16px;font-weight:400}
+.test-card p.lg{font-size:15px;font-weight:500;color:#475569}
 .test-author{display:flex;align-items:center;gap:10px}
 .test-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--purple),#EC4899);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
-.test-name{font-size:var(--mk-body);font-weight:700;color:var(--text-dark)}
-.test-role{font-size:var(--mk-body);color:var(--text-light)}
+.test-name{font-size:var(--mk-body);font-weight:600;color:var(--text-dark)}
+.test-role{font-size:var(--mk-body);color:var(--text-light);font-weight:400}
 
 /* ─── PRICING ─── */
-.pricing{padding:88px 48px;background:var(--bg-gray)}
+.pricing{padding:72px 48px;background:var(--bg-gray)}
 .pricing-inner{max-width:1100px;margin:0 auto}
-.price-toggle{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:44px}
-.pt-btn{padding:10px 24px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
-.pt-btn.on{background:var(--purple);color:#fff}
-.pt-btn:not(.on){background:transparent;color:var(--text-gray)}
-.save-tag{background:#111;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:var(--r-pill)}
-.price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
-.plan{background:#fff;border-radius:var(--r-lg);padding:26px 22px;border:1.5px solid var(--border);position:relative;display:flex;flex-direction:column;height:100%;transition:transform .2s,box-shadow .2s,border-color .2s}
-.plan:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.08);border-color:#d8ccfe}
-.plan.star{background:linear-gradient(180deg,#f8f5ff 0%,#ffffff 78%);border-color:var(--purple);box-shadow:0 0 0 4px rgba(139,92,246,.08)}
-.plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;font-size:var(--mk-badge);font-weight:700;padding:5px 18px;border-radius:var(--r-pill);white-space:nowrap}
-.plan-name{font-size:var(--mk-card-title);font-weight:700;margin-bottom:5px}
-.plan-desc{font-size:var(--mk-caption);color:var(--text-gray);margin-bottom:16px;line-height:1.5}
-.plan-price{font-size:40px;font-weight:800;letter-spacing:-2px;margin-bottom:5px}
+.price-toggle{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:40px}
+.pt-btn{padding:10px 22px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
+.pt-btn.on{background:var(--purple);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
+.pt-btn:not(.on){background:transparent;color:var(--text-desc)}
+.save-tag{background:linear-gradient(180deg,#f1f5f9,#e2e8f0);color:#334155;font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--r-pill);border:1px solid #cbd5e1}
+.price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
+.plan{background:#fff;border-radius:var(--r-lg);padding:24px 20px;border:1px solid var(--border);position:relative;display:flex;flex-direction:column;height:100%;transition:transform .2s,box-shadow .2s,border-color .2s;box-shadow:var(--home-shadow-soft)}
+.plan:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.55)}
+.plan.star{background:linear-gradient(180deg,#faf9ff 0%,#fff 85%);border-color:rgba(167,139,250,.55);box-shadow:var(--home-shadow-soft),0 0 0 1px rgba(139,92,246,.06)}
+.plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;font-size:var(--mk-badge);font-weight:600;padding:5px 16px;border-radius:var(--r-pill);white-space:nowrap;box-shadow:0 4px 12px rgba(124,58,237,.2)}
+.plan-name{font-size:var(--mk-card-title);font-weight:600;margin-bottom:5px;color:var(--text-dark)}
+.plan-desc{font-size:var(--mk-caption);color:var(--text-desc);margin-bottom:16px;line-height:1.55;font-weight:400}
+.plan-price{font-size:38px;font-weight:700;letter-spacing:-1.5px;margin-bottom:5px;color:var(--text-dark)}
 .plan-price-custom{font-size:30px;letter-spacing:-1px}
 .plan-price span{font-size:var(--mk-body);font-weight:500;color:var(--text-gray);letter-spacing:0}
 .plan-div{height:1px;background:var(--border);margin:16px 0}
 .plan-feats{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:22px;flex:1}
-.plan-feats li{display:flex;align-items:flex-start;gap:8px;font-size:var(--mk-caption);color:var(--text-dark);line-height:1.45}
-.price-grid .plan-feats li::before{color:inherit;font-weight:700;margin-top:0;flex-shrink:0}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(1)::before{content:"📞"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(2)::before{content:"🌙"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(3)::before{content:"↩️"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(4)::before{content:"📝"}
-.price-grid .plan:nth-child(1) .plan-feats li:nth-child(5)::before{content:"🇻🇳"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(1)::before{content:"✅"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(2)::before{content:"💬"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(3)::before{content:"🧠"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(4)::before{content:"📊"}
-.price-grid .plan:nth-child(2) .plan-feats li:nth-child(5)::before{content:"⚡"}
-.price-grid .plan:nth-child(3) .plan-feats li:nth-child(1)::before{content:"🏬"}
-.price-grid .plan:nth-child(3) .plan-feats li:nth-child(2)::before{content:"🧭"}
-.price-grid .plan:nth-child(3) .plan-feats li:nth-child(3)::before{content:"🔌"}
-.price-grid .plan:nth-child(3) .plan-feats li:nth-child(4)::before{content:"🤝"}
-.plan-btn{width:100%;padding:12px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:700;text-align:center;display:block;transition:all .2s;cursor:pointer;border:none;font-family:inherit;margin-top:auto}
-.pb-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-dark)}
-.pb-outline:hover{border-color:var(--purple);color:var(--purple)}
+.plan-feats li{display:flex;align-items:flex-start;gap:10px;font-size:var(--mk-caption);color:#475569;line-height:1.45;font-weight:400}
+.price-grid .plan-feats li::before{content:"";width:5px;height:5px;border-radius:50%;background:linear-gradient(135deg,#C4B5FD,#A78BFA);margin-top:6px;flex-shrink:0;box-shadow:0 0 0 1px rgba(139,92,246,.2)}
+.plan-btn{width:100%;padding:12px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;text-align:center;display:block;transition:all .2s;cursor:pointer;border:none;font-family:inherit;margin-top:auto}
+.pb-outline{background:transparent;border:1px solid var(--border);color:var(--text-dark)}
+.pb-outline:hover{border-color:rgba(139,92,246,.45);color:var(--purple-dark);background:rgba(245,243,255,.4)}
 .pb-dark{background:var(--text-dark);color:#fff}
-.pb-dark:hover{background:#1f2937}
+.pb-dark:hover{background:#1f2937;transform:translateY(-1px)}
 /* ─── HOW IT WORKS ─── */
-.industries{padding:56px 48px 26px;background:#fff}
+.industries{padding:64px 48px 32px;background:#fff}
 .industries-inner{max-width:1100px;margin:0 auto}
 .industries-carousel{position:relative;max-width:1100px;margin:0 auto}
 .industries-track{
-  display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;
-  -ms-overflow-style:none;padding-bottom:4px;scroll-behavior:smooth;
+  display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;align-items:stretch;
+  -ms-overflow-style:none;padding-bottom:6px;scroll-behavior:smooth;
 }
 .industries-track::-webkit-scrollbar{display:none}
 .industry-card{
-  flex:0 0 calc((100% - 36px) / 4);display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:18px;border:1px solid #e8ebf2;background:#fff;
-  box-shadow:0 6px 20px rgba(17,24,39,.04);transition:box-shadow .28s ease,border-color .28s ease,transform .2s ease;
-  scroll-snap-align:start;text-decoration:none;
+  flex:0 0 calc((100% - 48px) / 4);display:flex;flex-direction:column;min-height:100%;padding:12px;border-radius:20px;border:1px solid var(--border);background:#fff;
+  box-shadow:var(--home-shadow-soft);transition:box-shadow .25s ease,border-color .25s ease,transform .2s ease;
+  scroll-snap-align:start;text-decoration:none;color:inherit;
 }
-.industry-card:hover{border-color:#d9cffd;box-shadow:0 14px 30px rgba(124,58,237,.12)}
-.industry-card:hover{transform:none}
-.industry-thumb{position:relative;width:100%;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#f7f5ff}
+.industry-card:hover{border-color:rgba(167,139,250,.55);box-shadow:var(--home-shadow-hover);transform:translateY(-2px)}
+.industry-thumb{position:relative;width:100%;aspect-ratio:1/1;border-radius:16px;overflow:hidden;background:linear-gradient(145deg,#faf9ff,#f1f0ff);flex-shrink:0}
 .industry-thumb img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .28s ease}
-.industry-card:hover .industry-thumb img{transform:scale(1.04)}
-.industry-tag{position:absolute;left:8px;top:8px;padding:4px 8px;border-radius:999px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;font-weight:800;background:rgba(17,24,39,.72);color:#fff;backdrop-filter:blur(4px)}
-.industry-title{font-size:15px;font-weight:800;line-height:1.3;color:#111827}
-.industry-sub{font-size:12px;line-height:1.5;color:#6b7280}
-.industry-link{font-size:13px;color:#6d28d9;font-weight:700}
+.industry-card:hover .industry-thumb img{transform:scale(1.03)}
+.industry-tag{position:absolute;left:10px;top:10px;padding:5px 10px;border-radius:999px;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+  background:rgba(255,255,255,.92);color:#5B21B6;border:1px solid rgba(196,181,253,.45);box-shadow:0 2px 8px rgba(17,24,39,.06);backdrop-filter:blur(6px)}
+.industry-body{display:flex;flex-direction:column;flex:1;min-height:0;padding:4px 2px 2px;gap:6px}
+.industry-title{font-size:15px;font-weight:600;line-height:1.3;color:#111827;letter-spacing:-.2px}
+.industry-sub{font-size:13px;line-height:1.45;color:var(--text-desc);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1;font-weight:400}
+.industry-link{margin-top:auto;display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--purple-dark);font-weight:600;padding-top:4px}
+.industry-link-arrow{display:inline-block;transition:transform .2s ease;font-weight:500}
+.industry-card:hover .industry-link-arrow{transform:translateX(4px)}
 .industries-controls{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:18px}
 .industries-nav-btn{
   width:36px;height:36px;border-radius:999px;border:1px solid #ddd6fe;background:#fff;color:#6d28d9;
@@ -418,30 +439,31 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .home-carousel-dots{display:flex;justify-content:center;gap:8px}
 .home-carousel-dot{width:10px;height:10px;border-radius:999px;background:#d1d5db;border:none;cursor:pointer;transition:all .2s ease}
 .home-carousel-dot.active{width:26px;background:#8b5cf6}
-.steps-section{padding:88px 48px;background:#fff}
+.steps-section{padding:72px 48px;background:#fff}
 .steps-inner{max-width:1100px;margin:0 auto}
-.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:44px}
-.step-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:28px 24px;box-shadow:0 10px 30px rgba(17,24,39,.05);transition:transform .2s,box-shadow .2s,border-color .2s}
-.step-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,.07);border-color:#d8ccfe}
-.step-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-.step-icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:21px;background:linear-gradient(145deg,#F5F3FF 0%,#EDE9FE 100%);border:1px solid #d8ccfe}
-.step-num{min-width:42px;height:30px;border-radius:999px;background:var(--purple-ultra);color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;padding:0 10px}
-.step-card h3{font-size:20px;font-weight:800;letter-spacing:-.45px;margin-bottom:9px}
-.step-card p{font-size:var(--mk-body);color:var(--text-gray);line-height:1.7}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:40px}
+.step-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:24px 22px;box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
+.step-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.5)}
+.step-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.step-icon{width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:var(--purple-dark);background:linear-gradient(180deg,#fff,#faf9ff);border:1px solid rgba(196,181,253,.4)}
+.step-icon .home-line-icon{flex-shrink:0}
+.step-num{min-width:42px;height:30px;border-radius:999px;background:var(--purple-ultra);color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;padding:0 10px;border:1px solid rgba(196,181,253,.35)}
+.step-card h3{font-size:18px;font-weight:600;letter-spacing:-.35px;margin-bottom:8px;line-height:1.3;color:var(--text-dark)}
+.step-card p{font-size:var(--mk-body);color:var(--text-desc);line-height:1.68;font-weight:400}
 
 /* ─── REAL CALL FLOW ─── */
-.flow-section{padding:22px 48px 88px;background:#fff}
-.flow-inner{max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#fbf9ff,#fff);border:1px solid var(--border);border-radius:32px;padding:34px}
+.flow-section{padding:20px 48px 72px;background:#fff}
+.flow-inner{max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#fdfcff,#fff);border:1px solid var(--border);border-radius:28px;padding:32px 28px;box-shadow:var(--home-shadow-soft)}
 .flow-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:24px;align-items:stretch}
 .flow-list{display:flex;flex-direction:column;gap:14px}
-.flow-row{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:18px;background:#fff;border:1px solid var(--border)}
-.flow-dot{width:34px;height:34px;min-width:34px;border-radius:12px;background:var(--purple-ultra);color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
-.flow-row h4{font-size:15px;margin-bottom:4px}
-.flow-row p{font-size:14px;color:var(--text-gray);line-height:1.6}
-.demo-shot{border-radius:24px;border:1.5px dashed #C4B5FD;background:linear-gradient(135deg,#f7f2ff,#fff);min-height:420px;padding:22px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.flow-row{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:18px;background:#fff;border:1px solid var(--border);box-shadow:0 1px 3px rgba(17,24,39,.04)}
+.flow-dot{width:34px;height:34px;min-width:34px;border-radius:12px;background:var(--purple-ultra);color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;border:1px solid rgba(196,181,253,.35)}
+.flow-row h4{font-size:15px;margin-bottom:4px;font-weight:600;color:var(--text-dark)}
+.flow-row p{font-size:14px;color:var(--text-desc);line-height:1.62;font-weight:400}
+.demo-shot{border-radius:24px;border:1px dashed rgba(196,181,253,.55);background:linear-gradient(135deg,#faf9ff,#fff);min-height:420px;padding:22px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
 .demo-shot::before{content:"";position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:rgba(139,92,246,.08)}
-.demo-badge{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid rgba(139,92,246,.22);border-radius:999px;padding:8px 12px;font-size:11px;font-weight:700;color:var(--purple-dark);width:fit-content;position:relative;z-index:1}
-.demo-window{background:#fff;border-radius:22px;border:1px solid var(--border);box-shadow:0 16px 36px rgba(17,24,39,.08);padding:18px;position:relative;z-index:1}
+.demo-badge{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid rgba(196,181,253,.4);border-radius:999px;padding:7px 12px;font-size:11px;font-weight:600;color:var(--purple-dark);width:fit-content;position:relative;z-index:1}
+.demo-window{background:#fff;border-radius:22px;border:1px solid var(--border);box-shadow:var(--home-shadow-soft);padding:18px;position:relative;z-index:1}
 .demo-window h4{font-size:16px;margin-bottom:10px}
 .demo-window p{font-size:14px;color:var(--text-gray);line-height:1.65}
 .demo-lines{display:flex;flex-direction:column;gap:10px;margin-top:18px}
@@ -450,27 +472,27 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .demo-note{font-size:14px;color:var(--text-light);font-weight:600;letter-spacing:.03em;position:relative;z-index:1}
 
 /* ─── MVP SCOPE ─── */
-.scope-section{padding:0 48px 88px;background:#fff}
-.scope-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.scope-card{border-radius:28px;padding:28px;border:1px solid var(--border)}
-.scope-card h3{font-size:22px;letter-spacing:-.6px;margin-bottom:8px}
-.scope-card p{font-size:var(--mk-body);color:var(--text-gray);line-height:1.7;margin-bottom:18px}
+.scope-section{padding:0 48px 72px;background:#fff}
+.scope-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.scope-card{border-radius:24px;padding:26px 24px;border:1px solid var(--border);box-shadow:var(--home-shadow-soft)}
+.scope-card h3{font-size:20px;font-weight:600;letter-spacing:-.45px;margin-bottom:8px;color:var(--text-dark)}
+.scope-card p{font-size:var(--mk-body);color:var(--text-desc);line-height:1.68;margin-bottom:18px;font-weight:400}
 .scope-card.ok{background:linear-gradient(180deg,#f7f2ff 0%,#fff 100%)}
 .scope-card.later{background:linear-gradient(180deg,#fff9ef 0%,#fff 100%)}
 .scope-list{list-style:none;display:flex;flex-direction:column;gap:10px}
 .scope-list li{display:flex;gap:10px;align-items:flex-start;font-size:var(--mk-body);line-height:1.6}
-.scope-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0;margin-top:1px}
+.scope-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;margin-top:1px}
 .scope-icon.ok{background:#ede9fe;color:var(--purple-dark)}
 .scope-icon.later{background:#fff7ed;color:#c2410c}
 
 /* ─── USER PREVIEW ─── */
-.user-preview{padding:88px 48px;background:var(--bg-gray)}
+.user-preview{padding:72px 48px;background:var(--bg-gray)}
 .user-preview-inner{max-width:1100px;margin:0 auto}
 .user-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:24px;align-items:center}
 .user-copy .sec-label{text-align:left;margin-bottom:16px}
-.user-copy h2{text-align:left;font-size:clamp(28px,3.6vw,44px);font-weight:800;line-height:1.12;letter-spacing:-1.2px;margin-bottom:14px}
-.user-copy p{font-size:var(--mk-body-md);color:var(--text-gray);line-height:1.75;margin-bottom:24px;text-align:left}
-.user-shot{border-radius:28px;background:linear-gradient(180deg,#ffffff,#f8fafc);padding:14px;box-shadow:0 20px 50px rgba(17,24,39,.10);border:1px solid rgba(139,92,246,.14)}
+.user-copy h2{text-align:left;font-size:clamp(28px,3.6vw,44px);font-weight:700;line-height:1.12;letter-spacing:-1.1px;margin-bottom:14px;color:var(--text-dark)}
+.user-copy p{font-size:var(--mk-body-md);color:var(--text-desc);line-height:1.72;margin-bottom:24px;text-align:left;font-weight:400}
+.user-shot{border-radius:28px;background:linear-gradient(180deg,#ffffff,#f8fafc);padding:14px;box-shadow:var(--home-shadow-hover);border:1px solid var(--border)}
 .user-shell{position:relative;background:linear-gradient(135deg,#f7f2ff 0%,#ffffff 55%,#f5f3ff 100%);border-radius:22px;overflow:hidden;aspect-ratio:16/9;min-height:auto;border:1px solid #E5E7EB;display:block}
 
 
@@ -506,11 +528,11 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 @media(max-width:960px){
   .steps-grid,.flow-grid,.scope-inner,.user-grid{grid-template-columns:1fr}
   .user-shell{aspect-ratio:16/10}
-  .industry-card{flex-basis:calc((100% - 12px) / 2)}
+  .industry-card{flex-basis:calc((100% - 16px) / 2)}
   .steps-section,.flow-section,.scope-section,.user-preview,.industries{padding-left:22px;padding-right:22px}
   .home-carousel-track{
     display:flex;
-    gap:12px;
+    gap:16px;
     overflow-x:auto;
     scroll-snap-type:x mandatory;
     scrollbar-width:none;
@@ -528,9 +550,9 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
     box-sizing:border-box;
     transform:none;
   }
-  .home-carousel-track .step-card{flex:0 0 calc((100% - 12px) / 2)}
-  .home-carousel-track .test-card{flex:0 0 calc((100% - 12px) / 2)}
-  .home-carousel-track .plan{flex:0 0 calc((100% - 12px) / 2);height:auto}
+  .home-carousel-track .step-card{flex:0 0 calc((100% - 16px) / 2)}
+  .home-carousel-track .test-card{flex:0 0 calc((100% - 16px) / 2)}
+  .home-carousel-track .plan{flex:0 0 calc((100% - 16px) / 2);height:auto}
   .home-carousel-track .step-card:hover,
   .home-carousel-track .test-card:hover,
   .home-carousel-track .plan:hover{transform:none}
@@ -556,20 +578,21 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .user-image-corners::after{bottom:-42px;left:-42px}
 
 /* ─── CTA BANNER ─── */
-.cta-outer{padding:0 48px 88px;display:flex;justify-content:center}
+.cta-outer{padding:0 48px 72px;display:flex;justify-content:center}
 .cta-inner{width:100%;max-width:1100px}
 .cta-banner{border-radius:var(--r-lg);background:linear-gradient(125deg,#6D28D9 0%,#8B5CF6 55%,#A78BFA 100%);padding:52px 56px;display:grid;grid-template-columns:1fr auto auto;gap:32px 40px;overflow:visible;position:relative;align-items:center;min-height:420px}
 .cta-banner::before{content:"";position:absolute;right:-30px;top:-40px;width:280px;height:280px;background:rgba(255,255,255,.07);border-radius:50%}
 .cta-text{position:relative;z-index:2}
-.cta-text h2{font-size:clamp(22px,2.4vw,32px);font-weight:800;color:#fff;letter-spacing:-.7px;margin-bottom:8px;line-height:1.2}
-.cta-text p{font-size:14px;color:rgba(255,255,255,.75);line-height:1.65;max-width:380px}
+.cta-text h2{font-size:clamp(22px,2.4vw,32px);font-weight:700;color:#fff;letter-spacing:-.65px;margin-bottom:8px;line-height:1.2}
+.cta-text p{font-size:14px;color:rgba(255,255,255,.82);line-height:1.65;max-width:380px;font-weight:400}
 .cta-actions{display:flex;flex-direction:column;gap:10px;position:relative;z-index:2;min-width:210px}
-.btn-white{background:#fff;color:var(--purple-dark);padding:13px 26px;border-radius:var(--r-pill);font-size:14.5px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:transform .15s;justify-content:center}
-.btn-white .btn-white-arrow{width:16px;height:16px;color:var(--purple-dark);flex-shrink:0}
+.btn-white{background:#fff;color:var(--purple-dark);padding:12px 24px;border-radius:var(--r-pill);font-size:14.5px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:transform .15s,box-shadow .2s;justify-content:center;box-shadow:0 4px 16px rgba(17,24,39,.08)}
+.btn-white .btn-white-arrow{width:16px;height:16px;color:var(--purple-dark);flex-shrink:0;transition:transform .2s ease}
 .btn-white .demo-cta-phone path{fill:#FACC15}
-.btn-white:hover{transform:scale(1.04)}
-.btn-ghost-w{background:rgba(255,255,255,.14);color:#fff;padding:13px 26px;border-radius:var(--r-pill);font-size:14px;font-weight:600;text-decoration:none;text-align:center;border:1px solid rgba(255,255,255,.28);transition:background .2s;display:block}
-.btn-ghost-w:hover{background:rgba(255,255,255,.22)}
+.btn-white:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(17,24,39,.1)}
+.btn-white:hover .btn-white-arrow{transform:translateX(3px)}
+.btn-ghost-w{background:rgba(255,255,255,.12);color:#fff;padding:12px 24px;border-radius:var(--r-pill);font-size:14px;font-weight:600;text-decoration:none;text-align:center;border:1px solid rgba(255,255,255,.32);transition:background .2s,border-color .2s;display:block}
+.btn-ghost-w:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.45)}
 /* cta phone — taller + overflow visible */
 .cta-phone-wrap{position:relative;z-index:3;overflow:visible;height:320px;width:190px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .cta-phone{width:190px;height:370px;background:#0d0d0d;border-radius:34px;padding:9px;box-shadow:0 16px 40px rgba(0,0,0,.35);position:relative;left:auto;bottom:auto}
@@ -950,22 +973,22 @@ export function MarketingHomeTemplate() {
               <div className="fc fc-1">
                 <div className="fc-big">Current #</div>
                 <div className="fc-sm">No number change</div>
-                <div className="fc-tag">☎️ Forward your line</div>
+                <div className="fc-tag">Forward your line</div>
               </div>
               <div className="fc fc-2">
                 <div className="fc-big green">Overflow</div>
                 <div className="fc-sm">Busy desk covered</div>
-                <div className="fc-tag g">↩️ Text-back ready</div>
+                <div className="fc-tag g">Text-back ready</div>
               </div>
               <div className="fc fc-3">
-                <div className="fc-mini fc-mini-top">🎙 AI Phone Agent Active</div>
+                <div className="fc-mini fc-mini-top">AI phone agent active</div>
                 <div className="wv"><span /><span /><span /><span /><span /><span /><span /></div>
                 <div className="fc-mini fc-mini-bottom">Booking appointment…</div>
               </div>
               <div className="fc fc-4">
                 <div className="fc-big">After-hours</div>
                 <div className="fc-sm">Caller intent captured</div>
-                <div className="fc-tag">✓ Human handoff</div>
+                <div className="fc-tag">Human handoff</div>
               </div>
               {/* PHONE with voice call UI */}
               <div className="phone-wrap">
@@ -1022,14 +1045,46 @@ export function MarketingHomeTemplate() {
         <section className="proofbar" aria-label="RingBooker setup proof points">
           <div className="proofbar-inner">
             {[
-              ['☎️', 'Keep your current phone number', 'proof-purple'],
-              ['🔌', 'Square live today; booking workflows stay', 'proof-green'],
-              ['⚡', 'Guided 15-minute setup — no big migration', 'proof-amber'],
-              ['💅', 'Built for nail salons, hair salons, spas, and clinics', 'proof-pink'],
-            ].map(([icon, item, tone]) => (
-              <div className="proof-item" key={item}>
+              {
+                tone: 'proof-purple',
+                text: 'Keep your current phone number',
+                icon: (
+                  <HomeLineIcon>
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                  </HomeLineIcon>
+                ),
+              },
+              {
+                tone: 'proof-green',
+                text: 'Square live today; booking workflows stay',
+                icon: (
+                  <HomeLineIcon>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </HomeLineIcon>
+                ),
+              },
+              {
+                tone: 'proof-amber',
+                text: 'Guided 15-minute setup — no big migration',
+                icon: (
+                  <HomeLineIcon>
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                  </HomeLineIcon>
+                ),
+              },
+              {
+                tone: 'proof-pink',
+                text: 'Built for nail salons, hair salons, spas, and clinics',
+                icon: (
+                  <HomeLineIcon>
+                    <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 17.8 5.7 21l2.3-7-6-4.6h7.6L12 2z" />
+                  </HomeLineIcon>
+                ),
+              },
+            ].map(({ tone, text, icon }) => (
+              <div className="proof-item" key={text}>
                 <span className={`proof-icon ${tone}`}>{icon}</span>
-                <span>{item}</span>
+                <span className="proof-text">{text}</span>
               </div>
             ))}
           </div>
@@ -1042,13 +1097,65 @@ export function MarketingHomeTemplate() {
             <p className="sec-sub reveal">RingBooker covers the moments your front desk cannot: after hours, during services, at lunch, on weekends, and when two callers ring at once.</p>
             <div className="leak-grid">
               {[
-                ['💅', 'Your team is with a client', 'RingBooker answers without forcing your staff to pause a manicure, color service, treatment, or consultation.'],
-                ['🌙', 'Calls come in after hours', 'Capture booking intent when the salon is closed, then send confirmations or summaries for the next business day.'],
-                ['🔄', 'Reschedule and cancellation calls pile up', 'Handle routine changes without burying your team in voicemail and manual follow-up.'],
-                ['📵', 'Callers do not leave messages', 'Missed-call text back gives silent callers an easy way to continue instead of calling your competitor.'],
-                ['☎️', 'Two calls ring at the same time', 'Overflow handling keeps the second caller from hearing a busy line or waiting too long.'],
-                ['🗓️', 'Online booking did not replace phone calls', 'Some customers still want to talk. RingBooker meets them on the channel they already use.'],
-              ].map(([icon, title, body]) => (
+                {
+                  title: 'Your team is with a client',
+                  body: 'RingBooker answers without forcing your staff to pause a manicure, color service, treatment, or consultation.',
+                  icon: (
+                    <HomeLineIcon>
+                      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                      <circle cx="9" cy="7" r="4" />
+                      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                    </HomeLineIcon>
+                  ),
+                },
+                {
+                  title: 'Calls come in after hours',
+                  body: 'Capture booking intent when the salon is closed, then send confirmations or summaries for the next business day.',
+                  icon: (
+                    <HomeLineIcon>
+                      <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+                    </HomeLineIcon>
+                  ),
+                },
+                {
+                  title: 'Reschedule and cancellation calls pile up',
+                  body: 'Handle routine changes without burying your team in voicemail and manual follow-up.',
+                  icon: (
+                    <HomeLineIcon>
+                      <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+                    </HomeLineIcon>
+                  ),
+                },
+                {
+                  title: 'Callers do not leave messages',
+                  body: 'Missed-call text back gives silent callers an easy way to continue instead of calling your competitor.',
+                  icon: (
+                    <HomeLineIcon>
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                    </HomeLineIcon>
+                  ),
+                },
+                {
+                  title: 'Two calls ring at the same time',
+                  body: 'Overflow handling keeps the second caller from hearing a busy line or waiting too long.',
+                  icon: (
+                    <HomeLineIcon>
+                      <path d="M12.83 2.18a2 2 0 00-1.66 0L2.6 6.08a1 1 0 000 1.83l8.58 3.91a2 2 0 001.66 0l8.58-3.9a1 1 0 000-1.83L12.83 2.18z" />
+                      <path d="M2 12.05l8.58 3.91a2 2 0 001.66 0L21 12.05M2 17.05l8.58 3.91a2 2 0 001.66 0L21 17.05" />
+                    </HomeLineIcon>
+                  ),
+                },
+                {
+                  title: 'Online booking did not replace phone calls',
+                  body: 'Some customers still want to talk. RingBooker meets them on the channel they already use.',
+                  icon: (
+                    <HomeLineIcon>
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <path d="M16 2v4M8 2v4M3 10h18" />
+                    </HomeLineIcon>
+                  ),
+                },
+              ].map(({ title, body, icon }) => (
                 <article className="leak-card reveal" key={title}>
                   <div className="leak-icon">{icon}</div>
                   <h3>{title}</h3>
@@ -1103,45 +1210,65 @@ export function MarketingHomeTemplate() {
                   <Image src="/images/nail.webp" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Nail</span>
                 </div>
-                <div className="industry-title">Nail Salon</div>
-                <div className="industry-sub">Built for manicure, pedicure, and gel services with heavy walk-in and peak-hour calls.</div>
-                <div className="industry-link">Explore more →</div>
+                <div className="industry-body">
+                  <div className="industry-title">Nail Salon</div>
+                  <div className="industry-sub">Manicure, pedicure, and gel — walk-ins and peak-hour calls.</div>
+                  <div className="industry-link">
+                    Explore more <span className="industry-link-arrow">→</span>
+                  </div>
+                </div>
               </a>
               <a href="/industries/hair-salon" className="industry-card" data-index={1}>
                 <div className="industry-thumb">
                   <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI phone answering captures overflow and in-service calls for bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Hair</span>
                 </div>
-                <div className="industry-title">Hair Salon</div>
-                <div className="industry-sub">Designed for cuts, color, and stylist-led schedules where calls arrive during active service.</div>
-                <div className="industry-link">Explore more →</div>
+                <div className="industry-body">
+                  <div className="industry-title">Hair Salon</div>
+                  <div className="industry-sub">Cuts, color, and busy lines while clients are in the chair.</div>
+                  <div className="industry-link">
+                    Explore more <span className="industry-link-arrow">→</span>
+                  </div>
+                </div>
               </a>
               <a href="/industries/spa" className="industry-card" data-index={2}>
                 <div className="industry-thumb">
                   <Image src="/images/spa.webp" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Spa</span>
                 </div>
-                <div className="industry-title">Spa / Day Spa</div>
-                <div className="industry-sub">Treatment-heavy bookings and after-hours availability.</div>
-                <div className="industry-link">Explore more →</div>
+                <div className="industry-body">
+                  <div className="industry-title">Spa / Day Spa</div>
+                  <div className="industry-sub">Treatment bookings and after-hours availability.</div>
+                  <div className="industry-link">
+                    Explore more <span className="industry-link-arrow">→</span>
+                  </div>
+                </div>
               </a>
               <a href="/industries/med-spa" className="industry-card" data-index={3}>
                 <div className="industry-thumb">
                   <Image src="/images/med_spa.webp" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Med Spa</span>
                 </div>
-                <div className="industry-title">Med Spa</div>
-                <div className="industry-sub">Consultation-driven calls with high-ticket conversion.</div>
-                <div className="industry-link">Explore more →</div>
+                <div className="industry-body">
+                  <div className="industry-title">Med Spa</div>
+                  <div className="industry-sub">Consult-led calls and high-ticket treatment questions.</div>
+                  <div className="industry-link">
+                    Explore more <span className="industry-link-arrow">→</span>
+                  </div>
+                </div>
               </a>
               <a href="/industries/beauty-clinic" className="industry-card" data-index={4}>
                 <div className="industry-thumb">
                   <Image src="/images/beauty_clinic.webp" alt="Beauty and aesthetic clinic reception area — AI answering service for beauty clinic consultation bookings and provider continuity calls" width={1024} height={1024} sizes="(max-width: 640px) 100vw, (max-width: 960px) 50vw, 220px" quality={70} />
                   <span className="industry-tag">Clinic</span>
                 </div>
-                <div className="industry-title">Beauty / Aesthetic Clinic</div>
-                <div className="industry-sub">Consultation, follow-up, and treatment scheduling workflows.</div>
-                <div className="industry-link">Explore more →</div>
+                <div className="industry-body">
+                  <div className="industry-title">Beauty / Aesthetic Clinic</div>
+                  <div className="industry-sub">Consultations, follow-ups, and treatment scheduling.</div>
+                  <div className="industry-link">
+                    Explore more <span className="industry-link-arrow">→</span>
+                  </div>
+                </div>
               </a>
               </div>
               <div className="industries-controls" aria-label="Industries carousel controls">
@@ -1162,7 +1289,11 @@ export function MarketingHomeTemplate() {
               <div className="steps-grid home-carousel-track">
                 <div className="step-card reveal home-carousel-slide">
                   <div className="step-head">
-                    <div className="step-icon">☎️</div>
+                    <div className="step-icon" aria-hidden>
+                      <HomeLineIcon>
+                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                      </HomeLineIcon>
+                    </div>
                     <div className="step-num">Step 01</div>
                   </div>
                   <h3>Forward your existing number (or get a new one).</h3>
@@ -1170,7 +1301,11 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="step-card reveal home-carousel-slide">
                   <div className="step-head">
-                    <div className="step-icon">🗓️</div>
+                    <div className="step-icon" aria-hidden>
+                      <HomeLineIcon>
+                        <path d="M4 21v-7M4 10v-7M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4" />
+                      </HomeLineIcon>
+                    </div>
                     <div className="step-num">Step 02</div>
                   </div>
                   <h3>Tell RingBooker your services, hours, and what to say.</h3>
@@ -1178,10 +1313,14 @@ export function MarketingHomeTemplate() {
                 </div>
                 <div className="step-card reveal home-carousel-slide">
                   <div className="step-head">
-                    <div className="step-icon">🤖</div>
+                    <div className="step-icon" aria-hidden>
+                      <HomeLineIcon>
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                      </HomeLineIcon>
+                    </div>
                     <div className="step-num">Step 03</div>
                   </div>
-                  <h3>RingBooker handles calls, captures booking intent, and texts your clients when configured.</h3>
+                  <h3>RingBooker answers calls, captures intent, and texts your team.</h3>
                   <p>After-hours and overflow callers get help right away, while your team gets the call summary and next action in the dashboard.</p>
                 </div>
               </div>
@@ -1198,34 +1337,63 @@ export function MarketingHomeTemplate() {
           <div className="sec-label">Core Features</div>
           <h2 className="sec-title reveal">Built for beauty businesses.<br />Trained to book.</h2>
           <p className="sec-sub reveal">Everything you need to stop losing clients to voicemail.</p>
-          <div className="feat-grid">
+            <div className="feat-grid">
             <div className="feat-card reveal">
-              <div className="feat-ico fi-y">📞</div>
+              <div className="feat-ico fi-y" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                </HomeLineIcon>
+              </div>
               <h3>After-Hours &amp; Overflow Call Answering.</h3>
               <p>Answers calls when your team is busy, closed, already on another line, or serving a client.</p>
             </div>
             <div className="feat-card reveal">
-              <div className="feat-ico fi-g">📅</div>
+              <div className="feat-ico fi-g" aria-hidden>
+                <HomeLineIcon>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <path d="M16 2v4M8 2v4M3 10h18" />
+                </HomeLineIcon>
+              </div>
               <h3>Reschedule, Cancel &amp; Confirm Call Handling.</h3>
               <p>Handles common booking changes based on your rules and sends the caller a clear confirmation.</p>
             </div>
             <div className="feat-card reveal">
-              <div className="feat-ico fi-p">⚡</div>
+              <div className="feat-ico fi-p" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </HomeLineIcon>
+              </div>
               <h3>Missed-Call Text Back &amp; Smart Callback.</h3>
               <p>Texts callers who hang up or reach you after hours, then queues the right follow-up for your team.</p>
             </div>
             <div className="feat-card reveal">
-              <div className="feat-ico fi-y">↩️</div>
+              <div className="feat-ico fi-y" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                </HomeLineIcon>
+              </div>
               <h3>Works With Your Current Number &amp; Booking Tools.</h3>
               <p>Forward your front-desk line and keep using the booking workflow you already know, with Square live today and more integrations expanding.</p>
             </div>
             <div className="feat-card reveal">
-              <div className="feat-ico fi-g">📲</div>
+              <div className="feat-ico fi-g" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+                </HomeLineIcon>
+              </div>
               <h3>Call Summary &amp; Intent Dashboard for You.</h3>
               <p>Every call becomes a transcript, summary, and outcome so you can see what happened without replaying voicemail.</p>
             </div>
             <div className="feat-card reveal">
-              <div className="feat-ico fi-p">📊</div>
+              <div className="feat-ico fi-p" aria-hidden>
+                <HomeLineIcon>
+                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                </HomeLineIcon>
+              </div>
               <h3>Human Handoff When the Caller Needs It.</h3>
               <p>If the request is complex, RingBooker collects context, offers a callback, and hands the conversation back cleanly.</p>
             </div>
