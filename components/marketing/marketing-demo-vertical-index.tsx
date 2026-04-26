@@ -143,49 +143,29 @@ const styles = [
     .demo-hub-picks h2{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--demo-hub-muted);text-align:center;margin:0 0 20px}
     .demo-hub-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
     .demo-hub-card{
-      position:relative;background:#fff;border:1px solid var(--demo-hub-border);border-radius:var(--r-xl);
-      padding:22px 20px 20px;text-decoration:none;color:inherit;
-      display:flex;flex-direction:column;min-height:300px;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease;
-      overflow:hidden;
+      background:#fff;border:1px solid var(--demo-hub-border);border-radius:24px;
+      padding:22px 20px;text-decoration:none;color:inherit;
+      display:block;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease;
+      text-align:center;
     }
-    .demo-hub-card::before{
-      content:"";position:absolute;inset:0 0 auto 0;height:3px;border-radius:var(--r-xl) var(--r-xl) 0 0;opacity:.9;
-    }
-    .demo-hub-card-nail-salon::before{background:#7C3AED}
-    .demo-hub-card-hair-salon::before{background:#B45309}
-    .demo-hub-card-day-spa::before{background:#0D9488}
-    .demo-hub-card-med-spa::before{background:#4F46E5}
-    .demo-hub-card-beauty-clinic::before{background:#A21CAF}
     .demo-hub-card:hover{
-      transform:translateY(-5px);
+      transform:translateY(-2px);
       border-color:#DDD6FE;
-      box-shadow:var(--demo-hub-shadow-hover);
+      box-shadow:0 20px 44px rgba(124,58,237,.14);
       background:#fff;
     }
     .demo-hub-card:focus-visible{outline:2px solid #8B5CF6;outline-offset:2px}
     .demo-hub-card-mark{
-      width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;
-      margin-bottom:16px;color:#fff;flex-shrink:0;
+      width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+      margin:0 auto 12px;color:#6D28D9;flex-shrink:0;background:#F5F3FF;border:1px solid #E9D5FF;
     }
-    .demo-hub-card-mark-nail-salon{background:linear-gradient(145deg,#8B5CF6,#6D28D9)}
-    .demo-hub-card-mark-hair-salon{background:linear-gradient(145deg,#D97706,#B45309)}
-    .demo-hub-card-mark-day-spa{background:linear-gradient(145deg,#14B8A6,#0D9488)}
-    .demo-hub-card-mark-med-spa{background:linear-gradient(145deg,#6366F1,#4338CA)}
-    .demo-hub-card-mark-beauty-clinic{background:linear-gradient(145deg,#C026D3,#86198F)}
-    .demo-hub-card h3{margin:0;font-size:20px;font-weight:800;letter-spacing:-.03em;color:var(--demo-hub-text);line-height:1.2}
-    .demo-hub-card-line{margin:10px 0 0;font-size:13.5px;line-height:1.55;color:var(--demo-hub-muted)}
-    .demo-hub-card-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto;padding-top:18px}
-    .demo-hub-card-chips span{
-      font-size:11px;font-weight:700;color:#4B5563;background:var(--demo-hub-soft);
-      border:1px solid var(--demo-hub-border);border-radius:999px;padding:6px 10px;line-height:1;
-    }
+    .demo-hub-card h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--demo-hub-text);line-height:1.3}
+    .demo-hub-card-line{margin:7px 0 0;font-size:12px;line-height:1.5;color:var(--demo-hub-muted)}
     .demo-hub-card-cta{
-      margin-top:16px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
-      padding:11px 16px;border-radius:999px;background:var(--demo-hub-text);color:#fff;font-size:13px;font-weight:700;
-      width:100%;transition:background .15s ease,transform .15s ease;
+      margin-top:10px;display:inline-flex;align-items:center;justify-content:center;gap:5px;
+      color:#6D28D9;font-size:13px;font-weight:700;
     }
-    .demo-hub-card:hover .demo-hub-card-cta{background:#1f2937}
-    .demo-hub-card-cta svg{width:15px;height:15px;flex-shrink:0}
+    .demo-hub-card-cta svg{width:14px;height:14px;flex-shrink:0}
 
     /* STEPS */
     .demo-hub-steps{padding:48px 0 88px;border-top:1px solid rgba(229,231,235,.85);background:linear-gradient(180deg,rgba(249,250,251,.65) 0%,#fff 100%)}
@@ -196,15 +176,13 @@ const styles = [
       background:#fff;border:1px solid var(--demo-hub-border);border-radius:var(--r-lg);padding:22px 20px;
       box-shadow:0 4px 20px rgba(17,24,39,.04);
       text-align:center;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease;
-      cursor:pointer;
     }
-    .demo-hub-step:hover,.demo-hub-step:focus-visible,.demo-hub-step:active{
+    .demo-hub-step:hover{
       transform:translateY(-3px);
       border-color:#DDD6FE;
       box-shadow:0 18px 38px rgba(124,58,237,.14);
       background:#FCFAFF;
     }
-    .demo-hub-step:focus-visible{outline:2px solid #8B5CF6;outline-offset:2px}
     /* Match how-it-works .hiw-step::before — purple circle, white number, centered */
     .demo-hub-step-num{
       width:36px;height:36px;border-radius:50%;
@@ -284,11 +262,6 @@ export function MarketingDemoVerticalIndexTemplate() {
                       </div>
                       <h3>{hub.title}</h3>
                       <p className="demo-hub-card-line">{hub.line}</p>
-                      <div className="demo-hub-card-chips">
-                        {hub.chips.map((c) => (
-                          <span key={c}>{c}</span>
-                        ))}
-                      </div>
                       <span className="demo-hub-card-cta">
                         Try demo
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -307,21 +280,21 @@ export function MarketingDemoVerticalIndexTemplate() {
               <h2>How the demo works</h2>
               <p>Three quick steps—then talk naturally, like a real caller would.</p>
               <div className="demo-hub-step-grid">
-                <button type="button" className="demo-hub-step">
+                <div className="demo-hub-step">
                   <div className="demo-hub-step-num">1</div>
                   <h3>Pick your industry</h3>
                   <p>Select the demo that matches your salon, spa, or clinic. Each uses tailored scripts and sample services.</p>
-                </button>
-                <button type="button" className="demo-hub-step">
+                </div>
+                <div className="demo-hub-step">
                   <div className="demo-hub-step-num">2</div>
                   <h3>Enter your number</h3>
                   <p>We place a one-time outbound call to the number you provide—so you hear the experience on your own phone.</p>
-                </button>
-                <button type="button" className="demo-hub-step">
+                </div>
+                <div className="demo-hub-step">
                   <div className="demo-hub-step-num">3</div>
                   <h3>Answer and ask naturally</h3>
                   <p>Try bookings, reschedules, pricing, or after-hours questions. There is no setup on your live business line.</p>
-                </button>
+                </div>
               </div>
             </div>
           </section>
