@@ -150,15 +150,22 @@ const styles: string[] = [
     .demo-step.done{background:rgba(16,185,129,.18);border-color:rgba(134,239,172,.25)}
     .demo-step.done strong,.demo-step.done span{color:#d1fae5}
 
-    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-    .info-card{background:#fff;border:1px solid var(--border);border-radius:24px;padding:24px;box-shadow:var(--shadow);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
-    .info-card:hover{transform:translateY(-3px);border-color:#ddd6fe;box-shadow:0 18px 40px rgba(124,58,237,.12)}
-    .info-card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:8px}
-    .info-icon{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;flex-shrink:0}
-    .info-icon svg{width:18px;height:18px;fill:currentColor}
-    .info-card h3{font-size:18px;line-height:1.28;margin:0}
-    .info-card p,.info-card li{font-size:14px;color:var(--text-gray);line-height:1.65}
-    .info-card ul{padding-left:18px}
+    .grid-3{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
+    .info-card{
+      background:#fff;border:1px solid var(--border);border-radius:24px;padding:24px;text-decoration:none;color:var(--text-dark);
+      transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease,background .2s ease;display:block;cursor:pointer
+    }
+    .info-card:hover{transform:translateY(-2px);border-color:#DDD6FE;box-shadow:0 16px 36px rgba(124,58,237,.10)}
+    .info-card:focus-visible{outline:2px solid #8B5CF6;outline-offset:2px}
+    .info-card.active{transform:translateY(-2px);border-color:#C4B5FD;background:#FAF5FF;box-shadow:0 18px 40px rgba(124,58,237,.13)}
+    .info-card-head{display:block;margin-bottom:4px}
+    .info-icon{
+      width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+      background:#F5F3FF;color:#6d28d9;border:1px solid #E9D5FF;flex-shrink:0;font-size:22px
+    }
+    .info-card h3{font-size:15px;line-height:1.35;margin:10px 0 6px}
+    .info-card p{font-size:13px;color:var(--text-gray);line-height:1.58}
+    .info-card .arrow{font-size:13px;color:var(--purple);font-weight:600;margin-top:10px;display:block}
 
     footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:42px 48px 30px}
     .footer-inner{max-width:1160px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
@@ -533,6 +540,21 @@ const scripts: string[] = [
         stopDemo();
       });
     }
+    const howCards = Array.from(document.querySelectorAll('[data-demo-step-card]'));
+    function activateHowCard(target){
+      howCards.forEach((card) => card.classList.remove('active'));
+      if (target) target.classList.add('active');
+    }
+    howCards.forEach((card, idx) => {
+      if (idx === 0) card.classList.add('active');
+      card.addEventListener('click', () => activateHowCard(card));
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          activateHowCard(card);
+        }
+      });
+    });
     renderTurnstile();
     if (${JSON.stringify(turnstileSiteKey)}) {
       const timer = setInterval(() => {
@@ -710,32 +732,29 @@ export function MarketingDemoTemplate() {
             <h2 className="sec-title">A real phone call, not a fake simulator.</h2>
             <p className="sec-sub">Prospects submit their number, receive a real outbound call, and watch concise live call states on the page.</p>
             <div className="grid-3">
-              <div className="info-card">
+              <div className="info-card" data-demo-step-card role="button" tabIndex={0}>
                 <div className="info-card-head">
-                  <div className="info-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.11 0 2-.89 2-2V5c0-1.1-.89-2-2-2Zm-1 8h-5v5h-2v-5H6V9h5V4h2v5h5v2Z" /></svg>
-                  </div>
+                  <div className="info-icon" aria-hidden="true">📝</div>
                   <h3>1. Submit demo details</h3>
                 </div>
                 <p>The form captures salon name, phone number, business type, and selected scenario with abuse protection enabled.</p>
+                <span className="arrow">View step →</span>
               </div>
-              <div className="info-card">
+              <div className="info-card" data-demo-step-card role="button" tabIndex={0}>
                 <div className="info-card-head">
-                  <div className="info-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" /></svg>
-                  </div>
+                  <div className="info-icon" aria-hidden="true">📞</div>
                   <h3>2. RingBooker dials instantly</h3>
                 </div>
                 <p>The backend requests Telnyx outbound calling and attaches call media to the AI voice runtime for live handling.</p>
+                <span className="arrow">View step →</span>
               </div>
-              <div className="info-card">
+              <div className="info-card" data-demo-step-card role="button" tabIndex={0}>
                 <div className="info-card-head">
-                  <div className="info-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24"><path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6h-2V5H5v10h6v2H5a2 2 0 0 1-2-2V5Zm18.71 10.29-2-2a1 1 0 0 0-1.42 0l-3.5 3.5-1.09-1.09a1 1 0 0 0-1.41 0l-2 2A1 1 0 0 0 11 20h10a1 1 0 0 0 .71-1.71ZM16 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" /></svg>
-                  </div>
+                  <div className="info-icon" aria-hidden="true">✨</div>
                   <h3>3. Live monitor updates</h3>
                 </div>
                 <p>The browser shows live call states like caller speaking, AI speaking, thinking, and lookup while the phone call is in progress.</p>
+                <span className="arrow">View step →</span>
               </div>
             </div>
           </div>

@@ -50,33 +50,58 @@ function providerInitials(name: string) {
 }
 
 function HowItWorksIcon({ kind }: { kind: 'call' | 'team' | 'forward' | 'summary' }) {
+  const iconClass = 'h-5 w-5';
   if (kind === 'call') {
     return (
-      <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden>
-        <path d="M5.2 2.5c.4-.3 1-.2 1.3.2l1 1.6c.2.4.2.9-.1 1.2l-.7.8c.8 1.5 2 2.7 3.5 3.5l.8-.7c.4-.3.9-.4 1.2-.1l1.6 1c.4.3.5.9.2 1.3l-.6.9c-.3.4-.8.7-1.3.6A10.4 10.4 0 0 1 3.2 3.8c-.1-.5.2-1 .6-1.3l1-.6Z" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" strokeLinejoin="round" />
+      <svg viewBox="0 0 16 16" className={iconClass} aria-hidden>
+        <defs>
+          <linearGradient id="cfwIconCall" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#7C3AED" />
+            <stop offset="100%" stopColor="#A855F7" />
+          </linearGradient>
+        </defs>
+        <path d="M5.2 2.5c.4-.3 1-.2 1.3.2l1 1.6c.2.4.2.9-.1 1.2l-.7.8c.8 1.5 2 2.7 3.5 3.5l.8-.7c.4-.3.9-.4 1.2-.1l1.6 1c.4.3.5.9.2 1.3l-.6.9c-.3.4-.8.7-1.3.6A10.4 10.4 0 0 1 3.2 3.8c-.1-.5.2-1 .6-1.3l1-.6Z" fill="none" stroke="url(#cfwIconCall)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
   if (kind === 'team') {
     return (
-      <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden>
-        <circle cx="6" cy="6" r="2.2" fill="none" stroke="currentColor" strokeWidth={1.3} />
-        <circle cx="11.5" cy="6.5" r="1.7" fill="none" stroke="currentColor" strokeWidth={1.3} />
-        <path d="M2.5 12c.4-1.8 2-3 3.9-3h.2c1.9 0 3.5 1.2 3.9 3M9.3 12c.3-1.2 1.3-2 2.5-2h.1c.8 0 1.5.3 2 .8" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" />
+      <svg viewBox="0 0 16 16" className={iconClass} aria-hidden>
+        <defs>
+          <linearGradient id="cfwIconTeam" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#4F46E5" />
+            <stop offset="100%" stopColor="#7C3AED" />
+          </linearGradient>
+        </defs>
+        <circle cx="6" cy="6" r="2.2" fill="none" stroke="url(#cfwIconTeam)" strokeWidth={1.5} />
+        <circle cx="11.5" cy="6.5" r="1.7" fill="none" stroke="url(#cfwIconTeam)" strokeWidth={1.5} />
+        <path d="M2.5 12c.4-1.8 2-3 3.9-3h.2c1.9 0 3.5 1.2 3.9 3M9.3 12c.3-1.2 1.3-2 2.5-2h.1c.8 0 1.5.3 2 .8" fill="none" stroke="url(#cfwIconTeam)" strokeWidth={1.5} strokeLinecap="round" />
       </svg>
     );
   }
   if (kind === 'forward') {
     return (
-      <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden>
-        <path d="M2.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+      <svg viewBox="0 0 16 16" className={iconClass} aria-hidden>
+        <defs>
+          <linearGradient id="cfwIconForward" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#0D9488" />
+            <stop offset="100%" stopColor="#14B8A6" />
+          </linearGradient>
+        </defs>
+        <path d="M2.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="url(#cfwIconForward)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   }
   return (
-    <svg viewBox="0 0 16 16" width={16} height={16} aria-hidden>
-      <path d="M3.5 2.8h7l2 2V13a.8.8 0 0 1-.8.8H4.3a.8.8 0 0 1-.8-.8V3.6a.8.8 0 0 1 .8-.8Z" fill="none" stroke="currentColor" strokeWidth={1.3} />
-      <path d="M10.5 2.8v2h2M5.5 7.3h5M5.5 9.3h5M5.5 11.3h3.5" fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" />
+    <svg viewBox="0 0 16 16" className={iconClass} aria-hidden>
+      <defs>
+        <linearGradient id="cfwIconSummary" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#DB2777" />
+          <stop offset="100%" stopColor="#A855F7" />
+        </linearGradient>
+      </defs>
+      <path d="M3.5 2.8h7l2 2V13a.8.8 0 0 1-.8.8H4.3a.8.8 0 0 1-.8-.8V3.6a.8.8 0 0 1 .8-.8Z" fill="none" stroke="url(#cfwIconSummary)" strokeWidth={1.5} />
+      <path d="M10.5 2.8v2h2M5.5 7.3h5M5.5 9.3h5M5.5 11.3h3.5" fill="none" stroke="url(#cfwIconSummary)" strokeWidth={1.5} strokeLinecap="round" />
     </svg>
   );
 }
@@ -346,14 +371,15 @@ export function CurrentNumberCallForwardingTool() {
   return (
     <main className="bg-[radial-gradient(ellipse_84%_58%_at_50%_0%,#ede9fe_0%,#ffffff_66%)] pb-28 pt-28 md:pb-16">
       <section className="mx-auto max-w-6xl px-6">
+        <div className="text-center">
         <p className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.09em] text-violet-700">
           Current Number Setup
         </p>
-        <h1 className="mt-4 max-w-3xl text-[clamp(34px,5vw,56px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-slate-900">Call Forwarding Setup Guides</h1>
-        <p className="mt-4 max-w-3xl text-[17px] leading-8 text-slate-600">
+        <h1 className="mx-auto mt-4 max-w-4xl text-[clamp(34px,5vw,56px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-slate-900">Call Forwarding Setup Guides</h1>
+        <p className="mx-auto mt-4 max-w-3xl text-[17px] leading-8 text-slate-600">
           Keep your current number. Choose your provider and see how to forward missed, busy, or after-hours calls to RingBooker.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
           <button
             type="button"
             className="inline-flex min-h-11 items-center gap-2 rounded-full bg-violet-700 px-6 py-3 text-sm font-extrabold text-white hover:bg-violet-800"
@@ -366,14 +392,22 @@ export function CurrentNumberCallForwardingTool() {
             See how it works
           </a>
         </div>
-        <ul className="mt-5 space-y-1 text-sm text-slate-600 md:flex md:gap-5 md:space-y-0">
-          <li>Keep your public number</li>
-          <li>Forward only selected calls</li>
-          <li>Test before going live</li>
+        <ul className="mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-600">
+          {['Keep your public number', 'Forward only selected calls', 'Test before going live'].map((line) => (
+            <li key={line} className="inline-flex items-center gap-2">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-700" aria-hidden>
+                <svg viewBox="0 0 10 10" width={9} height={9}>
+                  <path d="M1.5 5l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </svg>
+              </span>
+              {line}
+            </li>
+          ))}
         </ul>
+        </div>
       </section>
 
-      <section id="how-it-works" className="mx-auto mt-14 max-w-6xl px-6">
+      <section id="how-it-works" className="mx-auto mt-20 max-w-6xl px-6">
         <p className="text-center text-xs font-bold uppercase tracking-[0.12em] text-slate-500">How it works</p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
@@ -382,8 +416,11 @@ export function CurrentNumberCallForwardingTool() {
             { icon: 'forward' as const, text: 'Missed, busy, or after-hours calls forward to RingBooker' },
             { icon: 'summary' as const, text: 'RingBooker sends the call details' },
           ].map((step, i) => (
-            <article key={step.text} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <span className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+            <article
+              key={step.text}
+              className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm transition duration-200 hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_16px_34px_rgba(124,58,237,0.12)]"
+            >
+              <span className="mx-auto mb-3 inline-flex items-center justify-center">
                 <HowItWorksIcon kind={step.icon} />
               </span>
               <p className="text-[15px] leading-7 text-slate-700">{step.text}</p>
@@ -393,7 +430,7 @@ export function CurrentNumberCallForwardingTool() {
         </div>
       </section>
 
-      <section ref={findRef} id="find-setup" className="mx-auto mt-16 max-w-6xl px-6">
+      <section ref={findRef} id="find-setup" className="mx-auto mt-24 max-w-6xl px-6">
         <div className="md:p-2">
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Find your setup</h2>
           <input
@@ -478,7 +515,7 @@ export function CurrentNumberCallForwardingTool() {
           ) : null}
 
           {voipVisible ? (
-            <section className="mt-8">
+            <section className="mt-10">
               <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Business phone &amp; VoIP systems</h3>
               <p className="mt-1 text-sm text-slate-600">
                 Already using a virtual number or cloud phone system? Choose your provider to see how to route calls to RingBooker.
@@ -502,7 +539,7 @@ export function CurrentNumberCallForwardingTool() {
           ) : null}
 
           {otherVisible ? (
-            <section className="mt-8">
+            <section className="mt-10">
               <h3 className="text-xl font-extrabold tracking-tight text-slate-900">Choose another country</h3>
               <div className="mt-3 flex flex-wrap gap-2">
                 {CALL_FORWARDING_OTHER_COUNTRIES.map((country) => (
@@ -555,11 +592,11 @@ export function CurrentNumberCallForwardingTool() {
         </div>
       </section>
 
-      <section className="mx-auto mt-14 max-w-6xl px-6">
+      <section className="mx-auto mt-20 max-w-6xl px-6">
         <MarketingFaqAccordion items={FAQ_ITEMS} embedded eyebrow="FAQ" title="Call forwarding setup questions" subtitle={null} openFirstItem />
       </section>
 
-      <section className="mx-auto mt-10 max-w-6xl px-6">
+      <section className="mx-auto mt-16 max-w-6xl px-6">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Cover missed calls without changing your number</h2>
           <p className="mt-2 text-[15px] leading-7 text-slate-600">

@@ -456,7 +456,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
           </div>
           <IntegrationRow />
         </div>
-        <div className="hidden lg:block">
+        <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['nail-salon']} />
         </div>
       </section>
@@ -581,7 +581,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
           </div>
           <IntegrationRow />
         </div>
-        <div className="hidden lg:block">
+        <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} />
         </div>
       </section>
@@ -700,7 +700,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
           </div>
           <IntegrationRow />
         </div>
-        <div className="hidden lg:block">
+        <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['spa']} />
         </div>
       </section>
@@ -838,7 +838,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
           </div>
           <IntegrationRow />
         </div>
-        <div className="hidden lg:block">
+        <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} />
         </div>
       </section>
@@ -982,7 +982,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
           </div>
           <IntegrationRow />
         </div>
-        <div className="hidden lg:block">
+        <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} />
         </div>
       </section>
