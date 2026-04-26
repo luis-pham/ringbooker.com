@@ -17,6 +17,7 @@ const staticRoutes = [
   '/missed-booking-protection/peak-hour-overflow-calls',
   '/missed-booking-protection/missed-call-recovery',
   '/current-number',
+  '/current-number/call-forwarding',
   '/works-with',
   '/trust',
   '/blog',

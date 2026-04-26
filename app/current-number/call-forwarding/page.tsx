@@ -11,16 +11,32 @@ const PAGE_DESCRIPTION =
 
 const FAQ_ITEMS = [
   {
-    q: 'Can I keep my current business number?',
-    a: 'Yes. RingBooker works through call forwarding, so your public business number stays unchanged.',
+    q: 'Will customers see a different number?',
+    a: 'No. Your public business number stays the same, because RingBooker works through forwarding behind the scenes.',
   },
   {
-    q: 'Can I forward only missed or after-hours calls?',
-    a: 'Yes. Most carriers and VoIP systems support conditional forwarding for missed, busy, and off-hours scenarios.',
+    q: 'Should I forward all calls or only missed calls?',
+    a: 'Most teams start with missed, busy, and after-hours forwarding so staff can still answer normal calls first.',
   },
   {
-    q: 'Do I need to route all calls to RingBooker?',
-    a: 'No. Most teams start with missed and busy forwarding first, then expand to after-hours if needed.',
+    q: 'Can I use RingBooker after hours only?',
+    a: 'Yes. Most providers support time-based routing so RingBooker only handles off-hours calls.',
+  },
+  {
+    q: 'Can I turn call forwarding off?',
+    a: 'Yes. Disable forwarding in your provider settings and run a quick test call.',
+  },
+  {
+    q: 'What if my provider is not listed?',
+    a: 'Many systems still support call forwarding. RingBooker can help you validate setup before going live.',
+  },
+  {
+    q: 'Will this affect my Google Business Profile number?',
+    a: 'No. You keep your published number and forward selected calls, so no listing number change is required.',
+  },
+  {
+    q: 'Are RingBooker and these phone providers affiliated?',
+    a: 'No. Provider names and logos are used for identification only. RingBooker is not affiliated with or endorsed by these providers unless explicitly stated.',
   },
 ] as const;
 
