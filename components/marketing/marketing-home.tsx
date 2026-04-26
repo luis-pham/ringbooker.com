@@ -185,16 +185,19 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-section{position:relative;margin-top:-34px;padding:122px 48px 88px;background:linear-gradient(180deg,rgba(249,250,251,0) 0%,#fcfbff 26%,#F9FAFB 100%)}
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-	.leak-card{position:relative;background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);border:1.5px solid rgba(196,181,253,.4);border-radius:24px;padding:34px 28px 24px;box-shadow:0 0 0 4px rgba(139,92,246,.035),var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
-	.leak-card:hover{transform:translateY(-2px);box-shadow:0 0 0 4px rgba(139,92,246,.05),var(--home-shadow-hover);border-color:#c4b5fd}
-	.leak-icon{width:48px;height:48px;margin:0 0 18px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f8ddea,#f4cfe0);border:1px solid rgba(244,114,182,.16);color:#6b2168;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+	.leak-card{position:relative;background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);border:1px solid var(--border);border-radius:24px;padding:34px 28px 24px;box-shadow:0 10px 24px -14px rgba(17,24,39,.12),0 4px 10px -8px rgba(17,24,39,.06);transition:transform .2s,box-shadow .2s,border-color .2s}
+	.leak-card:hover{transform:translateY(-2px);box-shadow:0 18px 34px -18px rgba(17,24,39,.14),0 8px 14px -10px rgba(17,24,39,.08);border-color:rgba(167,139,250,.45)}
+	.leak-icon{width:48px;height:48px;margin:0 0 18px;border-radius:15px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+	.leak-icon.tone-purple{color:var(--purple-dark);background:linear-gradient(180deg,#faf9ff,#f5f3ff);border:1px solid rgba(196,181,253,.35)}
+	.leak-icon.tone-green{color:#047857;background:linear-gradient(180deg,#ecfdf5,#f0fdf4);border:1px solid rgba(52,211,153,.3)}
+	.leak-icon.tone-yellow{color:#B45309;background:linear-gradient(180deg,#fffbeb,#fff7ed);border:1px solid rgba(251,191,36,.25)}
 	.leak-icon .home-line-icon{margin:0}
-	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.25px;margin-bottom:10px;text-align:left;color:#2a1f24;white-space:nowrap}
-	.leak-card p{font-size:15px;color:#6f625f;line-height:1.74;text-align:left}
+	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.25px;margin-bottom:10px;text-align:left;color:var(--text-dark);white-space:nowrap}
+	.leak-card p{font-size:15px;color:var(--text-desc);line-height:1.74;text-align:left}
 	.leak-divider{height:1px;background:linear-gradient(90deg,rgba(221,214,204,.95) 0%,rgba(221,214,204,.72) 82%,rgba(221,214,204,0) 100%);margin:20px 0 16px}
-	.leak-point{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.6;font-weight:700;color:#7b4b78}
-	.leak-point-dot{width:8px;height:8px;border-radius:50%;background:#c9a24a;flex-shrink:0;margin-top:8px}
-	.compare-section{padding:72px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
+.leak-point{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.6;font-weight:500;color:var(--text-desc)}
+	.leak-point-dot{width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0;margin-top:8px}
+	.compare-section{padding:88px 48px 72px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
 	.compare-grid{display:grid;gap:0;margin-top:28px;border:1px solid var(--border);border-radius:20px;background:#fff;overflow:hidden;box-shadow:var(--home-shadow-soft)}
 	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid rgba(241,245,249,.9)}
 	.compare-row:last-child{border-bottom:none}
@@ -211,10 +214,10 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.compare-cell.bad .cmp-icon{background:#F87171}
 	.compare-cell.good .cmp-icon{background:#34D399}
 
-	.current-number-setup{padding:84px 48px 84px;background:linear-gradient(180deg,#f7f3ff 0%,#f4f0ff 100%)}
+	.current-number-setup{padding:88px 48px 84px;background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)}
 	.current-number-inner{max-width:1120px;margin:0 auto}
 	.current-number-intro{max-width:820px;margin:0 auto 52px;text-align:center}
-	.current-number-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);color:var(--text-dark);margin-bottom:14px}
+.current-number-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);color:var(--text-dark);margin-bottom:14px;max-width:22ch;text-wrap:balance;margin-left:auto;margin-right:auto}
 	.current-number-copy{font-size:var(--mk-section-lead);color:var(--text-desc);line-height:var(--mk-section-lead-lh);max-width:760px;margin:0 auto;font-weight:400}
 	.current-number-actions{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:28px;flex-wrap:wrap}
 	.current-btn-primary,.current-btn-secondary{
@@ -382,13 +385,13 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .sec-label-left{text-align:left}
 .sec-label-center{text-align:center}
 .section-label-wrap{text-align:center;margin-bottom:4px}
-.sec-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);text-align:center;margin-bottom:14px;color:var(--text-dark)}
+.sec-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);text-align:center;margin-bottom:14px;color:var(--text-dark);max-width:22ch;margin-left:auto;margin-right:auto;text-wrap:balance}
 .sec-title-air{margin-bottom:52px}
 .sec-sub{font-size:var(--mk-section-lead);color:var(--text-desc);text-align:center;margin-bottom:40px;line-height:var(--mk-section-lead-lh);font-weight:400;max-width:720px;margin-left:auto;margin-right:auto}
 .emphasis-5min{color:var(--purple-dark);font-weight:700}
 
 /* ─── FEATURES GRID ─── */
-.features{padding:72px 48px;background:var(--bg-gray)}
+.features{padding:88px 48px 72px;background:var(--bg-gray)}
 .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:1100px;margin:0 auto}
 .feat-card{background:#fff;border-radius:var(--r-lg);padding:26px 22px;border:1px solid var(--border);transition:transform .2s,box-shadow .2s,border-color .2s;text-align:center;display:flex;flex-direction:column;align-items:center;box-shadow:var(--home-shadow-soft)}
 .feat-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.5)}
@@ -433,23 +436,136 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .convo-quote{font-size:20px;font-weight:700;color:var(--text-dark);line-height:1.3;margin-bottom:18px;letter-spacing:-.35px}
 .convo-wave{height:50px;width:100%;opacity:.15}
 .convo-wave path{fill:none;stroke:var(--text-dark);stroke-width:1.5px}
-/* ─── TESTIMONIALS ─── */
-.testimonials{padding:72px 48px}
-.test-inner{max-width:1100px;margin:0 auto}
-.test-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:40px}
-.test-col{display:flex;flex-direction:column;gap:16px}
-.test-card{background:#fff;border-radius:var(--r-lg);padding:24px;border:1px solid var(--border);box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
-.test-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.45)}
-.test-qq{font-size:22px;color:var(--purple);font-weight:700;line-height:1;margin-bottom:8px;opacity:.85}
-.test-card p{font-size:var(--mk-body);color:var(--text-desc);line-height:1.68;margin-bottom:16px;font-weight:400}
-.test-card p.lg{font-size:15px;font-weight:500;color:#475569}
-.test-author{display:flex;align-items:center;gap:10px}
-.test-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--purple),#EC4899);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
-.test-name{font-size:var(--mk-body);font-weight:600;color:var(--text-dark)}
-.test-role{font-size:var(--mk-body);color:var(--text-light);font-weight:400}
+/* ─── TESTIMONIALS + SUMMARY ─── */
+.testimonials{padding:88px 48px;background:#fff}
+.test-inner{max-width:1120px;margin:0 auto}
+.test-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:40px}
+.test-card{
+  background:linear-gradient(180deg,#fffdfb 0%,#ffffff 100%);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:22px 22px 20px;
+  box-shadow:0 12px 28px -18px rgba(17,24,39,.1),0 4px 10px -8px rgba(17,24,39,.05);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+}
+.test-card:hover{transform:translateY(-2px);box-shadow:0 18px 36px -20px rgba(17,24,39,.12),0 8px 14px -10px rgba(17,24,39,.07);border-color:rgba(196,181,253,.42)}
+.test-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:28px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#faf5f7;
+  color:#7b4b78;
+  border:1px solid rgba(234,213,221,.85);
+  font-size:11px;
+  font-weight:600;
+  line-height:1;
+  margin-bottom:16px;
+}
+.test-pill-dot{width:6px;height:6px;border-radius:50%;background:#c08497;flex-shrink:0}
+.test-stars{display:flex;gap:4px;margin-bottom:14px;color:#d6a850}
+.test-stars span{font-size:13px;line-height:1}
+.test-quote{font-size:var(--mk-body);color:var(--text-desc);line-height:1.72;margin-bottom:20px;font-weight:400}
+.test-author{display:flex;align-items:center;gap:12px}
+.test-av{
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#f7d7dc,#ead7b7);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+  font-weight:700;
+  color:#8b5a7a;
+  overflow:hidden;
+  flex-shrink:0;
+}
+.test-av img{width:100%;height:100%;display:block;object-fit:cover}
+.test-name{font-size:14px;font-weight:600;color:var(--text-dark);line-height:1.2}
+.test-role{font-size:13px;color:var(--text-light);font-weight:400;line-height:1.4;margin-top:3px}
+
+.summary-board{
+  margin:48px auto 0;
+  max-width:960px;
+  border-radius:24px;
+  border:1px solid var(--border);
+  background:linear-gradient(180deg,#fffdf9 0%,#fffaf5 100%);
+  box-shadow:0 18px 40px -24px rgba(17,24,39,.1),0 8px 16px -12px rgba(17,24,39,.05);
+  padding:0;
+  overflow:hidden;
+}
+.summary-board-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding-bottom:16px;
+  border-bottom:1px solid rgba(226,214,203,.8);
+  margin-bottom:18px;
+}
+.summary-board-title{font-size:24px;font-weight:500;letter-spacing:-.45px;line-height:1.2;color:var(--text-dark)}
+.summary-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:6px 10px;
+  border-radius:999px;
+  background:#e9fbf4;
+  color:#0f8f68;
+  border:1px solid rgba(16,185,129,.16);
+  font-size:11px;
+  font-weight:600;
+  white-space:nowrap;
+}
+.summary-list{display:flex;flex-direction:column;gap:12px}
+.summary-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto auto;
+  gap:14px;
+  align-items:center;
+  padding:16px 14px;
+  border-radius:16px;
+  border:1px solid var(--border);
+  background:#fff;
+}
+.summary-avatar{
+  width:38px;
+  height:38px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#f6d9e2,#f7ece8);
+  color:#9b5f8b;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:700;
+  flex-shrink:0;
+}
+.summary-main{min-width:0}
+.summary-name{font-size:14px;font-weight:600;color:var(--text-dark);line-height:1.25;margin-bottom:3px}
+.summary-copy{font-size:13px;color:var(--text-light);line-height:1.45}
+.summary-tag{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:28px;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:600;
+  white-space:nowrap;
+}
+.summary-tag.booking{background:#e9fbf4;color:#0f8f68}
+.summary-tag.reschedule{background:#fff4db;color:#b77710}
+.summary-tag.cancel{background:#fde8e8;color:#cc4b4b}
+.summary-tag.inquiry{background:#e8f7fb;color:#117aa0}
+.summary-time{font-size:12px;color:var(--text-light);white-space:nowrap}
 
 /* ─── PRICING ─── */
-.pricing{padding:72px 48px;background:var(--bg-gray)}
+.pricing{padding:88px 48px 72px;background:var(--bg-gray)}
 .pricing-inner{max-width:1100px;margin:0 auto}
 .price-toggle{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:40px}
 .pt-btn{padding:10px 22px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
@@ -545,13 +661,13 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .steps-section{padding:88px 48px;background:linear-gradient(180deg,#fff 0%,#fcfbff 100%)}
 .steps-inner{max-width:1100px;margin:0 auto}
 .steps-intro{max-width:760px;margin:0 auto 56px;text-align:center}
-.steps-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);color:var(--text-dark);margin-bottom:14px}
+.steps-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);color:var(--text-dark);margin-bottom:14px;max-width:22ch;text-wrap:balance;margin-left:auto;margin-right:auto}
 .steps-copy{font-size:var(--mk-section-lead);color:var(--text-desc);line-height:var(--mk-section-lead-lh);max-width:720px;margin:0 auto;font-weight:400}
 .steps-shell{position:relative;padding-top:42px}
 .steps-rail{position:absolute;left:10%;right:10%;top:68px;height:1px;background:linear-gradient(90deg,rgba(244,114,182,.32) 0%,rgba(221,214,204,.95) 45%,rgba(221,214,204,.95) 100%)}
 .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;position:relative}
 .step-card{position:relative;background:transparent;border:none;border-radius:0;padding:0;text-align:center;box-shadow:none}
-.step-marker{width:52px;height:52px;border-radius:999px;border:2px solid #7b3f74;background:#fff;color:#7b3f74;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;margin:0 auto 28px;position:relative;z-index:2}
+.step-marker{width:52px;height:52px;border-radius:999px;border:2px solid #10B981;background:#fff;color:#10B981;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;margin:0 auto 28px;position:relative;z-index:2}
 .step-card h3{font-size:var(--mk-card-title);font-weight:600;letter-spacing:-.2px;line-height:1.35;margin-bottom:10px;color:var(--text-dark);max-width:300px;margin-left:auto;margin-right:auto}
 .step-card p{font-size:var(--mk-body);color:var(--text-desc);line-height:var(--mk-body-lh);max-width:310px;margin:0 auto;font-weight:400}
 
@@ -630,7 +746,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 
 
 @media(max-width:960px){
-  .steps-grid,.flow-grid,.scope-inner,.user-grid,.current-number-grid{grid-template-columns:1fr}
+  .steps-grid,.flow-grid,.scope-inner,.user-grid,.current-number-grid,.test-grid{grid-template-columns:1fr}
   .steps-section{padding-top:72px;padding-bottom:72px}
   .steps-intro{margin-bottom:34px}
   .steps-title{font-size:34px;letter-spacing:var(--mk-section-h2-track)}
@@ -649,6 +765,13 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .current-step-icon{margin-bottom:18px}
   .current-step h3{font-size:var(--mk-card-title);max-width:100%}
   .current-step p{font-size:var(--mk-body);max-width:100%}
+  .summary-board{margin-top:34px;padding:0}
+  .summary-board-head{align-items:flex-start;flex-direction:column}
+  .summary-board-title{font-size:22px}
+  .summary-row{grid-template-columns:auto 1fr;gap:10px}
+  .summary-tag,.summary-time{grid-column:2}
+  .summary-tag{justify-self:start}
+  .summary-time{margin-top:-4px}
   .user-shell{aspect-ratio:16/10}
   .steps-section,.flow-section,.scope-section,.user-preview,.industries,.current-number-setup{padding-left:22px;padding-right:22px}
   .industries-track{
@@ -691,6 +814,8 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .industry-card{flex-basis:84%;min-height:292px}
   .industry-sub{max-width:190px}
   .current-number-actions{margin-top:22px}
+  .test-card{padding:20px 18px}
+  .summary-row{padding:14px 12px}
   .home-carousel-track .test-card,
   .home-carousel-track .plan{flex-basis:100%}
   .home-carousel-controls{justify-content:center}
@@ -1085,7 +1210,7 @@ export function MarketingHomeTemplate() {
               <a href="/user/signup" className="btn-outline btn-hero-trial">
                 Start 14-Day Free Trial
               </a>
-            </div>
+	            </div>
             {/* HERO VISUAL */}
             <div className="hero-visual">
               {/* Floating cards */}
@@ -1093,7 +1218,7 @@ export function MarketingHomeTemplate() {
                 <div className="fc-big">24/7</div>
                 <div className="fc-sm">Call coverage</div>
                 <div className="fc-tag">After-hours answered</div>
-              </div>
+	              </div>
               <div className="fc fc-2">
                 <div className="fc-big green">15 min</div>
                 <div className="fc-sm">Setup time</div>
@@ -1167,7 +1292,7 @@ export function MarketingHomeTemplate() {
         <section className="leak-section" id="missed-calls">
           <div className="leak-inner">
             <div className="sec-label">Where calls get lost</div>
-            <h2 className="sec-title reveal">Your phone is leaking bookings every day.</h2>
+            <h2 className="sec-title reveal">Your phone is leaking<br />bookings every day.</h2>
             <p className="sec-sub reveal">
               Most missed opportunities happen when staff are with clients, the shop is closed, or two callers need help at once.
             </p>
@@ -1177,6 +1302,7 @@ export function MarketingHomeTemplate() {
                   title: 'Staff are busy with clients',
                   body: 'Calls arrive while staff are doing nails, hair, treatments, or checkout.',
                   footer: 'RingBooker answers without interrupting your team',
+                  tone: 'tone-purple',
                   icon: (
                     <HomeLineIcon>
                       <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
@@ -1188,6 +1314,7 @@ export function MarketingHomeTemplate() {
                   title: 'After-hours callers move on',
                   body: 'Evening and weekend callers still ask about availability, pricing, and booking options.',
                   footer: 'Capture booking intent even when closed',
+                  tone: 'tone-green',
                   icon: (
                     <HomeLineIcon>
                       <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
@@ -1198,15 +1325,16 @@ export function MarketingHomeTemplate() {
                   title: 'One line cannot handle overflow',
                   body: 'When the front desk is already on a call, the next booking caller may hang up.',
                   footer: 'Keep overflow callers in the loop',
+                  tone: 'tone-yellow',
                   icon: (
                     <HomeLineIcon>
                       <path d="M17 3h4v4M3 21h4v-4M21 3l-6 6M3 21l6-6" />
                     </HomeLineIcon>
                   ),
                 },
-              ].map(({ title, body, footer, icon }) => (
+              ].map(({ title, body, footer, tone, icon }) => (
                 <article className="leak-card reveal" key={title}>
-                  <div className="leak-icon">{icon}</div>
+                  <div className={`leak-icon ${tone}`}>{icon}</div>
                   <h3>{title}</h3>
                   <p>{body}</p>
                   <div className="leak-divider" aria-hidden="true" />
@@ -1222,7 +1350,7 @@ export function MarketingHomeTemplate() {
         {/* FEATURES GRID */}
         <section className="features" id="features">
           <div className="sec-label">Core coverage</div>
-          <h2 className="sec-title reveal">The phone moments RingBooker covers.</h2>
+          <h2 className="sec-title reveal">The phone moments<br />RingBooker covers.</h2>
           <p className="sec-sub reveal">RingBooker is built around the phone moments where beauty businesses lose bookings.</p>
             <div className="feat-grid">
             <div className="feat-card reveal">
@@ -1381,10 +1509,10 @@ export function MarketingHomeTemplate() {
           <div className="current-number-inner">
             <div className="current-number-intro">
               <div className="sec-label">Current number setup</div>
-              <h2 className="current-number-title reveal">Keep the number your clients already call.</h2>
+              <h2 className="current-number-title reveal">Keep the number your<br />clients already call.</h2>
               <p className="current-number-copy reveal">Use call forwarding to cover missed, busy, or after-hours calls without changing your Google Business Profile, website, social profiles, or printed phone number.</p>
               <div className="current-number-actions reveal">
-                <a className="current-btn-primary" href="/how-it-works">View call forwarding setup guides</a>
+                <a className="current-btn-primary" href="/current-number/call-forwarding">View call forwarding setup guides</a>
                 <a className="current-btn-secondary" href="/current-number">Learn about keeping your number</a>
               </div>
             </div>
@@ -1463,74 +1591,57 @@ export function MarketingHomeTemplate() {
         {/* TESTIMONIALS */}
         <section className="testimonials" id="testimonials">
           <div className="test-inner">
-            <div className="sec-label sec-label-center">Real Business Users</div>
-            <h2 className="sec-title reveal">Beauty teams that<br />speak volumes.</h2>
-            <div className="home-carousel reveal" id="usersCarousel">
-              <div className="test-grid home-carousel-track">
-                <div className="test-card home-carousel-slide">
-                  <div className="test-qq">"</div>
-                  <p className="lg">I used to stop mid-color to answer the phone. Now my team stays focused and the bookings still happen.</p>
-                  <div className="test-author">
-                    <div className="test-av">SP</div>
-                    <div><div className="test-name">Sarah P.</div><div className="test-role">Nail Salon Owner — NYC</div></div>
+            <div className="sec-label sec-label-center">Testimonials</div>
+            <h2 className="sec-title reveal">Loved by beauty teams.</h2>
+            <p className="sec-sub reveal">Real salon owners who stopped losing bookings to voicemail.</p>
+            <div className="test-grid reveal">
+              <article className="test-card">
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />47 missed calls recovered in month 1</div>
+                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+                <p className="test-quote">"I used to stop mid-color to answer the phone. Now my team stays focused and the bookings still happen."</p>
+                <div className="test-author">
+                  <div className="test-av">
+                    <Image src="/images/nail.webp" alt="Jane Nguyen" width={84} height={84} sizes="42px" quality={70} />
+                  </div>
+                  <div>
+                    <div className="test-name">Jane Nguyen</div>
+                    <div className="test-role">Nail Salon Owner — NYC</div>
                   </div>
                 </div>
-                <div className="test-card home-carousel-slide">
-                  <div className="test-qq">"</div>
-                  <p>Saturday mornings were a mess — three calls and one person at the desk. Now RingBooker handles the overflow and we do not lose callers.</p>
-                  <div className="test-author">
-                    <div className="test-av">MT</div>
-                    <div><div className="test-name">Michael T.</div><div className="test-role">Hair Salon — Chicago</div></div>
+              </article>
+              <article className="test-card">
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Setup completed in 12 minutes</div>
+                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+                <p className="test-quote">"We kept our number, configured basics in 15 minutes, and clients still reach us the way they always have."</p>
+                <div className="test-author">
+                  <div className="test-av">JK</div>
+                  <div>
+                    <div className="test-name">Jenny K.</div>
+                    <div className="test-role">Day Spa Manager — Dallas</div>
                   </div>
                 </div>
-                <div className="test-card home-carousel-slide">
-                  <div className="test-qq">"</div>
-                  <p>We kept our existing number, configured the basics in about 15 minutes, and clients still reach us the way they always have.</p>
-                  <div className="test-author">
-                    <div className="test-av">JK</div>
-                    <div><div className="test-name">Jenny K.</div><div className="test-role">Day Spa — Dallas</div></div>
-                  </div>
-                </div>
-                <div className="test-card home-carousel-slide">
-                  <div className="test-qq">"</div>
-                  <p>After-hours used to be a black hole. Now missed callers get a text back and we know exactly who needs a callback.</p>
-                  <div className="test-author">
-                    <div className="test-av">LR</div>
-                    <div><div className="test-name">Lisa R.</div><div className="test-role">Med Spa — LA</div></div>
-                  </div>
-                </div>
-              </div>
-              <div className="home-carousel-controls" aria-label="Users carousel controls">
-                <button type="button" id="usersPrev" className="home-carousel-nav-btn" aria-label="Previous user story">‹</button>
-                <div className="home-carousel-dots" id="usersDots" aria-label="User stories carousel indicators" />
-                <button type="button" id="usersNext" className="home-carousel-nav-btn" aria-label="Next user story">›</button>
-              </div>
+              </article>
+              <article className="test-card">
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Zero missed after-hours calls</div>
+                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+                <p className="test-quote">"After-hours used to be a black hole. Now missed callers get a text back and we know exactly who needs a callback."</p>
+	                <div className="test-author">
+	                  <div className="test-av">LR</div>
+	                  <div>
+	                    <div className="test-name">Lisa R.</div>
+	                    <div className="test-role">Med Spa Owner — LA</div>
+	                  </div>
+	                </div>
+	              </article>
             </div>
-          </div>
-        </section>
-        {/* USER DASHBOARD PREVIEW */}
-        <section className="user-preview">
-          <div className="user-preview-inner">
-            <div className="user-grid">
-              <div className="user-copy">
-                <div className="sec-label sec-label-left">Call Context</div>
-                <h2>Know who called, what they needed, and who needs follow-up.</h2>
-                <p>RingBooker keeps the useful context — call summaries, booking intent, provider preferences, and callback needs — without asking your team to manage another booking platform.</p>
-              </div>
-              <div className="user-shot">
-                <div className="user-shell user-image-corners">
-                  <Image src="/images/shop_panel.webp" alt="RingBooker user dashboard preview" className="user-preview-img" width={2982} height={1718} sizes="(max-width: 960px) calc(100vw - 44px), 520px" quality={70} />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+	          </div>
+	        </section>
         {/* PRICING */}
         <section className="pricing" id="pricing">
           <div className="pricing-inner">
             <div className="sec-label sec-label-center">Pricing</div>
-            <h2 className="sec-title reveal">Start with the coverage you need.</h2>
-            <p className="sec-sub reveal">Choose a lightweight phone answering layer now to recover and protect booking revenue, then upgrade when you want more follow-up, reporting, and team support.</p>
+            <h2 className="sec-title reveal">Start with the coverage<br />you need.</h2>
+            <p className="sec-sub reveal">No contracts. 14-day free trial on every plan.</p>
             <div className="price-toggle">
               <button className="pt-btn on" id="tog-m" type="button">Monthly</button>
               <button className="pt-btn" id="tog-a" type="button">Annual</button>

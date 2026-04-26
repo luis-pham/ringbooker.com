@@ -182,10 +182,10 @@ const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessN
   },
 };
 
-function IntegrationRow() {
+function IntegrationRow({ eyebrowClass = 'text-slate-400' }: { eyebrowClass?: string }) {
   return (
     <div className="mt-6">
-      <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">Works with your booking tools</p>
+      <p className={`mb-3 text-[11px] font-bold uppercase tracking-[0.1em] ${eyebrowClass}`}>Works with your booking tools</p>
       <div className="flex flex-wrap items-start gap-x-8 gap-y-4 sm:gap-x-10">
         {BOOKING_TOOL_INTEGRATIONS.map((item) => {
           const isLive = item.status === 'live';
@@ -297,16 +297,18 @@ type HowItWorksStep = { n: string; title: string; body: string };
 function HowItWorks({
   steps,
   accentBg,
+  eyebrowClass = 'text-slate-400',
   heading = 'How RingBooker Works',
 }: {
   steps: HowItWorksStep[];
   accentBg: string;
+  eyebrowClass?: string;
   heading?: string;
 }) {
   return (
     <section className="mx-auto mt-24 max-w-6xl px-6" data-vertical-step-track>
-      <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
-      <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Setup</div>
+      <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <p className="mx-auto max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden justify-center" data-vertical-step-nav>
         {steps.map((s) => (
@@ -360,11 +362,11 @@ function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
 }
 
 type PainPoint = { icon?: string; title: string; body: string };
-function PainPoints({ points, heading }: { points: PainPoint[]; heading: string }) {
+function PainPoints({ points, heading, eyebrowClass = 'text-slate-400' }: { points: PainPoint[]; heading: string; eyebrowClass?: string }) {
   return (
     <section className="mx-auto mt-24 max-w-6xl px-6">
-      <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Why Calls Get Missed</div>
-      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Why Calls Get Missed</div>
+      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {points.map((p) => (
           <article
@@ -385,16 +387,18 @@ type FeatureItem = { icon: string; title: string; body: string };
 function FeatureGrid({
   features,
   accent,
+  eyebrowClass = 'text-slate-400',
   heading = 'Every feature you need, built in',
 }: {
   features: FeatureItem[];
   accent: string;
+  eyebrowClass?: string;
   heading?: string;
 }) {
   return (
     <section className="mx-auto mt-24 max-w-6xl px-6">
-      <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">What RingBooker Does</div>
-      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>What RingBooker Does</div>
+      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
           <article
@@ -414,16 +418,18 @@ function FeatureGrid({
 function VsTable({
   rows,
   accentClass,
+  eyebrowClass = 'text-slate-400',
   heading = 'Stop relying on voicemail',
 }: {
   rows: Array<{ scenario: string; without: string; with: string }>;
   accentClass: string;
+  eyebrowClass?: string;
   heading?: string;
 }) {
   return (
     <section className="mx-auto mt-24 max-w-6xl px-6">
-      <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Before vs. After</div>
-      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Before vs. After</div>
+      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
         <div className="min-w-[600px]">
           <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-bold uppercase tracking-wider text-slate-400">
@@ -528,7 +534,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
               Start Free 14-Day Trial
             </Link>
           </div>
-          <IntegrationRow />
+          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['nail-salon']} />
@@ -560,6 +566,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Pain Points */}
       <PainPoints
         heading="Why nail salons lose calls — and clients"
+        eyebrowClass={theme.accentClass}
         points={[
           {
             icon: '💅',
@@ -587,6 +594,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Features */}
       <FeatureGrid
         accent="bg-violet-50 text-violet-600"
+        eyebrowClass={theme.accentClass}
         heading="What RingBooker handles for nail salon calls"
         features={[
           { icon: '📞', title: 'Works on your current number', body: 'No new phone number needed — just forward overflow or after-hours calls.' },
@@ -601,6 +609,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* How It Works */}
       <HowItWorks
         accentBg="bg-violet-600"
+        eyebrowClass={theme.accentClass}
         heading="How RingBooker works on your current salon number"
         steps={[
           { n: '1', title: 'Forward calls to RingBooker', body: 'Set up call forwarding on your current salon number — for overflow, after-hours, or full-time. Setup time depends on your phone provider.' },
@@ -612,6 +621,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* VS Table */}
       <VsTable
         accentClass={theme.accentClass}
+        eyebrowClass={theme.accentClass}
         heading="How missed nail salon calls get recovered"
         rows={[
           { scenario: 'After-hours pricing call', without: 'Voicemail — caller hangs up', with: 'Answered, price given, booking captured' },
@@ -653,7 +663,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
               Start Free Trial
             </Link>
           </div>
-          <IntegrationRow />
+          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} />
@@ -685,6 +695,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Pain Points */}
       <PainPoints
         heading="The hair salon phone problem"
+        eyebrowClass={theme.accentClass}
         points={[
           {
             icon: '✂️',
@@ -712,6 +723,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Features */}
       <FeatureGrid
         accent="bg-amber-50 text-amber-600"
+        eyebrowClass={theme.accentClass}
         features={[
           { icon: '👩‍🎨', title: 'Stylist preference capture', body: 'Asks for preferred stylist and flags alternatives based on your rules when needed.' },
           { icon: '🎨', title: 'Color appointment context', body: 'Captures service type and timing needs for balayage, keratin, extensions, and other longer services.' },
@@ -725,6 +737,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* How It Works */}
       <HowItWorks
         accentBg="bg-amber-600"
+        eyebrowClass={theme.accentClass}
         steps={[
           { n: '1', title: 'Connect your salon number', body: 'Forward overflow or after-hours calls. Your existing number stays the same for all clients.' },
           { n: '2', title: 'Load your services and stylists', body: 'Add your team, service list, and booking rules. RingBooker handles calls with that context immediately.' },
@@ -735,6 +748,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* VS Table */}
       <VsTable
         accentClass={theme.accentClass}
+        eyebrowClass={theme.accentClass}
         rows={[
           { scenario: 'Caller wants their usual stylist', without: 'Voicemail — caller books elsewhere', with: 'Stylist preference captured and routed with context' },
           { scenario: 'Balayage slot inquiry', without: 'Phone rings, no answer', with: 'Duration and service details captured clearly' },
@@ -772,7 +786,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
               Start Free Trial
             </Link>
           </div>
-          <IntegrationRow />
+          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['spa']} />
@@ -804,6 +818,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Pain Points */}
       <PainPoints
         heading="Why spas miss bookings when it matters most"
+        eyebrowClass={theme.accentClass}
         points={[
           {
             icon: '🧖',
@@ -831,6 +846,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Features */}
       <FeatureGrid
         accent="bg-teal-50 text-teal-600"
+        eyebrowClass={theme.accentClass}
         features={[
           {
             icon: '🧖',
@@ -853,6 +869,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* How It Works */}
       <HowItWorks
         accentBg="bg-teal-600"
+        eyebrowClass={theme.accentClass}
         steps={[
           { n: '1', title: 'Set your services and availability windows', body: 'Load your treatment menu, room types, and hours. RingBooker learns your spa\'s context.' },
           { n: '2', title: 'Forward calls during busy or off hours', body: 'Route overflow while sessions are running, or go full-time for always-on coverage.' },
@@ -863,6 +880,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* VS Table */}
       <VsTable
         accentClass={theme.accentClass}
+        eyebrowClass={theme.accentClass}
         rows={[
           { scenario: 'Couples massage inquiry Saturday', without: 'Voicemail — couple books elsewhere', with: 'Guest count and preferred time captured' },
           { scenario: 'After-hours package question', without: 'No answer, caller doesn\'t call back', with: 'Question answered, booking intent captured' },
@@ -910,7 +928,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
               Start Free Trial
             </Link>
           </div>
-          <IntegrationRow />
+          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} />
@@ -942,6 +960,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Pain Points */}
       <PainPoints
         heading="Why med spas lose high-value leads on the phone"
+        eyebrowClass={theme.accentClass}
         points={[
           {
             icon: '💸',
@@ -969,6 +988,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Features */}
       <FeatureGrid
         accent="bg-indigo-50 text-indigo-600"
+        eyebrowClass={theme.accentClass}
         heading="What RingBooker handles for med spa calls"
         features={[
           {
@@ -987,6 +1007,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* How It Works */}
       <HowItWorks
         accentBg="bg-indigo-600"
+        eyebrowClass={theme.accentClass}
         heading="How RingBooker handles consultation calls on your current number"
         steps={[
           { n: '1', title: 'Configure your services and providers', body: 'Add your treatment list, providers, and consultation flow. RingBooker handles calls with that context.' },
@@ -998,6 +1019,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* VS Table */}
       <VsTable
         accentClass={theme.accentClass}
+        eyebrowClass={theme.accentClass}
         heading="How med spa consultation calls get recovered"
         rows={[
           { scenario: 'After-hours Botox inquiry', without: 'Voicemail — lead cools', with: 'Consultation intent captured for follow-up or booking' },
@@ -1054,7 +1076,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
               Start Free Trial
             </Link>
           </div>
-          <IntegrationRow />
+          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} />
@@ -1086,6 +1108,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Pain Points */}
       <PainPoints
         heading="Why beauty clinics need a smarter phone layer"
+        eyebrowClass={theme.accentClass}
         points={[
           {
             icon: '👑',
@@ -1113,6 +1136,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Features */}
       <FeatureGrid
         accent="bg-fuchsia-50 text-fuchsia-600"
+        eyebrowClass={theme.accentClass}
         heading="What RingBooker handles for beauty clinic calls"
         features={[
           { icon: '✨', title: 'Premium, clinic-appropriate tone', body: 'Scripts are built for beauty clinic standards — professional, warm, and never salesy.' },
@@ -1132,6 +1156,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* How It Works */}
       <HowItWorks
         accentBg="bg-fuchsia-600"
+        eyebrowClass={theme.accentClass}
         heading="How RingBooker works on your current clinic number"
         steps={[
           { n: '1', title: 'Configure clinic services and providers', body: 'Load your treatment list, providers, and consultation flow. RingBooker reflects your clinic\'s standards.' },
@@ -1143,6 +1168,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* VS Table */}
       <VsTable
         accentClass={theme.accentClass}
+        eyebrowClass={theme.accentClass}
         heading="How missed beauty clinic calls get handled"
         rows={[
           { scenario: 'Returning patient books next laser session', without: 'Front desk unavailable — patient calls elsewhere', with: 'Provider preference and session context captured' },
@@ -1356,16 +1382,18 @@ const VERTICAL_HUB_COPY: Record<MarketingVerticalKey, { heading: string; sub: st
 function VerticalHubArticles({
   vertical,
   links,
+  eyebrowClass = 'text-slate-500',
 }: {
   vertical: MarketingVerticalKey;
   links: Array<{ href: string; label: string }>;
+  eyebrowClass?: string;
 }) {
   if (links.length === 0) return null;
   const copy = VERTICAL_HUB_COPY[vertical];
   return (
     <section className="mt-16 rounded-3xl bg-slate-50 px-5 py-12 sm:px-8" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
-        <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">In this hub</p>
+        <p className={`mb-2 text-[12px] font-bold uppercase tracking-[0.12em] ${eyebrowClass}`}>In this hub</p>
         <h2 className="mb-4 text-[clamp(24px,3.2vw,34px)] font-bold tracking-tight text-slate-900">{copy.heading}</h2>
         <p className="max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -1483,7 +1511,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
       <main className={`${theme.pageShellBg} pb-16 pt-28`}>
         <PageBody vertical={vertical} />
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <VerticalHubArticles vertical={vertical} links={hubArticleLinks} />
+          <VerticalHubArticles vertical={vertical} links={hubArticleLinks} eyebrowClass={theme.accentClass} />
         </div>
         <Faq items={faq} />
         <FinalCta

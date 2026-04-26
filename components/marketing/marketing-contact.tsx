@@ -43,7 +43,7 @@ a{text-decoration:none;color:inherit}
 .mini-icon{width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;font-weight:700;box-shadow:0 6px 18px rgba(124,58,237,.24)}
 .trust-item strong{display:block;font-size:var(--mk-body);margin-bottom:2px}
 .trust-item span{display:block;font-size:var(--mk-body-sm);color:var(--text-gray);line-height:1.55}
-.formshell{background:#fff;border:1px solid var(--border);border-radius:30px;padding:28px;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04)),0 1px 3px rgba(0,0,0,.04)}
+.formshell{margin-top:18px;background:#fff;border:1px solid var(--border);border-radius:30px;padding:28px;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04)),0 1px 3px rgba(0,0,0,.04)}
 .form-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}
 .form-head h2{font-size:var(--mk-article-h2);line-height:var(--mk-article-h2-lh);letter-spacing:var(--mk-article-h2-track);margin-bottom:7px}
 .form-head p{font-size:var(--mk-body);color:var(--text-gray);line-height:var(--mk-body-lh)}
@@ -64,31 +64,15 @@ a{text-decoration:none;color:inherit}
 .btn-dark:disabled{opacity:.6;cursor:not-allowed;transform:none}
 .btn-outline{border:1.5px solid var(--border);color:var(--text-dark);background:#fff}
 .section{padding:58px 48px 82px}
-.next-card{border:none;border-radius:30px;background:#fff;box-shadow:none;padding:26px}
-.next-title{font-size:var(--mk-article-h2);line-height:1.2;letter-spacing:var(--mk-article-h2-track);text-align:center;margin-bottom:14px}
-.next-sub{font-size:var(--mk-btn);color:var(--mk-text-desc,#64748B);text-align:center;line-height:1.7;max-width:660px;margin:0 auto 24px;font-weight:400}
-.mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.mini-item{border:1px solid var(--border);border-radius:20px;padding:18px;text-align:center;background:#fff}
-.mini-icon{margin:0 auto 12px}
-.mini-item strong{display:block;font-size:var(--mk-btn);margin-bottom:5px}
-.mini-item span{font-size:var(--mk-meta);color:var(--text-gray);line-height:1.55}
-.next-steps-mobile-nav{display:none}
-.next-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:600;white-space:nowrap;transition:all .2s ease}
-.next-steps-mobile-nav a.is-active{background:var(--purple);border-color:var(--purple);color:#fff}
-.mini-item:target{border-color:#c4b5fd;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
-.closing-line{margin-top:18px;text-align:center;font-size:var(--mk-body);color:var(--mk-text-desc,#64748B)}
 @media(max-width:960px){
   .hero-page,.section{padding-left:22px;padding-right:22px}
   .hero-page{padding-top:54px;padding-bottom:52px}
-  .contact-grid,.form-grid,.mini-grid{grid-template-columns:1fr}
+  .contact-grid,.form-grid{grid-template-columns:1fr}
   .hero-copy{padding-top:0}
-  .formshell{padding:22px;border-radius:26px}
+  .formshell{margin-top:0;padding:22px;border-radius:26px}
   .form-head{display:block}
   .form-chip{margin-top:12px}
   .btn-dark{width:100%}
-  .next-steps-mobile-nav{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:0 0 12px;justify-content:center}
-  .mini-grid{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px}
-  .mini-item{min-width:84%;scroll-snap-align:center}
 }
 `,
 ];
@@ -264,43 +248,6 @@ const scripts: string[] = [
     renderTurnstile();
   }
 
-  const nextStepsNav = document.querySelector('.next-steps-mobile-nav');
-  const nextStepsScroller = document.querySelector('.mini-grid');
-  if (nextStepsNav && nextStepsScroller) {
-    const buttons = Array.from(nextStepsNav.querySelectorAll('a'));
-    const cards = Array.from(nextStepsScroller.querySelectorAll('.mini-item'));
-    const setActive = (idx) => {
-      buttons.forEach((btn, i) => btn.classList.toggle('is-active', i === idx));
-    };
-    const updateActiveByScroll = () => {
-      const centerX = nextStepsScroller.scrollLeft + nextStepsScroller.clientWidth / 2;
-      let bestIdx = 0;
-      let bestDist = Number.POSITIVE_INFINITY;
-      cards.forEach((card, i) => {
-        const cardCenter = card.offsetLeft + card.clientWidth / 2;
-        const dist = Math.abs(cardCenter - centerX);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestIdx = i;
-        }
-      });
-      setActive(bestIdx);
-    };
-    buttons.forEach((btn, i) => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        cards[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        setActive(i);
-      });
-    });
-    let raf = 0;
-    nextStepsScroller.addEventListener('scroll', () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(updateActiveByScroll);
-    }, { passive: true });
-    setActive(0);
-    updateActiveByScroll();
-  }
 })();
 `,
 ];
@@ -389,26 +336,6 @@ export function MarketingContactTemplate() {
                     </div>
                   </form>
                 </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="section">
-            <div className="container">
-              <div className="next-card">
-                <h2 className="next-title">What happens next</h2>
-                <p className="next-sub">We keep it practical: confirm your number and booking setup, walk the recovery flow on a sample call, then map whether Starter or Professional fits your overflow and after-hours volume.</p>
-                <div className="next-steps-mobile-nav" role="tablist" aria-label="What happens next steps">
-                  <a href="#contact-next-step-1" className="is-active">Step 1</a>
-                  <a href="#contact-next-step-2">Step 2</a>
-                  <a href="#contact-next-step-3">Step 3</a>
-                </div>
-                <div className="mini-grid">
-                  <div className="mini-item" id="contact-next-step-1"><div className="mini-icon">1</div><strong>We review your setup</strong><span>Business type, main call issue, and current-number needs.</span></div>
-                  <div className="mini-item" id="contact-next-step-2"><div className="mini-icon">2</div><strong>You get a tailored walkthrough</strong><span>Focused on the calls your team is actually missing.</span></div>
-                  <div className="mini-item" id="contact-next-step-3"><div className="mini-icon">3</div><strong>You choose the next step</strong><span>Start a trial, map a custom setup, or wait until you are ready.</span></div>
-                </div>
-                <p className="closing-line">Built for nail salons, hair salons, day spas, med spas, and beauty clinics.</p>
               </div>
             </div>
           </section>

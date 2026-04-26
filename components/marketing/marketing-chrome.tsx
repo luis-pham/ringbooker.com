@@ -127,7 +127,7 @@ export function MarketingChromeStyles() {
 @keyframes dpmSlideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 .dpm-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:1px solid #E5E7EB;background:#F9FAFB;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6B7280;transition:all .15s}
 .dpm-close:hover{background:#F3F4F6;color:#111827}
-.dpm-eyebrow{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#5B21B6;margin-bottom:8px}
+.dpm-eyebrow{display:flex;align-items:center;gap:6px;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:#5B21B6;margin-bottom:8px}
 .dpm-eyebrow .demo-cta-phone{flex-shrink:0}
 .dpm-title{font-size:20px;font-weight:700;color:#111827;letter-spacing:-.4px;margin-bottom:6px;line-height:1.3}
 .dpm-sub{font-size:14px;color:var(--mk-text-desc,#64748B);margin-bottom:22px;line-height:1.6}
@@ -369,6 +369,7 @@ export function MarketingFooter() {
           <div className="mk-footer-col">
             <h4>Resources</h4>
             <a href="/blog">Blog</a>
+            <a href="/current-number/call-forwarding">Call Forwarding Guides</a>
             <a href="/faq">FAQ</a>
             <a href="/contact">Contact</a>
           </div>

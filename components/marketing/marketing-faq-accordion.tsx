@@ -44,11 +44,12 @@ export function MarketingFaqAccordion({
 
   const showEyebrow = eyebrow !== null && eyebrow !== '';
   const eyebrowText = eyebrow === undefined || eyebrow === '' ? 'Common Questions' : eyebrow;
+  const isPlainCommonEyebrow = eyebrowText === 'Common Questions';
 
   return (
     <>
       <section className={`mfaq-section${embedded ? ' mfaq-section--embedded' : ''} ${className}`.trim()} id={id}>
-        {showEyebrow ? <div className="mfaq-eyebrow">{eyebrowText}</div> : null}
+        {showEyebrow ? <div className={`mfaq-eyebrow${isPlainCommonEyebrow ? ' mfaq-eyebrow--plain' : ''}`}>{eyebrowText}</div> : null}
         <h2 className="mfaq-title">{title}</h2>
         {subtitle != null && subtitle !== '' ? <p className="mfaq-sub">{subtitle}</p> : null}
         <div className="mfaq-list">
@@ -86,23 +87,26 @@ export function MarketingFaqAccordion({
 .mfaq-eyebrow{
   display:inline-flex;
   align-items:center;
-  padding:5px 12px;
-  border-radius:9999px;
+  padding:0;
+  border-radius:0;
   font-size:var(--mk-eyebrow);
   font-weight:600;
   letter-spacing:var(--mk-eyebrow-ls);
   text-transform:uppercase;
   color:#5B21B6;
-  background:#F5F3FF;
-  border:1px solid rgba(196,181,253,.45);
+  background:transparent;
+  border:none;
   margin:0 auto 14px;
   text-align:center;
 }
+.mfaq-eyebrow--plain{color:#5B21B6}
 .mfaq-title{
   font-size:var(--mk-section-h2);
   font-weight:700;
   letter-spacing:var(--mk-section-h2-track);
-  margin:0 0 14px;
+  margin:0 auto 14px;
+  max-width:22ch;
+  text-wrap:balance;
   text-align:center;
   color:var(--mfaq-text);
   line-height:var(--mk-section-h2-lh);

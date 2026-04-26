@@ -408,7 +408,7 @@ export function CurrentNumberCallForwardingTool() {
 
       <section ref={findRef} id="find-setup" className="mx-auto mt-24 max-w-6xl px-6">
         <div className="md:p-2">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Find your setup</h2>
+          <h2 className="mb-4 mx-auto max-w-[22ch] text-3xl font-bold tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Find your setup</h2>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setFilter('popular')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'popular' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Popular countries</button>
             <button type="button" onClick={() => setFilter('voip')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'voip' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Business phone &amp; VoIP</button>
@@ -550,7 +550,7 @@ export function CurrentNumberCallForwardingTool() {
 
       <section className="mx-auto mt-16 max-w-6xl px-6 md:hidden">
         <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-[0_20px_40px_-8px_rgba(17,24,39,0.06),0_8px_16px_-6px_rgba(17,24,39,0.04)]">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Cover missed calls without changing your number</h2>
+          <h2 className="mb-4 mx-auto max-w-[22ch] text-3xl font-bold tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Cover missed calls without changing your number</h2>
           <p className="text-[15px] leading-[1.68] text-[#64748B]">
             RingBooker helps appointment-based businesses answer after-hours, busy, and unanswered calls while keeping their current public number.
           </p>

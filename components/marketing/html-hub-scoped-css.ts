@@ -281,11 +281,9 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page--teal .hero.hero--landing .btn-outline:hover{border-color:#0d9488;color:#0f7669}
 .html-hub-page--teal .section-label:not(.dark){
-  background:#CCFBF1;
-  border-color:#99F6E4;
   color:#115e59;
 }
-.html-hub-page--teal .section-label.green{background:#ECFDF5;border-color:#A7F3D0;color:#047857}
+.html-hub-page--teal .section-label.green{color:#047857}
 .html-hub-page--teal .card-accent{border-top-color:#0d9488}
 .html-hub-page--teal .stat-num{color:#0d9488}
 .html-hub-page--teal .scenario-icon{background:#CCFBF1}
@@ -328,11 +326,9 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page--hair .hero.hero--landing .btn-outline:hover{border-color:#d97706;color:#b45309}
 .html-hub-page--hair .section-label:not(.dark){
-  background:#FFFBEB;
-  border-color:#FDE68A;
   color:#b45309;
 }
-.html-hub-page--hair .section-label.green{background:#ECFDF5;border-color:#A7F3D0;color:#047857}
+.html-hub-page--hair .section-label.green{color:#047857}
 .html-hub-page--hair .card-accent{border-top-color:#d97706}
 .html-hub-page--hair .stat-num{color:#d97706}
 .html-hub-page--hair .scenario-icon{background:#FFFBEB}
@@ -375,11 +371,15 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page--med-spa .hero.hero--landing .btn-outline:hover{border-color:#4f46e5;color:#4338ca}
 .html-hub-page--med-spa .section-label:not(.dark){
-  background:#EEF2FF;
-  border-color:#C7D2FE;
   color:#4338ca;
 }
-.html-hub-page--med-spa .section-label.green{background:#ECFDF5;border-color:#A7F3D0;color:#047857}
+/* Works-with: keep eyebrow color consistent with page accent (no per-variant color switching). */
+.html-hub-page--med-spa .section-label.green,
+.html-hub-page--med-spa .section-label.purple,
+.html-hub-page--med-spa .section-label.blue,
+.html-hub-page--med-spa .section-label.amber{
+  color:#4338ca;
+}
 .html-hub-page--med-spa .card-accent{border-top-color:#4f46e5}
 .html-hub-page--med-spa .stat-num{color:#4f46e5}
 .html-hub-page--med-spa .scenario-icon{background:#EEF2FF}
@@ -422,11 +422,9 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page--beauty-clinic .hero.hero--landing .btn-outline:hover{border-color:#c026d3;color:#a21caf}
 .html-hub-page--beauty-clinic .section-label:not(.dark){
-  background:#FDF4FF;
-  border-color:#F5D0FE;
   color:#a21caf;
 }
-.html-hub-page--beauty-clinic .section-label.green{background:#ECFDF5;border-color:#A7F3D0;color:#047857}
+.html-hub-page--beauty-clinic .section-label.green{color:#047857}
 .html-hub-page--beauty-clinic .card-accent{border-top-color:#c026d3}
 .html-hub-page--beauty-clinic .stat-num{color:#c026d3}
 .html-hub-page--beauty-clinic .scenario-icon{background:#FDF4FF}
@@ -476,8 +474,6 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page--amber .hero.hero--landing .btn-outline:hover{border-color:#d97706;color:#b45309}
 .html-hub-page--amber .section-label:not(.dark){
-  background:#FFFBEB;
-  border-color:#FDE68A;
   color:#b45309;
 }
 .html-hub-page--amber .hub-cta-banner{
@@ -514,8 +510,12 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page--trust .hero.hero--landing .btn-outline:hover{border-color:var(--purple);color:var(--purple)}
 .html-hub-page--trust .section-label:not(.dark){
-  background:var(--purple-bg);
-  border-color:var(--purple-border);
+  color:var(--purple);
+}
+.html-hub-page--trust .section-label.green,
+.html-hub-page--trust .section-label.purple,
+.html-hub-page--trust .section-label.blue,
+.html-hub-page--trust .section-label.amber{
   color:var(--purple);
 }
 
@@ -541,14 +541,14 @@ export const HTML_HUB_SCOPED_CSS = `
 /* Marketing-home leak-section (Missed-Call Recovery) — paired with .leak-grid / .leak-card */
 .html-hub-page .section-leak{background:linear-gradient(180deg,#fff,#F9FAFB)}
 
-.html-hub-page .section-label{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--purple-bg);border:1px solid var(--purple-border);border-radius:var(--radius-pill);font-size:var(--mk-eyebrow);font-weight:600;color:#5B21B6;text-transform:uppercase;letter-spacing:var(--mk-eyebrow-ls);margin-bottom:14px}
-.html-hub-page .section-label.green{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
-.html-hub-page .section-label.purple{background:var(--purple-bg);border-color:var(--purple-border);color:var(--purple)}
-.html-hub-page .section-label.blue{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)}
-.html-hub-page .section-label.amber{background:var(--amber-bg);border-color:#FDE68A;color:var(--amber)}
-.html-hub-page .section-label.dark{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.8)}
+.html-hub-page .section-label{display:inline-flex;align-items:center;gap:6px;padding:0;background:transparent;border:none;border-radius:0;font-size:var(--mk-eyebrow);font-weight:600;color:#5B21B6;text-transform:uppercase;letter-spacing:var(--mk-eyebrow-ls);margin-bottom:14px}
+.html-hub-page .section-label.green{color:var(--green)}
+.html-hub-page .section-label.purple{color:var(--purple)}
+.html-hub-page .section-label.blue{color:var(--blue)}
+.html-hub-page .section-label.amber{color:var(--amber)}
+.html-hub-page .section-label.dark{color:rgba(255,255,255,.8)}
 
-.html-hub-page .section h2{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);margin-bottom:14px;color:#111827}
+.html-hub-page .section h2{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);margin:0 auto 14px;color:#111827;max-width:22ch;text-wrap:balance}
 .html-hub-page .section h3{font-size:17px;font-weight:600;margin-bottom:8px;color:#111827}
 .html-hub-page .section-sub{font-size:var(--mk-section-lead);color:var(--mk-text-desc,#64748B);max-width:min(720px,100%);line-height:var(--mk-section-lead-lh);margin-bottom:40px;font-weight:400}
 /* Visible entity definition (same rhythm as .section-sub; slightly stronger for extraction / scan) */
@@ -995,9 +995,9 @@ export const HTML_HUB_SCOPED_CSS = `
   text-align:center;
 }
 .html-hub-page .html-hub-topic-nav-eyebrow{
-  font-size:11px;
+  font-size:var(--mk-eyebrow);
   font-weight:600;
-  letter-spacing:.1em;
+  letter-spacing:var(--mk-eyebrow-ls);
   text-transform:uppercase;
   color:#94A3B8;
   margin:0 0 18px;

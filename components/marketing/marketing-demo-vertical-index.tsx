@@ -104,7 +104,7 @@ const styles = [
 
     /* HERO */
     .demo-hub-hero{padding:72px 0 28px;text-align:center}
-    .demo-hub-eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(196,181,253,.45);background:rgba(255,255,255,.88);backdrop-filter:blur(8px);border-radius:999px;padding:8px 16px;color:#5B21B6;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+    .demo-hub-eyebrow{display:inline-flex;align-items:center;gap:8px;border:none;background:transparent;backdrop-filter:none;border-radius:0;padding:0;color:#5B21B6;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase}
     .demo-hub-hero h1{margin:22px auto 0;max-width:820px;font-size:clamp(34px,5.2vw,56px);line-height:1.06;letter-spacing:-.04em;color:var(--demo-hub-text);font-weight:800}
     .demo-hub-lead{margin:16px auto 0;max-width:640px;font-size:17px;line-height:1.72;color:var(--mk-text-desc,#64748B);font-weight:400}
     .demo-hub-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:26px auto 0;max-width:720px}
