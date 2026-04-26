@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import '@fontsource-variable/mona-sans';
+import './marketing-typography.css';
 
 import { GoogleTagManagerBody, GoogleTagManagerHead } from '@/components/analytics/google-tag-manager';
 import { defaultSiteOgImage, siteConfig, siteOgImageEntry } from '@/lib/site';

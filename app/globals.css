@@ -1,8 +1,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import '@fontsource-variable/mona-sans';
-@import './marketing-typography.css';
 
 :root {
   color-scheme: light;
@@ -41,6 +39,13 @@ a {
 
 * {
   box-sizing: border-box;
+}
+
+img,
+svg,
+video,
+canvas {
+  display: block;
 }
 
 ::selection {

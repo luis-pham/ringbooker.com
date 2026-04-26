@@ -652,7 +652,16 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                       </div>
                       {j < block.steps.length - 1 ? (
                         <div className="flow-arrow" aria-hidden>
-                          →
+                          <svg viewBox="0 0 16 16" width={12} height={12}>
+                            <path
+                              d="M3 8h9M8.5 3.5 13 8l-4.5 4.5"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
                         </div>
                       ) : null}
                     </Fragment>
@@ -727,7 +736,16 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                   {block.tools.map((t) => (
                     <Link href={t.href} className="tool-card" key={t.href}>
                       <span className="tool-arrow" aria-hidden>
-                        →
+                        <svg viewBox="0 0 16 16" width={12} height={12}>
+                          <path
+                            d="M3 8h9M8.5 3.5 13 8l-4.5 4.5"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
                       </span>
                       <div className="tool-logo">
                         {t.logoSrc ? (

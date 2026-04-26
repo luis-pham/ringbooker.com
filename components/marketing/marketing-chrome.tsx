@@ -76,7 +76,8 @@ export function MarketingChromeStyles() {
 .mk-demo-dd{position:relative;display:inline-flex;align-items:center}
 .mk-demo-dd-link{display:inline-flex;align-items:center;gap:4px;font-size:14.5px;font-weight:500;color:#6B7280;text-decoration:none;transition:color .2s;cursor:pointer;background:none;border:none;padding:0;font-family:inherit}
 .mk-demo-dd-link:hover,.mk-demo-dd-link.active{color:#111827}
-.mk-demo-caret{font-size:10px;opacity:.55;transition:transform .2s;display:inline-block;margin-top:1px;margin-left:2px}
+.mk-demo-caret{width:10px;height:10px;opacity:.55;transition:transform .2s;display:inline-block;margin-top:1px;margin-left:2px;flex-shrink:0}
+.mk-demo-caret svg{display:block;width:10px;height:10px}
 .mk-demo-dd:hover .mk-demo-caret{transform:rotate(180deg)}
 .mk-demo-menu{position:absolute;top:100%;left:50%;transform:translateX(-50%) translateY(-4px);padding-top:12px;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:200}
 .mk-demo-menu-inner{background:#fff;border:1px solid #E5E7EB;border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.12);padding:8px;min-width:210px}
@@ -230,7 +231,12 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
               href="/#industries"
               className={`mk-demo-dd-link${active === 'industry' ? ' active' : ''}`}
             >
-              Industries <span className="mk-demo-caret">▾</span>
+              Industries{' '}
+              <span className="mk-demo-caret" aria-hidden>
+                <svg viewBox="0 0 10 10">
+                  <path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
             </a>
             <div className="mk-demo-menu">
               <div className="mk-demo-menu-inner">
@@ -245,7 +251,12 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
           </div>
           <div className="mk-demo-dd">
             <a href="/demo" className={`mk-demo-dd-link${active === 'demo' ? ' active' : ''}`}>
-              Live Demo <span className="mk-demo-caret">▾</span>
+              Live Demo{' '}
+              <span className="mk-demo-caret" aria-hidden>
+                <svg viewBox="0 0 10 10">
+                  <path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
             </a>
             <div className="mk-demo-menu">
               <div className="mk-demo-menu-inner">
