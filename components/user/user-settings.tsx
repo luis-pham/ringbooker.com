@@ -423,7 +423,7 @@ export function UserSettingsTemplate() {
               <div className="list">
                 <div className="list-item"><div className="item-main"><div className="avatar">🎙</div><div><h4>Voice persona</h4><p>Friendly, concise, natural American English</p></div></div><span className="tag purple">Aoede</span></div>
                 <div className="list-item"><div className="item-main"><div className="avatar">🌐</div><div><h4>User summary language</h4><p>Vietnamese summaries after important calls</p></div></div><span className="tag green">Enabled</span></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">↗</div><div><h4>Escalate complaints</h4><p>Transfer upset callers to the user immediately</p></div></div><span className="tag green">On</span></div>
+                <div className="list-item"><div className="item-main"><div className="avatar"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden><path d="M6 3h7v7M13 3 5 11" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg></div><div><h4>Escalate complaints</h4><p>Transfer upset callers to the user immediately</p></div></div><span className="tag green">On</span></div>
               </div>
               <div className="note" style={{marginTop: 16}}>For MVP, RingBooker should avoid promising services, prices, or payment/deposit flows that are not configured here.</div>
             </div>

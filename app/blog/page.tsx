@@ -180,51 +180,6 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
   );
 }
 
-function BlogClusterStrip({
-  activePathPrefix,
-  category,
-  search,
-}: {
-  activePathPrefix: string;
-  category?: string;
-  search?: string;
-}) {
-  const clusters = [
-    { pathPrefix: 'blog' as const, label: BLOG_PATH_PREFIX_LABEL.blog },
-    { pathPrefix: 'missed-booking-protection' as const, label: BLOG_PATH_PREFIX_LABEL['missed-booking-protection'] },
-  ];
-
-  return (
-    <div className="mx-auto mt-4 flex max-w-6xl flex-wrap items-center justify-center gap-2 px-6 md:px-12">
-      <span className="mr-1 text-xs font-bold uppercase tracking-wider text-gray-400 sm:text-[13px]">Series</span>
-      {clusters.map(({ pathPrefix, label }) => {
-        const active = activePathPrefix === pathPrefix;
-        const href = buildPageHref({
-          page: 1,
-          category,
-          search,
-          cluster: pathPrefix === 'blog' ? undefined : pathPrefix,
-        });
-        return (
-          <Link
-            key={pathPrefix}
-            href={href}
-            rel={href.includes('?') ? 'nofollow' : undefined}
-            className={[
-              'rounded-full border px-4 py-2 text-sm font-semibold leading-snug transition sm:text-[15px]',
-              active
-                ? 'border-brand-purple bg-brand-purple text-white'
-                : 'border-gray-200 bg-white text-gray-500 hover:border-brand-purple hover:text-brand-purple',
-            ].join(' ')}
-          >
-            {label}
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
 function Pagination({
   page,
   totalPages,
@@ -376,11 +331,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           </div>
 
           <SearchBar initialValue={params.search ?? ''} />
-          <BlogClusterStrip
-            activePathPrefix={listPathPrefix}
-            category={params.category}
-            search={params.search}
-          />
           <CategoryFilter categories={categories} />
         </section>
 

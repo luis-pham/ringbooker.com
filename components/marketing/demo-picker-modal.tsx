@@ -12,6 +12,21 @@ const VERTICALS = [
   { icon: '✨', label: 'Beauty Clinic', sub: 'Pre-care, session continuity', href: '/demo/beauty-clinic', className: 'dpm-card-beauty-clinic' },
 ];
 
+function ArrowRightMini() {
+  return (
+    <svg viewBox="0 0 16 16" width={12} height={12} aria-hidden>
+      <path
+        d="M3 8h9M8.5 3.5 13 8l-4.5 4.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function DemoPickerModal({ initialOpen = false }: { initialOpen?: boolean }) {
   const [open, setOpen] = useState(initialOpen);
 
@@ -66,7 +81,9 @@ export function DemoPickerModal({ initialOpen = false }: { initialOpen?: boolean
               <span className="dpm-icon">{v.icon}</span>
               <span className="dpm-label">{v.label}</span>
               <span className="dpm-card-sub">{v.sub}</span>
-              <span className="dpm-arrow">→</span>
+              <span className="dpm-arrow">
+                <ArrowRightMini />
+              </span>
             </a>
           ))}
         </div>

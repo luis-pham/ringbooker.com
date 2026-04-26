@@ -33,9 +33,9 @@ export type NavUserState =
 export function resolveNavCta(state: NavUserState): { label: string; href: string } {
   switch (state.type) {
     case 'visitor':
-      return { label: 'Try a Live Demo →', href: '/demo' };
+      return { label: 'Try a Live Demo', href: '/demo' };
     case 'setup_incomplete':
-      return { label: 'Continue Setup →', href: '/user/onboarding' };
+      return { label: 'Continue Setup', href: '/user/onboarding' };
     case 'trial_user':
       return { label: 'Open Dashboard', href: '/user' };
     case 'active_customer':
@@ -195,6 +195,21 @@ async function handleSignOut() {
 
 type AvatarMenuState = Exclude<NavUserState, { type: 'loading' } | { type: 'visitor' }>;
 
+function IconArrowRightMini() {
+  return (
+    <svg viewBox="0 0 16 16" width={12} height={12} aria-hidden>
+      <path
+        d="M3 8h9M8.5 3.5 13 8l-4.5 4.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function AvatarMenu({
   state,
   open,
@@ -247,7 +262,7 @@ function AvatarMenu({
 
         <div className="mk-avatar-items">
           <button className="mk-avatar-item mk-avatar-signout" onClick={handleSignOut}>
-            <span>→</span> Sign Out
+            <span><IconArrowRightMini /></span> Sign Out
           </button>
         </div>
       </div>
@@ -339,7 +354,7 @@ export function NavActionsClient() {
         <a href="/user/login" className="mk-nav-signin">Sign In</a>
         <a href="/demo" className="mk-nav-cta mk-nav-cta-hide-sm" data-demo-picker>
           <DemoCtaPhoneIcon width={16} height={16} />
-          Try a Live Demo →
+          Try a Live Demo
         </a>
       </div>
     );
