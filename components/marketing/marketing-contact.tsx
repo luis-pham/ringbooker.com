@@ -339,7 +339,6 @@ export function MarketingContactTemplate() {
                   <div className="form-head">
                     <div>
                       <h2>Request a walkthrough</h2>
-                      <p>Most people finish this in under a minute. We’ll review your setup and focus the call on recovering revenue lost to voicemail, busy lines, and hang-ups.</p>
                     </div>
                     <span className="form-chip">Low-pressure walkthrough</span>
                   </div>

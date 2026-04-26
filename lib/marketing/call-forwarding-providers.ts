@@ -510,7 +510,7 @@ export const CALL_FORWARDING_OTHER_COUNTRIES: Array<{ code: 'UK' | 'NZ' | 'IE'; 
   { code: 'IE', label: 'Ireland' },
 ];
 
-export const CALL_FORWARDING_PROVIDERS: ProviderRecord[] = [
+const RAW_CALL_FORWARDING_PROVIDERS: ProviderRecord[] = [
   // United States
   record({
     id: 'verizon',
@@ -1058,5 +1058,135 @@ export const CALL_FORWARDING_PROVIDERS: ProviderRecord[] = [
     bestFor: 'Best for fixed-line after-hours call capture.',
   }),
 ];
+
+const SVG_PROVIDER_LOGOS: Record<
+  string,
+  {
+    src: string;
+    sourceUrl: string;
+    sourceType: ProviderRecord['logo']['sourceType'];
+    usageStatus: ProviderRecord['logo']['usageStatus'];
+  }
+> = {
+  verizon: {
+    src: '/provider-logos/verizon.svg',
+    sourceUrl: 'https://www.verizon.com/about/news/we-power-and-empower-how-people-live-work-and-play',
+    sourceType: 'official_website',
+    usageStatus: 'likely_ok',
+  },
+  att: {
+    src: '/provider-logos/att.svg',
+    sourceUrl: 'https://www.att.com/',
+    sourceType: 'official_website',
+    usageStatus: 'likely_ok',
+  },
+  't-mobile': {
+    src: '/provider-logos/t-mobile.svg',
+    sourceUrl: 'https://www.t-mobile.com/news/media-library?fulltext=logo',
+    sourceType: 'official_website',
+    usageStatus: 'likely_ok',
+  },
+  'google-voice-us': {
+    src: '/provider-logos/google-voice.svg',
+    sourceUrl: 'https://workspace.google.com/signup/basic/welcome?hl=en',
+    sourceType: 'official_website',
+    usageStatus: 'likely_ok',
+  },
+  'google-voice-voip': {
+    src: '/provider-logos/google-voice.svg',
+    sourceUrl: 'https://workspace.google.com/signup/basic/welcome?hl=en',
+    sourceType: 'official_website',
+    usageStatus: 'likely_ok',
+  },
+  'ringcentral-us': {
+    src: '/provider-logos/ringcentral.svg',
+    sourceUrl: 'https://www.ringcentral.com/',
+    sourceType: 'official_website',
+    usageStatus: 'likely_ok',
+  },
+  'ringcentral-voip': {
+    src: '/provider-logos/ringcentral.svg',
+    sourceUrl: 'https://www.ringcentral.com/',
+    sourceType: 'official_website',
+    usageStatus: 'likely_ok',
+  },
+};
+
+const LOCAL_FAVICON_PROVIDER_IDS = new Set<string>([
+  '2degrees',
+  'aussie-broadband',
+  'bell',
+  'bt',
+  'comcast-business',
+  'dialpad',
+  'ee',
+  'eir',
+  'fido',
+  'freedom-mobile',
+  'google-voice-us',
+  'google-voice-voip',
+  'goto-connect',
+  'grasshopper',
+  'iinet',
+  'nextiva-us',
+  'nextiva-voip',
+  'o2',
+  'one-nz',
+  'ooma-us',
+  'ooma-voip',
+  'openphone-quo',
+  'openphone-us',
+  'optus',
+  'ringcentral-us',
+  'ringcentral-voip',
+  'rogers',
+  'sky-mobile',
+  'spark',
+  'talktalk',
+  'telstra',
+  'telus',
+  'three-ireland',
+  'three-uk',
+  'tpg',
+  'virgin-media-ireland',
+  'virgin-media-uk',
+  'virgin-plus',
+  'vodafone-australia',
+  'vodafone-ireland',
+  'vodafone-uk',
+  'vonage-us',
+  'vonage-voip',
+  'zoom-phone',
+]);
+
+export const CALL_FORWARDING_PROVIDERS: ProviderRecord[] = RAW_CALL_FORWARDING_PROVIDERS.map((provider) => {
+  const svgLogo = SVG_PROVIDER_LOGOS[provider.id];
+  if (svgLogo) {
+    return {
+      ...provider,
+      logo: {
+        ...provider.logo,
+        src: svgLogo.src,
+        sourceUrl: svgLogo.sourceUrl,
+        sourceType: svgLogo.sourceType,
+        usageStatus: svgLogo.usageStatus,
+      },
+    };
+  }
+
+  if (!LOCAL_FAVICON_PROVIDER_IDS.has(provider.id)) return provider;
+
+  const fallbackSourceUrl = provider.sourceUrls[0] ?? `https://www.${provider.id}.com/`;
+  return {
+    ...provider,
+    logo: {
+      ...provider.logo,
+      src: `/provider-logos/${provider.id}.ico`,
+      sourceUrl: fallbackSourceUrl,
+      sourceType: 'official_favicon',
+      usageStatus: 'likely_ok',
+    },
+  };
+});
 
 export const callForwardingProviders = CALL_FORWARDING_PROVIDERS;

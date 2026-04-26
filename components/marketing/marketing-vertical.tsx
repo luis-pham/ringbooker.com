@@ -228,7 +228,15 @@ function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
         eyebrow="Common Questions"
         title="Frequently Asked Questions"
         subtitle={null}
+        className="vertical-faq-no-top-border"
         openFirstItem
+      />
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+.vertical-faq-no-top-border .mfaq-list{border-top:none}
+`,
+        }}
       />
     </div>
   );
