@@ -135,6 +135,17 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
     linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.08) 28%,rgba(255,255,255,0.42) 46%,rgba(255,255,255,0.82) 62%,rgba(255,255,255,0.98) 76%,#ffffff 88%,#ffffff 100%),
     radial-gradient(ellipse 96% 78% at 50% -22%,#EDE9FE 0%,#EDE9FE 14%,#F5F0FF 34%,#FDF4FF 52%,rgba(253,244,255,0.65) 72%,rgba(255,255,255,0.99) 94%,#ffffff 100%);
 }
+.home-hero-shell::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:138px;
+  pointer-events:none;
+  z-index:1;
+  background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.72) 34%,#ffffff 58%,#fcfbff 82%,#F9FAFB 100%);
+}
 .hero{
   min-height:100vh;
   padding:100px 48px 60px;
@@ -171,7 +182,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.hero-btns .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
 
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
-	.leak-section{padding:88px 48px;background:linear-gradient(180deg,#fff 0%,#fcfbff 48%,#F9FAFB 100%)}
+	.leak-section{position:relative;margin-top:-34px;padding:122px 48px 88px;background:linear-gradient(180deg,rgba(249,250,251,0) 0%,#fcfbff 26%,#F9FAFB 100%)}
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
 	.leak-card{position:relative;background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);border:1.5px solid rgba(196,181,253,.4);border-radius:24px;padding:34px 28px 24px;box-shadow:0 0 0 4px rgba(139,92,246,.035),var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
@@ -277,7 +288,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	  stroke-linecap:round;
 	  stroke-linejoin:round;
 	}
-	.current-step h3{font-size:clamp(18px,1.65vw,22px);font-weight:700;line-height:1.28;letter-spacing:-.35px;margin-bottom:8px;color:var(--text-dark);max-width:280px;margin-left:auto;margin-right:auto}
+	.current-step h3{font-size:var(--mk-card-title);font-weight:600;line-height:1.3;letter-spacing:-.2px;margin-bottom:8px;color:var(--text-dark);max-width:280px;margin-left:auto;margin-right:auto}
 	.current-step p{font-size:var(--mk-body-md);line-height:1.55;color:var(--text-desc);max-width:300px;margin:0 auto}
 
 	/* ─── HERO VISUAL ─── */
@@ -507,15 +518,15 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   gap:6px;
 }
 .industry-title{
-  font-size:clamp(18px,1.7vw,22px);
-  font-weight:500;
-  line-height:1.2;
+  font-size:var(--mk-card-title);
+  font-weight:600;
+  line-height:1.3;
   color:#fff;
-  letter-spacing:-.35px;
+  letter-spacing:-.2px;
 }
 .industry-sub{
-  font-size:14px;
-  line-height:1.55;
+  font-size:var(--mk-body);
+  line-height:var(--mk-body-lh);
   color:rgba(255,255,255,.86);
   font-weight:400;
   max-width:180px;
@@ -1448,33 +1459,6 @@ export function MarketingHomeTemplate() {
               ))}
               </div>
             </div>
-        </section>
-        {/* DEEP SECTION 2 — Confirmation */}
-        <section className="deep-section-confirmation">
-          <div className="deep-wrap deep-wrap-flush">
-            <div className="deep-s2-outer reveal">
-              <div className="d-text">
-                <h2>Missed callers get a<br />fast way back.</h2>
-                <p>If someone hangs up, calls after hours, or reaches you during a busy window, RingBooker can text back and collect enough context for the right follow-up.</p>
-                <ul className="checklist">
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Texts back callers who hang up or reach voicemail</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Captures what they wanted before your team calls back</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Separates simple follow-up from needs-human requests</li>
-                </ul>
-              </div>
-              <div className="convo-card">
-                <div className="convo-avatars">
-                  <div className="convo-avatar">J</div>
-                  <div className="convo-avatar">S</div>
-                  <div className="convo-avatar">M</div>
-                </div>
-                <div className="convo-quote">I called about moving<br />my appointment.</div>
-                <svg className="convo-wave" viewBox="0 0 400 52" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M0,26 C20,20 30,35 50,28 C70,21 80,38 100,30 C120,22 130,36 150,29 C170,22 185,40 200,32 C215,24 225,38 245,30 C265,22 278,36 300,29 C322,22 335,38 355,30 C375,22 388,34 400,28" stroke="#9CA3AF" strokeWidth="1.5" fill="none" />
-                </svg>
-              </div>
-            </div>
-          </div>
         </section>
         {/* TESTIMONIALS */}
         <section className="testimonials" id="testimonials">
