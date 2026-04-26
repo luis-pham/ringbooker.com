@@ -50,59 +50,18 @@ function providerInitials(name: string) {
 }
 
 function HowItWorksIcon({ kind }: { kind: 'call' | 'team' | 'forward' | 'summary' }) {
-  const iconClass = 'h-7 w-7 sm:h-5 sm:w-5';
-  if (kind === 'call') {
-    return (
-      <svg viewBox="0 0 16 16" className={iconClass} aria-hidden>
-        <defs>
-          <linearGradient id="cfwIconCall" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#7C3AED" />
-            <stop offset="100%" stopColor="#A855F7" />
-          </linearGradient>
-        </defs>
-        <path d="M5.2 2.5c.4-.3 1-.2 1.3.2l1 1.6c.2.4.2.9-.1 1.2l-.7.8c.8 1.5 2 2.7 3.5 3.5l.8-.7c.4-.3.9-.4 1.2-.1l1.6 1c.4.3.5.9.2 1.3l-.6.9c-.3.4-.8.7-1.3.6A10.4 10.4 0 0 1 3.2 3.8c-.1-.5.2-1 .6-1.3l1-.6Z" fill="none" stroke="url(#cfwIconCall)" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
-  if (kind === 'team') {
-    return (
-      <svg viewBox="0 0 16 16" className={iconClass} aria-hidden>
-        <defs>
-          <linearGradient id="cfwIconTeam" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#4F46E5" />
-            <stop offset="100%" stopColor="#7C3AED" />
-          </linearGradient>
-        </defs>
-        <circle cx="6" cy="6" r="2.2" fill="none" stroke="url(#cfwIconTeam)" strokeWidth={1.5} />
-        <circle cx="11.5" cy="6.5" r="1.7" fill="none" stroke="url(#cfwIconTeam)" strokeWidth={1.5} />
-        <path d="M2.5 12c.4-1.8 2-3 3.9-3h.2c1.9 0 3.5 1.2 3.9 3M9.3 12c.3-1.2 1.3-2 2.5-2h.1c.8 0 1.5.3 2 .8" fill="none" stroke="url(#cfwIconTeam)" strokeWidth={1.5} strokeLinecap="round" />
-      </svg>
-    );
-  }
-  if (kind === 'forward') {
-    return (
-      <svg viewBox="0 0 16 16" className={iconClass} aria-hidden>
-        <defs>
-          <linearGradient id="cfwIconForward" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#0D9488" />
-            <stop offset="100%" stopColor="#14B8A6" />
-          </linearGradient>
-        </defs>
-        <path d="M2.5 8h8.5M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="url(#cfwIconForward)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
+  const icon =
+    kind === 'call'
+      ? '📞'
+      : kind === 'team'
+        ? '👥'
+        : kind === 'forward'
+          ? '↪'
+          : '📝';
   return (
-    <svg viewBox="0 0 16 16" className={iconClass} aria-hidden>
-      <defs>
-        <linearGradient id="cfwIconSummary" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#DB2777" />
-          <stop offset="100%" stopColor="#A855F7" />
-        </linearGradient>
-      </defs>
-      <path d="M3.5 2.8h7l2 2V13a.8.8 0 0 1-.8.8H4.3a.8.8 0 0 1-.8-.8V3.6a.8.8 0 0 1 .8-.8Z" fill="none" stroke="url(#cfwIconSummary)" strokeWidth={1.5} />
-      <path d="M10.5 2.8v2h2M5.5 7.3h5M5.5 9.3h5M5.5 11.3h3.5" fill="none" stroke="url(#cfwIconSummary)" strokeWidth={1.5} strokeLinecap="round" />
-    </svg>
+    <span className="text-[30px] leading-none sm:text-[22px]" aria-hidden>
+      {icon}
+    </span>
   );
 }
 
@@ -377,26 +336,11 @@ export function CurrentNumberCallForwardingTool() {
         <p className="mx-auto mt-4 max-w-3xl text-[17px] leading-8 text-slate-600">
           Keep your current number. Choose your provider and see how to forward missed, busy, or after-hours calls to RingBooker.
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <button
-            type="button"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-violet-700 px-6 py-3 text-sm font-extrabold text-white hover:bg-violet-800"
-            onClick={() => findRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-          >
-            <DemoCtaPhoneIcon width={16} height={16} />
-            Find my provider
-          </button>
-          <a href="#how-it-works" className="inline-flex min-h-11 items-center rounded-full border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-800 hover:border-violet-500 hover:text-violet-700">
-            See how it works
-          </a>
-        </div>
         <ul className="mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-600">
           {['Keep your public number', 'Forward only selected calls', 'Test before going live'].map((line) => (
             <li key={line} className="inline-flex items-center gap-2">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-700" aria-hidden>
-                <svg viewBox="0 0 10 10" width={9} height={9}>
-                  <path d="M1.5 5l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
+              <span className="text-emerald-600" aria-hidden>
+                ✓
               </span>
               {line}
             </li>
@@ -639,7 +583,7 @@ export function CurrentNumberCallForwardingTool() {
         <MarketingFaqAccordion items={FAQ_ITEMS} embedded eyebrow="FAQ" title="Call forwarding setup questions" subtitle={null} openFirstItem />
       </section>
 
-      <section className="mx-auto mt-16 max-w-6xl px-6">
+      <section className="mx-auto mt-16 max-w-6xl px-6 md:hidden">
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Cover missed calls without changing your number</h2>
           <p className="mt-2 text-[15px] leading-7 text-slate-600">
@@ -669,11 +613,16 @@ export function CurrentNumberCallForwardingTool() {
           >
             Find provider
           </button>
-          <Link href="/demo" className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-violet-700 px-4 text-sm font-bold text-white" onClick={() => track('call_forwarding_demo_clicked', { source: 'sticky_mobile' })}>
+          <Link
+            href="/demo"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-violet-700 px-4 text-sm font-bold text-white"
+            onClick={() => track('call_forwarding_demo_clicked', { source: 'sticky_mobile' })}
+          >
             Try demo
           </Link>
         </div>
       </div>
+
     </main>
   );
 }

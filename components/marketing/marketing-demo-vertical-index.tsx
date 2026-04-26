@@ -66,46 +66,22 @@ const DEMO_HUB_FAQ_ITEMS: MarketingFaqItem[] = [
 const demoHubFaqJsonLd = buildFaqPageJsonLd(DEMO_HUB_FAQ_ITEMS);
 
 function IndustryGlyph({ slug }: { slug: DemoVerticalSlug }) {
-  const common = { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.65, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true };
-  switch (slug) {
-    case 'nail-salon':
-      return (
-        <svg {...common}>
-          <path d="M12 3v4M9 8l3-2 3 2" />
-          <path d="M8 14c1.5 2.5 4 4 8 4M7 21h10" />
-        </svg>
-      );
-    case 'hair-salon':
-      return (
-        <svg {...common}>
-          <circle cx="6" cy="6" r="3" />
-          <circle cx="6" cy="18" r="3" />
-          <path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12" />
-        </svg>
-      );
-    case 'day-spa':
-      return (
-        <svg {...common}>
-          <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
-          <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
-        </svg>
-      );
-    case 'med-spa':
-      return (
-        <svg {...common}>
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          <path d="M9 12l2 2 4-4" />
-        </svg>
-      );
-    case 'beauty-clinic':
-      return (
-        <svg {...common}>
-          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
-        </svg>
-      );
-    default:
-      return null;
-  }
+  const icon =
+    slug === 'nail-salon'
+      ? '💅'
+      : slug === 'hair-salon'
+        ? '✂️'
+        : slug === 'day-spa'
+          ? '🧖'
+          : slug === 'med-spa'
+            ? '💉'
+            : '✨';
+
+  return (
+    <span aria-hidden className="demo-hub-emoji-icon">
+      {icon}
+    </span>
+  );
 }
 
 const styles = [
@@ -159,6 +135,7 @@ const styles = [
       width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
       margin:0 auto 12px;color:#6D28D9;flex-shrink:0;background:#F5F3FF;border:1px solid #E9D5FF;
     }
+    .demo-hub-emoji-icon{font-size:22px;line-height:1}
     .demo-hub-card h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--demo-hub-text);line-height:1.3}
     .demo-hub-card-line{margin:7px 0 0;font-size:12px;line-height:1.5;color:var(--demo-hub-muted)}
     .demo-hub-card-cta{
