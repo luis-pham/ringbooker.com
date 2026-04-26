@@ -243,23 +243,23 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	  animation:current-flow-slide 4.2s linear infinite;
 	}
 	@keyframes current-flow-slide{
-	  0%{transform:translateX(0);opacity:.25}
+	  0%{left:0;opacity:.25}
 	  12%{opacity:1}
 	  88%{opacity:1}
-	  100%{transform:translateX(100%);opacity:.25}
+	  100%{left:calc(100% - 12px);opacity:.25}
 	}
 	.current-number-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;position:relative}
 	.current-step{text-align:center;position:relative}
 	.current-step-icon{
-	  width:86px;
-	  height:86px;
+	  width:92px;
+	  height:92px;
 	  border-radius:999px;
-	  margin:0 auto 28px;
+	  margin:0 auto 24px;
 	  display:flex;
 	  align-items:center;
 	  justify-content:center;
-	  border:3px solid rgba(59,130,246,.9);
-	  background:rgba(59,130,246,.08);
+	  border:3px solid rgba(59,130,246,.85);
+	  background:rgba(59,130,246,.09);
 	  color:#3166b8;
 	  position:relative;
 	  z-index:3;
@@ -269,9 +269,16 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	  background:rgba(16,185,129,.10);
 	  color:#16906c;
 	}
-	.current-step-icon .home-line-icon{width:34px;height:34px}
-	.current-step h3{font-size:clamp(24px,2.2vw,30px);font-weight:700;line-height:1.18;letter-spacing:-.6px;margin-bottom:10px;color:var(--text-dark)}
-	.current-step p{font-size:clamp(16px,1.65vw,18px);line-height:1.45;color:#404040;max-width:300px;margin:0 auto}
+	.current-step-glyph{width:34px;height:34px;display:block}
+	.current-step-glyph path,.current-step-glyph circle,.current-step-glyph rect,.current-step-glyph polyline,.current-step-glyph line{
+	  fill:none;
+	  stroke:currentColor;
+	  stroke-width:1.9;
+	  stroke-linecap:round;
+	  stroke-linejoin:round;
+	}
+	.current-step h3{font-size:clamp(18px,1.65vw,22px);font-weight:700;line-height:1.28;letter-spacing:-.35px;margin-bottom:8px;color:var(--text-dark);max-width:280px;margin-left:auto;margin-right:auto}
+	.current-step p{font-size:var(--mk-body-md);line-height:1.55;color:var(--text-desc);max-width:300px;margin:0 auto}
 
 	/* ─── HERO VISUAL ─── */
 .hero-visual{position:relative;margin-top:56px;height:580px;display:flex;align-items:center;justify-content:center}
@@ -458,7 +465,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .pb-dark{background:var(--text-dark);color:#fff}
 .pb-dark:hover{background:#1f2937;transform:translateY(-1px)}
 /* ─── HOW IT WORKS ─── */
-.industries{padding:72px 48px 40px;background:#fff}
+.industries{padding:88px 48px 88px;background:#fff}
 .industries-inner{max-width:1180px;margin:0 auto}
 .industries .sec-sub{max-width:760px}
 .industries-track{
@@ -629,7 +636,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .current-number-flow{padding-top:0}
   .current-flow-line,.current-flow-pulse{display:none}
   .current-step-icon{margin-bottom:18px}
-  .current-step h3{font-size:var(--mk-card-title)}
+  .current-step h3{font-size:var(--mk-card-title);max-width:100%}
   .current-step p{font-size:var(--mk-body);max-width:100%}
   .user-shell{aspect-ratio:16/10}
   .steps-section,.flow-section,.scope-section,.user-preview,.industries,.current-number-setup{padding-left:22px;padding-right:22px}
@@ -1376,29 +1383,33 @@ export function MarketingHomeTemplate() {
               <div className="current-number-grid">
                 <article className="current-step">
                   <div className="current-step-icon">
-                    <HomeLineIcon>
-                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </HomeLineIcon>
+                    <svg className="current-step-glyph" viewBox="0 0 32 32" aria-hidden="true">
+                      <circle cx="16" cy="10" r="5" />
+                      <path d="M8.5 24a7.5 7.5 0 0 1 15 0" />
+                    </svg>
                   </div>
                   <h3>Client calls your number</h3>
                   <p>Same number on Google, cards, and signs</p>
                 </article>
                 <article className="current-step">
                   <div className="current-step-icon center">
-                    <HomeLineIcon>
-                      <path d="M17 3h4v4M3 21h4v-4M21 3l-6 6M3 21l6-6" />
-                    </HomeLineIcon>
+                    <svg className="current-step-glyph" viewBox="0 0 32 32" aria-hidden="true">
+                      <line x1="9" y1="11" x2="23" y2="11" />
+                      <polyline points="18 6 23 11 18 16" />
+                      <line x1="23" y1="21" x2="9" y2="21" />
+                      <polyline points="14 16 9 21 14 26" />
+                    </svg>
                   </div>
                   <h3>RingBooker handles the call</h3>
                   <p>Books, reschedules, or captures the request</p>
                 </article>
                 <article className="current-step">
                   <div className="current-step-icon">
-                    <HomeLineIcon>
-                      <rect x="7" y="3" width="10" height="18" rx="2" />
-                      <path d="M10 7h4M10 11h4M10 15h3M5 7h.01M5 11h.01M5 15h.01" />
-                    </HomeLineIcon>
+                    <svg className="current-step-glyph" viewBox="0 0 32 32" aria-hidden="true">
+                      <rect x="10" y="6" width="12" height="20" rx="2.5" />
+                      <path d="M13.5 12h5M13.5 16h5M13.5 20h3.5" />
+                      <path d="M8 11h.01M8 16h.01M8 21h.01" />
+                    </svg>
                   </div>
                   <h3>Team sees the result</h3>
                   <p>Confirmation, summary, and next step — ready to go</p>
@@ -1437,52 +1448,6 @@ export function MarketingHomeTemplate() {
               ))}
               </div>
             </div>
-        </section>
-        {/* DEEP SECTION 1 — Line chart */}
-        <section className="deep-section">
-          <div className="section-label-wrap"><div className="sec-label">24/7 Availability</div></div>
-          <h2 className="sec-title sec-title-air reveal">After-hours and overflow<br />calls still get a clear path.</h2>
-          <div className="deep-wrap deep-wrap-flush">
-            <div className="deep-s1 reveal">
-              {/* Chart */}
-              <div className="chart-wrap">
-                <div className="chart-inner">
-                  <div className="chart-tiny-label">Coverage window.</div>
-                  <div className="chart-big-row">
-                    <div className="chart-big">24/7</div>
-                    <div className="chart-badge">Overflow covered</div>
-                  </div>
-                </div>
-                <div className="linechart-svg-wrap">
-                  <svg viewBox="0 0 600 140" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="lg1" x1={0} y1={0} x2={0} y2={1}>
-                        <stop offset="0%" stopColor="#FB923C" stopOpacity=".35" />
-                        <stop offset="100%" stopColor="#FB923C" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <path d="M0,120 C40,115 60,100 90,85 C120,70 130,40 160,30 C185,22 200,55 230,60 C260,65 270,45 300,50 C330,55 340,30 370,18 C390,10 405,35 430,38 C450,40 460,28 480,22 L480,140 L0,140 Z" fill="url(#lg1)" />
-                    <path d="M0,120 C40,115 60,100 90,85 C120,70 130,40 160,30 C185,22 200,55 230,60 C260,65 270,45 300,50 C330,55 340,30 370,18 C390,10 405,35 430,38 C450,40 460,28 480,22" fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" />
-                    <circle cx={480} cy={22} r={6} fill="#fff" stroke="#F97316" strokeWidth="2.5" />
-                    <text x={494} y={27} fontSize={11} fill="#374151" fontFamily="Mona Sans Variable, sans-serif" fontWeight={600}>still answered</text>
-                  </svg>
-                </div>
-                <div className="x-labels">
-                  <span>01</span><span>05</span><span>10</span><span className="x-label-active">15</span><span>20</span>
-                </div>
-              </div>
-              {/* Text */}
-              <div className="d-text">
-                <h2>When your team is busy<br />or closed, calls do not stall.</h2>
-                <p>RingBooker covers the moments your front desk cannot: after closing, during services, and when several callers ring at once.</p>
-                <ul className="checklist">
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Captures booking intent after hours</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Covers overflow while staff are with clients</li>
-                  <li><span className="ck-ico"><svg viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg></span>Flags special cases for a human callback</li>
-                </ul>
-              </div>
-            </div>
-          </div>
         </section>
         {/* DEEP SECTION 2 — Confirmation */}
         <section className="deep-section-confirmation">
