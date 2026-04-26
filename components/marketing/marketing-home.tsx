@@ -1601,7 +1601,7 @@ export function MarketingHomeTemplate() {
                 <p className="test-quote">"I used to stop mid-color to answer the phone. Now my team stays focused and the bookings still happen."</p>
                 <div className="test-author">
                   <div className="test-av">
-                    <Image src="/images/nail.webp" alt="Jane Nguyen" width={84} height={84} sizes="42px" quality={70} />
+                    <Image src="/images/jane.png" alt="Jane Nguyen" width={84} height={84} sizes="42px" quality={70} />
                   </div>
                   <div>
                     <div className="test-name">Jane Nguyen</div>
@@ -1614,7 +1614,9 @@ export function MarketingHomeTemplate() {
                 <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
                 <p className="test-quote">"We kept our number, configured basics in 15 minutes, and clients still reach us the way they always have."</p>
                 <div className="test-author">
-                  <div className="test-av">JK</div>
+                  <div className="test-av">
+                    <Image src="/images/jeny.png" alt="Jenny K." width={84} height={84} sizes="42px" quality={70} />
+                  </div>
                   <div>
                     <div className="test-name">Jenny K.</div>
                     <div className="test-role">Day Spa Manager — Dallas</div>
@@ -1625,14 +1627,16 @@ export function MarketingHomeTemplate() {
                 <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Zero missed after-hours calls</div>
                 <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
                 <p className="test-quote">"After-hours used to be a black hole. Now missed callers get a text back and we know exactly who needs a callback."</p>
-	                <div className="test-author">
-	                  <div className="test-av">LR</div>
-	                  <div>
-	                    <div className="test-name">Lisa R.</div>
-	                    <div className="test-role">Med Spa Owner — LA</div>
-	                  </div>
-	                </div>
-	              </article>
+                <div className="test-author">
+                  <div className="test-av">
+                    <Image src="/images/lisa.png" alt="Lisa R." width={84} height={84} sizes="42px" quality={70} />
+                  </div>
+                  <div>
+                    <div className="test-name">Lisa R.</div>
+                    <div className="test-role">Med Spa Owner — LA</div>
+                  </div>
+                </div>
+              </article>
             </div>
 	          </div>
 	        </section>

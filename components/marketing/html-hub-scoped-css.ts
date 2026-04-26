@@ -286,7 +286,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--teal .section-label.green{color:#047857}
 .html-hub-page--teal .card-accent{border-top-color:#0d9488}
 .html-hub-page--teal .stat-num{color:#0d9488}
-.html-hub-page--teal .scenario-icon{background:#CCFBF1}
+.html-hub-page--teal .scenario-icon{background:transparent}
 .html-hub-page--teal .scenario .who{color:#0f7669}
 .html-hub-page--teal .flow-arrow{color:#0d9488}
 .html-hub-page--teal .leak-card h3{color:#134e4a}
@@ -331,7 +331,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--hair .section-label.green{color:#047857}
 .html-hub-page--hair .card-accent{border-top-color:#d97706}
 .html-hub-page--hair .stat-num{color:#d97706}
-.html-hub-page--hair .scenario-icon{background:#FFFBEB}
+.html-hub-page--hair .scenario-icon{background:transparent}
 .html-hub-page--hair .scenario .who{color:#b45309}
 .html-hub-page--hair .flow-arrow{color:#d97706}
 .html-hub-page--hair .leak-card h3{color:#78350f}
@@ -382,7 +382,7 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page--med-spa .card-accent{border-top-color:#4f46e5}
 .html-hub-page--med-spa .stat-num{color:#4f46e5}
-.html-hub-page--med-spa .scenario-icon{background:#EEF2FF}
+.html-hub-page--med-spa .scenario-icon{background:transparent}
 .html-hub-page--med-spa .scenario .who{color:#4338ca}
 .html-hub-page--med-spa .flow-arrow{color:#4f46e5}
 .html-hub-page--med-spa .leak-card h3{color:#312e81}
@@ -427,7 +427,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--beauty-clinic .section-label.green{color:#047857}
 .html-hub-page--beauty-clinic .card-accent{border-top-color:#c026d3}
 .html-hub-page--beauty-clinic .stat-num{color:#c026d3}
-.html-hub-page--beauty-clinic .scenario-icon{background:#FDF4FF}
+.html-hub-page--beauty-clinic .scenario-icon{background:transparent}
 .html-hub-page--beauty-clinic .scenario .who{color:#86198f}
 .html-hub-page--beauty-clinic .flow-arrow{color:#c026d3}
 .html-hub-page--beauty-clinic .leak-card h3{color:#86198f}
@@ -626,7 +626,7 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page .scenario{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:24px 26px;display:grid;grid-template-columns:44px 1fr;gap:16px;align-items:start;transition:box-shadow .2s}
 .html-hub-page .scenario:hover{box-shadow:var(--shadow)}
-.html-hub-page .scenario-icon{width:44px;height:44px;border-radius:10px;background:var(--purple-bg);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.html-hub-page .scenario-icon{width:44px;height:44px;border-radius:0;background:transparent;border:none;box-shadow:none;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
 .html-hub-page .scenario h3{font-size:15px;font-weight:700;margin-bottom:4px;color:var(--navy)}
 .html-hub-page .scenario-stat{font-size:12px;font-weight:700;line-height:1.45;color:#1f2937;margin:0 0 8px}
 .html-hub-page .scenario p{font-size:13px;color:var(--gray-600);line-height:1.5}
