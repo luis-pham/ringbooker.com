@@ -127,7 +127,7 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 
 /* Primary site nav is MarketingHeader (.mk-nav in marketing-chrome). Legacy duplicate nav CSS removed — bare "nav{}" selectors were overriding .mk-nav on this page only. */
 
-/* ─── HOME HERO + PROOF BAR: one continuous background (eliminates seam between sections) ─── */
+/* ─── HOME HERO: full-bleed background shell ─── */
 .home-hero-shell{
   position:relative;
   overflow:hidden;
@@ -171,17 +171,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.hero-btns .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
 
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
-	.proofbar{padding:24px 48px 52px;background:transparent}
-	.proofbar-inner{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-	.proof-item{display:flex;align-items:center;gap:12px;border:1px solid rgba(237,233,254,.95);background:linear-gradient(180deg,#fff 0%,#faf9ff 100%);border-radius:20px;padding:14px 16px;font-size:var(--mk-body);font-weight:600;color:var(--text-dark);line-height:1.45;box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
-	.proof-item:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.65)}
-	.proof-icon{width:36px;height:36px;min-width:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--purple-dark);box-shadow:inset 0 0 0 1px rgba(255,255,255,.6)}
-	.proof-icon .home-line-icon{flex-shrink:0}
-	.proof-text{flex:1;min-width:0}
-	.proof-purple{background:#EDE9FE}
-	.proof-green{background:#D1FAE5}
-	.proof-amber{background:#FEF3C7}
-	.proof-pink{background:#FCE7F3}
 	.leak-section{padding:72px 48px;background:linear-gradient(180deg,#fff,#F9FAFB)}
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
@@ -191,6 +180,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-icon .home-line-icon{margin:0}
 	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;margin-bottom:8px;letter-spacing:-.25px;text-align:center;color:var(--text-dark)}
 	.leak-card p{font-size:14px;color:var(--text-desc);line-height:1.68}
+	.leak-card p + p{margin-top:10px}
 	.compare-section{padding:72px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
 	.compare-grid{display:grid;gap:0;margin-top:40px;border:1px solid var(--border);border-radius:22px;background:#fff;overflow:hidden;box-shadow:var(--home-shadow-soft)}
 	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid rgba(241,245,249,.9)}
@@ -642,10 +632,10 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 
 /* ─── RESPONSIVE ─── */
 @media(max-width:960px){
-  .proofbar-inner,.leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
+  .leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
-  footer,.hero,.proofbar,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.mfaq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
+  footer,.hero,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.mfaq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
   .industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.vc-ring,.user-image-corners::before,.user-image-corners::after{display:none}
   .pulse-dot,.wv span,.vc-wave span,.live-dot,.cta-vc-wave span{animation:none}
@@ -1043,75 +1033,31 @@ export function MarketingHomeTemplate() {
             </div>
           </div>
         </section>
-        <section className="proofbar" aria-label="RingBooker setup proof points">
-          <div className="proofbar-inner">
-            {[
-              {
-                tone: 'proof-purple',
-                text: 'Keep your current phone number',
-                icon: (
-                  <HomeLineIcon>
-                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
-                  </HomeLineIcon>
-                ),
-              },
-              {
-                tone: 'proof-green',
-                text: 'Square live today; booking workflows stay',
-                icon: (
-                  <HomeLineIcon>
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                  </HomeLineIcon>
-                ),
-              },
-              {
-                tone: 'proof-amber',
-                text: 'Guided 15-minute setup — no big migration',
-                icon: (
-                  <HomeLineIcon>
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                  </HomeLineIcon>
-                ),
-              },
-              {
-                tone: 'proof-pink',
-                text: 'Built for nail salons, hair salons, spas, and clinics',
-                icon: (
-                  <HomeLineIcon>
-                    <path d="M12 2l2.4 7.4H22l-6 4.6 2.3 7L12 17.8 5.7 21l2.3-7-6-4.6h7.6L12 2z" />
-                  </HomeLineIcon>
-                ),
-              },
-            ].map(({ tone, text, icon }) => (
-              <div className="proof-item" key={text}>
-                <span className={`proof-icon ${tone}`}>{icon}</span>
-                <span className="proof-text">{text}</span>
-              </div>
-            ))}
-          </div>
-        </section>
         </div>
         <section className="leak-section" id="missed-calls">
           <div className="leak-inner">
-            <div className="sec-label">Missed-Call Recovery</div>
-            <h2 className="sec-title reveal">Your team is great. But your phone is leaking bookings every day.</h2>
-            <p className="sec-sub reveal">RingBooker covers the moments your front desk cannot: after hours, during services, at lunch, on weekends, and when two callers ring at once.</p>
+            <div className="sec-label">Where calls get lost</div>
+            <h2 className="sec-title reveal">Your phone is leaking bookings every day.</h2>
+            <p className="sec-sub reveal">
+              Most missed opportunities happen when staff are with clients, the shop is closed, or two callers need help at once.
+            </p>
             <div className="leak-grid">
               {[
                 {
-                  title: 'Your team is with a client',
-                  body: 'RingBooker answers without forcing your staff to pause a manicure, color service, treatment, or consultation.',
+                  title: 'Staff are busy with clients',
+                  body: 'Calls arrive while staff are doing nails, hair, treatments, or checkout.',
+                  footer: 'RingBooker answers without interrupting your team',
                   icon: (
                     <HomeLineIcon>
-                      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+                      <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
                     </HomeLineIcon>
                   ),
                 },
                 {
-                  title: 'Calls come in after hours',
-                  body: 'Capture booking intent when the salon is closed, then send confirmations or summaries for the next business day.',
+                  title: 'After-hours callers move on',
+                  body: 'Evening and weekend callers still ask about availability, pricing, and booking options.',
+                  footer: 'Capture booking intent even when closed',
                   icon: (
                     <HomeLineIcon>
                       <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
@@ -1119,48 +1065,24 @@ export function MarketingHomeTemplate() {
                   ),
                 },
                 {
-                  title: 'Reschedule and cancellation calls pile up',
-                  body: 'Handle routine changes without burying your team in voicemail and manual follow-up.',
+                  title: 'One line cannot handle overflow',
+                  body: 'When the front desk is already on a call, the next booking caller may hang up.',
+                  footer: 'Keep overflow callers in the loop',
                   icon: (
                     <HomeLineIcon>
-                      <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+                      <path d="M17 3h4v4M3 21h4v-4M21 3l-6 6M3 21l6-6" />
                     </HomeLineIcon>
                   ),
                 },
-                {
-                  title: 'Callers do not leave messages',
-                  body: 'Missed-call text back gives silent callers an easy way to continue instead of calling your competitor.',
-                  icon: (
-                    <HomeLineIcon>
-                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                    </HomeLineIcon>
-                  ),
-                },
-                {
-                  title: 'Two calls ring at the same time',
-                  body: 'Overflow handling keeps the second caller from hearing a busy line or waiting too long.',
-                  icon: (
-                    <HomeLineIcon>
-                      <path d="M12.83 2.18a2 2 0 00-1.66 0L2.6 6.08a1 1 0 000 1.83l8.58 3.91a2 2 0 001.66 0l8.58-3.9a1 1 0 000-1.83L12.83 2.18z" />
-                      <path d="M2 12.05l8.58 3.91a2 2 0 001.66 0L21 12.05M2 17.05l8.58 3.91a2 2 0 001.66 0L21 17.05" />
-                    </HomeLineIcon>
-                  ),
-                },
-                {
-                  title: 'Online booking did not replace phone calls',
-                  body: 'Some customers still want to talk. RingBooker meets them on the channel they already use.',
-                  icon: (
-                    <HomeLineIcon>
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <path d="M16 2v4M8 2v4M3 10h18" />
-                    </HomeLineIcon>
-                  ),
-                },
-              ].map(({ title, body, icon }) => (
+              ].map(({ title, body, footer, icon }) => (
                 <article className="leak-card reveal" key={title}>
                   <div className="leak-icon">{icon}</div>
                   <h3>{title}</h3>
                   <p>{body}</p>
+                  <p>
+                    <span aria-hidden="true">• </span>
+                    {footer}
+                  </p>
                 </article>
               ))}
             </div>
