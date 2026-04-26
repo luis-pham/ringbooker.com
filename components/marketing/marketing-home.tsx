@@ -171,16 +171,18 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.hero-btns .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
 
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
-	.leak-section{padding:72px 48px;background:linear-gradient(180deg,#fff,#F9FAFB)}
+	.leak-section{padding:88px 48px;background:linear-gradient(180deg,#fff 0%,#fcfbff 48%,#F9FAFB 100%)}
 	.leak-inner,.compare-inner{max-width:1100px;margin:0 auto}
 	.leak-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-	.leak-card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
-	.leak-card:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.55)}
-	.leak-icon{width:44px;height:44px;margin:0 auto 12px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#faf9ff,#f5f3ff);border:1px solid rgba(196,181,253,.35);color:var(--purple-dark)}
+	.leak-card{position:relative;background:linear-gradient(180deg,#fbfaff 0%,#ffffff 82%);border:1.5px solid rgba(196,181,253,.45);border-radius:24px;padding:34px 28px 24px;box-shadow:0 0 0 4px rgba(139,92,246,.05),var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
+	.leak-card:hover{transform:translateY(-2px);box-shadow:0 18px 42px -10px rgba(124,58,237,.16),0 0 0 4px rgba(139,92,246,.08);border-color:#c4b5fd}
+	.leak-icon{width:48px;height:48px;margin:0 0 18px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#f8ddea,#f4cfe0);border:1px solid rgba(244,114,182,.16);color:#6b2168;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
 	.leak-icon .home-line-icon{margin:0}
-	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;margin-bottom:8px;letter-spacing:-.25px;text-align:center;color:var(--text-dark)}
-	.leak-card p{font-size:14px;color:var(--text-desc);line-height:1.68}
-	.leak-card p + p{margin-top:10px}
+	.leak-card h3{font-size:clamp(24px,2.25vw,32px);font-weight:700;line-height:1.16;letter-spacing:-.9px;margin-bottom:14px;text-align:left;color:#2a1f24;max-width:12ch}
+	.leak-card p{font-size:15px;color:#6f625f;line-height:1.74;text-align:left}
+	.leak-divider{height:1px;background:linear-gradient(90deg,rgba(221,214,204,.95) 0%,rgba(221,214,204,.72) 82%,rgba(221,214,204,0) 100%);margin:20px 0 16px}
+	.leak-point{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.6;font-weight:700;color:#7b4b78}
+	.leak-point-dot{width:8px;height:8px;border-radius:50%;background:#c9a24a;flex-shrink:0;margin-top:8px}
 	.compare-section{padding:72px 48px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
 	.compare-grid{display:grid;gap:0;margin-top:40px;border:1px solid var(--border);border-radius:22px;background:#fff;overflow:hidden;box-shadow:var(--home-shadow-soft)}
 	.compare-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid rgba(241,245,249,.9)}
@@ -1079,10 +1081,11 @@ export function MarketingHomeTemplate() {
                   <div className="leak-icon">{icon}</div>
                   <h3>{title}</h3>
                   <p>{body}</p>
-                  <p>
-                    <span aria-hidden="true">• </span>
-                    {footer}
-                  </p>
+                  <div className="leak-divider" aria-hidden="true" />
+                  <div className="leak-point">
+                    <span className="leak-point-dot" aria-hidden="true" />
+                    <span>{footer}</span>
+                  </div>
                 </article>
               ))}
             </div>
