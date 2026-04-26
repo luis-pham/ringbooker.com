@@ -78,8 +78,8 @@ function ProviderCard({
     <article
       className={`group cursor-pointer rounded-2xl border bg-white p-4 transition duration-200 ${
         active
-          ? 'border-violet-400 bg-violet-50/40 shadow-[0_10px_24px_rgba(139,92,246,0.12)]'
-          : 'border-slate-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]'
+          ? 'border-violet-400 bg-violet-50/40 shadow-[0_20px_40px_-8px_rgba(17,24,39,0.12),0_8px_16px_-6px_rgba(17,24,39,0.08)]'
+          : 'border-slate-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_20px_40px_-8px_rgba(17,24,39,0.12),0_8px_16px_-6px_rgba(17,24,39,0.08)]'
       }`}
       onClick={() => onSelect(provider)}
       role="button"
@@ -394,7 +394,7 @@ export function CurrentNumberCallForwardingTool() {
               ref={(el) => {
                 howStepCardRefs.current[i] = el;
               }}
-              className="w-[84%] shrink-0 snap-center rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm transition duration-200 hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_16px_34px_rgba(124,58,237,0.12)] sm:w-auto sm:shrink sm:snap-none"
+              className="w-[84%] shrink-0 snap-center rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm transition duration-200 hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_20px_40px_-8px_rgba(17,24,39,0.12),0_8px_16px_-6px_rgba(17,24,39,0.08)] sm:w-auto sm:shrink sm:snap-none"
             >
               <span className="mx-auto mb-3 inline-flex items-center justify-center">
                 <HowItWorksIcon kind={step.icon} />

@@ -126,8 +126,8 @@ const styles = [
     }
     .demo-hub-card:hover{
       transform:translateY(-2px);
-      border-color:#DDD6FE;
-      box-shadow:0 20px 44px rgba(124,58,237,.14);
+      border-color:#d1d5db;
+      box-shadow:0 20px 40px -8px rgba(17,24,39,.12),0 8px 16px -6px rgba(17,24,39,.08);
       background:#fff;
     }
     .demo-hub-card:focus-visible{outline:2px solid #8B5CF6;outline-offset:2px}
@@ -151,14 +151,14 @@ const styles = [
     .demo-hub-step-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
     .demo-hub-step{
       background:#fff;border:1px solid var(--demo-hub-border);border-radius:var(--r-lg);padding:22px 20px;
-      box-shadow:0 4px 20px rgba(17,24,39,.04);
+      box-shadow:var(--demo-hub-shadow);
       text-align:center;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease;
     }
     .demo-hub-step:hover{
-      transform:translateY(-3px);
-      border-color:#DDD6FE;
-      box-shadow:0 18px 38px rgba(124,58,237,.14);
-      background:#FCFAFF;
+      transform:translateY(-2px);
+      border-color:#d1d5db;
+      box-shadow:0 20px 40px -8px rgba(17,24,39,.12),0 8px 16px -6px rgba(17,24,39,.08);
+      background:#fff;
     }
     /* Match how-it-works .hiw-step::before — purple circle, white number, centered */
     .demo-hub-step-num{
