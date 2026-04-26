@@ -144,8 +144,8 @@ const styles = [
     .demo-hub-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
     .demo-hub-card{
       position:relative;background:#fff;border:1px solid var(--demo-hub-border);border-radius:var(--r-xl);
-      padding:22px 20px 20px;box-shadow:var(--demo-hub-shadow);text-decoration:none;color:inherit;
-      display:flex;flex-direction:column;min-height:300px;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
+      padding:22px 20px 20px;text-decoration:none;color:inherit;
+      display:flex;flex-direction:column;min-height:300px;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease;
       overflow:hidden;
     }
     .demo-hub-card::before{
@@ -160,7 +160,9 @@ const styles = [
       transform:translateY(-5px);
       border-color:#DDD6FE;
       box-shadow:var(--demo-hub-shadow-hover);
+      background:#fff;
     }
+    .demo-hub-card:focus-visible{outline:2px solid #8B5CF6;outline-offset:2px}
     .demo-hub-card-mark{
       width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;
       margin-bottom:16px;color:#fff;flex-shrink:0;
@@ -193,8 +195,16 @@ const styles = [
     .demo-hub-step{
       background:#fff;border:1px solid var(--demo-hub-border);border-radius:var(--r-lg);padding:22px 20px;
       box-shadow:0 4px 20px rgba(17,24,39,.04);
-      text-align:center;
+      text-align:center;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease;
+      cursor:pointer;
     }
+    .demo-hub-step:hover,.demo-hub-step:focus-visible,.demo-hub-step:active{
+      transform:translateY(-3px);
+      border-color:#DDD6FE;
+      box-shadow:0 18px 38px rgba(124,58,237,.14);
+      background:#FCFAFF;
+    }
+    .demo-hub-step:focus-visible{outline:2px solid #8B5CF6;outline-offset:2px}
     /* Match how-it-works .hiw-step::before — purple circle, white number, centered */
     .demo-hub-step-num{
       width:36px;height:36px;border-radius:50%;
@@ -297,21 +307,21 @@ export function MarketingDemoVerticalIndexTemplate() {
               <h2>How the demo works</h2>
               <p>Three quick steps—then talk naturally, like a real caller would.</p>
               <div className="demo-hub-step-grid">
-                <div className="demo-hub-step">
+                <button type="button" className="demo-hub-step">
                   <div className="demo-hub-step-num">1</div>
                   <h3>Pick your industry</h3>
                   <p>Select the demo that matches your salon, spa, or clinic. Each uses tailored scripts and sample services.</p>
-                </div>
-                <div className="demo-hub-step">
+                </button>
+                <button type="button" className="demo-hub-step">
                   <div className="demo-hub-step-num">2</div>
                   <h3>Enter your number</h3>
                   <p>We place a one-time outbound call to the number you provide—so you hear the experience on your own phone.</p>
-                </div>
-                <div className="demo-hub-step">
+                </button>
+                <button type="button" className="demo-hub-step">
                   <div className="demo-hub-step-num">3</div>
                   <h3>Answer and ask naturally</h3>
                   <p>Try bookings, reschedules, pricing, or after-hours questions. There is no setup on your live business line.</p>
-                </div>
+                </button>
               </div>
             </div>
           </section>

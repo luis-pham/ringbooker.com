@@ -187,11 +187,6 @@ function SetupGuidePanel({
 
       <div className="space-y-8">
         <div>
-          <h4 className="text-base font-bold text-slate-900">Recommended setup for salons and spas</h4>
-          <p className="mt-1 text-[15px] leading-7 text-slate-700">{provider.ringbookerRecommendation}</p>
-        </div>
-
-        <div>
           <h4 className="text-lg font-bold text-slate-900">Before you start</h4>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7 text-slate-600">
             {provider.beforeYouStart.map((item) => (
