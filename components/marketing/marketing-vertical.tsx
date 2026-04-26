@@ -64,7 +64,7 @@ const TRIAL_CTA_BASE =
   'inline-flex items-center justify-center rounded-full border border-slate-200 bg-transparent px-6 py-3 text-[14px] font-semibold text-slate-900 transition';
 
 const DEMO_CTA_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-extrabold text-white transition hover:scale-[1.03] hover:brightness-[1.06]';
+  'inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
 
 export type IndustryLandingTheme = {
   /** Page background wash behind hero + sections */
@@ -87,7 +87,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#5b21b6_0%,#7c3aed_50%,#a78bfa_100%)]',
     finalCtaPrimaryBtnText: 'text-violet-900',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_10px_36px_rgba(91,33,182,0.32)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-violet-500 hover:text-violet-600`,
     accentClass: 'text-violet-600',
   },
@@ -96,7 +96,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ffedd5_0%,#fffbeb_42%,#ffffff_68%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#9a3412_0%,#d97706_48%,#f59e0b_100%)]',
     finalCtaPrimaryBtnText: 'text-amber-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_10px_36px_rgba(180,83,9,0.35)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_8px_28px_rgba(180,83,9,0.2),0_2px_8px_rgba(180,83,9,0.12)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-amber-500 hover:text-amber-800`,
     accentClass: 'text-amber-600',
   },
@@ -105,7 +105,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ccfbf1_0%,#f0fdfa_44%,#ffffff_70%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#115e59_0%,#0d9488_50%,#14b8a6_100%)]',
     finalCtaPrimaryBtnText: 'text-teal-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_10px_36px_rgba(13,148,136,0.35)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_8px_28px_rgba(13,148,136,0.2),0_2px_8px_rgba(13,148,136,0.12)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-teal-500 hover:text-teal-800`,
     accentClass: 'text-teal-600',
   },
@@ -114,7 +114,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#e0e7ff_0%,#eef2ff_46%,#ffffff_72%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#312e81_0%,#4f46e5_52%,#818cf8_100%)]',
     finalCtaPrimaryBtnText: 'text-indigo-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_10px_36px_rgba(67,56,202,0.38)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_8px_28px_rgba(67,56,202,0.22),0_2px_8px_rgba(67,56,202,0.12)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-indigo-500 hover:text-indigo-800`,
     accentClass: 'text-indigo-600',
   },
@@ -123,7 +123,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#fae8ff_0%,#fdf4ff_46%,#ffffff_72%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#86198f_0%,#c026d3_50%,#e879f9_100%)]',
     finalCtaPrimaryBtnText: 'text-fuchsia-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_10px_36px_rgba(192,38,211,0.35)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_8px_28px_rgba(192,38,211,0.22),0_2px_8px_rgba(192,38,211,0.12)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-fuchsia-500 hover:text-fuchsia-800`,
     accentClass: 'text-fuchsia-600',
   },
@@ -201,7 +201,7 @@ function IntegrationRow() {
                 decoding="async"
               />
               <div className="flex min-w-0 flex-col justify-center pt-0.5">
-                <span className="text-[13px] font-extrabold leading-tight tracking-tight text-slate-900">{item.name}</span>
+                <span className="text-[13px] font-bold leading-tight tracking-tight text-slate-900">{item.name}</span>
                 {isLive ? (
                   <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
                     <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
@@ -306,7 +306,7 @@ function HowItWorks({
   return (
     <section className="mx-auto mt-24 max-w-6xl px-6" data-vertical-step-track>
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Setup</div>
-      <h2 className="mb-4 text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <p className="mx-auto max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden justify-center" data-vertical-step-nav>
         {steps.map((s) => (
@@ -329,7 +329,7 @@ function HowItWorks({
             data-vertical-step-card
             className="relative w-[84%] shrink-0 snap-center rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg md:w-auto md:shrink md:snap-none"
           >
-            <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-extrabold text-white`}>{s.n}</div>
+            <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-bold text-white`}>{s.n}</div>
             <p className="text-[15px] font-bold text-slate-900">{s.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-500">{s.body}</p>
           </div>
@@ -349,7 +349,7 @@ function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
             key={s.label}
             className="rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
           >
-            <p className={`text-5xl font-extrabold tracking-tight ${accent}`}>{s.value}</p>
+            <p className={`text-5xl font-bold tracking-tight ${accent}`}>{s.value}</p>
             <p className="mt-2 text-base font-bold text-slate-900">{s.label}</p>
             <p className="mt-1 text-[13.5px] leading-6 text-slate-500">{s.sub}</p>
           </article>
@@ -364,7 +364,7 @@ function PainPoints({ points, heading }: { points: PainPoint[]; heading: string 
   return (
     <section className="mx-auto mt-24 max-w-6xl px-6">
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Why Calls Get Missed</div>
-      <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {points.map((p) => (
           <article
@@ -394,7 +394,7 @@ function FeatureGrid({
   return (
     <section className="mx-auto mt-24 max-w-6xl px-6">
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">What RingBooker Does</div>
-      <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
           <article
@@ -423,7 +423,7 @@ function VsTable({
   return (
     <section className="mx-auto mt-24 max-w-6xl px-6">
       <div className="mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] text-slate-400">Before vs. After</div>
-      <h2 className="text-center text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
+      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">{heading}</h2>
       <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
         <div className="min-w-[600px]">
           <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-bold uppercase tracking-wider text-slate-400">
@@ -477,12 +477,12 @@ function FinalCta({
       <div className={`relative overflow-hidden rounded-3xl px-8 py-14 text-center text-white md:px-14 ${shellGradientClass}`}>
         <div className="pointer-events-none absolute -right-8 -top-10 h-72 w-72 rounded-full bg-white/10" />
         <p className="relative text-[12px] font-bold uppercase tracking-[0.18em] text-white/70">{label}</p>
-        <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-extrabold leading-[1.1] tracking-tight">{title}</h2>
+        <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-bold leading-[1.1] tracking-tight">{title}</h2>
         <p className="relative mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-white/75">{subtitle}</p>
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
           <a
             href={demoPath}
-            className={`inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-[14px] font-extrabold shadow-md shadow-black/10 transition hover:scale-[1.04] ${primaryBtnTextClass}`}
+            className={`inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-[14px] font-bold shadow-[0_8px_24px_-6px_rgba(17,24,39,0.08),0_2px_8px_rgba(17,24,39,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-6px_rgba(17,24,39,0.1),0_4px_12px_rgba(17,24,39,0.05)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${primaryBtnTextClass}`}
           >
             <DemoCtaPhoneIcon width={18} height={18} />
             Try a Live Demo Call
@@ -1366,7 +1366,7 @@ function VerticalHubArticles({
     <section className="mt-16 rounded-3xl bg-slate-50 px-5 py-12 sm:px-8" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
         <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-slate-500">In this hub</p>
-        <h2 className="mb-4 text-[clamp(24px,3.2vw,34px)] font-extrabold tracking-tight text-slate-900">{copy.heading}</h2>
+        <h2 className="mb-4 text-[clamp(24px,3.2vw,34px)] font-bold tracking-tight text-slate-900">{copy.heading}</h2>
         <p className="max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
           {links.map((link) => (

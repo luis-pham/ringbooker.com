@@ -71,12 +71,12 @@ export function MarketingFaqAccordion({
         dangerouslySetInnerHTML={{
           __html: `
 .mfaq-section{
-  --mfaq-border:#E5E7EB;
+  --mfaq-border:var(--mk-border-soft,#E8ECF1);
   --mfaq-bg-hover:#F9FAFB;
   --mfaq-text:#111827;
-  --mfaq-muted:#4B5563;
+  --mfaq-muted:var(--mk-text-desc,#64748B);
   --mfaq-purple:#7C3AED;
-  padding:80px 24px 88px;
+  padding:72px 24px 72px;
   max-width:760px;
   margin:0 auto;
   text-align:center;
@@ -89,39 +89,41 @@ export function MarketingFaqAccordion({
   padding:5px 12px;
   border-radius:9999px;
   font-size:var(--mk-eyebrow);
-  font-weight:700;
+  font-weight:600;
   letter-spacing:var(--mk-eyebrow-ls);
   text-transform:uppercase;
-  color:var(--mfaq-purple);
+  color:#5B21B6;
   background:#F5F3FF;
-  border:1px solid #DDD6FE;
-  margin:0 auto 16px;
+  border:1px solid rgba(196,181,253,.45);
+  margin:0 auto 14px;
   text-align:center;
 }
 .mfaq-title{
   font-size:var(--mk-section-h2);
-  font-weight:800;
+  font-weight:700;
   letter-spacing:var(--mk-section-h2-track);
-  margin:0 0 16px;
+  margin:0 0 14px;
   text-align:center;
   color:var(--mfaq-text);
   line-height:var(--mk-section-h2-lh);
 }
 .mfaq-sub{
   font-size:var(--mk-section-lead);
-  color:#6B7280;
-  margin:0 auto 40px;
+  color:var(--mk-text-desc,#64748B);
+  margin:0 auto 36px;
   line-height:var(--mk-section-lead-lh);
-  max-width:560px;
+  max-width:min(560px,100%);
   text-align:center;
+  font-weight:400;
 }
 .mfaq-list{
   display:flex;
   flex-direction:column;
   border:1px solid var(--mfaq-border);
-  border-radius:12px;
+  border-radius:20px;
   overflow:hidden;
   text-align:left;
+  box-shadow:var(--mk-shadow-soft,0 1px 3px rgba(0,0,0,.04));
 }
 /* Keep a comfortable gap when subtitle is intentionally hidden. */
 .mfaq-title + .mfaq-list{margin-top:28px}
@@ -147,6 +149,10 @@ export function MarketingFaqAccordion({
   gap:12px;
   list-style:none;
   transition:background .2s;
+}
+.mfaq-q:focus-visible{
+  outline:2px solid var(--mfaq-purple);
+  outline-offset:-2px;
 }
 .mfaq-q::-webkit-details-marker{display:none}
 .mfaq-q:hover{background:var(--mfaq-bg-hover)}
@@ -179,8 +185,8 @@ export function MarketingFaqAccordion({
   .mfaq-section:not(.mfaq-section--embedded){
     padding-left:22px;
     padding-right:22px;
-    padding-top:64px;
-    padding-bottom:72px;
+    padding-top:56px;
+    padding-bottom:64px;
   }
   .mfaq-section--embedded{padding-left:0;padding-right:0}
 }

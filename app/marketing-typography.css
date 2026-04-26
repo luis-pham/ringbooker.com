@@ -22,16 +22,16 @@
   --mk-eyebrow: 12px;
   --mk-eyebrow-ls: 0.08em;
 
-  --mk-section-h2: clamp(32px, 4vw, 48px);
-  --mk-section-h2-lh: 1.12;
-  --mk-section-h2-track: -1.4px;
+  --mk-section-h2: clamp(28px, 3.35vw, 42px);
+  --mk-section-h2-lh: 1.14;
+  --mk-section-h2-track: -1.1px;
 
   --mk-section-lead: 16px;
-  --mk-section-lead-lh: 1.7;
+  --mk-section-lead-lh: 1.72;
 
-  --mk-card-title: 17px;
+  --mk-card-title: 16px;
   --mk-body: 14px;
-  --mk-body-lh: 1.65;
+  --mk-body-lh: 1.68;
   --mk-body-md: 14.5px;
   --mk-body-sm: 13px;
 
@@ -56,4 +56,11 @@
 
   --mk-meta: 13px;
   --mk-caption: 12.5px;
+
+  /** Muted body / descriptions — align with homepage */
+  --mk-text-desc: #64748b;
+  /** Subtle card border + soft elevation (homepage-aligned) */
+  --mk-border-soft: #e8ecf1;
+  --mk-shadow-soft: 0 20px 40px -8px rgba(17, 24, 39, 0.06), 0 8px 16px -6px rgba(17, 24, 39, 0.04);
+  --mk-shadow-hover: 0 22px 44px -8px rgba(17, 24, 39, 0.09), 0 10px 20px -6px rgba(17, 24, 39, 0.05);
 }
