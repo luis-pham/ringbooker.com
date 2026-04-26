@@ -408,8 +408,8 @@ export function CurrentNumberCallForwardingTool() {
 
       <section ref={findRef} id="find-setup" className="mx-auto mt-24 max-w-6xl px-6">
         <div className="md:p-2">
-          <h2 className="mb-4 mx-auto max-w-[22ch] text-3xl font-bold tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Find your setup</h2>
-          <div className="flex flex-wrap gap-2">
+          <h2 className="mx-auto mb-14 max-w-[22ch] text-center text-3xl font-bold tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Find your setup</h2>
+          <div className="flex flex-wrap justify-center gap-2">
             <button type="button" onClick={() => setFilter('popular')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'popular' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Popular countries</button>
             <button type="button" onClick={() => setFilter('voip')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'voip' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Business phone &amp; VoIP</button>
             <button type="button" onClick={() => setFilter('other')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'other' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Other countries</button>
@@ -417,11 +417,8 @@ export function CurrentNumberCallForwardingTool() {
 
           {selected ? (
             <div className="sticky top-[72px] z-20 mt-4 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-800 md:hidden">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
                 <span>{selected.name} guide selected</span>
-                <button type="button" className="rounded-full border border-violet-300 px-3 py-1 text-xs" onClick={() => setSelected(null)}>
-                  Back to providers
-                </button>
               </div>
             </div>
           ) : null}

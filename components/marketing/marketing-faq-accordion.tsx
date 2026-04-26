@@ -127,7 +127,7 @@ export function MarketingFaqAccordion({
   border-radius:20px;
   overflow:hidden;
   text-align:left;
-  box-shadow:var(--mk-shadow-soft,0 1px 3px rgba(0,0,0,.04));
+  box-shadow:none;
 }
 /* Keep a comfortable gap when subtitle is intentionally hidden. */
 .mfaq-title + .mfaq-list{margin-top:28px}

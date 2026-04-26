@@ -88,7 +88,7 @@ const styles: string[] = [
   .vd-back:hover{color:var(--va)}
 
   /* badge + heading */
-  .vd-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--va) 30%,#E5E7EB);background:color-mix(in srgb,var(--va) 8%,#fff);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--va);margin:0 auto;width:fit-content}
+  .vd-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--va) 30%,#E5E7EB);background:color-mix(in srgb,var(--va) 8%,#fff);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--va);margin:0 auto 16px;width:fit-content}
   .vd-icon{width:22px;height:22px;border-radius:7px;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
 
   @media(min-width:800px){

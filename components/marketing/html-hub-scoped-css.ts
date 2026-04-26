@@ -112,7 +112,7 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 
 /* Landing page width — align with marketing-home content rails (~1100px, 48px gutters) */
-.html-hub-page--landing-width .section{padding:72px 48px}
+.html-hub-page--landing-width .section{padding:88px 48px}
 /* .section-inner max-width for landing: see “Must follow” rule after .section-inner{1200px} */
 @media(max-width:640px){
   .html-hub-page--landing-width .section{padding:56px 24px}
@@ -528,7 +528,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .btn-lg{padding:14px 28px;font-size:15px}
 
 /* Sections */
-.html-hub-page .section{padding:72px 24px}
+.html-hub-page .section{padding:88px 24px}
 .html-hub-page .section-inner{max-width:1200px;margin:0 auto}
 /* Must follow the rule above: landing hubs use 1100px rails (otherwise auto-fill card grids hit 4 cols). */
 .html-hub-page.html-hub-page--landing-width .section-inner{max-width:1100px}
@@ -869,7 +869,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--green .article-link::before{color:var(--green)}
 
 /* FAQ */
-.html-hub-page .faq-list{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:var(--mk-shadow-soft,none)}
+.html-hub-page .faq-list{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:none}
 .html-hub-page .faq-item{border-bottom:1px solid var(--border)}
 .html-hub-page .faq-item:last-child{border-bottom:none}
 .html-hub-page .faq-q{width:100%;background:none;border:none;padding:20px 24px;text-align:left;font-family:inherit;font-size:15px;font-weight:600;color:var(--navy);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px}

@@ -228,15 +228,7 @@ function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
         eyebrow="Common Questions"
         title="Frequently Asked Questions"
         subtitle={null}
-        className="vertical-faq-no-top-border"
         openFirstItem
-      />
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-.vertical-faq-no-top-border .mfaq-list{border-top:none}
-`,
-        }}
       />
     </div>
   );
@@ -306,7 +298,7 @@ function HowItWorks({
   heading?: string;
 }) {
   return (
-    <section className="mx-auto mt-24 max-w-6xl px-6" data-vertical-step-track>
+    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16" data-vertical-step-track>
       <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Setup</div>
       <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <p className="mx-auto max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
@@ -344,7 +336,7 @@ function HowItWorks({
 type StatItem = { value: string; label: string; sub: string };
 function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
   return (
-    <section className="mx-auto mt-20 max-w-6xl px-6">
+    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((s) => (
           <article
@@ -364,7 +356,7 @@ function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
 type PainPoint = { icon?: string; title: string; body: string };
 function PainPoints({ points, heading, eyebrowClass = 'text-slate-400' }: { points: PainPoint[]; heading: string; eyebrowClass?: string }) {
   return (
-    <section className="mx-auto mt-24 max-w-6xl px-6">
+    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
       <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Why Calls Get Missed</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
@@ -396,7 +388,7 @@ function FeatureGrid({
   heading?: string;
 }) {
   return (
-    <section className="mx-auto mt-24 max-w-6xl px-6">
+    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
       <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>What RingBooker Does</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -427,7 +419,7 @@ function VsTable({
   heading?: string;
 }) {
   return (
-    <section className="mx-auto mt-24 max-w-6xl px-6">
+    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
       <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Before vs. After</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
@@ -479,7 +471,7 @@ function FinalCta({
   primaryBtnTextClass: string;
 }) {
   return (
-    <section className="mx-auto mt-24 max-w-6xl px-6 pb-12">
+    <section className="mx-auto mt-[88px] max-w-6xl px-6 pb-12 md:pb-16">
       <div className={`relative overflow-hidden rounded-3xl px-8 py-14 text-center text-white md:px-14 ${shellGradientClass}`}>
         <div className="pointer-events-none absolute -right-8 -top-10 h-72 w-72 rounded-full bg-white/10" />
         <p className="relative text-[12px] font-bold uppercase tracking-[0.18em] text-white/70">{label}</p>
@@ -1391,7 +1383,7 @@ function VerticalHubArticles({
   if (links.length === 0) return null;
   const copy = VERTICAL_HUB_COPY[vertical];
   return (
-    <section className="mt-16 rounded-3xl bg-slate-50 px-5 py-12 sm:px-8" aria-label="In this hub">
+    <section className="mt-[88px] rounded-3xl bg-slate-50 px-5 py-12 sm:px-8 md:pb-16" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
         <p className={`mb-2 text-[12px] font-bold uppercase tracking-[0.12em] ${eyebrowClass}`}>In this hub</p>
         <h2 className="mb-4 text-[clamp(24px,3.2vw,34px)] font-bold tracking-tight text-slate-900">{copy.heading}</h2>

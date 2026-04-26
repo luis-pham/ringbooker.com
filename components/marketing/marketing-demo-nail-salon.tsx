@@ -140,7 +140,7 @@ const styles: string[] = [
     .nail-demo-hero-inner{max-width:860px;margin:0 auto;text-align:center}
     .nail-demo-badge{
       display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;
-      border:1px solid rgba(139,92,246,.3);background:#fff;color:var(--purple-dark);font-size:14px;font-weight:700
+      border:1px solid rgba(139,92,246,.3);background:#fff;color:var(--purple-dark);font-size:14px;font-weight:700;margin-bottom:16px
     }
     .nail-demo-hero h1{margin:16px 0 12px;font-size:clamp(30px,5vw,48px);line-height:1.08;letter-spacing:-1.4px}
     .nail-demo-hero p{margin:0 auto;max-width:700px;color:var(--text-gray);font-size:16px;line-height:1.7}
@@ -152,7 +152,7 @@ const styles: string[] = [
     .nail-step{padding:18px 0;border-bottom:1px solid #F1F5F9}
     .nail-step:last-of-type{border-bottom:none}
     .nail-step-label{
-      margin:0 0 12px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7C3AED
+      margin:0 0 24px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#7C3AED
     }
     .nail-step-title{margin:0 0 6px;font-size:21px;line-height:1.2;letter-spacing:-.4px}
     .nail-step-sub{margin:0 0 16px;color:var(--text-gray);font-size:14px;line-height:1.6}
