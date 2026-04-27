@@ -22,7 +22,7 @@ export function PostCard({ post }: { post: PostWithRelations }) {
     >
       <div className="p-5">
         <div className="mb-2.5 flex items-center gap-2 text-[12px] text-gray-400">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-brand-purple">
+          <span className="text-[12px] font-semibold uppercase tracking-[0.08em] text-brand-purple">
             {primaryCategory?.name ?? 'Article'}
           </span>
           <span className="h-1 w-1 rounded-full bg-gray-300" />

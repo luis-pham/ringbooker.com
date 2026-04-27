@@ -71,7 +71,7 @@ export function MarketingLegalPage({
 .legal-shell{padding:112px 22px 72px;background:radial-gradient(ellipse 95% 58% at 50% 0%,#f3e8ff 0%,#ffffff 62%);}
 .legal-faq-wrap{max-width:900px;margin:0 auto;padding:0 22px 48px}
 .legal-hero{max-width:900px;margin:0 auto 28px;text-align:left}
-.legal-badge{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;border:1px solid rgba(124,58,237,.28);background:#f5f3ff;color:#6d28d9;font-size:var(--mk-eyebrow);font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-bottom:14px}
+.legal-badge{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;border:1px solid rgba(124,58,237,.28);background:#f5f3ff;color:#6d28d9;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
 .legal-hero h1{font-size:var(--mk-legal-h1);line-height:1.06;letter-spacing:var(--mk-legal-h1-track);color:#111827;margin:0 0 10px}
 .legal-hero p{font-size:var(--mk-article-body);color:#4b5563;line-height:1.65;max-width:760px;margin:0 0 14px}
 .legal-updated{display:inline-flex;align-items:center;padding:7px 12px;border-radius:10px;background:#ffffff;border:1px solid #e5e7eb;font-size:var(--mk-meta);font-weight:600;color:#374151}

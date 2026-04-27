@@ -107,9 +107,10 @@ const styles = [
     .demo-hub-eyebrow{display:inline-flex;align-items:center;gap:8px;border:none;background:transparent;backdrop-filter:none;border-radius:0;padding:0;color:#5B21B6;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase}
     .demo-hub-hero h1{margin:22px auto 0;max-width:820px;font-size:clamp(34px,5.2vw,56px);line-height:1.06;letter-spacing:-.04em;color:var(--demo-hub-text);font-weight:800}
     .demo-hub-lead{margin:16px auto 0;max-width:640px;font-size:17px;line-height:1.72;color:var(--mk-text-desc,#64748B);font-weight:400}
-    .demo-hub-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:26px auto 0;max-width:720px}
-    .demo-hub-chip{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:999px;border:1px solid var(--demo-hub-border);background:#fff;font-size:13px;font-weight:600;color:#374151;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .demo-hub-chip svg{flex-shrink:0;opacity:.75}
+    .demo-hub-trust{margin:40px auto 0;display:flex;justify-content:center;gap:24px;flex-wrap:wrap;max-width:720px}
+    .demo-hub-chip{display:inline-flex;align-items:center;gap:6px;padding:0;border:none;background:transparent;border-radius:0;box-shadow:none;font-size:13px;font-weight:500;color:#6B7280}
+    .demo-hub-chip::before{content:'✓';color:#10B981;font-weight:700;line-height:1}
+    .demo-hub-chip svg{display:none}
     .demo-hub-scroll{margin-top:22px}
     .demo-hub-scroll a{font-size:14px;font-weight:700;color:var(--demo-hub-purple-dark);text-decoration:none;border-bottom:1px solid rgba(124,58,237,.35);padding-bottom:2px}
     .demo-hub-scroll a:hover{color:#5B21B6;border-color:#5B21B6}
@@ -180,8 +181,7 @@ const styles = [
       .demo-hub-hero{padding-top:56px}
       .demo-hub-grid{grid-template-columns:1fr}
       .demo-hub-card{min-height:0}
-      .demo-hub-trust{flex-direction:column;align-items:stretch}
-      .demo-hub-chip{justify-content:center}
+      .demo-hub-trust{gap:12px}
     }
     .demo-hub-faq{background:#fff;padding:8px 0 24px}
   `,
@@ -220,9 +220,6 @@ export function MarketingDemoVerticalIndexTemplate() {
                   About 2–3 minutes
                 </TrustChip>
               </div>
-              <p className="demo-hub-scroll">
-                <a href="#pick-demo">Pick an industry below →</a>
-              </p>
             </div>
           </section>
 

@@ -212,7 +212,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
 
         <aside className="article-sidebar sticky top-[88px] hidden lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:block">
           <div className="mb-5 rounded-3xl border border-gray-200 bg-gray-50 p-5">
-            <h4 className="mb-3.5 font-sans text-[12.5px] font-bold uppercase tracking-wider text-gray-900">In This Article</h4>
+            <h4 className="mb-3 font-sans text-[12px] font-semibold uppercase tracking-[0.08em] text-gray-900">In This Article</h4>
             <TableOfContents toc={toc} />
           </div>
 
@@ -239,7 +239,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
 
           {relatedPosts.length > 0 ? (
             <div className="rounded-3xl border border-gray-200 bg-gray-50 p-5">
-              <h4 className="mb-3.5 font-sans text-[12.5px] font-bold uppercase tracking-wider text-gray-900">Related Articles</h4>
+              <h4 className="mb-3 font-sans text-[12px] font-semibold uppercase tracking-[0.08em] text-gray-900">Related Articles</h4>
               <div className="space-y-0">
                 {relatedPosts.map((related) => (
                   <Link
@@ -292,7 +292,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
                 href={relatedHref(related)}
                 className="block rounded-3xl border border-gray-200 bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,.07)]"
               >
-                <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-purple">
+                <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-brand-purple">
                   {related.categories[0]?.category.name ?? 'Article'}
                 </div>
                 <h3 className="mb-2 text-[14.5px] font-bold leading-6 text-gray-900">{related.title}</h3>

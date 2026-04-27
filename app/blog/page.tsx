@@ -4,7 +4,6 @@ import Link from 'next/link';
 
 import { CategoryFilter } from '@/components/blog/CategoryFilter';
 import { PostCard } from '@/components/blog/PostCard';
-import { SearchBar } from '@/components/blog/SearchBar';
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -330,7 +329,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             </p>
           </div>
 
-          <SearchBar initialValue={params.search ?? ''} />
           <CategoryFilter categories={categories} />
         </section>
 

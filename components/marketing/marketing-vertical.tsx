@@ -185,7 +185,7 @@ const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessN
 function IntegrationRow({ eyebrowClass = 'text-slate-400' }: { eyebrowClass?: string }) {
   return (
     <div className="mt-6">
-      <p className={`mb-3 text-[11px] font-bold uppercase tracking-[0.1em] ${eyebrowClass}`}>Works with your booking tools</p>
+      <p className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>Works with your booking tools</p>
       <div className="flex flex-wrap items-start gap-x-8 gap-y-4 sm:gap-x-10">
         {BOOKING_TOOL_INTEGRATIONS.map((item) => {
           const isLive = item.status === 'live';
@@ -299,7 +299,7 @@ function HowItWorks({
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16" data-vertical-step-track>
-      <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Setup</div>
+      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>Setup</div>
       <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <p className="mx-auto max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden justify-center" data-vertical-step-nav>
@@ -357,7 +357,7 @@ type PainPoint = { icon?: string; title: string; body: string };
 function PainPoints({ points, heading, eyebrowClass = 'text-slate-400' }: { points: PainPoint[]; heading: string; eyebrowClass?: string }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Why Calls Get Missed</div>
+      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>Why Calls Get Missed</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {points.map((p) => (
@@ -389,7 +389,7 @@ function FeatureGrid({
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>What RingBooker Does</div>
+      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>What RingBooker Does</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
@@ -420,7 +420,7 @@ function VsTable({
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-2 text-center text-[12px] font-bold uppercase tracking-[0.14em] ${eyebrowClass}`}>Before vs. After</div>
+      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>Before vs. After</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
         <div className="min-w-[600px]">
@@ -474,7 +474,7 @@ function FinalCta({
     <section className="mx-auto mt-[88px] max-w-6xl px-6 pb-12 md:pb-16">
       <div className={`relative overflow-hidden rounded-3xl px-8 py-14 text-center text-white md:px-14 ${shellGradientClass}`}>
         <div className="pointer-events-none absolute -right-8 -top-10 h-72 w-72 rounded-full bg-white/10" />
-        <p className="relative text-[12px] font-bold uppercase tracking-[0.18em] text-white/70">{label}</p>
+        <p className="relative text-[12px] font-semibold uppercase tracking-[0.08em] text-white/70">{label}</p>
         <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-bold leading-[1.1] tracking-tight">{title}</h2>
         <p className="relative mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-white/75">{subtitle}</p>
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
@@ -1385,7 +1385,7 @@ function VerticalHubArticles({
   return (
     <section className="mt-[88px] rounded-3xl bg-slate-50 px-5 py-12 sm:px-8 md:pb-16" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
-        <p className={`mb-2 text-[12px] font-bold uppercase tracking-[0.12em] ${eyebrowClass}`}>In this hub</p>
+        <p className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>In this hub</p>
         <h2 className="mb-4 text-[clamp(24px,3.2vw,34px)] font-bold tracking-tight text-slate-900">{copy.heading}</h2>
         <p className="max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">

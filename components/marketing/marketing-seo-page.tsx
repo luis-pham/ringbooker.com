@@ -147,7 +147,7 @@ export function MarketingSeoPage({
           __html: `
 .seo-shell{padding:110px 22px 70px;background:radial-gradient(ellipse 88% 58% at 50% 0%,#ede9fe 0%,#ffffff 64%)}
 .seo-article{max-width:940px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:28px 24px;box-shadow:0 12px 34px rgba(17,24,39,.06)}
-.seo-badge{display:inline-flex;padding:6px 12px;border-radius:999px;border:1px solid rgba(124,58,237,.26);background:#f5f3ff;color:#6d28d9;font-size:var(--mk-eyebrow);font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px}
+.seo-badge{display:inline-flex;padding:6px 12px;border-radius:999px;border:1px solid rgba(124,58,237,.26);background:#f5f3ff;color:#6d28d9;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
 .seo-article h1{font-size:var(--mk-article-h1);line-height:var(--mk-article-h1-lh);letter-spacing:var(--mk-article-h1-track);color:#111827;margin:0 0 12px}
 .seo-intro{font-size:var(--mk-article-intro);line-height:var(--mk-article-intro-lh);color:#4b5563;margin:0 0 22px}
 .seo-section{padding-top:18px}

@@ -73,10 +73,10 @@ a{text-decoration:none;color:inherit}
 .btn-demo-live:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 12px 36px rgba(91,33,182,.28),0 4px 12px rgba(91,33,182,.14)}
 .btn-trial-soft{padding:12px 22px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:all .2s;border:1.5px solid var(--border);color:var(--text-dark);background:transparent}
 .btn-trial-soft:hover{border-color:var(--purple);color:var(--purple)}
-.trust-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:24px auto 0;max-width:980px}
-.trust-pill{display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid rgba(139,92,246,.14);background:rgba(255,255,255,.82);border-radius:18px;padding:12px 13px;font-size:var(--mk-body);font-weight:600;color:#374151;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04));transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
-.trust-pill:hover{transform:translateY(-2px);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));border-color:rgba(196,181,253,.55)}
-.trust-pill span{font-size:18px}
+.trust-row{margin:32px auto 0;display:flex;justify-content:center;gap:24px;flex-wrap:wrap;max-width:980px}
+.trust-pill{display:flex;align-items:center;gap:6px;padding:0;border:none;background:transparent;border-radius:0;box-shadow:none;font-size:13px;font-weight:500;color:#6B7280}
+.trust-pill::before{content:'✓';color:#10B981;font-weight:700}
+.trust-pill span{display:none}
 .section{padding:88px 48px}
 .section.gray{background:var(--bg-gray)}
 .section.tight{padding-top:64px}
@@ -288,13 +288,6 @@ export function MarketingPricingTemplate() {
                 <p>
                   You are not paying for generic AI — you are paying to reduce missed bookings and protect booking revenue. Every plan starts from the same ladder: missed calls → missed bookings → lost revenue, and RingBooker → recovered intent → protected revenue. Configure the essentials in about 15 minutes, then add after-hours answering, peak-hour overflow, and missed-call text back on your current number.
                 </p>
-                <div className="hero-actions">
-                  <a className="btn-demo-live" href="/demo" data-demo-picker>
-                    <DemoCtaPhoneIcon width={18} height={18} />
-                    Try a live demo call
-                  </a>
-                  <a className="btn-trial-soft" href="/user/signup">Start free trial →</a>
-                </div>
                 <div className="trust-row">
                   <div className="trust-pill"><span>🏪</span> Current number first</div>
                   <div className="trust-pill"><span>🌙</span> After-hours + overflow</div>
