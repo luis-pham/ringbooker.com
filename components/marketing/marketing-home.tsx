@@ -1615,10 +1615,10 @@ export function MarketingHomeTemplate() {
                 <p className="test-quote">"We kept our number, configured basics in 15 minutes, and clients still reach us the way they always have."</p>
                 <div className="test-author">
                   <div className="test-av">
-                    <Image src="/images/jeny.png" alt="Jenny K." width={84} height={84} sizes="42px" quality={70} />
+                    <Image src="/images/jeny.png" alt="Jennifer K." width={84} height={84} sizes="42px" quality={70} />
                   </div>
                   <div>
-                    <div className="test-name">Jenny K.</div>
+                    <div className="test-name">Jennifer K.</div>
                     <div className="test-role">Day Spa Manager — Dallas</div>
                   </div>
                 </div>

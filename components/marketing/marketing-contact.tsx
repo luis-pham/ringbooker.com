@@ -28,7 +28,7 @@ html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:var(--mk-font-body);line-height:var(--mk-leading-body)}
 a{text-decoration:none;color:inherit}
 .contact-page{background:#fff}
-.hero-page{padding:76px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 74%)}
+.hero-page{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 74%)}
 .container{max-width:1100px;margin:0 auto}
 .contact-grid{display:grid;grid-template-columns:.86fr 1.14fr;gap:34px;align-items:start}
 .hero-copy{padding-top:18px}
@@ -66,9 +66,10 @@ a{text-decoration:none;color:inherit}
 .section{padding:58px 48px 82px}
 @media(max-width:960px){
   .hero-page,.section{padding-left:22px;padding-right:22px}
-  .hero-page{padding-top:54px;padding-bottom:52px}
+  .hero-page{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:52px}
   .contact-grid,.form-grid{grid-template-columns:1fr}
   .hero-copy{padding-top:0}
+  .trust-list{display:none}
   .formshell{margin-top:0;padding:22px;border-radius:26px}
   .form-head{display:block}
   .form-chip{margin-top:12px}
@@ -272,22 +273,22 @@ export function MarketingContactTemplate() {
             <div className="container">
               <div className="contact-grid">
                 <div className="hero-copy">
-                  <div className="badge"><span className="pulse-dot" />Book a RingBooker demo</div>
-                  <h1>See How RingBooker Stops Booking Revenue from Leaking</h1>
-                  <p>Tell us how calls behave today — after-hours rings, busy Saturday overflow, consult inquiries, reschedules — and we’ll show how RingBooker protects booking revenue with a setup your team can configure in about 15 minutes.</p>
+                  <div className="badge"><span className="pulse-dot" />Book a demo</div>
+                  <h1>See How RingBooker Recovers Missed Bookings</h1>
+                  <p>Tell us how your calls work today—after-hours, overflow, reschedules, or consults—and we&apos;ll show how RingBooker fits your workflow in about 15 minutes.</p>
                   <div className="trust-list">
-                    <div className="trust-item"><div className="trust-icon">🏪</div><div><strong>Works with your current number</strong><span>Forward the line clients already dial; a dedicated RingBooker number stays optional.</span></div></div>
-                    <div className="trust-item"><div className="trust-icon">📅</div><div><strong>No new booking software</strong><span>Square Appointments is live today; other booking tools can start with summaries and handoff while your workflow stays in place.</span></div></div>
-                    <div className="trust-item"><div className="trust-icon">💬</div><div><strong>Revenue recovery, not generic chat</strong><span>After-hours answering, overflow coverage, and missed-call text back tuned to recover booking intent.</span></div></div>
+                    <div className="trust-item"><div className="trust-icon">🏪</div><div><strong>Keep your current number</strong><span>Forward the number clients already call.</span></div></div>
+                    <div className="trust-item"><div className="trust-icon">📅</div><div><strong>No new booking software</strong><span>Works with your current workflow.</span></div></div>
+                    <div className="trust-item"><div className="trust-icon">💬</div><div><strong>Built for booking recovery</strong><span>Covers after-hours, overflow, and missed calls.</span></div></div>
                   </div>
                 </div>
 
                 <div className="formshell" id="book-demo">
                   <div className="form-head">
                     <div>
-                      <h2>Request a walkthrough</h2>
+                      <h2>Request a demo</h2>
                     </div>
-                    <span className="form-chip">Low-pressure walkthrough</span>
+                    <span className="form-chip">Low-pressure demo</span>
                   </div>
                   <form id="contactRequestForm">
                     <div className="form-grid">
@@ -317,13 +318,13 @@ export function MarketingContactTemplate() {
                       </div>
                       <div className="field full">
                         <label htmlFor="contactBestTime">Best time to reach you</label>
-                        <input id="contactBestTime" placeholder="Example: Weekdays after 3 PM PST" required />
+                        <input id="contactBestTime" placeholder="Weekdays after 3 PM PST" required />
                       </div>
                       <div className="field full">
-                        <label htmlFor="contactHelpNeed">Anything we should know? <span className="helper">(optional)</span></label>
+                        <label htmlFor="contactHelpNeed">Anything else? <span className="helper">(optional)</span></label>
                         <textarea
                           id="contactHelpNeed"
-                          placeholder="Example: We miss calls during peak service hours, especially Saturdays."
+                          placeholder="We miss calls during peak hours, especially Saturdays."
                           defaultValue=""
                         />
                       </div>
@@ -331,7 +332,7 @@ export function MarketingContactTemplate() {
                       <div className="field full"><div id="contactTurnstileMount" /></div>
                     </div>
                     <div className="contact-form-actions">
-                      <button id="contactSubmitButton" type="submit" className="btn-dark">Submit request →</button>
+                      <button id="contactSubmitButton" type="submit" className="btn-dark">Request demo</button>
                       <span className="helper" id="contactHelper">Protected by captcha and rate limits.</span>
                     </div>
                   </form>
@@ -340,13 +341,17 @@ export function MarketingContactTemplate() {
             </div>
           </section>
 
-          <MarketingFaqAccordion
-            items={CONTACT_FAQ_ITEMS}
-            eyebrow="Common Questions"
-            title="Before you book a walkthrough"
-            subtitle={null}
-            embedded
-          />
+          <section className="section">
+            <div className="container">
+              <MarketingFaqAccordion
+                items={CONTACT_FAQ_ITEMS}
+                eyebrow="Common Questions"
+                title="Before you book a walkthrough"
+                subtitle={null}
+                embedded
+              />
+            </div>
+          </section>
         </main>
         <MarketingFooter />
         {contactFaqJsonLd ? (

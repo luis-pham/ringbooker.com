@@ -55,7 +55,7 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 a{text-decoration:none;color:inherit}
 .pricing-page{background:#fff}
 /* Desktop: align hero top rhythm with marketing-demo (84px under fixed .mk-nav ~69px) */
-.hero-page{padding:84px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 74%)}
+.hero-page{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 74%)}
 .container{max-width:1100px;margin:0 auto}
 .hero-copy{max-width:980px;margin:0 auto;text-align:center}
 .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-badge);font-weight:700;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}

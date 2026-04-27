@@ -424,7 +424,12 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--beauty-clinic .section-label:not(.dark){
   color:#a21caf;
 }
-.html-hub-page--beauty-clinic .section-label.green{color:#047857}
+.html-hub-page--beauty-clinic .section-label.green,
+.html-hub-page--beauty-clinic .section-label.purple,
+.html-hub-page--beauty-clinic .section-label.blue,
+.html-hub-page--beauty-clinic .section-label.amber{
+  color:#a21caf;
+}
 .html-hub-page--beauty-clinic .card-accent{border-top-color:#c026d3}
 .html-hub-page--beauty-clinic .stat-num{color:#c026d3}
 .html-hub-page--beauty-clinic .scenario-icon{background:transparent}

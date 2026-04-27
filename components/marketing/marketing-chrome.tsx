@@ -200,9 +200,6 @@ export function MarketingChromeStyles() {
   /* hide upgrade pill on mobile to keep nav clean */
   .mk-nav-upgrade{display:none}
 }
-@media(max-width:560px){
-  .mk-footer-links{grid-template-columns:1fr}
-}
 `,
       }}
     />

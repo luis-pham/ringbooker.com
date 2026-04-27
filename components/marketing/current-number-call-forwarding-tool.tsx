@@ -49,22 +49,6 @@ function providerInitials(name: string) {
     .join('');
 }
 
-function HowItWorksIcon({ kind }: { kind: 'call' | 'team' | 'forward' | 'summary' }) {
-  const icon =
-    kind === 'call'
-      ? '📞'
-      : kind === 'team'
-        ? '👥'
-        : kind === 'forward'
-          ? '↪'
-          : '📝';
-  return (
-    <span className="text-[30px] leading-none sm:text-[22px]" aria-hidden>
-      {icon}
-    </span>
-  );
-}
-
 function ProviderCard({
   provider,
   active,
@@ -288,11 +272,8 @@ export function CurrentNumberCallForwardingTool() {
   const [otherCountry, setOtherCountry] = useState<'UK' | 'NZ' | 'IE'>('UK');
   const [selected, setSelected] = useState<ProviderRecord | null>(null);
   const [suggestedCountry, setSuggestedCountry] = useState<'UK' | 'NZ' | 'IE' | null>(null);
-  const [activeHowStep, setActiveHowStep] = useState(0);
   const findRef = useRef<HTMLDivElement | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
-  const howStepsScrollerRef = useRef<HTMLDivElement | null>(null);
-  const howStepCardRefs = useRef<Array<HTMLElement | null>>([]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined') return;
@@ -338,77 +319,8 @@ export function CurrentNumberCallForwardingTool() {
         </div>
       </section>
 
-      <section id="how-it-works" className="mx-auto mt-20 max-w-6xl px-6">
-        <p className="text-center text-xs font-bold uppercase tracking-[0.12em] text-slate-500">How it works</p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2 sm:hidden">
-          {[
-            { icon: 'call' as const, text: 'Client calls your current number' },
-            { icon: 'team' as const, text: 'Your team answers if available' },
-            { icon: 'forward' as const, text: 'Missed, busy, or after-hours calls forward to RingBooker' },
-            { icon: 'summary' as const, text: 'RingBooker sends the call details' },
-          ].map((_, i) => (
-            <button
-              key={`step-tab-${i}`}
-              type="button"
-              className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition sm:hidden ${
-                activeHowStep === i ? 'border-violet-400 text-violet-700' : 'border-slate-200 text-slate-600'
-              }`}
-              onClick={() => {
-                setActiveHowStep(i);
-                howStepCardRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-              }}
-            >
-              Step {i + 1}
-            </button>
-          ))}
-        </div>
-        <div
-          ref={howStepsScrollerRef}
-          onScroll={() => {
-            const scroller = howStepsScrollerRef.current;
-            if (!scroller) return;
-            const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
-            let nearestIdx = 0;
-            let nearestDist = Number.POSITIVE_INFINITY;
-            howStepCardRefs.current.forEach((el, idx) => {
-              if (!el) return;
-              const elCenter = el.offsetLeft + el.offsetWidth / 2;
-              const dist = Math.abs(centerX - elCenter);
-              if (dist < nearestDist) {
-                nearestDist = dist;
-                nearestIdx = idx;
-              }
-            });
-            if (nearestIdx !== activeHowStep) setActiveHowStep(nearestIdx);
-          }}
-          className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto px-1 pb-2 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4"
-        >
-          {[
-            { icon: 'call' as const, text: 'Client calls your current number' },
-            { icon: 'team' as const, text: 'Your team answers if available' },
-            { icon: 'forward' as const, text: 'Missed, busy, or after-hours calls forward to RingBooker' },
-            { icon: 'summary' as const, text: 'RingBooker sends the call details' },
-          ].map((step, i) => (
-            <article
-              key={step.text}
-              ref={(el) => {
-                howStepCardRefs.current[i] = el;
-              }}
-              className="w-[84%] shrink-0 snap-center rounded-2xl border border-slate-200/90 bg-white p-5 text-center shadow-[0_20px_40px_-8px_rgba(17,24,39,0.06),0_8px_16px_-6px_rgba(17,24,39,0.04)] transition duration-200 hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_22px_44px_-8px_rgba(17,24,39,0.09),0_10px_20px_-6px_rgba(17,24,39,0.05)] sm:w-auto sm:shrink sm:snap-none"
-            >
-              <span className="mx-auto mb-3 inline-flex items-center justify-center">
-                <HowItWorksIcon kind={step.icon} />
-              </span>
-              <p className="text-[15px] leading-7 text-slate-700">{step.text}</p>
-              <span className="mt-2 inline-flex text-xs font-semibold text-slate-500">Step {i + 1}</span>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <section ref={findRef} id="find-setup" className="mx-auto mt-24 max-w-6xl px-6">
         <div className="md:p-2">
-          <h2 className="mx-auto mb-14 max-w-[22ch] text-center text-3xl font-bold tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Find your setup</h2>
           <div className="flex flex-wrap justify-center gap-2">
             <button type="button" onClick={() => setFilter('popular')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'popular' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Popular countries</button>
             <button type="button" onClick={() => setFilter('voip')} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === 'voip' ? 'bg-violet-700 text-white' : 'border border-slate-300 text-slate-700'}`}>Business phone &amp; VoIP</button>
