@@ -54,7 +54,7 @@ const styles: string[] = [
 
     .hero{padding:84px 48px 28px;display:flex;justify-content:center;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%)}
     .hero-inner{width:100%;max-width:960px;text-align:center}
-    .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(139,92,246,.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-badge);font-weight:600;color:var(--purple-dark);margin-bottom:18px;backdrop-filter:blur(8px)}
+    .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(139,92,246,.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
     .pulse-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:pulse 2s infinite}
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(1.45)}}
     .hero h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:14px}
@@ -106,7 +106,7 @@ const styles: string[] = [
     .phone-stage::before{content:'';position:absolute;inset:auto auto -80px -80px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.05)}
     .phone-stage::after{content:'';position:absolute;top:-70px;right:-70px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.05)}
     .phone-top{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:rgba(255,255,255,.7);margin-bottom:16px;position:relative;z-index:1}
-    .live-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(16,185,129,.16);border:1px solid rgba(16,185,129,.25);font-size:10px;font-weight:700;color:#86efac;margin-bottom:18px;position:relative;z-index:1}
+    .live-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(16,185,129,.16);border:1px solid rgba(16,185,129,.25);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#86efac;margin-bottom:18px;position:relative;z-index:1}
     .phone-center{position:relative;z-index:1;text-align:center;padding-top:8px}
     .call-label{font-size:11px;color:rgba(255,255,255,.5);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
     .shop-name{font-size:18px;font-weight:700;margin-bottom:4px}
@@ -616,7 +616,12 @@ export function MarketingDemoTemplate() {
         </nav>
         <section className="hero">
           <div className="hero-inner">
-            <div className="badge"><span className="pulse-dot" />Interactive live phone demo</div>
+            <nav aria-label="Breadcrumb" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.35, color: 'var(--mk-text-soft,#94a3b8)', textAlign: 'left' }}>
+              <a href="/" style={{ color: 'var(--mk-text-soft,#94a3b8)', textDecoration: 'none', fontWeight: 400 }}>Home</a>
+              <span style={{ margin: '0 6px' }}>›</span>
+              <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>Demo</span>
+            </nav>
+            <div className="badge">Interactive live phone demo</div>
             <h1>Let prospects request a real AI call.</h1>
             <p>They enter their salon name and phone number, RingBooker calls them, and the website shows the live call status while the AI demo runs over the phone.</p>
             

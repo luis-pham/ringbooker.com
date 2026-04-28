@@ -58,7 +58,7 @@ a{text-decoration:none;color:inherit}
 .hero-page{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 74%)}
 .container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 .hero-copy{max-width:980px;margin:0 auto;text-align:center}
-.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-badge);font-weight:700;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
 .pulse-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hero-copy h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:18px}
@@ -92,7 +92,7 @@ a{text-decoration:none;color:inherit}
 .plan:hover{transform:translateY(-2px);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));border-color:rgba(196,181,253,.55)}
 .plan.star{background:linear-gradient(180deg,#faf9ff 0%,#fff 85%);border-color:rgba(167,139,250,.55);box-shadow:var(--shadow),0 0 0 1px rgba(139,92,246,.06)}
 .plan.star:hover{border-color:rgba(167,139,250,.55);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05)),0 0 0 1px rgba(139,92,246,.08)}
-.plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;font-size:var(--mk-badge);font-weight:600;padding:5px 16px;border-radius:var(--r-pill);white-space:nowrap;box-shadow:0 4px 12px rgba(124,58,237,.2)}
+.plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;padding:5px 16px;border-radius:var(--r-pill);white-space:nowrap;box-shadow:0 4px 12px rgba(124,58,237,.2)}
 .feature-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0;background:transparent;box-shadow:none;border:none}
 .plan-name{font-size:var(--mk-card-title);font-weight:600;margin-bottom:5px;color:var(--text-dark)}
 .plan-desc{font-size:14px;color:var(--mk-text-desc,#64748B);margin-bottom:16px;line-height:1.55;font-weight:400}
@@ -128,7 +128,13 @@ a{text-decoration:none;color:inherit}
 .plan-icon{display:inline-flex;align-items:center;justify-content:center;font-size:21px;line-height:1}
 .pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:700}
 .pill.optional{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}
-.line-card h3{font-size:22px;font-weight:700;line-height:1.2;letter-spacing:-.6px;margin-bottom:9px}
+.line-card h3{
+  font-size:var(--mk-card-title,16px);
+  font-weight:700;
+  line-height:1.38;
+  letter-spacing:-.2px;
+  margin-bottom:9px;
+}
 .line-card p{font-size:14.5px;color:var(--text-gray);line-height:1.72}
 .expect-band{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .note-box{padding:24px;border-radius:var(--mk-radius-card,22px);background:#fff;border:1px solid var(--border);box-shadow:var(--shadow);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
@@ -277,6 +283,14 @@ const everyPlanFeatures = [
 ];
 
 const pricingFaqJsonLd = buildFaqPageJsonLd(PRICING_FAQ_ITEMS);
+const pricingBreadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+    { '@type': 'ListItem', position: 2, name: 'Pricing', item: 'https://ringbooker.com/pricing' },
+  ],
+};
 
 export function MarketingPricingTemplate() {
   return (
@@ -292,7 +306,12 @@ export function MarketingPricingTemplate() {
           <section className="hero-page">
             <div className="container">
               <div className="hero-copy">
-                <div className="badge"><span className="pulse-dot" />Pricing for booking call recovery</div>
+                <nav aria-label="Breadcrumb" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.35, color: 'var(--mk-text-soft,#94a3b8)', textAlign: 'left' }}>
+                  <a href="/" style={{ color: 'var(--mk-text-soft,#94a3b8)', textDecoration: 'none', fontWeight: 400 }}>Home</a>
+                  <span style={{ margin: '0 6px' }}>›</span>
+                  <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>Pricing</span>
+                </nav>
+                <div className="badge">Pricing for booking call recovery</div>
                 <h1>Pricing for Missed-Call Recovery and Revenue Protection</h1>
                 <p>
                   You are not paying for generic AI — you are paying to reduce missed bookings and protect booking revenue. Every plan starts from the same ladder: missed calls → missed bookings → lost revenue, and RingBooker → recovered intent → protected revenue. Configure the essentials in about 15 minutes, then add after-hours answering, peak-hour overflow, and missed-call text back on your current number.
@@ -457,6 +476,7 @@ export function MarketingPricingTemplate() {
         {pricingFaqJsonLd ? (
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingFaqJsonLd) }} />
         ) : null}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingBreadcrumbJsonLd) }} />
       </>
     </MarketingLayout>
   );

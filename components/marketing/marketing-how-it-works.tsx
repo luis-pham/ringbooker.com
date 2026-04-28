@@ -34,6 +34,14 @@ const howItWorksFaqJsonLd = {
     },
   })),
 };
+const howItWorksBreadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+    { '@type': 'ListItem', position: 2, name: 'How It Works', item: 'https://ringbooker.com/how-it-works' },
+  ],
+};
 
 const styles: string[] = [
   String.raw`
@@ -64,16 +72,17 @@ a{text-decoration:none;color:inherit}
 /* Desktop: same top padding as marketing-demo hero under fixed nav */
 .hiw-hero{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%);overflow:hidden}
 .hiw-container{width:100%;max-width:var(--mk-container-tight,1100px);margin:0 auto}
+.hiw-badge-wrap{display:flex;justify-content:center;margin-bottom:22px}
 .hiw-hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);gap:42px;align-items:center}
-.hiw-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(139,92,246,.26);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-badge);font-weight:700;color:var(--purple-dark);margin-bottom:20px;backdrop-filter:blur(8px)}
+.hiw-badge{display:flex;width:fit-content;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(139,92,246,.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin:0;backdrop-filter:blur(8px)}
 .hiw-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:hiwPulse 2s infinite}
 @keyframes hiwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hiw-hero h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:18px}
 .hiw-hero p{font-size:var(--mk-hero-lead);color:var(--mk-text-desc,#64748B);max-width:650px;margin-bottom:26px;line-height:var(--mk-hero-lead-lh);font-weight:400}
 .hiw-actions{display:flex;gap:12px;flex-wrap:wrap}
 .hiw-btn-dark,.hiw-btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:all .2s}
-.hiw-btn-dark{background:var(--text-dark);color:#fff}
-.hiw-btn-dark:hover{background:#1f2937;transform:translateY(-1px)}
+.hiw-btn-dark{background:linear-gradient(135deg,var(--mk-brand-purple-deep,#5B21B6) 0%,var(--purple-dark) 48%,var(--purple) 100%);color:#fff;box-shadow:var(--mk-shadow-brand)}
+.hiw-btn-dark:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:var(--mk-shadow-brand-hover)}
 .hiw-btn-outline{border:1.5px solid var(--border);color:var(--text-dark);background:#fff}
 .hiw-btn-outline:hover{border-color:var(--purple);color:var(--purple)}
 .hiw-summary{background:#fff;border:1px solid rgba(196,181,253,.35);border-radius:28px;padding:26px;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04));position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
@@ -100,7 +109,13 @@ a{text-decoration:none;color:inherit}
 .hiw-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:700}
 .hiw-pill.optional{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}
 .hiw-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:21px;background:transparent;border:none;box-shadow:none}
-.hiw-card h3{font-size:20px;font-weight:700;line-height:1.25;letter-spacing:-.5px;margin-bottom:9px}
+.hiw-card h3{
+  font-size:var(--mk-card-title,16px);
+  font-weight:700;
+  line-height:1.38;
+  letter-spacing:-.2px;
+  margin-bottom:9px;
+}
 .hiw-card p{font-size:var(--mk-body-md);color:var(--mk-text-desc,#64748B);line-height:1.72}
 .hiw-list{list-style:none;display:grid;gap:10px;margin-top:16px}
 .hiw-list li{display:flex;gap:10px;font-size:var(--mk-body);color:#374151;line-height:1.55}
@@ -124,13 +139,38 @@ a{text-decoration:none;color:inherit}
 .hiw-handle strong{display:block;font-size:16px;font-weight:700;letter-spacing:-.25px;margin-bottom:7px}
 .hiw-handle p{font-size:14px;color:var(--text-gray);line-height:1.65}
 .hiw-no-replace{background:#111827;color:#fff;border-radius:32px;padding:36px;display:grid;grid-template-columns:1fr 1.05fr;gap:30px;align-items:start;box-shadow:0 24px 70px rgba(17,24,39,.22)}
-.hiw-no-replace h2{font-size:clamp(28px,3.6vw,42px);font-weight:700;line-height:1.12;letter-spacing:-1.2px;margin-bottom:12px}
-.hiw-no-replace p{color:rgba(255,255,255,.74);line-height:1.75}
+.hiw-label.hiw-label-trust{margin-bottom:20px}
+.hiw-label.hiw-label-experience{margin-bottom:20px}
+.hiw-no-replace h2{
+  font-size:var(--mk-section-h2);
+  font-weight:700;
+  line-height:var(--mk-section-h2-lh);
+  letter-spacing:var(--mk-section-h2-track);
+  margin-bottom:12px;
+}
+.hiw-no-replace p{
+  color:rgba(255,255,255,.74);
+  font-size:var(--mk-section-lead);
+  line-height:var(--mk-section-lead-lh);
+  font-weight:400;
+}
 .hiw-trust-list{display:grid;gap:12px}
 .hiw-trust-item{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);border-radius:18px;padding:15px;transition:transform .2s ease,background .2s ease,border-color .2s ease}
 .hiw-trust-item:hover{transform:translateY(-2px);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.18)}
-.hiw-trust-item strong{display:block;margin-bottom:4px}
-.hiw-trust-item span{display:block;color:rgba(255,255,255,.72);font-size:14px;line-height:1.6}
+.hiw-trust-item strong{
+  display:block;
+  margin-bottom:4px;
+  font-size:var(--mk-body-md);
+  font-weight:700;
+  line-height:1.45;
+  color:#fff;
+}
+.hiw-trust-item span{
+  display:block;
+  color:rgba(255,255,255,.72);
+  font-size:var(--mk-body);
+  line-height:1.68;
+}
 .hiw-experience{display:grid;grid-template-columns:.9fr 1.1fr;gap:20px;align-items:stretch}
 .hiw-call-card{background:linear-gradient(160deg,#1a0533 0%,#2d1b69 44%,#1a0d3a 100%);border-radius:30px;padding:26px;color:#fff;box-shadow:0 24px 70px rgba(45,27,105,.22);overflow:hidden;position:relative}
 .hiw-call-card::after{content:"";position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)}
@@ -243,9 +283,18 @@ export function MarketingHowItWorksTemplate() {
         />
         <main className="legacy-marketing hiw-page">
           <section className="hiw-hero">
+            <div className="hiw-container">
+              <nav aria-label="Breadcrumb" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.35, color: 'var(--mk-text-soft,#94a3b8)', textAlign: 'left' }}>
+                <a href="/" style={{ color: 'var(--mk-text-soft,#94a3b8)', textDecoration: 'none', fontWeight: 400 }}>Home</a>
+                <span style={{ margin: '0 6px' }}>›</span>
+                <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>How It Works</span>
+              </nav>
+              <div className="hiw-badge-wrap">
+                <div className="hiw-badge">How RingBooker works</div>
+              </div>
+            </div>
             <div className="hiw-container hiw-hero-grid">
               <div>
-                <div className="hiw-badge"><span className="hiw-dot" />How RingBooker works</div>
                 <h1>How RingBooker Recovers Lost Bookings Without Changing Your Number</h1>
                 <p>
                   Forward from your existing line: RingBooker is a missed booking protection layer that answers after-hours calls, covers peak-hour overflow, sends missed-call text back, and captures intent so missed rings are less likely to become lost revenue — without a new booking system and without reprinting your number everywhere.
@@ -351,9 +400,9 @@ export function MarketingHowItWorksTemplate() {
 
           <section className="hiw-section gray">
             <div className="hiw-container">
+              <div className="hiw-label hiw-label-trust">Trust boundary</div>
               <div className="hiw-no-replace">
                 <div>
-                  <div className="hiw-label">Trust boundary</div>
                   <h2>What RingBooker does not replace.</h2>
                   <p>This page is intentionally clear because phone routing and booking workflows are sensitive. RingBooker is a recovery layer, not a forced migration.</p>
                 </div>
@@ -368,9 +417,11 @@ export function MarketingHowItWorksTemplate() {
           </section>
 
           <section className="hiw-section">
+            <div className="hiw-container">
+              <div className="hiw-label hiw-label-experience">Caller experience</div>
+            </div>
             <div className="hiw-container hiw-experience">
               <div className="hiw-call-card">
-                <div className="hiw-live"><span className="hiw-dot" />Caller experience</div>
                 <h3>No dead-end voicemail when a booking call matters.</h3>
                 <p>Callers get a natural answer, a clear next step, and a text confirmation or callback path when needed. The goal is not to pretend to be human. The goal is to keep the booking conversation alive.</p>
               </div>
@@ -410,6 +461,7 @@ export function MarketingHowItWorksTemplate() {
           </section>
         </main>
         <MarketingFooter />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howItWorksBreadcrumbJsonLd) }} />
       </>
     </MarketingLayout>
   );

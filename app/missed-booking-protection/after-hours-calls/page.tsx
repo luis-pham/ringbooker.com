@@ -196,37 +196,22 @@ export const metadata = buildMetadata({
 export default function AfterHoursCallsPage() {
   return (
     <MarketingSeoPage
-      badge="After-hours calls"
+      shellVariant="plain"
+      breadcrumb={
+        <>
+          <Link href="/">Home</Link>
+          <span aria-hidden> / </span>
+          <Link href="/missed-booking-protection">Missed booking protection</Link>
+          <span aria-hidden> / </span>
+          <span>After-hours calls</span>
+        </>
+      }
+      badge={null}
       title="After-Hours Call Answering for Salons"
       intro="Callers after closing are often ready to book — voicemail trains them to move on. RingBooker answers on your current number, captures intent, and follows up by SMS so after-hours rings are less likely to become missed bookings and revenue leakage."
       sections={sections}
       faqs={faqs}
       articleJsonLd={serviceJsonLd}
-      customContent={
-        <div className="seo-internal-links">
-          <p>
-            <Link href="/missed-booking-protection/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
-            {' · '}
-            <Link href="/missed-booking-protection/missed-call-recovery">Missed-call recovery</Link>
-            {' · '}
-            <Link href="/how-it-works">How RingBooker works</Link>
-            {' · '}
-            <Link href="/pricing">Pricing</Link>
-            {' · '}
-            <Link href="/contact">Book a demo</Link>
-            {' · '}
-            <Link href="/industries/nail-salon">Nail salon</Link>
-            {' · '}
-            <Link href="/industries/hair-salon">Hair salon</Link>
-            {' · '}
-            <Link href="/industries/spa">Spa</Link>
-            {' · '}
-            <Link href="/industries/med-spa">Med spa</Link>
-            {' · '}
-            <Link href="/industries/beauty-clinic">Beauty clinic</Link>
-          </p>
-        </div>
-      }
     />
   );
 }

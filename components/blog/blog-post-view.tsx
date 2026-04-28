@@ -98,26 +98,29 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
       <section className="relative overflow-hidden bg-white px-6 pb-0 pt-[98px] md:px-12 md:pt-[110px]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-5%,#EDE9FE_0%,transparent_70%)]" />
         <div className="relative z-10 mx-auto max-w-6xl">
-          <div className="mb-5 flex flex-wrap items-center gap-2">
-            <Link href="/" className="text-[13px] font-medium text-gray-500 transition hover:text-brand-purple">
+          <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-2 text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]">
+            <Link href="/" className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] transition hover:text-violet-600">
               Home
             </Link>
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-gray-400" aria-hidden>
-              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-            </svg>
+            <span className="mx-1.5" aria-hidden>
+              ›
+            </span>
             <Link
               href={clusterHubHref}
-              className="text-[13px] font-medium text-gray-500 transition hover:text-brand-purple"
+              className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] transition hover:text-violet-600"
             >
               {hubLabel}
             </Link>
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-gray-400" aria-hidden>
-              <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-            </svg>
-            <span className="line-clamp-2 max-w-[min(100%,28rem)] text-[13px] text-gray-400" aria-current="page">
+            <span className="mx-1.5" aria-hidden>
+              ›
+            </span>
+            <span
+              className="line-clamp-2 max-w-[min(100%,28rem)] font-normal text-[color:var(--mk-text-soft,#94a3b8)]"
+              aria-current="page"
+            >
               {post.title}
             </span>
-          </div>
+          </nav>
 
           <div className="mb-5 flex flex-wrap gap-2">
             {post.categories.map((entry) =>

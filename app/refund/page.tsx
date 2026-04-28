@@ -35,6 +35,7 @@ export const metadata = buildMetadata({
 export default function RefundPage() {
   return (
     <MarketingLegalPage
+      breadcrumbLabel="Refund Policy"
       badge="Refund Policy"
       title="Refund Policy"
       subtitle="This policy explains when and how RingBooker issues refunds for paid subscription plans and add-ons purchased through our platform."

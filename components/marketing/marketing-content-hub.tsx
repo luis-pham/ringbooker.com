@@ -1077,6 +1077,7 @@ export function MarketingContentHub({
             <div className="hero-landing-shell">
               {breadcrumbLabel ? <HubBreadcrumb label={breadcrumbLabel} /> : null}
               <div className="hero-inner">
+                <div className="pill-badge">{badge}</div>
                 <h1 className="hero-h">{title}</h1>
                 <p className="hero-sub">{intro}</p>
                 {heroEntityDefinition ? (

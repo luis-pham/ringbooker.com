@@ -70,38 +70,41 @@ export const metadata = buildMetadata({
 });
 
 export default function FaqPage() {
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+      { '@type': 'ListItem', position: 2, name: 'FAQ', item: 'https://ringbooker.com/faq' },
+    ],
+  };
   return (
-    <MarketingSeoPage
-      badge="FAQ"
-      title="Questions Salon Owners Ask Before Replacing Voicemail"
-      intro="Quick answers for nail salons, hair salons, day spas, med spas, and aesthetic clinics evaluating AI phone answering, missed-call recovery, after-hours and peak-hour overflow coverage, and how RingBooker recovers booking revenue without replacing your booking software."
-      sections={[
-        {
-          heading: 'The short version',
-          paragraphs: [
-            'RingBooker is a call recovery layer for beauty businesses: it answers after-hours and overflow calls, captures booking and consultation intent, sends missed-call text back, and summarizes outcomes for your team — so missed rings are less likely to become lost revenue.',
-            'You keep your current phone number, keep your existing booking workflow, and use human handoff when the caller needs something your rules say a person should handle.',
-          ],
-        },
-      ]}
-      faqs={faqs}
-      customContent={
-        <div className="seo-internal-links">
-          <p>
-            <Link href="/how-it-works">How RingBooker works</Link>
-            {' · '}
-            <Link href="/missed-booking-protection/after-hours-calls">After-hours call answering</Link>
-            {' · '}
-            <Link href="/missed-booking-protection/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
-            {' · '}
-            <Link href="/missed-booking-protection/missed-call-recovery">Missed-call recovery</Link>
-            {' · '}
-            <Link href="/pricing">Pricing</Link>
-            {' · '}
-            <Link href="/contact">Book a demo</Link>
-          </p>
-        </div>
-      }
-    />
+    <>
+      <MarketingSeoPage
+        shellVariant="plain"
+        breadcrumb={
+          <>
+            <Link href="/">Home</Link>
+            <span style={{ margin: '0 6px' }}>›</span>
+            <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>FAQ</span>
+          </>
+        }
+        badge={null}
+        title="Questions Salon Owners Ask Before Replacing Voicemail"
+        intro="Quick answers for nail salons, hair salons, day spas, med spas, and aesthetic clinics evaluating AI phone answering, missed-call recovery, after-hours and peak-hour overflow coverage, and how RingBooker recovers booking revenue without replacing your booking software."
+        sections={[
+          {
+            heading: 'The short version',
+            paragraphs: [
+              'RingBooker is a call recovery layer for beauty businesses: it answers after-hours and overflow calls, captures booking and consultation intent, sends missed-call text back, and summarizes outcomes for your team — so missed rings are less likely to become lost revenue.',
+              'You keep your current phone number, keep your existing booking workflow, and use human handoff when the caller needs something your rules say a person should handle.',
+            ],
+          },
+        ]}
+        faqs={faqs}
+        customContent={null}
+      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
+    </>
   );
 }

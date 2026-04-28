@@ -299,7 +299,18 @@ export function CurrentNumberCallForwardingTool() {
     <main className="bg-[radial-gradient(ellipse_84%_58%_at_50%_0%,#ede9fe_0%,#ffffff_66%)] pb-28 pt-28 md:pb-16">
       <section className="mx-auto max-w-6xl px-6">
         <div className="text-center">
-        <p className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.08em] text-violet-700">
+        <nav aria-label="Breadcrumb" className="mb-5 flex w-full items-center justify-start gap-2 text-[14px] text-slate-400">
+          <Link href="/" className="font-normal text-slate-400 transition hover:text-slate-600">
+            Home
+          </Link>
+          <span aria-hidden>/</span>
+          <Link href="/current-number" className="font-normal text-slate-400 transition hover:text-slate-600">
+            Current Number
+          </Link>
+          <span aria-hidden>/</span>
+          <span className="font-normal text-slate-500">Call Forwarding</span>
+        </nav>
+        <p className="inline-flex rounded-full border border-violet-200/70 bg-white/85 px-3 py-1 text-[13px] font-semibold uppercase tracking-[0.12em] text-violet-700/90">
           Current Number Setup
         </p>
         <h1 className="mx-auto mt-4 max-w-4xl text-[clamp(34px,5vw,56px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-slate-900">Call Forwarding Setup Guides</h1>

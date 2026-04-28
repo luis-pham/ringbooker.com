@@ -27,7 +27,9 @@ type SeoFaq = {
 };
 
 type MarketingSeoPageProps = {
-  badge: string;
+  breadcrumb?: ReactNode;
+  badge?: string | null;
+  shellVariant?: 'card' | 'plain';
   title: string;
   intro: string;
   sections: SeoSection[];
@@ -46,7 +48,9 @@ function renderParagraphs(nodes: ReactNode[] | undefined) {
 }
 
 export function MarketingSeoPage({
+  breadcrumb,
   badge,
+  shellVariant = 'card',
   title,
   intro,
   sections,
@@ -75,8 +79,9 @@ export function MarketingSeoPage({
       <MarketingChromeStyles />
       <MarketingHeader />
       <main className="seo-shell">
-        <article className="seo-article">
-          <div className="seo-badge">{badge}</div>
+        <article className={`seo-article${shellVariant === 'plain' ? ' seo-article--plain' : ''}`}>
+          {breadcrumb ? <div className="seo-breadcrumb">{breadcrumb}</div> : null}
+          {badge ? <div className="seo-badge">{badge}</div> : null}
           <h1>{title}</h1>
           <p className="seo-intro">{intro}</p>
 
@@ -147,7 +152,11 @@ export function MarketingSeoPage({
           __html: `
 .seo-shell{padding:110px 22px 70px;background:radial-gradient(ellipse 88% 58% at 50% 0%,#ede9fe 0%,#ffffff 64%)}
 .seo-article{max-width:var(--mk-reading-width,940px);margin:0 auto;background:#fff;border:1px solid var(--mk-border-soft,#e8ecf1);border-radius:var(--mk-radius-card,22px);padding:32px 28px;box-shadow:var(--mk-shadow-soft)}
-.seo-badge{display:inline-flex;padding:6px 12px;border-radius:var(--mk-radius-pill,999px);border:1px solid var(--mk-border-brand,rgba(124,58,237,.26));background:var(--mk-brand-purple-wash,#f5f3ff);color:var(--mk-brand-purple-deep,#6d28d9);font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
+.seo-article--plain{background:transparent;border:none;border-radius:0;box-shadow:none;padding:0}
+.seo-breadcrumb{margin:0 0 10px;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8)}
+.seo-breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
+.seo-breadcrumb a:hover{color:var(--mk-brand-purple-deep,#5b21b6)}
+.seo-badge{display:inline-flex;padding:6px 12px;border-radius:var(--mk-radius-pill,999px);border:1px solid var(--mk-border-brand,rgba(124,58,237,.26));background:rgba(255,255,255,0.88);color:var(--mk-brand-purple-deep,#6d28d9);font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
 .seo-article h1{font-size:var(--mk-article-h1);line-height:var(--mk-article-h1-lh);letter-spacing:var(--mk-article-h1-track);color:var(--mk-text-strong,#111827);margin:0 0 12px}
 .seo-intro{font-size:var(--mk-article-intro);line-height:var(--mk-article-intro-lh);color:var(--mk-text-body,#334155);margin:0 0 22px}
 .seo-section{padding-top:18px}

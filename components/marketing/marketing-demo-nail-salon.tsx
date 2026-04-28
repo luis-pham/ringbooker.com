@@ -140,7 +140,7 @@ const styles: string[] = [
     .nail-demo-hero-inner{max-width:860px;margin:0 auto;text-align:center}
     .nail-demo-badge{
       display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;
-      border:1px solid rgba(139,92,246,.3);background:#fff;color:var(--purple-dark);font-size:14px;font-weight:700;margin-bottom:16px
+      border:1px solid rgba(139,92,246,.3);background:#fff;color:var(--purple-dark);font-size:14px;font-weight:700;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:16px
     }
     .nail-demo-hero h1{margin:16px 0 12px;font-size:clamp(30px,5vw,48px);line-height:1.08;letter-spacing:-1.4px}
     .nail-demo-hero p{margin:0 auto;max-width:700px;color:var(--text-gray);font-size:16px;line-height:1.7}

@@ -312,6 +312,11 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         <section className="relative overflow-hidden px-6 pb-8 pt-[96px] text-center md:px-12 md:pb-12 md:pt-[88px]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,#EDE9FE_0%,#FDF4FF_50%,transparent_75%)]" />
           <div className="relative mx-auto max-w-6xl">
+            <nav aria-label="Breadcrumb" className="mb-4 text-left text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]">
+              <a href="/" className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] no-underline transition hover:text-violet-600">Home</a>
+              <span className="mx-1.5">›</span>
+              <span className="font-normal text-[color:var(--mk-text-soft,#94a3b8)]">Blog</span>
+            </nav>
             <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-[color:var(--mk-border-brand)] bg-white/90 px-4 py-1.5 text-[14px] font-semibold text-[color:var(--mk-brand-purple-deep)]">
               <svg viewBox="0 0 24 24" className="h-[13px] w-[13px] fill-current">
                 <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-2 15H8v-2h4v2zm3-4H8v-2h7v2zm0-4H8V7h7v2z" />
@@ -404,6 +409,19 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       {blogIndexFaqJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(blogIndexFaqJsonLd) }} />
       ) : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+              { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://ringbooker.com/blog' },
+            ],
+          }),
+        }}
+      />
     </>
   );
 }

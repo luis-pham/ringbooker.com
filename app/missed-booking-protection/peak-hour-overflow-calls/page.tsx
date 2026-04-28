@@ -178,39 +178,21 @@ export const metadata = buildMetadata({
 export default function PeakHourOverflowCallsPage() {
   return (
     <MarketingSeoPage
-      badge="Peak-hour overflow"
+      breadcrumb={
+        <>
+          <Link href="/">Home</Link>
+          <span aria-hidden> / </span>
+          <Link href="/missed-booking-protection">Missed booking protection</Link>
+          <span aria-hidden> / </span>
+          <span>Peak-hour overflow</span>
+        </>
+      }
+      badge={null}
       title="Peak-Hour Call Answering for Salons"
       intro="Peak hours are when salons lose the most phone revenue — not because the team does not want to answer, but because everyone is already occupied. RingBooker acts as overflow coverage on your current number so peak-hour calls are less likely to become missed bookings and lost revenue."
       sections={sections}
       faqs={faqs}
       articleJsonLd={serviceJsonLd}
-      customContent={
-        <div className="seo-internal-links">
-          <p>
-            <Link href="/">Home</Link>
-            {' · '}
-            <Link href="/missed-booking-protection/after-hours-calls">After-hours call answering</Link>
-            {' · '}
-            <Link href="/missed-booking-protection/missed-call-recovery">Missed-call recovery</Link>
-            {' · '}
-            <Link href="/how-it-works">How RingBooker works</Link>
-            {' · '}
-            <Link href="/pricing">Pricing</Link>
-            {' · '}
-            <Link href="/contact">Book a demo</Link>
-            {' · '}
-            <Link href="/industries/nail-salon">Nail salons</Link>
-            {' · '}
-            <Link href="/industries/hair-salon">Hair salons</Link>
-            {' · '}
-            <Link href="/industries/spa">Day spas</Link>
-            {' · '}
-            <Link href="/industries/med-spa">Med spas</Link>
-            {' · '}
-            <Link href="/industries/beauty-clinic">Beauty clinics</Link>
-          </p>
-        </div>
-      }
     />
   );
 }

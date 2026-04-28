@@ -43,18 +43,18 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page > .hero:first-child{margin-top:-2px;position:relative;z-index:0}
 
 /* Breadcrumb */
-.html-hub-page .breadcrumb{font-size:15px;line-height:1.35;color:var(--gray-500)}
-.html-hub-page .breadcrumb a{color:var(--gray-500);text-decoration:none;font-weight:500}
+.html-hub-page .breadcrumb{font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8)}
+.html-hub-page .breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
 .html-hub-page .breadcrumb a:hover{color:var(--purple)}
 .html-hub-page .breadcrumb > span{margin:0 6px}
-.html-hub-page .breadcrumb > span:last-child{font-size:15px;font-weight:500;color:var(--gray-500)}
+.html-hub-page .breadcrumb > span:last-child{font-size:14px;font-weight:400;color:var(--mk-text-soft,#94a3b8)}
 .html-hub-page .hero .breadcrumb{margin:0 0 20px;padding:0;text-align:left;max-width:100%}
 
 /* ── Hero base ── */
 .html-hub-page .hero{padding:72px 24px 88px;text-align:center;position:relative;overflow:hidden}
 .html-hub-page .hero::before{content:'';position:absolute;inset:0;pointer-events:none}
 .html-hub-page .hero-inner{max-width:820px;margin:0 auto;position:relative;z-index:1}
-.html-hub-page .pill-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-pill);font-size:var(--mk-badge);font-weight:600;margin-bottom:24px}
+.html-hub-page .pill-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--radius-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:#5B21B6;margin-bottom:22px;backdrop-filter:blur(8px)}
 .html-hub-page .hero h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:20px;color:var(--gray-800)}
 .html-hub-page .hero h1 mark{border-radius:12px;padding:2px 14px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 .html-hub-page .hero-sub{font-size:var(--mk-hero-lead);color:var(--mk-text-desc,#64748B);max-width:640px;margin:0 auto 36px;line-height:var(--mk-hero-lead-lh);font-weight:400}
@@ -255,14 +255,14 @@ export const HTML_HUB_SCOPED_CSS = `
 /* Purple (missed booking protection hub default) */
 .html-hub-page--purple .hero{background:linear-gradient(160deg,#F5F3FF 0%,#ffffff 50%,#FDF2F8 100%)}
 .html-hub-page--purple .hero::before{background:radial-gradient(ellipse 60% 40% at 30% 20%,rgba(124,58,237,.06) 0%,transparent 70%),radial-gradient(ellipse 50% 35% at 75% 70%,rgba(236,72,153,.05) 0%,transparent 70%)}
-.html-hub-page--purple .pill-badge{background:var(--purple-bg);border:1px solid var(--purple-border);color:var(--purple)}
+.html-hub-page--purple .pill-badge{background:rgba(255,255,255,0.88);border:1px solid var(--purple-border);color:var(--purple)}
 .html-hub-page--purple .hero h1 mark{background:var(--purple);color:#fff}
 .html-hub-page--purple .hero-tag::before{content:'✓';color:var(--green);font-weight:700}
 
 /* Green (current number) */
 .html-hub-page--green .hero{background:linear-gradient(160deg,#ECFDF5 0%,#ffffff 55%,#F5F3FF 100%)}
 .html-hub-page--green .hero::before{background:radial-gradient(ellipse 55% 40% at 20% 20%,rgba(5,150,105,.06) 0%,transparent 70%),radial-gradient(ellipse 45% 35% at 80% 75%,rgba(124,58,237,.06) 0%,transparent 70%)}
-.html-hub-page--green .pill-badge{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green)}
+.html-hub-page--green .pill-badge{background:rgba(255,255,255,0.88);border:1px solid var(--green-border);color:var(--green)}
 .html-hub-page--green .hero h1 mark{background:var(--green);color:#fff}
 .html-hub-page--green .hero-tag::before{content:'✓';color:var(--green);font-weight:700}
 
@@ -273,7 +273,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--teal .breadcrumb a:hover{color:#0d9488}
 .html-hub-page--teal .hero{background:linear-gradient(160deg,#CCFBF1 0%,#ffffff 52%,#F0FDFA 100%)}
 .html-hub-page--teal .hero::before{background:radial-gradient(ellipse 55% 42% at 22% 18%,rgba(13,148,136,.10) 0%,transparent 72%),radial-gradient(ellipse 48% 36% at 78% 78%,rgba(52,211,153,.08) 0%,transparent 72%)}
-.html-hub-page--teal .pill-badge{background:#CCFBF1;border:1px solid #99F6E4;color:#115e59}
+.html-hub-page--teal .pill-badge{background:rgba(255,255,255,0.88);border:1px solid #99F6E4;color:#115e59}
 .html-hub-page--teal .hero h1 mark{background:linear-gradient(135deg,#115e59 0%,#0d9488 55%,#14b8a6 100%);color:#fff}
 .html-hub-page--teal .hero-tag::before{content:'✓';color:#0d9488;font-weight:700}
 /* Landing hero — same shell as marketing-home; wash + blobs + CTAs match /industries spa */
@@ -319,7 +319,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--hair .breadcrumb a:hover{color:#d97706}
 .html-hub-page--hair .hero{background:linear-gradient(160deg,#FFFBEB 0%,#ffffff 52%,#FFF7ED 100%)}
 .html-hub-page--hair .hero::before{background:radial-gradient(ellipse 55% 42% at 24% 18%,rgba(217,119,6,.10) 0%,transparent 72%),radial-gradient(ellipse 48% 36% at 76% 76%,rgba(251,146,60,.09) 0%,transparent 72%)}
-.html-hub-page--hair .pill-badge{background:#FFFBEB;border:1px solid #FDE68A;color:#b45309}
+.html-hub-page--hair .pill-badge{background:rgba(255,255,255,0.88);border:1px solid #FDE68A;color:#b45309}
 .html-hub-page--hair .hero h1 mark{background:linear-gradient(135deg,#92400e 0%,#d97706 50%,#f59e0b 100%);color:#fff}
 .html-hub-page--hair .hero-tag::before{content:'✓';color:#d97706;font-weight:700}
 .html-hub-page--hair .hero.hero--landing{
@@ -364,7 +364,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--med-spa .breadcrumb a:hover{color:#4f46e5}
 .html-hub-page--med-spa .hero{background:linear-gradient(160deg,#F5F7FF 0%,#ffffff 58%,#F8FAFC 100%)}
 .html-hub-page--med-spa .hero::before{background:radial-gradient(ellipse 55% 42% at 24% 18%,rgba(79,70,229,.06) 0%,transparent 72%),radial-gradient(ellipse 48% 36% at 76% 76%,rgba(99,102,241,.05) 0%,transparent 72%)}
-.html-hub-page--med-spa .pill-badge{background:#EEF2FF;border:1px solid #C7D2FE;color:#4338ca}
+.html-hub-page--med-spa .pill-badge{background:rgba(255,255,255,0.88);border:1px solid #C7D2FE;color:#4338ca}
 .html-hub-page--med-spa .hero h1 mark{background:linear-gradient(135deg,#312e81 0%,#4f46e5 50%,#6366f1 100%);color:#fff}
 .html-hub-page--med-spa .hero-tag::before{content:'✓';color:#4f46e5;font-weight:700}
 .html-hub-page--med-spa .hero.hero--landing{
@@ -415,7 +415,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--beauty-clinic .breadcrumb a:hover{color:#c026d3}
 .html-hub-page--beauty-clinic .hero{background:linear-gradient(160deg,#FDF4FF 0%,#ffffff 58%,#FAF5FF 100%)}
 .html-hub-page--beauty-clinic .hero::before{background:radial-gradient(ellipse 55% 42% at 22% 18%,rgba(192,38,211,.07) 0%,transparent 72%),radial-gradient(ellipse 48% 36% at 78% 76%,rgba(236,72,153,.06) 0%,transparent 72%)}
-.html-hub-page--beauty-clinic .pill-badge{background:#FDF4FF;border:1px solid #F5D0FE;color:#a21caf}
+.html-hub-page--beauty-clinic .pill-badge{background:rgba(255,255,255,0.88);border:1px solid #F5D0FE;color:#a21caf}
 .html-hub-page--beauty-clinic .hero h1 mark{background:linear-gradient(135deg,#86198f 0%,#c026d3 50%,#ec4899 100%);color:#fff}
 .html-hub-page--beauty-clinic .hero-tag::before{content:'✓';color:#c026d3;font-weight:700}
 .html-hub-page--beauty-clinic .hero.hero--landing{
@@ -461,7 +461,7 @@ export const HTML_HUB_SCOPED_CSS = `
 /* Blue (legacy hub) */
 .html-hub-page--blue .hero{background:linear-gradient(160deg,#EFF6FF 0%,#ffffff 55%,#F5F3FF 100%)}
 .html-hub-page--blue .hero::before{background:radial-gradient(ellipse 55% 40% at 25% 20%,rgba(37,99,235,.06) 0%,transparent 70%),radial-gradient(ellipse 45% 35% at 75% 75%,rgba(124,58,237,.06) 0%,transparent 70%)}
-.html-hub-page--blue .pill-badge{background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue)}
+.html-hub-page--blue .pill-badge{background:rgba(255,255,255,0.88);border:1px solid var(--blue-border);color:var(--blue)}
 .html-hub-page--blue .hero h1 mark{background:var(--purple);color:#fff}
 .html-hub-page--blue .hero-tag::before{content:'✓';color:var(--purple);font-weight:700}
 
@@ -472,7 +472,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--amber .breadcrumb a:hover{color:#d97706}
 .html-hub-page--amber .hero{background:linear-gradient(160deg,#FFFBEB 0%,#ffffff 58%,#F8FAFC 100%)}
 .html-hub-page--amber .hero::before{background:radial-gradient(ellipse 55% 40% at 25% 20%,rgba(217,119,6,.06) 0%,transparent 70%),radial-gradient(ellipse 45% 35% at 80% 75%,rgba(124,58,237,.05) 0%,transparent 70%)}
-.html-hub-page--amber .pill-badge{background:var(--amber-bg);border:1px solid #FDE68A;color:var(--amber)}
+.html-hub-page--amber .pill-badge{background:rgba(255,255,255,0.88);border:1px solid #FDE68A;color:var(--amber)}
 .html-hub-page--amber .hero h1 mark{background:var(--purple);color:#fff}
 .html-hub-page--amber .hero-tag::before{content:'✓';color:#d97706;font-weight:700}
 .html-hub-page--amber .hero.hero--landing{
@@ -508,7 +508,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--trust .breadcrumb a:hover{color:var(--purple)}
 .html-hub-page--trust .hero{background:linear-gradient(160deg,#F5F3FF 0%,#ffffff 58%,#F8FAFC 100%)}
 .html-hub-page--trust .hero::before{background:radial-gradient(ellipse 55% 40% at 25% 20%,rgba(124,58,237,.06) 0%,transparent 70%),radial-gradient(ellipse 45% 35% at 78% 72%,rgba(236,72,153,.05) 0%,transparent 70%)}
-.html-hub-page--trust .pill-badge{background:var(--purple-bg);border:1px solid var(--purple-border);color:var(--purple)}
+.html-hub-page--trust .pill-badge{background:rgba(255,255,255,0.88);border:1px solid var(--purple-border);color:var(--purple)}
 .html-hub-page--trust .hero h1 mark{background:var(--purple);color:#fff}
 .html-hub-page--trust .hero-tag::before{content:'✓';color:var(--green);font-weight:700}
 .html-hub-page--trust .hero.hero--landing{
@@ -678,7 +678,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .flow-step .label{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px}
 .html-hub-page .flow-step .sub{font-size:12px;color:var(--gray-600)}
 .html-hub-page .flow-arrow{font-size:24px;color:var(--purple);padding:0 8px;align-self:center;flex-shrink:0}
-.html-hub-page .flow-badge{display:inline-block;padding:4px 12px;border-radius:var(--radius-pill);font-size:11px;font-weight:700;margin-top:8px}
+.html-hub-page .flow-badge{display:inline-block;padding:4px 12px;border-radius:var(--radius-pill);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
 .html-hub-page .badge-green{background:var(--green-bg);color:var(--green)}
 .html-hub-page .badge-purple{background:var(--purple-bg);color:var(--purple)}
 
@@ -733,7 +733,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .tool-card .tool-logo img{max-width:100%;max-height:100%;object-fit:contain;padding:4px}
 .html-hub-page .tool-card h3{font-size:var(--mk-card-title);font-weight:600;margin-bottom:8px;color:#111827}
 .html-hub-page .tool-card p{font-size:13px;color:var(--mk-text-desc,#64748B);line-height:1.55;margin-bottom:14px;font-weight:400}
-.html-hub-page .status-badge{display:inline-block;padding:4px 10px;border-radius:var(--radius-pill);font-size:11px;font-weight:700}
+.html-hub-page .status-badge{display:inline-block;padding:4px 10px;border-radius:var(--radius-pill);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 .html-hub-page .status-live{background:var(--green-bg);color:var(--green)}
 .html-hub-page .status-workflow{background:var(--purple-bg);color:var(--purple)}
 .html-hub-page .status-soon{background:var(--gray-100);color:var(--gray-600)}

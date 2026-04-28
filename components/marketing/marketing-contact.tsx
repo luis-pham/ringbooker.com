@@ -32,13 +32,23 @@ a{text-decoration:none;color:inherit}
 .container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 .contact-grid{display:grid;grid-template-columns:.86fr 1.14fr;gap:34px;align-items:start}
 .hero-copy{padding-top:18px}
-.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-badge);font-weight:700;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
 .pulse-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hero-copy h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:18px}
 .hero-copy p{font-size:var(--mk-hero-lead);color:var(--mk-text-desc,#64748B);max-width:540px;margin-bottom:24px;line-height:var(--mk-hero-lead-lh);font-weight:400}
-.trust-list{display:grid;gap:12px;margin-top:22px;max-width:520px}
-.trust-item{display:flex;gap:12px;align-items:flex-start;border:1px solid color-mix(in srgb,var(--purple) 16%,var(--border));background:rgba(255,255,255,.72);border-radius:18px;padding:14px 15px;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04))}
+.trust-list{display:grid;gap:10px;margin-top:22px;max-width:520px}
+.trust-item{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  border:none;
+  background:transparent;
+  border-radius:0;
+  padding:0;
+  box-shadow:none;
+}
+.trust-item::before{content:'✓';color:#10B981;font-weight:700;line-height:1.2;flex-shrink:0;margin-top:1px}
 .trust-icon{width:36px;height:36px;border-radius:13px;background:var(--purple-ultra);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .mini-icon{width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;font-weight:700;box-shadow:0 6px 18px rgba(124,58,237,.24)}
 .trust-item strong{display:block;font-size:var(--mk-body);margin-bottom:2px}
@@ -110,6 +120,14 @@ const CONTACT_FAQ_ITEMS: MarketingFaqItem[] = [
 ];
 
 const contactFaqJsonLd = buildFaqPageJsonLd(CONTACT_FAQ_ITEMS);
+const contactBreadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+    { '@type': 'ListItem', position: 2, name: 'Contact', item: 'https://ringbooker.com/contact' },
+  ],
+};
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
 
@@ -281,13 +299,18 @@ export function MarketingContactTemplate() {
             <div className="container">
               <div className="contact-grid">
                 <div className="hero-copy">
-                  <div className="badge"><span className="pulse-dot" />Book a demo</div>
+                  <nav aria-label="Breadcrumb" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.35, color: 'var(--mk-text-soft,#94a3b8)' }}>
+                    <a href="/" style={{ color: 'var(--mk-text-soft,#94a3b8)', textDecoration: 'none', fontWeight: 400 }}>Home</a>
+                    <span style={{ margin: '0 6px' }}>›</span>
+                    <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>Contact</span>
+                  </nav>
+                  <div className="badge">Book a demo</div>
                   <h1>See How RingBooker Recovers Missed Bookings</h1>
                   <p>Tell us how your calls work today—after-hours, overflow, reschedules, or consults—and we&apos;ll show how RingBooker fits your workflow in about 15 minutes.</p>
                   <div className="trust-list">
-                    <div className="trust-item"><div className="trust-icon">🏪</div><div><strong>Keep your current number</strong><span>Forward the number clients already call.</span></div></div>
-                    <div className="trust-item"><div className="trust-icon">📅</div><div><strong>No new booking software</strong><span>Works with your current workflow.</span></div></div>
-                    <div className="trust-item"><div className="trust-icon">💬</div><div><strong>Built for booking recovery</strong><span>Covers after-hours, overflow, and missed calls.</span></div></div>
+                    <div className="trust-item"><div><strong>Keep your current number</strong><span>Forward the number clients already call.</span></div></div>
+                    <div className="trust-item"><div><strong>No new booking software</strong><span>Works with your current workflow.</span></div></div>
+                    <div className="trust-item"><div><strong>Built for booking recovery</strong><span>Covers after-hours, overflow, and missed calls.</span></div></div>
                   </div>
                 </div>
 
@@ -365,6 +388,7 @@ export function MarketingContactTemplate() {
         {contactFaqJsonLd ? (
           <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(contactFaqJsonLd) }} />
         ) : null}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(contactBreadcrumbJsonLd) }} />
       </>
 
     </MarketingLayout>

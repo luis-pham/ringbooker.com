@@ -35,6 +35,7 @@ export const metadata = buildMetadata({
 export default function PrivacyPage() {
   return (
     <MarketingLegalPage
+      breadcrumbLabel="Privacy Policy"
       badge="Privacy Policy"
       title="Privacy Policy"
       subtitle="This policy explains how RingBooker collects, uses, stores, and protects personal data when you use our website, demo flows, and AI phone agent platform."

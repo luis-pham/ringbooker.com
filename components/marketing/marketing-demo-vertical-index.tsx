@@ -104,7 +104,7 @@ const styles = [
 
     /* HERO */
     .demo-hub-hero{padding:72px 0 28px;text-align:center}
-    .demo-hub-eyebrow{display:inline-flex;align-items:center;gap:8px;border:none;background:transparent;backdrop-filter:none;border-radius:0;padding:0;color:#5B21B6;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase}
+    .demo-hub-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(139,92,246,.28);border-radius:999px;padding:7px 18px;color:#5B21B6;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;backdrop-filter:blur(8px)}
     .demo-hub-hero h1{margin:22px auto 0;max-width:820px;font-size:clamp(34px,5.2vw,56px);line-height:1.06;letter-spacing:-.04em;color:var(--demo-hub-text);font-weight:800}
     .demo-hub-lead{margin:16px auto 0;max-width:640px;font-size:17px;line-height:1.72;color:var(--mk-text-desc,#64748B);font-weight:400}
     .demo-hub-trust{margin:40px auto 0;display:flex;justify-content:center;gap:24px;flex-wrap:wrap;max-width:720px}
@@ -200,6 +200,11 @@ export function MarketingDemoVerticalIndexTemplate() {
         <main className="demo-hub">
           <section className="demo-hub-hero">
             <div className="demo-hub-inner">
+              <nav aria-label="Breadcrumb" className="mb-4 text-left text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]">
+                <Link href="/" className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] no-underline hover:text-violet-600">Home</Link>
+                <span className="mx-1.5">›</span>
+                <span className="font-normal text-[color:var(--mk-text-soft,#94a3b8)]">Demo</span>
+              </nav>
               <p className="demo-hub-eyebrow">Live demo hub</p>
               <h1>Hear how RingBooker handles real booking calls.</h1>
               <p className="demo-hub-lead">

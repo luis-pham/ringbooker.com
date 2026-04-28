@@ -62,14 +62,6 @@ const VERTICAL_DEMO_FAQ_ITEMS: MarketingFaqItem[] = [
 
 const verticalDemoFaqJsonLd = buildFaqPageJsonLd(VERTICAL_DEMO_FAQ_ITEMS);
 
-const VERTICAL_LANDING: Record<DemoVerticalSlug, string> = {
-  'nail-salon': '/industries/nail-salon',
-  'hair-salon': '/industries/hair-salon',
-  'day-spa': '/industries/spa',
-  'med-spa': '/industries/med-spa',
-  'beauty-clinic': '/industries/beauty-clinic',
-};
-
 const styles: string[] = [
   String.raw`
   /* ─── base ─────────────────────────────────────────────── */
@@ -84,11 +76,30 @@ const styles: string[] = [
 
   /* page header (full-width, centered) */
   .vd-page-header{max-width:1120px;margin:0 auto;padding:24px 20px 8px;display:flex;flex-direction:column;align-items:center}
-  .vd-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#6B7280;text-decoration:none;margin-bottom:18px;align-self:flex-start}
-  .vd-back:hover{color:var(--va)}
+  .vd-breadcrumb{align-self:flex-start;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8);margin-bottom:10px}
+  .vd-breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
+  .vd-breadcrumb a:hover{color:var(--va)}
+  .vd-breadcrumb > span{margin:0 6px}
 
   /* badge + heading */
-  .vd-badge{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--va) 30%,#E5E7EB);background:color-mix(in srgb,var(--va) 8%,#fff);border-radius:999px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--va);margin:0 auto 16px;width:fit-content}
+  .vd-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border:1px solid color-mix(in srgb,var(--va) 30%,#E5E7EB);
+    background:rgba(255,255,255,0.88);
+    border-radius:999px;
+    padding:7px 18px;
+    font-size:var(--mk-eyebrow);
+    font-weight:700;
+    line-height:1.2;
+    letter-spacing:var(--mk-eyebrow-ls);
+    text-transform:uppercase;
+    color:var(--va);
+    margin:0 auto 22px;
+    width:fit-content;
+    backdrop-filter:blur(8px);
+  }
   .vd-icon{width:22px;height:22px;border-radius:7px;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
 
   @media(min-width:800px){
@@ -279,7 +290,6 @@ function stageLabel(stage: DemoStage): string {
 
 export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVerticalSlug }) {
   const config = DEMO_VERTICALS[vertical];
-  const landingPath = VERTICAL_LANDING[vertical];
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: config.defaultBusinessName,
@@ -484,6 +494,15 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   }
 
   const verticalLabel = config.businessType.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+      { '@type': 'ListItem', position: 2, name: 'Demo', item: 'https://ringbooker.com/demo' },
+      { '@type': 'ListItem', position: 3, name: verticalLabel, item: `https://ringbooker.com/demo/${config.slug}` },
+    ],
+  };
 
   return (
     <MarketingLayout styles={styles} scriptPrefix={`vertical-demo-${config.slug}`}>
@@ -498,8 +517,14 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
 
           {/* ══ PAGE HEADER (centered, full-width) ════════════════ */}
           <div className="vd-page-header">
-            <Link href={landingPath} className="vd-back">← Back to {verticalLabel}</Link>
-            <div className="vd-badge"><span className="vd-icon">{config.icon}</span>{config.eyebrow}</div>
+            <nav className="vd-breadcrumb" aria-label="Breadcrumb">
+              <Link href="/">Home</Link>
+              <span>›</span>
+              <Link href="/demo">Demo</Link>
+              <span>›</span>
+              <span>{verticalLabel}</span>
+            </nav>
+            <div className="vd-badge">{config.eyebrow}</div>
           </div>
 
           <div className="vd-wrap">
@@ -700,7 +725,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
               <div className="vd-others">
                 {Object.values(DEMO_VERTICALS).filter((v) => v.slug !== vertical).map((v) => (
                   <Link key={v.slug} href={`/demo/${v.slug}`} className="vd-other">
-                    {v.icon} {v.businessType.replace(/-/g, ' ')}
+                    {v.businessType.replace(/-/g, ' ')}
                   </Link>
                 ))}
               </div>
@@ -715,7 +740,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   <span className="vd-phone-time">9:41</span>
                   <span className="vd-phone-icons">● ▲ ■</span>
                 </div>
-                <div className="vd-phone-avatar">{config.icon}</div>
+                <div className="vd-phone-avatar" aria-hidden />
                 <div className="vd-phone-name">{business.businessName || config.defaultBusinessName}</div>
                 <div className="vd-phone-subtitle">{stage === 'live' ? 'Active Call' : stage === 'completed' ? 'Call Summary' : 'Demo Preview'}</div>
                 <div className="vd-phone-wave"><span /><span /><span /><span /><span /></div>
@@ -760,6 +785,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
             dangerouslySetInnerHTML={{ __html: JSON.stringify(verticalDemoFaqJsonLd) }}
           />
         ) : null}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       </>
     </MarketingLayout>
   );

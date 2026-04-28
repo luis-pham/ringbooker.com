@@ -34,6 +34,7 @@ export const metadata = buildMetadata({
 export default function TermsPage() {
   return (
     <MarketingLegalPage
+      breadcrumbLabel="Terms of Service"
       badge="Terms of Service"
       title="Terms of Service"
       subtitle="These terms govern your use of RingBooker services, including website access, AI phone agent features, and paid subscription plans."

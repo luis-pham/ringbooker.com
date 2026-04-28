@@ -214,37 +214,21 @@ export const metadata = buildMetadata({
 export default function MissedCallRecoveryPage() {
   return (
     <MarketingSeoPage
-      badge="Missed-call recovery"
+      breadcrumb={
+        <>
+          <Link href="/">Home</Link>
+          <span aria-hidden> / </span>
+          <Link href="/missed-booking-protection">Missed booking protection</Link>
+          <span aria-hidden> / </span>
+          <span>Missed-call recovery</span>
+        </>
+      }
+      badge={null}
       title="Missed Call Recovery for Salons and Spas"
       intro="Most missed callers never leave voicemail — and most never call back. Missed-call recovery gives those callers a path forward before they disappear to a competitor. RingBooker uses SMS text-back, callback paths, and call summaries so booking intent is recovered on your current number, not lost in a silent hang-up."
       sections={sections}
       faqs={faqs}
       articleJsonLd={serviceJsonLd}
-      customContent={
-        <div className="seo-internal-links">
-          <p>
-            <Link href="/missed-booking-protection/peak-hour-overflow-calls">Peak-hour overflow coverage</Link>
-            {' · '}
-            <Link href="/missed-booking-protection/after-hours-calls">After-hours call answering</Link>
-            {' · '}
-            <Link href="/how-it-works">How RingBooker works</Link>
-            {' · '}
-            <Link href="/pricing">Pricing</Link>
-            {' · '}
-            <Link href="/contact">Book a demo</Link>
-            {' · '}
-            <Link href="/industries/nail-salon">Nail salon</Link>
-            {' · '}
-            <Link href="/industries/hair-salon">Hair salon</Link>
-            {' · '}
-            <Link href="/industries/spa">Spa</Link>
-            {' · '}
-            <Link href="/industries/med-spa">Med spa</Link>
-            {' · '}
-            <Link href="/industries/beauty-clinic">Beauty clinic</Link>
-          </p>
-        </div>
-      }
     />
   );
 }

@@ -64,7 +64,7 @@ const TRIAL_CTA_BASE =
   'inline-flex items-center justify-center rounded-full border border-slate-200 bg-transparent px-6 py-3 text-[14px] font-semibold text-slate-900 transition';
 
 const DEMO_CTA_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-bold text-white transition hover:-translate-y-0.5 hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
+  'inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-bold text-white transition hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
 
 export type IndustryLandingTheme = {
   /** Page background wash behind hero + sections */
@@ -87,7 +87,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#5b21b6_0%,#7c3aed_50%,#a78bfa_100%)]',
     finalCtaPrimaryBtnText: 'text-violet-900',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_6px_18px_rgba(91,33,182,0.16),0_1px_4px_rgba(91,33,182,0.08)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-violet-500 hover:text-violet-600`,
     accentClass: 'text-violet-600',
   },
@@ -96,7 +96,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ffedd5_0%,#fffbeb_42%,#ffffff_68%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#9a3412_0%,#d97706_48%,#f59e0b_100%)]',
     finalCtaPrimaryBtnText: 'text-amber-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_8px_28px_rgba(180,83,9,0.2),0_2px_8px_rgba(180,83,9,0.12)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_6px_18px_rgba(180,83,9,0.15),0_1px_4px_rgba(180,83,9,0.08)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-amber-500 hover:text-amber-800`,
     accentClass: 'text-amber-600',
   },
@@ -105,7 +105,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ccfbf1_0%,#f0fdfa_44%,#ffffff_70%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#115e59_0%,#0d9488_50%,#14b8a6_100%)]',
     finalCtaPrimaryBtnText: 'text-teal-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_8px_28px_rgba(13,148,136,0.2),0_2px_8px_rgba(13,148,136,0.12)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_6px_18px_rgba(13,148,136,0.15),0_1px_4px_rgba(13,148,136,0.08)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-teal-500 hover:text-teal-800`,
     accentClass: 'text-teal-600',
   },
@@ -114,7 +114,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#e0e7ff_0%,#eef2ff_46%,#ffffff_72%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#312e81_0%,#4f46e5_52%,#818cf8_100%)]',
     finalCtaPrimaryBtnText: 'text-indigo-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_8px_28px_rgba(67,56,202,0.22),0_2px_8px_rgba(67,56,202,0.12)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_6px_18px_rgba(67,56,202,0.16),0_1px_4px_rgba(67,56,202,0.08)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-indigo-500 hover:text-indigo-800`,
     accentClass: 'text-indigo-600',
   },
@@ -123,7 +123,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#fae8ff_0%,#fdf4ff_46%,#ffffff_72%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#86198f_0%,#c026d3_50%,#e879f9_100%)]',
     finalCtaPrimaryBtnText: 'text-fuchsia-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_8px_28px_rgba(192,38,211,0.22),0_2px_8px_rgba(192,38,211,0.12)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_6px_18px_rgba(192,38,211,0.16),0_1px_4px_rgba(192,38,211,0.08)]`,
     trialCtaClass: `${TRIAL_CTA_BASE} hover:border-fuchsia-500 hover:text-fuchsia-800`,
     accentClass: 'text-fuchsia-600',
   },
@@ -505,7 +505,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3.5 py-1.5 text-[12px] font-bold text-violet-700">
+          <div className="inline-flex rounded-full border border-violet-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-violet-700">
             AI phone answering &amp; call recovery for nail salons
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
@@ -634,7 +634,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-[12px] font-bold text-amber-700">
+          <div className="inline-flex rounded-full border border-amber-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-amber-700">
             Built for Hair Salons
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
@@ -760,7 +760,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-teal-200 bg-teal-50 px-3.5 py-1.5 text-[12px] font-bold text-teal-700">
+          <div className="inline-flex rounded-full border border-teal-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-teal-700">
             For Day Spas & Wellness Studios
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
@@ -902,7 +902,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-[12px] font-bold text-indigo-700">
+          <div className="inline-flex rounded-full border border-indigo-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-indigo-700">
             For Med Spas & Aesthetic Practices
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
@@ -1047,7 +1047,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-fuchsia-200 bg-fuchsia-50 px-3.5 py-1.5 text-[12px] font-bold text-fuchsia-700">
+          <div className="inline-flex rounded-full border border-fuchsia-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-fuchsia-700">
             For Beauty Clinics, Wax Studios & Lash Studios
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
@@ -1433,6 +1433,14 @@ const DEMO_PATH: Record<MarketingVerticalKey, string> = {
   'beauty-clinic': '/demo/beauty-clinic',
 };
 
+const VERTICAL_LABEL: Record<MarketingVerticalKey, string> = {
+  'nail-salon': 'Nail Salon',
+  'hair-salon': 'Hair Salon',
+  spa: 'Spa',
+  'med-spa': 'Med Spa',
+  'beauty-clinic': 'Beauty Clinic',
+};
+
 export async function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVerticalKey }) {
   const theme = INDUSTRY_THEME[vertical];
   const faq = FAQ_BY_VERTICAL[vertical];
@@ -1465,6 +1473,15 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
       audienceType: serviceConfig.serviceType,
     },
     description: serviceConfig.description,
+  };
+  const verticalPath = `/industries/${vertical}`;
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+      { '@type': 'ListItem', position: 2, name: VERTICAL_LABEL[vertical], item: `https://ringbooker.com${verticalPath}` },
+    ],
   };
 
   const ctaMap: Record<MarketingVerticalKey, { label: string; title: string; subtitle: string }> = {
@@ -1501,6 +1518,13 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
       <MarketingChromeStyles />
       <MarketingHeader active="industry" />
       <main className={`${theme.pageShellBg} pb-16 pt-28`}>
+        <div className="mx-auto mb-4 max-w-6xl px-4 sm:px-6">
+          <nav aria-label="Breadcrumb" className="text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]">
+            <Link href="/" className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] no-underline hover:text-violet-600">Home</Link>
+            <span className="mx-1.5">›</span>
+            <span className="font-normal text-[color:var(--mk-text-soft,#94a3b8)]">{VERTICAL_LABEL[vertical]}</span>
+          </nav>
+        </div>
         <PageBody vertical={vertical} />
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <VerticalHubArticles vertical={vertical} links={hubArticleLinks} eyebrowClass={theme.accentClass} />
@@ -1518,6 +1542,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
       <MarketingFooter />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }} />
     </>
   );

@@ -50,7 +50,7 @@ const MISSED_BOOKING_PROTECTION_DEFINITION =
 
 export const missedBookingProtectionHub: ContentHubPageConfig = {
   variant: 'purple',
-  badge: '📞 Pain-Point Hub',
+  badge: 'Pain-Point Hub',
   heroLayout: 'landing',
   title: createElement(
     Fragment,
@@ -317,7 +317,7 @@ const CURRENT_NUMBER_FAQ_REPLACE_SETUP: ContentHubFaq = {
 
 export const currentNumberHub: ContentHubPageConfig = {
   variant: 'teal',
-  badge: '☎️ Objection Hub',
+  badge: 'Objection Hub',
   heroLayout: 'landing',
   title: createElement(
     Fragment,
@@ -506,7 +506,7 @@ export const currentNumberHub: ContentHubPageConfig = {
 
 export const worksWithHub: ContentHubPageConfig = {
   variant: 'beautyClinic',
-  badge: '🔌 Compatibility Hub',
+  badge: 'Compatibility Hub',
   heroLayout: 'landing',
   title: createElement(
     Fragment,
@@ -707,7 +707,7 @@ export const worksWithHub: ContentHubPageConfig = {
 
 export const compareHub: ContentHubPageConfig = {
   variant: 'beautyClinic',
-  badge: '⚖️ Decision Hub',
+  badge: 'Decision Hub',
   heroLayout: 'landing',
   title: createElement(
     Fragment,
@@ -1045,7 +1045,7 @@ export const compareHub: ContentHubPageConfig = {
 
 export const trustHub: ContentHubPageConfig = {
   variant: 'trust',
-  badge: '🛡️ Trust & Reliability Hub',
+  badge: 'Trust & Reliability Hub',
   heroLayout: 'landing',
   title: createElement(
     Fragment,
