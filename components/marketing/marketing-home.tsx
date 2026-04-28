@@ -1603,36 +1603,54 @@ export function MarketingHomeTemplate() {
               </div>
             </div>
         </section>
-        {/* USE CASES */}
+        {/* TESTIMONIALS */}
         <section className="testimonials" id="testimonials">
           <div className="test-inner">
-            <div className="sec-label sec-label-center">Use Cases</div>
-            <h2 className="sec-title reveal">Built for the calls beauty teams actually miss</h2>
-            <p className="sec-sub reveal">RingBooker helps capture after-hours calls, peak-hour overflow, same-day requests, reschedules, pricing questions, and consultation calls.</p>
+            <div className="sec-label sec-label-center">Testimonials</div>
+            <h2 className="sec-title reveal">Loved by beauty teams.</h2>
+            <p className="sec-sub reveal">Real salon owners who stopped losing bookings to voicemail.</p>
             <div className="test-grid reveal">
               <article className="test-card">
-                <div className="test-icon" aria-hidden="true">
-                  <HomeLineIcon><path d="M5 10h14" /><path d="M8 7h8" /><path d="M8 13h8" /><path d="M8 17h5" /></HomeLineIcon>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />47 missed calls recovered in month 1</div>
+                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+                <p className="test-quote">"I used to stop mid-color to answer the phone. Now my team stays focused and the bookings still happen."</p>
+                <div className="test-author">
+                  <div className="test-av">
+                    <Image src="/images/jane.png" alt="Jane Nguyen" width={84} height={84} sizes="42px" quality={70} />
+                  </div>
+                  <div>
+                    <div className="test-name">Jane Nguyen</div>
+                    <div className="test-role">Nail Salon Owner — NYC</div>
+                  </div>
                 </div>
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Use Case</div>
-                <h3 className="test-name">Same-day nail calls</h3>
-                <p className="test-quote">Capture service requests, preferred times, and caller details during busy salon hours.</p>
               </article>
               <article className="test-card">
-                <div className="test-icon" aria-hidden="true">
-                  <HomeLineIcon><path d="M6 7h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" /><path d="M8 11h8" /><path d="M8 14h5" /></HomeLineIcon>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Setup completed in 12 minutes</div>
+                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+                <p className="test-quote">"We kept our number, configured basics in 15 minutes, and clients still reach us the way they always have."</p>
+                <div className="test-author">
+                  <div className="test-av">
+                    <Image src="/images/jeny.png" alt="Jennifer K." width={84} height={84} sizes="42px" quality={70} />
+                  </div>
+                  <div>
+                    <div className="test-name">Jennifer K.</div>
+                    <div className="test-role">Day Spa Manager — Dallas</div>
+                  </div>
                 </div>
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Use Case</div>
-                <h3 className="test-name">Hair salon overflow</h3>
-                <p className="test-quote">Collect booking intent while stylists stay focused on color, cuts, and client service.</p>
               </article>
               <article className="test-card">
-                <div className="test-icon" aria-hidden="true">
-                  <HomeLineIcon><path d="M12 3a7 7 0 0 0-7 7c0 5 7 11 7 11s7-6 7-11a7 7 0 0 0-7-7Z" /><circle cx="12" cy="10" r="2.5" /></HomeLineIcon>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Zero missed after-hours calls</div>
+                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+                <p className="test-quote">"After-hours used to be a black hole. Now missed callers get a text back and we know exactly who needs a callback."</p>
+                <div className="test-author">
+                  <div className="test-av">
+                    <Image src="/images/lisa.png" alt="Lisa R." width={84} height={84} sizes="42px" quality={70} />
+                  </div>
+                  <div>
+                    <div className="test-name">Lisa R.</div>
+                    <div className="test-role">Med Spa Owner — LA</div>
+                  </div>
                 </div>
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Use Case</div>
-                <h3 className="test-name">Med spa consultations</h3>
-                <p className="test-quote">Capture Botox, filler, laser, and treatment inquiries after hours or when the team is busy.</p>
               </article>
             </div>
           </div>
