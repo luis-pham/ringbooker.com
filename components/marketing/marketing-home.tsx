@@ -436,7 +436,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .convo-quote{font-size:20px;font-weight:700;color:var(--text-dark);line-height:1.3;margin-bottom:18px;letter-spacing:-.35px}
 .convo-wave{height:50px;width:100%;opacity:.15}
 .convo-wave path{fill:none;stroke:var(--text-dark);stroke-width:1.5px}
-/* ─── TESTIMONIALS + SUMMARY ─── */
+/* ─── USE CASES ─── */
 .testimonials{padding:88px 48px;background:#fff}
 .test-inner{max-width:1120px;margin:0 auto}
 .test-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:40px}
@@ -465,6 +465,8 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   margin-bottom:16px;
 }
 .test-pill-dot{width:6px;height:6px;border-radius:50%;background:#c08497;flex-shrink:0}
+.test-icon{width:40px;height:40px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;background:linear-gradient(180deg,#f5f3ff,#ede9fe);border:1px solid rgba(196,181,253,.5);color:#6d28d9}
+.test-icon .home-line-icon{margin:0}
 .test-stars{display:flex;gap:4px;margin-bottom:14px;color:#d6a850}
 .test-stars span{font-size:13px;line-height:1}
 .test-quote{font-size:var(--mk-body);color:var(--text-desc);line-height:1.72;margin-bottom:20px;font-weight:400}
@@ -1606,33 +1608,32 @@ export function MarketingHomeTemplate() {
           <div className="test-inner">
             <div className="sec-label sec-label-center">Use Cases</div>
             <h2 className="sec-title reveal">Built for the calls beauty teams actually miss</h2>
-            <p className="sec-sub reveal">RingBooker is designed around common salon, spa, med spa, and beauty clinic call patterns: after-hours inquiries, peak-hour overflow, same-day requests, reschedules, pricing questions, and consultation calls.</p>
+            <p className="sec-sub reveal">RingBooker helps capture after-hours calls, peak-hour overflow, same-day requests, reschedules, pricing questions, and consultation calls.</p>
             <div className="test-grid reveal">
               <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Scenario 1</div>
-                <h3 className="test-name">Same-day nail appointment calls</h3>
-                <p className="test-quote">A caller asks for a same-day full set, pedicure, or refill during a busy Friday rush. RingBooker captures the service request, preferred time, caller details, and urgency so the team can follow up with context.</p>
+                <div className="test-icon" aria-hidden="true">
+                  <HomeLineIcon><path d="M5 10h14" /><path d="M8 7h8" /><path d="M8 13h8" /><path d="M8 17h5" /></HomeLineIcon>
+                </div>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Use Case</div>
+                <h3 className="test-name">Same-day nail calls</h3>
+                <p className="test-quote">Capture service requests, preferred times, and caller details during busy salon hours.</p>
               </article>
               <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Scenario 2</div>
-                <h3 className="test-name">Hair salon overflow calls</h3>
-                <p className="test-quote">A new client calls while a stylist is in the middle of a color service. RingBooker collects the request, preferred provider, timing, and booking intent without interrupting the appointment.</p>
+                <div className="test-icon" aria-hidden="true">
+                  <HomeLineIcon><path d="M6 7h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2Z" /><path d="M8 11h8" /><path d="M8 14h5" /></HomeLineIcon>
+                </div>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Use Case</div>
+                <h3 className="test-name">Hair salon overflow</h3>
+                <p className="test-quote">Collect booking intent while stylists stay focused on color, cuts, and client service.</p>
               </article>
               <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Scenario 3</div>
-                <h3 className="test-name">Med spa consultation calls</h3>
-                <p className="test-quote">A prospective patient calls after hours about Botox, filler, laser, body contouring, or consultation availability. RingBooker captures the consultation intent and prepares a clear follow-up summary for the team.</p>
+                <div className="test-icon" aria-hidden="true">
+                  <HomeLineIcon><path d="M12 3a7 7 0 0 0-7 7c0 5 7 11 7 11s7-6 7-11a7 7 0 0 0-7-7Z" /><circle cx="12" cy="10" r="2.5" /></HomeLineIcon>
+                </div>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Use Case</div>
+                <h3 className="test-name">Med spa consultations</h3>
+                <p className="test-quote">Capture Botox, filler, laser, and treatment inquiries after hours or when the team is busy.</p>
               </article>
-            </div>
-            <div className="test-summary reveal" style={{ marginTop: 28 }}>
-              <h3 className="sum-title">What your team receives after each captured call</h3>
-              <ul className="sum-list" style={{ marginTop: 14 }}>
-                <li>Caller name and phone number</li>
-                <li>Service or consultation request</li>
-                <li>Preferred time or urgency</li>
-                <li>Key questions asked during the call</li>
-                <li>Suggested next action for follow-up</li>
-              </ul>
             </div>
           </div>
         </section>
