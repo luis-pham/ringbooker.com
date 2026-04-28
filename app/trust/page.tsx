@@ -8,10 +8,10 @@ import { trustHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
 const trustDescription =
-  'How RingBooker approaches reliable AI phone answering for salons and spas: human fallback, phased rollout, and clear expectations.';
+  'RingBooker is an AI receptionist for beauty businesses built around transparency, reliable call handling, and human fallback control — not AI hype.';
 
 export const metadata = buildMetadata({
-  title: 'AI Phone Answering for Salons — Honest, Reliable, Human-Friendly | RingBooker',
+  title: 'Honest AI Receptionist for Beauty Businesses — Trust & Reliability | RingBooker',
   description: trustDescription,
   path: '/trust',
 });

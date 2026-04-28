@@ -294,7 +294,11 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
   );
 }
 
-export function MarketingFooter() {
+export function MarketingFooter({
+  descriptionOverride,
+}: {
+  descriptionOverride?: string;
+} = {}) {
   const socialLinks = [
     { label: 'YouTube', href: siteConfig.socialLinks.youtube, icon: socialIconPaths.youtube },
     { label: 'LinkedIn', href: siteConfig.socialLinks.linkedin, icon: socialIconPaths.linkedin },
@@ -321,7 +325,7 @@ export function MarketingFooter() {
             RingBooker
           </div>
           <p className="mk-footer-desc">
-            AI phone answering and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number.
+            {descriptionOverride ?? 'AI phone answering and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number.'}
           </p>
           {socialLinks.length > 0 ? (
             <div className="mk-footer-social">

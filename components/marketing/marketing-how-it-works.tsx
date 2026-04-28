@@ -368,7 +368,13 @@ export function MarketingHowItWorksTemplate() {
               <div className="hiw-grid-3 hiw-flow">
                 <article className="hiw-card hiw-step" id="hiw-step-1">
                   <h3>Connect coverage</h3>
-                  <p>Forward your current business number for after-hours or overflow coverage, or add a dedicated RingBooker line if that fits your rollout better.</p>
+                  <p>
+                    Forward your current business number{' '}
+                    <a href="/current-number/call-forwarding" style={{ color: '#5B21B6', textDecoration: 'underline' }}>
+                      (see carrier-specific setup guides for Verizon, AT&amp;T, T-Mobile, and 20+ providers)
+                    </a>{' '}
+                    for after-hours or overflow coverage, or add a dedicated RingBooker line if that fits your rollout better.
+                  </p>
                 </article>
                 <article className="hiw-card hiw-step" id="hiw-step-2">
                   <h3>Add services, hours, and rules</h3>

@@ -59,7 +59,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     createElement('span', { className: 'hl' }, 'Missed Calls'),
   ),
   intro:
-    'When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Beauty businesses lose an average of $26,000–$45,000 per year to missed calls and voicemail dead ends. Missed booking protection captures that intent before it disappears into voicemail or a competitor call.',
+    "When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Beauty businesses lose an average of $26,000–$45,000 per year to missed calls and voicemail dead ends. RingBooker's AI receptionist captures that intent before it disappears into voicemail or a competitor call.",
   pills: [
     'After-hours calls captured',
     'Peak-hour overflow handled',
@@ -195,9 +195,9 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
           body: 'May answer calls but typically does not understand beauty workflows, peak patterns, or service-specific questions.',
         },
         {
-          icon: '👩',
-          title: 'Hiring more staff',
-          body: 'Does not solve after-hours coverage or scale during overflow — and adds overhead without fixing timing.',
+          icon: '🤖',
+          title: 'AI receptionist',
+          body: 'Answers like a trained front desk, understands beauty workflows, captures booking intent, and escalates when a person is needed.',
         },
       ],
       footerLink: { href: '/compare', label: 'Compare all alternatives →' },
@@ -322,7 +322,7 @@ export const currentNumberHub: ContentHubPageConfig = {
   title: createElement(
     Fragment,
     null,
-    'Add AI Coverage on Your ',
+    'Add an AI Receptionist on Your ',
     createElement('span', { className: 'hl' }, 'Current Number'),
   ),
   intro:
@@ -362,25 +362,25 @@ export const currentNumberHub: ContentHubPageConfig = {
         {
           icon: '👥',
           title: 'Clients already know it',
-          stat: '77% of salon clients prefer calling to reschedule on the number they already have (Zenoti 2025).',
-          body: 'Long-term clients have it saved. Changing it means re-educating everyone.',
+          stat: '77% of salon clients prefer calling the number they already have to reschedule (Zenoti 2025).',
+          body: 'Long-term clients save it, recognize it, and trust it. Changing that number means re-educating every caller.',
         },
         {
           icon: '📍',
           title: 'It is across all your channels',
-          stat: 'Inconsistent NAP reduces local search visibility significantly (BrightLocal).',
-          body: 'Google Business Profile, Yelp, Instagram, cards, signage — one missed update hurts more than not changing at all.',
+          stat: 'Inconsistent NAP can significantly reduce local search visibility (BrightLocal).',
+          body: 'Google Business Profile, Yelp, Instagram, printed cards, and signage all rely on the same number. One missed update creates avoidable friction.',
         },
         {
           icon: '🔀',
           title: 'Local SEO consistency',
           stat: '62% of local businesses have inconsistent NAP data online (BrightLocal 2023).',
-          body: 'When phone drifts across directories, local search systems may treat your listings as less trustworthy.',
+          body: 'When your phone number drifts across directories, local search systems may treat your listings as less consistent and less trustworthy.',
         },
         {
           icon: '🧪',
           title: 'You want to test first',
-          body: 'Keeping your number lets you trial AI coverage without a full reset — same line, same greeting, same habits clients expect.',
+          body: 'Keeping your number lets you test AI coverage without a full reset: same line, same greeting, same client habits.',
         },
       ],
     },
@@ -511,7 +511,7 @@ export const worksWithHub: ContentHubPageConfig = {
   title: createElement(
     Fragment,
     null,
-    'Works Alongside Your ',
+    'AI Receptionist That Works With Your ',
     createElement('span', { className: 'hl' }, 'Booking Tools'),
   ),
   intro:
@@ -1050,9 +1050,9 @@ export const trustHub: ContentHubPageConfig = {
   title: createElement(
     Fragment,
     null,
-    'AI Phone Answering Built for ',
+    'A Reliable AI Receptionist Built Around ',
     createElement('br'),
-    createElement('span', { className: 'hl' }, 'Trust in Beauty Businesses'),
+    createElement('span', { className: 'hl' }, 'Trust for Beauty Businesses'),
   ),
   intro:
     "Trust isn't a feature — it's a requirement. 55% of salon clients and 71% of med spa clients are comfortable with AI phone handling when it's accurate and honest. Here's exactly what RingBooker does, what it doesn't, and how to start with confidence.",

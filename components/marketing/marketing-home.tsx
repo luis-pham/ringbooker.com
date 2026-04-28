@@ -1232,7 +1232,7 @@ export function MarketingHomeTemplate() {
               on Your Current Number
             </h1>
             <p className="hero-sub">
-              An AI phone agent for{' '}
+              An AI receptionist for{' '}
               <Link className="hero-sub-link" href="/industries/nail-salon">
                 nail salons
               </Link>
@@ -1252,7 +1252,7 @@ export function MarketingHomeTemplate() {
               <Link className="hero-sub-link" href="/industries/beauty-clinic">
                 beauty clinics
               </Link>{' '}
-              — built to recover missed bookings, protect revenue, and cover after-hours calls or peak-hour overflow. Guided setup in about 15 minutes.
+              — built to recover missed bookings, protect revenue, and cover after-hours calls and peak-hour overflow on your current number. Guided setup in about 15 minutes.
             </p>
             <div className="hero-btns">
               <a href="/demo" className="btn-hero-live" data-demo-picker>
@@ -1825,7 +1825,9 @@ export function MarketingHomeTemplate() {
           </div>
         </div>
       </div>
-        <MarketingFooter />
+        <MarketingFooter
+          descriptionOverride="AI receptionist and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number."
+        />
       </>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd) }} />

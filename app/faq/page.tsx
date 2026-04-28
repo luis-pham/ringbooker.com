@@ -6,7 +6,7 @@ import { buildMetadata } from '@/lib/site';
 const faqs = [
   {
     q: 'What is RingBooker?',
-    a: 'RingBooker is an AI phone answering and call recovery layer for nail salons, hair salons, day spas, med spas, and beauty clinics — built for after-hours calls, peak-hour overflow, missed-call text back, and booking capture on your current number.',
+    a: 'RingBooker is an AI receptionist for nail salons, hair salons, day spas, med spas, and beauty clinics — built for after-hours calls, peak-hour overflow, missed-call text back, and booking capture on your current number.',
   },
   {
     q: 'Can RingBooker work with my current phone number?',

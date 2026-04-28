@@ -617,7 +617,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .leak-icon{font-size:26px;margin-bottom:10px;text-align:center}
 .html-hub-page .leak-card h3{font-size:16px;font-weight:600;line-height:1.35;margin-bottom:8px;letter-spacing:-.25px;text-align:center;color:#111827}
 .html-hub-page .leak-card-stat{font-size:13px;font-weight:700;line-height:1.5;text-align:center;color:#1f2937;margin:0 0 10px;padding:0 2px}
-.html-hub-page .leak-card p{font-size:14px;color:var(--mk-text-desc,#64748B);line-height:1.68;font-weight:400}
+.html-hub-page .leak-card p{font-size:14px;color:var(--mk-text-desc,#64748B);line-height:1.68;font-weight:400;text-align:center;margin-left:auto;margin-right:auto}
 .html-hub-page .card-stat{font-size:13px;font-weight:700;line-height:1.5;color:#1f2937;margin:0 0 10px}
 
 .html-hub-page .card-accent{border-top:3px solid var(--purple)}

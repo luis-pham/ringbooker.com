@@ -49,15 +49,15 @@ type BookingToolIntegration = {
   id: string;
   name: string;
   logoSrc: string;
-  status: 'live' | 'soon';
+  status: 'live' | 'compatible' | 'soon';
 };
 
 /** Logos under /public/images — same assets as user portal calendar integrations. */
 const BOOKING_TOOL_INTEGRATIONS: BookingToolIntegration[] = [
   { id: 'square', name: 'Square', logoSrc: '/images/square.png', status: 'live' },
-  { id: 'vagaro', name: 'Vagaro', logoSrc: '/images/vagaro.png', status: 'soon' },
+  { id: 'vagaro', name: 'Vagaro', logoSrc: '/images/vagaro.png', status: 'compatible' },
   { id: 'mindbody', name: 'Mindbody', logoSrc: '/images/mindbody.webp', status: 'soon' },
-  { id: 'booksy', name: 'Booksy', logoSrc: '/images/booksy.png', status: 'soon' },
+  { id: 'booksy', name: 'Booksy', logoSrc: '/images/booksy.png', status: 'compatible' },
 ];
 
 const TRIAL_CTA_BASE =
@@ -189,6 +189,7 @@ function IntegrationRow({ eyebrowClass = 'text-slate-400' }: { eyebrowClass?: st
       <div className="flex flex-wrap items-start gap-x-8 gap-y-4 sm:gap-x-10">
         {BOOKING_TOOL_INTEGRATIONS.map((item) => {
           const isLive = item.status === 'live';
+          const isCompatible = item.status === 'compatible';
           return (
             <div key={item.id} className="flex items-start gap-2.5">
               <img
@@ -207,6 +208,8 @@ function IntegrationRow({ eyebrowClass = 'text-slate-400' }: { eyebrowClass?: st
                     <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
                     Live
                   </div>
+                ) : isCompatible ? (
+                  <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-500">Workflow compatible</div>
                 ) : (
                   <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-400">Coming soon</div>
                 )}
@@ -506,13 +509,13 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
           <div className="inline-flex rounded-full border border-violet-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-violet-700">
-            AI phone answering &amp; call recovery for nail salons
+            AI receptionist &amp; call recovery for nail salons
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
             Nail Salon Calls Get Missed Most During Busy Service Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            RingBooker is AI phone answering for nail salons — after hours, peak-hour overflow, and weekend rushes. Works
+            RingBooker is the AI receptionist for nail salons — after hours, peak-hour overflow, and weekend rushes. Works
             on your current number, supports English and Vietnamese call flows, and captures booking intent before missed
             calls become lost revenue. 37% of nail salon calls are missed, 82% during business hours, and 80% of callers
             never leave voicemail.
@@ -635,16 +638,15 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
           <div className="inline-flex rounded-full border border-amber-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-amber-700">
-            Built for Hair Salons
+            AI receptionist for hair salons
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
             Recover Hair Salon Revenue Lost During Services and Peak Hours
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            RingBooker is AI phone answering for hair salons — preferred stylist requests, color slot inquiries, and
-            reschedule calls — for multi-chair salons, solo stylists, and booth renters — on your current number. 37%
-            of hair salon calls are missed, 82% during business hours. 77% of clients still prefer calling to
-            reschedule, even with online booking available.
+            RingBooker is the AI receptionist for hair salons — covering preferred stylist requests, color slot inquiries,
+            and reschedule calls on your current number. 37% of hair salon calls are missed, 77% of clients still prefer
+            calling over the app. Revenue-bearing calls don&apos;t have to disappear into voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
@@ -761,13 +763,15 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
           <div className="inline-flex rounded-full border border-teal-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-teal-700">
-            For Day Spas & Wellness Studios
+            AI receptionist for day spas
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
             After-Hours Spa Calls Should Not Turn Into Lost Revenue
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            Your therapists are in treatment rooms — and callers asking about massage packages, couples bookings, or availability can&apos;t interrupt that. 52% of spa customers hang up after just 3 minutes on hold. RingBooker captures peak-hour overflow and after-hours spa calls on your current number so booking revenue is not left sitting in voicemail.
+            RingBooker is the AI receptionist for day spas — capturing couples massage inquiries, package questions, and
+            after-hours calls on your current number. 52% of spa callers hang up after 3 minutes on hold. Your therapists
+            stay in treatment rooms. Booking revenue stops disappearing.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/day-spa" className={theme.demoCtaClass}>
@@ -903,13 +907,16 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
           <div className="inline-flex rounded-full border border-indigo-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-indigo-700">
-            For Med Spas & Aesthetic Practices
+            AI receptionist for med spas
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
             Med Spa Consultation Calls Should Not Go to Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            RingBooker is AI phone answering for med spas that need better coverage for after-hours consultation calls and front-desk overflow during treatment hours. 3 missed consultation calls per day can cost $130,000+ in annual revenue. RingBooker helps capture that demand on your current number before it cools off or moves to a competitor.
+            RingBooker is the AI receptionist for med spas — covering after-hours Botox, filler, and consultation calls and
+            front-desk overflow during treatment hours. 3 missed consultation calls per day costs $130,000+ in annual
+            revenue (Lani AI, 2026). Capture that demand on your current number before it cools off or moves to a
+            competitor.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
@@ -1048,16 +1055,15 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
           <div className="inline-flex rounded-full border border-fuchsia-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-fuchsia-700">
-            For Beauty Clinics, Wax Studios & Lash Studios
+            AI receptionist for beauty clinics, wax studios &amp; lash studios
           </div>
           <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
             Beauty Clinic Calls Need More Than Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            RingBooker is AI phone answering for beauty clinics, wax studios, lash studios, and aesthetic clinics. 46% of
-            beauty bookings happen outside operating hours (Boulevard, 2025) — and 35–40% of calls go unanswered during
-            service. RingBooker captures that demand on your current number, preserves follow-up context, and keeps
-            high-intent inquiries from hitting voicemail.
+            RingBooker is the AI receptionist for beauty clinics, wax studios, and lash studios — covering consultation
+            calls, after-hours inquiries, and missed-call follow-up on your current number. 46% of beauty bookings happen
+            outside operating hours. Consultation intent shouldn&apos;t disappear because no one answered.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
@@ -1441,6 +1447,19 @@ const VERTICAL_LABEL: Record<MarketingVerticalKey, string> = {
   'beauty-clinic': 'Beauty Clinic',
 };
 
+const FOOTER_DESCRIPTION_BY_VERTICAL: Record<MarketingVerticalKey, string> = {
+  'nail-salon':
+    'AI receptionist for nail salons — English and Vietnamese call coverage, walk-in availability, pricing questions, and missed-call follow-up on your current number.',
+  'hair-salon':
+    'AI receptionist for hair salons — preferred stylist requests, color slot inquiries, reschedule calls, and after-hours coverage on your current number.',
+  spa:
+    'AI receptionist for day spas — couples massage bookings, package inquiries, gift certificate calls, and after-hours coverage on your current number.',
+  'med-spa':
+    'AI receptionist for med spas — Botox, filler, and aesthetic consultation call capture after hours and during treatments, on your current number.',
+  'beauty-clinic':
+    'AI receptionist for beauty clinics, wax studios, and lash studios — consultation calls, after-hours inquiries, and missed-call follow-up on your current number.',
+};
+
 export async function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVerticalKey }) {
   const theme = INDUSTRY_THEME[vertical];
   const faq = FAQ_BY_VERTICAL[vertical];
@@ -1539,7 +1558,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
           title={ctaMap[vertical].title}
         />
       </main>
-      <MarketingFooter />
+      <MarketingFooter descriptionOverride={FOOTER_DESCRIPTION_BY_VERTICAL[vertical]} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
