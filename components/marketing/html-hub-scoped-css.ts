@@ -4,11 +4,11 @@
  */
 export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page{
-  --purple:#7C3AED;
-  --purple-light:#8B5CF6;
-  --purple-bg:#F5F3FF;
+  --purple:var(--mk-brand-purple-dark,#7C3AED);
+  --purple-light:var(--mk-brand-purple,#8B5CF6);
+  --purple-bg:var(--mk-brand-purple-wash,#F5F3FF);
   --purple-border:#DDD6FE;
-  --green:#059669;
+  --green:var(--mk-brand-green,#059669);
   --green-bg:#ECFDF5;
   --green-border:#A7F3D0;
   --blue:#2563EB;
@@ -17,17 +17,17 @@ export const HTML_HUB_SCOPED_CSS = `
   --amber:#D97706;
   --amber-bg:#FFFBEB;
   --red:#DC2626;
-  --navy:#0F0F1A;
-  --gray-800:#1F2937;
-  --gray-700:#374151;
-  --gray-600:#4B5563;
-  --gray-400:#9CA3AF;
-  --gray-100:#F9FAFB;
+  --navy:var(--mk-text-strong,#0F0F1A);
+  --gray-800:var(--mk-text-strong,#1F2937);
+  --gray-700:var(--mk-text-body,#374151);
+  --gray-600:var(--mk-text-muted,#4B5563);
+  --gray-400:var(--mk-text-soft,#9CA3AF);
+  --gray-100:var(--mk-bg-section,#F9FAFB);
   --border:var(--mk-border-soft,#E8ECF1);
   --white:#FFFFFF;
-  --radius:12px;
-  --radius-lg:20px;
-  --radius-pill:9999px;
+  --radius:var(--mk-radius-input,16px);
+  --radius-lg:var(--mk-radius-card,22px);
+  --radius-pill:var(--mk-radius-pill,9999px);
   --shadow:var(--mk-shadow-soft,0 1px 3px rgba(0,0,0,.07),0 4px 16px rgba(0,0,0,.06));
   --shadow-lg:var(--mk-shadow-hover,0 8px 32px rgba(124,58,237,.12));
   font-family:'Mona Sans Variable',ui-sans-serif,system-ui,sans-serif;
@@ -85,7 +85,7 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .hero.hero--landing .hero-blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.3;pointer-events:none;z-index:0}
 .html-hub-page .hero.hero--landing .hero-blob-1{width:560px;height:560px;background:#C4B5FD;top:-200px;left:-140px}
 .html-hub-page .hero.hero--landing .hero-blob-2{width:460px;height:460px;background:#F9A8D4;top:-100px;right:-120px}
-.html-hub-page .hero-landing-shell{position:relative;z-index:2;width:100%;max-width:1100px;margin:0 auto;padding:30px 48px 72px;box-sizing:border-box}
+.html-hub-page .hero-landing-shell{position:relative;z-index:2;width:100%;max-width:var(--mk-container-tight,1100px);margin:0 auto;padding:30px 48px 72px;box-sizing:border-box}
 .html-hub-page .hero-landing-shell .breadcrumb{align-self:stretch}
 .html-hub-page .hero.hero--landing .hero-inner{position:relative;z-index:2;max-width:820px;width:100%;margin:0 auto}
 .html-hub-page .hero.hero--landing h1.hero-h{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-home-lh);letter-spacing:var(--mk-hero-title-home-track);color:#111827;margin-bottom:20px;word-break:break-word}
@@ -109,10 +109,24 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .hero.hero--landing .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
 @media(max-width:640px){
   .html-hub-page .hero-landing-shell{padding-left:24px;padding-right:24px;padding-top:34px;padding-bottom:64px}
+  .html-hub-page .hero-ctas,
+  .html-hub-page .hero-btns{
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+  .html-hub-page .hero.hero--landing .btn-hero-live,
+  .html-hub-page .hero.hero--landing .btn-outline,
+  .html-hub-page .btn,
+  .html-hub-page .btn-lg{
+    width:100%;
+    justify-content:center;
+  }
+  .html-hub-page .hero-tags{gap:12px 18px;margin-top:28px}
 }
 
 /* Landing page width — align with marketing-home content rails (~1100px, 48px gutters) */
-.html-hub-page--landing-width .section{padding:88px 48px}
+.html-hub-page--landing-width .section{padding:var(--mk-space-section-y,88px) 48px}
 /* .section-inner max-width for landing: see “Must follow” rule after .section-inner{1200px} */
 @media(max-width:640px){
   .html-hub-page--landing-width .section{padding:56px 24px}

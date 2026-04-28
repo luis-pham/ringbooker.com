@@ -4,17 +4,17 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 const styles: string[] = [
   String.raw`
     :root{
-      --purple:#8B5CF6;
-      --purple-dark:#7C3AED;
-      --purple-ultra:#F5F3FF;
-      --text-dark:#111827;
-      --text-gray:#6B7280;
-      --text-light:#9CA3AF;
-      --bg:#fff;
-      --bg-gray:#F9FAFB;
-      --border:#E5E7EB;
-      --r-pill:999px;
-      --shadow:0 24px 60px rgba(17,24,39,.08);
+      --purple:var(--mk-brand-purple,#8B5CF6);
+      --purple-dark:var(--mk-brand-purple-dark,#7C3AED);
+      --purple-ultra:var(--mk-brand-purple-wash,#F5F3FF);
+      --text-dark:var(--mk-text-strong,#111827);
+      --text-gray:var(--mk-text-muted,#64748B);
+      --text-light:var(--mk-text-soft,#94A3B8);
+      --bg:var(--mk-bg-page,#fff);
+      --bg-gray:var(--mk-bg-section,#F9FAFB);
+      --border:var(--mk-border-soft,#E8ECF1);
+      --r-pill:var(--mk-radius-pill,999px);
+      --shadow:var(--mk-shadow-soft,0 24px 60px rgba(17,24,39,.08));
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{
@@ -54,7 +54,7 @@ const styles: string[] = [
       flex-shrink:0;
     }
     .brand-icon .ripple{
-      position:absolute;border-radius:50%;background:#8B5CF6;
+      position:absolute;border-radius:50%;background:var(--purple);
     }
     .brand-icon .r3{width:38px;height:38px;opacity:.10}
     .brand-icon .r2{width:30px;height:30px;opacity:.18}
@@ -83,7 +83,7 @@ const styles: string[] = [
       width:min(100%,460px);
       background:rgba(255,255,255,.92);
       border:1px solid rgba(229,231,235,.9);
-      border-radius:32px;
+      border-radius:var(--mk-radius-frame,32px);
       box-shadow:var(--shadow);
       backdrop-filter:blur(18px);
       padding:30px;
@@ -131,7 +131,7 @@ const styles: string[] = [
     .field input{
       width:100%;
       border:1px solid var(--border);
-      border-radius:16px;
+      border-radius:var(--mk-radius-input,16px);
       padding:15px 16px;
       font:inherit;
       color:var(--text-dark);
@@ -141,7 +141,7 @@ const styles: string[] = [
     }
     .field input:focus{
       border-color:#C4B5FD;
-      box-shadow:0 0 0 4px rgba(139,92,246,.10);
+      box-shadow:var(--mk-focus-ring,0 0 0 4px rgba(139,92,246,.10));
     }
     .row{
       display:flex;

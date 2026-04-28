@@ -73,12 +73,12 @@ export function MarketingFaqAccordion({
           __html: `
 .mfaq-section{
   --mfaq-border:var(--mk-border-soft,#E8ECF1);
-  --mfaq-bg-hover:#F9FAFB;
-  --mfaq-text:#111827;
+  --mfaq-bg-hover:var(--mk-bg-soft,#F8FAFC);
+  --mfaq-text:var(--mk-text-strong,#111827);
   --mfaq-muted:var(--mk-text-desc,#64748B);
-  --mfaq-purple:#7C3AED;
-  padding:72px 24px 72px;
-  max-width:760px;
+  --mfaq-purple:var(--mk-brand-purple-dark,#7C3AED);
+  padding:88px 24px 72px;
+  max-width:var(--mk-narrow-width,760px);
   margin:0 auto;
   text-align:center;
   box-sizing:border-box;
@@ -93,13 +93,13 @@ export function MarketingFaqAccordion({
   font-weight:600;
   letter-spacing:var(--mk-eyebrow-ls);
   text-transform:uppercase;
-  color:#5B21B6;
+  color:var(--mk-brand-purple-deep,#5B21B6);
   background:transparent;
   border:none;
   margin:0 auto 14px;
   text-align:center;
 }
-.mfaq-eyebrow--plain{color:#5B21B6}
+.mfaq-eyebrow--plain{color:var(--mk-brand-purple-deep,#5B21B6)}
 .mfaq-title{
   font-size:var(--mk-section-h2);
   font-weight:700;
@@ -124,7 +124,7 @@ export function MarketingFaqAccordion({
   display:flex;
   flex-direction:column;
   border:1px solid var(--mfaq-border);
-  border-radius:20px;
+  border-radius:var(--mk-radius-card,22px);
   overflow:hidden;
   text-align:left;
   box-shadow:none;
@@ -189,7 +189,7 @@ export function MarketingFaqAccordion({
   .mfaq-section:not(.mfaq-section--embedded){
     padding-left:22px;
     padding-right:22px;
-    padding-top:56px;
+    padding-top:var(--mk-space-section-y-mobile,56px);
     padding-bottom:64px;
   }
   .mfaq-section--embedded{padding-left:0;padding-right:0}

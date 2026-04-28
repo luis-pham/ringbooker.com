@@ -4,6 +4,52 @@
  * Use these variables in embedded page CSS so font sizes stay aligned.
  */
 :root {
+  --mk-brand-purple: #8b5cf6;
+  --mk-brand-purple-dark: #7c3aed;
+  --mk-brand-purple-deep: #5b21b6;
+  --mk-brand-purple-soft: #ede9fe;
+  --mk-brand-purple-wash: #f5f3ff;
+  --mk-brand-green: #10b981;
+  --mk-brand-amber: #f59e0b;
+  --mk-brand-red: #ef4444;
+
+  --mk-text-strong: #111827;
+  --mk-text-body: #334155;
+  --mk-text-muted: #64748b;
+  --mk-text-soft: #94a3b8;
+
+  --mk-bg-page: #ffffff;
+  --mk-bg-soft: #f8fafc;
+  --mk-bg-section: #f9fafb;
+  --mk-bg-card: #ffffff;
+
+  --mk-border-soft: #e8ecf1;
+  --mk-border-strong: #d6dde6;
+  --mk-border-brand: rgba(139, 92, 246, 0.28);
+
+  --mk-radius-pill: 999px;
+  --mk-radius-input: 16px;
+  --mk-radius-card: 22px;
+  --mk-radius-panel: 28px;
+  --mk-radius-frame: 32px;
+
+  --mk-shadow-soft: 0 20px 40px -8px rgba(17, 24, 39, 0.06), 0 8px 16px -6px rgba(17, 24, 39, 0.04);
+  --mk-shadow-hover: 0 22px 44px -8px rgba(17, 24, 39, 0.09), 0 10px 20px -6px rgba(17, 24, 39, 0.05);
+  --mk-shadow-brand: 0 8px 28px rgba(91, 33, 182, 0.22), 0 2px 8px rgba(91, 33, 182, 0.12);
+  --mk-shadow-brand-hover: 0 12px 36px rgba(91, 33, 182, 0.28), 0 4px 12px rgba(91, 33, 182, 0.14);
+
+  --mk-focus-ring: 0 0 0 4px rgba(139, 92, 246, 0.1);
+
+  --mk-container: 1160px;
+  --mk-container-tight: 1100px;
+  --mk-reading-width: 940px;
+  --mk-narrow-width: 760px;
+
+  --mk-space-section-y: 88px;
+  --mk-space-section-y-mobile: 56px;
+  --mk-space-card: 22px;
+  --mk-space-card-lg: 28px;
+
   --mk-font-body: 16px;
   --mk-leading-body: 1.6;
 
@@ -56,11 +102,5 @@
 
   --mk-meta: 13px;
   --mk-caption: 12.5px;
-
-  /** Muted body / descriptions — align with homepage */
-  --mk-text-desc: #64748b;
-  /** Subtle card border + soft elevation (homepage-aligned) */
-  --mk-border-soft: #e8ecf1;
-  --mk-shadow-soft: 0 20px 40px -8px rgba(17, 24, 39, 0.06), 0 8px 16px -6px rgba(17, 24, 39, 0.04);
-  --mk-shadow-hover: 0 22px 44px -8px rgba(17, 24, 39, 0.09), 0 10px 20px -6px rgba(17, 24, 39, 0.05);
+  --mk-text-desc: var(--mk-text-muted);
 }

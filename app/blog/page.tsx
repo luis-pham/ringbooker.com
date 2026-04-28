@@ -128,7 +128,7 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
   return (
     <Link
       href={postPublicPath(post.pathPrefix, post.slug)}
-      className="mb-14 block overflow-hidden rounded-3xl border border-gray-200 bg-white px-7 py-8 transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_52px_rgba(0,0,0,.08)] sm:px-11 sm:py-10"
+      className="mb-14 block overflow-hidden rounded-[var(--mk-radius-panel)] border border-[color:var(--mk-border-soft)] bg-white px-7 py-8 transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] sm:px-11 sm:py-10"
     >
       <span className="mb-5 inline-flex w-fit items-center rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-bold text-brand-purple">
         🔥 Featured · {category?.name ?? 'Insights'}
@@ -309,21 +309,21 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       <MarketingHeader />
 
       <main className="overflow-x-hidden bg-white">
-        <section className="relative overflow-hidden px-6 pb-8 pt-[88px] text-center md:px-12 md:pb-12">
+        <section className="relative overflow-hidden px-6 pb-8 pt-[96px] text-center md:px-12 md:pb-12 md:pt-[88px]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_-10%,#EDE9FE_0%,#FDF4FF_50%,transparent_75%)]" />
           <div className="relative mx-auto max-w-6xl">
-            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-purple/25 bg-white/90 px-4 py-1.5 text-[14px] font-semibold text-violet-700">
+            <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-[color:var(--mk-border-brand)] bg-white/90 px-4 py-1.5 text-[14px] font-semibold text-[color:var(--mk-brand-purple-deep)]">
               <svg viewBox="0 0 24 24" className="h-[13px] w-[13px] fill-current">
                 <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-2 15H8v-2h4v2zm3-4H8v-2h7v2zm0-4H8V7h7v2z" />
               </svg>
               RingBooker Growth Resources
             </span>
-            <h1 className="mb-4 text-[clamp(38px,5vw,58px)] font-extrabold leading-[1.1] tracking-[-0.04em] text-gray-900">
+            <h1 className="mb-4 text-[clamp(38px,5vw,58px)] font-extrabold leading-[1.1] tracking-[-0.04em] text-[color:var(--mk-text-strong)]">
               Grow Your Salon with
               <br />
               AI-Powered Insights
             </h1>
-            <p className="mx-auto mb-8 max-w-3xl text-base leading-7 text-gray-500 sm:text-[17px]">
+            <p className="mx-auto mb-8 max-w-3xl text-base leading-7 text-[color:var(--mk-text-muted)] sm:text-[17px]">
               Practical guides, case studies, and playbooks for appointment-based businesses to capture more calls,
               book more clients, and grow revenue.
             </p>
@@ -335,7 +335,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         <div className="mx-auto max-w-6xl px-6 md:px-12">
           {featuredPost ? <FeaturedPost post={featuredPost} /> : null}
 
-          <div className="mb-7 flex items-baseline justify-between">
+          <div className="mb-7 flex flex-col items-start gap-2 sm:flex-row sm:items-baseline sm:justify-between">
             <h2 className="text-[22px] font-extrabold tracking-tight text-gray-900">Latest Articles</h2>
             <div className="text-sm text-gray-500">
               {total} result{total === 1 ? '' : 's'}
@@ -349,7 +349,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               ))}
             </div>
           ) : (
-            <div className="mb-14 rounded-3xl border border-dashed border-gray-300 bg-white p-10 text-center text-gray-500">
+            <div className="mb-14 rounded-[var(--mk-radius-panel)] border border-dashed border-[color:var(--mk-border-strong)] bg-white p-10 text-center text-[color:var(--mk-text-muted)]">
               No posts found for this filter. Try another category or search query.
             </div>
           )}
@@ -372,7 +372,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         />
 
         <section className="px-6 pb-14 md:px-12">
-          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl bg-gradient-to-r from-violet-700 via-brand-purple to-violet-400 px-6 py-14 text-center md:px-12">
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[var(--mk-radius-panel)] bg-gradient-to-r from-violet-700 via-brand-purple to-violet-400 px-6 py-14 text-center shadow-[var(--mk-shadow-soft)] md:px-12">
             <span className="pointer-events-none absolute -right-16 -top-20 h-[300px] w-[300px] rounded-full bg-white/5" />
             <h2 className="mb-2 text-[clamp(26px,3vw,38px)] font-extrabold tracking-tight text-white">
               Ready to stop missing bookings?
@@ -380,10 +380,10 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <p className="mb-7 text-[15px] text-white/75">
               Join salon teams using RingBooker to answer every call and fill every chair.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href="/demo"
-                className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-extrabold text-violet-800 shadow-md shadow-black/15 transition hover:scale-[1.04]"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-extrabold text-violet-800 shadow-md shadow-black/15 transition hover:scale-[1.04]"
                 data-demo-picker
               >
                 <DemoCtaPhoneIcon width={18} height={18} />
@@ -391,7 +391,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               </Link>
               <Link
                 href="/user/signup"
-                className="inline-flex items-center rounded-full border border-white/35 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+                className="inline-flex items-center justify-center rounded-full border border-white/35 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
               >
                 Start 14-Day Free Trial →
               </Link>

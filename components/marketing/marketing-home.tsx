@@ -95,22 +95,22 @@ const styles: string[] = [
   String.raw`
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --purple:#8B5CF6;
-  --purple-dark:#7C3AED;
-  --purple-light:#EDE9FE;
-  --purple-ultra:#F5F3FF;
-  --text-dark:#111827;
-  --text-gray:#6B7280;
-  --text-light:#9CA3AF;
-  --text-desc:#64748B;
-  --bg:#fff;
-  --bg-gray:#F9FAFB;
-  --border:#E8ECF1;
+  --purple:var(--mk-brand-purple,#8B5CF6);
+  --purple-dark:var(--mk-brand-purple-dark,#7C3AED);
+  --purple-light:var(--mk-brand-purple-soft,#EDE9FE);
+  --purple-ultra:var(--mk-brand-purple-wash,#F5F3FF);
+  --text-dark:var(--mk-text-strong,#111827);
+  --text-gray:var(--mk-text-muted,#64748B);
+  --text-light:var(--mk-text-soft,#94A3B8);
+  --text-desc:var(--mk-text-desc,#64748B);
+  --bg:var(--mk-bg-page,#fff);
+  --bg-gray:var(--mk-bg-section,#F9FAFB);
+  --border:var(--mk-border-soft,#E8ECF1);
   --home-shadow-soft:0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04);
   --home-shadow-hover:0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05);
-  --r-pill:999px;
-  --r-lg:24px;
-  --r-md:16px;
+  --r-pill:var(--mk-radius-pill,999px);
+  --r-lg:var(--mk-radius-card,22px);
+  --r-md:var(--mk-radius-input,16px);
   --r-sm:12px;
 }
 html{scroll-behavior:smooth}
@@ -922,6 +922,19 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   h1.hero-h{font-size:clamp(26px,7.2vw,40px);letter-spacing:-1.5px;line-height:1.18}
   h1.hero-h .hl{padding:0.1em 0.42em;margin:0.06em 0.08em;letter-spacing:-0.02em}
   .hero-sub{margin-bottom:26px}
+  .hero-btns{flex-direction:column;align-items:stretch;gap:10px}
+  .hero-btns .btn-hero-live,
+  .hero-btns .btn-hero-trial,
+  .current-btn-primary,
+  .current-btn-secondary,
+  .btn-white,
+  .btn-ghost-w{width:100%;justify-content:center}
+  .features,.compare-section,.testimonials,.pricing{padding-top:var(--mk-space-section-y-mobile);padding-bottom:64px}
+  .steps-section,.industries,.current-number-setup{padding-top:var(--mk-space-section-y-mobile);padding-bottom:64px}
+  .sec-sub{margin-bottom:32px}
+  .steps-intro,.current-number-intro{margin-bottom:28px}
+  .steps-grid,.current-number-grid{gap:24px}
+  .cta-banner{padding:28px 20px;gap:20px}
   .deep-s2-outer{padding:28px 18px 32px;gap:26px}
 }
 .legacy-marketing > nav,
@@ -1588,58 +1601,41 @@ export function MarketingHomeTemplate() {
               </div>
             </div>
         </section>
-        {/* TESTIMONIALS */}
+        {/* USE CASES */}
         <section className="testimonials" id="testimonials">
           <div className="test-inner">
-            <div className="sec-label sec-label-center">Testimonials</div>
-            <h2 className="sec-title reveal">Loved by beauty teams.</h2>
-            <p className="sec-sub reveal">Real salon owners who stopped losing bookings to voicemail.</p>
+            <div className="sec-label sec-label-center">Use Cases</div>
+            <h2 className="sec-title reveal">Built for the calls beauty teams actually miss</h2>
+            <p className="sec-sub reveal">RingBooker is designed around common salon, spa, med spa, and beauty clinic call patterns: after-hours inquiries, peak-hour overflow, same-day requests, reschedules, pricing questions, and consultation calls.</p>
             <div className="test-grid reveal">
               <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />47 missed calls recovered in month 1</div>
-                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-                <p className="test-quote">"I used to stop mid-color to answer the phone. Now my team stays focused and the bookings still happen."</p>
-                <div className="test-author">
-                  <div className="test-av">
-                    <Image src="/images/jane.png" alt="Jane Nguyen" width={84} height={84} sizes="42px" quality={70} />
-                  </div>
-                  <div>
-                    <div className="test-name">Jane Nguyen</div>
-                    <div className="test-role">Nail Salon Owner — NYC</div>
-                  </div>
-                </div>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Scenario 1</div>
+                <h3 className="test-name">Same-day nail appointment calls</h3>
+                <p className="test-quote">A caller asks for a same-day full set, pedicure, or refill during a busy Friday rush. RingBooker captures the service request, preferred time, caller details, and urgency so the team can follow up with context.</p>
               </article>
               <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Setup completed in 12 minutes</div>
-                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-                <p className="test-quote">"We kept our number, configured basics in 15 minutes, and clients still reach us the way they always have."</p>
-                <div className="test-author">
-                  <div className="test-av">
-                    <Image src="/images/jeny.png" alt="Jennifer K." width={84} height={84} sizes="42px" quality={70} />
-                  </div>
-                  <div>
-                    <div className="test-name">Jennifer K.</div>
-                    <div className="test-role">Day Spa Manager — Dallas</div>
-                  </div>
-                </div>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Scenario 2</div>
+                <h3 className="test-name">Hair salon overflow calls</h3>
+                <p className="test-quote">A new client calls while a stylist is in the middle of a color service. RingBooker collects the request, preferred provider, timing, and booking intent without interrupting the appointment.</p>
               </article>
               <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Zero missed after-hours calls</div>
-                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-                <p className="test-quote">"After-hours used to be a black hole. Now missed callers get a text back and we know exactly who needs a callback."</p>
-                <div className="test-author">
-                  <div className="test-av">
-                    <Image src="/images/lisa.png" alt="Lisa R." width={84} height={84} sizes="42px" quality={70} />
-                  </div>
-                  <div>
-                    <div className="test-name">Lisa R.</div>
-                    <div className="test-role">Med Spa Owner — LA</div>
-                  </div>
-                </div>
+                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Scenario 3</div>
+                <h3 className="test-name">Med spa consultation calls</h3>
+                <p className="test-quote">A prospective patient calls after hours about Botox, filler, laser, body contouring, or consultation availability. RingBooker captures the consultation intent and prepares a clear follow-up summary for the team.</p>
               </article>
             </div>
-	          </div>
-	        </section>
+            <div className="test-summary reveal" style={{ marginTop: 28 }}>
+              <h3 className="sum-title">What your team receives after each captured call</h3>
+              <ul className="sum-list" style={{ marginTop: 14 }}>
+                <li>Caller name and phone number</li>
+                <li>Service or consultation request</li>
+                <li>Preferred time or urgency</li>
+                <li>Key questions asked during the call</li>
+                <li>Suggested next action for follow-up</li>
+              </ul>
+            </div>
+          </div>
+        </section>
         {/* PRICING */}
         <section className="pricing" id="pricing">
           <div className="pricing-inner">

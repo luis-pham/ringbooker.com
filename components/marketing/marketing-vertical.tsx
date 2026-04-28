@@ -480,7 +480,7 @@ function FinalCta({
         <div className="relative mt-8 flex flex-wrap justify-center gap-3">
           <a
             href={demoPath}
-            className={`inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-[14px] font-bold shadow-[0_8px_24px_-6px_rgba(17,24,39,0.08),0_2px_8px_rgba(17,24,39,0.04)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_32px_-6px_rgba(17,24,39,0.1),0_4px_12px_rgba(17,24,39,0.05)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${primaryBtnTextClass}`}
+            className={`inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-[14px] font-bold shadow-[var(--mk-shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${primaryBtnTextClass}`}
           >
             <DemoCtaPhoneIcon width={18} height={18} />
             Try a Live Demo Call

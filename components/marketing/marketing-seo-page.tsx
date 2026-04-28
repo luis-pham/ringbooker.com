@@ -146,28 +146,28 @@ export function MarketingSeoPage({
         dangerouslySetInnerHTML={{
           __html: `
 .seo-shell{padding:110px 22px 70px;background:radial-gradient(ellipse 88% 58% at 50% 0%,#ede9fe 0%,#ffffff 64%)}
-.seo-article{max-width:940px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:28px 24px;box-shadow:0 12px 34px rgba(17,24,39,.06)}
-.seo-badge{display:inline-flex;padding:6px 12px;border-radius:999px;border:1px solid rgba(124,58,237,.26);background:#f5f3ff;color:#6d28d9;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
-.seo-article h1{font-size:var(--mk-article-h1);line-height:var(--mk-article-h1-lh);letter-spacing:var(--mk-article-h1-track);color:#111827;margin:0 0 12px}
-.seo-intro{font-size:var(--mk-article-intro);line-height:var(--mk-article-intro-lh);color:#4b5563;margin:0 0 22px}
+.seo-article{max-width:var(--mk-reading-width,940px);margin:0 auto;background:#fff;border:1px solid var(--mk-border-soft,#e8ecf1);border-radius:var(--mk-radius-card,22px);padding:32px 28px;box-shadow:var(--mk-shadow-soft)}
+.seo-badge{display:inline-flex;padding:6px 12px;border-radius:var(--mk-radius-pill,999px);border:1px solid var(--mk-border-brand,rgba(124,58,237,.26));background:var(--mk-brand-purple-wash,#f5f3ff);color:var(--mk-brand-purple-deep,#6d28d9);font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
+.seo-article h1{font-size:var(--mk-article-h1);line-height:var(--mk-article-h1-lh);letter-spacing:var(--mk-article-h1-track);color:var(--mk-text-strong,#111827);margin:0 0 12px}
+.seo-intro{font-size:var(--mk-article-intro);line-height:var(--mk-article-intro-lh);color:var(--mk-text-body,#334155);margin:0 0 22px}
 .seo-section{padding-top:18px}
-.seo-section h2{font-size:var(--mk-article-h2);line-height:var(--mk-article-h2-lh);letter-spacing:var(--mk-article-h2-track);color:#111827;margin:0 0 14px}
-.seo-h3{font-size:clamp(17px,2.1vw,20px);line-height:1.35;font-weight:700;color:#1f2937;margin:16px 0 8px}
-.seo-p,.seo-section li{font-size:var(--mk-article-body);line-height:var(--mk-article-body-lh);color:#4b5563}
+.seo-section h2{font-size:var(--mk-article-h2);line-height:var(--mk-article-h2-lh);letter-spacing:var(--mk-article-h2-track);color:var(--mk-text-strong,#111827);margin:0 0 14px}
+.seo-h3{font-size:clamp(17px,2.1vw,20px);line-height:1.35;font-weight:700;color:var(--mk-text-body,#334155);margin:16px 0 8px}
+.seo-p,.seo-section li{font-size:var(--mk-article-body);line-height:var(--mk-article-body-lh);color:var(--mk-text-body,#334155)}
 .seo-p{margin:0 0 10px}
 .seo-ul,.seo-ol{margin:0 0 14px;padding-left:1.35rem}
 .seo-ul li,.seo-ol li{margin-bottom:8px}
 .seo-table-wrap{margin:12px 0 18px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .seo-table{width:100%;border-collapse:collapse;font-size:var(--mk-article-body);line-height:1.5}
-.seo-table th,.seo-table td{border:1px solid #e5e7eb;padding:10px 12px;text-align:left;vertical-align:top;color:#4b5563}
-.seo-table th{background:#f9fafb;font-weight:700;color:#111827}
-.seo-internal-links{font-size:var(--mk-btn);line-height:1.68;color:#4b5563}
+.seo-table th,.seo-table td{border:1px solid var(--mk-border-soft,#e8ecf1);padding:10px 12px;text-align:left;vertical-align:top;color:var(--mk-text-body,#334155)}
+.seo-table th{background:var(--mk-bg-soft,#f8fafc);font-weight:700;color:var(--mk-text-strong,#111827)}
+.seo-internal-links{font-size:var(--mk-btn);line-height:1.68;color:var(--mk-text-body,#334155)}
 .seo-internal-links p{margin:0}
-.seo-internal-links a{color:#5b21b6;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.seo-internal-links a{color:var(--mk-brand-purple-deep,#5b21b6);font-weight:600;text-decoration:underline;text-underline-offset:3px}
 .seo-internal-links a:hover{color:#4c1d95}
 @media (max-width: 860px){
   .seo-shell{padding-top:96px}
-  .seo-article{padding:20px 16px}
+  .seo-article{padding:22px 18px}
   .seo-intro{font-size:var(--mk-section-lead)}
   .seo-section h2{font-size:24px}
   .seo-p,.seo-section li,.seo-table{font-size:var(--mk-body)}

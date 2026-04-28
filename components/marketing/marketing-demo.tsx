@@ -7,23 +7,23 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 const styles: string[] = [
   String.raw`
     :root{
-      --purple:#8B5CF6;
-      --purple-dark:#7C3AED;
-      --purple-light:#EDE9FE;
-      --purple-ultra:#F5F3FF;
-      --text-dark:#111827;
-      --text-gray:#6B7280;
-      --text-light:#9CA3AF;
-      --bg:#fff;
-      --bg-gray:#F9FAFB;
-      --border:#E8ECF1;
-      --green:#10B981;
-      --orange:#F59E0B;
-      --red:#EF4444;
+      --purple:var(--mk-brand-purple,#8B5CF6);
+      --purple-dark:var(--mk-brand-purple-dark,#7C3AED);
+      --purple-light:var(--mk-brand-purple-soft,#EDE9FE);
+      --purple-ultra:var(--mk-brand-purple-wash,#F5F3FF);
+      --text-dark:var(--mk-text-strong,#111827);
+      --text-gray:var(--mk-text-muted,#64748B);
+      --text-light:var(--mk-text-soft,#94A3B8);
+      --bg:var(--mk-bg-page,#fff);
+      --bg-gray:var(--mk-bg-section,#F9FAFB);
+      --border:var(--mk-border-soft,#E8ECF1);
+      --green:var(--mk-brand-green,#10B981);
+      --orange:var(--mk-brand-amber,#F59E0B);
+      --red:var(--mk-brand-red,#EF4444);
       --blue:#3B82F6;
-      --r-pill:999px;
-      --r-lg:24px;
-      --r-md:16px;
+      --r-pill:var(--mk-radius-pill,999px);
+      --r-lg:var(--mk-radius-card,22px);
+      --r-md:var(--mk-radius-input,16px);
       --r-sm:12px;
       --shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04));
     }
