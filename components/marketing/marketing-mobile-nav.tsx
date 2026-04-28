@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -88,7 +89,7 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
           aria-labelledby={titleId}
         >
           <header className="mk-drawer-head">
-            <a
+            <Link
               href="/"
               id={titleId}
               className="mk-nav-logo mk-drawer-head-logo"
@@ -104,7 +105,7 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
                 </div>
               </div>
               <span>RingBooker</span>
-            </a>
+            </Link>
             <button
               type="button"
               className="mk-drawer-close"
@@ -126,7 +127,7 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
             {PRIMARY_NAV.map((item) => {
               const isActive = item.active !== undefined && active === item.active;
               return (
-                <a
+                <Link
                   key={item.href}
                   href={item.href}
                   className={`mk-drawer-navlink${isActive ? ' active' : ''}`}
@@ -134,11 +135,11 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
                 >
                   <span className="mk-drawer-navlink-label">{item.label}</span>
                   <span className="mk-drawer-navlink-chevron" aria-hidden="true" />
-                </a>
+                </Link>
               );
             })}
             {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 className="mk-drawer-navlink"
@@ -148,7 +149,7 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
                   {item.icon} {item.label}
                 </span>
                 <span className="mk-drawer-navlink-chevron" aria-hidden="true" />
-              </a>
+              </Link>
             ))}
           </nav>
 
@@ -164,20 +165,20 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
             </button>
             {state.type === 'visitor' ? (
               <>
-                <a
+                <Link
                   href="/user/signup"
                   className="mk-drawer-btn-cta"
                   onClick={() => setOpen(false)}
                 >
                   Start Free Trial →
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/user/login"
                   className="mk-drawer-signin"
                   onClick={() => setOpen(false)}
                 >
                   Sign In
-                </a>
+                </Link>
               </>
             ) : null}
           </div>

@@ -1,4 +1,7 @@
+import Link from 'next/link';
+
 import { DemoPickerLazy } from '@/components/marketing/demo-picker-lazy';
+import { MarketingInternalLinkRouter } from '@/components/marketing/marketing-internal-link-router';
 import { MarketingMobileNav } from '@/components/marketing/marketing-mobile-nav';
 import { NavActionsClient } from '@/components/marketing/nav-actions-client';
 import { MARKETING_DEMO_NAV_ITEMS } from '@/lib/marketing-demo-nav';
@@ -208,9 +211,11 @@ export function MarketingChromeStyles() {
 
 export function MarketingHeader({ active }: MarketingHeaderProps) {
   return (
-    <nav className="mk-nav">
-      <div className="mk-nav-inner">
-        <a href="/" className="mk-nav-logo">
+    <>
+      <MarketingInternalLinkRouter />
+      <nav className="mk-nav">
+        <div className="mk-nav-inner">
+        <Link href="/" className="mk-nav-logo">
           <div className="mk-nav-logo-icon">
             <div className="mk-nav-ripple mk-nav-ripple-3" />
             <div className="mk-nav-ripple mk-nav-ripple-2" />
@@ -221,13 +226,13 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
             </div>
           </div>
           <span>RingBooker</span>
-        </a>
+        </Link>
         <div className="mk-nav-links">
-          <a href="/#features">
+          <Link href="/#features">
             Features
-          </a>
+          </Link>
           <div className="mk-demo-dd">
-            <a
+            <Link
               href="/#industries"
               className={`mk-demo-dd-link${active === 'industry' ? ' active' : ''}`}
             >
@@ -237,54 +242,55 @@ export function MarketingHeader({ active }: MarketingHeaderProps) {
                   <path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
-            </a>
+            </Link>
             <div className="mk-demo-menu">
               <div className="mk-demo-menu-inner">
                 {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
-                  <a key={item.href} href={item.href} className="mk-demo-item">
+                  <Link key={item.href} href={item.href} className="mk-demo-item">
                     <span className="mk-demo-item-icon">{item.icon}</span>
                     {item.label}
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
           </div>
           <div className="mk-demo-dd">
-            <a href="/demo" className={`mk-demo-dd-link${active === 'demo' ? ' active' : ''}`}>
+            <Link href="/demo" className={`mk-demo-dd-link${active === 'demo' ? ' active' : ''}`}>
               Live Demo{' '}
               <span className="mk-demo-caret" aria-hidden>
                 <svg viewBox="0 0 10 10">
                   <path d="M1.5 3.5 5 7l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </span>
-            </a>
+            </Link>
             <div className="mk-demo-menu">
               <div className="mk-demo-menu-inner">
                 {MARKETING_DEMO_NAV_ITEMS.map((item) => (
-                  <a key={item.href} href={item.href} className="mk-demo-item">
+                  <Link key={item.href} href={item.href} className="mk-demo-item">
                     <span className="mk-demo-item-icon">{item.icon}</span>
                     {item.label}
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
           </div>
-          <a href="/pricing" className={active === 'pricing' ? 'active' : undefined}>
+          <Link href="/pricing" className={active === 'pricing' ? 'active' : undefined}>
             Pricing
-          </a>
-          <a href="/how-it-works" className={active === 'how-it-works' ? 'active' : undefined}>
+          </Link>
+          <Link href="/how-it-works" className={active === 'how-it-works' ? 'active' : undefined}>
             How It Works
-          </a>
-          <a href="/contact" className={active === 'contact' ? 'active' : undefined}>
+          </Link>
+          <Link href="/contact" className={active === 'contact' ? 'active' : undefined}>
             Contact
-          </a>
+          </Link>
         </div>
         <div className="mk-nav-right">
           <MarketingMobileNav active={active} />
           <NavActionsClient />
         </div>
-      </div>
-    </nav>
+        </div>
+      </nav>
+    </>
   );
 }
 
@@ -339,51 +345,51 @@ export function MarketingFooter() {
         <nav className="mk-footer-links" aria-label="Footer">
           <div className="mk-footer-col">
             <h4>Product</h4>
-            <a href="/#features">Features</a>
-            <a href="/pricing">Pricing</a>
-            <a href="/how-it-works">How It Works</a>
+            <Link href="/#features">Features</Link>
+            <Link href="/pricing">Pricing</Link>
+            <Link href="/how-it-works">How It Works</Link>
             <a href="/demo" data-demo-picker>
               Live Demo
             </a>
-            <a href="/user/login">Sign In</a>
+            <Link href="/user/login">Sign In</Link>
           </div>
           <div className="mk-footer-col">
             <h4>Solutions</h4>
-            <a href="/missed-booking-protection">Missed Booking Protection</a>
-            <a href="/current-number">Current Number</a>
-            <a href="/works-with">Works With</a>
-            <a href="/compare">Compare</a>
-            <a href="/trust">Trust</a>
+            <Link href="/missed-booking-protection">Missed Booking Protection</Link>
+            <Link href="/current-number">Current Number</Link>
+            <Link href="/works-with">Works With</Link>
+            <Link href="/compare">Compare</Link>
+            <Link href="/trust">Trust</Link>
           </div>
           <div className="mk-footer-col">
             <h4>Industries</h4>
             {MARKETING_INDUSTRY_NAV_ITEMS.map((item) => (
-              <a key={item.href} href={item.href}>
+              <Link key={item.href} href={item.href}>
                 {item.label}
-              </a>
+              </Link>
             ))}
           </div>
           <div className="mk-footer-col">
             <h4>Resources</h4>
-            <a href="/blog">Blog</a>
-            <a href="/current-number/call-forwarding">Call Forwarding Guides</a>
-            <a href="/faq">FAQ</a>
-            <a href="/contact">Contact</a>
+            <Link href="/blog">Blog</Link>
+            <Link href="/current-number/call-forwarding">Call Forwarding Guides</Link>
+            <Link href="/faq">FAQ</Link>
+            <Link href="/contact">Contact</Link>
           </div>
         </nav>
         <div className="mk-footer-bottom">
           <p className="mk-footer-copy">© 2025 RingBooker — All rights reserved.</p>
           <div className="mk-footer-bottom-right">
             <nav className="mk-footer-legal" aria-label="Legal">
-              <a href="/privacy">Privacy Policy</a>
+              <Link href="/privacy">Privacy Policy</Link>
               <span className="mk-footer-legal-sep" aria-hidden="true">
                 ·
               </span>
-              <a href="/terms">Terms of Service</a>
+              <Link href="/terms">Terms of Service</Link>
               <span className="mk-footer-legal-sep" aria-hidden="true">
                 ·
               </span>
-              <a href="/refund">Refund Policy</a>
+              <Link href="/refund">Refund Policy</Link>
             </nav>
             <p className="mk-footer-tagline">Built for salon users 💜</p>
           </div>

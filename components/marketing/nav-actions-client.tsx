@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
@@ -237,24 +238,24 @@ function AvatarMenu({
         </div>
 
         <div className="mk-avatar-items">
-          <a href="/user" className="mk-avatar-item" onClick={onClose}>
+          <Link href="/user" className="mk-avatar-item" onClick={onClose}>
             <span>⚡</span> Dashboard
-          </a>
+          </Link>
           {state.type === 'setup_incomplete' && (
-            <a href="/user/onboarding" className="mk-avatar-item" onClick={onClose}>
+            <Link href="/user/onboarding" className="mk-avatar-item" onClick={onClose}>
               <span>🔧</span> Continue Setup
-            </a>
+            </Link>
           )}
-          <a href="/user/settings" className="mk-avatar-item" onClick={onClose}>
+          <Link href="/user/settings" className="mk-avatar-item" onClick={onClose}>
             <span>⚙️</span> Settings
-          </a>
-          <a href="/user/billing" className="mk-avatar-item" onClick={onClose}>
+          </Link>
+          <Link href="/user/billing" className="mk-avatar-item" onClick={onClose}>
             <span>💳</span> Billing
-          </a>
+          </Link>
           {showUpgrade && (
-            <a href="/pricing" className="mk-avatar-item mk-avatar-upgrade" onClick={onClose}>
+            <Link href="/pricing" className="mk-avatar-item mk-avatar-upgrade" onClick={onClose}>
               <span>✨</span> Upgrade Plan
-            </a>
+            </Link>
           )}
         </div>
 
@@ -351,7 +352,7 @@ export function NavActionsClient() {
   if (state.type === 'visitor') {
     return (
       <div className="mk-nav-actions">
-        <a href="/user/login" className="mk-nav-signin">Sign In</a>
+        <Link href="/user/login" className="mk-nav-signin">Sign In</Link>
         <a href="/demo" className="mk-nav-cta mk-nav-cta-hide-sm" data-demo-picker>
           <DemoCtaPhoneIcon width={16} height={16} />
           Try a Live Demo
@@ -374,12 +375,12 @@ export function NavActionsClient() {
   return (
     <div className="mk-nav-actions" ref={containerRef}>
       {showUpgradeCta && (
-        <a href="/pricing" className="mk-nav-upgrade">Upgrade</a>
+        <Link href="/pricing" className="mk-nav-upgrade">Upgrade</Link>
       )}
 
-      <a href={cta.href} className="mk-nav-cta mk-nav-cta-hide-sm">
+      <Link href={cta.href} className="mk-nav-cta mk-nav-cta-hide-sm">
         {cta.label}
-      </a>
+      </Link>
 
       <div className="mk-avatar-dd">
         <button
