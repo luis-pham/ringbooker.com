@@ -17,6 +17,23 @@ function titleSuffixForPostPathPrefix(pathPrefix: string): string {
   return `${siteConfig.name} Blog`;
 }
 
+function isVietnamesePost(post: Awaited<ReturnType<typeof getPostByPathPrefixAndSlug>>): boolean {
+  if (!post) return false;
+  const language = (post as typeof post & { language?: string | null }).language?.trim().toLowerCase();
+  if (language === 'vi') return true;
+  return post.categories.some(({ category }) => {
+    const slug = category.slug.trim().toLowerCase();
+    const name = category.name.trim().toLowerCase();
+    return slug === 'vietnamese-owners' || name === 'vietnamese owners';
+  });
+}
+
+function parentSectionPathForPost(pathPrefix: string): string {
+  const prefix = pathPrefix.trim().replace(/^\/+|\/+$/g, '') || 'blog';
+  if (prefix === 'blog') return '/blog';
+  return `/${prefix}`;
+}
+
 export async function buildBlogPostMetadata(pathPrefix: string, slug: string): Promise<Metadata> {
   if (!hasDatabaseUrl) return { title: 'RingBooker Blog' };
   const post = await getPostByPathPrefixAndSlug(pathPrefix, slug).catch(() => null);
@@ -44,7 +61,15 @@ export async function buildBlogPostMetadata(pathPrefix: string, slug: string): P
     metadataBase: new URL(siteConfig.url),
     title: { absolute: documentTitle },
     description,
-    alternates: buildAlternates(path),
+    alternates: isVietnamesePost(post)
+      ? {
+          canonical: path,
+          languages: {
+            vi: path,
+            'x-default': parentSectionPathForPost(post.pathPrefix),
+          },
+        }
+      : buildAlternates(path),
     openGraph: {
       title: documentTitle,
       description,

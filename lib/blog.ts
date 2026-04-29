@@ -329,8 +329,20 @@ export async function incrementPostViews(pathPrefix: string, slug: string): Prom
   }
 }
 
+function isVietnameseOwnersCategory(category: { slug: string; name: string }): boolean {
+  const slug = category.slug.trim().toLowerCase();
+  const name = category.name.trim().toLowerCase();
+  return slug === 'vietnamese-owners' || name === 'vietnamese owners';
+}
+
+function parentSectionPathForPost(pathPrefix: string): string {
+  const prefix = pathPrefix.trim().replace(/^\/+|\/+$/g, '') || 'blog';
+  if (prefix === 'blog') return '/blog';
+  return `/${prefix}`;
+}
+
 /** Canonical `/…` paths for sitemap (Prisma only; excludes unknown prefixes and compare reserved slugs). */
-export async function getPublishedPostSitemapEntries(): Promise<Array<{ path: string; lastModified: Date }>> {
+export async function getPublishedPostSitemapEntries(): Promise<Array<{ path: string; lastModified: Date; alternates?: { vi: string; xDefault: string } }>> {
   if (!hasDatabaseUrl()) {
     warnMissingDatabaseUrl();
     return [];
@@ -338,15 +350,32 @@ export async function getPublishedPostSitemapEntries(): Promise<Array<{ path: st
   try {
     const posts = await prisma.post.findMany({
       where: { status: PostStatus.PUBLISHED, redirectTo: null },
-      select: { pathPrefix: true, slug: true, updatedAt: true },
+      select: {
+        pathPrefix: true,
+        slug: true,
+        updatedAt: true,
+        categories: { include: { category: true } },
+      },
     });
     return posts
       .filter((p) => isBlogPathPrefix(p.pathPrefix.trim()))
       .filter((p) => !(p.pathPrefix.trim() === 'compare' && isReservedCompareBlogSlug(p.slug)))
-      .map((p) => ({
-        path: postPublicPath(p.pathPrefix, p.slug),
-        lastModified: p.updatedAt,
-      }));
+      .map((p) => {
+        const path = postPublicPath(p.pathPrefix, p.slug);
+        const isVietnamese = p.categories.some(({ category }) => isVietnameseOwnersCategory(category));
+        return {
+          path,
+          lastModified: p.updatedAt,
+          ...(isVietnamese
+            ? {
+                alternates: {
+                  vi: path,
+                  xDefault: parentSectionPathForPost(p.pathPrefix),
+                },
+              }
+            : {}),
+        };
+      });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown error';
     console.warn(`[blog] getPublishedPostSitemapEntries: ${message}`);

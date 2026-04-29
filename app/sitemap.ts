@@ -54,6 +54,7 @@ function parseStaticSitemapLastModMap(): Map<string, Date> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const postEntries = await getPublishedPostSitemapEntries();
+  const postPathToEntry = new Map(postEntries.map((e) => [e.path, e]));
   const postPathToModified = new Map(postEntries.map((e) => [e.path, e.lastModified]));
   const staticLastModMap = parseStaticSitemapLastModMap();
   const fallbackStaticLastMod = new Date();
@@ -66,6 +67,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const staticKey = route === '' ? '/' : route;
     const lastModified =
       postPathToModified.get(route) ?? staticLastModMap.get(staticKey) ?? fallbackStaticLastMod;
+    const postEntry = postPathToEntry.get(route);
+    const alternates =
+      route === '/industries/nail-salon/vi'
+        ? {
+            languages: {
+              vi: `${siteConfig.url}/industries/nail-salon/vi`,
+              en: `${siteConfig.url}/industries/nail-salon`,
+              'x-default': `${siteConfig.url}/industries/nail-salon`,
+            },
+          }
+        : postEntry?.alternates
+          ? {
+              languages: {
+                vi: `${siteConfig.url}${postEntry.alternates.vi}`,
+                'x-default': `${siteConfig.url}${postEntry.alternates.xDefault}`,
+              },
+            }
+          : undefined;
     return {
       url: `${siteConfig.url}${route}`,
       lastModified,
@@ -76,6 +95,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           : route.includes('salon') || route.includes('spa') || route.includes('beauty')
             ? 0.9
             : 0.7,
+      ...(alternates ? { alternates } : {}),
     };
   });
 }

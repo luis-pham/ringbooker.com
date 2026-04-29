@@ -372,6 +372,7 @@ export function MarketingFooter({
                 {item.label}
               </Link>
             ))}
+            <Link href="/industries/nail-salon/vi">🇻🇳 Tiệm Nail</Link>
           </div>
           <div className="mk-footer-col">
             <h4>Resources</h4>
