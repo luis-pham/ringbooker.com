@@ -60,7 +60,23 @@ export function marketingIndustryLandingMetadata(segment: string): Metadata {
       path: '/industries',
     });
   }
-  return buildMetadata({ ...m, path: industryLandingPath(segment) });
+  const path = industryLandingPath(segment);
+  const metadata = buildMetadata({ ...m, path });
+  if (key === 'nail-salon') {
+    return {
+      ...metadata,
+      alternates: {
+        canonical: path,
+        languages: {
+          en: path,
+          'en-US': path,
+          vi: '/industries/nail-salon/vi',
+          'x-default': path,
+        },
+      },
+    };
+  }
+  return metadata;
 }
 
 export function marketingIndustryStaticSlugParams(): { slug: string }[] {

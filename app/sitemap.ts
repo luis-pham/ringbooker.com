@@ -7,6 +7,7 @@ import { siteConfig } from '@/lib/site';
 const staticRoutes = [
   '',
   '/industries/nail-salon',
+  '/industries/nail-salon/vi',
   '/industries/hair-salon',
   '/industries/spa',
   '/industries/med-spa',

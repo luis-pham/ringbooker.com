@@ -182,10 +182,32 @@ const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessN
   },
 };
 
-function IntegrationRow({ eyebrowClass = 'text-slate-400' }: { eyebrowClass?: string }) {
+type IntegrationRowLabels = {
+  eyebrow: string;
+  live: string;
+  compatible: string;
+  soon: string;
+  logoAlt: (name: string) => string;
+};
+
+const DEFAULT_INTEGRATION_ROW_LABELS: IntegrationRowLabels = {
+  eyebrow: 'Works with your booking tools',
+  live: 'Live',
+  compatible: 'Workflow compatible',
+  soon: 'Coming soon',
+  logoAlt: (name) => `${name} logo`,
+};
+
+function IntegrationRow({
+  eyebrowClass = 'text-slate-400',
+  labels = DEFAULT_INTEGRATION_ROW_LABELS,
+}: {
+  eyebrowClass?: string;
+  labels?: IntegrationRowLabels;
+}) {
   return (
     <div className="mt-6">
-      <p className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>Works with your booking tools</p>
+      <p className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{labels.eyebrow}</p>
       <div className="flex flex-wrap items-start gap-x-8 gap-y-4 sm:gap-x-10">
         {BOOKING_TOOL_INTEGRATIONS.map((item) => {
           const isLive = item.status === 'live';
@@ -194,7 +216,7 @@ function IntegrationRow({ eyebrowClass = 'text-slate-400' }: { eyebrowClass?: st
             <div key={item.id} className="flex items-start gap-2.5">
               <img
                 src={item.logoSrc}
-                alt={`${item.name} logo`}
+                alt={labels.logoAlt(item.name)}
                 width={40}
                 height={40}
                 className="h-10 w-10 shrink-0 object-contain"
@@ -206,12 +228,12 @@ function IntegrationRow({ eyebrowClass = 'text-slate-400' }: { eyebrowClass?: st
                 {isLive ? (
                   <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
                     <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                    Live
+                    {labels.live}
                   </div>
                 ) : isCompatible ? (
-                  <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-500">Workflow compatible</div>
+                  <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-500">{labels.compatible}</div>
                 ) : (
-                  <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-400">Coming soon</div>
+                  <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-400">{labels.soon}</div>
                 )}
               </div>
             </div>
@@ -222,14 +244,22 @@ function IntegrationRow({ eyebrowClass = 'text-slate-400' }: { eyebrowClass?: st
   );
 }
 
-function Faq({ items }: { items: Array<{ q: string; a: string }> }) {
+function Faq({
+  items,
+  eyebrow = 'Common Questions',
+  title = 'Frequently Asked Questions',
+}: {
+  items: Array<{ q: string; a: string }>;
+  eyebrow?: string;
+  title?: string;
+}) {
   return (
     <div className="mx-auto mt-24 max-w-6xl px-6">
       <MarketingFaqAccordion
         items={items}
         embedded
-        eyebrow="Common Questions"
-        title="Frequently Asked Questions"
+        eyebrow={eyebrow}
+        title={title}
         subtitle={null}
         openFirstItem
       />
@@ -294,17 +324,23 @@ function HowItWorks({
   accentBg,
   eyebrowClass = 'text-slate-400',
   heading = 'How RingBooker Works',
+  eyebrow = 'Setup',
+  subtitle = 'No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.',
+  stepLabel = 'Step',
 }: {
   steps: HowItWorksStep[];
   accentBg: string;
   eyebrowClass?: string;
   heading?: string;
+  eyebrow?: string;
+  subtitle?: string;
+  stepLabel?: string;
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16" data-vertical-step-track>
-      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>Setup</div>
+      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{eyebrow}</div>
       <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
-      <p className="mx-auto max-w-xl text-center text-[15px] text-slate-500">No new phone number needed. Configure the essentials in about 15 minutes, then forward your existing line for recovery coverage.</p>
+      <p className="mx-auto max-w-xl text-center text-[15px] text-slate-500">{subtitle}</p>
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden justify-center" data-vertical-step-nav>
         {steps.map((s) => (
           <a
@@ -314,7 +350,7 @@ function HowItWorks({
             data-active={s.n === '1' ? 'true' : 'false'}
             className="inline-flex min-w-[84px] items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition data-[active=true]:border-slate-900 data-[active=true]:bg-slate-900 data-[active=true]:text-white"
           >
-            Step {s.n}
+            {stepLabel} {s.n}
           </a>
         ))}
       </div>
@@ -357,10 +393,20 @@ function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
 }
 
 type PainPoint = { icon?: string; title: string; body: string };
-function PainPoints({ points, heading, eyebrowClass = 'text-slate-400' }: { points: PainPoint[]; heading: string; eyebrowClass?: string }) {
+function PainPoints({
+  points,
+  heading,
+  eyebrowClass = 'text-slate-400',
+  eyebrow = 'Why Calls Get Missed',
+}: {
+  points: PainPoint[];
+  heading: string;
+  eyebrowClass?: string;
+  eyebrow?: string;
+}) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>Why Calls Get Missed</div>
+      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{eyebrow}</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {points.map((p) => (
@@ -384,15 +430,17 @@ function FeatureGrid({
   accent,
   eyebrowClass = 'text-slate-400',
   heading = 'Every feature you need, built in',
+  eyebrow = 'What RingBooker Does',
 }: {
   features: FeatureItem[];
   accent: string;
   eyebrowClass?: string;
   heading?: string;
+  eyebrow?: string;
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>What RingBooker Does</div>
+      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{eyebrow}</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
@@ -415,22 +463,24 @@ function VsTable({
   accentClass,
   eyebrowClass = 'text-slate-400',
   heading = 'Stop relying on voicemail',
+  labels = { eyebrow: 'Before vs. After', scenario: 'Scenario', without: 'Without RingBooker', with: 'With RingBooker' },
 }: {
   rows: Array<{ scenario: string; without: string; with: string }>;
   accentClass: string;
   eyebrowClass?: string;
   heading?: string;
+  labels?: { eyebrow: string; scenario: string; without: string; with: string };
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>Before vs. After</div>
+      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{labels.eyebrow}</div>
       <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
       <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
         <div className="min-w-[600px]">
           <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-bold uppercase tracking-wider text-slate-400">
-            <span>Scenario</span>
-            <span>Without RingBooker</span>
-            <span className={accentClass}>With RingBooker</span>
+            <span>{labels.scenario}</span>
+            <span>{labels.without}</span>
+            <span className={accentClass}>{labels.with}</span>
           </div>
           {rows.map((row) => (
             <div
@@ -527,6 +577,9 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             </a>
             <Link href="/user/signup" className={theme.trialCtaClass}>
               Start Free 14-Day Trial
+            </Link>
+            <Link href="/industries/nail-salon/vi" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
+              🇻🇳 Tiếng Việt
             </Link>
           </div>
           <IntegrationRow eyebrowClass={theme.accentClass} />
@@ -625,6 +678,299 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
           { scenario: 'Same-day walk-in request', without: 'Missed — tech can\'t pick up', with: 'Availability captured or booked when connected' },
         ]}
       />
+    </>
+  );
+}
+
+const VI_NAIL_CALL_PREVIEW = {
+  businessName: 'Tiệm Nail Việt',
+  accent: '#7C3AED',
+  lines: [
+    { role: 'caller', text: 'Dạ tiệm còn chỗ làm full set chiều nay không?' },
+    { role: 'ai', text: 'Dạ còn. Chị muốn khoảng mấy giờ và làm full set gel hay acrylic ạ?' },
+    { role: 'caller', text: 'Khoảng 5 giờ, gel nhé.' },
+    { role: 'ai', text: 'Dạ em ghi nhận 5 giờ chiều full set gel. Cho em xin tên để tiệm giữ lịch ạ?' },
+  ] satisfies CallLine[],
+};
+
+const VI_NAIL_FAQ_ITEMS = [
+  {
+    q: 'RingBooker có nói tiếng Việt không?',
+    a: 'Có — RingBooker nghe máy bằng cả tiếng Việt và tiếng Anh. Đây là tính năng được thiết kế riêng cho tiệm nail người Việt tại Mỹ.',
+  },
+  {
+    q: 'Tôi có phải đổi số điện thoại không?',
+    a: 'Không. RingBooker hoạt động qua chuyển tiếp cuộc gọi từ số hiện tại của tiệm. Khách vẫn gọi vào số quen thuộc — không có gì thay đổi với họ.',
+  },
+  {
+    q: 'Setup có khó không?',
+    a: 'Không. Setup mất khoảng 15 phút. Bạn nhập thông tin dịch vụ, cài chuyển tiếp cuộc gọi, và bắt đầu ngay.',
+  },
+  {
+    q: 'Có thay thế lễ tân người thật không?',
+    a: 'Không — RingBooker là lớp phụ trợ, không phải thay thế. Lễ tân và thợ của bạn vẫn làm việc bình thường. RingBooker chỉ bắt kịp những cuộc gọi mà tiệm không kịp nghe máy.',
+  },
+  {
+    q: 'Giá bao nhiêu?',
+    a: 'Bắt đầu từ $79/tháng. Dùng thử miễn phí 14 ngày — không cần thẻ tín dụng.',
+  },
+  {
+    q: 'RingBooker có phải là lễ tân AI cho tiệm nail không?',
+    a: 'Có — RingBooker hoạt động như một lễ tân AI cho tiệm nail, trả lời câu hỏi về giá, lịch hẹn, và dịch vụ bằng tiếng Việt và tiếng Anh trên số điện thoại hiện tại của tiệm.',
+  },
+  {
+    q: 'Có phải nhập thông tin dịch vụ và giá từng cái không?',
+    a: 'Không. RingBooker tự đọc website tiệm của bạn và học toàn bộ thông tin — dịch vụ, giá, giờ mở cửa, thợ. Chỉ cần dán link website, kiểm tra lại, và bắt đầu. Mất khoảng 15 phút.',
+  },
+  {
+    q: 'RingBooker có tích hợp với phần mềm quản lý tiệm đang dùng không?',
+    a: 'Có — RingBooker hoạt động cùng Square Appointments, Vagaro, Mindbody, Booksy và các phần mềm phổ biến khác. Tiệm không cần đổi phần mềm hay thay đổi quy trình hiện tại.',
+  },
+];
+
+export async function MarketingNailSalonVietnameseTemplate() {
+  const theme = INDUSTRY_THEME['nail-salon'];
+  const hubPosts = await getPublishedPostsByPathPrefix('industries/nail-salon', { limit: 24 }).catch(() => []);
+  const hubArticleLinks = hubPosts.map((p) => ({ href: postPublicPath(p.pathPrefix, p.slug), label: p.title }));
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: VI_NAIL_FAQ_ITEMS.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  };
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://ringbooker.com/' },
+      { '@type': 'ListItem', position: 2, name: 'Nail Salon', item: 'https://ringbooker.com/industries/nail-salon' },
+      { '@type': 'ListItem', position: 3, name: 'Tiếng Việt', item: 'https://ringbooker.com/industries/nail-salon/vi' },
+    ],
+  };
+
+  return (
+    <>
+      <MarketingChromeStyles />
+      <MarketingHeader active="industry" />
+      <main className={`${theme.pageShellBg} pb-16 pt-28`} lang="vi">
+        <div className="mx-auto mb-4 max-w-6xl px-4 sm:px-6">
+          <nav aria-label="Breadcrumb" className="text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]">
+            <Link href="/" className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] no-underline hover:text-violet-600">Home</Link>
+            <span className="mx-1.5">›</span>
+            <Link href="/industries/nail-salon" className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] no-underline hover:text-violet-600">Nail Salon</Link>
+            <span className="mx-1.5">›</span>
+            <span className="font-normal text-[color:var(--mk-text-soft,#94a3b8)]">Tiếng Việt</span>
+          </nav>
+        </div>
+
+        <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
+          <div>
+            <div className="inline-flex rounded-full border border-violet-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-violet-700">
+              Dành cho tiệm nail người Việt tại Mỹ
+            </div>
+            <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+              Tiệm Nail Của Bạn Đang Bỏ Lỡ Bao Nhiêu Cuộc Gọi Mỗi Ngày?
+            </h1>
+            <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+              RingBooker là lễ tân AI cho tiệm nail — tự động nghe máy bằng tiếng Việt và tiếng Anh khi bạn đang làm dịch vụ cho khách. 37% cuộc gọi tiệm nail bị bỏ lỡ trong giờ làm việc (Zenoti 2025). RingBooker giúp bắt kịp những cuộc gọi đó trên số điện thoại hiện tại của tiệm — không cần đổi số, không cần thay đổi quy trình.
+            </p>
+            <p className="mt-3 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+              Hoạt động cùng Square Appointments và các phần mềm quản lý tiệm nail khác — không cần thay đổi quy trình hiện tại.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/user/signup" className={theme.demoCtaClass}>
+                Thử miễn phí →
+              </Link>
+              <a href="/demo/nail-salon" className={theme.trialCtaClass}>
+                Xem demo trực tiếp
+              </a>
+              <Link href="/industries/nail-salon" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
+                🇺🇸 English
+              </Link>
+            </div>
+            <IntegrationRow
+              eyebrowClass={theme.accentClass}
+              labels={{
+                eyebrow: 'Hoạt động cùng phần mềm tiệm đang dùng',
+                live: 'Đang hoạt động',
+                compatible: 'Tương thích quy trình',
+                soon: 'Sắp có',
+                logoAlt: (name) => `Logo ${name}`,
+              }}
+            />
+          </div>
+          <div className="hidden lg:block lg:pt-8">
+            <CallPreviewPlayer {...VI_NAIL_CALL_PREVIEW} />
+          </div>
+        </section>
+
+        <StatStrip
+          accent="text-violet-600"
+          stats={[
+            {
+              value: '37%',
+              label: 'cuộc gọi tiệm nail bị bỏ lỡ',
+              sub: 'Zenoti 2025: 82% trong số đó xảy ra trong giờ làm việc — khi thợ đang làm dịch vụ và không thể nghe máy.',
+            },
+            {
+              value: '80%',
+              label: 'khách không để lại tin nhắn thoại',
+              sub: 'Khi gặp hộp thư thoại, 80% khách cúp máy và gọi cho tiệm khác (Moneypenny).',
+            },
+            {
+              value: '$38,000+',
+              label: 'doanh thu bị mất mỗi năm',
+              sub: 'Phân tích RingBooker: một tiệm nail trung bình mất hơn $38,000 mỗi năm vì bỏ lỡ cuộc gọi trong giờ cao điểm và ngoài giờ.',
+            },
+          ]}
+        />
+
+        <PainPoints
+          heading="Vì sao tiệm nail bỏ lỡ cuộc gọi?"
+          eyebrow="Vì sao cuộc gọi bị bỏ lỡ"
+          eyebrowClass={theme.accentClass}
+          points={[
+            {
+              icon: '💸',
+              title: 'Bỏ lỡ cuộc gọi = mất khách',
+              body: 'Mỗi cuộc gọi nhỡ là một khách tiềm năng có thể đang so sánh 2-3 tiệm cùng lúc. Tiệm nào bắt máy trước thường giữ được khách đó.',
+            },
+            {
+              icon: '😰',
+              title: 'Lễ tân bận — điện thoại không ai nghe',
+              body: 'Trong giờ cao điểm, lễ tân phải cùng lúc check-in khách, tính tiền, và trả lời câu hỏi. Điện thoại thường bị bỏ qua.',
+            },
+            {
+              icon: '🌙',
+              title: 'Khách gọi ngoài giờ — tiệm đã đóng cửa',
+              body: '30% lịch hẹn được đặt khi tiệm đã đóng cửa (Phorest). Khách gọi lúc 8 giờ tối không thể chờ đến sáng hôm sau.',
+            },
+            {
+              icon: '⚠️',
+              title: 'Khách Việt muốn nói tiếng Việt',
+              body: 'Nhiều khách người Việt thoải mái hơn khi giao tiếp bằng tiếng mẹ đẻ. Một lễ tân AI song ngữ giúp phục vụ tốt hơn cả hai nhóm khách.',
+            },
+          ]}
+        />
+
+        <FeatureGrid
+          accent="bg-violet-50 text-violet-600"
+          eyebrow="RingBooker làm được gì"
+          eyebrowClass={theme.accentClass}
+          heading="Lễ tân AI cho tiệm nail, chạy trên số hiện tại"
+          features={[
+            { icon: '💅', title: 'Trả lời tiếng Việt và tiếng Anh', body: 'RingBooker nghe máy bằng cả hai ngôn ngữ — không cần thêm nhân viên.' },
+            { icon: '🌙', title: 'Tự động trả lời ngoài giờ', body: 'Bắt kịp mọi cuộc gọi sau khi tiệm đóng cửa — khách đặt lịch, hỏi giá, hoặc đổi hẹn lúc 9 giờ tối đều được phục vụ.' },
+            { icon: '📞', title: 'Giữ nguyên số điện thoại hiện tại', body: 'Không cần đổi số. Chuyển tiếp cuộc gọi từ số tiệm hiện tại — khách vẫn gọi vào số quen thuộc.' },
+            { icon: '🔔', title: 'Nhắc lịch hẹn tự động', body: 'Giảm tình trạng khách quên lịch, bỏ hẹn — đặc biệt hữu ích cho tiệm đông khách cuối tuần.' },
+            { icon: '👥', title: 'Ghi nhận yêu cầu của khách', body: 'Khách muốn đặt với thợ cụ thể? RingBooker ghi lại và chuyển thông tin cho đội ngũ của bạn.' },
+            { icon: '📊', title: 'Tóm tắt cuộc gọi đầy đủ', body: 'Mỗi cuộc gọi đều được ghi lại — ai gọi, hỏi gì, cần làm gì tiếp theo.' },
+            { icon: '🌐', title: 'Đọc website tiệm tự động — không cần nhập tay', body: 'Chỉ cần dán link website tiệm. RingBooker tự đọc và học thông tin — dịch vụ, giá, giờ mở cửa, thợ — không cần nhập từng thứ một.' },
+            { icon: '🔗', title: 'Tích hợp với phần mềm tiệm đang dùng', body: 'RingBooker hoạt động cùng Square Appointments, Vagaro, Mindbody, Booksy và các phần mềm quản lý tiệm nail phổ biến khác.' },
+            { icon: '📅', title: 'Tự động đặt lịch và chọn thợ', body: 'Khách gọi đặt lịch và yêu cầu thợ cụ thể? RingBooker ghi nhận tên thợ, dịch vụ, giờ mong muốn, và đồng bộ vào lịch của tiệm.' },
+          ]}
+        />
+
+        <FeatureGrid
+          accent="bg-violet-50 text-violet-600"
+          eyebrow="Vì sao chọn RingBooker"
+          eyebrowClass={theme.accentClass}
+          heading="Tại sao chủ tiệm nail người Việt chọn RingBooker?"
+          features={[
+            { icon: '⚡', title: 'Setup 15 phút', body: 'Dán link website. RingBooker tự học thông tin tiệm. Cài chuyển tiếp cuộc gọi. Xong.' },
+            { icon: '🔗', title: 'Dùng được với phần mềm tiệm đang có', body: 'Không cần đổi Square, Vagaro, hay Booksy. RingBooker chạy song song — không ảnh hưởng gì đến quy trình hiện tại.' },
+            { icon: '📞', title: 'Giữ nguyên số tiệm', body: 'Khách vẫn gọi số cũ. Không cần báo lại cho khách. Không mất khách quen.' },
+          ]}
+        />
+
+        <HowItWorks
+          accentBg="bg-violet-600"
+          eyebrow="Setup"
+          eyebrowClass={theme.accentClass}
+          heading="Setup nhanh trên số điện thoại hiện tại"
+          subtitle="Không cần đổi số. Không cần đổi phần mềm đặt lịch. Chỉ cần dán link website, kiểm tra lại thông tin, rồi bật chuyển tiếp cuộc gọi."
+          stepLabel="Bước"
+          steps={[
+            {
+              n: '1',
+              title: 'Dán link website — xong ngay',
+              body: 'RingBooker tự đọc website tiệm của bạn và học tất cả thông tin dịch vụ, giá cả, và giờ làm việc. Không cần nhập tay. Không cần kỹ thuật.',
+            },
+            {
+              n: '2',
+              title: 'Chuyển tiếp cuộc gọi',
+              body: 'Trong giờ bận hoặc sau giờ đóng cửa — cuộc gọi được trả lời ngay thay vì đổ vào hộp thư thoại.',
+            },
+            {
+              n: '3',
+              title: 'Khách được phục vụ, bạn nhận tóm tắt',
+              body: 'Mọi thông tin cuộc gọi được tổng hợp và gửi cho bạn — đủ ngữ cảnh để follow up hiệu quả.',
+            },
+          ]}
+        />
+
+        <VsTable
+          accentClass={theme.accentClass}
+          eyebrowClass={theme.accentClass}
+          heading="Khác biệt khi tiệm không còn phụ thuộc vào hộp thư thoại"
+          labels={{ eyebrow: 'Trước và sau', scenario: 'Tình huống', without: 'Không có RingBooker', with: 'Có RingBooker' }}
+          rows={[
+            { scenario: 'Khách gọi lúc 8 tối', without: 'Hộp thư thoại — khách cúp máy', with: 'Được trả lời ngay, ghi nhận lịch hẹn' },
+            { scenario: 'Thợ đang làm dịch vụ, điện thoại reo', without: 'Không ai nghe — khách gọi tiệm khác', with: 'AI nghe máy và xử lý thông tin' },
+            { scenario: 'Khách hỏi giá bằng tiếng Việt', without: 'Lễ tân không trả lời được hoặc bị nhầm lẫn', with: 'Trả lời chính xác bằng tiếng Việt' },
+            { scenario: 'Khách muốn đặt với thợ quen', without: 'Không ai ghi lại, dễ bị quên', with: 'Ghi nhận yêu cầu và chuyển cho đội ngũ' },
+            { scenario: 'Khách muốn đặt lịch lúc 9 giờ tối', without: 'Tiệm đóng cửa, khách không đặt được', with: 'RingBooker nhận lịch và đồng bộ vào hệ thống ngay' },
+            { scenario: 'Khách mới hỏi dịch vụ và giá', without: 'Phải gọi lại hoặc nhắn tin giải thích', with: 'AI đọc từ website tiệm, trả lời chính xác ngay lập tức' },
+          ]}
+        />
+
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <VerticalHubArticles
+            vertical="nail-salon"
+            links={hubArticleLinks}
+            eyebrowClass={theme.accentClass}
+            copyOverride={{
+              eyebrow: 'Bài viết liên quan',
+              heading: 'Hướng dẫn cho tiệm nail muốn giảm cuộc gọi nhỡ',
+              sub: 'Tìm hiểu thêm về cuộc gọi ngoài giờ, giờ cao điểm, chuyển tiếp cuộc gọi, và cách giữ nguyên số điện thoại hiện tại của tiệm.',
+            }}
+          />
+        </div>
+
+        <Faq items={VI_NAIL_FAQ_ITEMS} eyebrow="Câu hỏi thường gặp" title="Câu hỏi thường gặp về lễ tân AI cho tiệm nail" />
+
+        <section className="mx-auto mt-[88px] max-w-6xl px-6 pb-12 md:pb-16">
+          <div className={`relative overflow-hidden rounded-3xl px-8 py-14 text-center text-white md:px-14 ${theme.finalCtaGradient}`}>
+            <div className="pointer-events-none absolute -right-8 -top-10 h-72 w-72 rounded-full bg-white/10" />
+            <p className="relative text-[12px] font-semibold uppercase tracking-[0.08em] text-white/70">Dành cho tiệm nail người Việt tại Mỹ</p>
+            <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-bold leading-[1.1] tracking-tight">Thử miễn phí 14 ngày</h2>
+            <p className="relative mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-white/75">
+              Không cần đổi số. Không cần thay đổi phần mềm đặt lịch. Setup 15 phút.
+            </p>
+            <div className="relative mt-8 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/user/signup"
+                className={`inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-[14px] font-bold shadow-[var(--mk-shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${theme.finalCtaPrimaryBtnText}`}
+              >
+                Thử miễn phí →
+              </Link>
+              <a
+                href="/demo/nail-salon"
+                className="inline-flex items-center justify-center rounded-full border border-white/35 bg-white/10 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:bg-white/20"
+              >
+                Xem demo trực tiếp
+              </a>
+            </div>
+          </div>
+        </section>
+      </main>
+      <MarketingFooter descriptionOverride="Lễ tân AI cho tiệm nail người Việt tại Mỹ — nghe máy tiếng Việt và tiếng Anh, giữ nguyên số tiệm, đọc website tự động, và hỗ trợ giảm cuộc gọi nhỡ trong giờ cao điểm." />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }} />
     </>
   );
 }
@@ -1381,17 +1727,19 @@ function VerticalHubArticles({
   vertical,
   links,
   eyebrowClass = 'text-slate-500',
+  copyOverride,
 }: {
   vertical: MarketingVerticalKey;
   links: Array<{ href: string; label: string }>;
   eyebrowClass?: string;
+  copyOverride?: { eyebrow: string; heading: string; sub: string };
 }) {
   if (links.length === 0) return null;
-  const copy = VERTICAL_HUB_COPY[vertical];
+  const copy = copyOverride ?? { eyebrow: 'In this hub', ...VERTICAL_HUB_COPY[vertical] };
   return (
     <section className="mt-[88px] rounded-3xl bg-slate-50 px-5 py-12 sm:px-8 md:pb-16" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
-        <p className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>In this hub</p>
+        <p className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{copy.eyebrow}</p>
         <h2 className="mb-4 text-[clamp(24px,3.2vw,34px)] font-bold tracking-tight text-slate-900">{copy.heading}</h2>
         <p className="max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
