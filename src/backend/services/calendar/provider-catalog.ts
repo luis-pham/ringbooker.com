@@ -3,8 +3,12 @@ export type CalendarProviderId =
   | 'google_calendar'
   | 'vagaro'
   | 'square_appointments'
+  | 'glossgenius'
+  | 'fresha'
   | 'mindbody'
   | 'booksy';
+
+export type CalendarProviderType = 'calendar' | 'booking_link';
 
 export type CalendarProviderCapability = {
   checkAvailability: boolean;
@@ -15,13 +19,15 @@ export type CalendarProviderCapability = {
   serviceSync: boolean;
   staffSync: boolean;
   customerSync: boolean;
+  hasBookingLink: boolean;
 };
 
 export type CalendarProviderMetadata = {
   id: CalendarProviderId;
   label: string;
+  type: CalendarProviderType;
   implemented: boolean;
-  status: 'active' | 'planned';
+  status: 'active' | 'planned' | 'live';
   capabilities: CalendarProviderCapability;
 };
 
@@ -29,6 +35,7 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
   manual: {
     id: 'manual',
     label: 'Manual Calendar',
+    type: 'calendar',
     implemented: true,
     status: 'active',
     capabilities: {
@@ -40,11 +47,13 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
       serviceSync: false,
       staffSync: false,
       customerSync: false,
+      hasBookingLink: false,
     },
   },
   google_calendar: {
     id: 'google_calendar',
     label: 'Google Calendar',
+    type: 'calendar',
     implemented: true,
     status: 'active',
     capabilities: {
@@ -56,11 +65,13 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
       serviceSync: false,
       staffSync: false,
       customerSync: false,
+      hasBookingLink: false,
     },
   },
   vagaro: {
     id: 'vagaro',
     label: 'Vagaro',
+    type: 'calendar',
     implemented: true,
     status: 'active',
     capabilities: {
@@ -72,11 +83,13 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
       serviceSync: true,
       staffSync: true,
       customerSync: false,
+      hasBookingLink: false,
     },
   },
   square_appointments: {
     id: 'square_appointments',
     label: 'Square Appointments',
+    type: 'calendar',
     implemented: true,
     status: 'active',
     capabilities: {
@@ -88,11 +101,49 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
       serviceSync: false,
       staffSync: false,
       customerSync: true,
+      hasBookingLink: false,
+    },
+  },
+  glossgenius: {
+    id: 'glossgenius',
+    label: 'GlossGenius',
+    type: 'booking_link',
+    implemented: true,
+    status: 'live',
+    capabilities: {
+      checkAvailability: false,
+      createBooking: false,
+      rescheduleBooking: false,
+      cancelBooking: false,
+      webhookSync: false,
+      serviceSync: false,
+      staffSync: false,
+      customerSync: false,
+      hasBookingLink: true,
+    },
+  },
+  fresha: {
+    id: 'fresha',
+    label: 'Fresha',
+    type: 'booking_link',
+    implemented: true,
+    status: 'live',
+    capabilities: {
+      checkAvailability: false,
+      createBooking: false,
+      rescheduleBooking: false,
+      cancelBooking: false,
+      webhookSync: false,
+      serviceSync: false,
+      staffSync: false,
+      customerSync: false,
+      hasBookingLink: true,
     },
   },
   mindbody: {
     id: 'mindbody',
     label: 'Mindbody',
+    type: 'calendar',
     implemented: false,
     status: 'planned',
     capabilities: {
@@ -104,22 +155,25 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
       serviceSync: true,
       staffSync: true,
       customerSync: true,
+      hasBookingLink: false,
     },
   },
   booksy: {
     id: 'booksy',
     label: 'Booksy',
-    implemented: false,
-    status: 'planned',
+    type: 'booking_link',
+    implemented: true,
+    status: 'live',
     capabilities: {
-      checkAvailability: true,
-      createBooking: true,
-      rescheduleBooking: true,
-      cancelBooking: true,
-      webhookSync: true,
-      serviceSync: true,
-      staffSync: true,
-      customerSync: true,
+      checkAvailability: false,
+      createBooking: false,
+      rescheduleBooking: false,
+      cancelBooking: false,
+      webhookSync: false,
+      serviceSync: false,
+      staffSync: false,
+      customerSync: false,
+      hasBookingLink: true,
     },
   },
 };
