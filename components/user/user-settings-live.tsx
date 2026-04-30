@@ -390,7 +390,10 @@ export function UserSettingsLive() {
   const [vagaroClientSecretKey, setVagaroClientSecretKey] = useState('');
   const [vagaroRegion, setVagaroRegion] = useState('us');
   const [vagaroBusinessId, setVagaroBusinessId] = useState('');
+  const [vagaroBookingUrl, setVagaroBookingUrl] = useState('');
+  const [vagaroBookingUrlError, setVagaroBookingUrlError] = useState<string | null>(null);
   const [savingVagaroConfig, setSavingVagaroConfig] = useState(false);
+  const [savingVagaroBookingUrl, setSavingVagaroBookingUrl] = useState(false);
   const [bookingLinkInputs, setBookingLinkInputs] = useState<Record<BookingLinkProviderId, string>>({
     glossgenius: '',
     fresha: '',
@@ -416,6 +419,7 @@ export function UserSettingsLive() {
         }
         const nextShop = body.shop;
         setShop(nextShop);
+        setVagaroBookingUrl(nextShop.booking_url ?? '');
         setCapabilities(body.capabilities);
         const nextState = buildInitialState(nextShop);
         setForm(nextState);
@@ -463,6 +467,7 @@ export function UserSettingsLive() {
       const vagaro = providers.find((item) => item.id === 'vagaro');
       if (vagaro?.details?.region) setVagaroRegion(vagaro.details.region);
       if (vagaro?.details?.businessId) setVagaroBusinessId(vagaro.details.businessId);
+      if (vagaro?.details?.bookingUrl) setVagaroBookingUrl(vagaro.details.bookingUrl);
       setBookingLinkInputs((current) => {
         const next = { ...current };
         for (const providerId of BOOKING_LINK_PROVIDER_IDS) {
@@ -533,6 +538,34 @@ export function UserSettingsLive() {
       setCalendarStatus('booking_link_save_failed');
     } finally {
       setSavingBookingLinkProvider(null);
+    }
+  }
+
+  async function saveVagaroBookingLink() {
+    const bookingUrl = vagaroBookingUrl.trim();
+    setVagaroBookingUrlError(null);
+    setSavingVagaroBookingUrl(true);
+    try {
+      const response = await fetch('/api/backend/user/calendar/providers/vagaro/booking-url', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ bookingUrl }),
+      });
+      const body = (await response.json()) as { ok: boolean; error?: string; bookingUrl?: string };
+      if (!response.ok || !body.ok) {
+        const message = body.error ?? 'vagaro_booking_link_save_failed';
+        setVagaroBookingUrlError(message);
+        setCalendarStatus(message);
+        return;
+      }
+      if (body.bookingUrl) setVagaroBookingUrl(body.bookingUrl);
+      setCalendarStatus('Vagaro booking link saved.');
+      await loadCalendarProviders();
+    } catch {
+      setVagaroBookingUrlError('vagaro_booking_link_save_failed');
+      setCalendarStatus('vagaro_booking_link_save_failed');
+    } finally {
+      setSavingVagaroBookingUrl(false);
     }
   }
 
@@ -1051,6 +1084,43 @@ export function UserSettingsLive() {
                       placeholder="Vagaro Business ID (required)"
                     />
                   </div>
+                  <div
+                    className="field"
+                    style={{
+                      gridColumn: '1 / -1',
+                      borderTop: '1px solid rgba(15,23,42,.08)',
+                      paddingTop: 14,
+                      marginTop: 2,
+                    }}
+                  >
+                    <label>Vagaro Booking Link</label>
+                    <span className="hint-copy">Optional — for SMS booking links</span>
+                    <input
+                      type="text"
+                      value={vagaroBookingUrl}
+                      onChange={(event) => {
+                        setVagaroBookingUrl(event.target.value);
+                        setVagaroBookingUrlError(null);
+                      }}
+                      placeholder="https://vagaro.com/your-business"
+                    />
+                    <div className="note">
+                      When callers want to book, we'll send this link via SMS. Works alongside availability checking.
+                    </div>
+                    {vagaroBookingUrlError ? (
+                      <div className="note" style={{ color: '#b91c1c' }}>
+                        {vagaroBookingUrlError}
+                      </div>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="btn"
+                      disabled={savingVagaroBookingUrl || !vagaroBookingUrl.trim()}
+                      onClick={() => void saveVagaroBookingLink()}
+                    >
+                      {savingVagaroBookingUrl ? 'Saving...' : 'Save Booking Link'}
+                    </button>
+                  </div>
                   <div className="field">
                     <label>Connection status</label>
                     <div className="note">
@@ -1090,6 +1160,7 @@ export function UserSettingsLive() {
                                 clientSecretKey: vagaroClientSecretKey || undefined,
                                 region: vagaroRegion,
                                 businessId: vagaroBusinessId || undefined,
+                                bookingUrl: vagaroBookingUrl.trim() || undefined,
                               }),
                             },
                           );
