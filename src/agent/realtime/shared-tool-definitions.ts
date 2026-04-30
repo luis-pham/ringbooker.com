@@ -15,7 +15,11 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
         date: { type: 'string', description: 'Date in YYYY-MM-DD format.' },
         time: { type: 'string', description: 'Time in HH:mm format.' },
         service: { type: 'string', description: 'Requested service name.' },
-        techName: { type: 'string', description: 'Optional requested technician.' },
+        techName: {
+          type: 'string',
+          description:
+            "Name of the stylist, technician, or staff member requested by the caller. Use when caller says things like 'I want Sarah' or 'Can I book with Mike?'",
+        },
       },
       required: ['date', 'time', 'service'],
     },
@@ -30,7 +34,11 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
         date: { type: 'string', description: 'Date in YYYY-MM-DD format.' },
         time: { type: 'string', description: 'Time in HH:mm format.' },
         service: { type: 'string', description: 'Requested service name.' },
-        techName: { type: 'string', description: 'Optional requested technician.' },
+        techName: {
+          type: 'string',
+          description:
+            "Name of the stylist, technician, or staff member requested by the caller. Use when caller says things like 'I want Sarah' or 'Can I book with Mike?'",
+        },
         customerName: { type: 'string', description: 'Optional customer name.' },
         notes: { type: 'string', description: 'Optional booking notes.' },
       },

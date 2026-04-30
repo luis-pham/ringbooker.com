@@ -17,8 +17,11 @@ export interface CalendarProvider {
     time: string;
     durationMin: number;
     techName?: string;
+    teamMemberId?: string;
     timezone: string;
   }): Promise<{ available: boolean; suggestions?: TimeSlot[] }>;
+  getTeamMembers?(): Promise<Array<{ id: string; displayName: string; givenName?: string; familyName?: string }>>;
+  findTeamMemberByName?(name: string): Promise<string | null>;
   createBooking(input: BookingInput): Promise<BookingResult>;
   cancelBooking(params: {
     bookingId: string;

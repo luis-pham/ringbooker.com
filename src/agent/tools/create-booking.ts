@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { ToolError } from '@/src/backend/domain/types';
+import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import {
   dateSchema,
   findServiceDuration,
@@ -22,7 +23,11 @@ const schema = z.object({
 export async function createBookingTool(
   ctx: AgentToolContext,
   input: unknown,
-): Promise<{ success: true; bookingId: string; calendarEventId?: string } | ToolError> {
+): Promise<
+  | { success: true; bookingId: string; calendarEventId?: string; bookedWithTech?: string; message?: string }
+  | { success: false; techNotAvailable: true; requestedTech: string; message: string }
+  | ToolError
+> {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return toToolError('Invalid booking parameters.', { code: 'VALIDATION_ERROR', retryable: false });
 
@@ -39,12 +44,55 @@ export async function createBookingTool(
   try {
     const durationMin = findServiceDuration(ctx.shop, parsed.data.service);
     const idempotencyKey = `booking:${ctx.requestId}:${ctx.callerPhone}:${parsed.data.date}:${parsed.data.time}:${parsed.data.service}`;
+    const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
+    let teamMemberId: string | undefined;
+
+    if (parsed.data.techName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
+      try {
+        const foundTeamMemberId = await ctx.calendarProvider.findTeamMemberByName(parsed.data.techName);
+        if (foundTeamMemberId) {
+          const availability = await ctx.calendarProvider.checkAvailability({
+            date: parsed.data.date,
+            time: parsed.data.time,
+            durationMin,
+            techName: parsed.data.techName,
+            teamMemberId: foundTeamMemberId,
+            timezone: ctx.shop.timezone,
+          });
+
+          if (!availability.available) {
+            return {
+              success: false,
+              techNotAvailable: true,
+              requestedTech: parsed.data.techName,
+              message:
+                `${parsed.data.techName} is not available at that time. ` +
+                `Would you like to book with any available stylist, or choose a different time for ${parsed.data.techName}?`,
+            };
+          }
+
+          teamMemberId = foundTeamMemberId;
+        } else {
+          console.warn(
+            `Tech "${parsed.data.techName}" not found in Square team members. Booking without staff preference.`,
+          );
+        }
+      } catch (error) {
+        console.warn(
+          `Square tech lookup failed for "${parsed.data.techName}". Booking without staff preference. ${
+            error instanceof Error ? error.message : 'unknown_error'
+          }`,
+        );
+      }
+    }
+
     const result = await ctx.calendarProvider.createBooking({
       shopId: ctx.shop.id,
       customerPhone: ctx.callerPhone,
       customerName: parsed.data.customerName,
       service: parsed.data.service,
       techName: parsed.data.techName,
+      teamMemberId,
       datetimeIso: utcIso,
       timezone: ctx.shop.timezone,
       durationMin,
@@ -104,6 +152,12 @@ export async function createBookingTool(
       success: true,
       bookingId: booking.id,
       calendarEventId: result.calendarEventId,
+      ...(teamMemberId && parsed.data.techName
+        ? {
+            bookedWithTech: parsed.data.techName,
+            message: `Booked with ${parsed.data.techName}!`,
+          }
+        : {}),
     };
   } catch {
     return toToolError('I could not finish the booking right now. Let me have the user confirm it for you.', {

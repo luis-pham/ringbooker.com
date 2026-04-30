@@ -111,6 +111,7 @@ export interface BookingInput {
   customerName?: string;
   service: string;
   techName?: string;
+  teamMemberId?: string;
   datetimeIso: string;
   timezone: string;
   durationMin: number;

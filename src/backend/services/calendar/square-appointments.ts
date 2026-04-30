@@ -61,6 +61,20 @@ type SquareCustomer = {
   given_name?: string;
 };
 
+export interface SquareTeamMember {
+  id: string;
+  displayName: string;
+  givenName?: string;
+  familyName?: string;
+}
+
+type SquareTeamMemberApiItem = {
+  id?: string;
+  display_name?: string;
+  given_name?: string;
+  family_name?: string;
+};
+
 type SquareSearchCustomersResponse = {
   customers?: SquareCustomer[];
   errors?: SquareErrorItem[];
@@ -75,6 +89,11 @@ type SquareTokenResponse = {
   access_token?: string;
   refresh_token?: string;
   expires_at?: string;
+};
+
+type SquareTeamMembersResponse = {
+  team_members?: SquareTeamMemberApiItem[];
+  errors?: SquareErrorItem[];
 };
 
 function parseSquareCredentials(raw: string | null | undefined): Partial<SquareCredentials> {
@@ -190,12 +209,17 @@ function isTokenNearExpiry(expiresAt?: string): boolean {
   return expires.diffNow('seconds').seconds <= 120;
 }
 
+function normalizeTeamMemberName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 export class SquareAppointmentsProvider implements CalendarProvider {
   readonly shop: Shop;
   private credentials: SquareCredentials;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private refreshInFlight: Promise<void> | null = null;
+  private teamMembersCache: { items: SquareTeamMember[]; fetchedAtMs: number } | null = null;
 
   constructor(shop: Shop) {
     this.shop = shop;
@@ -353,6 +377,68 @@ export class SquareAppointmentsProvider implements CalendarProvider {
     return createdId;
   }
 
+  async getTeamMembers(): Promise<SquareTeamMember[]> {
+    const now = Date.now();
+    if (this.teamMembersCache && now - this.teamMembersCache.fetchedAtMs < 5 * 60 * 1000) {
+      return this.teamMembersCache.items;
+    }
+
+    try {
+      const response = await this.squareJsonRequest<SquareTeamMembersResponse>({
+        path: '/v2/team-members?status=ACTIVE',
+        method: 'GET',
+      });
+
+      if (response.errors?.length) {
+        console.warn(`Square team member lookup failed: ${extractSquareError(response.errors)}`);
+        return [];
+      }
+
+      const items: SquareTeamMember[] = [];
+      for (const member of response.team_members ?? []) {
+        if (!member.id) continue;
+        const displayName = member.display_name?.trim() || [member.given_name, member.family_name].filter(Boolean).join(' ').trim();
+        if (!displayName) continue;
+        items.push({
+          id: member.id,
+          displayName,
+          ...(member.given_name ? { givenName: member.given_name } : {}),
+          ...(member.family_name ? { familyName: member.family_name } : {}),
+        });
+      }
+
+      this.teamMembersCache = {
+        items,
+        fetchedAtMs: now,
+      };
+      return items;
+    } catch (error) {
+      console.warn(`Square team member lookup failed: ${error instanceof Error ? error.message : 'unknown_error'}`);
+      return [];
+    }
+  }
+
+  async findTeamMemberByName(name: string): Promise<string | null> {
+    const requested = normalizeTeamMemberName(name);
+    if (!requested) return null;
+
+    const members = await this.getTeamMembers();
+    const match =
+      members.find((member) => normalizeTeamMemberName(member.displayName) === requested) ??
+      members.find((member) => normalizeTeamMemberName(member.displayName).includes(requested)) ??
+      members.find((member) => member.givenName && normalizeTeamMemberName(member.givenName) === requested) ??
+      members.find((member) => member.familyName && normalizeTeamMemberName(member.familyName) === requested) ??
+      null;
+
+    if (match) {
+      console.warn(`Team member found: ${name} -> ${match.id}`);
+      return match.id;
+    }
+
+    console.warn(`Team member not found: ${name}`);
+    return null;
+  }
+
   private buildAvailabilityWindow(date: string, timezone: string): { startAt: string; endAt: string } {
     const start = DateTime.fromISO(`${date}T00:00:00`, { zone: timezone });
     if (!start.isValid) {
@@ -367,6 +453,7 @@ export class SquareAppointmentsProvider implements CalendarProvider {
 
   async prefetchAvailability(params: { date: string; timezone: string }): Promise<void> {
     const window = this.buildAvailabilityWindow(params.date, params.timezone);
+    const resolvedTeamMemberId = this.credentials.teamMemberId;
     await this.squareJsonRequest<SquareSearchAvailabilityResponse>({
       path: '/v2/bookings/availability/search',
       method: 'POST',
@@ -381,10 +468,10 @@ export class SquareAppointmentsProvider implements CalendarProvider {
             segment_filters: [
               {
                 service_variation_id: this.credentials.serviceVariationId,
-                ...(this.credentials.teamMemberId
+                ...(resolvedTeamMemberId
                   ? {
                       team_member_id_filter: {
-                        any: [this.credentials.teamMemberId],
+                        any: [resolvedTeamMemberId],
                       },
                     }
                   : {}),
@@ -401,6 +488,7 @@ export class SquareAppointmentsProvider implements CalendarProvider {
     time: string;
     durationMin: number;
     techName?: string;
+    teamMemberId?: string;
     timezone: string;
   }): Promise<{ available: boolean; suggestions?: TimeSlot[] }> {
     const requestedStart = DateTime.fromISO(`${params.date}T${params.time}:00`, { zone: params.timezone });
@@ -409,6 +497,7 @@ export class SquareAppointmentsProvider implements CalendarProvider {
     }
 
     const window = this.buildAvailabilityWindow(params.date, params.timezone);
+    const resolvedTeamMemberId = params.teamMemberId ?? this.credentials.teamMemberId;
     const response = await this.squareJsonRequest<SquareSearchAvailabilityResponse>({
       path: '/v2/bookings/availability/search',
       method: 'POST',
@@ -423,10 +512,10 @@ export class SquareAppointmentsProvider implements CalendarProvider {
             segment_filters: [
               {
                 service_variation_id: this.credentials.serviceVariationId,
-                ...(this.credentials.teamMemberId
+                ...(resolvedTeamMemberId
                   ? {
                       team_member_id_filter: {
-                        any: [this.credentials.teamMemberId],
+                        any: [resolvedTeamMemberId],
                       },
                     }
                   : {}),
@@ -468,6 +557,7 @@ export class SquareAppointmentsProvider implements CalendarProvider {
 
   async createBooking(input: BookingInput): Promise<BookingResult> {
     const customerId = await this.findOrCreateCustomerId(input.customerPhone, input.customerName);
+    const resolvedTeamMemberId = input.teamMemberId ?? this.credentials.teamMemberId;
     const response = await this.squareJsonRequest<SquareBookingResponse>({
       path: '/v2/bookings',
       method: 'POST',
@@ -482,7 +572,7 @@ export class SquareAppointmentsProvider implements CalendarProvider {
             {
               duration_minutes: input.durationMin,
               service_variation_id: this.credentials.serviceVariationId,
-              ...(this.credentials.teamMemberId ? { team_member_id: this.credentials.teamMemberId } : {}),
+              ...(resolvedTeamMemberId ? { team_member_id: resolvedTeamMemberId } : {}),
             },
           ],
         },
