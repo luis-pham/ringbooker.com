@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { UserLayout } from '@/components/user/user-layout';
 import { userCallsScripts, userCallsStyles } from '@/components/user/user-calls';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
-import { UserPortalNav } from '@/components/user/user-portal-nav';
-import { useUserWorkspace } from '@/components/user/user-workspace-context';
+import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 
 type Call = {
   provider: string;
@@ -113,7 +113,6 @@ export function UserCallsLive() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
-  const { workspace } = useUserWorkspace();
 
   useEffect(() => {
     setLoading(true);
@@ -238,26 +237,14 @@ export function UserCallsLive() {
     <UserLayout styles={modalStyles} scripts={userCallsScripts} scriptPrefix="user-calls-live">
       <>
       <div className="app-shell user-app-shell">
-        <aside className="sidebar">
-          <div className="sidebar-inner">
-            <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><span>RingBooker</span></div>
-            <div className="workspace"><h3>{workspace.shopName}</h3><p>AI Receptionist is {workspace.active ? 'active' : 'paused'}. [{workspace.plan[0].toUpperCase() + workspace.plan.slice(1)} plan].</p></div>
-            <UserPortalNav active="calls" />
-            <div className="sidebar-spacer" />
-          </div>
-        </aside>
+        <UserPortalSidebar active="calls" />
 
         <main className="main">
-          <div className="topbar">
-            <div className="page-title">
-              <h1>Calls, transcripts, and missed revenue recovery.</h1>
-              <p>See the full call list first, then open transcript preview only for the calls that need a closer look.</p>
-            </div>
-            <div className="top-actions">
-              <span className="btn">Realtime call log</span>
-              <span className="btn purple">{metrics.transcriptsReady} transcripts ready</span>
-            </div>
-          </div>
+          <UserPortalTopbar
+            title="Calls, transcripts, and missed revenue recovery."
+            subtitle="See the full call list first, then open transcript preview only for the calls that need a closer look."
+            actions={<><span className="btn">Realtime call log</span><span className="btn purple">{metrics.transcriptsReady} transcripts ready</span></>}
+          />
 
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load calls: {error}</div> : null}
 

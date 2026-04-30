@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { UserLayout } from '@/components/user/user-layout';
 import { userBillingScripts, userBillingStyles } from '@/components/user/user-billing';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
-import { UserPortalNav } from '@/components/user/user-portal-nav';
+import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
@@ -218,38 +219,19 @@ export function UserBillingLive() {
     <UserLayout styles={userBillingStyles} scripts={userBillingScripts} scriptPrefix="user-billing-live">
       <>
       <div className="app-shell user-app-shell">
-        <aside className="sidebar">
-          <div className="sidebar-inner">
-            <div className="brand">
-              <div className="brand-mark">
-                <div className="brand-ripple r3" />
-                <div className="brand-ripple r2" />
-                <div className="brand-core">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" />
-                  </svg>
-                </div>
-              </div>
-              <span>RingBooker</span>
-            </div>
-            <div className="workspace">
-              <h3>{data?.shop?.name ?? workspace.shopName}</h3>
-              <p>{`AI Receptionist is ${(data?.shop?.active ?? workspace.active) ? 'active' : 'paused'}. [${
-                ((data?.shop?.plan ?? workspace.plan ?? 'starter')[0].toUpperCase() +
-                  (data?.shop?.plan ?? workspace.plan ?? 'starter').slice(1))
-              } plan].`}</p>
-            </div>
-            <UserPortalNav active="billing" />
-            <div className="sidebar-spacer" />
-          </div>
-        </aside>
+        <UserPortalSidebar
+          active="billing"
+          workspaceOverride={{
+            shopName: data?.shop?.name ?? workspace.shopName,
+            plan: data?.shop?.plan ?? workspace.plan,
+            active: data?.shop?.active ?? workspace.active,
+          }}
+        />
         <main className="main">
-          <div className="topbar">
-            <div className="page-title">
-              <h1>Billing, plan, and growth options.</h1>
-              <p>Manage your RingBooker subscription using normalized billing data backed by the active provider.</p>
-            </div>
-          </div>
+          <UserPortalTopbar
+            title="Billing, plan, and growth options."
+            subtitle="Manage your RingBooker subscription using normalized billing data backed by the active provider."
+          />
 
           {loading ? (
             <section className="card">

@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { UserLayout } from '@/components/user/user-layout';
 import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
-import { UserPortalNav } from '@/components/user/user-portal-nav';
+import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 
 type UserDashboardResponse = {
   ok: boolean;
@@ -88,122 +89,33 @@ export function UserDashboardLive() {
     window.location.href = '/user/login';
   }
 
-  if (loading) {
-    return (
-      <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
-        <>
-          <div className="app-shell user-app-shell">
-            <aside className="sidebar">
-              <div className="sidebar-inner">
-                <div className="brand">
-                  <div className="brand-mark">
-                    <div className="brand-ripple r3" />
-                    <div className="brand-ripple r2" />
-                    <div className="brand-core">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" />
-                      </svg>
-                    </div>
-                  </div>
-                  <span>RingBooker</span>
-                </div>
-                <div className="workspace">
-                  <h3>Your Shop</h3>
-                  <p>AI Receptionist is active. [Starter plan].</p>
-                </div>
-                <UserPortalNav active="overview" />
-                <div className="sidebar-spacer" />
-              </div>
-            </aside>
-            <main className="main">
-              <section className="card">
-                <p className="sub">Loading dashboard...</p>
-              </section>
-            </main>
-          </div>
-          <UserPortalMobileTabbar active="overview" />
-        </>
-      </UserLayout>
-    );
-  }
-
-  if (!data?.ok) {
-    return (
-      <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
-        <>
-          <div className="app-shell user-app-shell">
-            <aside className="sidebar">
-              <div className="sidebar-inner">
-                <div className="brand">
-                  <div className="brand-mark">
-                    <div className="brand-ripple r3" />
-                    <div className="brand-ripple r2" />
-                    <div className="brand-core">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" />
-                      </svg>
-                    </div>
-                  </div>
-                  <span>RingBooker</span>
-                </div>
-                <div className="workspace">
-                  <h3>Your Shop</h3>
-                  <p>AI Receptionist is active. [Starter plan].</p>
-                </div>
-                <UserPortalNav active="overview" />
-                <div className="sidebar-spacer" />
-              </div>
-            </aside>
-            <main className="main">
-              <section className="card">
-                <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>
-              </section>
-            </main>
-          </div>
-          <UserPortalMobileTabbar active="overview" />
-        </>
-      </UserLayout>
-    );
-  }
-
   return (
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
       <>
       <div className="app-shell user-app-shell">
-        <aside className="sidebar">
-          <div className="sidebar-inner">
-            <div className="brand">
-              <div className="brand-mark">
-                <div className="brand-ripple r3" />
-                <div className="brand-ripple r2" />
-                <div className="brand-core">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" />
-                  </svg>
-                </div>
-              </div>
-              <span>RingBooker</span>
-            </div>
-            <div className="workspace">
-              <h3>{shopName}</h3>
-              <p>AI Receptionist is {data.shop?.active ? 'active' : 'paused'}. [{planLabel} plan].</p>
-            </div>
-            <UserPortalNav active="overview" />
-            <div className="sidebar-spacer" />
-          </div>
-        </aside>
+        <UserPortalSidebar
+          active="overview"
+          workspaceOverride={{ shopName, plan: data.shop?.plan ?? 'starter', active: data.shop?.active ?? true }}
+        />
         <main className="main">
-          <div className="topbar">
-            <div className="page-title">
-              <h1>{shopName}</h1>
-              <p>Track calls, bookings, and reminders.</p>
-            </div>
-            <div className="top-actions overview-top-actions">
+          {loading ? (
+            <section className="card" style={{ marginBottom: 18 }}>
+              <p className="sub">Loading dashboard...</p>
+            </section>
+          ) : !data?.ok ? (
+            <section className="card" style={{ marginBottom: 18 }}>
+              <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>
+            </section>
+          ) : null}
+          <UserPortalTopbar
+            title={shopName}
+            subtitle="Track calls, bookings, and reminders."
+            actions={<div className="overview-top-actions">
               <a className="btn" href="/user/settings">Edit business info</a>
               <a className="btn purple" href="/user/bookings">View bookings</a>
               <button type="button" className="btn" onClick={signOut}>Sign out</button>
-            </div>
-          </div>
+            </div>}
+          />
           <section className="grid grid-4">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">Live</span></div><div className="stat-value">{data.metrics?.callCount ?? 0}</div><div className="stat-meta">Total calls logged for this shop</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">Booked</span></div><div className="stat-value">{data.metrics?.bookingCount ?? 0}</div><div className="stat-meta">Total bookings in your current shop</div></div>

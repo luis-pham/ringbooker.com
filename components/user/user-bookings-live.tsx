@@ -5,8 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { UserLayout } from '@/components/user/user-layout';
 import { userBookingsScripts, userBookingsStyles } from '@/components/user/user-bookings';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
-import { UserPortalNav } from '@/components/user/user-portal-nav';
-import { useUserWorkspace } from '@/components/user/user-workspace-context';
+import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 
 type Booking = {
   id: string;
@@ -55,7 +55,6 @@ function statusClass(status?: string, confirmed?: boolean) {
 export function UserBookingsLive() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { workspace } = useUserWorkspace();
 
   useEffect(() => {
     void fetch('/api/backend/user/bookings')
@@ -82,19 +81,13 @@ export function UserBookingsLive() {
     <UserLayout styles={userBookingsStyles} scripts={userBookingsScripts} scriptPrefix="user-bookings-live">
       <>
       <div className="app-shell user-app-shell">
-        <aside className="sidebar">
-          <div className="sidebar-inner">
-            <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 .4 1 0 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><span>RingBooker</span></div>
-            <div className="workspace"><h3>{workspace.shopName}</h3><p>AI Receptionist is {workspace.active ? 'active' : 'paused'}. [{workspace.plan[0].toUpperCase() + workspace.plan.slice(1)} plan].</p></div>
-            <UserPortalNav active="bookings" />
-            <div className="sidebar-spacer" />
-          </div>
-        </aside>
+        <UserPortalSidebar active="bookings" />
         <main className="main">
-          <div className="topbar">
-            <div className="page-title"><h1>Bookings and calendar flow.</h1><p>See every appointment RingBooker has created, confirmed, or recovered.</p></div>
-            <div className="top-actions"><a className="btn" href="/user/settings">Business hours</a><a className="btn purple" href="/user/bookings">Create manual booking</a></div>
-          </div>
+          <UserPortalTopbar
+            title="Bookings and calendar flow."
+            subtitle="See every appointment RingBooker has created, confirmed, or recovered."
+            actions={<><a className="btn" href="/user/settings">Business hours</a><a className="btn purple" href="/user/bookings">Create manual booking</a></>}
+          />
 
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load bookings: {error}</div> : null}
 
