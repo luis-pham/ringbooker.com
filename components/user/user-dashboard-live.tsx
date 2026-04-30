@@ -66,40 +66,6 @@ function IconQuickSettings() {
   );
 }
 
-function IconExternalSmall() {
-  return (
-    <svg viewBox="0 0 16 16" width={12} height={12} aria-hidden>
-      <path
-        d="M6 3h7v7M13 3 5 11"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-/** Top 3 US wireless carriers — official call forwarding help (education only). */
-const US_BIG3_CALL_FORWARDING_GUIDES = [
-  {
-    name: 'Verizon',
-    url: 'https://www.verizon.com/support/call-forwarding/',
-    hint: 'Wireless call forwarding FAQs, dial codes, and the My Verizon app.',
-  },
-  {
-    name: 'AT&T',
-    url: 'https://www.att.com/support/article/wireless/KM1011513',
-    hint: 'Wireless call forwarding — setup is usually done from your handset.',
-  },
-  {
-    name: 'T-Mobile',
-    url: 'https://www.t-mobile.com/support/plans-features/calling-features',
-    hint: 'Plans & calling features — find call or conditional forwarding for your device.',
-  },
-] as const;
-
 export function UserDashboardLive() {
   const [data, setData] = useState<UserDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -285,53 +251,6 @@ export function UserDashboardLive() {
                   <a className="btn purple" href="/user/settings">Open</a>
                 </div>
               </div>
-            </div>
-
-            <div className="card forward-guide-card">
-              <div className="panel-head">
-                <div>
-                  <h3>Quick guide: Call forwarding</h3>
-                  <p className="sub">
-                    Forward your old business line to your RingBooker number so callers who still dial the old number reach your AI receptionist.
-                  </p>
-                </div>
-                <span className="badge-right">Big 3 (US)</span>
-              </div>
-              {data.shop?.phone_number ? (
-                <div className="forward-num" title="RingBooker destination number">
-                  RingBooker number: {data.shop.phone_number}
-                </div>
-              ) : null}
-              <p className="forward-guide-intro">
-                The three largest US wireless carriers publish official wireless call-forwarding help. Open the link for the carrier that issued your SIM; dial codes and menus vary by phone and plan.
-              </p>
-              <div className="carrier-links">
-                {US_BIG3_CALL_FORWARDING_GUIDES.map((row) => (
-                  <a
-                    key={row.name}
-                    className="carrier-link"
-                    href={row.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <span className="carrier-link-row">
-                      <strong>{row.name}</strong>
-                      <span className="ext-ico" aria-hidden>
-                        <IconExternalSmall />
-                      </span>
-                    </span>
-                    <span className="carrier-hint carrier-hint-single">{row.hint}</span>
-                  </a>
-                ))}
-              </div>
-              <div className="carrier-callcenter-tip">
-                <p className="carrier-tip-line">
-                  <strong>Outside the Big 3 or outside the US:</strong> call your mobile carrier’s in-country customer support (the number on your SIM or in the carrier app) and ask how to enable call forwarding to your RingBooker number for your line and plan.
-                </p>
-              </div>
-              <p className="forward-guide-disclaimer">
-                RingBooker is not affiliated with any carrier; links are for reference only. Charges, plan limits, and feature availability depend on your contract — use the customer-care number on your SIM or in your carrier’s app when in doubt.
-              </p>
             </div>
           </section>
           <div className="footer-inline"><span>RingBooker shop panel</span><span>Live data + restored shared styling</span></div>

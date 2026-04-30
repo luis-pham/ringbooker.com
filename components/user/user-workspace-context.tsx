@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 
 const USER_WORKSPACE_CACHE_KEY = 'rb_user_workspace_cache';
 
@@ -29,7 +30,17 @@ type NavStateResponse = {
   plan?: string;
 };
 
+function isPublicUserAuthPath(pathname: string): boolean {
+  return (
+    pathname === '/user/login' ||
+    pathname === '/user/signup' ||
+    pathname === '/user/forgot-password' ||
+    pathname === '/user/reset-password'
+  );
+}
+
 export function UserWorkspaceProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [workspace, setWorkspaceState] = useState<UserWorkspaceState>(DEFAULT_WORKSPACE);
 
   function setWorkspace(next: Partial<UserWorkspaceState>) {
@@ -55,6 +66,12 @@ export function UserWorkspaceProvider({ children }: { children: ReactNode }) {
       }
     }
 
+  }, []);
+
+  useEffect(() => {
+    if (!pathname.startsWith('/user')) return;
+    if (isPublicUserAuthPath(pathname)) return;
+
     let canceled = false;
     void fetch('/api/backend/user/nav-state')
       .then(async (response) => (await response.json()) as NavStateResponse)
@@ -71,7 +88,7 @@ export function UserWorkspaceProvider({ children }: { children: ReactNode }) {
     return () => {
       canceled = true;
     };
-  }, []);
+  }, [pathname]);
 
   const value = useMemo<UserWorkspaceContextValue>(
     () => ({
