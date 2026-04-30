@@ -18,6 +18,7 @@ export async function getShopInfoTool(
       hours: unknown;
       services: unknown;
       promotions?: string | null;
+      bookingUrl: string | null;
       cancelPolicy: string;
     }
   | ToolError
@@ -40,6 +41,7 @@ export async function getShopInfoTool(
     hours: ctx.shop.hours,
     services: ctx.shop.services,
     promotions: ctx.shop.promotions,
+    bookingUrl: ctx.shop.booking_url ?? null,
     cancelPolicy: ctx.shop.cancel_policy,
   };
 }

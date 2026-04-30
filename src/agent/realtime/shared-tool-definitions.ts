@@ -88,4 +88,19 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
       required: ['reason'],
     },
   },
+  {
+    name: 'send_booking_link',
+    description:
+      'Send the business booking link to the caller via SMS when they want to schedule an appointment and the business uses GlossGenius, Fresha, or Booksy. Use this tool when the caller asks to book or schedule and createBooking is not available for this provider.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        callerPhone: { type: 'string', description: "Required caller's phone number." },
+        callerName: { type: 'string', description: 'Optional caller name.' },
+        serviceInterest: { type: 'string', description: 'Optional service or appointment type the caller wants to book.' },
+      },
+      required: ['callerPhone'],
+    },
+  },
 ];
