@@ -83,7 +83,7 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
       serviceSync: true,
       staffSync: true,
       customerSync: false,
-      hasBookingLink: false,
+      hasBookingLink: true,
     },
   },
   square_appointments: {
