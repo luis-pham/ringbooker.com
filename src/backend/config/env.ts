@@ -56,6 +56,8 @@ function createValidatedEnv() {
       SQUARE_API_VERSION: z.string().min(1).default('2026-01-22'),
       SQUARE_APPLICATION_ID: z.string().min(1).optional(),
       SQUARE_APPLICATION_SECRET: z.string().min(1).optional(),
+      VAGARO_REGION: z.string().min(1).default('us'),
+      VAGARO_WEBHOOK_VERIFICATION_TOKEN: z.string().min(1).optional(),
 
       OPENAI_API_KEY: z.string().min(1).optional(),
       OPENAI_REALTIME_URL: z.string().url().optional(),
@@ -129,10 +131,19 @@ function createValidatedEnv() {
 }
 
 let cachedEnv: ReturnType<typeof createValidatedEnv> | null = null;
+let warnedMissingVagaroWebhookToken = false;
 
 export function getEnv() {
   if (!cachedEnv) {
     cachedEnv = createValidatedEnv();
+  }
+  const vagaroLooksEnabled =
+    process.env.CALENDAR_PROVIDER_DEFAULT === 'vagaro' ||
+    Boolean(process.env.VAGARO_CLIENT_ID) ||
+    Boolean(process.env.VAGARO_CLIENT_SECRET_KEY);
+  if (vagaroLooksEnabled && !cachedEnv.VAGARO_WEBHOOK_VERIFICATION_TOKEN && !warnedMissingVagaroWebhookToken) {
+    warnedMissingVagaroWebhookToken = true;
+    console.warn('VAGARO_WEBHOOK_VERIFICATION_TOKEN is not configured; Vagaro webhooks will be rejected.');
   }
   return cachedEnv;
 }

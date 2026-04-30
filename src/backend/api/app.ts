@@ -63,6 +63,7 @@ import { handlePaddleWebhook } from '@/src/backend/webhooks/paddle';
 import { handleOpenAiRealtimeSipWebhook } from '@/src/backend/webhooks/openai-realtime-sip';
 import { handleTelnyxWebhook } from '@/src/backend/webhooks/telnyx';
 import { handleTelnyxTexmlOpenAiInbound } from '@/src/backend/webhooks/telnyx-texml-openai-inbound';
+import { handleVagaroWebhook } from '@/src/backend/webhooks/vagaro';
 import {
   encodeSquareConnectionCredentials,
   parseSquareConnectionCredentials,
@@ -72,6 +73,13 @@ import {
   type CalendarConnectionProviderId,
   type SquareConnectionCredentials,
 } from '@/src/backend/services/calendar/provider-connections';
+import {
+  encodeVagaroCredentials,
+  generateVagaroAccessToken,
+  parseVagaroCredentials,
+  VagaroProvider,
+  type VagaroCredentials,
+} from '@/src/backend/services/calendar/vagaro';
 import { CALENDAR_PROVIDER_CATALOG } from '@/src/backend/services/calendar/provider-catalog';
 import {
   aggregateIntoBuckets,
@@ -334,6 +342,22 @@ const squareConfigureSchema = z.object({
   locationId: z.string().min(1),
   serviceVariationId: z.string().min(1),
   teamMemberId: z.string().min(1).optional(),
+});
+
+const vagaroConnectSchema = z.object({
+  clientId: z.string().min(1),
+  clientSecretKey: z.string().min(1),
+  region: z.string().min(1).default('us'),
+  businessId: z.string().min(1, 'Business ID is required for Vagaro integration'),
+  scope: z.string().min(1).optional(),
+});
+
+const vagaroConfigureSchema = z.object({
+  clientId: z.string().min(1).optional(),
+  clientSecretKey: z.string().min(1).optional(),
+  region: z.string().min(1).optional(),
+  businessId: z.string().min(1, 'Business ID is required for Vagaro integration').optional(),
+  scope: z.string().min(1).optional(),
 });
 
 const blogPostStatusSchema = z.enum(['draft', 'published', 'archived']);
@@ -979,6 +1003,21 @@ function buildSquareConnectionPayload(current: SquareConnectionCredentials | nul
   };
 }
 
+function buildVagaroConnectionPayload(current: Partial<VagaroCredentials> | null, patch: Partial<VagaroCredentials>): VagaroCredentials {
+  const region = patch.region ?? current?.region ?? process.env.VAGARO_REGION ?? 'us';
+  const businessId = patch.businessId ?? current?.businessId ?? process.env.VAGARO_BUSINESS_ID ?? '';
+  return {
+    provider: 'vagaro',
+    region,
+    businessId,
+    clientId: patch.clientId ?? current?.clientId,
+    clientSecretKey: patch.clientSecretKey ?? current?.clientSecretKey,
+    scope: patch.scope ?? current?.scope ?? 'read access',
+    accessToken: patch.accessToken ?? current?.accessToken,
+    expiresAt: patch.expiresAt ?? current?.expiresAt,
+  };
+}
+
 /** Cloudflare `CF-IPCountry` or compatible two-letter country code. */
 function normalizeCfIpCountry(header: string | undefined): string | null {
   const raw = header?.trim().toUpperCase();
@@ -1247,6 +1286,16 @@ export function createBackendApp(deps: {
       return handlePaddleWebhook(c, {
       providerEventsRepository: deps.providerEventsRepository,
       billingProvider: deps.billingProvider,
+      });
+    })(),
+  );
+
+  app.post(path('/webhooks/vagaro'), (c) =>
+    (async () => {
+      const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_paddle, 'webhook_vagaro');
+      if (limited) return limited;
+      return handleVagaroWebhook(c, {
+        providerEventsRepository: deps.providerEventsRepository,
       });
     })(),
   );
@@ -2692,6 +2741,7 @@ export function createBackendApp(deps: {
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
     const squareCredentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
+    const vagaroCredentials = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
     const providers = (Object.keys(CALENDAR_PROVIDER_CATALOG) as Array<keyof typeof CALENDAR_PROVIDER_CATALOG>)
       .filter((id) => id !== 'manual' && id !== 'google_calendar')
       .map((id) => {
@@ -2715,6 +2765,24 @@ export function createBackendApp(deps: {
               : null,
           };
         }
+        if (id === 'vagaro') {
+          const connected = Boolean(vagaroCredentials?.accessToken || vagaroCredentials?.clientId);
+          const configured = Boolean(vagaroCredentials?.region && vagaroCredentials?.businessId);
+          return {
+            id,
+            label: meta.label,
+            implemented: meta.implemented,
+            connected,
+            configured,
+            details: connected
+              ? {
+                  region: vagaroCredentials?.region ?? null,
+                  businessId: vagaroCredentials?.businessId ?? null,
+                  capabilityNote: 'Availability checking supported. Booking creation requires Vagaro app.',
+                }
+              : null,
+          };
+        }
         return {
           id,
           label: meta.label,
@@ -2729,6 +2797,68 @@ export function createBackendApp(deps: {
       ok: true,
       providers,
     });
+  });
+
+  app.post(path('/user/calendar/providers/vagaro/connect'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_vagaro_connect');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = vagaroConnectSchema.safeParse(body);
+    if (!parsed.success) {
+      const businessIdIssue = parsed.error.issues.find((issue) => issue.path.join('.') === 'businessId');
+      return c.json(
+        {
+          ok: false,
+          error: businessIdIssue ? 'Business ID is required for Vagaro integration' : 'invalid_payload',
+        },
+        400,
+      );
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    try {
+      const token = await generateVagaroAccessToken({
+        region: parsed.data.region,
+        clientId: parsed.data.clientId,
+        clientSecretKey: parsed.data.clientSecretKey,
+        scope: parsed.data.scope,
+      });
+      const current = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
+      const payload = buildVagaroConnectionPayload(current, {
+        region: parsed.data.region,
+        businessId: parsed.data.businessId,
+        clientId: parsed.data.clientId,
+        clientSecretKey: parsed.data.clientSecretKey,
+        scope: parsed.data.scope,
+        accessToken: token.accessToken,
+        expiresAt: token.expiresAt,
+      });
+      const updated = await deps.shopsRepository.updateCalendarConnection(shop.id, {
+        google_cal_id: shop.google_cal_id ?? null,
+        google_cal_credentials_encrypted: encodeVagaroCredentials(payload),
+      });
+      if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+      return c.json({
+        ok: true,
+        provider: 'vagaro',
+        connected: true,
+        configured: Boolean(payload.businessId),
+      });
+    } catch (error) {
+      logger.error({ err: error, provider: 'vagaro' }, 'calendar_provider_vagaro_connect_failed');
+      return c.json({ ok: false, error: 'vagaro_connect_failed' }, 502);
+    }
   });
 
   app.get(path('/user/calendar/providers/:provider/connect/start'), async (c) => {
@@ -2920,12 +3050,42 @@ export function createBackendApp(deps: {
     }
 
     const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
-    if (provider !== 'square_appointments') {
+    if (provider !== 'square_appointments' && provider !== 'vagaro') {
       return c.json({ ok: false, error: 'provider_not_supported' }, 400);
     }
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    if (provider === 'vagaro') {
+      const credentials = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
+      if (!credentials?.accessToken && !credentials?.clientId) {
+        return c.json({ ok: false, error: 'provider_not_connected' }, 400);
+      }
+      if (!credentials.businessId) {
+        return c.json({ ok: false, error: 'Business ID is required for Vagaro integration' }, 400);
+      }
+
+      try {
+        const options = await new VagaroProvider(shop, {
+          persistCredentials: async (encodedCredentials) => {
+            await deps.shopsRepository?.updateCalendarConnection(shop.id, {
+              google_cal_id: shop.google_cal_id ?? null,
+              google_cal_credentials_encrypted: encodedCredentials,
+            });
+          },
+        }).getConnectionOptions();
+        return c.json({
+          ok: true,
+          provider,
+          options,
+          configured: true,
+        });
+      } catch (error) {
+        logger.error({ err: error, provider }, 'calendar_provider_options_failed');
+        return c.json({ ok: false, error: 'provider_options_failed' }, 502);
+      }
+    }
 
     const credentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
     if (!credentials?.access_token || !credentials.refresh_token) {
@@ -2968,11 +3128,66 @@ export function createBackendApp(deps: {
     }
 
     const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
-    if (provider !== 'square_appointments') {
+    if (provider !== 'square_appointments' && provider !== 'vagaro') {
       return c.json({ ok: false, error: 'provider_not_supported' }, 400);
     }
 
     const body = await c.req.json().catch(() => null);
+    if (provider === 'vagaro') {
+      const parsed = vagaroConfigureSchema.safeParse(body);
+      if (!parsed.success) {
+        const businessIdIssue = parsed.error.issues.find((issue) => issue.path.join('.') === 'businessId');
+        return c.json(
+          {
+            ok: false,
+            error: businessIdIssue ? 'Business ID is required for Vagaro integration' : 'invalid_payload',
+          },
+          400,
+        );
+      }
+
+      const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+      if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+      const current = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
+      if (!current?.accessToken && !current?.clientId) {
+        return c.json({ ok: false, error: 'provider_not_connected' }, 400);
+      }
+
+      let tokenPatch: Partial<VagaroCredentials> = {};
+      const nextClientId = parsed.data.clientId ?? current.clientId;
+      const nextClientSecretKey = parsed.data.clientSecretKey ?? current.clientSecretKey;
+      const nextRegion = parsed.data.region ?? current.region ?? 'us';
+      if (nextClientId && nextClientSecretKey && (parsed.data.clientId || parsed.data.clientSecretKey || parsed.data.region || !current.accessToken)) {
+        const token = await generateVagaroAccessToken({
+          region: nextRegion,
+          clientId: nextClientId,
+          clientSecretKey: nextClientSecretKey,
+          scope: parsed.data.scope ?? current.scope,
+        });
+        tokenPatch = {
+          accessToken: token.accessToken,
+          expiresAt: token.expiresAt,
+        };
+      }
+
+      const payload = buildVagaroConnectionPayload(current, {
+        ...parsed.data,
+        ...tokenPatch,
+      });
+      const updated = await deps.shopsRepository.updateCalendarConnection(shop.id, {
+        google_cal_id: shop.google_cal_id ?? null,
+        google_cal_credentials_encrypted: encodeVagaroCredentials(payload),
+      });
+      if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+      return c.json({
+        ok: true,
+        provider,
+        configured: Boolean(payload.businessId),
+      });
+    }
+
     const parsed = squareConfigureSchema.safeParse(body);
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_payload' }, 400);
