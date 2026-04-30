@@ -82,7 +82,9 @@ test('enqueues job when booking URL exists', async () => {
     serviceInterest: 'haircut',
   });
 
-  assert.equal('success' in result, true);
+  if (!('success' in result)) {
+    assert.fail('Expected success response, got tool error');
+  }
   assert.equal(result.success, true);
   assert.equal(enqueuedJobs.length, 1);
 
@@ -109,7 +111,9 @@ test('sends SMS without callerName or serviceInterest', async () => {
     callerPhone: '+15551234567',
   });
 
-  assert.equal('success' in result, true);
+  if (!('success' in result)) {
+    assert.fail('Expected success response, got tool error');
+  }
   assert.equal(result.success, true);
   assert.equal(enqueuedJobs.length, 1);
 
