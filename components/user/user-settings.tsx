@@ -302,6 +302,19 @@ button,input,select,textarea{font:inherit}
 .tab-button strong{font-size:14px;letter-spacing:-.02em}
 .tab-button-desc{font-size:12px;line-height:1.55;color:var(--text-gray)}
 .tab-button.active .tab-button-desc{color:#5b21b6}
+.business-subtabs{
+  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
+}
+.business-subtab{
+  border:1px solid var(--border);background:#fff;border-radius:999px;padding:8px 12px;
+  font-size:12px;font-weight:700;color:#4b5563;cursor:pointer;transition:.18s ease;
+}
+.business-subtab.active{
+  background:#111827;color:#fff;border-color:#111827;
+}
+.card-section-form{
+  border:1px solid #f0f1f3;border-radius:18px;padding:16px;background:#fff;
+}
 .hours-grid{display:grid;gap:10px}
 .hours-row{
   display:grid;grid-template-columns:96px 112px 112px auto;gap:12px;align-items:center;
@@ -373,6 +386,9 @@ button,input,select,textarea{font:inherit}
   .workspace{display:none}
   .user-app-shell .nav-section{display:none !important}
   .hours-row{grid-template-columns:1fr}
+  .business-subtabs{gap:6px}
+  .business-subtab{padding:7px 10px;font-size:11px}
+  .card-section-form{padding:12px}
 }
 `,
 ];

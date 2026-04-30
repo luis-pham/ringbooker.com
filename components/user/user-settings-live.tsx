@@ -399,6 +399,7 @@ export function UserSettingsLive() {
   const [bookingLinkErrors, setBookingLinkErrors] = useState<Partial<Record<BookingLinkProviderId, string>>>({});
   const [editingBookingLinkProvider, setEditingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [savingBookingLinkProvider, setSavingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
+  const [businessSubTab, setBusinessSubTab] = useState<'profile' | 'policies'>('profile');
 
   useEffect(() => {
     let active = true;
@@ -1118,9 +1119,31 @@ export function UserSettingsLive() {
             ) : null}
 
             {activeTab === 'business' ? (
-            <section className="grid grid-2">
+            <section className="card">
+              <div className="business-subtabs" role="tablist" aria-label="Business settings sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={businessSubTab === 'profile'}
+                  className={`business-subtab ${businessSubTab === 'profile' ? 'active' : ''}`}
+                  onClick={() => setBusinessSubTab('profile')}
+                >
+                  Business profile
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={businessSubTab === 'policies'}
+                  className={`business-subtab ${businessSubTab === 'policies' ? 'active' : ''}`}
+                  onClick={() => setBusinessSubTab('policies')}
+                >
+                  Policies and promos
+                </button>
+              </div>
+
+              {businessSubTab === 'profile' ? (
               <form
-                className="card"
+                className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('business-profile', {
@@ -1148,9 +1171,11 @@ export function UserSettingsLive() {
                   </button>
                 </div>
               </form>
+              ) : null}
 
+              {businessSubTab === 'policies' ? (
               <form
-                className="card"
+                className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('business-policies', {
@@ -1211,6 +1236,7 @@ export function UserSettingsLive() {
                   </button>
                 </div>
               </form>
+              ) : null}
             </section>
             ) : null}
 
