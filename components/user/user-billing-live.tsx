@@ -6,6 +6,7 @@ import { UserLayout } from '@/components/user/user-layout';
 import { userBillingScripts, userBillingStyles } from '@/components/user/user-billing';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalNav } from '@/components/user/user-portal-nav';
+import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type BillingProvider = 'paddle' | 'stripe' | 'manual';
@@ -126,6 +127,7 @@ function getStatusLabel(status: BillingSubscriptionStatus | undefined) {
 }
 
 export function UserBillingLive() {
+  const { workspace, setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserBillingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
@@ -137,6 +139,13 @@ export function UserBillingLive() {
       .then(async (response) => (await response.json()) as UserBillingResponse)
       .then((body) => {
         if (active) setData(body);
+        if (active && body.ok && body.shop) {
+          setWorkspace({
+            shopName: body.shop.name,
+            plan: body.shop.plan,
+            active: body.shop.active,
+          });
+        }
       })
       .catch(() => {
         if (active) {
@@ -224,9 +233,10 @@ export function UserBillingLive() {
               <span>RingBooker</span>
             </div>
             <div className="workspace">
-              <h3>{data?.shop?.name ?? 'Loading shop...'}</h3>
-              <p>{`AI Receptionist is ${data?.shop?.active ? 'active' : 'paused'}. [${
-                (data?.shop?.plan ?? 'starter')[0].toUpperCase() + (data?.shop?.plan ?? 'starter').slice(1)
+              <h3>{data?.shop?.name ?? workspace.shopName}</h3>
+              <p>{`AI Receptionist is ${(data?.shop?.active ?? workspace.active) ? 'active' : 'paused'}. [${
+                ((data?.shop?.plan ?? workspace.plan ?? 'starter')[0].toUpperCase() +
+                  (data?.shop?.plan ?? workspace.plan ?? 'starter').slice(1))
               } plan].`}</p>
             </div>
             <UserPortalNav active="billing" />

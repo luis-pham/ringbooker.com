@@ -88,12 +88,12 @@ button,input,select,textarea{font:inherit}
   box-shadow:inset 0 0 0 1px rgba(139,92,246,.15);
 }
 .nav-icon{
-  width:34px;height:34px;border-radius:12px;background:#fff;border:1px solid var(--border);
+  width:34px;height:34px;border-radius:12px;background:transparent;border:none;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
 .nav-icon svg{width:16px;height:16px;stroke:#6b7280;stroke-width:2;fill:none}
-.nav-item.active .nav-icon{background:var(--purple);border-color:transparent}
-.nav-item.active .nav-icon svg{stroke:#fff}
+.nav-item.active .nav-icon{background:transparent;border-color:transparent}
+.nav-item.active .nav-icon svg{stroke:var(--purple-dark)}
 .sidebar-spacer{flex:1}
 
 .main{padding:28px 30px 34px;min-width:0}
@@ -128,7 +128,7 @@ button,input,select,textarea{font:inherit}
 .stat-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 .stat-icon{
   width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-  background:#f5f3ff;
+  background:transparent;
 }
 .stat-icon svg{width:20px;height:20px;stroke:var(--purple-dark);stroke-width:2;fill:none}
 .stat-value{font-size:32px;font-weight:800;letter-spacing:-1px}
@@ -153,7 +153,7 @@ button,input,select,textarea{font:inherit}
 }
 .item-main{display:flex;align-items:center;gap:12px;min-width:0}
 .avatar{
-  width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+  width:42px;height:42px;border-radius:14px;background:transparent;
   display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--purple-dark);flex-shrink:0;
 }
 .item-main h4{margin:0 0 3px;font-size:14px;letter-spacing:-.02em}

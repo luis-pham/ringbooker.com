@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 
 export type UserPortalNavKey = 'overview' | 'bookings' | 'calls' | 'settings' | 'billing' | 'account';
 
@@ -11,10 +12,10 @@ type UserPortalNavProps = {
 function navLink(key: UserPortalNavKey, href: string, label: string, icon: ReactNode, active: UserPortalNavKey) {
   const isActive = active === key;
   return (
-    <a key={key} className={`nav-item${isActive ? ' active' : ''}`} href={href}>
+    <Link key={key} className={`nav-item${isActive ? ' active' : ''}`} href={href}>
       <div className="nav-icon">{icon}</div>
       <span>{label}</span>
-    </a>
+    </Link>
   );
 }
 

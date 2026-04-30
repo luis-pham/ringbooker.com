@@ -6,6 +6,7 @@ import { UserLayout } from '@/components/user/user-layout';
 import { userCallsScripts, userCallsStyles } from '@/components/user/user-calls';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalNav } from '@/components/user/user-portal-nav';
+import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
 type Call = {
   provider: string;
@@ -38,12 +39,6 @@ type CallsResponse = {
   pagination?: { page: number; pageSize: number; total: number };
   summary?: CallsSummary;
   error?: string;
-};
-
-type NavStateResponse = {
-  ok: boolean;
-  shopName?: string;
-  plan?: string;
 };
 
 function formatDate(value?: string) {
@@ -118,8 +113,7 @@ export function UserCallsLive() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
-  const [shopName, setShopName] = useState('Your Shop');
-  const [planLabel, setPlanLabel] = useState('Starter');
+  const { workspace } = useUserWorkspace();
 
   useEffect(() => {
     setLoading(true);
@@ -158,17 +152,6 @@ export function UserCallsLive() {
       })
       .finally(() => setLoading(false));
   }, [page]);
-
-  useEffect(() => {
-    void fetch('/api/backend/user/nav-state')
-      .then(async (response) => (await response.json()) as NavStateResponse)
-      .then((body) => {
-        if (!body.ok) return;
-        if (body.shopName?.trim()) setShopName(body.shopName.trim());
-        if (body.plan?.trim()) setPlanLabel(body.plan[0].toUpperCase() + body.plan.slice(1));
-      })
-      .catch(() => undefined);
-  }, []);
 
   const metrics = useMemo(() => {
     if (summary) return summary;
@@ -258,7 +241,7 @@ export function UserCallsLive() {
         <aside className="sidebar">
           <div className="sidebar-inner">
             <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><span>RingBooker</span></div>
-            <div className="workspace"><h3>{shopName}</h3><p>AI Receptionist is active. [{planLabel} plan].</p></div>
+            <div className="workspace"><h3>{workspace.shopName}</h3><p>AI Receptionist is {workspace.active ? 'active' : 'paused'}. [{workspace.plan[0].toUpperCase() + workspace.plan.slice(1)} plan].</p></div>
             <UserPortalNav active="calls" />
             <div className="sidebar-spacer" />
           </div>

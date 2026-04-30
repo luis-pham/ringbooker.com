@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { UserLayout } from '@/components/user/user-layout';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalNav } from '@/components/user/user-portal-nav';
+import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
 
 type NavStateResponse = {
@@ -28,6 +29,7 @@ function subscriptionLabel(status: string | null | undefined) {
 }
 
 export function UserAccountLive() {
+  const { workspace, setWorkspace } = useUserWorkspace();
   const [nav, setNav] = useState<NavStateResponse | null>(null);
   const [navError, setNavError] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -41,7 +43,13 @@ export function UserAccountLive() {
       .then(async (r) => (await r.json()) as NavStateResponse)
       .then((body) => {
         if (!body.ok) setNavError(body.error ?? 'unknown_error');
-        else setNav(body);
+        else {
+          setNav(body);
+          setWorkspace({
+            shopName: body.shopName?.trim() || workspace.shopName,
+            plan: body.plan?.trim() || workspace.plan,
+          });
+        }
       })
       .catch(() => setNavError('network_error'));
   }, []);
@@ -133,8 +141,8 @@ export function UserAccountLive() {
                 <span>RingBooker</span>
               </div>
               <div className="workspace">
-                <h3>{nav?.shopName?.trim() || 'Your Shop'}</h3>
-                <p>AI Receptionist is active. [{planLabel(nav?.plan)} plan].</p>
+                <h3>{workspace.shopName}</h3>
+                <p>AI Receptionist is {workspace.active ? 'active' : 'paused'}. [{planLabel(workspace.plan)} plan].</p>
               </div>
               <UserPortalNav active="account" />
               <div className="sidebar-spacer" />
