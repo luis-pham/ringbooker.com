@@ -279,7 +279,7 @@ button,input,select,textarea{font:inherit}
   display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px;
 }
 .tab-button{
-  display:flex;flex-direction:row;align-items:flex-start;gap:8px;text-align:left;
+  display:flex;flex-direction:row;align-items:flex-start;gap:4px;text-align:left;
   padding:14px 16px;border-radius:20px;border:1px solid var(--border);
   background:#fff;color:var(--text-dark);cursor:pointer;transition:.18s ease;min-width:0;
 }
@@ -290,7 +290,7 @@ button,input,select,textarea{font:inherit}
   box-shadow:0 0 0 4px rgba(139,92,246,.08);
 }
 .tab-button-icon{
-  flex-shrink:0;width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;
   background:transparent;color:var(--purple-dark);
   border:none;
 }
@@ -298,7 +298,7 @@ button,input,select,textarea{font:inherit}
   background:transparent;color:var(--purple-dark);border-color:transparent;
 }
 .tab-button-icon svg{display:block;width:22px;height:22px}
-.tab-button-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tab-button-body{display:flex;flex-direction:column;gap:1px;min-width:0}
 .tab-button strong{font-size:14px;letter-spacing:-.02em}
 .tab-button-desc{font-size:12px;line-height:1.55;color:var(--text-gray)}
 .tab-button.active .tab-button-desc{color:#5b21b6}
@@ -356,8 +356,8 @@ button,input,select,textarea{font:inherit}
   .main{padding:18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
   .grid-2,.grid-3,.grid-4,.form-grid,.option-grid,.calendar-int-grid,.services-grid,.service-controls{grid-template-columns:1fr}
   .tab-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .tab-button{flex-direction:column;align-items:center;text-align:center;padding:11px 8px;gap:6px}
-  .tab-button-icon{width:44px;height:44px;border-radius:12px}
+  .tab-button{flex-direction:column;align-items:center;text-align:center;padding:11px 8px;gap:3px}
+  .tab-button-icon{width:30px;height:30px;border-radius:10px}
   .tab-button-icon svg{width:20px;height:20px}
   .tab-button-body{align-items:center;width:100%}
   .tab-button-desc{display:none !important}
