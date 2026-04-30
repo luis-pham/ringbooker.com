@@ -1407,9 +1407,9 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
             Beauty Clinic Calls Need More Than Voicemail
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
-            RingBooker is the AI receptionist for beauty clinics, wax studios, and lash studios — covering consultation
-            calls, after-hours inquiries, and missed-call follow-up on your current number. 46% of beauty bookings happen
-            outside operating hours. Consultation intent shouldn&apos;t disappear because no one answered.
+            RingBooker is the AI receptionist for beauty clinics, aesthetic clinics, wax studios, and lash studios —
+            covering consultation calls, after-hours inquiries, and missed-call follow-up on your current number. 46% of
+            beauty bookings happen outside operating hours. Consultation intent shouldn&apos;t disappear because no one answered.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
@@ -1559,6 +1559,14 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       q: 'Can it answer pricing questions for my services?',
       a: 'Yes. You load your service menu and prices during setup. RingBooker can answer "how much for a full set?" or "what\'s the price for dip powder?" from your configured prices.',
     },
+    {
+      q: 'Is RingBooker an AI receptionist for nail salons?',
+      a: 'Yes — RingBooker functions as an AI receptionist for nail salons, handling pricing questions, walk-in availability, and English and Vietnamese call flows on the current number during service hours and after closing.',
+    },
+    {
+      q: 'Is RingBooker an AI answering service for nail salons?',
+      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for nail salons, handling pricing questions, walk-in availability, and Vietnamese call flows on the current number.',
+    },
   ],
   'hair-salon': [
     {
@@ -1593,6 +1601,14 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       q: 'Can it handle bridal party booking calls?',
       a: 'Yes. Bridal inquiries involving multiple people, stylists, and occasion-specific details are captured with party size, preferred date, service mix, and contact information for the team to confirm.',
     },
+    {
+      q: 'Is RingBooker an AI receptionist for hair salons?',
+      a: 'Yes — RingBooker functions as an AI receptionist for hair salons, handling preferred stylist requests, color slot inquiries, and reschedule calls on the current number.',
+    },
+    {
+      q: 'Is RingBooker an AI answering service for hair salons?',
+      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for hair salons, handling preferred stylist requests, color inquiries, and reschedule calls on the current number.',
+    },
   ],
   spa: [
     {
@@ -1626,6 +1642,14 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     {
       q: 'Can it handle prenatal massage booking calls?',
       a: 'Yes — for standard intake and FAQ (certification, trimester policy, session structure). Any clinical question is escalated immediately to a qualified staff member with full call context.',
+    },
+    {
+      q: 'Is RingBooker an AI receptionist for day spas?',
+      a: 'Yes — RingBooker functions as an AI receptionist for day spas, handling couples massage inquiries, package questions, and after-hours calls on the current number.',
+    },
+    {
+      q: 'Is RingBooker an AI answering service for day spas?',
+      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for day spas, handling couples massage inquiries, package questions, and after-hours calls on the current number.',
     },
   ],
   'med-spa': [
@@ -1665,6 +1689,14 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
       q: 'Does it work for laser and body contouring consultation calls?',
       a: 'Yes. High-value procedure calls — laser bookings ($300–$600/session) and body contouring consultations ($1,500–$5,000) — are captured with treatment interest and timing preference logged for clinical follow-up.',
     },
+    {
+      q: 'Is RingBooker an AI receptionist for med spas?',
+      a: 'Yes — RingBooker functions as an AI receptionist for med spas, capturing Botox, filler, and aesthetic consultation calls on the current number. Pre-clinical intake only.',
+    },
+    {
+      q: 'Is RingBooker an AI answering service for med spas?',
+      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for med spas, capturing Botox, filler, and aesthetic consultation calls on the current number. Pre-clinical intake only.',
+    },
   ],
   'beauty-clinic': [
     {
@@ -1694,6 +1726,18 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
     {
       q: 'What is the beauty clinic missed call solution RingBooker provides?',
       a: 'RingBooker covers the two windows where beauty clinic calls most commonly go unanswered: during active treatment sessions and after closing hours. It works through call forwarding on the current clinic number — no new number, no workflow change.',
+    },
+    {
+      q: 'Does RingBooker work for beauticians and beauty therapists?',
+      a: 'Yes — RingBooker works for estheticians, beauticians, beauty therapists, and any hands-on beauty professional who cannot answer the phone during service sessions.',
+    },
+    {
+      q: 'Is RingBooker an AI receptionist for beauty clinics?',
+      a: 'Yes — RingBooker functions as an AI receptionist for beauty clinics, wax studios, lash studios, and aesthetic clinics — handling consultation calls, pricing questions, and after-hours inquiries on the current number.',
+    },
+    {
+      q: 'Is RingBooker an AI answering service for beauty clinics?',
+      a: 'Yes — RingBooker functions as an AI answering service and AI receptionist for beauty clinics, wax studios, lash studios, and aesthetic clinics — handling consultation calls and after-hours inquiries on the current number.',
     },
   ],
 };
