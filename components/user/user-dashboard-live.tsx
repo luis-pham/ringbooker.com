@@ -162,7 +162,7 @@ export function UserDashboardLive() {
             </div>
             <div className="workspace">
               <h3>{shopName}</h3>
-              <p>AI Phone Agent is {data.shop?.active ? 'active' : 'paused'}. {planLabel} plan.</p>
+              <p>AI Receptionist is {data.shop?.active ? 'active' : 'paused'}. [{planLabel} plan].</p>
             </div>
             <UserPortalNav active="overview" />
             <div className="sidebar-spacer" />
@@ -171,10 +171,10 @@ export function UserDashboardLive() {
         <main className="main">
           <div className="topbar">
             <div className="page-title">
-              <h1>Your salon, in one glance.</h1>
+              <h1>Overview:</h1>
               <p>Track calls, bookings, reminders, and AI performance for {shopName}.</p>
             </div>
-            <div className="top-actions">
+            <div className="top-actions overview-top-actions">
               <a className="btn" href="/user/settings">Edit business info</a>
               <a className="btn purple" href="/user/bookings">View bookings</a>
               <button type="button" className="btn" onClick={signOut}>Sign out</button>

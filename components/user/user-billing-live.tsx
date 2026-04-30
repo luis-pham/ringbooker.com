@@ -225,13 +225,9 @@ export function UserBillingLive() {
             </div>
             <div className="workspace">
               <h3>{data?.shop?.name ?? 'Loading shop...'}</h3>
-              <p>
-                {loading
-                  ? 'Syncing subscription details...'
-                  : `${(data?.billing?.provider ?? 'manual').toUpperCase()} subscription ${
-                      subscription ? getStatusLabel(subscription.status).toLowerCase() : 'not connected'
-                    }`}
-              </p>
+              <p>{`AI Receptionist is ${data?.shop?.active ? 'active' : 'paused'}. [${
+                (data?.shop?.plan ?? 'starter')[0].toUpperCase() + (data?.shop?.plan ?? 'starter').slice(1)
+              } plan].`}</p>
             </div>
             <UserPortalNav active="billing" />
             <div className="sidebar-spacer" />

@@ -677,7 +677,9 @@ export function UserSettingsLive() {
             </div>
             <div className="workspace">
               <h3>{shop.name}</h3>
-              <p>{shop.plan[0].toUpperCase() + shop.plan.slice(1)} plan · AI agent {shop.active ? 'active' : 'paused'} · Number {shop.phone_number}</p>
+              <p>
+                AI Receptionist is {shop.active ? 'active' : 'paused'}. [{shop.plan[0].toUpperCase() + shop.plan.slice(1)} plan].
+              </p>
             </div>
             <UserPortalNav active="settings" />
             <div className="sidebar-spacer" />

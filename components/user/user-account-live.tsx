@@ -133,8 +133,8 @@ export function UserAccountLive() {
                 <span>RingBooker</span>
               </div>
               <div className="workspace">
-                <h3>Account</h3>
-                <p>Sign-in email, plan, and password for your RingBooker user.</p>
+                <h3>{nav?.shopName?.trim() || 'Your Shop'}</h3>
+                <p>AI Receptionist is active. [{planLabel(nav?.plan)} plan].</p>
               </div>
               <UserPortalNav active="account" />
               <div className="sidebar-spacer" />

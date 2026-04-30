@@ -1,7 +1,7 @@
 import { UserDashboardLive } from '@/components/user/user-dashboard-live';
 
 export const metadata = {
-  title: 'Your salon, in one glance.',
+  title: 'Overview:',
 };
 
 export default function UserDashboardPage() {

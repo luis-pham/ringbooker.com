@@ -300,6 +300,7 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
     text-overflow:ellipsis;
   }
   .topbar{align-items:flex-start;flex-direction:column}
+  .overview-top-actions{display:none}
   .page-title h1{font-size:28px}
   .app-shell{grid-template-columns:1fr}
   .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}
@@ -317,7 +318,7 @@ const scripts: string[] = [
 
 export const userDashboardStyles = styles;
 export const userDashboardScripts = scripts;
-export const templateTitle = "Your salon, in one glance.";
+export const templateTitle = 'Overview:';
 
 export function UserDashboardTemplate() {
   return (
@@ -337,7 +338,7 @@ export function UserDashboardTemplate() {
         </aside>
         <main className="main">
           <div className="topbar">
-            <div className="page-title"><h1>Your salon, in one glance.</h1><p>Track calls, bookings, reminders, and AI performance without leaving the chair.</p></div>
+            <div className="page-title"><h1>Overview:</h1><p>Track calls, bookings, reminders, and AI performance without leaving the chair.</p></div>
             <div className="top-actions"><a className="btn" href="/user/settings">Edit business info</a><a className="btn purple" href="/user/bookings">View bookings</a></div>
           </div>
           <section className="grid grid-4">

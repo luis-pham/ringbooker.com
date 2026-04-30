@@ -25,6 +25,12 @@ type BookingsResponse = {
   error?: string;
 };
 
+type NavStateResponse = {
+  ok: boolean;
+  shopName?: string;
+  plan?: string;
+};
+
 function formatDateTime(value?: string, timezone?: string) {
   if (!value) return 'Unknown';
   const parsed = new Date(value);
@@ -54,6 +60,8 @@ function statusClass(status?: string, confirmed?: boolean) {
 export function UserBookingsLive() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [shopName, setShopName] = useState('Your Shop');
+  const [planLabel, setPlanLabel] = useState('Starter');
 
   useEffect(() => {
     void fetch('/api/backend/user/bookings')
@@ -66,6 +74,17 @@ export function UserBookingsLive() {
         setBookings(body.bookings ?? []);
       })
       .catch(() => setError('network_error'));
+  }, []);
+
+  useEffect(() => {
+    void fetch('/api/backend/user/nav-state')
+      .then(async (response) => (await response.json()) as NavStateResponse)
+      .then((body) => {
+        if (!body.ok) return;
+        if (body.shopName?.trim()) setShopName(body.shopName.trim());
+        if (body.plan?.trim()) setPlanLabel(body.plan[0].toUpperCase() + body.plan.slice(1));
+      })
+      .catch(() => undefined);
   }, []);
 
   const metrics = useMemo(() => {
@@ -83,7 +102,7 @@ export function UserBookingsLive() {
         <aside className="sidebar">
           <div className="sidebar-inner">
             <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 .4 1 0 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><span>RingBooker</span></div>
-            <div className="workspace"><h3>Bookings workspace</h3><p>Track confirmed and pending appointments in one place.</p></div>
+            <div className="workspace"><h3>{shopName}</h3><p>AI Receptionist is active. [{planLabel} plan].</p></div>
             <UserPortalNav active="bookings" />
             <div className="sidebar-spacer" />
           </div>
