@@ -353,6 +353,7 @@ const vagaroConnectSchema = z.object({
   region: z.string().min(1).default('us'),
   businessId: z.string().min(1, 'Business ID is required for Vagaro integration'),
   scope: z.string().min(1).optional(),
+  bookingUrl: z.string().optional(),
 });
 
 const vagaroConfigureSchema = z.object({
@@ -364,6 +365,10 @@ const vagaroConfigureSchema = z.object({
 });
 
 const bookingLinkConnectSchema = z.object({
+  bookingUrl: z.string().min(1),
+});
+
+const vagaroBookingUrlSchema = z.object({
   bookingUrl: z.string().min(1),
 });
 
@@ -2829,6 +2834,7 @@ export function createBackendApp(deps: {
               ? {
                   region: vagaroCredentials?.region ?? null,
                   businessId: vagaroCredentials?.businessId ?? null,
+                  bookingUrl: shop.booking_url ?? null,
                   capabilityNote: 'Availability checking supported. Booking creation requires Vagaro app.',
                 }
               : null,
@@ -2893,6 +2899,10 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const bookingUrl = parsed.data.bookingUrl ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
+    if (parsed.data.bookingUrl && !bookingUrl) {
+      return c.json({ ok: false, error: 'bookingUrl must start with https://' }, 400);
+    }
 
     try {
       const token = await generateVagaroAccessToken({
@@ -2916,6 +2926,12 @@ export function createBackendApp(deps: {
         google_cal_credentials_encrypted: encodeVagaroCredentials(payload),
       });
       if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      if (bookingUrl) {
+        const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
+          booking_url: bookingUrl,
+        });
+        if (!settingsUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      }
 
       return c.json({
         ok: true,
@@ -2927,6 +2943,39 @@ export function createBackendApp(deps: {
       logger.error({ err: error, provider: 'vagaro' }, 'calendar_provider_vagaro_connect_failed');
       return c.json({ ok: false, error: 'vagaro_connect_failed' }, 502);
     }
+  });
+
+  app.patch(path('/user/calendar/providers/vagaro/booking-url'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_vagaro_booking_url');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = vagaroBookingUrlSchema.safeParse(body);
+    const bookingUrl = parsed.success ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
+    if (!bookingUrl) {
+      return c.json({ ok: false, error: 'bookingUrl must start with https://' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
+      booking_url: bookingUrl,
+    });
+    if (!settingsUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    return c.json({
+      ok: true,
+      provider: 'vagaro',
+      bookingUrl,
+    });
   });
 
   app.post(path('/user/calendar/providers/:provider/connect'), async (c) => {
