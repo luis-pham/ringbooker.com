@@ -11,7 +11,15 @@ type UserPortalNavProps = {
 function navLink(key: UserPortalNavKey, href: string, label: string, icon: ReactNode, active: UserPortalNavKey) {
   const isActive = active === key;
   return (
-    <a key={key} className={`nav-item${isActive ? ' active' : ''}`} href={href}>
+    <a
+      key={key}
+      className={`nav-item${isActive ? ' active' : ''}`}
+      href={href}
+      onClick={(event) => {
+        event.preventDefault();
+        window.location.assign(href);
+      }}
+    >
       <div className="nav-icon">{icon}</div>
       <span>{label}</span>
     </a>

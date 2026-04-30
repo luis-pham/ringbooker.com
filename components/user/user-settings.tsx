@@ -363,6 +363,7 @@ button,input,select,textarea{font:inherit}
   .tab-button-desc{display:none !important}
   .tab-button strong{font-size:11px;font-weight:750;line-height:1.25}
   .topbar{align-items:flex-start;flex-direction:column}
+  .settings-top-actions{display:none}
   .page-title h1{font-size:28px}
   .app-shell{grid-template-columns:1fr}
   .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}

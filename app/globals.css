@@ -76,6 +76,7 @@ canvas {
     backdrop-filter: blur(16px);
     border-top: 1px solid #e5e7eb;
     box-shadow: 0 -10px 28px rgba(17, 24, 39, 0.08);
+    pointer-events: auto;
   }
 
   .user-mobile-tabbar__link {
@@ -97,6 +98,7 @@ canvas {
     text-align: center;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    pointer-events: auto;
   }
 
   .user-mobile-tabbar__link--active {
@@ -141,6 +143,17 @@ canvas {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+}
+
+.app-shell .sidebar {
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.app-shell .nav-section,
+.app-shell .nav-list,
+.app-shell .nav-item {
+  pointer-events: auto;
 }
 
 /* Shared logo override: use uploaded raster logo everywhere */

@@ -578,6 +578,7 @@ export function UserSettingsLive() {
               <UserPortalTopbar
                 title="Business settings and AI behavior."
                 subtitle="Choose how RingBooker should answer, what it can offer, and which automations your current plan unlocks for this shop."
+                actionsClassName="settings-top-actions"
                 actions={<><span className="plan-chip">Starter plan</span><a className="btn" href="/user/billing">See upgrade options</a></>}
               />
               <section className="card">
@@ -692,6 +693,7 @@ export function UserSettingsLive() {
           <UserPortalTopbar
             title="Business settings and AI behavior."
             subtitle="Choose how RingBooker should answer, what it can offer, and which automations your current plan unlocks for this shop."
+            actionsClassName="settings-top-actions"
             actions={<><span className="plan-chip">{shop.plan[0].toUpperCase() + shop.plan.slice(1)} plan</span><a className="btn" href="/user/billing">See upgrade options</a></>}
           />
 
@@ -1469,10 +1471,6 @@ export function UserSettingsLive() {
 
           </div>
 
-          <div className="footer-inline">
-            <span>Settings are plan-aware in both UI and API. Save each card separately; no hidden toggles can bypass the current shop subscription.</span>
-            <span>{status === 'saved' ? 'Saved just now' : status ? status : 'After you save, changes apply on the next call flow immediately.'}</span>
-          </div>
         </main>
       </div>
       <UserPortalMobileTabbar active="settings" />

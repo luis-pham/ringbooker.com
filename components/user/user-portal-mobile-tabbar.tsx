@@ -73,6 +73,10 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
         key={key}
         href={href}
         className={`user-mobile-tabbar__link${isActive ? ' user-mobile-tabbar__link--active' : ''}`}
+        onClick={(event) => {
+          event.preventDefault();
+          window.location.assign(href);
+        }}
       >
         <span className="user-mobile-tabbar__icon">{icon}</span>
         <span className="user-mobile-tabbar__label">{label}</span>
