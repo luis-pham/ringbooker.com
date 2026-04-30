@@ -68,7 +68,14 @@ export class InboundAgentSession {
     this.shop = params.shop;
     this.callerPhone = params.callerPhone;
     this.customer = params.customer;
-    this.calendarProvider = getCalendarProvider(this.shop);
+    this.calendarProvider = getCalendarProvider(this.shop, {
+      persistCredentials: async (encodedCredentials) => {
+        await this.deps.shopsRepository.updateCalendarConnection(this.shop.id, {
+          google_cal_id: this.shop.google_cal_id ?? null,
+          google_cal_credentials_encrypted: encodedCredentials,
+        });
+      },
+    });
     this.systemPrompt = buildSystemPrompt({
       shop: params.shop,
       customer: params.customer,
