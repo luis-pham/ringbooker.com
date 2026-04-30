@@ -78,6 +78,7 @@ type CalendarProviderSummary = {
   connected: boolean;
   configured: boolean;
   details: {
+    bookingUrl?: string | null;
     merchantId?: string | null;
     locationId?: string | null;
     serviceVariationId?: string | null;
@@ -132,12 +133,33 @@ type SettingsTabId =
   | 'integrations';
 
 /** Logos under /public/images — used in Calendar integrations cards. */
+function textLogo(label: string) {
+  return `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80"><rect width="160" height="80" rx="18" fill="white"/><text x="80" y="44" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#111827">${label}</text></svg>`,
+  )}`;
+}
+
 const CALENDAR_PROVIDER_LOGOS: Record<string, string> = {
   vagaro: '/images/vagaro.png',
   square_appointments: '/images/square.png',
   mindbody: '/images/mindbody.webp',
   booksy: '/images/booksy.png',
+  glossgenius: textLogo('GlossGenius'),
+  fresha: textLogo('Fresha'),
 };
+
+type BookingLinkProviderId = 'glossgenius' | 'fresha' | 'booksy';
+
+const BOOKING_LINK_PROVIDER_IDS = ['glossgenius', 'fresha', 'booksy'] as const;
+const BOOKING_LINK_PLACEHOLDERS: Record<BookingLinkProviderId, string> = {
+  glossgenius: 'https://glossgenius.com/your-business or your custom domain',
+  fresha: 'https://fresha.com/your-business-name',
+  booksy: 'https://booksy.com/en-us/your-profile',
+};
+
+function isBookingLinkProviderId(providerId: string): providerId is BookingLinkProviderId {
+  return BOOKING_LINK_PROVIDER_IDS.includes(providerId as BookingLinkProviderId);
+}
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<(typeof DAY_ORDER)[number], string> = {
@@ -366,6 +388,14 @@ export function UserSettingsLive() {
   const [vagaroRegion, setVagaroRegion] = useState('us');
   const [vagaroBusinessId, setVagaroBusinessId] = useState('');
   const [savingVagaroConfig, setSavingVagaroConfig] = useState(false);
+  const [bookingLinkInputs, setBookingLinkInputs] = useState<Record<BookingLinkProviderId, string>>({
+    glossgenius: '',
+    fresha: '',
+    booksy: '',
+  });
+  const [bookingLinkErrors, setBookingLinkErrors] = useState<Partial<Record<BookingLinkProviderId, string>>>({});
+  const [editingBookingLinkProvider, setEditingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
+  const [savingBookingLinkProvider, setSavingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -417,14 +447,23 @@ export function UserSettingsLive() {
         setCalendarStatus(body.error ?? 'unable_to_load_calendar_providers');
         return;
       }
-      setCalendarProviders(body.providers);
-      const square = body.providers.find((item) => item.id === 'square_appointments');
+      const providers = body.providers;
+      setCalendarProviders(providers);
+      const square = providers.find((item) => item.id === 'square_appointments');
       if (square?.details?.locationId) setSquareLocationId(square.details.locationId);
       if (square?.details?.serviceVariationId) setSquareServiceVariationId(square.details.serviceVariationId);
       if (square?.details?.teamMemberId) setSquareTeamMemberId(square.details.teamMemberId);
-      const vagaro = body.providers.find((item) => item.id === 'vagaro');
+      const vagaro = providers.find((item) => item.id === 'vagaro');
       if (vagaro?.details?.region) setVagaroRegion(vagaro.details.region);
       if (vagaro?.details?.businessId) setVagaroBusinessId(vagaro.details.businessId);
+      setBookingLinkInputs((current) => {
+        const next = { ...current };
+        for (const providerId of BOOKING_LINK_PROVIDER_IDS) {
+          const provider = providers.find((item) => item.id === providerId);
+          if (provider?.details?.bookingUrl) next[providerId] = provider.details.bookingUrl;
+        }
+        return next;
+      });
     } catch {
       setCalendarStatus('unable_to_load_calendar_providers');
     } finally {
@@ -461,6 +500,34 @@ export function UserSettingsLive() {
 
   const squareProvider = calendarProviders.find((item) => item.id === 'square_appointments') ?? null;
   const vagaroProvider = calendarProviders.find((item) => item.id === 'vagaro') ?? null;
+
+  async function saveBookingLink(providerId: BookingLinkProviderId) {
+    const bookingUrl = bookingLinkInputs[providerId].trim();
+    setBookingLinkErrors((current) => ({ ...current, [providerId]: '' }));
+    setSavingBookingLinkProvider(providerId);
+    try {
+      const response = await fetch(`/api/backend/user/calendar/providers/${providerId}/connect`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ bookingUrl }),
+      });
+      const body = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !body.ok) {
+        const message = body.error ?? 'booking_link_save_failed';
+        setBookingLinkErrors((current) => ({ ...current, [providerId]: message }));
+        setCalendarStatus(message);
+        return;
+      }
+      setCalendarStatus('Booking link saved.');
+      setEditingBookingLinkProvider(null);
+      await loadCalendarProviders();
+    } catch {
+      setBookingLinkErrors((current) => ({ ...current, [providerId]: 'booking_link_save_failed' }));
+      setCalendarStatus('booking_link_save_failed');
+    } finally {
+      setSavingBookingLinkProvider(null);
+    }
+  }
 
   useEffect(() => {
     if (squareProvider?.connected && !squareOptions) {
@@ -673,15 +740,20 @@ export function UserSettingsLive() {
                 {calendarProviders.map((provider) => {
                   const isSquare = provider.id === 'square_appointments';
                   const isVagaro = provider.id === 'vagaro';
+                  const bookingLinkProviderId: BookingLinkProviderId | null = isBookingLinkProviderId(provider.id) ? provider.id : null;
+                  const isBookingLink = bookingLinkProviderId !== null;
                   const logoSrc = CALENDAR_PROVIDER_LOGOS[provider.id] ?? '/images/calendar.png';
                   const cardClass = [
                     'calendar-int-card',
                     isSquare && provider.connected ? 'connected-active' : '',
                     isVagaro && provider.connected ? 'connected-active' : '',
-                    !isSquare && !isVagaro ? 'soon' : '',
+                    isBookingLink && provider.connected ? 'connected-active' : '',
+                    !isSquare && !isVagaro && !isBookingLink ? 'soon' : '',
                   ]
                     .filter(Boolean)
                     .join(' ');
+                  const bookingLinkUrl = bookingLinkProviderId ? provider.details?.bookingUrl ?? '' : '';
+                  const isEditingBookingLink = bookingLinkProviderId ? editingBookingLinkProvider === bookingLinkProviderId : false;
 
                   const statusCopy = isSquare
                     ? provider.connected
@@ -695,6 +767,10 @@ export function UserSettingsLive() {
                           ? 'Connected — availability checking and webhook sync supported.'
                           : 'Connected. Add your Vagaro business ID to finish setup.'
                         : 'Connect Vagaro with API credentials for availability checking and webhook sync.'
+                      : isBookingLink
+                        ? provider.connected
+                          ? 'Connected — callers can receive this booking link by SMS.'
+                          : 'Add your booking link so callers can receive it by SMS.'
                       : 'Integration is on the roadmap.';
 
                   return (
@@ -766,6 +842,74 @@ export function UserSettingsLive() {
                           <span className="calendar-int-badge" aria-label={provider.connected ? 'Connected' : 'Connectable'}>
                             {provider.connected ? 'Connected' : 'Connectable'}
                           </span>
+                        ) : bookingLinkProviderId ? (
+                          <div style={{ display: 'grid', gap: 10, width: '100%' }}>
+                            {provider.connected && !isEditingBookingLink ? (
+                              <>
+                                <span
+                                  className="calendar-int-badge"
+                                  aria-label="Connected"
+                                  style={{
+                                    background: '#ecfdf5',
+                                    borderColor: '#bbf7d0',
+                                    color: '#047857',
+                                    width: 'fit-content',
+                                  }}
+                                >
+                                  Connected
+                                </span>
+                                <div className="note" style={{ wordBreak: 'break-word' }}>
+                                  {bookingLinkUrl}
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  onClick={() => {
+                                    setEditingBookingLinkProvider(bookingLinkProviderId);
+                                    setBookingLinkInputs((current) => ({
+                                      ...current,
+                                      [bookingLinkProviderId]: bookingLinkUrl,
+                                    }));
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <div className="field" style={{ width: '100%' }}>
+                                  <label>Booking Link URL</label>
+                                  <input
+                                    value={bookingLinkInputs[bookingLinkProviderId]}
+                                    onChange={(event) => {
+                                      setBookingLinkInputs((current) => ({
+                                        ...current,
+                                        [bookingLinkProviderId]: event.target.value,
+                                      }));
+                                      setBookingLinkErrors((current) => ({ ...current, [bookingLinkProviderId]: '' }));
+                                    }}
+                                    placeholder={BOOKING_LINK_PLACEHOLDERS[bookingLinkProviderId]}
+                                  />
+                                </div>
+                                {bookingLinkErrors[bookingLinkProviderId] ? (
+                                  <div className="note" style={{ color: '#b91c1c' }}>
+                                    {bookingLinkErrors[bookingLinkProviderId]}
+                                  </div>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="btn purple"
+                                  disabled={savingBookingLinkProvider === bookingLinkProviderId || !bookingLinkInputs[bookingLinkProviderId].trim()}
+                                  onClick={() => void saveBookingLink(bookingLinkProviderId)}
+                                >
+                                  {savingBookingLinkProvider === bookingLinkProviderId ? 'Saving...' : 'Save Booking Link'}
+                                </button>
+                              </>
+                            )}
+                            <div className="note">
+                              When clients call to book, they will receive your booking link via SMS automatically.
+                            </div>
+                          </div>
                         ) : (
                           <span className="calendar-int-badge" aria-label="Coming soon">
                             Soon
