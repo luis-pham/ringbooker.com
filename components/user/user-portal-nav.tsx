@@ -15,10 +15,6 @@ function navLink(key: UserPortalNavKey, href: string, label: string, icon: React
       key={key}
       className={`nav-item${isActive ? ' active' : ''}`}
       href={href}
-      onClick={(event) => {
-        event.preventDefault();
-        window.location.assign(href);
-      }}
     >
       <div className="nav-icon">{icon}</div>
       <span>{label}</span>

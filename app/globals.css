@@ -145,17 +145,6 @@ canvas {
   }
 }
 
-.app-shell .sidebar {
-  z-index: 30;
-  pointer-events: auto;
-}
-
-.app-shell .nav-section,
-.app-shell .nav-list,
-.app-shell .nav-item {
-  pointer-events: auto;
-}
-
 /* Shared logo override: use uploaded raster logo everywhere */
 .mk-nav-logo-icon,
 .nav-logo-icon,
