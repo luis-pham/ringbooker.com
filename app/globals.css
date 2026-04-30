@@ -104,8 +104,8 @@ canvas {
   }
 
   .user-mobile-tabbar__icon {
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
     border-radius: 11px;
     display: flex;
     align-items: center;
@@ -116,8 +116,8 @@ canvas {
   }
 
   .user-mobile-tabbar__icon svg {
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     stroke: #6b7280;
     stroke-width: 2;
     fill: none;
