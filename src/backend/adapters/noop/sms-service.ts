@@ -11,6 +11,7 @@ export class NoopSmsService implements SmsService {
       | 'reminder_24h'
       | 'reminder_2h'
       | 'missed_call'
+      | 'booking_link'
       | 'callback_ack'
       | 'user_alert'
       | 'review_request';

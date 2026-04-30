@@ -139,6 +139,12 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
   const missedCallPayloadSchema = z.object({
     customerPhone: z.string().min(1),
   });
+  const bookingLinkSmsPayloadSchema = z.object({
+    shopId: z.string().min(1),
+    toPhone: z.string().min(1),
+    message: z.string().min(1),
+    bookingUrl: z.string().min(1),
+  });
   const callbackPayloadSchema = z.union([
     z.object({
       callbackId: z.string().uuid().or(z.string().min(1)),
@@ -311,6 +317,52 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
         status: 'sent',
         providerMessageId: sms.providerMessageId,
       });
+    },
+    booking_link_sms: async (params) => {
+      const payload = bookingLinkSmsPayloadSchema.safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'booking_link_sms_invalid_payload');
+        return;
+      }
+
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'booking_link_sms_shop_not_found');
+        return;
+      }
+
+      const idempotencyKey = `job:${params.jobId}:booking-link`;
+
+      try {
+        const sms = await runtime.smsService.sendSms({
+          to: payload.data.toPhone,
+          from: shop.phone_number,
+          body: payload.data.message,
+          shopId: shop.id,
+          category: 'booking_link',
+          idempotencyKey,
+        });
+
+        await runtime.outboundMessagesRepository.create({
+          shopId: shop.id,
+          customerPhone: payload.data.toPhone,
+          category: 'booking_link',
+          body: payload.data.message,
+          idempotencyKey,
+          status: 'sent',
+          providerMessageId: sms.providerMessageId,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            err: error,
+            jobId: params.jobId,
+            shopId: shop.id,
+            bookingUrl: payload.data.bookingUrl,
+          },
+          'booking_link_sms_failed',
+        );
+      }
     },
     callback_outbound_call: async (params) => {
       const payload = callbackPayloadSchema.safeParse(params.payload);
