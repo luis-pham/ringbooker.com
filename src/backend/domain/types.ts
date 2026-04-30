@@ -34,6 +34,7 @@ export type JobType =
   | 'appointment_reminder_2h'
   | 'missed_call_followup_sms'
   | 'booking_link_sms'
+  | 'cancellation_request_alert'
   | 'callback_outbound_call'
   | 'review_request_sms'
   | 'post_call_summary';

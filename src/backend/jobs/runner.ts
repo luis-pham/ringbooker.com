@@ -145,6 +145,14 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
     message: z.string().min(1),
     bookingUrl: z.string().min(1),
   });
+  const cancellationRequestAlertPayloadSchema = z.object({
+    shopId: z.string().min(1),
+    callerName: z.string().min(1).optional(),
+    callerPhone: z.string().min(1).optional(),
+    appointmentDate: z.string().min(1).optional(),
+    reason: z.string().min(1).optional(),
+    providerName: z.string().min(1).optional(),
+  });
   const callbackPayloadSchema = z.union([
     z.object({
       callbackId: z.string().uuid().or(z.string().min(1)),
@@ -361,6 +369,61 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
             bookingUrl: payload.data.bookingUrl,
           },
           'booking_link_sms_failed',
+        );
+      }
+    },
+    cancellation_request_alert: async (params) => {
+      const payload = cancellationRequestAlertPayloadSchema.safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'cancellation_request_alert_invalid_payload');
+        return;
+      }
+
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'cancellation_request_alert_shop_not_found');
+        return;
+      }
+
+      const body = [
+        `CANCEL REQUEST${payload.data.callerName ? ` from ${payload.data.callerName}` : ''}`,
+        payload.data.appointmentDate ? `Appointment: ${payload.data.appointmentDate}` : null,
+        payload.data.reason ? `Reason: ${payload.data.reason}` : null,
+        `Caller phone: ${payload.data.callerPhone || 'not provided'}`,
+        'Please confirm cancellation with client.',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      const idempotencyKey = `job:${params.jobId}:cancellation-alert`;
+
+      try {
+        const sms = await runtime.smsService.sendSms({
+          to: shop.user_phone,
+          from: shop.phone_number,
+          body,
+          shopId: shop.id,
+          category: 'cancellation_alert',
+          idempotencyKey,
+        });
+
+        await runtime.outboundMessagesRepository.create({
+          shopId: shop.id,
+          customerPhone: shop.user_phone,
+          category: 'cancellation_alert',
+          body,
+          idempotencyKey,
+          status: 'sent',
+          providerMessageId: sms.providerMessageId,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            err: error,
+            jobId: params.jobId,
+            shopId: shop.id,
+            providerName: payload.data.providerName,
+          },
+          'cancellation_request_alert_failed',
         );
       }
     },

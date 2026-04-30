@@ -8,6 +8,7 @@ import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import { getCalendarProvider, type CalendarProvider } from '@/src/backend/services/calendar/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { checkAvailabilityTool } from '@/src/agent/tools/check-availability';
+import { cancelBookingTool } from '@/src/agent/tools/cancel-booking';
 import { createBookingTool } from '@/src/agent/tools/create-booking';
 import { getShopInfoTool } from '@/src/agent/tools/get-shop-info';
 import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
@@ -35,6 +36,7 @@ export type InboundAgentSessionInput = {
 export type AgentToolName =
   | 'check_availability'
   | 'create_booking'
+  | 'cancel_booking'
   | 'reschedule_booking'
   | 'get_shop_info'
   | 'transfer_to_user'
@@ -112,6 +114,8 @@ export class InboundAgentSession {
         return checkAvailabilityTool(ctx, input);
       case 'create_booking':
         return createBookingTool(ctx, input);
+      case 'cancel_booking':
+        return cancelBookingTool(ctx, input);
       case 'reschedule_booking':
         return rescheduleBookingTool(ctx, input);
       case 'get_shop_info':

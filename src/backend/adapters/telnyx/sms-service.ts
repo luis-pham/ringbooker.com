@@ -23,6 +23,7 @@ export class TelnyxSmsService implements SmsService {
       | 'reminder_2h'
       | 'missed_call'
       | 'booking_link'
+      | 'cancellation_alert'
       | 'callback_ack'
       | 'user_alert'
       | 'review_request';

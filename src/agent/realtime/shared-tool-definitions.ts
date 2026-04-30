@@ -52,6 +52,23 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
     },
   },
   {
+    name: 'cancel_booking',
+    description:
+      'Cancel an existing appointment. For Square Appointments, cancels directly via API. For all other providers, captures the request, provides caller with self-cancel instructions where available, and notifies the shop owner.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        bookingId: { type: 'string', description: 'Optional existing booking identifier, required for direct Square cancellation.' },
+        callerName: { type: 'string', description: 'Optional caller name.' },
+        callerPhone: { type: 'string', description: "Optional caller's phone number." },
+        appointmentDate: { type: 'string', description: 'Optional appointment date or time description.' },
+        reason: { type: 'string', description: 'Optional cancellation reason.' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'get_shop_info',
     description: 'Fetch canonical shop information such as hours, services, and policy.',
     parameters: {
