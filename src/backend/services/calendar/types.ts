@@ -2,6 +2,7 @@ import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/
 import { GoogleCalendarProvider } from '@/src/backend/services/calendar/google-calendar';
 import { ManualCalendarProvider } from '@/src/backend/services/calendar/manual-provider';
 import { SquareAppointmentsProvider } from '@/src/backend/services/calendar/square-appointments';
+import { VagaroProvider } from '@/src/backend/services/calendar/vagaro';
 import {
   CALENDAR_PROVIDER_CATALOG,
   parseCalendarProviderId,
@@ -32,6 +33,10 @@ export interface CalendarProvider {
     idempotencyKey: string;
   }): Promise<BookingResult>;
 }
+
+export type CalendarProviderOptions = {
+  persistCredentials?: (encodedCredentials: string) => Promise<void>;
+};
 
 function parseShopCalendarProviderHint(shop: Shop): CalendarProviderId | null {
   const rawCredentials = shop.google_cal_credentials_encrypted;
@@ -76,7 +81,7 @@ export function getShopCalendarProviderMetadata(shop: Shop) {
   return CALENDAR_PROVIDER_CATALOG[providerId];
 }
 
-export function getCalendarProvider(shop: Shop): CalendarProvider {
+export function getCalendarProvider(shop: Shop, options?: CalendarProviderOptions): CalendarProvider {
   const providerId = resolveShopCalendarProviderId(shop);
   const providerMeta = CALENDAR_PROVIDER_CATALOG[providerId];
   if (!providerMeta) {
@@ -89,6 +94,12 @@ export function getCalendarProvider(shop: Shop): CalendarProvider {
 
   if (providerId === 'square_appointments') {
     return new SquareAppointmentsProvider(shop);
+  }
+
+  if (providerId === 'vagaro') {
+    return new VagaroProvider(shop, {
+      persistCredentials: options?.persistCredentials,
+    });
   }
 
   if (providerId !== 'manual' && !providerMeta.implemented) {

@@ -61,17 +61,17 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
   vagaro: {
     id: 'vagaro',
     label: 'Vagaro',
-    implemented: false,
-    status: 'planned',
+    implemented: true,
+    status: 'active',
     capabilities: {
       checkAvailability: true,
-      createBooking: true,
-      rescheduleBooking: true,
-      cancelBooking: true,
+      createBooking: false,
+      rescheduleBooking: false,
+      cancelBooking: false,
       webhookSync: true,
       serviceSync: true,
       staffSync: true,
-      customerSync: true,
+      customerSync: false,
     },
   },
   square_appointments: {
