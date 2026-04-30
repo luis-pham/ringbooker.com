@@ -82,6 +82,9 @@ type CalendarProviderSummary = {
     locationId?: string | null;
     serviceVariationId?: string | null;
     teamMemberId?: string | null;
+    region?: string | null;
+    businessId?: string | null;
+    capabilityNote?: string | null;
   } | null;
 };
 
@@ -358,6 +361,11 @@ export function UserSettingsLive() {
   const [squareServiceVariationId, setSquareServiceVariationId] = useState('');
   const [squareTeamMemberId, setSquareTeamMemberId] = useState('');
   const [savingSquareConfig, setSavingSquareConfig] = useState(false);
+  const [vagaroClientId, setVagaroClientId] = useState('');
+  const [vagaroClientSecretKey, setVagaroClientSecretKey] = useState('');
+  const [vagaroRegion, setVagaroRegion] = useState('us');
+  const [vagaroBusinessId, setVagaroBusinessId] = useState('');
+  const [savingVagaroConfig, setSavingVagaroConfig] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -414,6 +422,9 @@ export function UserSettingsLive() {
       if (square?.details?.locationId) setSquareLocationId(square.details.locationId);
       if (square?.details?.serviceVariationId) setSquareServiceVariationId(square.details.serviceVariationId);
       if (square?.details?.teamMemberId) setSquareTeamMemberId(square.details.teamMemberId);
+      const vagaro = body.providers.find((item) => item.id === 'vagaro');
+      if (vagaro?.details?.region) setVagaroRegion(vagaro.details.region);
+      if (vagaro?.details?.businessId) setVagaroBusinessId(vagaro.details.businessId);
     } catch {
       setCalendarStatus('unable_to_load_calendar_providers');
     } finally {
@@ -449,6 +460,7 @@ export function UserSettingsLive() {
   }
 
   const squareProvider = calendarProviders.find((item) => item.id === 'square_appointments') ?? null;
+  const vagaroProvider = calendarProviders.find((item) => item.id === 'vagaro') ?? null;
 
   useEffect(() => {
     if (squareProvider?.connected && !squareOptions) {
@@ -660,11 +672,13 @@ export function UserSettingsLive() {
               <div className="calendar-int-grid">
                 {calendarProviders.map((provider) => {
                   const isSquare = provider.id === 'square_appointments';
+                  const isVagaro = provider.id === 'vagaro';
                   const logoSrc = CALENDAR_PROVIDER_LOGOS[provider.id] ?? '/images/calendar.png';
                   const cardClass = [
                     'calendar-int-card',
                     isSquare && provider.connected ? 'connected-active' : '',
-                    !isSquare ? 'soon' : '',
+                    isVagaro && provider.connected ? 'connected-active' : '',
+                    !isSquare && !isVagaro ? 'soon' : '',
                   ]
                     .filter(Boolean)
                     .join(' ');
@@ -675,7 +689,13 @@ export function UserSettingsLive() {
                         ? 'Connected and configured — live availability and booking to Square.'
                         : 'Connected. Pick location and service below, then save.'
                       : 'OAuth to Square, then choose location and service for the AI.'
-                    : 'Integration is on the roadmap.';
+                    : isVagaro
+                      ? provider.connected
+                        ? provider.configured
+                          ? 'Connected — availability checking and webhook sync supported.'
+                          : 'Connected. Add your Vagaro business ID to finish setup.'
+                        : 'Connect Vagaro with API credentials for availability checking and webhook sync.'
+                      : 'Integration is on the roadmap.';
 
                   return (
                     <div key={provider.id} className={cardClass}>
@@ -742,6 +762,10 @@ export function UserSettingsLive() {
                               </>
                             ) : null}
                           </>
+                        ) : isVagaro ? (
+                          <span className="calendar-int-badge" aria-label={provider.connected ? 'Connected' : 'Connectable'}>
+                            {provider.connected ? 'Connected' : 'Connectable'}
+                          </span>
                         ) : (
                           <span className="calendar-int-badge" aria-label="Coming soon">
                             Soon
@@ -833,6 +857,112 @@ export function UserSettingsLive() {
                       </button>
                     </div>
                   </div>
+              </div>
+              ) : null}
+
+              {vagaroProvider ? (
+              <div className="card-section" style={{ marginTop: 18 }}>
+                <div className="hint-row">
+                  <strong className="option-title">Vagaro API credentials</strong>
+                  <span className="hint-copy">
+                    Availability checking and webhook sync supported. Booking creation happens in your Vagaro app.
+                  </span>
+                </div>
+                <div className="form-grid" style={{ marginTop: 12 }}>
+                  <div className="field">
+                    <label>Client ID</label>
+                    <input
+                      value={vagaroClientId}
+                      onChange={(event) => setVagaroClientId(event.target.value)}
+                      placeholder={vagaroProvider.connected ? 'Leave blank to keep current client ID' : 'Vagaro clientId'}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Client secret key</label>
+                    <input
+                      type="password"
+                      value={vagaroClientSecretKey}
+                      onChange={(event) => setVagaroClientSecretKey(event.target.value)}
+                      placeholder={vagaroProvider.connected ? 'Leave blank to keep current secret' : 'Vagaro clientSecretKey'}
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Region</label>
+                    <input
+                      value={vagaroRegion}
+                      onChange={(event) => setVagaroRegion(event.target.value)}
+                      placeholder="us"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Business ID</label>
+                    <input
+                      value={vagaroBusinessId}
+                      onChange={(event) => setVagaroBusinessId(event.target.value)}
+                      placeholder="Vagaro Business ID (required)"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Connection status</label>
+                    <div className="note">
+                      {vagaroProvider.connected
+                        ? vagaroProvider.configured
+                          ? 'Connected: availability checking can use Vagaro now.'
+                          : 'Connected but incomplete. Add business ID to load Vagaro services and staff.'
+                        : 'Not connected. Enter API credentials to connect Vagaro.'}
+                    </div>
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <button
+                      type="button"
+                      className="btn purple"
+                      disabled={
+                        savingVagaroConfig ||
+                        !vagaroRegion ||
+                        !vagaroBusinessId ||
+                        (!vagaroProvider.connected && (!vagaroClientId || !vagaroClientSecretKey))
+                      }
+                      onClick={async () => {
+                        if (!vagaroBusinessId) {
+                          setCalendarStatus('Business ID is required for Vagaro integration');
+                          return;
+                        }
+                        setSavingVagaroConfig(true);
+                        try {
+                          const response = await fetch(
+                            vagaroProvider.connected
+                              ? '/api/backend/user/calendar/providers/vagaro/configure'
+                              : '/api/backend/user/calendar/providers/vagaro/connect',
+                            {
+                              method: 'POST',
+                              headers: { 'content-type': 'application/json' },
+                              body: JSON.stringify({
+                                clientId: vagaroClientId || undefined,
+                                clientSecretKey: vagaroClientSecretKey || undefined,
+                                region: vagaroRegion,
+                                businessId: vagaroBusinessId || undefined,
+                              }),
+                            },
+                          );
+                          const body = (await response.json()) as { ok: boolean; error?: string };
+                          if (!response.ok || !body.ok) {
+                            setCalendarStatus(body.error ?? 'vagaro_config_save_failed');
+                            return;
+                          }
+                          setCalendarStatus(vagaroProvider.connected ? 'Vagaro configuration saved.' : 'Vagaro connected.');
+                          setVagaroClientSecretKey('');
+                          await loadCalendarProviders();
+                        } catch {
+                          setCalendarStatus('vagaro_config_save_failed');
+                        } finally {
+                          setSavingVagaroConfig(false);
+                        }
+                      }}
+                    >
+                      {savingVagaroConfig ? 'Saving...' : vagaroProvider.connected ? 'Save Vagaro settings' : 'Connect Vagaro'}
+                    </button>
+                  </div>
+                </div>
               </div>
               ) : null}
 
