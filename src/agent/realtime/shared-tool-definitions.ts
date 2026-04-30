@@ -53,10 +53,13 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
       additionalProperties: false,
       properties: {
         bookingId: { type: 'string', description: 'Existing booking identifier.' },
-        newDate: { type: 'string', description: 'New date in YYYY-MM-DD format.' },
-        newTime: { type: 'string', description: 'New time in HH:mm format.' },
+        currentDateTime: { type: 'string', description: 'Optional current appointment date/time.' },
+        newDateTime: { type: 'string', description: 'Requested new appointment date/time.' },
+        newDate: { type: 'string', description: 'New date in YYYY-MM-DD format. Use with newTime if newDateTime is not provided.' },
+        newTime: { type: 'string', description: 'New time in HH:mm format. Use with newDate if newDateTime is not provided.' },
+        callerName: { type: 'string', description: 'Optional caller name.' },
       },
-      required: ['bookingId', 'newDate', 'newTime'],
+      required: ['bookingId'],
     },
   },
   {

@@ -456,6 +456,7 @@ export interface BookingsRepository {
     status: string;
     calendarEventId?: string;
   }): Promise<BookingRecord>;
+  updateDatetime(bookingId: string, newDatetimeUtc: Date): Promise<void>;
   markReminderSent(bookingId: string, kind: '24h' | '2h'): Promise<void>;
   markReviewRequestSent(bookingId: string): Promise<void>;
 }

@@ -61,6 +61,13 @@ export class InMemoryBookingsRepository implements BookingsRepository {
     return booking;
   }
 
+  async updateDatetime(bookingId: string, newDatetimeUtc: Date): Promise<void> {
+    const booking = this.bookings.get(bookingId);
+    if (!booking) return;
+    booking.datetimeUtc = newDatetimeUtc.toISOString();
+    booking.updatedAt = new Date().toISOString();
+  }
+
   async markReminderSent(bookingId: string, kind: '24h' | '2h'): Promise<void> {
     const booking = this.bookings.get(bookingId);
     if (!booking) return;

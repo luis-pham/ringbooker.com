@@ -157,6 +157,20 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     };
   }
 
+  async updateDatetime(bookingId: string, newDatetimeUtc: Date): Promise<void> {
+    const { error } = await this.supabase
+      .from('bookings')
+      .update({
+        datetime_utc: newDatetimeUtc.toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', bookingId);
+
+    if (error) {
+      throw new Error(`bookings_update_datetime_failed:${error.message}`);
+    }
+  }
+
   async markReminderSent(bookingId: string, kind: '24h' | '2h'): Promise<void> {
     const update =
       kind === '24h'
