@@ -91,7 +91,7 @@ button,input,select,textarea{font:inherit}
   width:34px;height:34px;border-radius:12px;background:transparent;border:none;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
-.nav-icon svg{width:16px;height:16px;stroke:#6b7280;stroke-width:2;fill:none}
+.nav-icon svg{width:18px;height:18px;stroke:#6b7280;stroke-width:2;fill:none}
 .nav-item.active .nav-icon{background:transparent;border-color:transparent}
 .nav-item.active .nav-icon svg{stroke:var(--purple-dark)}
 .sidebar-spacer{flex:1}
@@ -130,7 +130,7 @@ button,input,select,textarea{font:inherit}
   width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
   background:transparent;
 }
-.stat-icon svg{width:20px;height:20px;stroke:var(--purple-dark);stroke-width:2;fill:none}
+.stat-icon svg{width:22px;height:22px;stroke:var(--purple-dark);stroke-width:2;fill:none}
 .stat-value{font-size:32px;font-weight:800;letter-spacing:-1px}
 .stat-meta{font-size:13px;color:var(--text-gray);line-height:1.55}
 .tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:700}
@@ -291,13 +291,13 @@ button,input,select,textarea{font:inherit}
 }
 .tab-button-icon{
   flex-shrink:0;width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-  background:linear-gradient(135deg,#f5f3ff,#ede9fe);color:var(--purple-dark);
-  border:1px solid rgba(139,92,246,.14);
+  background:transparent;color:var(--purple-dark);
+  border:none;
 }
 .tab-button.active .tab-button-icon{
-  background:var(--purple);color:#fff;border-color:transparent;
+  background:transparent;color:var(--purple-dark);border-color:transparent;
 }
-.tab-button-icon svg{display:block;width:20px;height:20px}
+.tab-button-icon svg{display:block;width:22px;height:22px}
 .tab-button-body{display:flex;flex-direction:column;gap:4px;min-width:0}
 .tab-button strong{font-size:14px;letter-spacing:-.02em}
 .tab-button-desc{font-size:12px;line-height:1.55;color:var(--text-gray)}
@@ -357,8 +357,8 @@ button,input,select,textarea{font:inherit}
   .grid-2,.grid-3,.grid-4,.form-grid,.option-grid,.calendar-int-grid,.services-grid,.service-controls{grid-template-columns:1fr}
   .tab-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   .tab-button{flex-direction:column;align-items:center;text-align:center;padding:12px 8px;gap:8px}
-  .tab-button-icon{width:40px;height:40px;border-radius:12px}
-  .tab-button-icon svg{width:18px;height:18px}
+  .tab-button-icon{width:44px;height:44px;border-radius:12px}
+  .tab-button-icon svg{width:20px;height:20px}
   .tab-button-body{align-items:center;width:100%}
   .tab-button-desc{display:none !important}
   .tab-button strong{font-size:11px;font-weight:750;line-height:1.25}
@@ -368,7 +368,8 @@ button,input,select,textarea{font:inherit}
   .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}
   .sidebar-inner{min-height:auto}
   .sidebar-spacer{display:none}
-  .brand span,.workspace{display:block}
+  .brand span{display:block}
+  .workspace{display:none}
   .user-app-shell .nav-section{display:none !important}
   .hours-row{grid-template-columns:1fr}
 }

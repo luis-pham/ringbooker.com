@@ -229,7 +229,7 @@ export function UserDashboardLive() {
         <main className="main">
           <div className="topbar">
             <div className="page-title">
-              <h1>Overview</h1>
+              <h1>{shopName}</h1>
               <p>Track calls, bookings, and reminders.</p>
             </div>
             <div className="top-actions overview-top-actions">

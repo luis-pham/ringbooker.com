@@ -111,8 +111,8 @@ canvas {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: #fff;
-    border: 1px solid #e5e7eb;
+    background: transparent;
+    border: none;
   }
 
   .user-mobile-tabbar__icon svg {
@@ -124,12 +124,12 @@ canvas {
   }
 
   .user-mobile-tabbar__link--active .user-mobile-tabbar__icon {
-    background: #8b5cf6;
+    background: transparent;
     border-color: transparent;
   }
 
   .user-mobile-tabbar__link--active .user-mobile-tabbar__icon svg {
-    stroke: #fff;
+    stroke: #5b21b6;
   }
 
   .user-mobile-tabbar__label {

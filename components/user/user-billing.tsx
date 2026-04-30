@@ -91,7 +91,7 @@ button,input,select,textarea{font:inherit}
   width:34px;height:34px;border-radius:12px;background:transparent;border:none;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
-.nav-icon svg{width:16px;height:16px;stroke:#6b7280;stroke-width:2;fill:none}
+.nav-icon svg{width:18px;height:18px;stroke:#6b7280;stroke-width:2;fill:none}
 .nav-item.active .nav-icon{background:transparent;border-color:transparent}
 .nav-item.active .nav-icon svg{stroke:var(--purple-dark)}
 .sidebar-spacer{flex:1}
@@ -130,7 +130,7 @@ button,input,select,textarea{font:inherit}
   width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
   background:transparent;
 }
-.stat-icon svg{width:20px;height:20px;stroke:var(--purple-dark);stroke-width:2;fill:none}
+.stat-icon svg{width:22px;height:22px;stroke:var(--purple-dark);stroke-width:2;fill:none}
 .stat-value{font-size:32px;font-weight:800;letter-spacing:-1px}
 .stat-meta{font-size:13px;color:var(--text-gray);line-height:1.55}
 .tag{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:700}
@@ -234,7 +234,8 @@ button,input,select,textarea{font:inherit}
   .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}
   .sidebar-inner{min-height:auto}
   .sidebar-spacer{display:none}
-  .brand span,.workspace{display:block}
+  .brand span{display:block}
+  .workspace{display:none}
   .user-app-shell .nav-section{display:none !important}
 }
 `,
