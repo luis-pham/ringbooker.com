@@ -7,6 +7,7 @@ import { userDashboardScripts, userDashboardStyles } from '@/components/user/use
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
 type UserDashboardResponse = {
   ok: boolean;
@@ -68,6 +69,7 @@ function IconQuickSettings() {
 }
 
 export function UserDashboardLive() {
+  const { setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -83,6 +85,15 @@ export function UserDashboardLive() {
     const raw = data?.shop?.plan ?? 'starter';
     return raw.charAt(0).toUpperCase() + raw.slice(1);
   }, [data?.shop?.plan]);
+
+  useEffect(() => {
+    if (!data?.ok || !data.shop) return;
+    setWorkspace({
+      shopName: data.shop.name,
+      plan: data.shop.plan,
+      active: data.shop.active,
+    });
+  }, [data, setWorkspace]);
 
   async function signOut() {
     await fetch('/api/backend/auth/logout', { method: 'POST' });

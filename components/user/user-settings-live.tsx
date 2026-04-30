@@ -7,6 +7,7 @@ import { UserLayout } from '@/components/user/user-layout';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
@@ -365,6 +366,7 @@ function getHourPresetId(hours: Record<string, BusinessHoursEntry>) {
 }
 
 export function UserSettingsLive() {
+  const { setWorkspace } = useUserWorkspace();
   const [shop, setShop] = useState<ShopSettings | null>(null);
   const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(null);
   const [form, setForm] = useState<SettingsState | null>(null);
@@ -535,6 +537,15 @@ export function UserSettingsLive() {
       void loadSquareOptions();
     }
   }, [squareProvider?.connected]);
+
+  useEffect(() => {
+    if (!shop) return;
+    setWorkspace({
+      shopName: shop.name,
+      plan: shop.plan,
+      active: shop.active,
+    });
+  }, [shop, setWorkspace]);
 
   const serviceChoices = useMemo(() => {
     const selected = new Map((form?.services ?? []).map((item) => [item.name, item]));
