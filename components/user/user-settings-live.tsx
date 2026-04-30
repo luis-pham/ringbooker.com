@@ -400,6 +400,9 @@ export function UserSettingsLive() {
   const [editingBookingLinkProvider, setEditingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [savingBookingLinkProvider, setSavingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [businessSubTab, setBusinessSubTab] = useState<'profile' | 'policies'>('profile');
+  const [servicesHoursSubTab, setServicesHoursSubTab] = useState<'services' | 'hours'>('services');
+  const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('handling');
+  const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
 
   useEffect(() => {
     let active = true;
@@ -1156,7 +1159,6 @@ export function UserSettingsLive() {
                   });
                 }}
               >
-                <div className="panel-head"><div><h3>Business profile</h3><p className="sub">Keep core shop details accurate so the AI stays grounded in real data.</p></div></div>
                 <div className="form-grid">
                   <div className="field"><label>Shop display name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} /></div>
                   <div className="field"><label>Main user phone</label><input value={form.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
@@ -1184,7 +1186,6 @@ export function UserSettingsLive() {
                   });
                 }}
               >
-                <div className="panel-head"><div><h3>Policies and promos</h3><p className="sub">Use presets first so callers hear clean, consistent rules without extra typing.</p></div></div>
                 <div className="card-section">
                   <div>
                     <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit only if your shop needs a special case.</span></div>
@@ -1241,15 +1242,23 @@ export function UserSettingsLive() {
             ) : null}
 
             {activeTab === 'services-hours' ? (
-            <section className="grid grid-2">
+            <section className="card">
+              <div className="business-subtabs" role="tablist" aria-label="Services and hours sections">
+                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'services'} className={`business-subtab ${servicesHoursSubTab === 'services' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('services')}>
+                  Services
+                </button>
+                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'hours'} className={`business-subtab ${servicesHoursSubTab === 'hours' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('hours')}>
+                  Business hours
+                </button>
+              </div>
+              {servicesHoursSubTab === 'services' ? (
               <form
-                className="card"
+                className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('services', { services: form.services });
                 }}
               >
-                <div className="panel-head"><div><h3>Services</h3><p className="sub">Tap to include common services. Duration and price stay editable in a lightweight way.</p></div></div>
                 <div className="services-grid">
                   {serviceChoices.map((service) => (
                     <div key={service.key} className={`service-chip ${service.selected ? 'active' : ''}`}>
@@ -1289,15 +1298,16 @@ export function UserSettingsLive() {
                   </button>
                 </div>
               </form>
+              ) : null}
 
+              {servicesHoursSubTab === 'hours' ? (
               <form
-                className="card"
+                className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('hours', { hours: form.hours });
                 }}
               >
-                <div className="panel-head"><div><h3>Business hours</h3><p className="sub">Start from a schedule template, then fine-tune only the days that differ.</p></div></div>
                 <div className="preset-pills" style={{ marginBottom: 14 }}>
                   {HOURS_PRESETS.map((preset) => (
                     <button key={preset.id} type="button" className={`preset-pill ${hourPreset === preset.id ? 'active' : ''}`} onClick={() => applyHourPreset(preset.id)}>
@@ -1339,13 +1349,23 @@ export function UserSettingsLive() {
                   </button>
                 </div>
               </form>
+              ) : null}
             </section>
             ) : null}
 
             {activeTab === 'ai-call-behavior' ? (
-            <section className="grid grid-2">
+            <section className="card">
+              <div className="business-subtabs" role="tablist" aria-label="AI call behavior sections">
+                <button type="button" role="tab" aria-selected={behaviorSubTab === 'handling'} className={`business-subtab ${behaviorSubTab === 'handling' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('handling')}>
+                  Call handling
+                </button>
+                <button type="button" role="tab" aria-selected={behaviorSubTab === 'voice'} className={`business-subtab ${behaviorSubTab === 'voice' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('voice')}>
+                  AI tone and voice
+                </button>
+              </div>
+              {behaviorSubTab === 'handling' ? (
               <form
-                className="card"
+                className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('call-handling', {
@@ -1354,7 +1374,6 @@ export function UserSettingsLive() {
                   });
                 }}
               >
-                <div className="panel-head"><div><h3>Call handling</h3><p className="sub">Starter plan includes practical routing controls for day-to-day salon operations.</p></div></div>
                 <div className="switch-list">
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Allow transfers</h4><p>Let the AI hand urgent or frustrated callers to your salon line.</p></div>
@@ -1371,13 +1390,23 @@ export function UserSettingsLive() {
                   </button>
                 </div>
               </form>
+              ) : null}
             </section>
             ) : null}
 
             {activeTab === 'messaging' ? (
-            <section className="grid grid-2">
+            <section className="card">
+              <div className="business-subtabs" role="tablist" aria-label="Messaging sections">
+                <button type="button" role="tab" aria-selected={messagingSubTab === 'automations'} className={`business-subtab ${messagingSubTab === 'automations' ? 'active' : ''}`} onClick={() => setMessagingSubTab('automations')}>
+                  SMS automations
+                </button>
+                <button type="button" role="tab" aria-selected={messagingSubTab === 'notes'} className={`business-subtab ${messagingSubTab === 'notes' ? 'active' : ''}`} onClick={() => setMessagingSubTab('notes')}>
+                  Messaging notes
+                </button>
+              </div>
+              {messagingSubTab === 'automations' ? (
               <form
-                className="card"
+                className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('messaging', {
@@ -1387,7 +1416,6 @@ export function UserSettingsLive() {
                   });
                 }}
               >
-                <div className="panel-head"><div><h3>SMS automations</h3><p className="sub">Choose which outbound messages RingBooker sends after calls and bookings.</p></div></div>
                 <div className="switch-list">
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Missed-call follow-up SMS</h4><p>Send a quick text when a caller hangs up before the salon team can connect.</p></div>
@@ -1416,20 +1444,22 @@ export function UserSettingsLive() {
                   </button>
                 </div>
               </form>
+              ) : null}
 
-              <div className="card">
-                <div className="panel-head"><div><h3>Messaging notes</h3><p className="sub">Keep your outbound communication intentional and aligned with your plan.</p></div></div>
+              {messagingSubTab === 'notes' ? (
+              <div className="card-section-form">
                 <div className="card-section">
                   <div className="note">Reminder and review request controls unlock by plan. Missed-call follow-up stays available because it directly protects lost revenue from unanswered calls.</div>
                 </div>
               </div>
+              ) : null}
             </section>
             ) : null}
 
-            {activeTab === 'ai-call-behavior' ? (
-            <section className="grid grid-2">
+            {activeTab === 'ai-call-behavior' && behaviorSubTab === 'voice' ? (
+            <section className="card" style={{ marginTop: 14 }}>
               <form
-                className="card"
+                className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('ai-voice', {
@@ -1439,7 +1469,6 @@ export function UserSettingsLive() {
                   });
                 }}
               >
-                <div className="panel-head"><div><h3>AI tone and voice</h3><p className="sub">These controls unlock by plan so the shop only sees the level of customization it can really use.</p></div></div>
                 <div className="card-section">
                   <div className="field">
                     <label>Voice style</label>
