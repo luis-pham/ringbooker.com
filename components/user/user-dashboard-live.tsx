@@ -95,7 +95,7 @@ export function UserDashboardLive() {
       <div className="app-shell user-app-shell">
         <UserPortalSidebar
           active="overview"
-          workspaceOverride={{ shopName, plan: data.shop?.plan ?? 'starter', active: data.shop?.active ?? true }}
+          workspaceOverride={{ shopName, plan: data?.shop?.plan ?? 'starter', active: data?.shop?.active ?? true }}
         />
         <main className="main">
           {loading ? (
