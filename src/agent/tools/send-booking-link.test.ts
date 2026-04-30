@@ -82,6 +82,7 @@ test('enqueues job when booking URL exists', async () => {
     serviceInterest: 'haircut',
   });
 
+  assert.equal('success' in result, true);
   assert.equal(result.success, true);
   assert.equal(enqueuedJobs.length, 1);
 
@@ -108,6 +109,7 @@ test('sends SMS without callerName or serviceInterest', async () => {
     callerPhone: '+15551234567',
   });
 
+  assert.equal('success' in result, true);
   assert.equal(result.success, true);
   assert.equal(enqueuedJobs.length, 1);
 
