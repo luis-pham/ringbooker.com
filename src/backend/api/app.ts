@@ -70,7 +70,6 @@ import {
   squareAuthorizeUrl,
   squareExchangeAuthorizationCode,
   squareFetchConnectionOptions,
-  type CalendarConnectionProviderId,
   type SquareConnectionCredentials,
 } from '@/src/backend/services/calendar/provider-connections';
 import {
@@ -335,8 +334,12 @@ const userBillingCheckoutSchema = z.object({
 });
 
 const calendarProviderParamSchema = z.object({
-  provider: z.enum(['square_appointments', 'google_calendar', 'vagaro', 'mindbody', 'booksy']),
+  provider: z.enum(['square_appointments', 'google_calendar', 'vagaro', 'glossgenius', 'fresha', 'mindbody', 'booksy']),
 });
+type CalendarProviderParam = z.infer<typeof calendarProviderParamSchema>['provider'];
+type BookingLinkProviderId = 'glossgenius' | 'fresha' | 'booksy';
+
+const BOOKING_LINK_PROVIDER_IDS = ['glossgenius', 'fresha', 'booksy'] as const satisfies readonly BookingLinkProviderId[];
 
 const squareConfigureSchema = z.object({
   locationId: z.string().min(1),
@@ -358,6 +361,10 @@ const vagaroConfigureSchema = z.object({
   region: z.string().min(1).optional(),
   businessId: z.string().min(1, 'Business ID is required for Vagaro integration').optional(),
   scope: z.string().min(1).optional(),
+});
+
+const bookingLinkConnectSchema = z.object({
+  bookingUrl: z.string().min(1),
 });
 
 const blogPostStatusSchema = z.enum(['draft', 'published', 'archived']);
@@ -973,9 +980,23 @@ function isShopOnboardingComplete(shop: Shop): boolean {
   return hasOwnerName && hasOwnerPhone && hasTimezone && hasService && hasHours;
 }
 
-function parseCalendarProviderParam(value: string): CalendarConnectionProviderId | null {
+function parseCalendarProviderParam(value: string): CalendarProviderParam | null {
   const parsed = calendarProviderParamSchema.safeParse({ provider: value });
   return parsed.success ? parsed.data.provider : null;
+}
+
+function isBookingLinkProviderId(provider: CalendarProviderParam | null): provider is BookingLinkProviderId {
+  return Boolean(provider && (BOOKING_LINK_PROVIDER_IDS as readonly string[]).includes(provider));
+}
+
+function normalizeHttpsBookingUrl(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== 'https:') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 function buildCalendarSettingsRedirect(params: { appBaseUrl: string; result: 'success' | 'error'; provider: string; message?: string }) {
@@ -1016,6 +1037,35 @@ function buildVagaroConnectionPayload(current: Partial<VagaroCredentials> | null
     accessToken: patch.accessToken ?? current?.accessToken,
     expiresAt: patch.expiresAt ?? current?.expiresAt,
   };
+}
+
+function buildBookingLinkConnectionPayload(provider: BookingLinkProviderId, bookingUrl: string) {
+  return JSON.stringify({
+    provider,
+    type: 'booking_link',
+    booking_url: bookingUrl,
+  });
+}
+
+function parseBookingLinkConnectionProvider(raw: string | null | undefined): BookingLinkProviderId | null {
+  if (!raw) return null;
+  const candidates = [raw];
+  try {
+    candidates.push(Buffer.from(raw, 'base64').toString('utf-8'));
+  } catch {
+    // ignore invalid base64
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(candidate) as Record<string, unknown>;
+      const provider = typeof parsed.provider === 'string' ? parseCalendarProviderParam(parsed.provider) : null;
+      return isBookingLinkProviderId(provider) ? provider : null;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 /** Cloudflare `CF-IPCountry` or compatible two-letter country code. */
@@ -2742,6 +2792,7 @@ export function createBackendApp(deps: {
 
     const squareCredentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
     const vagaroCredentials = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
+    const bookingLinkProvider = parseBookingLinkConnectionProvider(shop.google_cal_credentials_encrypted);
     const providers = (Object.keys(CALENDAR_PROVIDER_CATALOG) as Array<keyof typeof CALENDAR_PROVIDER_CATALOG>)
       .filter((id) => id !== 'manual' && id !== 'google_calendar')
       .map((id) => {
@@ -2779,6 +2830,23 @@ export function createBackendApp(deps: {
                   region: vagaroCredentials?.region ?? null,
                   businessId: vagaroCredentials?.businessId ?? null,
                   capabilityNote: 'Availability checking supported. Booking creation requires Vagaro app.',
+                }
+              : null,
+          };
+        }
+        if (isBookingLinkProviderId(id)) {
+          const connected = bookingLinkProvider === id && Boolean(shop.booking_url);
+          return {
+            id,
+            label: meta.label,
+            implemented: meta.implemented,
+            connected,
+            configured: connected,
+            details: connected
+              ? {
+                  bookingUrl: shop.booking_url,
+                  type: 'booking_link',
+                  capabilityNote: 'When clients call to book, they will receive your booking link via SMS.',
                 }
               : null,
           };
@@ -2859,6 +2927,50 @@ export function createBackendApp(deps: {
       logger.error({ err: error, provider: 'vagaro' }, 'calendar_provider_vagaro_connect_failed');
       return c.json({ ok: false, error: 'vagaro_connect_failed' }, 502);
     }
+  });
+
+  app.post(path('/user/calendar/providers/:provider/connect'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_booking_link_connect');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
+    if (!isBookingLinkProviderId(provider)) {
+      return c.json({ ok: false, error: 'provider_not_supported' }, 400);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = bookingLinkConnectSchema.safeParse(body);
+    const bookingUrl = parsed.success ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
+    if (!bookingUrl) {
+      return c.json({ ok: false, error: 'bookingUrl must be a valid https URL' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
+      booking_url: bookingUrl,
+    });
+    if (!settingsUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const connectionUpdated = await deps.shopsRepository.updateCalendarConnection(shop.id, {
+      google_cal_id: shop.google_cal_id ?? null,
+      google_cal_credentials_encrypted: buildBookingLinkConnectionPayload(provider, bookingUrl),
+    });
+    if (!connectionUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    return c.json({
+      ok: true,
+      connected: true,
+      provider,
+    });
   });
 
   app.get(path('/user/calendar/providers/:provider/connect/start'), async (c) => {
@@ -3050,6 +3162,15 @@ export function createBackendApp(deps: {
     }
 
     const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
+    if (isBookingLinkProviderId(provider)) {
+      return c.json({
+        ok: true,
+        provider,
+        type: 'booking_link',
+        capabilities: { hasBookingLink: true },
+        note: 'When clients call to book, they will receive your booking link via SMS.',
+      });
+    }
     if (provider !== 'square_appointments' && provider !== 'vagaro') {
       return c.json({ ok: false, error: 'provider_not_supported' }, 400);
     }
