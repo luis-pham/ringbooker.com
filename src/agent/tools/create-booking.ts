@@ -148,6 +148,27 @@ export async function createBookingTool(
       }
     }
 
+    try {
+      await ctx.jobsRepository.enqueue({
+        shopId: ctx.shop.id,
+        type: 'booking_confirmation_sms',
+        payload: {
+          shopId: ctx.shop.id,
+          toPhone: ctx.callerPhone,
+          bookingId: booking.id,
+          serviceName: parsed.data.service,
+          appointmentDate: parsed.data.date,
+          appointmentTime: parsed.data.time,
+          techName: parsed.data.techName,
+          shopName: ctx.shop.name,
+        },
+        runAt: new Date(),
+        idempotencyKey: `booking:${booking.id}:confirmation`,
+      });
+    } catch (smsEnqueueErr) {
+      console.warn('booking_confirmation_sms enqueue failed', smsEnqueueErr);
+    }
+
     return {
       success: true,
       bookingId: booking.id,

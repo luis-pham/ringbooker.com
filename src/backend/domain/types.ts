@@ -30,6 +30,7 @@ export type JobStatus = 'queued' | 'running' | 'leased' | 'completed' | 'failed'
 
 export type JobType =
   | 'realtime_session_dispatch'
+  | 'booking_confirmation_sms'
   | 'appointment_reminder_24h'
   | 'appointment_reminder_2h'
   | 'missed_call_followup_sms'

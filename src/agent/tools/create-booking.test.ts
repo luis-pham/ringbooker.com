@@ -43,9 +43,11 @@ function createContext(params?: {
   findTeamMemberByName?: (name: string) => Promise<string | null>;
   checkAvailability?: AgentToolContext['calendarProvider']['checkAvailability'];
   createBooking?: (input: BookingInput) => Promise<BookingResult>;
+  enqueue?: (job: unknown) => Promise<void>;
 }) {
   const createdInputs: BookingInput[] = [];
   const availabilityInputs: unknown[] = [];
+  const enqueuedJobs: unknown[] = [];
   let findTeamMemberCalls = 0;
   const bookings = new Map<string, BookingRecord>();
   const createBooking = params?.createBooking ?? (async (input: BookingInput) => ({ bookingId: 'calendar-booking-123', confirmed: true }));
@@ -73,10 +75,13 @@ function createContext(params?: {
       },
     } as AgentToolContext['calendarProvider'],
     jobsRepository: {
-      enqueue: async () => {},
+      enqueue: async (job: unknown) => {
+        enqueuedJobs.push(job);
+        if (params?.enqueue) await params.enqueue(job);
+      },
     } as unknown as AgentToolContext['jobsRepository'],
     bookingsRepository: {
-      create: async (params) => {
+      create: async (params: Parameters<AgentToolContext['bookingsRepository']['create']>[0]) => {
         const booking: BookingRecord = {
           id: 'local-booking-123',
           shopId: params.shopId,
@@ -93,7 +98,8 @@ function createContext(params?: {
         bookings.set(booking.id, booking);
         return booking;
       },
-    } as AgentToolContext['bookingsRepository'],
+      updateDatetime: async () => {},
+    } as unknown as AgentToolContext['bookingsRepository'],
     callbacksRepository: {} as AgentToolContext['callbacksRepository'],
     shopsRepository: {} as AgentToolContext['shopsRepository'],
     telephonyService: {} as AgentToolContext['telephonyService'],
@@ -103,6 +109,7 @@ function createContext(params?: {
     ctx,
     createdInputs,
     availabilityInputs,
+    enqueuedJobs,
     get findTeamMemberCalls() {
       return findTeamMemberCalls;
     },
@@ -202,4 +209,38 @@ test('square getTeamMembers returns empty on error', async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('SMS confirmation enqueued after successful booking', async () => {
+  const harness = createContext();
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  const confirmationJob = harness.enqueuedJobs.find((job) => (job as { type?: string }).type === 'booking_confirmation_sms');
+  assert.ok(confirmationJob);
+  assert.equal((confirmationJob as { payload: { shopName?: string } }).payload.shopName, 'Test Salon');
+  assert.equal((confirmationJob as { payload: { toPhone?: string } }).payload.toPhone, '+15551234567');
+});
+
+test('SMS confirmation enqueue failure does not break booking', async () => {
+  const harness = createContext({
+    enqueue: async (job) => {
+      if ((job as { type?: string }).type === 'booking_confirmation_sms') {
+        throw new Error('queue_down');
+      }
+    },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+  });
+
+  assert.equal('success' in result && result.success, true);
 });

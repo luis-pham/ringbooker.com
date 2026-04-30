@@ -139,6 +139,16 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
   const missedCallPayloadSchema = z.object({
     customerPhone: z.string().min(1),
   });
+  const bookingConfirmationSmsPayloadSchema = z.object({
+    shopId: z.string().min(1),
+    toPhone: z.string().min(1),
+    bookingId: z.string().min(1),
+    serviceName: z.string().min(1).optional(),
+    appointmentDate: z.string().min(1).optional(),
+    appointmentTime: z.string().min(1).optional(),
+    techName: z.string().min(1).optional(),
+    shopName: z.string().min(1),
+  });
   const bookingLinkSmsPayloadSchema = z.object({
     shopId: z.string().min(1),
     toPhone: z.string().min(1),
@@ -184,6 +194,61 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
           throw new JobExecutionError(error.message, { retryable: error.retryable });
         }
         throw error;
+      }
+    },
+    booking_confirmation_sms: async (params) => {
+      const payload = bookingConfirmationSmsPayloadSchema.safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'booking_confirmation_sms_invalid_payload');
+        return;
+      }
+
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'booking_confirmation_sms_shop_not_found');
+        return;
+      }
+
+      const body =
+        `Your appointment is confirmed at ${payload.data.shopName}!` +
+        (payload.data.serviceName ? `\nService: ${payload.data.serviceName}` : '') +
+        (payload.data.appointmentDate ? `\nDate: ${payload.data.appointmentDate}` : '') +
+        (payload.data.appointmentTime ? `\nTime: ${payload.data.appointmentTime}` : '') +
+        (payload.data.techName ? `\nWith: ${payload.data.techName}` : '') +
+        '\nSee you soon!';
+      const idempotencyKey = `job:${params.jobId}:booking-confirmation`;
+
+      try {
+        const sms = await runtime.smsService.sendSms({
+          to: payload.data.toPhone,
+          from: shop.phone_number,
+          body,
+          shopId: shop.id,
+          category: 'booking_confirmation',
+          bookingId: payload.data.bookingId,
+          idempotencyKey,
+        });
+
+        await runtime.outboundMessagesRepository.create({
+          shopId: shop.id,
+          bookingId: payload.data.bookingId,
+          customerPhone: payload.data.toPhone,
+          category: 'booking_confirmation',
+          body,
+          idempotencyKey,
+          status: 'sent',
+          providerMessageId: sms.providerMessageId,
+        });
+      } catch (error) {
+        logger.warn(
+          {
+            err: error,
+            jobId: params.jobId,
+            shopId: shop.id,
+            bookingId: payload.data.bookingId,
+          },
+          'booking_confirmation_sms_failed',
+        );
       }
     },
     appointment_reminder_24h: async (params) => {
