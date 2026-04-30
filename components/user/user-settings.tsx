@@ -313,7 +313,7 @@ button,input,select,textarea{font:inherit}
   background:#111827;color:#fff;border-color:#111827;
 }
 .card-section-form{
-  border:1px solid #f0f1f3;border-radius:18px;padding:16px;background:#fff;
+  border:none;border-radius:0;padding:0;background:transparent;
 }
 .hours-grid{display:grid;gap:10px}
 .hours-row{
@@ -388,7 +388,7 @@ button,input,select,textarea{font:inherit}
   .hours-row{grid-template-columns:1fr}
   .business-subtabs{gap:6px}
   .business-subtab{padding:7px 10px;font-size:11px}
-  .card-section-form{padding:12px}
+  .card-section-form{padding:0}
 }
 `,
 ];

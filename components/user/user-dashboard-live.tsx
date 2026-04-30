@@ -171,7 +171,7 @@ export function UserDashboardLive() {
                       <p>Hours, services, AI greeting, and transfer rules.</p>
                     </div>
                   </div>
-                  <a className="btn purple" href="/user/settings">Open</a>
+                  <a className="btn" href="/user/settings">Go</a>
                 </div>
               </div>
             </div>
