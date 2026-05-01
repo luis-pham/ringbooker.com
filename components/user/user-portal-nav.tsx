@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 
 export type UserPortalNavKey = 'overview' | 'bookings' | 'calls' | 'settings' | 'billing' | 'account';
 
@@ -8,7 +9,7 @@ type UserPortalNavProps = {
   active: UserPortalNavKey;
 };
 
-function navLink(key: UserPortalNavKey, href: string, label: string, icon: ReactNode, active: UserPortalNavKey) {
+function navLink(key: UserPortalNavKey, href: string, label: string, icon: ReactNode, active: UserPortalNavKey, badgeCount?: number) {
   const isActive = active === key;
   return (
     <a
@@ -18,6 +19,25 @@ function navLink(key: UserPortalNavKey, href: string, label: string, icon: React
     >
       <div className="nav-icon">{icon}</div>
       <span>{label}</span>
+      {badgeCount && badgeCount > 0 ? (
+        <span
+          style={{
+            background: '#dc2626',
+            color: 'white',
+            fontSize: 10,
+            fontWeight: 600,
+            width: 16,
+            height: 16,
+            borderRadius: '50%',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginLeft: 6,
+          }}
+        >
+          {badgeCount > 9 ? '9+' : badgeCount}
+        </span>
+      ) : null}
     </a>
   );
 }
@@ -80,13 +100,28 @@ function IconAccount() {
 
 /** Shared left-rail links for authenticated `/user/*` pages. */
 export function UserPortalNav({ active }: UserPortalNavProps) {
+  const [followUpCount, setFollowUpCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/backend/user/calls/summary')
+      .then(async (response) => {
+        const body = (await response.json()) as { ok?: boolean; followUpCount?: number };
+        if (!cancelled && body.ok) setFollowUpCount(body.followUpCount ?? 0);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="nav-section">
       <div className="nav-label">User Portal</div>
       <div className="nav-list">
         {navLink('overview', '/user', 'Overview', <IconOverview />, active)}
         {navLink('bookings', '/user/bookings', 'Bookings', <IconBookings />, active)}
-        {navLink('calls', '/user/calls', 'Calls & Transcripts', <IconCalls />, active)}
+        {navLink('calls', '/user/calls', 'Calls & Transcripts', <IconCalls />, active, followUpCount)}
         {navLink('settings', '/user/settings', 'Settings', <IconSettings />, active)}
         {navLink('account', '/user/account', 'Account', <IconAccount />, active)}
         {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active)}

@@ -50,12 +50,29 @@ type CallsSummary = {
   transcriptsReady: number;
 };
 
+type IntentSummary = {
+  totalLast7Days: number;
+  bookingsCount: number;
+  followUpCount: number;
+  missedCount: number;
+};
+
+type CallFilter = 'all' | 'follow_up_needed' | 'high_urgency' | 'bookings' | 'missed';
+
 type CallsResponse = {
   ok: boolean;
   calls?: Call[];
   pagination?: { page: number; pageSize: number; total: number };
   summary?: CallsSummary;
   error?: string;
+};
+
+type IntentSummaryResponse = {
+  ok: boolean;
+  totalLast7Days?: number;
+  bookingsCount?: number;
+  followUpCount?: number;
+  missedCount?: number;
 };
 
 function formatDate(value?: string) {
@@ -110,6 +127,33 @@ function speakerLabel(call: Call) {
   return 'Agent not joined';
 }
 
+
+
+function getActionLabel(action: string): string {
+  const labels: Record<string, string> = {
+    booking_created: '✓ Booking created',
+    booking_link_sent: 'Link sent',
+    cancellation_requested: 'Cancel requested',
+    reschedule_requested: 'Reschedule needed',
+    callback_scheduled: 'Callback scheduled',
+    info_provided: 'Info provided',
+    escalated: 'Escalated',
+  };
+  return labels[action] || action;
+}
+
+function getBadgeStyle(action: string): { background: string; color: string } {
+  const styles: Record<string, { background: string; color: string }> = {
+    booking_created: { background: '#dcfce7', color: '#16a34a' },
+    booking_link_sent: { background: '#dbeafe', color: '#1d4ed8' },
+    cancellation_requested: { background: '#fed7aa', color: '#c2410c' },
+    reschedule_requested: { background: '#fed7aa', color: '#c2410c' },
+    callback_scheduled: { background: '#ede9fe', color: '#7c3aed' },
+    info_provided: { background: '#f1f5f9', color: '#475569' },
+    escalated: { background: '#fee2e2', color: '#dc2626' },
+  };
+  return styles[action] || { background: '#f1f5f9', color: '#475569' };
+}
 
 function nextActionBadge(action?: Call['summaryNextAction']) {
   switch (action) {
@@ -168,10 +212,33 @@ export function UserCallsLive() {
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [summary, setSummary] = useState<CallsSummary | null>(null);
+  const [intentSummary, setIntentSummary] = useState<IntentSummary>({
+    totalLast7Days: 0,
+    bookingsCount: 0,
+    followUpCount: 0,
+    missedCount: 0,
+  });
+  const [activeFilter, setActiveFilter] = useState<CallFilter>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+
+
+  function fetchSummary() {
+    void fetch('/api/backend/user/calls/summary')
+      .then(async (response) => {
+        const body = (await response.json()) as IntentSummaryResponse;
+        if (!body.ok) return;
+        setIntentSummary({
+          totalLast7Days: body.totalLast7Days ?? 0,
+          bookingsCount: body.bookingsCount ?? 0,
+          followUpCount: body.followUpCount ?? 0,
+          missedCount: body.missedCount ?? 0,
+        });
+      })
+      .catch(() => undefined);
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -179,6 +246,7 @@ export function UserCallsLive() {
     setCalls([]);
     const query = new URLSearchParams();
     if (page > 1) query.set('page', String(page));
+    if (activeFilter !== 'all') query.set('filter', activeFilter);
     const url = query.toString() ? `/api/backend/user/calls?${query}` : '/api/backend/user/calls';
     void fetch(url)
       .then(async (response) => {
@@ -209,7 +277,11 @@ export function UserCallsLive() {
         setSummary(null);
       })
       .finally(() => setLoading(false));
-  }, [page]);
+  }, [page, activeFilter]);
+
+  useEffect(() => {
+    fetchSummary();
+  }, []);
 
   const metrics = useMemo(() => {
     if (summary) return summary;
@@ -242,6 +314,46 @@ export function UserCallsLive() {
       if (!current || current.requestId !== call.requestId) return current;
       return { ...current, summaryFollowUpRequired: false };
     });
+    setIntentSummary((current) => ({
+      ...current,
+      followUpCount: Math.max(0, current.followUpCount - 1),
+    }));
+    fetchSummary();
+  }
+
+
+
+  function changeFilter(filter: CallFilter) {
+    setActiveFilter(filter);
+    setPage(1);
+  }
+
+  function renderCallIntent(call: Call) {
+    const actionStyle = call.summaryNextAction ? getBadgeStyle(call.summaryNextAction) : null;
+    return (
+      <div className="intent-call-summary">
+        <div className="intent-badges">
+          {call.summaryUrgency === 'high' ? <span className="intent-chip urgent">Urgent ⚠️</span> : null}
+          {call.summaryUrgency === 'medium' ? <span className="intent-chip medium">Medium priority</span> : null}
+          {call.summaryNextAction && call.summaryNextAction !== 'no_action_needed' && actionStyle ? (
+            <span className="intent-chip" style={actionStyle}>{getActionLabel(call.summaryNextAction)}</span>
+          ) : null}
+        </div>
+        <div className="intent-fields">
+          {call.summaryCallerName ? <span><span>Caller:</span>{call.summaryCallerName}</span> : null}
+          {call.summaryServiceRequest ? <span><span>Service:</span>{call.summaryServiceRequest}</span> : null}
+          {call.summaryPreferredDatetime ? <span><span>Wants:</span>{call.summaryPreferredDatetime}</span> : null}
+          {call.summaryPreferredTech ? <span><span>With:</span>{call.summaryPreferredTech}</span> : null}
+          {call.summaryCallerQuestion ? <span><span>Asked:</span>“{call.summaryCallerQuestion}”</span> : null}
+        </div>
+        {call.summaryFollowUpRequired ? (
+          <div className="intent-follow-up">
+            <span>⚠️ Follow up needed</span>
+            <button type="button" onClick={() => void markFollowUpDone(call)}>Mark done</button>
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   const vipSignals = useMemo(() => buildVipSignals(calls), [calls]);
@@ -250,6 +362,17 @@ export function UserCallsLive() {
     () => [
       ...userCallsStyles,
       String.raw`
+
+.intent-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:24px}
+.intent-card{background:#fff;border:.5px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.intent-card .intent-icon{font-size:18px}.intent-card .intent-number{font-size:28px;font-weight:800;letter-spacing:-.04em;color:var(--text-dark)}.intent-card .intent-label{font-size:13px;color:var(--text-gray)}
+.intent-filter-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:.5px solid var(--border);overflow-x:auto}
+.intent-filter-tab{position:relative;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--text-gray);padding:10px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+.intent-filter-tab.active{border-bottom-color:#7c3aed;color:#7c3aed;font-weight:600}.intent-filter-count{background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;margin-left:6px;padding:0 4px}
+.intent-call-summary{margin-top:8px;display:flex;flex-direction:column;gap:8px}.intent-badges{display:flex;gap:6px;flex-wrap:wrap}.intent-chip{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600;background:#f1f5f9;color:#475569}.intent-chip.urgent{background:#fee2e2;color:#dc2626}.intent-chip.medium{background:#dbeafe;color:#1d4ed8}
+.intent-fields{font-size:13px;color:var(--text-gray);display:flex;flex-direction:column;gap:2px}.intent-fields span span{color:var(--text-light);font-size:11px;margin-right:4px}
+.intent-follow-up{background:#fef3c7;border:.5px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:13px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:10px}.intent-follow-up button{font-size:12px;color:#92400e;background:transparent;border:.5px solid #fde68a;border-radius:999px;padding:2px 10px;cursor:pointer;white-space:nowrap}
+@media (max-width:860px){.intent-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.summary-grid{grid-template-columns:1fr}}
 .calls-table-wrap{overflow:auto}
 .calls-pagination{
   display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;
@@ -335,6 +458,30 @@ export function UserCallsLive() {
 
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load calls: {error}</div> : null}
 
+
+          <section className="intent-card-grid" aria-label="Call intent summary">
+            <div className="intent-card">
+              <span className="intent-icon">📞</span>
+              <span className="intent-number">{intentSummary.totalLast7Days}</span>
+              <span className="intent-label">Calls this week</span>
+            </div>
+            <div className="intent-card" style={{ borderColor: '#16a34a' }}>
+              <span className="intent-icon">✓</span>
+              <span className="intent-number" style={{ color: '#16a34a' }}>{intentSummary.bookingsCount}</span>
+              <span className="intent-label">Bookings captured</span>
+            </div>
+            <div className="intent-card" style={{ borderColor: intentSummary.followUpCount > 0 ? '#f59e0b' : '#e5e7eb' }}>
+              <span className="intent-icon">⚠️</span>
+              <span className="intent-number" style={{ color: intentSummary.followUpCount > 0 ? '#f59e0b' : 'var(--text-dark)' }}>{intentSummary.followUpCount}</span>
+              <span className="intent-label">Follow up needed</span>
+            </div>
+            <div className="intent-card" style={{ borderColor: intentSummary.missedCount > 0 ? '#dc2626' : '#e5e7eb' }}>
+              <span className="intent-icon">📵</span>
+              <span className="intent-number" style={{ color: intentSummary.missedCount > 0 ? '#dc2626' : 'var(--text-dark)' }}>{intentSummary.missedCount}</span>
+              <span className="intent-label">Missed</span>
+            </div>
+          </section>
+
           <section className="grid grid-4">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag purple">Total</span></div><div className="stat-value">{metrics.total}</div><div className="stat-meta">Recent calls in your workspace</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.5-4.5A8 8 0 1 1 21 12Z" /></svg></div><span className="tag green">Booked</span></div><div className="stat-value">{metrics.booked}</div><div className="stat-meta">Calls that turned into bookings</div></div>
@@ -343,6 +490,29 @@ export function UserCallsLive() {
           </section>
 
           <section className="card" style={{ marginTop: 18 }}>
+
+            <div className="intent-filter-tabs" role="tablist" aria-label="Call filters">
+              {(['all', 'follow_up_needed', 'high_urgency', 'bookings', 'missed'] as CallFilter[]).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeFilter === filter}
+                  className={`intent-filter-tab${activeFilter === filter ? ' active' : ''}`}
+                  onClick={() => changeFilter(filter)}
+                >
+                  {filter === 'all' ? 'All' : null}
+                  {filter === 'follow_up_needed' ? 'Follow up needed' : null}
+                  {filter === 'high_urgency' ? 'High urgency' : null}
+                  {filter === 'bookings' ? 'Bookings' : null}
+                  {filter === 'missed' ? 'Missed' : null}
+                  {filter === 'follow_up_needed' && intentSummary.followUpCount > 0 ? (
+                    <span className="intent-filter-count">{intentSummary.followUpCount > 9 ? '9+' : intentSummary.followUpCount}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+
             <div className="panel-head">
               <div>
                 <h3>Call list</h3>
@@ -389,6 +559,7 @@ export function UserCallsLive() {
                                 <div className="stack">
                                   <span className="value-strong">{formatPhone(call.callerPhone)}</span>
                                   <span className="subline">{call.destinationPhone ? `To ${formatPhone(call.destinationPhone)}` : call.providerCallId}</span>
+                                  {renderCallIntent(call)}
                                 </div>
                               </div>
                             </td>
@@ -440,6 +611,7 @@ export function UserCallsLive() {
                           <span className={transcriptClass(call.transcriptStatus)}>{transcriptStatusLabel(call)} transcript</span>
                           {hasStructuredSummary(call) ? <span className="tag green">Summary ready</span> : null}
                         </div>
+                        {renderCallIntent(call)}
                         <div className="mobile-call-actions">
                           <button className="btn ghost" type="button" onClick={() => { setActiveCall(call); setShowTranscript(false); }}>
                             Preview transcript
