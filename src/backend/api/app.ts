@@ -234,8 +234,6 @@ const resetPasswordSchema = z.object({
 
 const testCallForwardingSchema = z.object({
   shopId: z.string().min(1),
-  carrierId: z.string().min(1).optional(),
-  hasDialCodes: z.boolean().optional(),
 });
 
 const userSettingsBaseSchema = z.object({
@@ -253,6 +251,10 @@ const userSettingsBaseSchema = z.object({
   website_url: z.string().url().optional().or(z.literal('')),
   languages: z.array(z.string()).optional(),
   current_onboarding_step: z.coerce.number().int().min(1).max(4).optional(),
+  setup_method: z.enum(['forward', 'new_number']).optional(),
+  forwarding_type: z.enum(['no_answer', 'all', 'busy', 'unreachable']).optional(),
+  forwarding_carrier: z.string().optional(),
+  forwarding_country: z.string().optional(),
 });
 
 const serviceItemSchema = z.object({
@@ -459,6 +461,10 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   website_url: 'edit_business_profile',
   languages: 'edit_business_profile',
   current_onboarding_step: 'edit_business_profile',
+  setup_method: 'edit_business_profile',
+  forwarding_type: 'edit_business_profile',
+  forwarding_carrier: 'edit_business_profile',
+  forwarding_country: 'edit_business_profile',
   cancel_policy: 'edit_cancel_policy',
   promotions: 'edit_promotions',
   services: 'edit_services',
@@ -496,6 +502,10 @@ function splitUserSettingsPatchByPlan(
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'
+        | 'setup_method'
+        | 'forwarding_type'
+        | 'forwarding_carrier'
+        | 'forwarding_country'
     >
   >;
   dynamicPatch: Partial<
@@ -561,6 +571,13 @@ function splitUserSettingsPatchByPlan(
         | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'website_url'
+        | 'languages'
+        | 'current_onboarding_step'
+        | 'setup_method'
+        | 'forwarding_type'
+        | 'forwarding_carrier'
+        | 'forwarding_country'
       >]?: Shop[K];
     },
     dynamicPatch: dynamicPatch as {
@@ -2711,6 +2728,11 @@ export function createBackendApp(deps: {
         website_url: shop.website_url ?? '',
         booking_url: shop.booking_url ?? '',
         current_onboarding_step: shop.current_onboarding_step ?? 1,
+        setup_method: shop.setup_method ?? null,
+        forwarding_type: shop.forwarding_type ?? 'no_answer',
+        forwarding_carrier: shop.forwarding_carrier ?? null,
+        forwarding_country: shop.forwarding_country ?? 'us',
+        telnyx_number: shop.telnyx_number ?? '',
       },
     });
   });
@@ -2751,16 +2773,24 @@ export function createBackendApp(deps: {
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
 
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
     const body = await c.req.json().catch(() => null);
     const parsed = testCallForwardingSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
 
-    // TODO: implement real Telnyx forwarding verification call.
-    // Stub behavior: dial-code carriers pass; app/dashboard-only carriers fail.
+    // TODO: implement real Telnyx outbound forwarding verification call.
+    // Stub behavior: app/dashboard-based carriers fail; dial-code carriers pass.
     await new Promise((resolve) => setTimeout(resolve, 3000));
+    const shopId = parsed.data.shopId === 'current' ? sessionResult.shopId ?? '' : parsed.data.shopId;
+    const shop = await deps.shopsRepository.findById(shopId);
+    const appBasedCarriers = ['googlevoice', 'ringcentral', 'openphone', 'other'];
+    const success = Boolean(shop?.forwarding_carrier && !appBasedCarriers.includes(shop.forwarding_carrier));
     return c.json({
       ok: true,
-      success: parsed.data.hasDialCodes === true,
+      success,
     });
   });
 
