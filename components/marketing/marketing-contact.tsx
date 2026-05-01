@@ -224,7 +224,7 @@ const scripts: string[] = [
         }
       } else {
         form.reset();
-        setHelper('Thanks. Your request was received. We will reach out shortly.', 'success');
+        window.location.assign('/thank-you');
       }
     } catch {
       setHelper('Network error. Please try again.', 'error');
