@@ -488,7 +488,7 @@ export function UserOnboardingLive() {
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;height:36px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none}.onb-text-link{border:0;background:transparent;color:#64748b;font-size:13px;font-weight:400;cursor:pointer;padding:8px 0;text-decoration:none}
 .hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9}.hours-row:last-child{border-bottom:0}.hours-row:hover{background:#fafafa}.hours-row.closed{background:#f9fafb}.hours-row.closed select{opacity:.4;background:#f1f5f9}
 .hours-day{font-weight:900;color:#111827;min-width:40px}.toggle-pill{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid #dbe2ee;border-radius:999px;padding:8px 12px;background:#fff;font-weight:800;color:#64748b;cursor:pointer}.toggle-pill input{position:absolute;opacity:0;pointer-events:none}.toggle-dot{width:28px;height:16px;border-radius:999px;background:#cbd5e1;position:relative;transition:.18s ease}.toggle-dot:after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:.18s ease}.toggle-pill.active{border-color:#8b5cf6;color:#5b21b6;background:#f5f3ff}.toggle-pill.active .toggle-dot{background:#7c3aed}.toggle-pill.active .toggle-dot:after{transform:translateX(12px)}
-.lang-list{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.check-pill{display:inline-flex;align-items:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 13px;background:#fff}.lang-pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 15px;background:#fff;color:#374151;font-weight:900;cursor:pointer}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#7c3aed;border-color:#7c3aed;color:#fff}.lang-pill.locked{background:#f1f5f9;color:#9ca3af;cursor:not-allowed;flex-direction:column;gap:2px}.required-badge{border-radius:999px;background:transparent;color:#9ca3af;padding:0;font-size:10px;font-weight:800}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:900}.recommended-badge{display:inline-flex;width:fit-content;border-radius:999px;background:#dcfce7;color:#16a34a;padding:3px 10px;font-size:12px;font-weight:500;margin-bottom:12px}.onb-card-title{font-size:16px;font-weight:700;color:#111827;margin:0}
+.lang-list{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.check-pill{display:inline-flex;align-items:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 13px;background:#fff}.lang-pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 15px;background:#fff;color:#374151;font-weight:900;cursor:pointer}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#7c3aed;border-color:#7c3aed;color:#fff}.lang-pill.locked{background:#f1f5f9;color:#9ca3af;cursor:not-allowed;flex-direction:column;gap:2px}.required-badge{border-radius:999px;background:transparent;color:#9ca3af;padding:0;font-size:10px;font-weight:800}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:900}.recommended-badge{display:inline-flex;width:fit-content;border-radius:999px;background:#dcfce7;color:#16a34a;padding:3px 10px;font-size:12px;font-weight:500;margin-bottom:12px}.onb-card-title{font-size:15px;font-weight:700;color:#111827;margin:0}
 .provider-card{border:1.5px solid #e2e8f0;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:210px;background:#fff;box-shadow:none}
 .provider-card.recommended{border-top:1.5px solid #e2e8f0;box-shadow:none}
 .provider-card.disabled{opacity:.5;background:#f8fafc;position:relative}
@@ -663,7 +663,7 @@ export function UserOnboardingLive() {
           <div className="provider-card recommended step3-card">
             <span className="recommended-badge">✨ Recommended</span>
             <h3 className="onb-card-title">🌐 Read from your website</h3>
-            <p className="sub">Paste your website URL and we'll automatically learn your services, prices, and hours</p>
+            <p className="onb-subtitle">Paste your website URL and we&apos;ll automatically learn your services, prices, and hours</p>
             <input className="step3-website-input" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://happynails.com" />
             <button className="onb-btn-primary provider-action step3-read-btn" type="button" onClick={readWebsite} disabled={websiteLoading}>{websiteLoading ? 'Reading your website...' : 'Read Website →'}</button>
             {websiteReadSuccess ? <div className="read-success">Found {servicesFound} services on your website ✓</div> : null}
@@ -755,7 +755,7 @@ export function UserOnboardingLive() {
         <div className="no-platform-box">
           <div className="no-platform-icon">💬</div>
           <h3>No problem!</h3>
-          <p className="sub">RingBooker works great without booking software. We'll capture caller details and send you a full summary after every call.</p>
+          <p className="onb-subtitle">RingBooker works great without booking software. We&apos;ll capture caller details and send you a full summary after every call.</p>
         </div>
       );
     }
@@ -781,7 +781,7 @@ export function UserOnboardingLive() {
 
         {providerId === 'square_appointments' ? (
           <>
-            <p>Direct calendar connection — RingBooker checks availability and books appointments in real time.</p>
+            <p className="onb-subtitle">Direct calendar connection — RingBooker checks availability and books appointments in real time.</p>
             <div className="feature-list">
               <span><strong>✓</strong> Real-time availability checking</span>
               <span><strong>✓</strong> Direct appointment booking</span>
@@ -793,7 +793,7 @@ export function UserOnboardingLive() {
 
         {providerId === 'vagaro' ? (
           <>
-            <p>RingBooker checks your Vagaro availability and sends callers your booking link via SMS.</p>
+            <p className="onb-subtitle">RingBooker checks your Vagaro availability and sends callers your booking link via SMS.</p>
             <div className="feature-list">
               <span><strong>✓</strong> Real-time availability checking</span>
               <span><strong>✓</strong> Booking link sent via SMS</span>
@@ -824,7 +824,7 @@ export function UserOnboardingLive() {
 
         {BOOKING_LINK_PROVIDERS.includes(providerId as (typeof BOOKING_LINK_PROVIDERS)[number]) ? (
           <>
-            <p>{getBookingLinkDescription(providerId)}</p>
+            <p className="onb-subtitle">{getBookingLinkDescription(providerId)}</p>
             <div className="feature-list">
               <span><strong>✓</strong> Booking link sent via SMS to callers</span>
               <span className="no"><strong>✗</strong> No direct calendar integration available</span>
@@ -841,7 +841,7 @@ export function UserOnboardingLive() {
         ) : null}
 
         {providerId === 'mindbody' ? (
-          <p>Mindbody integration is coming soon. We'll notify you when it's available.</p>
+          <p className="onb-subtitle">Mindbody integration is coming soon. We&apos;ll notify you when it&apos;s available.</p>
         ) : null}
 
         {connected ? <button className="disconnect-link" type="button">Disconnect</button> : null}
