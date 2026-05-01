@@ -103,7 +103,7 @@ button,input,select,textarea{font:inherit}
 .top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:9px;
-  padding:10px 14px;border-radius:999px;font-weight:700;font-size:13px;
+  height:36px;padding:8px 16px;border-radius:8px;font-weight:500;font-size:14px;
   border:1px solid var(--border);background:#fff;color:var(--text-dark);
   transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
 }
@@ -193,13 +193,20 @@ button,input,select,textarea{font:inherit}
 .bar > span{display:block;height:100%;background:linear-gradient(90deg,#8b5cf6,#a78bfa);border-radius:999px}
 
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.field label{display:block;font-size:12px;font-weight:700;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em}
+.field{margin-bottom:20px}
+.field label{display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
 .field input,.field textarea,.field select{
-  width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--border);background:#fff;
-  font:inherit;color:var(--text-dark);outline:none;
+  width:100%;height:40px;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;
+  color:#111827;outline:none;font:inherit;font-size:14px;line-height:1.5;
 }
-.field input:focus,.field textarea:focus,.field select:focus{border-color:#c4b5fd;box-shadow:0 0 0 4px rgba(139,92,246,.08)}
-.field textarea{min-height:108px;resize:vertical}
+.field input::placeholder,.field textarea::placeholder{color:#9ca3af;font-size:14px}
+.field input:disabled,.field textarea:disabled,.field select:disabled{background:#f9fafb;color:#6b7280;cursor:not-allowed}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:#7c3aed;box-shadow:0 0 0 2px rgba(124,58,237,.15);outline:none}
+.field textarea{height:auto;min-height:80px;resize:vertical;padding:10px 12px}
+.field select{
+  appearance:none;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%236b7280' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:16px;
+}
 
 .section-stack{display:grid;gap:18px}
 .settings-save-footer{
@@ -333,11 +340,18 @@ button,input,select,textarea{font:inherit}
 .service-copy p{margin:0;color:var(--text-gray);font-size:12px;line-height:1.5}
 .service-chip.active{border-color:rgba(139,92,246,.45);box-shadow:0 0 0 4px rgba(139,92,246,.08)}
 .service-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.small-field label{display:block;font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em}
+.small-field{margin-bottom:20px}
+.small-field label{display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
 .small-field input,.small-field select{
-  width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;font:inherit;color:var(--text-dark);
+  width:100%;height:40px;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font:inherit;font-size:14px;line-height:1.5;color:#111827;
 }
-.small-field input:focus,.small-field select:focus{border-color:#c4b5fd;box-shadow:0 0 0 4px rgba(139,92,246,.08);outline:none}
+.small-field input::placeholder{color:#9ca3af;font-size:14px}
+.small-field input:disabled,.small-field select:disabled{background:#f9fafb;color:#6b7280;cursor:not-allowed}
+.small-field input:focus,.small-field select:focus{border-color:#7c3aed;box-shadow:0 0 0 2px rgba(124,58,237,.15);outline:none}
+.small-field select{
+  appearance:none;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%236b7280' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:16px;
+}
 .plan-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:#f5f3ff;color:var(--purple-dark);font-size:11px;font-weight:800}
 .upgrade-panel{background:linear-gradient(135deg,#f7f3ff,#fff);border:1px dashed rgba(139,92,246,.32)}
 
