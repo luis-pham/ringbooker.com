@@ -471,8 +471,8 @@ export function UserOnboardingLive() {
 .onb-progress-mark{width:18px;height:18px;border-radius:999px;display:inline-grid;place-items:center;background:currentColor;color:inherit;box-shadow:inset 0 0 0 999px rgba(255,255,255,.8);font-size:11px}
 .onb-progress-pill.current .onb-progress-mark{background:#fff;color:#6d28d9;box-shadow:none}
 .onb-progress-pill.done .onb-progress-mark{background:#6d28d9;color:#fff;box-shadow:none}
-.onb-title{margin:0;color:#0f172a;font-size:clamp(30px,4vw,42px);line-height:1.04;font-weight:900;letter-spacing:-.04em}
-.onb-subtitle{margin:10px 0 0;color:#64748b;font-size:17px;line-height:1.6;font-weight:500}
+.onb-title{margin:0;color:#0f172a;font-size:1.5rem;line-height:1.3;letter-spacing:-.02em;font-weight:500}
+.onb-subtitle{margin:8px 0 0;color:var(--text-gray);font-size:14px;line-height:1.6;max-width:760px;font-weight:400}
 .onb-section-title{display:block;margin:0 0 8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
 .onb-optional-badge{display:inline-flex;align-items:center;margin-left:8px;border-radius:999px;background:#f1f5f9;color:#64748b;padding:3px 8px;font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;vertical-align:middle}
 .onb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.onb-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -692,7 +692,7 @@ export function UserOnboardingLive() {
   function renderStep4() {
     return (
       <div>
-        <h1 className="onb-title">Go live</h1>
+        <h1 className="onb-title">You&apos;re almost ready!</h1>
         <p className="onb-subtitle">Connect your booking software and set up call handling — both optional</p>
         <p className="onb-section-title">Booking software <span className="onb-optional-badge">Optional</span></p>
         <div className="platform-selector">
