@@ -5,6 +5,7 @@ import { JobExecutionError, JobWorker } from '@/src/backend/jobs/worker';
 import { logger } from '@/src/backend/observability/logger';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import { z } from 'zod';
+import { extractCallSummary } from '@/src/backend/services/calls/extract-call-summary';
 import { SMS_MISSED_CALL, SMS_REMINDER_24H, SMS_REMINDER_2H } from '@/src/backend/services/sms/types';
 
 type WorkerControls = {
@@ -673,6 +674,22 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
         speaker: 'system',
         text: summaryParts.join(' | '),
       });
+
+      try {
+        const extracted = await extractCallSummary(existingTranscript);
+        await callLogsRepository.updateStructuredSummary(payload.data.requestId, {
+          summaryServiceRequest: extracted.serviceRequest,
+          summaryUrgency: extracted.urgency,
+          summaryNextAction: extracted.nextAction,
+          summaryCallerQuestion: extracted.callerQuestion,
+          summaryCallerName: extracted.callerName,
+          summaryPreferredTech: extracted.preferredTech,
+          summaryPreferredDatetime: extracted.preferredDatetime,
+          summaryFollowUpRequired: extracted.followUpRequired,
+        });
+      } catch (summaryErr) {
+        console.warn('[post_call_summary] Structured extraction failed:', summaryErr);
+      }
     },
   };
   return handlers;
