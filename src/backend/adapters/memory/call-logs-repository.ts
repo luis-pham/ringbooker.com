@@ -293,9 +293,9 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
   }
 
 
-  async updateStructuredSummary(requestId: string, fields: CallStructuredSummaryFields): Promise<void> {
+  async updateStructuredSummary(shopId: string, requestId: string, fields: CallStructuredSummaryFields): Promise<void> {
     for (const [key, log] of this.logsByCall.entries()) {
-      if (log.requestId === requestId) {
+      if (log.shopId === shopId && log.requestId === requestId) {
         this.logsByCall.set(key, {
           ...log,
           ...fields,

@@ -312,6 +312,7 @@ export interface CallLogsRepository {
     }>
   >;
   updateStructuredSummary(
+    shopId: string,
     requestId: string,
     fields: CallStructuredSummaryFields,
   ): Promise<void>;

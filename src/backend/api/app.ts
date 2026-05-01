@@ -233,9 +233,7 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8).max(128),
 });
 
-const testCallForwardingSchema = z.object({
-  shopId: z.string().min(1),
-});
+const testCallForwardingSchema = z.object({});
 
 const userSettingsBaseSchema = z.object({
   name: z.string().min(1).optional(),
@@ -818,18 +816,31 @@ function enforceSameOriginForCookieMutation(c: Context): Response | null {
   const method = c.req.method.toUpperCase();
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return null;
   const origin = c.req.header('origin') ?? null;
-  if (!origin) return null;
-  const host = c.req.header('host') ?? '';
-  if (!host) return c.json({ ok: false, error: 'forbidden' }, 403);
-  const expectedHttp = `http://${host}`;
-  const expectedHttps = `https://${host}`;
-  if (origin !== expectedHttp && origin !== expectedHttps) {
+  const referer = c.req.header('referer') ?? null;
+  if (!origin && !referer) {
     securityAudit({
       action: 'csrf_blocked',
       actorType: 'public',
       ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
       path: c.req.path,
-      details: { origin, expectedHttp, expectedHttps },
+      details: { reason: 'missing_origin_or_referer' },
+    });
+    return c.json({ ok: false, error: 'forbidden' }, 403);
+  }
+  let requestHost: string;
+  try {
+    requestHost = new URL(origin || referer || '').host;
+  } catch {
+    return c.json({ ok: false, error: 'forbidden' }, 403);
+  }
+  const host = c.req.header('host') ?? requestHost;
+  if (requestHost !== host) {
+    securityAudit({
+      action: 'csrf_blocked',
+      actorType: 'public',
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { origin, referer, host },
     });
     return c.json({ ok: false, error: 'forbidden' }, 403);
   }
@@ -1224,6 +1235,29 @@ export function createBackendApp(deps: {
     c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
     c.header('Cross-Origin-Opener-Policy', 'same-origin');
     c.header('Cross-Origin-Resource-Policy', 'same-site');
+    c.header(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: https:",
+        "font-src 'self'",
+        [
+          "connect-src 'self'",
+          'https://*.supabase.co',
+          'https://api.telnyx.com',
+          'https://api.openai.com',
+          'wss://*.telnyx.com',
+          'wss://*.openai.com',
+          'https://api.resend.com',
+          'https://api.paddle.com',
+        ].join(' '),
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+      ].join('; '),
+    );
 
     const start = Date.now();
     await next();
@@ -2858,14 +2892,15 @@ Submitted at: ${new Date().toISOString()}`,
       return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
     }
 
-    const body = await c.req.json().catch(() => null);
+    const body = await c.req.json().catch(() => ({}));
     const parsed = testCallForwardingSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
 
     // TODO: implement real Telnyx outbound forwarding verification call.
     // Stub behavior: app/dashboard-based carriers fail; dial-code carriers pass.
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    const shopId = parsed.data.shopId === 'current' ? sessionResult.shopId ?? '' : parsed.data.shopId;
+    // Always use the authenticated user's shop. Never trust a shop id from the request body.
+    const shopId = sessionResult.shopId ?? '';
     const shop = await deps.shopsRepository.findById(shopId);
     const appBasedCarriers = ['googlevoice', 'ringcentral', 'openphone', 'other'];
     const success = Boolean(shop?.forwarding_carrier && !appBasedCarriers.includes(shop.forwarding_carrier));
@@ -2923,7 +2958,7 @@ Submitted at: ${new Date().toISOString()}`,
     const call = await deps.callLogsRepository.findTranscriptByShopAndRequestId({ shopId: shop.id, requestId });
     if (!call) return c.json({ ok: false, error: 'call_not_found' }, 404);
 
-    await deps.callLogsRepository.updateStructuredSummary(requestId, {
+    await deps.callLogsRepository.updateStructuredSummary(shop.id, requestId, {
       summaryFollowUpRequired: false,
     });
 

@@ -677,7 +677,7 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
 
       try {
         const extracted = await extractCallSummary(existingTranscript);
-        await callLogsRepository.updateStructuredSummary(payload.data.requestId, {
+        await callLogsRepository.updateStructuredSummary(params.shopId, payload.data.requestId, {
           summaryServiceRequest: extracted.serviceRequest,
           summaryUrgency: extracted.urgency,
           summaryNextAction: extracted.nextAction,

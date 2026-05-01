@@ -348,7 +348,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
   }
 
 
-  async updateStructuredSummary(requestId: string, fields: CallStructuredSummaryFields): Promise<void> {
+  async updateStructuredSummary(shopId: string, requestId: string, fields: CallStructuredSummaryFields): Promise<void> {
     const patch: Record<string, unknown> = {};
     if ('summaryServiceRequest' in fields) patch.summary_service_request = fields.summaryServiceRequest ?? null;
     if ('summaryUrgency' in fields) patch.summary_urgency = fields.summaryUrgency ?? null;
@@ -361,7 +361,11 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
 
     if (Object.keys(patch).length === 0) return;
 
-    const { error } = await this.supabase.from('call_logs').update(patch).eq('request_id', requestId);
+    const { error } = await this.supabase
+      .from('call_logs')
+      .update(patch)
+      .eq('shop_id', shopId)
+      .eq('request_id', requestId);
 
     if (error) {
       throw new Error(`call_logs_update_structured_summary_failed:${error.message}`);
