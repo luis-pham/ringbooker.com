@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
-import { siteConfig } from '@/lib/site';
+
+/** Declared explicitly for robots.txt `Host` / `Sitemap` (production canonical domain). */
+const RINGBOOKER_ORIGIN = 'https://ringbooker.com';
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -15,7 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: `${siteConfig.url}/sitemap.xml`,
-    host: siteConfig.url,
+    host: RINGBOOKER_ORIGIN,
+    sitemap: `${RINGBOOKER_ORIGIN}/sitemap.xml`,
   };
 }

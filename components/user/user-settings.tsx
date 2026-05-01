@@ -322,11 +322,16 @@ button,input,select,textarea{font:inherit}
 .card-section-form{
   border:none;border-radius:0;padding:0;background:transparent;
 }
-.hours-grid{display:grid;gap:10px}
+.hours-grid{
+  display:grid;gap:0;
+  border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;
+}
 .hours-row{
   display:grid;grid-template-columns:96px 112px 112px auto;gap:12px;align-items:center;
-  border:1px solid #f0f1f3;border-radius:16px;padding:12px 14px;background:#fff;
+  padding:12px 14px;background:#fff;border:none;border-radius:0;
+  border-bottom:1px solid #f0f1f3;
 }
+.hours-row:last-child{border-bottom:none}
 .hours-row.closed{background:#fafafa}
 .hours-day{font-size:13px;font-weight:800}
 .inline-check{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-gray);font-weight:700}
