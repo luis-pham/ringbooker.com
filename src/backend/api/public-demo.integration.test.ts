@@ -51,6 +51,7 @@ test('public demo endpoint creates preview token and status endpoint returns dia
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       'x-forwarded-for': '10.10.10.10',
     },
     body: JSON.stringify({

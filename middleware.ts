@@ -3,6 +3,26 @@ import { NextResponse } from 'next/server';
 
 const USER_SESSION_COOKIE = 'rb_user_session';
 const ADMIN_SESSION_COOKIE = 'rb_admin_session';
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https:",
+  "font-src 'self'",
+  [
+    "connect-src 'self'",
+    'https://*.supabase.co',
+    'https://api.telnyx.com',
+    'https://api.openai.com',
+    'wss://*.telnyx.com',
+    'wss://*.openai.com',
+    'https://api.resend.com',
+    'https://api.paddle.com',
+  ].join(' '),
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
 
 function getSigningKey(): Uint8Array | null {
   const secret = process.env.APP_SIGNING_SECRET;
@@ -133,6 +153,7 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
   response.headers.set('Cross-Origin-Resource-Policy', 'same-site');
+  response.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   if (process.env.NODE_ENV === 'production') {
     response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }

@@ -48,6 +48,7 @@ test('agent dispatch endpoint requires bearer token when configured', async () =
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify(payload),
   });
@@ -57,6 +58,7 @@ test('agent dispatch endpoint requires bearer token when configured', async () =
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       authorization: 'Bearer dispatch-test-token',
     },
     body: JSON.stringify(payload),
@@ -96,6 +98,7 @@ test('agent dispatch status completed enqueues post-call summary job', async () 
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       authorization: 'Bearer dispatch-test-token',
     },
     body: JSON.stringify({

@@ -53,7 +53,7 @@ test('admin system health metrics endpoint requires admin session and returns ag
 
   const loginResponse = await app.request('/auth/admin/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'admin@ringbooker.local',
       password: 'change_me_admin_password',

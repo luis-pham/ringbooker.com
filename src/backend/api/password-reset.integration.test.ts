@@ -36,6 +36,7 @@ test('user forgot/reset password rotates credential and supports new login', asy
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       email: 'reset-user@ringbooker.local',
@@ -49,6 +50,7 @@ test('user forgot/reset password rotates credential and supports new login', asy
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       token: forgotBody.resetToken,
@@ -61,6 +63,7 @@ test('user forgot/reset password rotates credential and supports new login', asy
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       email: 'reset-user@ringbooker.local',
@@ -73,6 +76,7 @@ test('user forgot/reset password rotates credential and supports new login', asy
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       email: 'reset-user@ringbooker.local',

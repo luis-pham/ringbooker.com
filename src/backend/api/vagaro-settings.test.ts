@@ -44,6 +44,7 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       'x-forwarded-for': `10.44.0.${loginCounter}`,
     },
     body: JSON.stringify({

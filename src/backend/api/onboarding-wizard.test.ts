@@ -39,7 +39,7 @@ function createOnboardingTestApp() {
 async function loginUser(app: ReturnType<typeof createBackendApp>) {
   const response = await app.request('/auth/user/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'user@ringbooker.local',
       password: 'change_me_user_password',

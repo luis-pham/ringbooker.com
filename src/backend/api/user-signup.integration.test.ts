@@ -65,6 +65,7 @@ test('user signup supports phone search and creates authenticated session', asyn
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       countryCode: 'US',
@@ -81,6 +82,7 @@ test('user signup supports phone search and creates authenticated session', asyn
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       shopName: 'Luxe Nails Garden Grove',
@@ -134,6 +136,7 @@ test('user signup rejects duplicate email', async () => {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       shopName: 'Duplicated Email Shop',

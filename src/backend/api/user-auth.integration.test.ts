@@ -36,6 +36,7 @@ test('user login sets session cookie and can read user dashboard', async () => {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       email: 'user@ringbooker.local',
@@ -74,7 +75,7 @@ test('user can change password with valid current password', async () => {
 
   const loginResponse = await app.request('/auth/user/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'user@ringbooker.local',
       password: 'change_me_user_password',
@@ -119,7 +120,7 @@ test('user can change password with valid current password', async () => {
 
   const oldLogin = await app.request('/auth/user/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'user@ringbooker.local',
       password: 'change_me_user_password',
@@ -129,7 +130,7 @@ test('user can change password with valid current password', async () => {
 
   const newLogin = await app.request('/auth/user/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'user@ringbooker.local',
       password: newPassword,

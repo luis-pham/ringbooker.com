@@ -33,7 +33,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
 
   const loginResponse = await app.request('/auth/admin/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'admin@ringbooker.local',
       password: 'change_me_admin_password',
@@ -47,6 +47,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({
@@ -68,6 +69,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({
@@ -84,6 +86,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({
@@ -100,6 +103,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({
@@ -127,6 +131,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({
@@ -160,6 +165,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     method: 'PATCH',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({ active: false }),
@@ -170,6 +176,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     method: 'PATCH',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({ role: 'user', active: true }),
@@ -180,6 +187,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     method: 'PATCH',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({ role: 'user' }),

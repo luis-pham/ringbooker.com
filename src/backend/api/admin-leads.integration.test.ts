@@ -25,6 +25,7 @@ test('public contact request is persisted and admin can update lead status', asy
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       'x-forwarded-for': '11.22.33.44',
     },
     body: JSON.stringify({
@@ -48,7 +49,7 @@ test('public contact request is persisted and admin can update lead status', asy
 
   const loginResponse = await app.request('/auth/admin/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'admin@ringbooker.local',
       password: 'change_me_admin_password',
@@ -80,6 +81,7 @@ test('public contact request is persisted and admin can update lead status', asy
     method: 'PUT',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
       cookie: cookieHeader!,
     },
     body: JSON.stringify({

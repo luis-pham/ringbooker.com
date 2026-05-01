@@ -24,6 +24,7 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
     },
     body: JSON.stringify({
       email: 'user@ringbooker.local',

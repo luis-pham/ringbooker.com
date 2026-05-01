@@ -50,7 +50,7 @@ test('user billing and admin billing endpoints return normalized billing state',
 
   const userLogin = await app.request('/auth/user/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'billing-user@ringbooker.local',
       password: 'change_me_user_password',
@@ -76,7 +76,7 @@ test('user billing and admin billing endpoints return normalized billing state',
 
   const adminLogin = await app.request('/auth/admin/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
     body: JSON.stringify({
       email: 'billing-admin@ringbooker.local',
       password: 'change_me_admin_password',
