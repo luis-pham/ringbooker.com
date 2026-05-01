@@ -1,4 +1,4 @@
-import type { CallLogsRepository, CallStructuredSummaryFields, CallSummaryNextAction } from '@/src/backend/ports/repositories';
+import type { CallLogsRepository, CallLogsQueryParams, CallStructuredSummaryFields, CallSummaryNextAction } from '@/src/backend/ports/repositories';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
 
 type MemoryCallLog = {
@@ -43,18 +43,13 @@ function matchesStartedRange(
   return true;
 }
 
-function matchesCallAdminFilters(
-  log: MemoryCallLog,
-  params?: {
-    startedAfter?: Date;
-    startedBefore?: Date;
-    outcome?: string;
-    transcriptStatus?: string;
-  },
-): boolean {
+function matchesCallAdminFilters(log: MemoryCallLog, params?: CallLogsQueryParams): boolean {
   if (!matchesStartedRange(log, params)) return false;
   if (params?.outcome !== undefined && (log.outcome ?? '') !== params.outcome) return false;
   if (params?.transcriptStatus !== undefined && (log.transcriptStatus ?? '') !== params.transcriptStatus) return false;
+  if (params?.summaryFollowUpRequired !== undefined && Boolean(log.summaryFollowUpRequired) !== params.summaryFollowUpRequired) return false;
+  if (params?.summaryUrgency !== undefined && log.summaryUrgency !== params.summaryUrgency) return false;
+  if (params?.summaryNextActions?.length && !params.summaryNextActions.includes(log.summaryNextAction as CallSummaryNextAction)) return false;
   return true;
 }
 
@@ -203,30 +198,20 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
 
   async countByShop(
     shopId: string,
-    params?: {
-      startedAfter?: Date;
-      startedBefore?: Date;
-      outcome?: string;
-      transcriptStatus?: string;
-    },
+    params?: CallLogsQueryParams,
   ): Promise<number> {
     return [...this.logsByCall.values()].filter(
       (log) => log.shopId === shopId && matchesCallAdminFilters(log, params),
     ).length;
   }
 
-  async countRecent(params?: {
-    startedAfter?: Date;
-    startedBefore?: Date;
-    outcome?: string;
-    transcriptStatus?: string;
-  }): Promise<number> {
+  async countRecent(params?: CallLogsQueryParams): Promise<number> {
     return [...this.logsByCall.values()].filter((log) => matchesCallAdminFilters(log, params)).length;
   }
 
   async listByShop(
     shopId: string,
-    params?: { limit?: number; offset?: number; startedAfter?: Date; startedBefore?: Date },
+    params?: CallLogsQueryParams,
   ): Promise<
     Array<{
       provider: string;
@@ -257,7 +242,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     return [...this.logsByCall.values()]
-      .filter((log) => log.shopId === shopId && matchesStartedRange(log, params))
+      .filter((log) => log.shopId === shopId && matchesCallAdminFilters(log, params))
       .sort((a, b) => (b.startedAt?.toISOString() ?? '').localeCompare(a.startedAt?.toISOString() ?? ''))
       .slice(offset, offset + limit)
       .map((log) => ({
@@ -267,12 +252,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       }));
   }
 
-  async listRecent(params?: {
-    limit?: number;
-    offset?: number;
-    startedAfter?: Date;
-    startedBefore?: Date;
-  }): Promise<
+  async listRecent(params?: CallLogsQueryParams): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -302,7 +282,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     return [...this.logsByCall.values()]
-      .filter((log) => matchesStartedRange(log, params))
+      .filter((log) => matchesCallAdminFilters(log, params))
       .sort((a, b) => (b.startedAt?.toISOString() ?? '').localeCompare(a.startedAt?.toISOString() ?? ''))
       .slice(offset, offset + limit)
       .map((log) => ({

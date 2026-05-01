@@ -188,6 +188,19 @@ export type CallStructuredSummaryFields = {
   summaryFollowUpRequired?: boolean;
 };
 
+
+export type CallLogsQueryParams = {
+  limit?: number;
+  offset?: number;
+  startedAfter?: Date;
+  startedBefore?: Date;
+  outcome?: string;
+  transcriptStatus?: string;
+  summaryFollowUpRequired?: boolean;
+  summaryUrgency?: CallSummaryUrgency;
+  summaryNextActions?: CallSummaryNextAction[];
+};
+
 export interface CallLogsRepository {
   createOrUpdateInboundCall(params: {
     provider: string;
@@ -238,7 +251,7 @@ export interface CallLogsRepository {
   }): Promise<void>;
   listByShop(
     shopId: string,
-    params?: { limit?: number; offset?: number; startedAfter?: Date; startedBefore?: Date },
+    params?: CallLogsQueryParams,
   ): Promise<
     Array<{
       provider: string;
@@ -268,25 +281,10 @@ export interface CallLogsRepository {
   >;
   countByShop(
     shopId: string,
-    params?: {
-      startedAfter?: Date;
-      startedBefore?: Date;
-      outcome?: string;
-      transcriptStatus?: string;
-    },
+    params?: CallLogsQueryParams,
   ): Promise<number>;
-  countRecent(params?: {
-    startedAfter?: Date;
-    startedBefore?: Date;
-    outcome?: string;
-    transcriptStatus?: string;
-  }): Promise<number>;
-  listRecent(params?: {
-    limit?: number;
-    offset?: number;
-    startedAfter?: Date;
-    startedBefore?: Date;
-  }): Promise<
+  countRecent(params?: CallLogsQueryParams): Promise<number>;
+  listRecent(params?: CallLogsQueryParams): Promise<
     Array<{
       provider: string;
       providerCallId: string;

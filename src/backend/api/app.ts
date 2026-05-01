@@ -433,8 +433,12 @@ const adminShopCallsQuerySchema = z.object({
 });
 
 const USER_CALLS_PAGE_SIZE = 20;
+const userCallsFilterSchema = z.enum(['all', 'follow_up_needed', 'high_urgency', 'bookings', 'missed']);
 const userCallsListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).optional(),
+  filter: userCallsFilterSchema.optional().default('all'),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 const adminShopAnalyticsQuerySchema = z.object({
@@ -446,6 +450,25 @@ const adminLeadStatusUpdateSchema = z.object({
   status: contactRequestStatusSchema,
   notes: z.string().max(2000).nullable().optional(),
 });
+
+
+function buildUserCallFilters(parsed: z.infer<typeof userCallsListQuerySchema>) {
+  const startedAfter = parsed.from ? new Date(`${parsed.from}T00:00:00.000Z`) : undefined;
+  const startedBefore = parsed.to ? new Date(`${parsed.to}T23:59:59.999Z`) : undefined;
+  const base = { startedAfter, startedBefore };
+  switch (parsed.filter) {
+    case 'follow_up_needed':
+      return { ...base, summaryFollowUpRequired: true };
+    case 'high_urgency':
+      return { ...base, summaryUrgency: 'high' as const };
+    case 'bookings':
+      return { ...base, summaryNextActions: ['booking_created' as const, 'booking_link_sent' as const] };
+    case 'missed':
+      return { ...base, outcome: 'missed' };
+    default:
+      return base;
+  }
+}
 
 type SessionRole = 'user' | 'admin';
 
@@ -2922,6 +2945,37 @@ Submitted at: ${new Date().toISOString()}`,
     return c.json({ ok: true, bookings });
   });
 
+
+  app.get(path('/user/calls/summary'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls_summary');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const repo = deps.callLogsRepository;
+    const [totalLast7Days, bookingsCount, followUpCount, missedCount] = await Promise.all([
+      repo.countByShop(shop.id, { startedAfter: last7Days }),
+      repo.countByShop(shop.id, { summaryNextActions: ['booking_created', 'booking_link_sent'] }),
+      repo.countByShop(shop.id, { summaryFollowUpRequired: true }),
+      repo.countByShop(shop.id, { startedAfter: last7Days, outcome: 'missed' }),
+    ]);
+
+    return c.json({
+      ok: true,
+      totalLast7Days,
+      bookingsCount,
+      followUpCount,
+      missedCount,
+    });
+  });
+
   app.get(path('/user/calls'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls');
     if (limited) return limited;
@@ -2933,6 +2987,9 @@ Submitted at: ${new Date().toISOString()}`,
 
     const parsed = userCallsListQuerySchema.safeParse({
       page: c.req.query('page'),
+      filter: c.req.query('filter'),
+      from: c.req.query('from'),
+      to: c.req.query('to'),
     });
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_query', details: parsed.error.flatten() }, 400);
@@ -2944,13 +3001,14 @@ Submitted at: ${new Date().toISOString()}`,
     const page = parsed.data.page ?? 1;
     const offset = (page - 1) * USER_CALLS_PAGE_SIZE;
     const repo = deps.callLogsRepository;
+    const filters = buildUserCallFilters(parsed.data);
 
     const [calls, total, booked, missed, transcriptsReady] = await Promise.all([
-      repo.listByShop(shop.id, { limit: USER_CALLS_PAGE_SIZE, offset }),
-      repo.countByShop(shop.id, {}),
-      repo.countByShop(shop.id, { outcome: 'booked' }),
-      repo.countByShop(shop.id, { outcome: 'missed' }),
-      repo.countByShop(shop.id, { transcriptStatus: 'completed' }),
+      repo.listByShop(shop.id, { ...filters, limit: USER_CALLS_PAGE_SIZE, offset }),
+      repo.countByShop(shop.id, filters),
+      repo.countByShop(shop.id, { ...filters, summaryNextActions: ['booking_created', 'booking_link_sent'] }),
+      repo.countByShop(shop.id, { ...filters, outcome: 'missed' }),
+      repo.countByShop(shop.id, { ...filters, transcriptStatus: 'completed' }),
     ]);
 
     return c.json({

@@ -1,7 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { CallLogsRepository, CallStructuredSummaryFields } from '@/src/backend/ports/repositories';
+import type { CallLogsRepository, CallLogsQueryParams, CallStructuredSummaryFields } from '@/src/backend/ports/repositories';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
+
+
+function applyCallLogFilters<T extends { gte: (column: string, value: string) => T; lte: (column: string, value: string) => T; eq: (column: string, value: unknown) => T; in: (column: string, values: unknown[]) => T }>(
+  query: T,
+  params?: CallLogsQueryParams,
+): T {
+  let q = query;
+  if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
+  if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+  if (params?.outcome) q = q.eq('outcome', params.outcome);
+  if (params?.transcriptStatus) q = q.eq('transcript_status', params.transcriptStatus);
+  if (params?.summaryFollowUpRequired !== undefined) q = q.eq('summary_follow_up_required', params.summaryFollowUpRequired);
+  if (params?.summaryUrgency) q = q.eq('summary_urgency', params.summaryUrgency);
+  if (params?.summaryNextActions?.length) q = q.in('summary_next_action', params.summaryNextActions);
+  return q;
+}
 
 export class SupabaseCallLogsRepository implements CallLogsRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -183,21 +199,13 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
 
   async countByShop(
     shopId: string,
-    params?: {
-      startedAfter?: Date;
-      startedBefore?: Date;
-      outcome?: string;
-      transcriptStatus?: string;
-    },
+    params?: CallLogsQueryParams,
   ): Promise<number> {
     let q = this.supabase
       .from('call_logs')
       .select('provider_call_id', { count: 'exact', head: true })
       .eq('shop_id', shopId);
-    if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
-    if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
-    if (params?.outcome) q = q.eq('outcome', params.outcome);
-    if (params?.transcriptStatus) q = q.eq('transcript_status', params.transcriptStatus);
+    q = applyCallLogFilters(q, params);
     const { count, error } = await q;
     if (error) {
       throw new Error(`call_logs_count_by_shop_failed:${error.message}`);
@@ -205,17 +213,9 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     return count ?? 0;
   }
 
-  async countRecent(params?: {
-    startedAfter?: Date;
-    startedBefore?: Date;
-    outcome?: string;
-    transcriptStatus?: string;
-  }): Promise<number> {
+  async countRecent(params?: CallLogsQueryParams): Promise<number> {
     let q = this.supabase.from('call_logs').select('provider_call_id', { count: 'exact', head: true });
-    if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
-    if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
-    if (params?.outcome) q = q.eq('outcome', params.outcome);
-    if (params?.transcriptStatus) q = q.eq('transcript_status', params.transcriptStatus);
+    q = applyCallLogFilters(q, params);
     const { count, error } = await q;
     if (error) {
       throw new Error(`call_logs_count_recent_failed:${error.message}`);
@@ -225,7 +225,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
 
   async listByShop(
     shopId: string,
-    params?: { limit?: number; offset?: number; startedAfter?: Date; startedBefore?: Date },
+    params?: CallLogsQueryParams,
   ): Promise<
     Array<{
       provider: string;
@@ -253,8 +253,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
         'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
       )
       .eq('shop_id', shopId);
-    if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
-    if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+    q = applyCallLogFilters(q, params);
     const { data, error } = await q.order('started_at', { ascending: false }).range(offset, offset + limit - 1);
 
     if (error) {
@@ -288,12 +287,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }));
   }
 
-  async listRecent(params?: {
-    limit?: number;
-    offset?: number;
-    startedAfter?: Date;
-    startedBefore?: Date;
-  }): Promise<
+  async listRecent(params?: CallLogsQueryParams): Promise<
     Array<{
       provider: string;
       providerCallId: string;
@@ -319,8 +313,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       .select(
         'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
       );
-    if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
-    if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
+    q = applyCallLogFilters(q, params);
     const { data, error } = await q.order('started_at', { ascending: false }).range(offset, offset + limit - 1);
 
     if (error) {
