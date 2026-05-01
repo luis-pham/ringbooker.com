@@ -1,4 +1,4 @@
-import type { CallLogsRepository } from '@/src/backend/ports/repositories';
+import type { CallLogsRepository, CallStructuredSummaryFields, CallSummaryNextAction } from '@/src/backend/ports/repositories';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
 
 type MemoryCallLog = {
@@ -17,6 +17,14 @@ type MemoryCallLog = {
   transcriptText?: string;
   demoLiveState?: string;
   outcome?: string;
+  summaryServiceRequest?: string | null;
+  summaryUrgency?: 'low' | 'medium' | 'high' | null;
+  summaryNextAction?: CallSummaryNextAction | null;
+  summaryCallerQuestion?: string | null;
+  summaryCallerName?: string | null;
+  summaryPreferredTech?: string | null;
+  summaryPreferredDatetime?: string | null;
+  summaryFollowUpRequired?: boolean;
 };
 
 function callKey(provider: string, providerCallId: string): string {
@@ -79,7 +87,16 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       humanAnswered: existing?.humanAnswered ?? false,
       transcriptStatus: existing?.transcriptStatus ?? 'pending',
       demoLiveState: existing?.demoLiveState ?? 'preparing',
+      transcriptText: existing?.transcriptText,
       outcome: existing?.outcome,
+      summaryServiceRequest: existing?.summaryServiceRequest,
+      summaryUrgency: existing?.summaryUrgency,
+      summaryNextAction: existing?.summaryNextAction,
+      summaryCallerQuestion: existing?.summaryCallerQuestion,
+      summaryCallerName: existing?.summaryCallerName,
+      summaryPreferredTech: existing?.summaryPreferredTech,
+      summaryPreferredDatetime: existing?.summaryPreferredDatetime,
+      summaryFollowUpRequired: existing?.summaryFollowUpRequired,
     });
   }
 
@@ -227,6 +244,14 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       transcriptText?: string;
       demoLiveState?: string;
       outcome?: string;
+      summaryServiceRequest?: string | null;
+      summaryUrgency?: 'low' | 'medium' | 'high' | null;
+      summaryNextAction?: CallSummaryNextAction | null;
+      summaryCallerQuestion?: string | null;
+      summaryCallerName?: string | null;
+      summaryPreferredTech?: string | null;
+      summaryPreferredDatetime?: string | null;
+      summaryFollowUpRequired?: boolean;
     }>
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
@@ -264,6 +289,14 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       transcriptText?: string;
       demoLiveState?: string;
       outcome?: string;
+      summaryServiceRequest?: string | null;
+      summaryUrgency?: 'low' | 'medium' | 'high' | null;
+      summaryNextAction?: CallSummaryNextAction | null;
+      summaryCallerQuestion?: string | null;
+      summaryCallerName?: string | null;
+      summaryPreferredTech?: string | null;
+      summaryPreferredDatetime?: string | null;
+      summaryFollowUpRequired?: boolean;
     }>
   > {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
@@ -277,6 +310,18 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
         startedAt: log.startedAt?.toISOString(),
         endedAt: log.endedAt?.toISOString(),
       }));
+  }
+
+
+  async updateStructuredSummary(requestId: string, fields: CallStructuredSummaryFields): Promise<void> {
+    for (const [key, log] of this.logsByCall.entries()) {
+      if (log.requestId === requestId) {
+        this.logsByCall.set(key, {
+          ...log,
+          ...fields,
+        });
+      }
+    }
   }
 
   async findTranscriptByShopAndRequestId(params: {

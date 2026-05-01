@@ -165,6 +165,29 @@ export interface DemoSessionsRepository {
   countAdminDemoCallRuns(params: { createdAfter: Date; createdBefore: Date }): Promise<number>;
 }
 
+
+export type CallSummaryUrgency = 'low' | 'medium' | 'high';
+export type CallSummaryNextAction =
+  | 'booking_created'
+  | 'booking_link_sent'
+  | 'callback_scheduled'
+  | 'cancellation_requested'
+  | 'reschedule_requested'
+  | 'info_provided'
+  | 'escalated'
+  | 'no_action_needed';
+
+export type CallStructuredSummaryFields = {
+  summaryServiceRequest?: string | null;
+  summaryUrgency?: CallSummaryUrgency | null;
+  summaryNextAction?: CallSummaryNextAction | null;
+  summaryCallerQuestion?: string | null;
+  summaryCallerName?: string | null;
+  summaryPreferredTech?: string | null;
+  summaryPreferredDatetime?: string | null;
+  summaryFollowUpRequired?: boolean;
+};
+
 export interface CallLogsRepository {
   createOrUpdateInboundCall(params: {
     provider: string;
@@ -233,6 +256,14 @@ export interface CallLogsRepository {
       transcriptText?: string;
       demoLiveState?: string;
       outcome?: string;
+      summaryServiceRequest?: string | null;
+      summaryUrgency?: CallSummaryUrgency | null;
+      summaryNextAction?: CallSummaryNextAction | null;
+      summaryCallerQuestion?: string | null;
+      summaryCallerName?: string | null;
+      summaryPreferredTech?: string | null;
+      summaryPreferredDatetime?: string | null;
+      summaryFollowUpRequired?: boolean;
     }>
   >;
   countByShop(
@@ -272,8 +303,20 @@ export interface CallLogsRepository {
       transcriptText?: string;
       demoLiveState?: string;
       outcome?: string;
+      summaryServiceRequest?: string | null;
+      summaryUrgency?: CallSummaryUrgency | null;
+      summaryNextAction?: CallSummaryNextAction | null;
+      summaryCallerQuestion?: string | null;
+      summaryCallerName?: string | null;
+      summaryPreferredTech?: string | null;
+      summaryPreferredDatetime?: string | null;
+      summaryFollowUpRequired?: boolean;
     }>
   >;
+  updateStructuredSummary(
+    requestId: string,
+    fields: CallStructuredSummaryFields,
+  ): Promise<void>;
   findTranscriptByShopAndRequestId(params: {
     shopId: string;
     requestId: string;

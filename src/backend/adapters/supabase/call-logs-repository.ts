@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { CallLogsRepository } from '@/src/backend/ports/repositories';
+import type { CallLogsRepository, CallStructuredSummaryFields } from '@/src/backend/ports/repositories';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
 
 export class SupabaseCallLogsRepository implements CallLogsRepository {
@@ -250,7 +250,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     let q = this.supabase
       .from('call_logs')
       .select(
-        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome',
+        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
       )
       .eq('shop_id', shopId);
     if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
@@ -277,6 +277,14 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       transcriptText: (row.transcript_text as string | null) ?? undefined,
       demoLiveState: (row.demo_live_state as string | null) ?? undefined,
       outcome: (row.outcome as string | null) ?? undefined,
+      summaryServiceRequest: (row.summary_service_request as string | null) ?? null,
+      summaryUrgency: (row.summary_urgency as 'low' | 'medium' | 'high' | null) ?? null,
+      summaryNextAction: (row.summary_next_action as any) ?? null,
+      summaryCallerQuestion: (row.summary_caller_question as string | null) ?? null,
+      summaryCallerName: (row.summary_caller_name as string | null) ?? null,
+      summaryPreferredTech: (row.summary_preferred_tech as string | null) ?? null,
+      summaryPreferredDatetime: (row.summary_preferred_datetime as string | null) ?? null,
+      summaryFollowUpRequired: Boolean(row.summary_follow_up_required),
     }));
   }
 
@@ -309,7 +317,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     let q = this.supabase
       .from('call_logs')
       .select(
-        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome',
+        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
       );
     if (params?.startedAfter) q = q.gte('started_at', params.startedAfter.toISOString());
     if (params?.startedBefore) q = q.lte('started_at', params.startedBefore.toISOString());
@@ -335,7 +343,36 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       transcriptText: (row.transcript_text as string | null) ?? undefined,
       demoLiveState: (row.demo_live_state as string | null) ?? undefined,
       outcome: (row.outcome as string | null) ?? undefined,
+      summaryServiceRequest: (row.summary_service_request as string | null) ?? null,
+      summaryUrgency: (row.summary_urgency as 'low' | 'medium' | 'high' | null) ?? null,
+      summaryNextAction: (row.summary_next_action as any) ?? null,
+      summaryCallerQuestion: (row.summary_caller_question as string | null) ?? null,
+      summaryCallerName: (row.summary_caller_name as string | null) ?? null,
+      summaryPreferredTech: (row.summary_preferred_tech as string | null) ?? null,
+      summaryPreferredDatetime: (row.summary_preferred_datetime as string | null) ?? null,
+      summaryFollowUpRequired: Boolean(row.summary_follow_up_required),
     }));
+  }
+
+
+  async updateStructuredSummary(requestId: string, fields: CallStructuredSummaryFields): Promise<void> {
+    const patch: Record<string, unknown> = {};
+    if ('summaryServiceRequest' in fields) patch.summary_service_request = fields.summaryServiceRequest ?? null;
+    if ('summaryUrgency' in fields) patch.summary_urgency = fields.summaryUrgency ?? null;
+    if ('summaryNextAction' in fields) patch.summary_next_action = fields.summaryNextAction ?? null;
+    if ('summaryCallerQuestion' in fields) patch.summary_caller_question = fields.summaryCallerQuestion ?? null;
+    if ('summaryCallerName' in fields) patch.summary_caller_name = fields.summaryCallerName ?? null;
+    if ('summaryPreferredTech' in fields) patch.summary_preferred_tech = fields.summaryPreferredTech ?? null;
+    if ('summaryPreferredDatetime' in fields) patch.summary_preferred_datetime = fields.summaryPreferredDatetime ?? null;
+    if ('summaryFollowUpRequired' in fields) patch.summary_follow_up_required = fields.summaryFollowUpRequired ?? false;
+
+    if (Object.keys(patch).length === 0) return;
+
+    const { error } = await this.supabase.from('call_logs').update(patch).eq('request_id', requestId);
+
+    if (error) {
+      throw new Error(`call_logs_update_structured_summary_failed:${error.message}`);
+    }
   }
 
   async findTranscriptByShopAndRequestId(params: {
