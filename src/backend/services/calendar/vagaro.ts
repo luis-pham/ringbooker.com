@@ -2,6 +2,7 @@ import { DateTime } from 'luxon';
 
 import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
 import type { CalendarProvider } from '@/src/backend/services/calendar/types';
+import { decrypt, encrypt } from '@/src/backend/services/crypto/encrypt';
 
 const VAGARO_UNSUPPORTED_WRITE_ERROR =
   'Vagaro public API does not support this operation. Please complete this action in Vagaro directly.';
@@ -123,6 +124,11 @@ export function parseVagaroCredentials(raw: string | null | undefined): Partial<
   if (!raw) return {};
   const candidates = [raw];
   try {
+    candidates.push(decrypt(raw));
+  } catch {
+    // ignore non-encrypted or invalid ciphertext
+  }
+  try {
     candidates.push(Buffer.from(raw, 'base64').toString('utf-8'));
   } catch {
     // ignore invalid base64
@@ -183,7 +189,7 @@ export function parseVagaroCredentials(raw: string | null | undefined): Partial<
 }
 
 export function encodeVagaroCredentials(input: VagaroCredentials): string {
-  return JSON.stringify(input);
+  return encrypt(JSON.stringify(input));
 }
 
 export async function generateVagaroAccessToken(params: {

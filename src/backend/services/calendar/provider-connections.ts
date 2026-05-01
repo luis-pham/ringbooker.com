@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon';
 
 import { getEnv } from '@/src/backend/config/env';
+import { decrypt, encrypt } from '@/src/backend/services/crypto/encrypt';
 
 export type CalendarConnectionProviderId = 'square_appointments' | 'google_calendar' | 'vagaro' | 'mindbody' | 'booksy';
 
@@ -51,6 +52,11 @@ export function parseCalendarConnectionCredentials(raw: string | null | undefine
   if (!raw) return null;
   const parseCandidates = [raw];
   try {
+    parseCandidates.push(decrypt(raw));
+  } catch {
+    // ignore non-encrypted or invalid ciphertext
+  }
+  try {
     parseCandidates.push(Buffer.from(raw, 'base64').toString('utf-8'));
   } catch {
     // ignore invalid base64
@@ -84,7 +90,7 @@ export function parseSquareConnectionCredentials(raw: string | null | undefined)
 }
 
 export function encodeSquareConnectionCredentials(input: SquareConnectionCredentials): string {
-  return JSON.stringify(input);
+  return encrypt(JSON.stringify(input));
 }
 
 export function squareApiBaseUrl(): string {
