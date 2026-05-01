@@ -79,6 +79,11 @@ export interface Shop {
   website_url?: string | null;
   languages?: string[];
   current_onboarding_step?: number | null;
+  setup_method?: 'forward' | 'new_number' | null;
+  forwarding_type?: 'no_answer' | 'all' | 'busy' | 'unreachable' | null;
+  forwarding_carrier?: string | null;
+  forwarding_country?: string | null;
+  telnyx_number?: string | null;
   ai_voice?: string | null;
   ai_welcome_message?: string | null;
   ai_custom_instructions?: string | null;

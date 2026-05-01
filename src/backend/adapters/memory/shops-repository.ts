@@ -33,6 +33,11 @@ const defaultShop: Shop = {
   website_url: 'https://ringbooker.com/demo',
   languages: ['en', 'vi'],
   current_onboarding_step: 4,
+  setup_method: null,
+  forwarding_type: 'no_answer',
+  forwarding_carrier: null,
+  forwarding_country: 'us',
+  telnyx_number: null,
   ai_voice: 'Aoede',
   ai_welcome_message: 'Thanks for calling RingBooker Demo Salon. How can I help you today?',
   ai_custom_instructions: 'Prioritize manicure and pedicure bookings and keep answers concise.',
@@ -109,6 +114,11 @@ export class InMemoryShopsRepository implements ShopsRepository {
       languages: ['en'],
       website_url: null,
       current_onboarding_step: 1,
+      setup_method: null,
+      forwarding_type: 'no_answer',
+      forwarding_carrier: null,
+      forwarding_country: 'us',
+      telnyx_number: null,
       allow_transfers: true,
       allow_callbacks: true,
       send_reminder_sms: true,
@@ -143,6 +153,11 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'
+        | 'setup_method'
+        | 'forwarding_type'
+        | 'forwarding_carrier'
+        | 'forwarding_country'
+        | 'telnyx_number'
       >
     >,
   ): Promise<Shop | null> {

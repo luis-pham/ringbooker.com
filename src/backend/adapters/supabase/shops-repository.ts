@@ -22,6 +22,11 @@ type ShopsRow = {
   website_url: string | null;
   languages: string[] | null;
   current_onboarding_step: number | null;
+  setup_method: Shop['setup_method'] | null;
+  forwarding_type: Shop['forwarding_type'] | null;
+  forwarding_carrier: string | null;
+  forwarding_country: string | null;
+  telnyx_number: string | null;
   ai_voice: string | null;
   ai_welcome_message: string | null;
   ai_custom_instructions: string | null;
@@ -84,6 +89,11 @@ function toShop(row: ShopsRow): Shop {
     website_url: row.website_url,
     languages: Array.isArray(row.languages) && row.languages.length > 0 ? row.languages : ['en'],
     current_onboarding_step: row.current_onboarding_step ?? 1,
+    setup_method: row.setup_method,
+    forwarding_type: row.forwarding_type ?? 'no_answer',
+    forwarding_carrier: row.forwarding_carrier,
+    forwarding_country: row.forwarding_country ?? 'us',
+    telnyx_number: row.telnyx_number,
     ai_voice: row.ai_voice ?? 'Aoede',
     ai_welcome_message: row.ai_welcome_message,
     ai_custom_instructions: row.ai_custom_instructions,
@@ -125,6 +135,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'website_url',
           'languages',
           'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -173,6 +188,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'website_url',
           'languages',
           'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -287,6 +307,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'website_url',
           'languages',
           'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -330,6 +355,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'
+        | 'setup_method'
+        | 'forwarding_type'
+        | 'forwarding_carrier'
+        | 'forwarding_country'
+        | 'telnyx_number'
       >
     >,
   ): Promise<Shop | null> {
@@ -352,6 +382,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.website_url !== undefined) payload.website_url = patch.website_url;
     if (patch.languages !== undefined) payload.languages = patch.languages;
     if (patch.current_onboarding_step !== undefined) payload.current_onboarding_step = patch.current_onboarding_step;
+    if (patch.setup_method !== undefined) payload.setup_method = patch.setup_method;
+    if (patch.forwarding_type !== undefined) payload.forwarding_type = patch.forwarding_type;
+    if (patch.forwarding_carrier !== undefined) payload.forwarding_carrier = patch.forwarding_carrier;
+    if (patch.forwarding_country !== undefined) payload.forwarding_country = patch.forwarding_country;
+    if (patch.telnyx_number !== undefined) payload.telnyx_number = patch.telnyx_number;
 
     const { data, error } = await this.supabase
       .from('shops')
@@ -377,6 +412,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'website_url',
           'languages',
           'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -454,6 +494,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'website_url',
           'languages',
           'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -513,6 +558,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'website_url',
           'languages',
           'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -569,6 +619,11 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'website_url',
           'languages',
           'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',

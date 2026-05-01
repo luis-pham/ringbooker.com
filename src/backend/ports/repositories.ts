@@ -335,6 +335,11 @@ export interface ShopsRepository {
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'
+        | 'setup_method'
+        | 'forwarding_type'
+        | 'forwarding_carrier'
+        | 'forwarding_country'
+        | 'telnyx_number'
       >
     >,
   ): Promise<Shop | null>;
