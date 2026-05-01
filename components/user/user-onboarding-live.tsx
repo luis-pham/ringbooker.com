@@ -416,7 +416,7 @@ export function UserOnboardingLive() {
 .provider-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.provider-head h4{margin:0}.provider-head p{margin:3px 0 0;color:#64748b;font-size:13px}
 .provider-action{margin-top:auto}.provider-badge{display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:500;white-space:nowrap}.provider-badge.live{background:#dcfce7;color:#16a34a}.provider-badge.combo{background:#ede9fe;color:#7c3aed}.provider-badge.link{background:#f1f5f9;color:#475569}.provider-badge.soon{background:#fef3c7;color:#d97706}.provider-badge.connected{background:#dcfce7;color:#16a34a}
 .platform-selector{display:grid;gap:8px;margin-top:16px}.platform-selector select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#64748b 50%),linear-gradient(135deg,#64748b 50%,transparent 50%);background-position:calc(100% - 18px) 20px,calc(100% - 12px) 20px;background-size:6px 6px,6px 6px;background-repeat:no-repeat;padding-right:42px}
-.platform-panel{margin-top:16px;border:1.5px solid #e2e8f0;border-radius:12px;background:#fff;padding:24px;animation:onbPanelIn .2s ease both;display:grid;gap:16px}.platform-panel .onb-btn-primary,.platform-panel .onb-btn-secondary{border:1.5px solid #7c3aed;color:#7c3aed;background:transparent;box-shadow:none;border-radius:999px;padding:10px 20px}.platform-panel .onb-btn-primary:hover,.platform-panel .onb-btn-secondary:hover{background:#faf5ff}.platform-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.platform-name{display:flex;align-items:center;gap:12px}.platform-logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#f8fafc;border:1.5px solid #e2e8f0;font-weight:900;color:#111827}.platform-panel h4,.platform-panel h3{margin:0}.platform-panel p{margin:0}.feature-list{display:grid;gap:7px;color:#64748b;font-size:13px}.feature-list span{display:block}.feature-list .no{color:#94a3b8}.connected-banner{display:flex;align-items:center;gap:8px;border-radius:12px;background:#ecfdf5;color:#047857;padding:11px 13px;font-weight:900}.platform-subsection{border-top:1px solid #eef1f6;padding-top:16px;display:grid;gap:10px}.disconnect-link{justify-self:end;border:0;background:transparent;color:#64748b;font-size:12px;font-weight:800;cursor:pointer}.no-platform{display:flex;gap:12px;align-items:flex-start}.no-platform-icon{font-size:28px}
+.platform-panel{margin-top:16px;border:1.5px solid #e2e8f0;border-radius:12px;background:#fff;padding:24px;animation:onbPanelIn .2s ease both;display:grid;gap:16px}.platform-panel .onb-btn-primary,.platform-panel .onb-btn-secondary{align-self:flex-end;border:1.5px solid #7c3aed;color:#7c3aed;background:transparent;box-shadow:none;border-radius:999px;padding:8px 20px;font-size:14px;font-weight:500}.platform-panel .onb-btn-primary:hover,.platform-panel .onb-btn-secondary:hover{background:#faf5ff}.platform-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:2px}.platform-title{display:flex;align-items:flex-start;gap:10px;min-width:0}.platform-logo-img{width:28px;height:28px;object-fit:contain;flex-shrink:0;margin-top:1px}.platform-title-name{font-size:16px;font-weight:600;color:#1a1a1a;line-height:1.25}.platform-title-desc{font-size:13px;color:#6b7280;margin-top:2px;line-height:1.4}.platform-panel h4,.platform-panel h3{margin:0}.platform-panel p{margin:0}.feature-list{display:grid;gap:4px;margin:12px 0;color:#374151;font-size:13px}.feature-list span{display:flex;align-items:center;gap:8px}.feature-list strong{color:#16a34a;font-weight:900}.feature-list .no{color:#374151}.feature-list .no strong{color:#9ca3af}.connected-banner{display:flex;align-items:center;gap:8px;border-radius:12px;background:#ecfdf5;color:#047857;padding:11px 13px;font-weight:900}.platform-subsection{border-top:1px solid #f1f5f9;padding-top:16px;margin-top:16px;display:grid;gap:10px}.platform-subsection h4{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em}.platform-field{display:grid;gap:6px}.platform-field label{font-size:12px;font-weight:700;color:#475569}.disconnect-link{justify-self:end;border:0;background:transparent;color:#64748b;font-size:12px;font-weight:800;cursor:pointer}.no-platform-box{margin-top:16px;background:#f8fafc;border-radius:12px;padding:24px;text-align:center}.no-platform-icon{font-size:32px;line-height:1;margin-bottom:10px}.connect-another{display:block;margin:12px auto 0;border:0;background:transparent;color:#64748b;font-size:13px;font-weight:700;cursor:pointer}
 @keyframes onbPanelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .step3-stack{display:grid;gap:0;margin-top:24px}.step3-card{min-height:auto}.step3-website-input{width:100%}.step3-read-btn{align-self:flex-start;max-width:200px;width:100%;margin-top:2px}.step3-or{display:flex;align-items:center;gap:12px;margin:24px 0;color:#94a3b8;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.step3-or:before,.step3-or:after{content:"";height:1px;background:#e5e7eb;flex:1}.step3-actions{justify-content:space-between}
 .manual-header{display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:10px;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.service-row{display:grid;grid-template-columns:minmax(0,1fr) 80px;gap:10px;align-items:center}.price-wrap{position:relative}.price-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b}.price-wrap input{padding-left:28px!important}.add-service-btn{border:1.5px dashed #a78bfa;border-radius:10px;background:#fff;color:#6d28d9;padding:0 13px;font-weight:900;cursor:pointer;width:100%;height:44px}
@@ -635,14 +635,10 @@ export function UserOnboardingLive() {
   function renderPlatformPanel(providerId: string) {
     if (providerId === 'none') {
       return (
-        <div className="platform-panel">
-          <div className="no-platform">
-            <div className="no-platform-icon">💬</div>
-            <div>
-              <h3>No problem!</h3>
-              <p className="sub">RingBooker works great without booking software. We'll capture caller details and send you a summary after every call.</p>
-            </div>
-          </div>
+        <div className="no-platform-box">
+          <div className="no-platform-icon">💬</div>
+          <h3>No problem!</h3>
+          <p className="sub">RingBooker works great without booking software. We'll capture caller details and send you a full summary after every call.</p>
         </div>
       );
     }
@@ -656,11 +652,11 @@ export function UserOnboardingLive() {
       <div className="platform-panel">
         {connected ? <div className="connected-banner">✓ Connected to {providerLabel}</div> : null}
         <div className="platform-panel-head">
-          <div className="platform-name">
-            <div className="platform-logo">{getProviderLogoText(providerId)}</div>
+          <div className="platform-title">
+            <img className="platform-logo-img" src={getProviderLogoSrc(providerId)} alt={`${providerLabel} logo`} />
             <div>
-              <h3>{providerLabel}</h3>
-              <p className="sub">{PROVIDER_DESCRIPTIONS[providerId] ?? 'Connect this provider to RingBooker.'}</p>
+              <div className="platform-title-name">{providerLabel}</div>
+              <div className="platform-title-desc">{PROVIDER_DESCRIPTIONS[providerId] ?? 'Connect this provider to RingBooker.'}</div>
             </div>
           </div>
           <span className={`provider-badge ${badgeClass}`}>{connected ? 'Connected ✓' : PROVIDER_BADGES[providerId]}</span>
@@ -670,9 +666,9 @@ export function UserOnboardingLive() {
           <>
             <p>Direct calendar connection — RingBooker checks availability and books appointments in real time.</p>
             <div className="feature-list">
-              <span>✓ Real-time availability checking</span>
-              <span>✓ Direct appointment booking</span>
-              <span>✓ Stylist preference matching</span>
+              <span><strong>✓</strong> Real-time availability checking</span>
+              <span><strong>✓</strong> Direct appointment booking</span>
+              <span><strong>✓</strong> Stylist preference matching</span>
             </div>
             {!connected ? <a className="onb-btn-primary" href="/api/backend/user/calendar/providers/square_appointments/connect/start">Connect Square Appointments →</a> : null}
           </>
@@ -682,27 +678,29 @@ export function UserOnboardingLive() {
           <>
             <p>RingBooker checks your Vagaro availability and sends callers your booking link via SMS.</p>
             <div className="feature-list">
-              <span>✓ Real-time availability checking</span>
-              <span>✓ Booking link sent via SMS to callers</span>
+              <span><strong>✓</strong> Real-time availability checking</span>
+              <span><strong>✓</strong> Booking link sent via SMS</span>
             </div>
             <div className="platform-subsection">
               <h4>Connect Vagaro</h4>
-              <input placeholder="Client ID" value={vagaroForm.clientId} onChange={(event) => setVagaroForm({ ...vagaroForm, clientId: event.target.value })} />
-              <input placeholder="Client Secret" value={vagaroForm.clientSecretKey} onChange={(event) => setVagaroForm({ ...vagaroForm, clientSecretKey: event.target.value })} />
-              <select value={vagaroForm.region} onChange={(event) => setVagaroForm({ ...vagaroForm, region: event.target.value })}>
-                <option value="us">US</option>
-                <option value="ca">Canada</option>
-                <option value="uk">UK</option>
-                <option value="au">Australia</option>
-              </select>
-              <input placeholder="Business ID" value={vagaroForm.businessId} onChange={(event) => setVagaroForm({ ...vagaroForm, businessId: event.target.value })} />
+              <div className="platform-field"><label>Client ID</label><input placeholder="Client ID" value={vagaroForm.clientId} onChange={(event) => setVagaroForm({ ...vagaroForm, clientId: event.target.value })} /></div>
+              <div className="platform-field"><label>Client Secret</label><input placeholder="Client Secret" value={vagaroForm.clientSecretKey} onChange={(event) => setVagaroForm({ ...vagaroForm, clientSecretKey: event.target.value })} /></div>
+              <div className="platform-field"><label>Region</label><select value={vagaroForm.region} onChange={(event) => setVagaroForm({ ...vagaroForm, region: event.target.value })}>
+                  <option value="us">US</option>
+                  <option value="ca">Canada</option>
+                  <option value="uk">UK</option>
+                  <option value="au">Australia</option>
+                </select></div>
+              <div className="platform-field"><label>Business ID</label><input placeholder="Business ID" value={vagaroForm.businessId} onChange={(event) => setVagaroForm({ ...vagaroForm, businessId: event.target.value })} /></div>
               <button className="onb-btn-primary" type="button" onClick={connectVagaro}>Connect Vagaro →</button>
             </div>
             <div className="platform-subsection">
-              <h4>Add your Vagaro booking link</h4>
-              <p className="onb-help">Optional — for direct SMS booking</p>
-              <input placeholder="https://vagaro.com/your-business" value={vagaroForm.bookingUrl} onChange={(event) => setVagaroForm({ ...vagaroForm, bookingUrl: event.target.value })} />
-              <button className="onb-btn-secondary" type="button" onClick={connectVagaro}>Save booking link</button>
+              <h4>Booking Link</h4>
+              <div className="platform-field">
+                <label>Your Vagaro booking URL (optional)</label>
+                <input placeholder="https://vagaro.com/your-business" value={vagaroForm.bookingUrl} onChange={(event) => setVagaroForm({ ...vagaroForm, bookingUrl: event.target.value })} />
+              </div>
+              <button className="onb-btn-secondary" type="button" onClick={connectVagaro}>Save Booking Link</button>
             </div>
           </>
         ) : null}
@@ -711,12 +709,14 @@ export function UserOnboardingLive() {
           <>
             <p>{getBookingLinkDescription(providerId)}</p>
             <div className="feature-list">
-              <span>✓ Booking link sent via SMS to callers</span>
-              <span className="no">✗ No direct calendar integration available</span>
+              <span><strong>✓</strong> Booking link sent via SMS to callers</span>
+              <span className="no"><strong>✗</strong> No direct calendar integration available</span>
             </div>
             <div className="platform-subsection">
-              <label className="onb-section-title">{getBookingLinkInputLabel(providerId)}</label>
-              <input value={bookingLinkInputs[providerId] ?? ''} onChange={(event) => setBookingLinkInputs({ ...bookingLinkInputs, [providerId]: event.target.value })} placeholder={getBookingLinkPlaceholder(providerId)} />
+              <div className="platform-field">
+                <label>{getBookingLinkInputLabel(providerId)}</label>
+                <input value={bookingLinkInputs[providerId] ?? ''} onChange={(event) => setBookingLinkInputs({ ...bookingLinkInputs, [providerId]: event.target.value })} placeholder={getBookingLinkPlaceholder(providerId)} />
+              </div>
               {providerId === 'glossgenius' ? <p className="onb-help">Find this in your GlossGenius dashboard → Online Booking</p> : null}
               <button className="onb-btn-primary" type="button" onClick={() => saveBookingLink(providerId)}>Save booking link →</button>
             </div>
@@ -728,6 +728,7 @@ export function UserOnboardingLive() {
         ) : null}
 
         {connected ? <button className="disconnect-link" type="button">Disconnect</button> : null}
+        {connected ? <button className="connect-another" type="button" onClick={() => setSelectedProvider('')}>+ Connect another platform</button> : null}
       </div>
     );
   }
@@ -779,14 +780,10 @@ function getProviderBadgeClass(providerId: string): string {
   return 'link';
 }
 
-function getProviderLogoText(providerId: string): string {
-  if (providerId === 'square_appointments') return '□';
-  if (providerId === 'vagaro') return 'V';
-  if (providerId === 'glossgenius') return 'G';
-  if (providerId === 'fresha') return 'F';
-  if (providerId === 'booksy') return 'B';
-  if (providerId === 'mindbody') return 'M';
-  return '•';
+function getProviderLogoSrc(providerId: string): string {
+  if (providerId === 'square_appointments') return '/images/square.png';
+  if (providerId === 'mindbody') return '/images/mindbody.webp';
+  return `/images/${providerId}.png`;
 }
 
 function getBookingLinkDescription(providerId: string): string {
