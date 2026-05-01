@@ -4,7 +4,6 @@ import type { ToolError } from '@/src/backend/domain/types';
 import { type AgentToolContext, toToolError } from '@/src/agent/tools/types';
 
 const schema = z.object({
-  callerPhone: z.string().min(1),
   callerName: z.string().min(1).optional(),
   serviceInterest: z.string().min(1).optional(),
 });
@@ -26,6 +25,7 @@ export async function sendBookingLinkTool(
 
   const callerName = parsed.data.callerName?.trim() || 'there';
   const serviceInterest = parsed.data.serviceInterest?.trim() || 'appointment';
+  const toPhone = ctx.callerPhone;
   const smsText = `${ctx.shop.name}: Hi ${callerName}! Here is the link to book your ${serviceInterest} appointment:\n${bookingUrl}`;
 
   try {
@@ -34,12 +34,12 @@ export async function sendBookingLinkTool(
       type: 'booking_link_sms',
       payload: {
         shopId: ctx.shop.id,
-        toPhone: parsed.data.callerPhone,
+        toPhone,
         message: smsText,
         bookingUrl,
       },
       runAt: new Date(),
-      idempotencyKey: `booking-link:${ctx.requestId}:${parsed.data.callerPhone}`,
+      idempotencyKey: `booking-link:${ctx.requestId}:${toPhone}`,
     });
   } catch {
     return toToolError('I could not send the booking link right now. Ask the caller to contact the business directly.', {
@@ -50,6 +50,6 @@ export async function sendBookingLinkTool(
 
   return {
     success: true,
-    message: `Booking link sent to ${parsed.data.callerPhone}`,
+    message: `Booking link sent to ${toPhone}`,
   };
 }

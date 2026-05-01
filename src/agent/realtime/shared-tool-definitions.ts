@@ -124,11 +124,10 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
       type: 'object',
       additionalProperties: false,
       properties: {
-        callerPhone: { type: 'string', description: "Required caller's phone number." },
         callerName: { type: 'string', description: 'Optional caller name.' },
         serviceInterest: { type: 'string', description: 'Optional service or appointment type the caller wants to book.' },
       },
-      required: ['callerPhone'],
+      required: [],
     },
   },
 ];

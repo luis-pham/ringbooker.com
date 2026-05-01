@@ -93,7 +93,7 @@ test('enqueues job when booking URL exists', async () => {
     payload: { toPhone: string; bookingUrl: string; message: string };
   };
   assert.equal(job.type, 'booking_link_sms');
-  assert.equal(job.payload.toPhone, '+15551234567');
+  assert.equal(job.payload.toPhone, ctx.callerPhone);
   assert.equal(job.payload.bookingUrl, 'https://glossgenius.com/test');
   assert.match(job.payload.message, /Jane/);
   assert.match(job.payload.message, /haircut/);
