@@ -1,3 +1,4 @@
+import { getEnv } from '@/src/backend/config/env';
 import type { SmsSendResult, SmsService } from '@/src/backend/services/sms/types';
 
 export class NoopSmsService implements SmsService {
@@ -19,7 +20,10 @@ export class NoopSmsService implements SmsService {
     bookingId?: string;
     idempotencyKey: string;
   }): Promise<SmsSendResult> {
-    void params;
+    console.log('[NoopSMS] from:', getEnv().TELNYX_SMS_SENDER_NUMBER || '+18888401886');
+    console.log('[NoopSMS] to:', params.to);
+    console.log('[NoopSMS] category:', params.category);
+    console.log('[NoopSMS] body:', params.body);
     return {
       providerMessageId: undefined,
     };

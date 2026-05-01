@@ -1,3 +1,4 @@
+import { getEnv } from '@/src/backend/config/env';
 import { withLogContext } from '@/src/backend/observability/logger';
 import type { SmsSendResult, SmsService } from '@/src/backend/services/sms/types';
 import { isRetryableHttpStatus, RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
@@ -30,6 +31,7 @@ export class TelnyxSmsService implements SmsService {
     bookingId?: string;
     idempotencyKey: string;
   }): Promise<SmsSendResult> {
+    const from = getEnv().TELNYX_SMS_SENDER_NUMBER || '+18888401886';
     const log = withLogContext({
       shopId: params.shopId,
       provider: 'telnyx',
@@ -46,7 +48,7 @@ export class TelnyxSmsService implements SmsService {
           },
           body: JSON.stringify({
             to: params.to,
-            from: params.from,
+            from,
             text: params.body,
           }),
         });
