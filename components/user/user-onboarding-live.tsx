@@ -406,9 +406,9 @@ export function UserOnboardingLive() {
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;border:0;border-radius:8px;background:#6d28d9;color:#fff;padding:8px 16px;font-size:14px;font-weight:500;box-shadow:0 8px 18px rgba(109,40,217,.18);cursor:pointer;text-decoration:none}
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;height:36px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none}.onb-text-link{border:0;background:transparent;color:#64748b;font-weight:800;cursor:pointer;padding:8px 0}
-.hours-list{display:grid;gap:8px}.hours-row{display:grid;grid-template-columns:minmax(46px,70px) 108px 1fr 1fr;gap:10px;align-items:center;border:1.5px solid #e2e8f0;border-radius:12px;padding:12px;background:#fff}.hours-row:nth-child(even){background:#f8fafc}.hours-row.closed select{opacity:.45;background:#f1f5f9}
+.hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff}.hours-row:hover{background:#fafafa}.hours-row.closed{background:#fafafa}.hours-row.closed select{opacity:.4;background:#f1f5f9}.hours-divider{border:0;border-top:1px solid #f1f5f9;margin:0;width:100%}
 .hours-day{font-weight:900;color:#111827;min-width:40px}.toggle-pill{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid #dbe2ee;border-radius:999px;padding:8px 12px;background:#fff;font-weight:800;color:#64748b;cursor:pointer}.toggle-pill input{position:absolute;opacity:0;pointer-events:none}.toggle-dot{width:28px;height:16px;border-radius:999px;background:#cbd5e1;position:relative;transition:.18s ease}.toggle-dot:after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:.18s ease}.toggle-pill.active{border-color:#8b5cf6;color:#5b21b6;background:#f5f3ff}.toggle-pill.active .toggle-dot{background:#7c3aed}.toggle-pill.active .toggle-dot:after{transform:translateX(12px)}
-.lang-list{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.check-pill{display:inline-flex;align-items:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 13px;background:#fff}.lang-pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 15px;background:#fff;color:#374151;font-weight:900;cursor:pointer}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#7c3aed;border-color:#7c3aed;color:#fff}.lang-pill.locked{background:#f1f5f9;color:#9ca3af;cursor:not-allowed;flex-direction:column;gap:2px}.required-badge{border-radius:999px;background:transparent;color:#9ca3af;padding:0;font-size:10px;font-weight:800}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:900}
+.lang-list{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.check-pill{display:inline-flex;align-items:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 13px;background:#fff}.lang-pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 15px;background:#fff;color:#374151;font-weight:900;cursor:pointer}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#7c3aed;border-color:#7c3aed;color:#fff}.lang-pill.locked{background:#f1f5f9;color:#9ca3af;cursor:not-allowed;flex-direction:column;gap:2px}.required-badge{border-radius:999px;background:transparent;color:#9ca3af;padding:0;font-size:10px;font-weight:800}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:900}.recommended-badge{display:inline-flex;width:fit-content;border-radius:999px;background:#dcfce7;color:#16a34a;padding:3px 10px;font-size:12px;font-weight:500;margin-bottom:12px}.onb-card-title{font-size:16px;font-weight:700;color:#111827;margin:0}
 .provider-card{border:1.5px solid #e2e8f0;border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px;min-height:210px;background:#fff;box-shadow:none}
 .provider-card.recommended{border-top:1.5px solid #e2e8f0;box-shadow:none}
 .provider-card.disabled{opacity:.5;background:#f8fafc;position:relative}
@@ -426,7 +426,7 @@ export function UserOnboardingLive() {
 .read-success{color:#047857;font-weight:800}
 @media(max-width:1024px){.onb-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:767px){.step3-read-btn{max-width:none}.step3-actions{flex-direction:column;align-items:stretch}.step3-actions .onb-btn-primary{order:1;width:100%}.step3-actions .onb-text-link{order:2;text-align:center}}
-@media(max-width:640px){.onb-shell{padding:0}.onb-card{border-radius:0;border-left:0;border-right:0;box-shadow:none;padding:16px;max-width:none;min-height:100vh}.onb-progress{gap:12px}.onb-back-inline{padding:8px;width:36px;height:36px}.onb-back-text{display:none}.onb-progress-main{display:flex;justify-content:flex-end}.onb-progress-pills{display:flex;justify-content:center}.onb-progress-pill{width:34px;height:34px;padding:8px;border-radius:999px;font-size:0}.onb-progress-pill .onb-progress-mark{width:auto;height:auto;background:transparent!important;box-shadow:none!important;color:inherit}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid,.onb-grid.three{grid-template-columns:1fr}.hours-row{grid-template-columns:1fr 1fr}.onb-actions{flex-direction:column;align-items:stretch}.onb-actions .onb-btn-primary{order:1;width:100%}.onb-actions .onb-text-link{order:2}.onb-text-link{text-align:center}.service-row,.manual-header{grid-template-columns:minmax(0,1fr) 80px}.provider-card{min-height:auto}.platform-panel{padding:20px}.platform-panel-head{flex-direction:column}.number-box{align-items:flex-start;flex-direction:column}}
+@media(max-width:640px){.onb-shell{padding:0}.onb-card{border-radius:0;border-left:0;border-right:0;box-shadow:none;padding:16px;max-width:none;min-height:100vh}.onb-progress{gap:12px}.onb-back-inline{padding:8px;width:36px;height:36px}.onb-back-text{display:none}.onb-progress-main{display:flex;justify-content:flex-end}.onb-progress-pills{display:flex;justify-content:center}.onb-progress-pill{width:34px;height:34px;padding:8px;border-radius:999px;font-size:0}.onb-progress-pill .onb-progress-mark{width:auto;height:auto;background:transparent!important;box-shadow:none!important;color:inherit}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid,.onb-grid.three{grid-template-columns:1fr}.hours-row{display:grid;grid-template-columns:1fr 1fr}.onb-actions{flex-direction:column;align-items:stretch}.onb-actions .onb-btn-primary{order:1;width:100%}.onb-actions .onb-text-link{order:2}.onb-text-link{text-align:center}.service-row,.manual-header{grid-template-columns:minmax(0,1fr) 80px}.provider-card{min-height:auto}.platform-panel{padding:20px}.platform-panel-head{flex-direction:column}.number-box{align-items:flex-start;flex-direction:column}}
 `,
     ],
     [],
@@ -503,16 +503,19 @@ export function UserOnboardingLive() {
           <section>
           <p className="onb-section-title">Business Hours</p>
           <div className="hours-list">
-            {DAYS.map(([day, label]) => (
-              <div className={`hours-row ${hours[day].open ? '' : 'closed'}`} key={day}>
-                <strong className="hours-day">{label}</strong>
-                <label className={`toggle-pill ${hours[day].open ? 'active' : ''}`}>
-                  <input type="checkbox" checked={hours[day].open} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], open: event.target.checked } })} />
-                  <span className="toggle-dot" />
-                  {hours[day].open ? 'Open' : 'Closed'}
-                </label>
-                <select disabled={!hours[day].open} value={hours[day].from} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], from: event.target.value } })}>{TIME_OPTIONS.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}</select>
-                <select disabled={!hours[day].open} value={hours[day].to} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], to: event.target.value } })}>{TIME_OPTIONS.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}</select>
+            {DAYS.map(([day, label], index) => (
+              <div key={day}>
+                <div className={`hours-row ${hours[day].open ? '' : 'closed'}`}>
+                  <strong className="hours-day">{label}</strong>
+                  <label className={`toggle-pill ${hours[day].open ? 'active' : ''}`}>
+                    <input type="checkbox" checked={hours[day].open} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], open: event.target.checked } })} />
+                    <span className="toggle-dot" />
+                    {hours[day].open ? 'Open' : 'Closed'}
+                  </label>
+                  <select disabled={!hours[day].open} value={hours[day].from} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], from: event.target.value } })}>{TIME_OPTIONS.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}</select>
+                  <select disabled={!hours[day].open} value={hours[day].to} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], to: event.target.value } })}>{TIME_OPTIONS.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}</select>
+                </div>
+                {index < DAYS.length - 1 ? <hr className="hours-divider" /> : null}
               </div>
             ))}
           </div>
@@ -556,8 +559,8 @@ export function UserOnboardingLive() {
         <p className="onb-subtitle">RingBooker uses this to answer questions about pricing and services</p>
         <div className="step3-stack">
           <div className="provider-card recommended step3-card">
-            <span className="mini-badge">✨ Recommended</span>
-            <h3>🌐 Read from your website</h3>
+            <span className="recommended-badge">✨ Recommended</span>
+            <h3 className="onb-card-title">🌐 Read from your website</h3>
             <p className="sub">Paste your website URL and we'll automatically learn your services, prices, and hours</p>
             <input className="step3-website-input" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://happynails.com" />
             <button className="onb-btn-primary provider-action step3-read-btn" type="button" onClick={readWebsite} disabled={websiteLoading}>{websiteLoading ? 'Reading your website...' : 'Read Website →'}</button>
@@ -565,7 +568,7 @@ export function UserOnboardingLive() {
           </div>
           <div className="step3-or">or</div>
           <div className="provider-card step3-card">
-            <h3>Enter services manually</h3>
+            <h3 className="onb-card-title">Enter services manually</h3>
             <div className="manual-header"><span>Service Name</span><span>Price (optional)</span></div>
             {services.map((service, index) => (
               <div className="service-row" key={index}>
@@ -612,10 +615,12 @@ export function UserOnboardingLive() {
           </select>
         </div>
         {selectedProvider ? renderPlatformPanel(selectedProvider) : null}
-        <button className="onb-text-link" type="button" onClick={() => document.getElementById('onboarding-call-forwarding')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Skip — I'll connect my booking software later →</button>
+        <button className="onb-text-link" type="button" onClick={() => document.getElementById('call-forwarding-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Skip — I'll connect my booking software later →</button>
         <div className="section-divider">then</div>
-        <p className="onb-section-title" id="onboarding-call-forwarding">Set up call forwarding</p>
-        <p className="sub">Forward your business number to RingBooker to start capturing missed calls</p>
+        <div id="call-forwarding-section">
+          <p className="onb-section-title">Set up call forwarding</p>
+          <p className="sub">Forward your business number to RingBooker to start capturing missed calls</p>
+        </div>
         <div className="provider-card">
           <strong>📞 Your RingBooker number:</strong>
           <div className="number-box">
@@ -626,7 +631,7 @@ export function UserOnboardingLive() {
         </div>
         <div className="onb-actions">
           <button className="onb-text-link" type="button" onClick={completeSetup}>I'll finish this later →</button>
-          <button className="onb-btn-primary" type="button" onClick={completeSetup}>Complete Setup ✓</button>
+          <button id="complete-setup-btn" className="onb-btn-primary" type="button" onClick={completeSetup}>Complete Setup ✓</button>
         </div>
       </div>
     );
