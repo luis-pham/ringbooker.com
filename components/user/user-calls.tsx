@@ -194,7 +194,7 @@ button,input,select,textarea{font:inherit}
 
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .field{margin-bottom:20px}
-.field label{display:block;font-size:12px;font-weight:600;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+.field label{display:block;font-size:11px;font-weight:600;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em}
 .field input,.field textarea,.field select{
   width:100%;height:40px;padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;
   color:#111827;outline:none;font:inherit;font-size:14px;line-height:1.5;
