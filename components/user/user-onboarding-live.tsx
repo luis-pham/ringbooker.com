@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { CallForwardingSetup } from '@/components/user/call-forwarding-setup';
+import type { ForwardingType } from '@/lib/call-forwarding/carrier-data';
 import { UserLayout } from '@/components/user/user-layout';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
@@ -31,6 +32,11 @@ type OnboardingStatusResponse = {
     website_url?: string;
     booking_url?: string;
     current_onboarding_step?: number | null;
+    setup_method?: 'forward' | 'new_number' | null;
+    forwarding_type?: ForwardingType | null;
+    forwarding_carrier?: string | null;
+    forwarding_country?: string | null;
+    telnyx_number?: string | null;
   };
   error?: string;
 };
@@ -250,6 +256,11 @@ export function UserOnboardingLive() {
   const [vagaroOpen, setVagaroOpen] = useState(false);
   const [vagaroForm, setVagaroForm] = useState({ clientId: '', clientSecretKey: '', region: 'us', businessId: '', bookingUrl: '' });
   const [forwardingConfirmed, setForwardingConfirmed] = useState(false);
+  const [setupMethod, setSetupMethod] = useState<'forward' | 'new_number' | undefined>();
+  const [forwardingType, setForwardingType] = useState<ForwardingType>('no_answer');
+  const [forwardingCarrier, setForwardingCarrier] = useState<string | undefined>();
+  const [forwardingCountry, setForwardingCountry] = useState('us');
+  const [telnyxNumber, setTelnyxNumber] = useState('');
 
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -295,6 +306,11 @@ export function UserOnboardingLive() {
     setWebsiteUrl(body.shop.website_url ?? '');
     setServices(body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: 60, price: 0 }]);
     setCurrentStep(normalizeStep(body.shop.current_onboarding_step));
+    setSetupMethod(body.shop.setup_method ?? undefined);
+    setForwardingType(body.shop.forwarding_type ?? 'no_answer');
+    setForwardingCarrier(body.shop.forwarding_carrier ?? undefined);
+    setForwardingCountry(body.shop.forwarding_country ?? 'us');
+    setTelnyxNumber(body.shop.telnyx_number ?? '');
     setLoading(false);
     void loadProviders();
   }
@@ -706,10 +722,24 @@ export function UserOnboardingLive() {
           <p className="onb-section-title">Set up call forwarding</p>
           <p className="sub">Forward your business number to RingBooker to start capturing missed calls</p>
           <CallForwardingSetup
-            ringbookerNumber={businessPhone || ''}
-            onComplete={() => setForwardingConfirmed(true)}
+            ringbookerNumber={telnyxNumber || businessPhone || ''}
+            callForwardingPageUrl="/current-number/call-forwarding"
+            initialMethod={setupMethod}
+            initialCarrier={forwardingCarrier}
+            initialCountry={forwardingCountry}
+            initialForwardingType={forwardingType}
+            onComplete={(method) => {
+              setForwardingConfirmed(true);
+              setSetupMethod(method);
+              fetch('/api/backend/user/settings', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ setup_method: method }),
+              }).catch(console.error);
+            }}
             onSkip={() => {}}
           />
+          {forwardingConfirmed ? <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#16a34a', marginTop: 8 }}><span>✓</span><span>Call handling configured</span></div> : null}
           <p className="onb-help" style={{ marginTop: 10 }}>
             Need a reference later? <a href="/current-number/call-forwarding" target="_blank" rel="noreferrer">View setup guides for your carrier →</a>
           </p>
