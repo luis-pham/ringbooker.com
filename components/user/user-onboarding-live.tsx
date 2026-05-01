@@ -189,6 +189,7 @@ export function UserOnboardingLive() {
   const [servicesFound, setServicesFound] = useState(0);
   const [services, setServices] = useState<ServiceItem[]>([{ name: '', duration_min: 60, price: 0 }]);
   const [providers, setProviders] = useState<CalendarProviderSummary[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [bookingLinkInputs, setBookingLinkInputs] = useState<Record<string, string>>({});
   const [vagaroOpen, setVagaroOpen] = useState(false);
   const [vagaroForm, setVagaroForm] = useState({ clientId: '', clientSecretKey: '', region: 'us', businessId: '', bookingUrl: '' });
@@ -240,6 +241,7 @@ export function UserOnboardingLive() {
     const body = (await response.json().catch(() => null)) as { ok?: boolean; providers?: CalendarProviderSummary[] } | null;
     if (!body?.ok) return;
     setProviders(body.providers ?? []);
+    setSelectedProvider((current) => current || ((body.providers ?? []).find((provider) => provider.connected)?.id ?? ''));
     setBookingLinkInputs(
       Object.fromEntries((body.providers ?? []).map((provider) => [provider.id, provider.details?.bookingUrl ?? ''])),
     );
@@ -379,10 +381,13 @@ export function UserOnboardingLive() {
 .onb-shell{max-width:1120px;margin:0 auto;padding:18px}
 .onb-card{background:#fff;border:1px solid #eceef4;border-radius:16px;box-shadow:0 22px 70px rgba(15,23,42,.08);padding:32px;max-width:760px;margin:0 auto}
 .onb-card.wide{max-width:980px}
-.onb-progress{display:grid;gap:10px;margin-bottom:28px}
+.onb-progress{display:flex;align-items:center;gap:24px;margin-bottom:28px}
 .onb-step-label{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.14em;font-weight:800}
-.onb-progress-pills{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.onb-progress-pill{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid #d9deea;border-radius:999px;padding:10px 12px;color:#64748b;background:#fff;font-size:13px;font-weight:800;white-space:nowrap}
+.onb-back-inline{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;background:#000;color:#fff;padding:8px 16px;font-weight:700;cursor:pointer;white-space:nowrap}.onb-back-inline:hover{background:#1a1a1a}.onb-back-inline.hidden{visibility:hidden}
+.onb-progress-divider{width:1px;height:24px;background:#e5e7eb;flex-shrink:0}
+.onb-progress-main{display:grid;gap:8px;flex:1;min-width:0}
+.onb-progress-pills{display:flex;justify-content:flex-end;gap:8px}
+.onb-progress-pill{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid #d9deea;border-radius:999px;padding:8px 16px;color:#64748b;background:#fff;font-size:14px;font-weight:800;white-space:nowrap;min-width:auto}
 .onb-progress-pill.done{background:#ede9fe;border-color:#8b5cf6;color:#5b21b6}
 .onb-progress-pill.current{background:#6d28d9;border-color:#6d28d9;color:#fff;box-shadow:0 12px 28px rgba(109,40,217,.22)}
 .onb-progress-mark{width:18px;height:18px;border-radius:999px;display:inline-grid;place-items:center;background:currentColor;color:inherit;box-shadow:inset 0 0 0 999px rgba(255,255,255,.8);font-size:11px}
@@ -411,13 +416,18 @@ export function UserOnboardingLive() {
 .provider-card.disabled:after{content:"Coming soon";position:absolute;inset:auto 16px 16px auto;border-radius:999px;background:#f59e0b;color:#fff;padding:6px 10px;font-size:11px;font-weight:900}
 .provider-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.provider-head h4{margin:0}.provider-head p{margin:3px 0 0;color:#64748b;font-size:13px}
 .provider-action{margin-top:auto}.provider-badge{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;white-space:nowrap}.provider-badge.live{background:#dcfce7;color:#047857}.provider-badge.combo{background:#6d28d9;color:#fff}.provider-badge.link{background:#f1f5f9;color:#334155}.provider-badge.soon{background:#f59e0b;color:#fff}.provider-badge.connected{background:#dcfce7;color:#047857}
-.manual-header{display:grid;grid-template-columns:1fr 120px;gap:10px;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.service-row{display:grid;grid-template-columns:1fr 120px;gap:10px;align-items:center}.price-wrap{position:relative}.price-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b}.price-wrap input{padding-left:28px!important}.add-service-btn{border:1px dashed #a78bfa;border-radius:14px;background:#faf7ff;color:#6d28d9;padding:13px;font-weight:900;cursor:pointer;width:100%}
+.platform-selector{display:grid;gap:8px;margin-top:16px}.platform-selector select{border:1px solid #dfe3ec;border-radius:14px;padding:13px 14px;font:inherit;background:#fff;color:#111827}
+.platform-panel{margin-top:16px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;padding:24px;animation:onbPanelIn .2s ease both;display:grid;gap:16px}.platform-panel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.platform-name{display:flex;align-items:center;gap:12px}.platform-logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#f8fafc;border:1px solid #e5e7eb;font-weight:900;color:#111827}.platform-panel h4,.platform-panel h3{margin:0}.platform-panel p{margin:0}.feature-list{display:grid;gap:7px;color:#64748b;font-size:13px}.feature-list span{display:block}.feature-list .no{color:#94a3b8}.connected-banner{display:flex;align-items:center;gap:8px;border-radius:12px;background:#ecfdf5;color:#047857;padding:11px 13px;font-weight:900}.platform-subsection{border-top:1px solid #eef1f6;padding-top:16px;display:grid;gap:10px}.disconnect-link{justify-self:end;border:0;background:transparent;color:#64748b;font-size:12px;font-weight:800;cursor:pointer}.no-platform{display:flex;gap:12px;align-items:flex-start}.no-platform-icon{font-size:28px}
+@keyframes onbPanelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.step3-stack{display:grid;gap:0;margin-top:24px}.step3-card{min-height:auto}.step3-website-input{width:100%;padding:15px 14px!important;font-size:16px!important}.step3-read-btn{align-self:flex-start;max-width:200px;width:100%;margin-top:2px}.step3-or{display:flex;align-items:center;gap:12px;margin:24px 0;color:#94a3b8;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.step3-or:before,.step3-or:after{content:"";height:1px;background:#e5e7eb;flex:1}.step3-actions{justify-content:space-between}
+.manual-header{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:10px;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.service-row{display:grid;grid-template-columns:minmax(0,1fr) 100px;gap:10px;align-items:center}.price-wrap{position:relative}.price-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b}.price-wrap input{padding-left:28px!important}.add-service-btn{border:1px dashed #a78bfa;border-radius:14px;background:#faf7ff;color:#6d28d9;padding:0 13px;font-weight:900;cursor:pointer;width:100%;height:44px}
 .section-divider{display:flex;align-items:center;gap:12px;margin:28px 0;color:#94a3b8;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.12em}.section-divider:before,.section-divider:after{content:"";height:1px;background:#e5e7eb;flex:1}
 .number-box{display:flex;align-items:center;justify-content:space-between;gap:12px;border-radius:18px;background:#111827;color:#fff;padding:16px 18px;font-weight:900}.number-copy{border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(255,255,255,.1);color:#fff;padding:8px 13px;font-weight:900}
 .onb-status{margin-top:14px;padding:12px 14px;border-radius:16px;background:#f8fafc;color:#475569;font-size:14px}
 .read-success{color:#047857;font-weight:800}
 @media(max-width:1024px){.onb-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.onb-shell{padding:0}.onb-card{border-radius:0;border-left:0;border-right:0;box-shadow:none;padding:20px 16px;max-width:none;min-height:100vh}.onb-progress-pills{display:flex;justify-content:center}.onb-progress-pill{width:11px;height:11px;padding:0;border-radius:999px;font-size:0}.onb-progress-pill .onb-progress-mark,.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid,.onb-grid.three{grid-template-columns:1fr}.hours-row{grid-template-columns:1fr 1fr}.onb-actions{flex-direction:column;align-items:stretch}.onb-actions .onb-btn-primary{width:100%}.onb-text-link{text-align:center}.service-row,.manual-header{grid-template-columns:1fr}.provider-card{min-height:auto}.number-box{align-items:flex-start;flex-direction:column}}
+@media(max-width:767px){.step3-read-btn{max-width:none}.step3-actions{flex-direction:column;align-items:stretch}.step3-actions .onb-btn-primary{order:1;width:100%}.step3-actions .onb-text-link{order:2;text-align:center}}
+@media(max-width:640px){.onb-shell{padding:0}.onb-card{border-radius:0;border-left:0;border-right:0;box-shadow:none;padding:20px 16px;max-width:none;min-height:100vh}.onb-progress{gap:12px}.onb-back-inline{padding:8px;width:36px;height:36px}.onb-back-text{display:none}.onb-progress-main{display:flex;justify-content:flex-end}.onb-step-label{display:none}.onb-progress-pills{display:flex;justify-content:center}.onb-progress-pill{width:34px;height:34px;padding:8px;border-radius:999px;font-size:0}.onb-progress-pill .onb-progress-mark{width:auto;height:auto;background:transparent!important;box-shadow:none!important;color:inherit}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid,.onb-grid.three{grid-template-columns:1fr}.hours-row{grid-template-columns:1fr 1fr}.onb-actions{flex-direction:column;align-items:stretch}.onb-actions .onb-btn-primary{width:100%}.onb-text-link{text-align:center}.service-row,.manual-header{grid-template-columns:minmax(0,1fr) 100px}.provider-card{min-height:auto}.number-box{align-items:flex-start;flex-direction:column}}
 `,
     ],
     [],
@@ -436,8 +446,10 @@ export function UserOnboardingLive() {
       <main className="main">
         <section className="onb-shell">
           <div className={`onb-card ${currentStep === 4 ? 'wide' : ''}`}>
-            <Progress currentStep={currentStep} />
-            {currentStep > 1 ? <button className="onb-btn-secondary" type="button" onClick={() => setCurrentStep((currentStep - 1) as WizardStep)}>← Back</button> : null}
+            <Progress
+              currentStep={currentStep}
+              onBack={() => setCurrentStep((currentStep - 1) as WizardStep)}
+            />
             {currentStep === 1 ? renderStep1() : null}
             {currentStep === 2 ? renderStep2() : null}
             {currentStep === 3 ? renderStep3() : null}
@@ -543,28 +555,29 @@ export function UserOnboardingLive() {
       <div>
         <h1 className="onb-title">What services do you offer?</h1>
         <p className="onb-subtitle">RingBooker uses this to answer questions about pricing and services</p>
-        <div className="onb-grid" style={{ marginTop: 18 }}>
-          <div className="provider-card recommended">
+        <div className="step3-stack">
+          <div className="provider-card recommended step3-card">
             <span className="mini-badge">✨ Recommended</span>
             <h3>🌐 Read from your website</h3>
             <p className="sub">Paste your website URL and we'll automatically learn your services, prices, and hours</p>
-            <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://happynails.com" />
-            <button className="onb-btn-primary provider-action" type="button" onClick={readWebsite} disabled={websiteLoading}>{websiteLoading ? 'Reading your website...' : 'Read Website →'}</button>
+            <input className="step3-website-input" value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://happynails.com" />
+            <button className="onb-btn-primary provider-action step3-read-btn" type="button" onClick={readWebsite} disabled={websiteLoading}>{websiteLoading ? 'Reading your website...' : 'Read Website →'}</button>
             {websiteReadSuccess ? <div className="read-success">Found {servicesFound} services on your website ✓</div> : null}
           </div>
-          <div className="provider-card">
-            <h3>Or enter manually</h3>
+          <div className="step3-or">or</div>
+          <div className="provider-card step3-card">
+            <h3>Enter services manually</h3>
             <div className="manual-header"><span>Service Name</span><span>Price (optional)</span></div>
             {services.map((service, index) => (
               <div className="service-row" key={index}>
-                <input value={service.name} onChange={(event) => setServiceRow(index, { ...service, name: event.target.value })} placeholder="Gel Manicure" />
+                <input value={service.name} onChange={(event) => setServiceRow(index, { ...service, name: event.target.value })} placeholder="e.g. Gel Manicure, Haircut..." />
                 <div className="price-wrap"><span>$</span><input type="number" value={service.price} onChange={(event) => setServiceRow(index, { ...service, price: Number(event.target.value) })} placeholder="0" /></div>
               </div>
             ))}
             <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0 }])}>+ Add service</button>
           </div>
         </div>
-        <div className="onb-actions">
+        <div className="onb-actions step3-actions">
           <button className="onb-text-link" type="button" onClick={() => setCurrentStep(4)}>Skip for now →</button>
           <button className="onb-btn-primary" type="button" onClick={continueStep3} disabled={saving}>{saving ? 'Saving...' : 'Continue →'}</button>
         </div>
@@ -579,40 +592,30 @@ export function UserOnboardingLive() {
         <p className="onb-subtitle">Connect your booking software (optional) and set up call forwarding</p>
         <h3>Connect your booking software</h3>
         <p className="sub">Optional — RingBooker works without this</p>
-        <div className="onb-grid three" style={{ marginTop: 16 }}>
-          {providers.filter((provider) => provider.id !== 'manual' && provider.id !== 'google_calendar').map((provider) => (
-            <div className={`provider-card ${provider.id === 'mindbody' ? 'disabled' : ''}`} key={provider.id}>
-              <div className="provider-head">
-                <div><h4>{provider.label}</h4><p>{PROVIDER_DESCRIPTIONS[provider.id] ?? 'Connect this provider to RingBooker.'}</p></div>
-                <span className={`provider-badge ${provider.connected ? 'connected' : getProviderBadgeClass(provider.id)}`}>{provider.connected ? 'Connected ✓' : PROVIDER_BADGES[provider.id]}</span>
-              </div>
-              {provider.id === 'square_appointments' && !provider.connected ? <a className="onb-btn-secondary provider-action" href="/api/backend/user/calendar/providers/square_appointments/connect/start">Connect</a> : null}
-              {provider.id === 'vagaro' && !provider.connected ? (
-                <>
-                  <button className="onb-btn-secondary provider-action" type="button" onClick={() => setVagaroOpen(!vagaroOpen)}>Connect</button>
-                  {vagaroOpen ? (
-                    <div className="onb-field">
-                      <input placeholder="Client ID" value={vagaroForm.clientId} onChange={(event) => setVagaroForm({ ...vagaroForm, clientId: event.target.value })} />
-                      <input placeholder="Client Secret Key" value={vagaroForm.clientSecretKey} onChange={(event) => setVagaroForm({ ...vagaroForm, clientSecretKey: event.target.value })} />
-                      <input placeholder="Business ID" value={vagaroForm.businessId} onChange={(event) => setVagaroForm({ ...vagaroForm, businessId: event.target.value })} />
-                      <input placeholder="https://vagaro.com/your-business" value={vagaroForm.bookingUrl} onChange={(event) => setVagaroForm({ ...vagaroForm, bookingUrl: event.target.value })} />
-                      <button className="onb-btn-primary" type="button" onClick={connectVagaro}>Save Vagaro</button>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-              {BOOKING_LINK_PROVIDERS.includes(provider.id as (typeof BOOKING_LINK_PROVIDERS)[number]) && !provider.connected ? (
-                <div className="onb-field">
-                  <input value={bookingLinkInputs[provider.id] ?? ''} onChange={(event) => setBookingLinkInputs({ ...bookingLinkInputs, [provider.id]: event.target.value })} placeholder="https://..." />
-                  <button className="onb-btn-secondary provider-action" type="button" onClick={() => saveBookingLink(provider.id)}>Add booking link</button>
-                </div>
-              ) : null}
-              {provider.id === 'mindbody' ? <button className="onb-btn-secondary provider-action" type="button" disabled>Coming soon</button> : null}
-            </div>
-          ))}
+        <div className="platform-selector">
+          <label className="onb-section-title" htmlFor="booking-platform-select">Which booking software do you use?</label>
+          <p className="onb-help">Select your platform to connect it with RingBooker</p>
+          <select id="booking-platform-select" value={selectedProvider} onChange={(event) => setSelectedProvider(event.target.value)}>
+            <option value="">Select your booking platform...</option>
+            <optgroup label="Live Integration">
+              <option value="square_appointments">Square Appointments</option>
+              <option value="vagaro">Vagaro</option>
+            </optgroup>
+            <optgroup label="Booking Link">
+              <option value="glossgenius">GlossGenius</option>
+              <option value="fresha">Fresha</option>
+              <option value="booksy">Booksy</option>
+            </optgroup>
+            <optgroup label="Coming Soon">
+              <option value="mindbody" disabled>Mindbody</option>
+            </optgroup>
+            <option value="none">I don't use booking software</option>
+          </select>
         </div>
+        {selectedProvider ? renderPlatformPanel(selectedProvider) : null}
+        <button className="onb-text-link" type="button" onClick={() => document.getElementById('onboarding-call-forwarding')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Skip — I'll connect my booking software later →</button>
         <div className="section-divider">then</div>
-        <h3>Set up call forwarding</h3>
+        <h3 id="onboarding-call-forwarding">Set up call forwarding</h3>
         <p className="sub">Forward your business number to RingBooker to start capturing missed calls</p>
         <div className="provider-card">
           <strong>📞 Your RingBooker number:</strong>
@@ -630,22 +633,134 @@ export function UserOnboardingLive() {
     );
   }
 
+  function renderPlatformPanel(providerId: string) {
+    if (providerId === 'none') {
+      return (
+        <div className="platform-panel">
+          <div className="no-platform">
+            <div className="no-platform-icon">💬</div>
+            <div>
+              <h3>No problem!</h3>
+              <p className="sub">RingBooker works great without booking software. We'll capture caller details and send you a summary after every call.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const provider = providers.find((item) => item.id === providerId);
+    const providerLabel = provider?.label ?? providerId;
+    const connected = provider?.connected === true;
+    const badgeClass = connected ? 'connected' : getProviderBadgeClass(providerId);
+
+    return (
+      <div className="platform-panel">
+        {connected ? <div className="connected-banner">✓ Connected to {providerLabel}</div> : null}
+        <div className="platform-panel-head">
+          <div className="platform-name">
+            <div className="platform-logo">{getProviderLogoText(providerId)}</div>
+            <div>
+              <h3>{providerLabel}</h3>
+              <p className="sub">{PROVIDER_DESCRIPTIONS[providerId] ?? 'Connect this provider to RingBooker.'}</p>
+            </div>
+          </div>
+          <span className={`provider-badge ${badgeClass}`}>{connected ? 'Connected ✓' : PROVIDER_BADGES[providerId]}</span>
+        </div>
+
+        {providerId === 'square_appointments' ? (
+          <>
+            <p>Direct calendar connection — RingBooker checks availability and books appointments in real time.</p>
+            <div className="feature-list">
+              <span>✓ Real-time availability checking</span>
+              <span>✓ Direct appointment booking</span>
+              <span>✓ Stylist preference matching</span>
+            </div>
+            {!connected ? <a className="onb-btn-primary" href="/api/backend/user/calendar/providers/square_appointments/connect/start">Connect Square Appointments →</a> : null}
+          </>
+        ) : null}
+
+        {providerId === 'vagaro' ? (
+          <>
+            <p>RingBooker checks your Vagaro availability and sends callers your booking link via SMS.</p>
+            <div className="feature-list">
+              <span>✓ Real-time availability checking</span>
+              <span>✓ Booking link sent via SMS to callers</span>
+            </div>
+            <div className="platform-subsection">
+              <h4>Connect Vagaro</h4>
+              <input placeholder="Client ID" value={vagaroForm.clientId} onChange={(event) => setVagaroForm({ ...vagaroForm, clientId: event.target.value })} />
+              <input placeholder="Client Secret" value={vagaroForm.clientSecretKey} onChange={(event) => setVagaroForm({ ...vagaroForm, clientSecretKey: event.target.value })} />
+              <select value={vagaroForm.region} onChange={(event) => setVagaroForm({ ...vagaroForm, region: event.target.value })}>
+                <option value="us">US</option>
+                <option value="ca">Canada</option>
+                <option value="uk">UK</option>
+                <option value="au">Australia</option>
+              </select>
+              <input placeholder="Business ID" value={vagaroForm.businessId} onChange={(event) => setVagaroForm({ ...vagaroForm, businessId: event.target.value })} />
+              <button className="onb-btn-primary" type="button" onClick={connectVagaro}>Connect Vagaro →</button>
+            </div>
+            <div className="platform-subsection">
+              <h4>Add your Vagaro booking link</h4>
+              <p className="onb-help">Optional — for direct SMS booking</p>
+              <input placeholder="https://vagaro.com/your-business" value={vagaroForm.bookingUrl} onChange={(event) => setVagaroForm({ ...vagaroForm, bookingUrl: event.target.value })} />
+              <button className="onb-btn-secondary" type="button" onClick={connectVagaro}>Save booking link</button>
+            </div>
+          </>
+        ) : null}
+
+        {BOOKING_LINK_PROVIDERS.includes(providerId as (typeof BOOKING_LINK_PROVIDERS)[number]) ? (
+          <>
+            <p>{getBookingLinkDescription(providerId)}</p>
+            <div className="feature-list">
+              <span>✓ Booking link sent via SMS to callers</span>
+              <span className="no">✗ No direct calendar integration available</span>
+            </div>
+            <div className="platform-subsection">
+              <label className="onb-section-title">{getBookingLinkInputLabel(providerId)}</label>
+              <input value={bookingLinkInputs[providerId] ?? ''} onChange={(event) => setBookingLinkInputs({ ...bookingLinkInputs, [providerId]: event.target.value })} placeholder={getBookingLinkPlaceholder(providerId)} />
+              {providerId === 'glossgenius' ? <p className="onb-help">Find this in your GlossGenius dashboard → Online Booking</p> : null}
+              <button className="onb-btn-primary" type="button" onClick={() => saveBookingLink(providerId)}>Save booking link →</button>
+            </div>
+          </>
+        ) : null}
+
+        {providerId === 'mindbody' ? (
+          <p>Mindbody integration is coming soon. We'll notify you when it's available.</p>
+        ) : null}
+
+        {connected ? <button className="disconnect-link" type="button">Disconnect</button> : null}
+      </div>
+    );
+  }
+
   function setServiceRow(index: number, value: ServiceItem) {
     setServices(services.map((item, itemIndex) => (itemIndex === index ? value : item)));
   }
 }
 
-function Progress({ currentStep }: { currentStep: WizardStep }) {
+function Progress({ currentStep, onBack }: { currentStep: WizardStep; onBack: () => void }) {
   return (
     <div className="onb-progress">
-      <span className="onb-step-label">Step {currentStep} of 4</span>
-      <div className="onb-progress-pills" aria-label={`Step ${currentStep} of 4`}>
-        {[1, 2, 3, 4].map((step) => (
-          <span key={step} className={`onb-progress-pill ${step < currentStep ? 'done' : ''} ${step === currentStep ? 'current' : ''}`}>
-            <span className="onb-progress-mark">{step < currentStep ? '✓' : step === currentStep ? '●' : '○'}</span>
-            <span>{STEP_LABELS[step - 1]}</span>
-          </span>
-        ))}
+      <button
+        className={`onb-back-inline ${currentStep === 1 ? 'hidden' : ''}`}
+        type="button"
+        onClick={onBack}
+        aria-hidden={currentStep === 1}
+        tabIndex={currentStep === 1 ? -1 : 0}
+      >
+        ← <span className="onb-back-text">Back</span>
+      </button>
+      <div className="onb-progress-divider" />
+      <div className="onb-progress-main">
+        <span className="onb-step-label">Step {currentStep} of 4</span>
+        <div className="onb-progress-pills" aria-label={`Step ${currentStep} of 4`}>
+          {[1, 2, 3, 4].map((step) => (
+            <span key={step} className={`onb-progress-pill ${step < currentStep ? 'done' : ''} ${step === currentStep ? 'current' : ''}`}>
+              <span className="onb-progress-mark">{step < currentStep ? '✓' : step === currentStep ? '●' : '○'}</span>
+              <span>{STEP_LABELS[step - 1]}</span>
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -664,6 +779,38 @@ function getProviderBadgeClass(providerId: string): string {
   if (providerId === 'vagaro') return 'combo';
   if (providerId === 'mindbody') return 'soon';
   return 'link';
+}
+
+function getProviderLogoText(providerId: string): string {
+  if (providerId === 'square_appointments') return '□';
+  if (providerId === 'vagaro') return 'V';
+  if (providerId === 'glossgenius') return 'G';
+  if (providerId === 'fresha') return 'F';
+  if (providerId === 'booksy') return 'B';
+  if (providerId === 'mindbody') return 'M';
+  return '•';
+}
+
+function getBookingLinkDescription(providerId: string): string {
+  if (providerId === 'fresha') {
+    return 'When callers want to book, RingBooker sends your Fresha booking link via SMS automatically.';
+  }
+  if (providerId === 'booksy') {
+    return 'When callers want to book, RingBooker sends your Booksy booking link via SMS automatically.';
+  }
+  return 'When callers want to book, RingBooker sends your GlossGenius booking link via SMS automatically.';
+}
+
+function getBookingLinkInputLabel(providerId: string): string {
+  if (providerId === 'fresha') return 'Your Fresha booking link';
+  if (providerId === 'booksy') return 'Your Booksy booking link';
+  return 'Your GlossGenius booking link';
+}
+
+function getBookingLinkPlaceholder(providerId: string): string {
+  if (providerId === 'fresha') return 'https://fresha.com/your-business-name';
+  if (providerId === 'booksy') return 'https://booksy.com/en-us/your-profile';
+  return 'https://glossgenius.com/your-business or your custom domain';
 }
 
 function toggleLanguage(current: string[], language: string, checked: boolean): string[] {
