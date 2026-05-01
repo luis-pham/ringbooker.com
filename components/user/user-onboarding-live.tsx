@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { CallForwardingSetup } from '@/components/user/call-forwarding-setup';
 import { UserLayout } from '@/components/user/user-layout';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
@@ -248,6 +249,7 @@ export function UserOnboardingLive() {
   const [bookingLinkInputs, setBookingLinkInputs] = useState<Record<string, string>>({});
   const [vagaroOpen, setVagaroOpen] = useState(false);
   const [vagaroForm, setVagaroForm] = useState({ clientId: '', clientSecretKey: '', region: 'us', businessId: '', bookingUrl: '' });
+  const [forwardingConfirmed, setForwardingConfirmed] = useState(false);
 
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -703,18 +705,18 @@ export function UserOnboardingLive() {
         <div id="call-forwarding-section">
           <p className="onb-section-title">Set up call forwarding</p>
           <p className="sub">Forward your business number to RingBooker to start capturing missed calls</p>
-        </div>
-        <div className="provider-card">
-          <strong>📞 Your RingBooker number:</strong>
-          <div className="number-box">
-            <span>{businessPhone || 'Being assigned...'}</span>
-            <button className="number-copy" type="button">Copy</button>
-          </div>
-          <a href="/current-number/call-forwarding" target="_blank" rel="noreferrer">View setup guides for your carrier →</a>
+          <CallForwardingSetup
+            ringbookerNumber={businessPhone || ''}
+            onComplete={() => setForwardingConfirmed(true)}
+            onSkip={() => {}}
+          />
+          <p className="onb-help" style={{ marginTop: 10 }}>
+            Need a reference later? <a href="/current-number/call-forwarding" target="_blank" rel="noreferrer">View setup guides for your carrier →</a>
+          </p>
         </div>
         <div className="onb-actions">
           <button className="onb-text-link" type="button" onClick={completeSetup}>I'll finish this later →</button>
-          <button id="complete-setup-btn" className="onb-btn-primary" type="button" onClick={completeSetup}>Complete Setup ✓</button>
+          <button id="complete-setup-btn" className="onb-btn-primary" type="button" onClick={completeSetup}>{forwardingConfirmed ? 'Forwarding Confirmed - Complete Setup ✓' : 'Complete Setup ✓'}</button>
         </div>
       </div>
     );

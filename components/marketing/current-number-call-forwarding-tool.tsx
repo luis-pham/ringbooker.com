@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { CallForwardingSetup } from '@/components/user/call-forwarding-setup';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import {
   CALL_FORWARDING_COUNTRY_GROUPS,
@@ -328,6 +329,10 @@ export function CurrentNumberCallForwardingTool() {
           ))}
         </ul>
         </div>
+      </section>
+
+      <section className="mx-auto mt-14 max-w-5xl px-6">
+        <CallForwardingSetup ringbookerNumber="+13083020242" />
       </section>
 
       <section ref={findRef} id="find-setup" className="mx-auto mt-24 max-w-6xl px-6">

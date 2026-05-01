@@ -232,6 +232,12 @@ const resetPasswordSchema = z.object({
   newPassword: z.string().min(8).max(128),
 });
 
+const testCallForwardingSchema = z.object({
+  shopId: z.string().min(1),
+  carrierId: z.string().min(1).optional(),
+  hasDialCodes: z.boolean().optional(),
+});
+
 const userSettingsBaseSchema = z.object({
   name: z.string().min(1).optional(),
   phone_number: z.string().min(1).optional(),
@@ -2734,6 +2740,27 @@ export function createBackendApp(deps: {
       success: true,
       servicesFound: 0,
       todo: 'website_scraping_not_implemented',
+    });
+  });
+
+  app.post(path('/user/test-call-forwarding'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_test_call_forwarding');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = testCallForwardingSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    // TODO: implement real Telnyx forwarding verification call.
+    // Stub behavior: dial-code carriers pass; app/dashboard-only carriers fail.
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    return c.json({
+      ok: true,
+      success: parsed.data.hasDialCodes === true,
     });
   });
 
