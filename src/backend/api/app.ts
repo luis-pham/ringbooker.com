@@ -44,6 +44,7 @@ import type { BillingProviderAdapter } from '@/src/backend/services/billing/type
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
 import type { EmailService } from '@/src/backend/services/email/types';
+import { getDemoRequestConfirmationEmail } from '@/src/backend/services/email/templates/demo-request-confirmation';
 import { getEnv } from '@/src/backend/config/env';
 import { logger } from '@/src/backend/observability/logger';
 import { trackApiStatusForAlerts } from '@/src/backend/observability/security-alerts';
@@ -1620,6 +1621,64 @@ export function createBackendApp(deps: {
             salesTo,
           },
           'public_contact_email_send_failed',
+        );
+      }
+    }
+
+    if (deps.emailService) {
+      const firstName = parsed.data.fullName.trim().split(/\s+/).filter(Boolean)[0] ?? '';
+      const confirmationFrom = 'RingBooker <hello@ringbooker.com>';
+      try {
+        const { subject, text } = getDemoRequestConfirmationEmail({
+          firstName,
+          businessName: parsed.data.businessName,
+          businessType: parsed.data.businessType,
+        });
+        await deps.emailService.sendEmail({
+          from: confirmationFrom,
+          to: normalizedEmail,
+          subject,
+          text,
+          category: 'demo_request_confirmation',
+          idempotencyKey: `public_contact_customer:${requestId}`,
+          replyTo: 'hello@ringbooker.com',
+        });
+      } catch (error) {
+        logger.error(
+          {
+            err: error,
+            requestId,
+            to: normalizedEmail,
+          },
+          'public_contact_confirmation_email_failed',
+        );
+      }
+
+      try {
+        await deps.emailService.sendEmail({
+          from: 'RingBooker Notifications <hello@ringbooker.com>',
+          to: 'hello@ringbooker.com',
+          subject: `New demo request: ${parsed.data.businessName || parsed.data.fullName}`,
+          text: `New demo request received:
+
+Name: ${parsed.data.fullName}
+Business: ${parsed.data.businessName || 'Not provided'}
+Email: ${normalizedEmail}
+Phone: ${normalizedPhone || 'Not provided'}
+Business type: ${parsed.data.businessType || 'Not provided'}
+Main need: ${parsed.data.helpNeed || 'Not provided'}
+
+Submitted at: ${new Date().toISOString()}`,
+          category: 'demo_request_internal',
+          idempotencyKey: `public_contact_internal:${requestId}`,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            err: error,
+            requestId,
+          },
+          'public_contact_internal_notification_failed',
         );
       }
     }

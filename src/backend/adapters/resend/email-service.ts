@@ -1,5 +1,5 @@
 import { withLogContext } from '@/src/backend/observability/logger';
-import type { EmailService, EmailSendResult } from '@/src/backend/services/email/types';
+import type { EmailCategory, EmailService, EmailSendResult } from '@/src/backend/services/email/types';
 
 type ResendSendResponse = {
   id?: string;
@@ -19,16 +19,11 @@ export class ResendEmailService implements EmailService {
     subject: string;
     text?: string;
     html?: string;
-    category:
-      | 'welcome_signup'
-      | 'password_reset'
-      | 'booking_confirmation'
-      | 'booking_reminder'
-      | 'review_request'
-      | 'contact_request';
+    category: EmailCategory;
     idempotencyKey: string;
     shopId?: string;
     replyTo?: string;
+    from?: string;
   }): Promise<EmailSendResult> {
     const log = withLogContext({
       provider: 'resend',
@@ -43,7 +38,7 @@ export class ResendEmailService implements EmailService {
         'Idempotency-Key': params.idempotencyKey,
       },
       body: JSON.stringify({
-        from: this.fromEmail,
+        from: params.from ?? this.fromEmail,
         to: [params.to],
         subject: params.subject,
         text: params.text,

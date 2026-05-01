@@ -7,13 +7,13 @@ import { buildMetadata } from '@/lib/site';
 const thankYouStyles = [
   String.raw`
 .thank-you-page{background:#fff;min-height:50vh}
-.thank-you-main{max-width:680px;margin:0 auto;padding:80px 24px 60px;text-align:center}
-.thank-you-check{width:48px;height:48px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:24px;line-height:1;color:#16a34a}
-.thank-you-h1{font-size:24px;font-weight:500;margin:0 0 12px;color:#111827}
-.thank-you-lead{font-size:15px;color:#64748b;margin:0 auto 48px;max-width:440px;line-height:1.55}
+.thank-you-main{max-width:640px;margin:0 auto;padding:80px 24px 60px;text-align:center}
+.thank-you-check{width:56px;height:56px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:26px;line-height:1;color:#16a34a}
+.thank-you-h1{font-size:24px;font-weight:500;margin:20px 0 0;color:#111827}
+.thank-you-lead{font-size:15px;color:#64748b;margin:12px auto 48px;max-width:420px;line-height:1.55}
 .thank-you-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:40px;text-align:left}
 @media(max-width:960px){.thank-you-cards{grid-template-columns:1fr}}
-.thank-you-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;transition:box-shadow .2s ease}
+.thank-you-card{background:#fff;border:0.5px solid #e5e7eb;border-radius:12px;padding:20px;transition:box-shadow .2s ease}
 .thank-you-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.08)}
 .thank-you-card-icon{font-size:22px;line-height:1;margin-bottom:12px}
 .thank-you-card-title{font-size:15px;font-weight:700;margin:0 0 8px;color:#111827}
@@ -52,15 +52,16 @@ export default function ThankYouPage() {
             </div>
             <h1 className="thank-you-h1">We&apos;ll be in touch soon!</h1>
             <p className="thank-you-lead">
-              Thanks for reaching out. We&apos;ll contact you within 24 hours to schedule your demo.
+              Thanks for reaching out. We&apos;ve sent a confirmation to your email. We&apos;ll be in touch within 24
+              hours.
             </p>
             <div className="thank-you-cards">
               <div className="thank-you-card">
                 <div className="thank-you-card-icon" aria-hidden>
                   📞
                 </div>
-                <h2 className="thank-you-card-title">Try a live demo call</h2>
-                <p className="thank-you-card-desc">Hear how RingBooker sounds when answering your calls</p>
+                <h2 className="thank-you-card-title">Try a live demo</h2>
+                <p className="thank-you-card-desc">Hear how RingBooker sounds answering your calls</p>
                 <Link href="/demo" className="thank-you-card-link">
                   Call the demo →
                 </Link>
@@ -70,7 +71,7 @@ export default function ThankYouPage() {
                   ⚡
                 </div>
                 <h2 className="thank-you-card-title">See how it works</h2>
-                <p className="thank-you-card-desc">Learn how RingBooker captures missed calls on your current number</p>
+                <p className="thank-you-card-desc">Learn how RingBooker captures missed calls on your number</p>
                 <Link href="/how-it-works" className="thank-you-card-link">
                   How it works →
                 </Link>
@@ -79,7 +80,7 @@ export default function ThankYouPage() {
                 <div className="thank-you-card-icon" aria-hidden>
                   🚀
                 </div>
-                <h2 className="thank-you-card-title">Start your free trial</h2>
+                <h2 className="thank-you-card-title">Start free trial</h2>
                 <p className="thank-you-card-desc">Set up in 15 minutes. No number change required.</p>
                 <Link href="/user/signup" className="thank-you-card-link">
                   Try free →
