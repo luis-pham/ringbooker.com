@@ -81,13 +81,63 @@ const TIME_OPTIONS = [
 
 const STEP_LABELS = ['Business', 'Hours', 'Services', 'Go Live'] as const;
 
-const TIMEZONES = [
-  ['America/New_York', 'Eastern (America/New_York)'],
-  ['America/Chicago', 'Central (America/Chicago)'],
-  ['America/Denver', 'Mountain (America/Denver)'],
-  ['America/Los_Angeles', 'Pacific (America/Los_Angeles)'],
-  ['America/Anchorage', 'Alaska (America/Anchorage)'],
-  ['Pacific/Honolulu', 'Hawaii (Pacific/Honolulu)'],
+const COUNTRY_TIMEZONES = [
+  { country: 'United States', flag: '🇺🇸', timezones: [
+    { label: 'Eastern Time', value: 'America/New_York', offset: 'UTC-5/4' },
+    { label: 'Central Time', value: 'America/Chicago', offset: 'UTC-6/5' },
+    { label: 'Mountain Time', value: 'America/Denver', offset: 'UTC-7/6' },
+    { label: 'Pacific Time', value: 'America/Los_Angeles', offset: 'UTC-8/7' },
+    { label: 'Alaska Time', value: 'America/Anchorage', offset: 'UTC-9/8' },
+    { label: 'Hawaii Time', value: 'Pacific/Honolulu', offset: 'UTC-10' },
+  ] },
+  { country: 'Canada', flag: '🇨🇦', timezones: [
+    { label: 'Eastern Time', value: 'America/Toronto', offset: 'UTC-5/4' },
+    { label: 'Central Time', value: 'America/Winnipeg', offset: 'UTC-6/5' },
+    { label: 'Mountain Time', value: 'America/Edmonton', offset: 'UTC-7/6' },
+    { label: 'Pacific Time', value: 'America/Vancouver', offset: 'UTC-8/7' },
+    { label: 'Atlantic Time', value: 'America/Halifax', offset: 'UTC-4/3' },
+    { label: 'Newfoundland Time', value: 'America/St_Johns', offset: 'UTC-3:30' },
+  ] },
+  { country: 'United Kingdom', flag: '🇬🇧', timezones: [
+    { label: 'GMT / BST', value: 'Europe/London', offset: 'UTC+0/1' },
+  ] },
+  { country: 'Ireland', flag: '🇮🇪', timezones: [
+    { label: 'IST / GMT', value: 'Europe/Dublin', offset: 'UTC+0/1' },
+  ] },
+  { country: 'Australia', flag: '🇦🇺', timezones: [
+    { label: 'Sydney / Melbourne (AEST)', value: 'Australia/Sydney', offset: 'UTC+10/11' },
+    { label: 'Brisbane (AEST)', value: 'Australia/Brisbane', offset: 'UTC+10' },
+    { label: 'Adelaide (ACST)', value: 'Australia/Adelaide', offset: 'UTC+9:30/10:30' },
+    { label: 'Perth (AWST)', value: 'Australia/Perth', offset: 'UTC+8' },
+    { label: 'Darwin (ACST)', value: 'Australia/Darwin', offset: 'UTC+9:30' },
+  ] },
+  { country: 'New Zealand', flag: '🇳🇿', timezones: [
+    { label: 'NZST / NZDT', value: 'Pacific/Auckland', offset: 'UTC+12/13' },
+  ] },
+  { country: 'Singapore', flag: '🇸🇬', timezones: [
+    { label: 'SGT', value: 'Asia/Singapore', offset: 'UTC+8' },
+  ] },
+  { country: 'Philippines', flag: '🇵🇭', timezones: [
+    { label: 'PST', value: 'Asia/Manila', offset: 'UTC+8' },
+  ] },
+  { country: 'India', flag: '🇮🇳', timezones: [
+    { label: 'IST', value: 'Asia/Kolkata', offset: 'UTC+5:30' },
+  ] },
+  { country: 'Hong Kong', flag: '🇭🇰', timezones: [
+    { label: 'HKT', value: 'Asia/Hong_Kong', offset: 'UTC+8' },
+  ] },
+  { country: 'South Africa', flag: '🇿🇦', timezones: [
+    { label: 'SAST', value: 'Africa/Johannesburg', offset: 'UTC+2' },
+  ] },
+  { country: 'Jamaica', flag: '🇯🇲', timezones: [
+    { label: 'EST', value: 'America/Jamaica', offset: 'UTC-5' },
+  ] },
+  { country: 'Trinidad and Tobago', flag: '🇹🇹', timezones: [
+    { label: 'AST', value: 'America/Port_of_Spain', offset: 'UTC-4' },
+  ] },
+  { country: 'Fiji', flag: '🇫🇯', timezones: [
+    { label: 'FJT', value: 'Pacific/Fiji', offset: 'UTC+12' },
+  ] },
 ] as const;
 
 const PROVIDER_BADGES: Record<string, string> = {
@@ -170,6 +220,10 @@ function cleanServices(rows: ServiceItem[]): ServiceItem[] {
     }));
 }
 
+function findCountryForTimezone(timezone: string) {
+  return COUNTRY_TIMEZONES.find((item) => item.timezones.some((zone) => zone.value === timezone));
+}
+
 export function UserOnboardingLive() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -181,6 +235,7 @@ export function UserOnboardingLive() {
   const [vertical, setVertical] = useState<Vertical | ''>('');
   const [businessPhone, setBusinessPhone] = useState('');
   const [hours, setHours] = useState<WizardHours>(() => defaultHours());
+  const [selectedCountry, setSelectedCountry] = useState('');
   const [timezone, setTimezone] = useState('America/Los_Angeles');
   const [languages, setLanguages] = useState<string[]>(['en']);
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -196,7 +251,11 @@ export function UserOnboardingLive() {
 
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (TIMEZONES.some(([value]) => value === detected)) setTimezone(detected);
+    const match = findCountryForTimezone(detected);
+    if (match) {
+      setSelectedCountry(match.country);
+      setTimezone(detected);
+    }
   }, []);
 
   useEffect(() => {
@@ -226,7 +285,9 @@ export function UserOnboardingLive() {
     setBusinessName(body.shop.name ?? '');
     setVertical(body.shop.vertical ?? '');
     setBusinessPhone(body.shop.phone_number ?? body.shop.user_phone ?? '');
-    setTimezone(body.shop.timezone || 'America/Los_Angeles');
+    const savedTimezone = body.shop.timezone || 'America/Los_Angeles';
+    setTimezone(savedTimezone);
+    setSelectedCountry(findCountryForTimezone(savedTimezone)?.country ?? 'United States');
     setHours(apiHoursToWizard(body.shop.hours ?? {}));
     setLanguages(applyVerticalLanguageSelection(body.shop.vertical ?? '', body.shop.languages ?? ['en']));
     setWebsiteUrl(body.shop.website_url ?? '');
@@ -402,7 +463,7 @@ export function UserOnboardingLive() {
 .choice-card.active{background:#faf5ff;border-color:#7c3aed;border-width:1.5px;box-shadow:none}
 .choice-card .emoji{font-size:2rem;line-height:1}.choice-card h4{margin:12px 0 0;font-size:15px;font-weight:800;color:#111827}
 .onb-field{display:grid;gap:6px;margin-bottom:20px}.onb-field label{font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-.onb-field input,.onb-field select,.provider-card input,.provider-card select,.platform-selector select,.platform-panel input,.platform-panel select,.hours-row select{height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit}.onb-field input:focus,.onb-field select:focus,.provider-card input:focus,.provider-card select:focus,.platform-selector select:focus,.platform-panel input:focus,.platform-panel select:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}.onb-field input::placeholder,.provider-card input::placeholder,.platform-panel input::placeholder{color:#9ca3af;font-size:14px}.onb-field input:disabled,.onb-field select:disabled,.provider-card input:disabled,.provider-card select:disabled,.platform-selector select:disabled,.platform-panel input:disabled,.platform-panel select:disabled,.hours-row select:disabled{background:#f9fafb;color:#6b7280;cursor:not-allowed}
+.onb-field input,.onb-field select,.provider-card input,.provider-card select,.platform-selector select,.platform-panel input,.platform-panel select,.hours-row select{height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit}.onb-field input:focus,.onb-field select:focus,.provider-card input:focus,.provider-card select:focus,.platform-selector select:focus,.platform-panel input:focus,.platform-panel select:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}.onb-field input::placeholder,.provider-card input::placeholder,.platform-panel input::placeholder{color:#9ca3af;font-size:14px}.onb-field input:disabled,.onb-field select:disabled,.provider-card input:disabled,.provider-card select:disabled,.platform-selector select:disabled,.platform-panel input:disabled,.platform-panel select:disabled,.hours-row select:disabled{background:#f9fafb;color:#6b7280;cursor:not-allowed}.timezone-readonly{height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.4;background:#f9fafb;color:#374151;width:100%}
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;border:0;border-radius:8px;background:#6d28d9;color:#fff;padding:8px 16px;font-size:14px;font-weight:500;box-shadow:0 8px 18px rgba(109,40,217,.18);cursor:pointer;text-decoration:none}
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;height:36px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;text-decoration:none}.onb-text-link{border:0;background:transparent;color:#64748b;font-weight:800;cursor:pointer;padding:8px 0}
@@ -496,6 +557,9 @@ export function UserOnboardingLive() {
   }
 
   function renderStep2() {
+    const countryTimezones = COUNTRY_TIMEZONES.find((item) => item.country === selectedCountry);
+    const selectedTimezoneMeta = countryTimezones?.timezones.find((zone) => zone.value === timezone) ?? countryTimezones?.timezones[0];
+
     return (
       <div>
         <h1 className="onb-title">When are you open?</h1>
@@ -519,9 +583,31 @@ export function UserOnboardingLive() {
           </section>
           <section>
             <div className="onb-field">
-              <label>Your timezone</label>
-              <select value={timezone} onChange={(event) => setTimezone(event.target.value)}>{TIMEZONES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+              <label>Country</label>
+              <select value={selectedCountry} onChange={(event) => {
+                const nextCountry = event.target.value;
+                const nextCountryMeta = COUNTRY_TIMEZONES.find((item) => item.country === nextCountry);
+                setSelectedCountry(nextCountry);
+                if (nextCountryMeta && !nextCountryMeta.timezones.some((zone) => zone.value === timezone)) {
+                  setTimezone(nextCountryMeta.timezones[0].value);
+                }
+              }}>
+                <option value="">Select your country...</option>
+                {COUNTRY_TIMEZONES.map((item) => <option key={item.country} value={item.country}>{item.flag} {item.country}</option>)}
+              </select>
             </div>
+            {countryTimezones ? (
+              <div className="onb-field">
+                <label>Timezone</label>
+                {countryTimezones.timezones.length === 1 && selectedTimezoneMeta ? (
+                  <div className="timezone-readonly">{countryTimezones.flag} {selectedTimezoneMeta.label} ({selectedTimezoneMeta.offset})</div>
+                ) : (
+                  <select value={timezone} onChange={(event) => setTimezone(event.target.value)}>
+                    {countryTimezones.timezones.map((zone) => <option key={zone.value} value={zone.value}>{zone.label} ({zone.offset})</option>)}
+                  </select>
+                )}
+              </div>
+            ) : null}
           </section>
           <section>
             <div className="onb-field">
