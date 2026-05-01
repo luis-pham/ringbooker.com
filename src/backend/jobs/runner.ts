@@ -210,7 +210,7 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
       }
 
       const body =
-        `Your appointment is confirmed at ${payload.data.shopName}!` +
+        `${payload.data.shopName}: Your appointment is confirmed!` +
         (payload.data.serviceName ? `\nService: ${payload.data.serviceName}` : '') +
         (payload.data.appointmentDate ? `\nDate: ${payload.data.appointmentDate}` : '') +
         (payload.data.appointmentTime ? `\nTime: ${payload.data.appointmentTime}` : '') +
@@ -451,7 +451,7 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
       }
 
       const body = [
-        `CANCEL REQUEST${payload.data.callerName ? ` from ${payload.data.callerName}` : ''}`,
+        `[${shop.name}] CANCEL REQUEST${payload.data.callerName ? ` from ${payload.data.callerName}` : ''}`,
         payload.data.appointmentDate ? `Appointment: ${payload.data.appointmentDate}` : null,
         payload.data.reason ? `Reason: ${payload.data.reason}` : null,
         `Caller phone: ${payload.data.callerPhone || 'not provided'}`,
@@ -597,7 +597,7 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
         return;
       }
 
-      const body = `Thanks for visiting ${shop.name}. We'd love your feedback!`;
+      const body = `${shop.name}: Thanks for visiting us! We'd love your feedback!`;
       const idempotencyKey = `job:${params.jobId}:review-request`;
 
       const sms = await runtime.smsService.sendSms({

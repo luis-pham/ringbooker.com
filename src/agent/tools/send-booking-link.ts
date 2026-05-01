@@ -26,7 +26,7 @@ export async function sendBookingLinkTool(
 
   const callerName = parsed.data.callerName?.trim() || 'there';
   const serviceInterest = parsed.data.serviceInterest?.trim() || 'appointment';
-  const smsText = `Hi ${callerName}! Here is the link to book your ${serviceInterest} at ${ctx.shop.name}: ${bookingUrl}`;
+  const smsText = `${ctx.shop.name}: Hi ${callerName}! Here is the link to book your ${serviceInterest} appointment:\n${bookingUrl}`;
 
   try {
     await ctx.jobsRepository.enqueue({
