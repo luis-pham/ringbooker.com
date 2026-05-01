@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 
 import { getEnv } from '@/src/backend/config/env';
+import { logger } from '@/src/backend/observability/logger';
 import type { ProviderEventsRepository } from '@/src/backend/ports/repositories';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { securityAudit } from '@/src/backend/security/audit-log';
@@ -101,19 +102,19 @@ export async function handlePaddleWebhook(
       return c.json({ ok: true }, 200);
     }
 
-    await deps.providerEventsRepository.markProcessed({
-      provider: 'paddle',
-      providerEventId: dedupeKey,
-      eventType: event.event_type,
-      payload: event,
-    });
-
     if (deps.billingProvider?.provider === 'paddle' && event.data) {
       await deps.billingProvider.syncWebhookEvent({
         eventType: event.event_type,
         payload: event.data,
       });
     }
+
+    await deps.providerEventsRepository.markProcessed({
+      provider: 'paddle',
+      providerEventId: dedupeKey,
+      eventType: event.event_type,
+      payload: event,
+    });
 
     await deps.providerEventsRepository.clearProcessingError('paddle', dedupeKey);
     incrementMetric('webhook_requests_total', {
@@ -122,6 +123,7 @@ export async function handlePaddleWebhook(
     });
     return c.json({ ok: true }, 200);
   } catch (error) {
+    logger.error({ err: error, eventId: dedupeKey, eventType: event.event_type }, 'paddle_webhook_sync_failed');
     await deps.providerEventsRepository.markProcessingError(
       'paddle',
       dedupeKey,
