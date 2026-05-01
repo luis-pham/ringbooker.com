@@ -1,7 +1,7 @@
 import { AdminShopDetailLive } from '@/components/admin/admin-shop-detail-live';
 
 export const metadata = {
-  title: 'Shop detail.',
+  title: 'Business detail.',
 };
 
 export default function AdminShopDetailPage() {

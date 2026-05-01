@@ -353,8 +353,8 @@ export function UserBillingLive() {
                     </div>
                   </div>
                   <div className="list">
-                    <div className="list-item"><div className="item-main"><div className="avatar">☎</div><div><h4>Phone agent subscription</h4><p>Monthly billing attached to shop <strong>{data.shop?.name}</strong></p></div></div></div>
-                    <div className="list-item"><div className="item-main"><div className="avatar">API</div><div><h4>Provider-neutral billing model</h4><p>Internal records track provider, customer, and subscription IDs separately from the shop profile</p></div></div></div>
+                    <div className="list-item"><div className="item-main"><div className="avatar">☎</div><div><h4>Phone agent subscription</h4><p>Monthly billing attached to business <strong>{data.shop?.name}</strong></p></div></div></div>
+                    <div className="list-item"><div className="item-main"><div className="avatar">API</div><div><h4>Provider-neutral billing model</h4><p>Internal records track provider, customer, and subscription IDs separately from the business profile</p></div></div></div>
                     <div className="list-item"><div className="item-main"><div className="avatar">SMS</div><div><h4>Operational messaging stays in-app</h4><p>Billing state can change providers later without breaking booking, reminder, or callback workflows</p></div></div></div>
                   </div>
                 </div>

@@ -1349,7 +1349,7 @@ export function MarketingHomeTemplate() {
             <div className="sec-label">Where calls get lost</div>
             <h2 className="sec-title reveal">Your phone is leaking<br />bookings every day.</h2>
             <p className="sec-sub reveal">
-              Most missed opportunities happen when staff are with clients, the shop is closed, or two callers need help at once.
+              Most missed opportunities happen when staff are with clients, the business is closed, or two callers need help at once.
             </p>
             <div className="leak-grid">
               {[
@@ -1710,7 +1710,7 @@ export function MarketingHomeTemplate() {
             <div className="price-grid home-carousel-track reveal">
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Starter</div>
-                <div className="plan-desc">For small shops that need after-hours and overflow coverage on their current number.</div>
+                <div className="plan-desc">For small businesses that need after-hours and overflow coverage on their current number.</div>
                 <div className="plan-price" id="ps">$79<span>/month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">

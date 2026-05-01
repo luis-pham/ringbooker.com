@@ -24,6 +24,7 @@ type UserDashboardResponse = {
     plan: string;
     active: boolean;
   };
+  onboardingRequired?: boolean;
   error?: string;
 };
 
@@ -72,6 +73,7 @@ export function UserDashboardLive() {
   const { setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
 
   useEffect(() => {
     void fetch('/api/backend/user/dashboard')
@@ -80,7 +82,21 @@ export function UserDashboardLive() {
       .finally(() => setLoading(false));
   }, []);
 
-  const shopName = data?.shop?.name ?? 'Your shop';
+  useEffect(() => {
+    if (!data?.ok || !data.shop || data.onboardingRequired) return;
+    const startedKey = `ringbooker_welcome_started_${data.shop.id}`;
+    const dismissedKey = `ringbooker_welcome_dismissed_${data.shop.id}`;
+    try {
+      const startedAt = Number(localStorage.getItem(startedKey) ?? '0');
+      const dismissedAt = Number(localStorage.getItem(dismissedKey) ?? '0');
+      const within24Hours = startedAt > 0 && Date.now() - startedAt < 24 * 60 * 60 * 1000;
+      setShowWelcomeBanner(within24Hours && dismissedAt < startedAt);
+    } catch {
+      setShowWelcomeBanner(false);
+    }
+  }, [data]);
+
+  const shopName = data?.shop?.name ?? 'Your business';
   const planLabel = useMemo(() => {
     const raw = data?.shop?.plan ?? 'starter';
     return raw.charAt(0).toUpperCase() + raw.slice(1);
@@ -98,6 +114,17 @@ export function UserDashboardLive() {
   async function signOut() {
     await fetch('/api/backend/auth/logout', { method: 'POST' });
     window.location.href = '/user/login';
+  }
+
+  function dismissWelcomeBanner() {
+    if (data?.shop?.id) {
+      try {
+        localStorage.setItem(`ringbooker_welcome_dismissed_${data.shop.id}`, String(Date.now()));
+      } catch {
+        // ignore localStorage failures
+      }
+    }
+    setShowWelcomeBanner(false);
   }
 
   return (
@@ -127,15 +154,26 @@ export function UserDashboardLive() {
               <button type="button" className="btn" onClick={signOut}>Sign out</button>
             </div>}
           />
+          {showWelcomeBanner ? (
+            <section className="card" style={{ marginBottom: 18, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+              <div className="panel-head">
+                <div>
+                  <h3>🎉 Setup complete! RingBooker is ready to answer your missed calls.</h3>
+                  <p className="sub">You can keep refining services, integrations, and call forwarding anytime.</p>
+                </div>
+                <button className="btn" type="button" onClick={dismissWelcomeBanner}>Dismiss ×</button>
+              </div>
+            </section>
+          ) : null}
           <section className="grid grid-4">
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">Live</span></div><div className="stat-value">{data?.metrics?.callCount ?? 0}</div><div className="stat-meta">Total calls logged for this shop</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">Booked</span></div><div className="stat-value">{data?.metrics?.bookingCount ?? 0}</div><div className="stat-meta">Total bookings in your current shop</div></div>
+            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">Live</span></div><div className="stat-value">{data?.metrics?.callCount ?? 0}</div><div className="stat-meta">Total calls logged for this business</div></div>
+            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">Booked</span></div><div className="stat-value">{data?.metrics?.bookingCount ?? 0}</div><div className="stat-meta">Total bookings in your current business</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z" /><path d="M4 8l8 6 8-6" /></svg></div><span className="tag orange">Needs follow-up</span></div><div className="stat-value">{data?.metrics?.missedCalls ?? 0}</div><div className="stat-meta">Total missed calls (outcome = missed)</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M7 15l3-3 3 2 4-5" /></svg></div><span className="tag green">{data?.shop?.active ? 'Active' : 'Paused'}</span></div><div className="stat-value">{planLabel}</div><div className="stat-meta">{data?.shop?.timezone ?? 'Timezone unavailable'}</div></div>
           </section>
           <section className="call-grid" style={{ marginTop: 18 }}>
             <div className="card soft">
-              <div className="panel-head"><div><h3>Quick actions</h3><p className="sub">Jump straight into the shop controls that matter most.</p></div><span className="badge-right">User portal</span></div>
+              <div className="panel-head"><div><h3>Quick actions</h3><p className="sub">Jump straight into the business controls that matter most.</p></div><span className="badge-right">User portal</span></div>
               <div className="list">
                 <div className="list-item">
                   <div className="item-main">
@@ -176,7 +214,7 @@ export function UserDashboardLive() {
               </div>
             </div>
           </section>
-          <div className="footer-inline"><span>RingBooker shop panel</span><span>Live data + restored shared styling</span></div>
+          <div className="footer-inline"><span>RingBooker business panel</span><span>Live data + restored shared styling</span></div>
         </main>
       </div>
       <UserPortalMobileTabbar active="overview" />

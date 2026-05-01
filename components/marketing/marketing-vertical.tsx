@@ -661,7 +661,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         heading="How RingBooker works on your current salon number"
         steps={[
           { n: '1', title: 'Forward calls to RingBooker', body: 'Set up call forwarding on your current salon number — for overflow, after-hours, or full-time. Setup time depends on your phone provider.' },
-          { n: '2', title: 'RingBooker answers with your shop info', body: 'Your services, pricing, hours, and staff are loaded in. The AI handles real callers immediately.' },
+          { n: '2', title: 'RingBooker answers with your business info', body: 'Your services, pricing, hours, and staff are loaded in. The AI handles real callers immediately.' },
           { n: '3', title: 'Intent captured, SMS sent, you review', body: 'Captured booking intent and call summaries land in your dashboard. Confirmations can go to the client when the flow is configured.' },
         ]}
       />

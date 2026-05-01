@@ -453,7 +453,7 @@ export function AdminShopDetailLive() {
         <main className="main">
           <div className="topbar">
             <div className="page-title">
-              <h1>{shop ? shop.name : 'Shop detail.'}</h1>
+              <h1>{shop ? shop.name : 'Business detail.'}</h1>
               <p>
                 Manage profile, AI behavior, billing, call history with transcripts, and booking analytics for this
                 salon.
@@ -461,7 +461,7 @@ export function AdminShopDetailLive() {
             </div>
             <div className="top-actions">
               <a className="btn" href="/admin/shops">
-                Back to shops
+                Back to businesses
               </a>
               <a className="btn" href={`/admin/calls?shopId=${encodeURIComponent(shopId ?? '')}`}>
                 Open in Calls
@@ -477,11 +477,11 @@ export function AdminShopDetailLive() {
 
           {!shop ? (
             <div className="card">
-              <p className="sub">Loading shop…</p>
+              <p className="sub">Loading business…</p>
             </div>
           ) : (
             <>
-              <div className="shop-tab-bar" role="tablist" aria-label="Shop sections">
+              <div className="shop-tab-bar" role="tablist" aria-label="Business sections">
                 <button
                   type="button"
                   role="tab"
@@ -492,7 +492,7 @@ export function AdminShopDetailLive() {
                   <TabIcon>
                     <IconShop />
                   </TabIcon>
-                  Shop Info
+                  Business info
                 </button>
                 <button
                   type="button"
@@ -504,7 +504,7 @@ export function AdminShopDetailLive() {
                   <TabIcon>
                     <IconSliders />
                   </TabIcon>
-                  Shop AI config
+                  Business AI config
                 </button>
                 <button
                   type="button"
@@ -516,7 +516,7 @@ export function AdminShopDetailLive() {
                   <TabIcon>
                     <IconBilling />
                   </TabIcon>
-                  Shop Billing
+                  Business billing
                 </button>
                 <button
                   type="button"
@@ -528,7 +528,7 @@ export function AdminShopDetailLive() {
                   <TabIcon>
                     <IconPhone />
                   </TabIcon>
-                  Shop Calls
+                  Business calls
                 </button>
                 <button
                   type="button"
@@ -540,7 +540,7 @@ export function AdminShopDetailLive() {
                   <TabIcon>
                     <IconOverview />
                   </TabIcon>
-                  Shop Analytics
+                  Business analytics
                 </button>
               </div>
 
@@ -598,7 +598,7 @@ export function AdminShopDetailLive() {
                         </div>
                         <div className="form-grid">
                           <div className="field">
-                            <label>Shop name</label>
+                            <label>Business name</label>
                             <input value={shop.name} readOnly />
                           </div>
                           <div className="field">
@@ -704,7 +704,7 @@ export function AdminShopDetailLive() {
                       <section className="shop-ai-panel">
                         <div className="shop-ai-panel-head">
                           <h4>Call handling</h4>
-                          <p>Transfers and callback workflow for this shop.</p>
+                          <p>Transfers and callback workflow for this business.</p>
                         </div>
                         <div className="shop-ai-toggle-grid">
                           <label className="checkbox">
@@ -759,7 +759,7 @@ export function AdminShopDetailLive() {
                     <div className="panel-head">
                       <div>
                         <h3>Billing and activation</h3>
-                        <p className="sub">Plan tier and whether the shop account is active.</p>
+                        <p className="sub">Plan tier and whether the business account is active.</p>
                       </div>
                     </div>
                     <div className="form-grid">
@@ -775,7 +775,7 @@ export function AdminShopDetailLive() {
                         <label>Activation</label>
                         <label className="checkbox">
                           <input name="active" type="checkbox" defaultChecked={shop.active} />
-                          Shop is active
+                          Business is active
                         </label>
                       </div>
                     </div>

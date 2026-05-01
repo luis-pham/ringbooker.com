@@ -635,7 +635,7 @@ export function MarketingDemoTemplate() {
                 <div className="form-sub">Fill in a few fields. RingBooker will call your number and greet you like a real customer call.</div>
                 <div className="form-grid">
                   <div className="field full">
-                    <label>Shop / salon name</label>
+                    <label>Business / salon name</label>
                     <input id="shopName" type="text" defaultValue="Luxe Hair Studio" />
                   </div>
                   <div className="field">

@@ -6,6 +6,7 @@ import type { ShopsRepository } from '@/src/backend/ports/repositories';
 type ShopsRow = {
   id: string;
   name: string;
+  vertical: Shop['vertical'] | null;
   brand_slug: string | null;
   phone_number: string;
   user_phone: string;
@@ -18,6 +19,9 @@ type ShopsRow = {
   cancel_policy: string | null;
   promotions: string | null;
   booking_url: string | null;
+  website_url: string | null;
+  languages: string[] | null;
+  current_onboarding_step: number | null;
   ai_voice: string | null;
   ai_welcome_message: string | null;
   ai_custom_instructions: string | null;
@@ -64,6 +68,7 @@ function toShop(row: ShopsRow): Shop {
   return {
     id: row.id,
     name: row.name,
+    vertical: row.vertical,
     brand_slug: row.brand_slug,
     phone_number: row.phone_number,
     user_phone: row.user_phone,
@@ -76,6 +81,9 @@ function toShop(row: ShopsRow): Shop {
     cancel_policy: row.cancel_policy ?? '2-hour cancellation policy applies.',
     promotions: row.promotions,
     booking_url: row.booking_url,
+    website_url: row.website_url,
+    languages: Array.isArray(row.languages) && row.languages.length > 0 ? row.languages : ['en'],
+    current_onboarding_step: row.current_onboarding_step ?? 1,
     ai_voice: row.ai_voice ?? 'Aoede',
     ai_welcome_message: row.ai_welcome_message,
     ai_custom_instructions: row.ai_custom_instructions,
@@ -101,6 +109,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         [
           'id',
           'name',
+          'vertical',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -113,6 +122,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -145,6 +157,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         [
           'id',
           'name',
+          'vertical',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -157,6 +170,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -189,6 +205,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         [
           'id',
           'name',
+          'vertical',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -201,6 +218,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
           'plan',
           'active',
           'google_cal_id',
@@ -251,6 +271,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         [
           'id',
           'name',
+          'vertical',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -263,6 +284,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -290,6 +314,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
     patch: Partial<
       Pick<
         Shop,
+        | 'name'
+        | 'phone_number'
+        | 'vertical'
         | 'user_name'
         | 'user_phone'
         | 'backup_phone'
@@ -300,12 +327,18 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'website_url'
+        | 'languages'
+        | 'current_onboarding_step'
       >
     >,
   ): Promise<Shop | null> {
     const payload: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
+    if (patch.name !== undefined) payload.name = patch.name;
+    if (patch.phone_number !== undefined) payload.phone_number = patch.phone_number;
+    if (patch.vertical !== undefined) payload.vertical = patch.vertical;
     if (patch.user_name !== undefined) payload.user_name = patch.user_name;
     if (patch.user_phone !== undefined) payload.user_phone = patch.user_phone;
     if (patch.backup_phone !== undefined) payload.backup_phone = patch.backup_phone;
@@ -316,6 +349,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.cancel_policy !== undefined) payload.cancel_policy = patch.cancel_policy;
     if (patch.promotions !== undefined) payload.promotions = patch.promotions;
     if (patch.booking_url !== undefined) payload.booking_url = patch.booking_url;
+    if (patch.website_url !== undefined) payload.website_url = patch.website_url;
+    if (patch.languages !== undefined) payload.languages = patch.languages;
+    if (patch.current_onboarding_step !== undefined) payload.current_onboarding_step = patch.current_onboarding_step;
 
     const { data, error } = await this.supabase
       .from('shops')
@@ -325,6 +361,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         [
           'id',
           'name',
+          'vertical',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -337,6 +374,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -398,6 +438,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         [
           'id',
           'name',
+          'vertical',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -410,6 +451,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -453,6 +497,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         [
           'id',
           'name',
+          'vertical',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -465,6 +510,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -505,6 +553,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         [
           'id',
           'name',
+          'vertical',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -517,6 +566,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',

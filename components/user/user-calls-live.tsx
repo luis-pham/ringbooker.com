@@ -265,7 +265,7 @@ export function UserCallsLive() {
             </div>
 
             {!error && !loading && totalCount === 0 ? (
-              <div className="note">No calls have been recorded for this shop yet.</div>
+              <div className="note">No calls have been recorded for this business yet.</div>
             ) : !error && totalCount !== null && totalCount > 0 ? (
               <>
                 {loading && calls.length === 0 ? (

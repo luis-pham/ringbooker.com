@@ -29,8 +29,8 @@ const GROUPS: NavGroup[] = [
   { id: 'dashboard', label: 'Dashboard', items: [{ href: '/admin', label: 'Overview' }] },
   {
     id: 'shops',
-    label: 'Shops & accounts',
-    items: [{ href: '/admin/shops', label: 'All shops' }],
+    label: 'Businesses & accounts',
+    items: [{ href: '/admin/shops', label: 'All businesses' }],
   },
   {
     id: 'calls',

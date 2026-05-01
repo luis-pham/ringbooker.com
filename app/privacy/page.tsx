@@ -5,7 +5,7 @@ import { buildMetadata } from '@/lib/site';
 const privacyPolicyFaqs: MarketingFaqItem[] = [
   {
     q: 'Who is responsible for my data when I use RingBooker?',
-    a: 'For shop customer data handled on calls, RingBooker typically acts as a processor on behalf of your business. For account, billing, and platform administration, RingBooker acts as a controller as described in this policy.',
+    a: 'For customer data handled on calls, RingBooker typically acts as a processor on behalf of your business. For account, billing, and platform administration, RingBooker acts as a controller as described in this policy.',
   },
   {
     q: 'Does RingBooker sell my personal information?',
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
           title: 'Who We Are',
           content: (
             <>
-              <p>RingBooker provides AI-powered phone receptionist software for salons, spas, and clinics. In most cases, RingBooker acts as a data processor for customer data handled on behalf of each shop.</p>
+              <p>RingBooker provides AI-powered phone receptionist software for salons, spas, and clinics. In most cases, RingBooker acts as a data processor for customer data handled on behalf of each business.</p>
               <p>For account, billing, and platform administration data, RingBooker acts as a data controller.</p>
             </>
           ),
@@ -55,7 +55,7 @@ export default function PrivacyPage() {
           content: (
             <>
               <ul>
-                <li>Account profile data: name, email, company/shop details, login metadata.</li>
+                <li>Account profile data: name, email, company/business details, login metadata.</li>
                 <li>Operational data: services, pricing, schedules, availability settings, booking preferences.</li>
                 <li>Call-related data: caller phone, timestamps, call status, transcript segments, tool actions.</li>
                 <li>Billing data: subscription status and payment metadata from billing providers.</li>
@@ -120,7 +120,7 @@ export default function PrivacyPage() {
           content: (
             <>
               <ul>
-                <li>Role-based access controls and tenant-level boundaries for shop data.</li>
+                <li>Role-based access controls and tenant-level boundaries for business data.</li>
                 <li>Signed and protected sessions, webhook signature verification, and replay controls.</li>
                 <li>Rate limiting, abuse monitoring, and structured audit logging.</li>
                 <li>Encryption in transit and provider-level protections for stored credentials/secrets.</li>

@@ -122,9 +122,9 @@ export function AdminBillingLive() {
 
               <section className="grid grid-2" style={{ marginTop: 18 }}>
                 <div className="card">
-                  <div className="panel-head"><div><h3>Subscription ledger</h3><p className="sub">Live normalized billing status by shop.</p></div></div>
+                  <div className="panel-head"><div><h3>Subscription ledger</h3><p className="sub">Live normalized billing status by business.</p></div></div>
                   <table className="table">
-                    <thead><tr><th>Shop</th><th>Plan</th><th>Amount</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Business</th><th>Plan</th><th>Amount</th><th>Status</th></tr></thead>
                     <tbody>
                       {data.subscriptions && data.subscriptions.length > 0 ? (
                         data.subscriptions.map((subscription) => (
@@ -148,7 +148,7 @@ export function AdminBillingLive() {
                   <div className="panel-head"><div><h3>Migration-safe billing model</h3><p className="sub">What is already live in the current implementation.</p></div></div>
                   <div className="list">
                     <div className="list-item"><div className="item-main"><div className="avatar">DB</div><div><h4>Provider mapping tables</h4><p>`billing_customers` and `billing_subscriptions` are separate from `shops`, so provider IDs stay isolated.</p></div></div></div>
-                    <div className="list-item"><div className="item-main"><div className="avatar">WEB</div><div><h4>Webhook normalization</h4><p>Paddle webhook events update internal billing state first, then sync plan and activation to the shop record.</p></div></div></div>
+                    <div className="list-item"><div className="item-main"><div className="avatar">WEB</div><div><h4>Webhook normalization</h4><p>Paddle webhook events update internal billing state first, then sync plan and activation to the business record.</p></div></div></div>
                     <div className="list-item"><div className="item-main"><div className="avatar">API</div><div><h4>Admin and user billing APIs</h4><p>Both panels read normalized data, which reduces future migration work when Stripe or another provider is added.</p></div></div></div>
                   </div>
                 </div>

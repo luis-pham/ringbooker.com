@@ -339,7 +339,7 @@ export function MarketingLoginTemplate() {
             <div className="login-head">
               <div className="tag">Merchant login</div>
               <h1>Welcome back.</h1>
-              <p>Sign in with your user account to open the RingBooker shop panel.</p>
+              <p>Sign in with your user account to open the RingBooker business panel.</p>
             </div>
             <form className="form">
               <div className="field">

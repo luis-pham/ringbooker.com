@@ -205,9 +205,9 @@ const PROMOTION_PRESETS = [
 ];
 
 const AI_GREETING_PRESETS = [
-  'Thanks for calling {shop}. How can I help you today?',
-  'Welcome to {shop}. I can help with bookings, pricing, and availability.',
-  'Hi, this is the AI booking desk for {shop}. What service would you like today?',
+  'Thanks for calling {business}. How can I help you today?',
+  'Welcome to {business}. I can help with bookings, pricing, and availability.',
+  'Hi, this is the AI booking desk for {business}. What service would you like today?',
 ];
 
 const AI_VOICE_OPTIONS = [
@@ -329,7 +329,7 @@ function cloneHours(hours: Record<string, BusinessHoursEntry>) {
 }
 
 function normalizeGreeting(template: string, shopName: string) {
-  return template.replaceAll('{shop}', shopName || 'your salon');
+  return template.replaceAll('{business}', shopName || 'your salon').replaceAll('{shop}', shopName || 'your salon');
 }
 
 function buildInitialState(shop: ShopSettings): SettingsState {
@@ -596,7 +596,7 @@ export function UserSettingsLive() {
         .map((item) => ({
           key: item.name.toLowerCase().replace(/\s+/g, '-'),
           name: item.name,
-          description: 'Imported from current shop settings.',
+          description: 'Imported from current business settings.',
           duration_min: item.duration_min,
           price: item.price,
           selected: true,
@@ -614,7 +614,7 @@ export function UserSettingsLive() {
             <main className="main">
               <UserPortalTopbar
                 title="Business settings and AI behavior."
-                subtitle="Choose how RingBooker should answer, what it can offer, and which automations your current plan unlocks for this shop."
+                subtitle="Choose how RingBooker should answer, what it can offer, and which automations your current plan unlocks for this business."
                 actionsClassName="settings-top-actions"
                 actions={<><span className="plan-chip">Starter plan</span><a className="btn" href="/user/billing">See upgrade options</a></>}
               />
@@ -729,7 +729,7 @@ export function UserSettingsLive() {
         <main className="main">
           <UserPortalTopbar
             title="Business settings and AI behavior."
-            subtitle="Choose how RingBooker should answer, what it can offer, and which automations your current plan unlocks for this shop."
+            subtitle="Choose how RingBooker should answer, what it can offer, and which automations your current plan unlocks for this business."
             actionsClassName="settings-top-actions"
             actions={<><span className="plan-chip">{shop.plan[0].toUpperCase() + shop.plan.slice(1)} plan</span><a className="btn" href="/user/billing">See upgrade options</a></>}
           />
@@ -1231,7 +1231,7 @@ export function UserSettingsLive() {
                 }}
               >
                 <div className="form-grid">
-                  <div className="field"><label>Shop display name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} /></div>
+                  <div className="field"><label>Business name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} /></div>
                   <div className="field"><label>Main user phone</label><input value={form.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
                   <div className="field"><label>Backup phone</label><input value={form.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
                   <div className="field"><label>Timezone</label><select value={form.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
@@ -1259,7 +1259,7 @@ export function UserSettingsLive() {
               >
                 <div className="card-section">
                   <div>
-                    <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit only if your shop needs a special case.</span></div>
+                    <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit only if your business needs a special case.</span></div>
                     <div className="preset-pills" style={{ marginTop: 12 }}>
                       {CANCEL_POLICY_PRESETS.map((item) => (
                         <button key={item} type="button" className={`preset-pill ${cancelPreset === item ? 'active' : ''}`} onClick={() => {
@@ -1582,7 +1582,7 @@ export function UserSettingsLive() {
 
                   <div className="field">
                     <label>Advanced AI instructions</label>
-                    <textarea value={form.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise shops." />
+                    <textarea value={form.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise businesses." />
                     {renderLockCopy('edit_ai_custom_instructions')}
                   </div>
                 </div>

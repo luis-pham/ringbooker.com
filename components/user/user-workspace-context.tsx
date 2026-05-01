@@ -17,7 +17,7 @@ type UserWorkspaceContextValue = {
 };
 
 const DEFAULT_WORKSPACE: UserWorkspaceState = {
-  shopName: 'Your Shop',
+  shopName: 'Your business',
   plan: 'starter',
   active: true,
 };

@@ -6,6 +6,7 @@ import type { ShopsRepository } from '@/src/backend/ports/repositories';
 const defaultShop: Shop = {
   id: 'demo-shop',
   name: 'RingBooker Demo Salon',
+  vertical: 'nail_salon',
   brand_slug: 'ringbooker-demo-salon',
   phone_number: '+17145550123',
   user_phone: '+17145550199',
@@ -29,6 +30,9 @@ const defaultShop: Shop = {
   cancel_policy: '2-hour cancellation policy applies.',
   promotions: '10% off for first-time customers this week.',
   booking_url: 'https://ringbooker.com/demo',
+  website_url: 'https://ringbooker.com/demo',
+  languages: ['en', 'vi'],
+  current_onboarding_step: 4,
   ai_voice: 'Aoede',
   ai_welcome_message: 'Thanks for calling RingBooker Demo Salon. How can I help you today?',
   ai_custom_instructions: 'Prioritize manicure and pedicure bookings and keep answers concise.',
@@ -90,6 +94,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
     const created: Shop = {
       id,
       name: params.name,
+      vertical: null,
       brand_slug: params.brand_slug ?? null,
       phone_number: params.phone_number,
       user_phone: params.user_phone,
@@ -101,6 +106,9 @@ export class InMemoryShopsRepository implements ShopsRepository {
       ai_voice: 'Aoede',
       ai_welcome_message: null,
       ai_custom_instructions: null,
+      languages: ['en'],
+      website_url: null,
+      current_onboarding_step: 1,
       allow_transfers: true,
       allow_callbacks: true,
       send_reminder_sms: true,
@@ -119,6 +127,9 @@ export class InMemoryShopsRepository implements ShopsRepository {
     patch: Partial<
       Pick<
         Shop,
+        | 'name'
+        | 'phone_number'
+        | 'vertical'
         | 'user_name'
         | 'user_phone'
         | 'backup_phone'
@@ -129,6 +140,9 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'website_url'
+        | 'languages'
+        | 'current_onboarding_step'
       >
     >,
   ): Promise<Shop | null> {

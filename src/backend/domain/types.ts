@@ -1,4 +1,5 @@
 export type ShopPlan = 'starter' | 'professional' | 'enterprise';
+export type ShopVertical = 'nail_salon' | 'hair_salon' | 'day_spa' | 'med_spa' | 'beauty_clinic';
 export type BillingProvider = 'paddle' | 'stripe' | 'manual';
 export type BillingInterval = 'month' | 'year';
 export type BlogPostStatus = 'draft' | 'published' | 'archived';
@@ -62,6 +63,7 @@ export interface ServiceItem {
 export interface Shop {
   id: string;
   name: string;
+  vertical?: ShopVertical | null;
   brand_slug?: string | null;
   phone_number: string;
   user_phone: string;
@@ -74,6 +76,9 @@ export interface Shop {
   cancel_policy: string;
   promotions?: string | null;
   booking_url?: string | null;
+  website_url?: string | null;
+  languages?: string[];
+  current_onboarding_step?: number | null;
   ai_voice?: string | null;
   ai_welcome_message?: string | null;
   ai_custom_instructions?: string | null;

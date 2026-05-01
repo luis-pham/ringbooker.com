@@ -319,6 +319,9 @@ export interface ShopsRepository {
     patch: Partial<
       Pick<
         Shop,
+        | 'name'
+        | 'phone_number'
+        | 'vertical'
         | 'user_name'
         | 'user_phone'
         | 'backup_phone'
@@ -329,6 +332,9 @@ export interface ShopsRepository {
         | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'website_url'
+        | 'languages'
+        | 'current_onboarding_step'
       >
     >,
   ): Promise<Shop | null>;

@@ -206,10 +206,10 @@ export function AdminCallsLive(props: { initialShopId?: string | null }) {
               <a className="btn" href="/admin/demos">
                 Demo calls
               </a>
-              {shopId ? <a className="btn" href="/admin/calls">Clear shop filter</a> : null}
+              {shopId ? <a className="btn" href="/admin/calls">Clear business filter</a> : null}
               {shopId ? (
                 <a className="btn purple" href={`/admin/shops/${encodeURIComponent(shopId)}`}>
-                  Back to shop
+                  Back to business
                 </a>
               ) : null}
               <button type="button" className="btn ghost" onClick={() => void signOut()}>

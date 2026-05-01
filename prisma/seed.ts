@@ -59,7 +59,7 @@ const posts: SeedPost[] = [
     content: `
 <h2 id="the-math">The Math Behind Missed Calls</h2>
 <p>Most salon owners think of a missed call as one lost appointment. In reality it is often a lost long-term client.</p>
-<p>If your shop misses 3 high-intent calls per day, the annual impact can be significant.</p>
+<p>If your business misses 3 high-intent calls per day, the annual impact can be significant.</p>
 <h2 id="what-actually-works">What Actually Works</h2>
 <p>The first fix is simple: make sure every call gets answered with business-aware context and booking options.</p>
 `,

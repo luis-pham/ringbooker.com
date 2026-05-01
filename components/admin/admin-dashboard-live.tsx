@@ -41,7 +41,7 @@ const PERIODS: { id: ChartPeriod; label: string }[] = [
 const METRIC_SOURCE: Record<DashboardChartMetric, string> = {
   'demo-calls': 'Aggregated from `demo_call_runs.created_at` (same source as Admin → Demo calls).',
   leads: 'Aggregated from `contact_requests.created_at` (same source as Admin → Leads).',
-  shops: 'Aggregated from `shops.created_at` (new shop rows in the selected UTC window).',
+  shops: 'Aggregated from `shops.created_at` (new business rows in the selected UTC window).',
   calls: 'Aggregated from `call_logs.started_at` (inbound / logged calls).',
 };
 
@@ -293,10 +293,10 @@ export function AdminDashboardLive() {
                         <path d="M9 20v-6h6v6" />
                       </svg>
                     </div>
-                    <span className="tag blue">Shops</span>
+                    <span className="tag blue">Businesses</span>
                   </div>
                   <div className="stat-value">{metrics.shopCount}</div>
-                  <div className="stat-meta">Total shops in the system</div>
+                  <div className="stat-meta">Total businesses in the system</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-top">
@@ -309,7 +309,7 @@ export function AdminDashboardLive() {
                     <span className="tag green">Active</span>
                   </div>
                   <div className="stat-value">{metrics.activeShops}</div>
-                  <div className="stat-meta">Shops marked active</div>
+                  <div className="stat-meta">Businesses marked active</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-top">
@@ -340,7 +340,7 @@ export function AdminDashboardLive() {
               <section className="admin-chart-grid" style={{ marginTop: 22 }}>
                 <DashboardMetricChart metric="demo-calls" title="Demo calls" stroke="#a78bfa" chartId="demo" />
                 <DashboardMetricChart metric="leads" title="Leads" stroke="#60a5fa" chartId="leads" />
-                <DashboardMetricChart metric="shops" title="Shops created" stroke="#4ade80" chartId="shops" />
+                <DashboardMetricChart metric="shops" title="Businesses created" stroke="#4ade80" chartId="shops" />
                 <DashboardMetricChart metric="calls" title="Calls" stroke="#c4b5fd" chartId="calls" />
               </section>
             </>

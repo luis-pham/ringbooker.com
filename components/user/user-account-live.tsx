@@ -158,7 +158,7 @@ export function UserAccountLive() {
               <div className="panel-head">
                 <div>
                   <h3>Profile &amp; plan</h3>
-                  <p className="sub">Data from your authenticated session and shop record.</p>
+                  <p className="sub">Data from your authenticated session and business record.</p>
                 </div>
               </div>
               {!nav?.ok ? (
@@ -174,7 +174,7 @@ export function UserAccountLive() {
                     <span>{nav.userName?.trim() ? nav.userName : '—'}</span>
                   </div>
                   <div className="meta-tile">
-                    <strong>Shop</strong>
+                    <strong>Business</strong>
                     <span>{nav.shopName ?? '—'}</span>
                   </div>
                   <div className="meta-tile">

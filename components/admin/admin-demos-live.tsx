@@ -241,7 +241,7 @@ export function AdminDemosLive() {
               <h1>Marketing demo calls</h1>
               <p>
                 Filter by UTC date range, inspect IP and country (CF-IPCountry when present, otherwise inferred from
-                callback number), and open transcripts from the demo shop call log.
+                callback number), and open transcripts from the demo business call log.
               </p>
             </div>
             <div className="top-actions">
@@ -409,7 +409,7 @@ export function AdminDemosLive() {
             <div className="panel-head">
               <div>
                 <h3>Demo call runs</h3>
-                <p className="sub">Open a transcript in the dialog to read the demo shop call log for that run.</p>
+                <p className="sub">Open a transcript in the dialog to read the demo business call log for that run.</p>
               </div>
             </div>
             {error ? null : !pagination ? (
@@ -543,7 +543,7 @@ export function AdminDemosLive() {
                   {transcriptError ? (
                     <div className="note">
                       {transcriptError === 'transcript_not_found'
-                        ? 'No call log row yet for this request (call may not have hit the demo shop log).'
+                        ? 'No call log row yet for this request (call may not have hit the demo business log).'
                         : transcriptError}
                     </div>
                   ) : null}

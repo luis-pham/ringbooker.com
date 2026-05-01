@@ -233,6 +233,9 @@ const resetPasswordSchema = z.object({
 });
 
 const userSettingsBaseSchema = z.object({
+  name: z.string().min(1).optional(),
+  phone_number: z.string().min(1).optional(),
+  vertical: z.enum(['nail_salon', 'hair_salon', 'day_spa', 'med_spa', 'beauty_clinic']).optional(),
   user_name: z.string().min(1).optional(),
   user_phone: z.string().min(1).optional(),
   backup_phone: z.string().min(1).nullable().optional(),
@@ -241,6 +244,9 @@ const userSettingsBaseSchema = z.object({
   cancel_policy: z.string().min(1).optional(),
   promotions: z.string().min(1).nullable().optional(),
   booking_url: z.string().url().nullable().optional(),
+  website_url: z.string().url().optional().or(z.literal('')),
+  languages: z.array(z.string()).optional(),
+  current_onboarding_step: z.coerce.number().int().min(1).max(4).optional(),
 });
 
 const serviceItemSchema = z.object({
@@ -331,6 +337,10 @@ const userBillingCheckoutSchema = z.object({
   plan: z.enum(['starter', 'professional', 'enterprise']),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
+});
+
+const readWebsiteSchema = z.object({
+  url: z.string().url(),
 });
 
 const calendarProviderParamSchema = z.object({
@@ -431,12 +441,18 @@ const adminLeadStatusUpdateSchema = z.object({
 type SessionRole = 'user' | 'admin';
 
 const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
+  name: 'edit_business_profile',
+  phone_number: 'edit_business_profile',
+  vertical: 'edit_business_profile',
   user_name: 'edit_business_profile',
   user_phone: 'edit_business_profile',
   backup_phone: 'edit_business_profile',
   address: 'edit_business_profile',
   timezone: 'edit_business_profile',
   booking_url: 'edit_booking_url',
+  website_url: 'edit_business_profile',
+  languages: 'edit_business_profile',
+  current_onboarding_step: 'edit_business_profile',
   cancel_policy: 'edit_cancel_policy',
   promotions: 'edit_promotions',
   services: 'edit_services',
@@ -456,9 +472,12 @@ function splitUserSettingsPatchByPlan(
   patch: Record<string, unknown>,
 ): {
   basicPatch: Partial<
-    Pick<
-      Shop,
-      | 'user_name'
+      Pick<
+        Shop,
+        | 'name'
+        | 'phone_number'
+        | 'vertical'
+        | 'user_name'
       | 'user_phone'
       | 'backup_phone'
       | 'address'
@@ -466,8 +485,11 @@ function splitUserSettingsPatchByPlan(
       | 'services'
       | 'hours'
       | 'cancel_policy'
-      | 'promotions'
-      | 'booking_url'
+        | 'promotions'
+        | 'booking_url'
+        | 'website_url'
+        | 'languages'
+        | 'current_onboarding_step'
     >
   >;
   dynamicPatch: Partial<
@@ -977,12 +999,13 @@ async function verifyGoogleIdToken(idToken: string): Promise<{
 }
 
 function isShopOnboardingComplete(shop: Shop): boolean {
+  const hasVertical = typeof shop.vertical === 'string' && shop.vertical.trim().length > 0;
   const hasOwnerName = typeof shop.user_name === 'string' && shop.user_name.trim().length > 0;
   const hasOwnerPhone = typeof shop.user_phone === 'string' && shop.user_phone.trim().length > 0;
   const hasTimezone = typeof shop.timezone === 'string' && shop.timezone.trim().length > 0;
   const hasService = Array.isArray(shop.services) && shop.services.length > 0;
   const hasHours = !!shop.hours && Object.keys(shop.hours).length > 0;
-  return hasOwnerName && hasOwnerPhone && hasTimezone && hasService && hasHours;
+  return hasVertical && hasOwnerName && hasOwnerPhone && hasTimezone && hasService && hasHours;
 }
 
 function parseCalendarProviderParam(value: string): CalendarProviderParam | null {
@@ -2670,13 +2693,47 @@ export function createBackendApp(deps: {
       shop: {
         id: shop.id,
         name: shop.name,
+        vertical: shop.vertical ?? null,
+        phone_number: shop.phone_number,
         user_name: shop.user_name ?? '',
         user_phone: shop.user_phone ?? '',
         timezone: shop.timezone,
         cancel_policy: shop.cancel_policy,
         services: shop.services,
         hours: shop.hours,
+        languages: shop.languages ?? ['en'],
+        website_url: shop.website_url ?? '',
+        booking_url: shop.booking_url ?? '',
+        current_onboarding_step: shop.current_onboarding_step ?? 1,
       },
+    });
+  });
+
+  app.post(path('/user/read-website'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_read_website');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = readWebsiteSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const updated = await deps.shopsRepository.updateUserSettings(sessionResult.shopId ?? '', {
+      website_url: parsed.data.url,
+    });
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    return c.json({
+      ok: true,
+      success: true,
+      servicesFound: 0,
+      todo: 'website_scraping_not_implemented',
     });
   });
 

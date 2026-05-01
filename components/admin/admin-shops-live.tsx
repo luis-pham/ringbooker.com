@@ -135,8 +135,8 @@ export function AdminShopsLive() {
         <main className="main">
           <div className="topbar">
             <div className="page-title">
-              <h1>Shop accounts.</h1>
-              <p>Create, inspect, and monitor every salon account running on RingBooker. Rows are now action-oriented so you can move straight from a shop to detail or calls.</p>
+              <h1>Business accounts.</h1>
+              <p>Create, inspect, and monitor every salon account running on RingBooker. Rows are now action-oriented so you can move straight from a business to detail or calls.</p>
             </div>
             <div className="top-actions">
               <a className="btn" href="/admin/calls">
@@ -148,25 +148,25 @@ export function AdminShopsLive() {
             </div>
           </div>
 
-          {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load shops: {error}</div> : null}
+          {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load businesses: {error}</div> : null}
 
           <section className="grid grid-3">
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M3 10l2-5h14l2 5" /><path d="M4 10h16v10H4z" /><path d="M9 20v-6h6v6" /></svg></div><span className="tag green">{metrics.active} active</span></div><div className="stat-value">{metrics.total}</div><div className="stat-meta">Total shops in the admin roster</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.08 3h3a2 2 0 0 1 2 1.72l.42 3a2 2 0 0 1-.57 1.73l-1.27 1.27a16 16 0 0 0 6.44 6.44l1.27-1.27a2 2 0 0 1 1.73-.57l3 .42A2 2 0 0 1 22 16.92Z" /></svg></div><span className="tag purple">Network calls</span></div><div className="stat-value">{metrics.totalCalls}</div><div className="stat-meta">Recent calls observed across loaded shops</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6" /></svg></div><span className="tag orange">Review</span></div><div className="stat-value">{metrics.needsAttention}</div><div className="stat-meta">Shops with missed or errored latest calls</div></div>
+            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M3 10l2-5h14l2 5" /><path d="M4 10h16v10H4z" /><path d="M9 20v-6h6v6" /></svg></div><span className="tag green">{metrics.active} active</span></div><div className="stat-value">{metrics.total}</div><div className="stat-meta">Total businesses in the admin roster</div></div>
+            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 3.1 5.18 2 2 0 0 1 5.08 3h3a2 2 0 0 1 2 1.72l.42 3a2 2 0 0 1-.57 1.73l-1.27 1.27a16 16 0 0 0 6.44 6.44l1.27-1.27a2 2 0 0 1 1.73-.57l3 .42A2 2 0 0 1 22 16.92Z" /></svg></div><span className="tag purple">Network calls</span></div><div className="stat-value">{metrics.totalCalls}</div><div className="stat-meta">Recent calls observed across loaded businesses</div></div>
+            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-5 4 10 2-5h6" /></svg></div><span className="tag orange">Review</span></div><div className="stat-value">{metrics.needsAttention}</div><div className="stat-meta">Businesses with missed or errored latest calls</div></div>
           </section>
 
           <section className="card" style={{ marginTop: 18 }}>
             <div className="panel-head">
               <div>
-                <h3>All shops</h3>
-                <p className="sub">Each row is clickable. Use the right-side buttons when you want to jump directly into calls for that shop.</p>
+                <h3>All businesses</h3>
+                <p className="sub">Each row is clickable. Use the right-side buttons when you want to jump directly into calls for that business.</p>
               </div>
               <button
                 type="button"
                 className="btn-icon purple"
-                title="New shop"
-                aria-label="New shop"
+                title="New business"
+                aria-label="New business"
                 onClick={() => setCreateDialogOpen(true)}
               >
                 <svg viewBox="0 0 24 24">
@@ -178,12 +178,12 @@ export function AdminShopsLive() {
               </button>
             </div>
             {shops.length === 0 ? (
-              <div className="empty">No shops found yet.</div>
+              <div className="empty">No businesses found yet.</div>
             ) : (
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Shop</th>
+                    <th>Business</th>
                     <th>Plan</th>
                     <th>Status</th>
                     <th>Calls</th>
@@ -229,7 +229,7 @@ export function AdminShopsLive() {
           >
             <div className="rb-admin-modal-head">
               <div>
-                <h3 style={{ margin: '0 0 6px' }}>New shop</h3>
+                <h3 style={{ margin: '0 0 6px' }}>New business</h3>
                 <p className="sub" style={{ margin: 0 }}>
                   Quick-create a salon account, then open detail for full setup.
                 </p>
@@ -241,16 +241,16 @@ export function AdminShopsLive() {
             <div className="rb-admin-modal-body">
               <form onSubmit={onCreateShop} className="form-grid">
                 <div className="field">
-                  <label>Shop name</label>
+                  <label>Business name</label>
                   <input
                     required
                     value={createName}
                     onChange={(e) => setCreateName(e.target.value)}
-                    placeholder="Shop name"
+                    placeholder="Business name"
                   />
                 </div>
                 <div className="field">
-                  <label>Shop phone</label>
+                  <label>Business phone</label>
                   <input
                     required
                     value={createPhone}
@@ -272,7 +272,7 @@ export function AdminShopsLive() {
                     Cancel
                   </button>
                   <button className="btn purple" disabled={creating} type="submit">
-                    {creating ? 'Creating…' : 'Create shop'}
+                    {creating ? 'Creating…' : 'Create business'}
                   </button>
                 </div>
               </form>
