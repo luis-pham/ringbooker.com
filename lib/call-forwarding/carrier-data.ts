@@ -2,11 +2,32 @@ export type ForwardingType = 'no_answer' | 'all' | 'busy' | 'unreachable';
 
 export type ForwardingCode = {
   type: ForwardingType;
-  label: string;
-  description: string;
   activationCode: string | null;
   suffix?: string;
   cancelCode: string | null;
+};
+
+export const FORWARDING_TYPE_META: Record<
+  ForwardingType,
+  { label: string; description: string; recommended?: boolean }
+> = {
+  no_answer: {
+    label: 'Forward no-answer calls',
+    description: "When you don't pick up within ~20 seconds",
+    recommended: true,
+  },
+  all: {
+    label: 'Forward all calls',
+    description: 'Every call goes to RingBooker',
+  },
+  busy: {
+    label: 'Forward busy calls',
+    description: "When you're already on another call",
+  },
+  unreachable: {
+    label: 'Forward unreachable calls',
+    description: 'When your phone is off or out of service',
+  },
 };
 
 export type Carrier = {
@@ -16,7 +37,7 @@ export type Carrier = {
   color: string;
   defaultType: ForwardingType;
   forwardingCodes: ForwardingCode[];
-  getSteps: (type: ForwardingType, number: string) => string[];
+  appSteps?: string[];
 };
 
 export type CountryCarriers = {
@@ -26,264 +47,154 @@ export type CountryCarriers = {
   carriers: Carrier[];
 };
 
-const FORWARDING_COPY: Record<ForwardingType, { label: string; description: string }> = {
-  all: {
-    label: 'Forward all calls',
-    description: "Every call goes to RingBooker - you won't receive calls directly",
-  },
-  no_answer: {
-    label: 'Forward no-answer calls',
-    description: "RingBooker answers when you don't pick up (recommended)",
-  },
-  busy: {
-    label: 'Forward busy calls',
-    description: "RingBooker answers when you're already on another call",
-  },
-  unreachable: {
-    label: 'Forward unreachable calls',
-    description: 'RingBooker answers when your phone is off or out of service',
-  },
-};
-
-function code(type: ForwardingType, activationCode: string | null, cancelCode: string | null, suffix?: string): ForwardingCode {
-  return {
-    type,
-    label: FORWARDING_COPY[type].label,
-    description: FORWARDING_COPY[type].description,
-    activationCode,
-    suffix,
-    cancelCode,
-  };
+export function buildDialCode(code: ForwardingCode, number: string): string | null {
+  if (!code.activationCode) return null;
+  return code.activationCode + number + (code.suffix || '');
 }
 
-function buildDialCodeValue(forwardingCode: ForwardingCode, number: string): string | null {
-  if (!forwardingCode.activationCode) return null;
-  return `${forwardingCode.activationCode}${number}${forwardingCode.suffix ?? ''}`;
-}
-
-function dialCodeSteps(type: ForwardingType, number: string, forwardingCodes: ForwardingCode[]): string[] {
-  const forwardingCode = forwardingCodes.find((item) => item.type === type) ?? forwardingCodes[0];
-  const dialCode = forwardingCode ? buildDialCodeValue(forwardingCode, number) : null;
-  return [
-    'Open your phone dialer',
-    dialCode ? `Dial ${dialCode} and press call` : 'Open your provider call forwarding settings',
-    "You'll hear a confirmation tone - forwarding is active",
-  ];
-}
-
-function appSteps(steps: string[]) {
-  return () => steps;
-}
-
-function carrier(input: {
-  id: string;
-  name: string;
-  logoPath: string | null;
-  color: string;
-  defaultType: ForwardingType;
-  forwardingCodes?: ForwardingCode[];
-  steps?: string[];
-}): Carrier {
-  const forwardingCodes = input.forwardingCodes ?? [];
-  return {
-    id: input.id,
-    name: input.name,
-    logoPath: input.logoPath,
-    color: input.color,
-    defaultType: input.defaultType,
-    forwardingCodes,
-    getSteps: input.steps ? appSteps(input.steps) : (type, number) => dialCodeSteps(type, number, forwardingCodes),
-  };
-}
-
-const attCodes = [
-  code('all', '*21*', '##21#', '#'),
-  code('no_answer', '**61*', '##61#', '#'),
-  code('busy', '**67*', '##67#', '#'),
-  code('unreachable', '**62*', '##62#', '#'),
+const GSM: ForwardingCode[] = [
+  { type: 'all', activationCode: '**21*', suffix: '#', cancelCode: '##21#' },
+  { type: 'no_answer', activationCode: '**61*', suffix: '#', cancelCode: '##61#' },
+  { type: 'busy', activationCode: '**67*', suffix: '#', cancelCode: '##67#' },
+  { type: 'unreachable', activationCode: '**62*', suffix: '#', cancelCode: '##62#' },
 ];
 
-const tMobileCodes = [
-  code('all', '**21*', '##21#', '#'),
-  code('no_answer', '**61*', '##61#', '#'),
-  code('busy', '**67*', '##67#', '#'),
-  code('unreachable', '**62*', '##62#', '#'),
+const rogersCodes: ForwardingCode[] = [
+  { type: 'all', activationCode: '*21*', suffix: '#', cancelCode: '##21#' },
+  { type: 'no_answer', activationCode: '*61*', suffix: '#', cancelCode: '##61#' },
+  { type: 'busy', activationCode: '*67*', suffix: '#', cancelCode: '##67#' },
+  { type: 'unreachable', activationCode: '*62*', suffix: '#', cancelCode: '##62#' },
 ];
 
-const rogersCodes = [
-  code('all', '*21*', '##21#', '#'),
-  code('no_answer', '*61*', '##61#', '#'),
-  code('busy', '*67*', '##67#', '#'),
-  code('unreachable', '*62*', '##62#', '#'),
+const bellCodes: ForwardingCode[] = [
+  { type: 'all', activationCode: '*72', cancelCode: '*73' },
+  { type: 'no_answer', activationCode: '*92', cancelCode: '*93' },
+  { type: 'busy', activationCode: '*90', cancelCode: '*91' },
+  { type: 'unreachable', activationCode: '*94', cancelCode: '*95' },
 ];
 
-const bellCodes = [
-  code('all', '*72', '*73'),
-  code('no_answer', '*92', '*93'),
-  code('busy', '*90', '*91'),
-  code('unreachable', '*94', '*95'),
-];
-
-const telusCodes = [
-  code('all', '*21*', '#21#', '#'),
-  code('no_answer', '*61*', '#61#', '#'),
-  code('busy', '*67*', '#67#', '#'),
-  code('unreachable', '*62*', '#62#', '#'),
+const telusCodes: ForwardingCode[] = [
+  { type: 'all', activationCode: '*21*', suffix: '#', cancelCode: '#21#' },
+  { type: 'no_answer', activationCode: '*61*', suffix: '#', cancelCode: '#61#' },
+  { type: 'busy', activationCode: '*67*', suffix: '#', cancelCode: '#67#' },
+  { type: 'unreachable', activationCode: '*62*', suffix: '#', cancelCode: '#62#' },
 ];
 
 export const CARRIER_DATA: CountryCarriers[] = [
   {
-    countryCode: 'US',
+    countryCode: 'us',
     countryName: 'United States',
-    flag: 'US',
+    flag: '🇺🇸',
     carriers: [
-      carrier({
-        id: 'verizon',
-        name: 'Verizon',
-        logoPath: '/provider-logos/verizon.svg',
-        color: '#cd040b',
-        defaultType: 'no_answer',
-        forwardingCodes: [
-          code('all', '*72', '*73'),
-          code('no_answer', '*71', '*73'),
-        ],
-      }),
-      carrier({ id: 'att', name: 'AT&T', logoPath: '/provider-logos/att.svg', color: '#00a8e0', defaultType: 'no_answer', forwardingCodes: attCodes }),
-      carrier({ id: 't-mobile', name: 'T-Mobile', logoPath: '/provider-logos/t-mobile.svg', color: '#e20074', defaultType: 'no_answer', forwardingCodes: tMobileCodes }),
-      carrier({
-        id: 'nextiva-us',
-        name: 'Nextiva',
-        logoPath: '/provider-logos/nextiva-us.ico',
-        color: '#0057b8',
-        defaultType: 'no_answer',
-        forwardingCodes: [
-          code('no_answer', '*92', '*92'),
-          code('busy', '*90', '*90'),
-          code('unreachable', '*94', '*94'),
-        ],
-      }),
-      carrier({ id: 'ooma-us', name: 'Ooma Office', logoPath: '/provider-logos/ooma-us.ico', color: '#e05a1b', defaultType: 'all', forwardingCodes: [code('all', '*72', '*74', '#')] }),
-      carrier({
-        id: 'comcast-business',
-        name: 'Comcast Business',
-        logoPath: '/provider-logos/comcast-business.ico',
-        color: '#d22626',
-        defaultType: 'no_answer',
-        forwardingCodes: [
-          code('all', '*72', '*73'),
-          code('no_answer', '*92', '*93'),
-          code('busy', '*90', '*91'),
-          code('unreachable', '*59', '*59'),
-        ],
-      }),
-      carrier({
-        id: 'google-voice-us',
-        name: 'Google Voice',
-        logoPath: '/provider-logos/google-voice.svg',
-        color: '#4285f4',
-        defaultType: 'all',
-        steps: ['Open voice.google.com or the Google Voice app', 'Go to Settings > Calls > Call forwarding', 'Enter your RingBooker number as destination'],
-      }),
-      carrier({
-        id: 'ringcentral-us',
-        name: 'RingCentral',
-        logoPath: '/provider-logos/ringcentral.svg',
-        color: '#f89a1c',
-        defaultType: 'all',
-        steps: ['Log in to your RingCentral admin portal', 'Go to Phone System > Call Handling & Forwarding', 'Set forwarding destination to your RingBooker number'],
-      }),
-      carrier({
-        id: 'openphone-us',
-        name: 'OpenPhone / Quo',
-        logoPath: '/provider-logos/openphone-us.ico',
-        color: '#7c3aed',
-        defaultType: 'all',
-        steps: ['Open your OpenPhone app or web portal', 'Go to Settings > your number > Call Routing', 'Add your RingBooker number as forwarding destination'],
-      }),
-      carrier({
-        id: 'vonage-us',
-        name: 'Vonage',
-        logoPath: '/provider-logos/vonage-us.ico',
-        color: '#111827',
-        defaultType: 'all',
-        steps: ['Sign in to Vonage admin', 'Open call forwarding settings and set RingBooker number', 'Save the forwarding rule and place a test call'],
-      }),
+      { id: 'verizon', name: 'Verizon', logoPath: '/provider-logos/verizon.svg', color: '#cd040b', defaultType: 'no_answer', forwardingCodes: [
+        { type: 'all', activationCode: '*72', cancelCode: '*73' },
+        { type: 'no_answer', activationCode: '*71', cancelCode: '*73' },
+        { type: 'busy', activationCode: '*90', cancelCode: '*91' },
+        { type: 'unreachable', activationCode: '*92', cancelCode: '*93' },
+      ] },
+      { id: 'att', name: 'AT&T', logoPath: '/provider-logos/att.svg', color: '#00a8e0', defaultType: 'no_answer', forwardingCodes: [
+        { type: 'all', activationCode: '*21*', suffix: '#', cancelCode: '##21#' },
+        { type: 'no_answer', activationCode: '**61*', suffix: '#', cancelCode: '##61#' },
+        { type: 'busy', activationCode: '**67*', suffix: '#', cancelCode: '##67#' },
+        { type: 'unreachable', activationCode: '**62*', suffix: '#', cancelCode: '##62#' },
+      ] },
+      { id: 'tmobile', name: 'T-Mobile', logoPath: '/provider-logos/t-mobile.svg', color: '#e20074', defaultType: 'no_answer', forwardingCodes: [
+        { type: 'all', activationCode: '**21*', suffix: '#', cancelCode: '##21#' },
+        { type: 'no_answer', activationCode: '**61*', suffix: '#', cancelCode: '##61#' },
+        { type: 'busy', activationCode: '**67*', suffix: '#', cancelCode: '##67#' },
+        { type: 'unreachable', activationCode: '**62*', suffix: '#', cancelCode: '##62#' },
+      ] },
+      { id: 'nextiva', name: 'Nextiva', logoPath: '/provider-logos/nextiva-us.ico', color: '#0057b8', defaultType: 'no_answer', forwardingCodes: [
+        { type: 'no_answer', activationCode: '*92', cancelCode: '*93' },
+        { type: 'busy', activationCode: '*90', cancelCode: '*91' },
+        { type: 'unreachable', activationCode: '*94', cancelCode: '*95' },
+      ] },
+      { id: 'comcast', name: 'Comcast Business', logoPath: '/provider-logos/comcast-business.ico', color: '#d22626', defaultType: 'no_answer', forwardingCodes: [
+        { type: 'all', activationCode: '*72', cancelCode: '*73' },
+        { type: 'no_answer', activationCode: '*92', cancelCode: '*93' },
+        { type: 'busy', activationCode: '*90', cancelCode: '*91' },
+        { type: 'unreachable', activationCode: '*59', cancelCode: '*59' },
+      ] },
+      { id: 'ooma', name: 'Ooma', logoPath: '/provider-logos/ooma-us.ico', color: '#e05a1b', defaultType: 'all', forwardingCodes: [
+        { type: 'all', activationCode: '*72', suffix: '#', cancelCode: '*74' },
+      ] },
+      { id: 'googlevoice', name: 'Google Voice', logoPath: '/provider-logos/google-voice-us.ico', color: '#4285f4', defaultType: 'all', forwardingCodes: [], appSteps: [
+        'Open voice.google.com or the Google Voice app',
+        'Go to Settings → Calls → Call forwarding',
+        'Enter your RingBooker number as destination',
+      ] },
+      { id: 'ringcentral', name: 'RingCentral', logoPath: '/provider-logos/ringcentral-us.ico', color: '#f89a1c', defaultType: 'all', forwardingCodes: [], appSteps: [
+        'Log in to your RingCentral admin portal',
+        'Go to Phone System → Call Handling',
+        'Set forwarding to your RingBooker number',
+      ] },
+      { id: 'openphone', name: 'OpenPhone', logoPath: '/provider-logos/openphone-us.ico', color: '#7c3aed', defaultType: 'all', forwardingCodes: [], appSteps: [
+        'Open your OpenPhone app or web portal',
+        'Go to Settings → your number → Call Routing',
+        'Add your RingBooker number as forwarding destination',
+      ] },
+      { id: 'other', name: 'Other', logoPath: null, color: '#6b7280', defaultType: 'no_answer', forwardingCodes: [], appSteps: [
+        'Contact your carrier to enable call forwarding',
+        'Ask them to forward unanswered calls to your RingBooker number',
+        'Confirm the setup is active before going live',
+      ] },
     ],
   },
   {
-    countryCode: 'CA',
+    countryCode: 'ca',
     countryName: 'Canada',
-    flag: 'CA',
+    flag: '🇨🇦',
     carriers: [
-      carrier({ id: 'rogers', name: 'Rogers', logoPath: '/provider-logos/rogers.ico', color: '#e21a2c', defaultType: 'no_answer', forwardingCodes: rogersCodes }),
-      carrier({ id: 'bell', name: 'Bell', logoPath: '/provider-logos/bell.ico', color: '#0057b8', defaultType: 'no_answer', forwardingCodes: bellCodes }),
-      carrier({ id: 'telus', name: 'TELUS', logoPath: '/provider-logos/telus.ico', color: '#4b286d', defaultType: 'no_answer', forwardingCodes: telusCodes }),
-      carrier({ id: 'fido', name: 'Fido', logoPath: '/provider-logos/fido.ico', color: '#e21a2c', defaultType: 'no_answer', forwardingCodes: rogersCodes }),
-      carrier({ id: 'virgin-plus', name: 'Virgin Plus', logoPath: '/provider-logos/virgin-plus.ico', color: '#e21a2c', defaultType: 'no_answer', forwardingCodes: bellCodes }),
-      carrier({ id: 'freedom-mobile', name: 'Freedom Mobile', logoPath: '/provider-logos/freedom-mobile.ico', color: '#00a651', defaultType: 'no_answer', forwardingCodes: telusCodes }),
-      carrier({
-        id: 'dialpad',
-        name: 'Dialpad',
-        logoPath: '/provider-logos/dialpad.ico',
-        color: '#7c3aed',
-        defaultType: 'all',
-        steps: ['Sign in at Dialpad', 'Open Your settings > Your devices > Forwarding number', 'Enter RingBooker forwarding number and save'],
-      }),
+      { id: 'rogers', name: 'Rogers', logoPath: '/provider-logos/rogers.ico', color: '#e21a2c', defaultType: 'no_answer', forwardingCodes: rogersCodes },
+      { id: 'bell', name: 'Bell', logoPath: '/provider-logos/bell.ico', color: '#0057b8', defaultType: 'no_answer', forwardingCodes: bellCodes },
+      { id: 'telus', name: 'TELUS', logoPath: '/provider-logos/telus.ico', color: '#4b286d', defaultType: 'no_answer', forwardingCodes: telusCodes },
+      { id: 'fido', name: 'Fido', logoPath: '/provider-logos/fido.ico', color: '#e21a2c', defaultType: 'no_answer', forwardingCodes: rogersCodes },
+      { id: 'virginplus', name: 'Virgin Plus', logoPath: '/provider-logos/virgin-plus.ico', color: '#e21a2c', defaultType: 'no_answer', forwardingCodes: bellCodes },
+      { id: 'freedom', name: 'Freedom Mobile', logoPath: '/provider-logos/freedom-mobile.ico', color: '#00a651', defaultType: 'no_answer', forwardingCodes: telusCodes },
+      { id: 'other', name: 'Other', logoPath: null, color: '#6b7280', defaultType: 'no_answer', forwardingCodes: [], appSteps: [
+        'Contact your carrier to enable call forwarding',
+        'Forward unanswered calls to your RingBooker number',
+        'Confirm setup is active',
+      ] },
     ],
   },
-  {
-    countryCode: 'AU',
-    countryName: 'Australia',
-    flag: 'AU',
-    carriers: [
-      carrier({ id: 'telstra', name: 'Telstra', logoPath: '/provider-logos/telstra.ico', color: '#0064d2', defaultType: 'no_answer', steps: ['Open Telstra call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'optus', name: 'Optus', logoPath: '/provider-logos/optus.ico', color: '#f6c400', defaultType: 'no_answer', steps: ['Open Optus call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'vodafone-australia', name: 'Vodafone Australia', logoPath: '/provider-logos/vodafone-australia.ico', color: '#e60000', defaultType: 'no_answer', steps: ['Open Vodafone call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'aussie-broadband', name: 'Aussie Broadband', logoPath: '/provider-logos/aussie-broadband.ico', color: '#111827', defaultType: 'no_answer', steps: ['Open your Aussie Broadband phone settings', 'Choose forwarding or diversion settings', 'Enter your RingBooker number and save'] }),
-      carrier({ id: 'tpg', name: 'TPG', logoPath: '/provider-logos/tpg.ico', color: '#111827', defaultType: 'no_answer', steps: ['Open your TPG phone settings', 'Choose forwarding or diversion settings', 'Enter your RingBooker number and save'] }),
-      carrier({ id: 'iinet', name: 'iiNet', logoPath: '/provider-logos/iinet.ico', color: '#111827', defaultType: 'no_answer', steps: ['Open your iiNet phone settings', 'Choose forwarding or diversion settings', 'Enter your RingBooker number and save'] }),
-    ],
-  },
-  {
-    countryCode: 'UK',
-    countryName: 'United Kingdom',
-    flag: 'UK',
-    carriers: [
-      carrier({ id: 'ee', name: 'EE', logoPath: '/provider-logos/ee.ico', color: '#009c9c', defaultType: 'no_answer', steps: ['Open EE call divert settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'o2', name: 'O2', logoPath: '/provider-logos/o2.ico', color: '#0050aa', defaultType: 'no_answer', steps: ['Open O2 call divert settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'vodafone-uk', name: 'Vodafone UK', logoPath: '/provider-logos/vodafone-uk.ico', color: '#e60000', defaultType: 'no_answer', steps: ['Open Vodafone call divert settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'three-uk', name: 'Three UK', logoPath: '/provider-logos/three-uk.ico', color: '#111827', defaultType: 'no_answer', steps: ['Open Three call divert settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'sky-mobile', name: 'Sky Mobile', logoPath: '/provider-logos/sky-mobile.ico', color: '#111827', defaultType: 'no_answer', steps: ['Open Sky Mobile call divert settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'bt', name: 'BT', logoPath: '/provider-logos/bt.ico', color: '#5514b4', defaultType: 'all', steps: ['Log in to your BT business phone portal', 'Open call forwarding or divert settings', 'Set RingBooker as the forwarding destination'] }),
-    ],
-  },
-  {
-    countryCode: 'NZ',
-    countryName: 'New Zealand',
-    flag: 'NZ',
-    carriers: [
-      carrier({ id: 'spark', name: 'Spark', logoPath: '/provider-logos/spark.ico', color: '#ff5a00', defaultType: 'no_answer', steps: ['Open Spark call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'one-nz', name: 'One NZ', logoPath: '/provider-logos/one-nz.ico', color: '#e60000', defaultType: 'no_answer', steps: ['Open One NZ call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: '2degrees', name: '2degrees', logoPath: '/provider-logos/2degrees.ico', color: '#00a3e0', defaultType: 'no_answer', steps: ['Open 2degrees call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-    ],
-  },
-  {
-    countryCode: 'IE',
-    countryName: 'Ireland',
-    flag: 'IE',
-    carriers: [
-      carrier({ id: 'eir', name: 'eir', logoPath: '/provider-logos/eir.ico', color: '#7c3aed', defaultType: 'no_answer', steps: ['Open eir call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'vodafone-ireland', name: 'Vodafone Ireland', logoPath: '/provider-logos/vodafone-ireland.ico', color: '#e60000', defaultType: 'no_answer', steps: ['Open Vodafone Ireland call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'three-ireland', name: 'Three Ireland', logoPath: '/provider-logos/three-ireland.ico', color: '#111827', defaultType: 'no_answer', steps: ['Open Three Ireland call forwarding settings', 'Choose the forwarding condition you want', 'Enter your RingBooker number and test the setup'] }),
-      carrier({ id: 'virgin-media-ireland', name: 'Virgin Media Ireland', logoPath: '/provider-logos/virgin-media-ireland.ico', color: '#e21a2c', defaultType: 'all', steps: ['Log in to your Virgin Media account', 'Open call forwarding or divert settings', 'Set RingBooker as the forwarding destination'] }),
-    ],
-  },
+  { countryCode: 'gb', countryName: 'United Kingdom', flag: '🇬🇧', carriers: [
+    { id: 'ee', name: 'EE', logoPath: '/provider-logos/ee.ico', color: '#00b288', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'o2', name: 'O2', logoPath: '/provider-logos/o2.ico', color: '#0050a0', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'vodafone', name: 'Vodafone', logoPath: '/provider-logos/vodafone-uk.ico', color: '#e60000', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'three', name: 'Three', logoPath: '/provider-logos/three-uk.ico', color: '#0055a5', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'skymobile', name: 'Sky Mobile', logoPath: '/provider-logos/sky-mobile.ico', color: '#0e2d6d', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'other', name: 'Other', logoPath: null, color: '#6b7280', defaultType: 'no_answer', forwardingCodes: GSM },
+  ] },
+  { countryCode: 'au', countryName: 'Australia', flag: '🇦🇺', carriers: [
+    { id: 'telstra', name: 'Telstra', logoPath: '/provider-logos/telstra.ico', color: '#1a75cf', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'optus', name: 'Optus', logoPath: '/provider-logos/optus.ico', color: '#f7941d', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'vodafone', name: 'Vodafone AU', logoPath: '/provider-logos/vodafone-australia.ico', color: '#e60000', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'other', name: 'Other', logoPath: null, color: '#6b7280', defaultType: 'no_answer', forwardingCodes: GSM },
+  ] },
+  { countryCode: 'nz', countryName: 'New Zealand', flag: '🇳🇿', carriers: [
+    { id: 'spark', name: 'Spark', logoPath: '/provider-logos/spark.ico', color: '#e31837', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'onenz', name: 'One NZ', logoPath: '/provider-logos/one-nz.ico', color: '#003087', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'twodegrees', name: '2degrees', logoPath: '/provider-logos/2degrees.ico', color: '#e4003b', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'other', name: 'Other', logoPath: null, color: '#6b7280', defaultType: 'no_answer', forwardingCodes: GSM },
+  ] },
+  { countryCode: 'ie', countryName: 'Ireland', flag: '🇮🇪', carriers: [
+    { id: 'eir', name: 'eir', logoPath: '/provider-logos/eir.ico', color: '#6dc8be', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'vodafone', name: 'Vodafone', logoPath: '/provider-logos/vodafone-ireland.ico', color: '#e60000', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'three', name: 'Three', logoPath: '/provider-logos/three-ireland.ico', color: '#0055a5', defaultType: 'no_answer', forwardingCodes: GSM },
+    { id: 'other', name: 'Other', logoPath: null, color: '#6b7280', defaultType: 'no_answer', forwardingCodes: GSM },
+  ] },
 ];
 
-export function getForwardingTypeCopy(type: ForwardingType) {
-  return FORWARDING_COPY[type];
+export function findCountry(countryCode: string | undefined): CountryCarriers {
+  return CARRIER_DATA.find((country) => country.countryCode === countryCode) ?? CARRIER_DATA[0];
 }
 
-export function buildDialCode(codeItem: ForwardingCode, number: string): string | null {
-  return buildDialCodeValue(codeItem, number);
+export function findCarrier(countryCode: string | undefined, carrierId: string | undefined): Carrier | null {
+  const country = findCountry(countryCode);
+  return country.carriers.find((carrier) => carrier.id === carrierId) ?? null;
+}
+
+export function getForwardingCode(carrier: Carrier | null, type: ForwardingType): ForwardingCode | null {
+  return carrier?.forwardingCodes.find((code) => code.type === type) ?? null;
 }
