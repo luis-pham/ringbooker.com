@@ -22,6 +22,23 @@ type Call = {
   roomName?: string;
   agentJoined: boolean;
   humanAnswered: boolean;
+  summaryServiceRequest?: string | null;
+  summaryUrgency?: 'low' | 'medium' | 'high' | null;
+  summaryNextAction?:
+    | 'booking_created'
+    | 'booking_link_sent'
+    | 'callback_scheduled'
+    | 'cancellation_requested'
+    | 'reschedule_requested'
+    | 'info_provided'
+    | 'escalated'
+    | 'no_action_needed'
+    | null;
+  summaryCallerQuestion?: string | null;
+  summaryCallerName?: string | null;
+  summaryPreferredTech?: string | null;
+  summaryPreferredDatetime?: string | null;
+  summaryFollowUpRequired?: boolean;
 };
 
 const USER_CALLS_PAGE_SIZE = 20;
@@ -93,6 +110,47 @@ function speakerLabel(call: Call) {
   return 'Agent not joined';
 }
 
+
+function nextActionBadge(action?: Call['summaryNextAction']) {
+  switch (action) {
+    case 'booking_created':
+      return { className: 'summary-badge green', label: 'Booking created ✓' };
+    case 'booking_link_sent':
+      return { className: 'summary-badge blue', label: 'Link sent' };
+    case 'cancellation_requested':
+      return { className: 'summary-badge orange', label: 'Cancel requested' };
+    case 'reschedule_requested':
+      return { className: 'summary-badge orange', label: 'Reschedule needed' };
+    case 'callback_scheduled':
+      return { className: 'summary-badge purple', label: 'Callback scheduled' };
+    case 'info_provided':
+      return { className: 'summary-badge gray', label: 'Info only' };
+    case 'escalated':
+      return { className: 'summary-badge red', label: 'Escalated' };
+    default:
+      return null;
+  }
+}
+
+function urgencyBadge(urgency?: Call['summaryUrgency']) {
+  if (urgency === 'high') return { className: 'summary-badge red', label: 'Urgent ⚠️' };
+  if (urgency === 'medium') return { className: 'summary-badge blue', label: 'Medium priority' };
+  return null;
+}
+
+function hasStructuredSummary(call: Call) {
+  return Boolean(
+    call.summaryServiceRequest ||
+      call.summaryCallerQuestion ||
+      call.summaryCallerName ||
+      call.summaryPreferredTech ||
+      call.summaryPreferredDatetime ||
+      call.summaryFollowUpRequired ||
+      urgencyBadge(call.summaryUrgency) ||
+      nextActionBadge(call.summaryNextAction),
+  );
+}
+
 function buildVipSignals(calls: Call[]) {
   const counts = new Map<string, number>();
   for (const call of calls) {
@@ -113,6 +171,7 @@ export function UserCallsLive() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
+  const [showTranscript, setShowTranscript] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -167,6 +226,24 @@ export function UserCallsLive() {
   const canGoPrev = page > 1;
   const canGoNext = totalCount !== null && page * USER_CALLS_PAGE_SIZE < totalCount;
 
+
+  async function markFollowUpDone(call: Call) {
+    if (!call.requestId) return;
+    const response = await fetch(`/api/backend/user/calls/${encodeURIComponent(call.requestId)}/follow-up-done`, {
+      method: 'PATCH',
+    });
+    if (!response.ok) return;
+    setCalls((items) =>
+      items.map((item) =>
+        item.requestId === call.requestId ? { ...item, summaryFollowUpRequired: false } : item,
+      ),
+    );
+    setActiveCall((current) => {
+      if (!current || current.requestId !== call.requestId) return current;
+      return { ...current, summaryFollowUpRequired: false };
+    });
+  }
+
   const vipSignals = useMemo(() => buildVipSignals(calls), [calls]);
 
   const modalStyles = useMemo(
@@ -208,6 +285,16 @@ export function UserCallsLive() {
 }
 .meta-tile strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin-bottom:7px}
 .meta-tile span{display:block;font-size:14px;color:var(--text-dark);line-height:1.6}
+
+.summary-panel{border:1px solid var(--border);border-radius:18px;padding:14px 16px;background:#fff;margin-bottom:18px}
+.summary-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.summary-badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;line-height:1}
+.summary-badge.green{background:#dcfce7;color:#15803d}.summary-badge.blue{background:#dbeafe;color:#1d4ed8}.summary-badge.orange{background:#ffedd5;color:#c2410c}.summary-badge.purple{background:#ede9fe;color:#6d28d9}.summary-badge.red{background:#fee2e2;color:#b91c1c}.summary-badge.gray{background:#f1f5f9;color:#475569}
+.summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;font-size:14px;line-height:1.5;color:var(--text-dark)}
+.summary-grid .full{grid-column:1/-1}.summary-grid span{color:var(--text-gray);font-size:12px;margin-right:4px}
+.follow-up-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;background:#fef3c7;border:.5px solid #fde68a;border-radius:12px;padding:8px 12px;font-size:13px;color:#92400e}
+.follow-up-banner button{font-size:12px;color:#92400e;background:transparent;border:.5px solid #fde68a;border-radius:999px;padding:3px 10px;cursor:pointer;white-space:nowrap}
+.transcript-toggle{display:flex;justify-content:flex-start;margin-bottom:10px}
 .transcript-note{
   background:#fff;border:1px solid var(--border);border-radius:22px;padding:18px 18px 20px;white-space:pre-wrap;
   font-size:14px;line-height:1.7;color:var(--text-dark);
@@ -314,11 +401,12 @@ export function UserCallsLive() {
                               <div className="stack">
                                 <span className={outcomeClass(call.outcome)}>{call.outcome ?? 'in_progress'}</span>
                                 <span className="status-copy">{transcriptStatusLabel(call)} transcript</span>
+                                {hasStructuredSummary(call) ? <span className="status-copy">Structured summary ready</span> : null}
                               </div>
                             </td>
                             <td>{speakerLabel(call)}</td>
                             <td>
-                              <button className="btn ghost" type="button" onClick={() => setActiveCall(call)}>
+                              <button className="btn ghost" type="button" onClick={() => { setActiveCall(call); setShowTranscript(false); }}>
                                 Preview transcript
                               </button>
                             </td>
@@ -350,9 +438,10 @@ export function UserCallsLive() {
                         <div className="pill-row" style={{ marginTop: 12 }}>
                           <span className={isVip ? 'tag purple' : 'tag blue'}>{isVip ? 'VIP signal' : 'Standard'}</span>
                           <span className={transcriptClass(call.transcriptStatus)}>{transcriptStatusLabel(call)} transcript</span>
+                          {hasStructuredSummary(call) ? <span className="tag green">Summary ready</span> : null}
                         </div>
                         <div className="mobile-call-actions">
-                          <button className="btn ghost" type="button" onClick={() => setActiveCall(call)}>
+                          <button className="btn ghost" type="button" onClick={() => { setActiveCall(call); setShowTranscript(false); }}>
                             Preview transcript
                           </button>
                         </div>
@@ -415,6 +504,44 @@ export function UserCallsLive() {
               <div className="meta-tile"><strong>Handled by</strong><span>{speakerLabel(activeCall)}</span></div>
             </div>
 
+
+            {hasStructuredSummary(activeCall) ? (
+              <div className="summary-panel">
+                <div className="summary-badges">
+                  {urgencyBadge(activeCall.summaryUrgency) ? (
+                    <span className={urgencyBadge(activeCall.summaryUrgency)!.className}>
+                      {urgencyBadge(activeCall.summaryUrgency)!.label}
+                    </span>
+                  ) : null}
+                  {nextActionBadge(activeCall.summaryNextAction) ? (
+                    <span className={nextActionBadge(activeCall.summaryNextAction)!.className}>
+                      {nextActionBadge(activeCall.summaryNextAction)!.label}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="summary-grid">
+                  {activeCall.summaryCallerName ? <div><span>Caller:</span>{activeCall.summaryCallerName}</div> : null}
+                  {activeCall.summaryServiceRequest ? <div><span>Service:</span>{activeCall.summaryServiceRequest}</div> : null}
+                  {activeCall.summaryPreferredDatetime ? <div><span>Wants:</span>{activeCall.summaryPreferredDatetime}</div> : null}
+                  {activeCall.summaryPreferredTech ? <div><span>With:</span>{activeCall.summaryPreferredTech}</div> : null}
+                  {activeCall.summaryCallerQuestion ? <div className="full"><span>Asked:</span>“{activeCall.summaryCallerQuestion}”</div> : null}
+                </div>
+                {activeCall.summaryFollowUpRequired ? (
+                  <div className="follow-up-banner">
+                    <span>⚠️ Follow up needed</span>
+                    <button type="button" onClick={() => void markFollowUpDone(activeCall)}>Mark done</button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="transcript-toggle">
+              <button className="btn ghost" type="button" onClick={() => setShowTranscript((value) => !value)}>
+                {showTranscript ? 'Hide transcript ↑' : 'Show transcript ↓'}
+              </button>
+            </div>
+
+            {showTranscript ? (
             <div className="transcript-note">
               {activeCall.transcriptText
                 ? activeCall.transcriptText
@@ -424,6 +551,7 @@ export function UserCallsLive() {
                     ? 'Transcript generation failed for this call. Please inspect provider logs and retry if needed.'
                     : 'Transcript is still pending. Open this preview again after the realtime worker finishes persisting the full transcript.'}
             </div>
+            ) : null}
           </div>
         </div>
       ) : null}

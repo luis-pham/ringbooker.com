@@ -2882,6 +2882,31 @@ Submitted at: ${new Date().toISOString()}`,
     });
   });
 
+
+  app.patch(path('/user/calls/:requestId/follow-up-done'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls_follow_up_done');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const requestId = c.req.param('requestId');
+    if (!requestId) return c.json({ ok: false, error: 'missing_request_id' }, 400);
+    const call = await deps.callLogsRepository.findTranscriptByShopAndRequestId({ shopId: shop.id, requestId });
+    if (!call) return c.json({ ok: false, error: 'call_not_found' }, 404);
+
+    await deps.callLogsRepository.updateStructuredSummary(requestId, {
+      summaryFollowUpRequired: false,
+    });
+
+    return c.json({ ok: true });
+  });
+
   app.get(path('/user/bookings'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_bookings');
     if (limited) return limited;
