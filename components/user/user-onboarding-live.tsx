@@ -466,7 +466,7 @@ export function UserOnboardingLive() {
 .onb-progress-main{display:flex;justify-content:flex-end;flex:1;min-width:0}
 .onb-progress-pills{display:flex;justify-content:flex-end;gap:8px}
 .onb-progress-pill{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid #d9deea;border-radius:999px;padding:6px 14px;color:#64748b;background:#fff;font-size:13px;font-weight:800;white-space:nowrap;min-width:auto}
-.onb-progress-pill.done{background:#ede9fe;border-color:#8b5cf6;color:#5b21b6}
+.onb-progress-pill.done{background:transparent;border-color:#8b5cf6;color:#5b21b6}
 .onb-progress-pill.current{background:#6d28d9;border-color:#6d28d9;color:#fff;box-shadow:0 12px 28px rgba(109,40,217,.22)}
 .onb-progress-mark{width:18px;height:18px;border-radius:999px;display:inline-grid;place-items:center;background:currentColor;color:inherit;box-shadow:inset 0 0 0 999px rgba(255,255,255,.8);font-size:11px}
 .onb-progress-pill.current .onb-progress-mark{background:#fff;color:#6d28d9;box-shadow:none}
