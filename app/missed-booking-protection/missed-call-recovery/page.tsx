@@ -58,10 +58,15 @@ const sections: SeoSection[] = [
     heading: 'The missed-call problem beauty businesses underestimate',
     paragraphs: [
       <>
-        A missed call feels small in the moment. The phone rang. The team was busy. Voicemail picked up. Maybe someone calls back later. But that sequence plays out very differently in real caller behavior.
+        A missed call feels small in the moment. The phone rang. The team was busy. Voicemail picked up. Maybe someone calls back later. But that everyday sequence sits inside the wider{' '}
+        <Link href="/missed-booking-protection">missed-call problem</Link> — and it plays out very differently in real caller behavior than most owners expect.
       </>,
       <>
-        Industry data shows that <strong>85% of callers who reach voicemail do not leave a message</strong> — and of those who do leave a message, most are never successfully reached on the callback. The typical recovery rate for voicemail-dependent missed calls is far lower than most owners assume. The result is a system that loses most of its leads silently, with no record of what was asked or who called.
+        Industry data shows that <strong>85% of callers who reach voicemail do not leave a message</strong> — and of those who do leave a message, most are never successfully reached on the callback. The typical recovery rate for voicemail-dependent missed calls is far lower than most owners assume. That pattern is the practical meaning of{' '}
+        <Link href="/missed-booking-protection/why-voicemail-is-a-dead-end-for-busy-salons">
+          voicemail is a dead end for busy salons
+        </Link>
+        : the result is a system that loses most of its leads silently, with no record of what was asked or who called.
       </>,
       <>
         For a beauty business where same-day bookings, reschedule requests, and new-client inquiries are the majority of incoming calls, that silent loss adds up quickly.{' '}
@@ -80,7 +85,8 @@ const sections: SeoSection[] = [
         SimpleTexting data shows that <strong>82% of consumers check text notifications within five minutes</strong> of receiving them, and <strong>32% check within 60 seconds</strong>. That is a narrow window. A caller who did not get through at 2pm on a Saturday is not going to stay available for a callback at 4pm. They are either with a client at a competing salon by then, or they have made other plans. The booking opportunity has moved on.
       </>,
       <>
-        That is why text-back — not a callback — is usually the most effective first recovery step. An immediate SMS response reaches the caller while they are still in the decision window, gives them a path to continue the conversation, and keeps the booking intent alive instead of letting it fade. This is the critical difference between traditional missed-call handling and a real recovery system:
+        That is why text-back — not a callback — is usually the most effective first recovery step. An immediate SMS response reaches the caller while they are still in the decision window, gives them a path to continue the conversation, and keeps the booking intent alive instead of letting it fade. Systems designed to{' '}
+        <Link href="/trust/can-ringbooker-text-missed-callers-automatically">text missed callers automatically</Link> close that gap at machine speed. This is the critical difference between traditional missed-call handling and a real recovery system:
       </>,
     ],
     compareTable: {
@@ -173,10 +179,19 @@ const sections: SeoSection[] = [
     heading: 'What happens when the AI cannot resolve the request',
     paragraphs: [
       <>
-        Missed-call recovery does not try to replace every human conversation. Some calls are straightforward — availability checks, pricing questions, reschedule requests — and recovery handles those well. Other calls require human judgment: a complex service consultation, a client complaint, a provider-specific request that needs someone who knows the schedule intimately.
+        Missed-call recovery does not try to replace every human conversation. Some calls are straightforward — availability checks, pricing questions, reschedule requests — and recovery handles those well.         Other calls require human judgment — whether that is the nuance in{' '}
+        <Link href="/industries/med-spa/medspa-missed-call-consultation-lead-why-phone-leads-are-the-fastest-to-lose-and-the-most-valuable-to-capture">
+          med spa consultation calls
+        </Link>{' '}
+        or{' '}
+        <Link href="/industries/beauty-clinic/how-beauty-clinics-handle-consultation-calls-without-losing-trust">
+          beauty clinic consultation calls
+        </Link>
+        , a client complaint, or a provider-specific request that needs someone who knows the schedule intimately.
       </>,
       <>
-        When the recovery system reaches the limit of what it can resolve, it does not pretend otherwise. Instead, it captures the context the caller has shared, flags the call for human follow-up, and gives your team a clean summary. The staff member who picks up the callback already knows what the caller needed, what was communicated, and what is still unresolved. That means fewer cold callbacks, fewer repeated explanations, and a much faster path to actually helping the client.
+        When the recovery system reaches the limit of what it can resolve, it does not pretend otherwise. Instead, it captures the context the caller has shared, flags the call for{' '}
+        <Link href="/trust/what-happens-if-a-caller-wants-a-real-person">human follow-up</Link>, and gives your team a clean summary. The staff member who picks up the callback already knows what the caller needed, what was communicated, and what is still unresolved. That means fewer cold callbacks, fewer repeated explanations, and a much faster path to actually helping the client.
       </>,
     ],
   },
@@ -185,8 +200,7 @@ const sections: SeoSection[] = [
     paragraphs: [
       <>This is worth stating clearly.</>,
       <>
-        Voicemail is a passive system. It records a message if the caller chooses to leave one, and then waits for someone to retrieve it. The entire recovery depends on the caller doing extra work — and on the salon creating a reliable callback process. As{' '}
-        <Link href="/missed-booking-protection/why-voicemail-is-a-dead-end-for-busy-salons">the data on voicemail behavior shows</Link>, most callers choose not to leave a message. Most callbacks, when they happen, are not successful on the first attempt. The recovery rate from voicemail is structurally low.
+        Voicemail is a passive system. It records a message if the caller chooses to leave one, and then waits for someone to retrieve it. The entire recovery depends on the caller doing extra work — and on the salon creating a reliable callback process. Most callers choose not to leave a message. Most callbacks, when they happen, are not successful on the first attempt. The recovery rate from voicemail is structurally low.
       </>,
       <>
         Missed-call recovery is an active system. It reaches out to the caller instead of waiting. It creates an immediate two-way path instead of a one-way dead end. And it preserves context instead of losing it. The comparison is not a close one for beauty businesses where same-day decisions are common and caller patience is limited.
@@ -197,8 +211,12 @@ const sections: SeoSection[] = [
     heading: 'Recovery works on your current number',
     paragraphs: [
       <>
-        Missed-call text-back and recovery flows work through your existing business number — not a new contact path, not a secondary line. Callers receive the response from the same number they called. The conversation feels like a natural continuation, not a redirect. And your{' '}
-        <Link href="/current-number/why-nap-consistency-still-matters-for-salons-in-2026">NAP consistency</Link> across Google Business Profile, Yelp, and your website stays intact.
+        Missed-call text-back and recovery flows use <Link href="/current-number/call-forwarding">call forwarding</Link> on your existing business line — not a new contact path, not a secondary line. You{' '}
+        <Link href="/current-number">keep your current number</Link> end-to-end: callers receive SMS from the same number they dialed, so the thread feels like a natural continuation, not a redirect. Your listings stay aligned with{' '}
+        <Link href="/current-number/why-nap-consistency-still-matters-for-salons-in-2026">
+          why NAP consistency still matters for salons
+        </Link>{' '}
+        across Google Business Profile, Yelp, and your website.
       </>,
     ],
   },

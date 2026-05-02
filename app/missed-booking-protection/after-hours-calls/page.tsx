@@ -58,7 +58,8 @@ const sections: SeoSection[] = [
       </>,
       <>
         If voicemail picks up, that intent does not hold. Phorest data shows that{' '}
-        <strong>one-third of salon appointment bookings are made outside business hours</strong>. That is not a niche behavior. It is a consistent, recurring pattern across the industry — clients book when they have time, not when the business is staffed.
+        <strong>one-third of salon appointment bookings are made outside business hours</strong>. That is not a niche behavior. It is a consistent, recurring pattern across the industry — clients book when they have time, not when the business is staffed. Those gaps are where{' '}
+        <Link href="/missed-booking-protection">missed bookings</Link> pile up after closing when coverage stops at the voicemail prompt.
       </>,
       <>
         For a salon that closes at 7pm and opens at 9am, that is a 14-hour window where booking intent arrives with no one to capture it.
@@ -83,7 +84,11 @@ const sections: SeoSection[] = [
     ],
     trailParagraphs: [
       <>
-        That invisible loss is the real cost of after-hours voicemail. It does not show up in any report. The team never sees a missed call that converted elsewhere. The slot that could have been filled remains empty, and no one knows why.
+        That invisible loss is the real cost of after-hours voicemail — and part of{' '}
+        <Link href="/missed-booking-protection/why-voicemail-is-a-dead-end-for-busy-salons">
+          voicemail is a dead end for busy salons
+        </Link>
+        . It does not show up in any report. The team never sees a missed call that converted elsewhere. The slot that could have been filled remains empty, and no one knows why.
       </>,
     ],
   },
@@ -99,7 +104,8 @@ const sections: SeoSection[] = [
         title: 'Nail salons',
         paragraphs: [
           <>
-            Nail salon after-hours calls peak in the <strong>evening window — 7pm to 10pm on weekdays</strong>. These are clients who worked during the day and are planning their week, making same-day or next-day booking decisions. Walk-in checks, same-day availability, and quick reschedules are the most common after-hours call types. Without coverage, these calls go to voicemail. The caller tries the next nail salon on the list. The lost booking is often never recovered.
+            <Link href="/industries/nail-salon">Nail salon after-hours calls</Link> peak in the{' '}
+            <strong>evening window — 7pm to 10pm on weekdays</strong>. These are clients who worked during the day and are planning their week, making same-day or next-day booking decisions. Walk-in checks, same-day availability, and quick reschedules are the most common after-hours call types. Without coverage, these calls go to voicemail. The caller tries the next nail salon on the list. The lost booking is often never recovered.
           </>,
         ],
       },
@@ -107,7 +113,11 @@ const sections: SeoSection[] = [
         title: 'Hair salons',
         paragraphs: [
           <>
-            Hair salon after-hours volume is highest on <strong>Sunday evenings</strong>, when clients are planning their week ahead. Provider-specific requests — wanting a particular stylist, asking about color availability — are common after-hours hair salon calls. These are calls where a vague voicemail is especially unhelpful. The caller cannot leave enough context. The salon cannot give enough of an answer. And the callback often arrives too late.
+            Hair salon after-hours volume is highest on <strong>Sunday evenings</strong>, when clients are planning their week ahead. Provider-specific requests — wanting a particular stylist, asking about color availability — stay on the phone because{' '}
+            <Link href="/industries/hair-salon/why-hair-salon-clients-still-call-even-with-online-booking">
+              hair salon clients still call even with online booking
+            </Link>{' '}
+            when they need a nuanced answer. These are calls where a vague voicemail is especially unhelpful. The caller cannot leave enough context. The salon cannot give enough of an answer. And the callback often arrives too late.
           </>,
         ],
       },
@@ -115,7 +125,10 @@ const sections: SeoSection[] = [
         title: 'Day spas',
         paragraphs: [
           <>
-            Spa after-hours inquiries tend to cluster around <strong>lunch hours and late evenings</strong>, when clients have a brief window to handle personal planning. Package questions, couples availability, and weekend booking requests are typical. Because spa calls often carry more context — the client wants to describe what they are looking for before booking — voicemail handles them especially poorly. A caller trying to ask about a couples massage package for next Saturday is not going to leave all of that in a voicemail.
+            <Link href="/industries/spa/how-after-hours-booking-demand-still-matters-for-spas">Spa after-hours inquiries</Link> tend to cluster around{' '}
+            <strong>lunch hours and late evenings</strong>, when clients have a brief window to handle personal planning. Package questions, couples availability, and weekend booking requests are typical — including{' '}
+            <Link href="/industries/spa/how-couples-massage-inquiries-get-lost-before-they-book">couples massage inquiries</Link>{' '}
+            that need context voicemail cannot capture. Because spa calls often carry more context — the client wants to describe what they are looking for before booking — voicemail handles them especially poorly. A caller trying to ask about a couples massage package for next Saturday is not going to leave all of that in a voicemail.
           </>,
         ],
       },
@@ -123,7 +136,15 @@ const sections: SeoSection[] = [
         title: 'Med spas and beauty clinics',
         paragraphs: [
           <>
-            For med spas and beauty clinics, after-hours calls often carry the highest booking value in the entire category. Consultation inquiries, treatment pricing questions, and new client intake calls happen after hours because clients want privacy and time to think. These callers are also the least likely to leave a voicemail. The subject matter — aesthetic treatments, procedures, pricing — feels personal. A caller asking about injectables or laser treatments is not going to describe that on an answering machine. Missing these calls is expensive in two ways: the immediate lost consultation value, and the long-term lost client relationship if the caller books elsewhere.
+            For med spas and beauty clinics, after-hours calls often carry the highest booking value in the entire category — including{' '}
+            <Link href="/industries/med-spa/medspa-missed-call-consultation-lead-why-phone-leads-are-the-fastest-to-lose-and-the-most-valuable-to-capture">
+              med spa missed consultation calls
+            </Link>{' '}
+            and{' '}
+            <Link href="/industries/beauty-clinic/how-beauty-clinics-handle-consultation-calls-without-losing-trust">
+              beauty clinic consultation calls
+            </Link>
+            . Consultation inquiries, treatment pricing questions, and new client intake calls happen after hours because clients want privacy and time to think. These callers are also the least likely to leave a voicemail. The subject matter — aesthetic treatments, procedures, pricing — feels personal. A caller asking about injectables or laser treatments is not going to describe that on an answering machine. Missing these calls is expensive in two ways: the immediate lost consultation value, and the long-term lost client relationship if the caller books elsewhere.
           </>,
         ],
       },
@@ -132,11 +153,16 @@ const sections: SeoSection[] = [
   {
     heading: 'Keep your current number',
     paragraphs: [
-      <>You do not need to retrain clients or print a new phone number.</>,
       <>
-        RingBooker can sit behind your existing business line through call forwarding, so callers keep using the number on Google, Yelp, Instagram, and your website. The after-hours coverage happens on the same number clients already know. This matters for{' '}
-        <Link href="/current-number/why-nap-consistency-still-matters-for-salons-in-2026">local SEO and NAP consistency</Link>
-        . Changing or adding a second phone number creates inconsistency across listings that can affect how Google surfaces your business in local search. Keeping the same number avoids that problem entirely.
+        When you <Link href="/current-number">keep your current number</Link>, you do not need to retrain clients or print a new line.
+      </>,
+      <>
+        RingBooker can sit behind your existing business line through{' '}
+        <Link href="/current-number/call-forwarding">call forwarding</Link>, so callers keep using the number on Google, Yelp, Instagram, and your website. The after-hours coverage happens on the same number clients already know. This ties into{' '}
+        <Link href="/current-number/why-nap-consistency-still-matters-for-salons-in-2026">
+          why NAP consistency still matters for salons
+        </Link>{' '}
+        across listings — changing or adding a second phone number creates inconsistency that can affect how Google surfaces your business in local search. Keeping the same number avoids that problem entirely.
       </>,
     ],
   },
