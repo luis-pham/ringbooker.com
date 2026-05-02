@@ -1,6 +1,11 @@
 import { REALTIME_TOOL_DEFINITIONS } from '@/src/agent/realtime/shared-tool-definitions';
 
-/** Production SIP shop route: same subset as inbound voice booking (no transfer/callback here). */
+/**
+ * Production SIP shop route — tools exposed on OpenAI SIP `accept` + sideband.
+ * `transfer_to_user` uses `TelephonyService.transferLiveCallToUser` (LiveKit SIP participant into `roomName`).
+ * Pure OpenAI SIP calls use synthetic `roomName` (no LiveKit room): Telnyx transfer may fall back until a
+ * Call-Control–based transfer is implemented for that path.
+ */
 export const SIP_SHOP_TOOL_NAMES = [
   'get_shop_info',
   'check_availability',
@@ -8,6 +13,7 @@ export const SIP_SHOP_TOOL_NAMES = [
   'cancel_booking',
   'reschedule_booking',
   'send_booking_link',
+  'transfer_to_user',
 ] as const;
 
 export type SipShopToolName = (typeof SIP_SHOP_TOOL_NAMES)[number];

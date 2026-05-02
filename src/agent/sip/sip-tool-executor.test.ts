@@ -9,6 +9,7 @@ import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callb
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
+import type { TelephonyService } from '@/src/backend/services/telephony/types';
 
 function memoryDeps() {
   return {
@@ -17,6 +18,17 @@ function memoryDeps() {
     bookingsRepository: new InMemoryBookingsRepository(),
     callbacksRepository: new InMemoryCallbacksRepository(),
     telephonyService: new NoopTelephonyService(),
+  };
+}
+
+function transferOkTelephony(): TelephonyService {
+  return {
+    async transferLiveCallToUser() {
+      return { initiated: true, target: 'user', providerCallId: 'sip-transfer-test' };
+    },
+    async createOutboundCall() {
+      return {};
+    },
   };
 }
 
@@ -104,6 +116,28 @@ test('invalid create_booking input returns error JSON without throwing', async (
   const json = await executeSipShopToolCall(ctx, 'create_booking', { date: 'not-a-date' });
   const parsed = JSON.parse(json) as { error?: string };
   assert.ok(parsed.error);
+});
+
+test('transfer_to_user delegates to telephony when transfers allowed', async () => {
+  const shopsRepo = new InMemoryShopsRepository();
+  const shop = await shopsRepo.findById('demo-shop');
+  assert.ok(shop);
+  const ctx = createSipAgentToolContext({
+    shop,
+    callerPhone: '+15550001111',
+    requestId: 'sip-transfer-req',
+    roomName: 'sip-room-transfer',
+    deps: {
+      shopsRepository: shopsRepo,
+      jobsRepository: new InMemoryJobsRepository(),
+      bookingsRepository: new InMemoryBookingsRepository(),
+      callbacksRepository: new InMemoryCallbacksRepository(),
+      telephonyService: transferOkTelephony(),
+    },
+  });
+  const json = await executeSipShopToolCall(ctx, 'transfer_to_user', { reason: 'Caller asks for the owner' });
+  assert.ok(json.includes('"success":true'));
+  assert.ok(json.includes('"target":"user"'));
 });
 
 test('unexpected calendar throw maps to JSON tool error via check_availability', async () => {

@@ -5,6 +5,7 @@ import { SIP_SHOP_TOOLS, SIP_SHOP_TOOL_NAMES } from '@/src/agent/sip/sip-tool-de
 
 test('SIP_SHOP_TOOLS matches expected names and OpenAI function shape', () => {
   assert.equal(SIP_SHOP_TOOLS.length, SIP_SHOP_TOOL_NAMES.length);
+  assert.ok(SIP_SHOP_TOOLS.some((t) => t.name === 'transfer_to_user'));
   for (const tool of SIP_SHOP_TOOLS) {
     assert.equal(tool.type, 'function');
     assert.ok(typeof tool.name === 'string' && tool.name.length > 0);

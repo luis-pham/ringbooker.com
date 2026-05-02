@@ -4,6 +4,7 @@ import { createBookingTool } from '@/src/agent/tools/create-booking';
 import { getShopInfoTool } from '@/src/agent/tools/get-shop-info';
 import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
+import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
 import type { AgentToolContext } from '@/src/agent/tools/types';
 import type { Shop } from '@/src/backend/domain/types';
 import type { BookingsRepository, CallbacksRepository, JobsRepository, ShopsRepository } from '@/src/backend/ports/repositories';
@@ -83,6 +84,9 @@ export async function executeSipShopToolCall(
         break;
       case 'send_booking_link':
         result = await sendBookingLinkTool(ctx, toolInput);
+        break;
+      case 'transfer_to_user':
+        result = await transferToUserTool(ctx, toolInput);
         break;
       default:
         return compactSipToolJson({ error: `Unknown tool: ${toolName}` });
