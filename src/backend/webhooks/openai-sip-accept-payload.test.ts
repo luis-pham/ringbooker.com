@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { SIP_SHOP_TOOLS } from '@/src/agent/sip/sip-tool-definitions';
 import { buildOpenAiSipAcceptAudioInputFromEnv, buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 
 function withEnv(updates: Record<string, string | undefined>, fn: () => void) {
@@ -74,6 +75,27 @@ test('buildOpenAiSipAcceptBody nests audio.input + audio.output', () => {
       assert.equal(body.audio?.input?.turn_detection?.prefix_padding_ms, 250);
       assert.equal(body.audio?.input?.turn_detection?.silence_duration_ms, 400);
       assert.equal(body.audio?.input?.turn_detection?.idle_timeout_ms, 8000);
+    },
+  );
+});
+
+test('buildOpenAiSipAcceptBody adds shop tools + tool_choice when provided', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
+      AGENT_OPENAI_TURN_DETECTION: 'server_vad',
+    },
+    () => {
+      const body = buildOpenAiSipAcceptBody({
+        instructions: 'Prod',
+        model: 'gpt-realtime',
+        voice: 'alloy',
+        shopBusinessTools: SIP_SHOP_TOOLS,
+        toolChoice: 'auto',
+      });
+      assert.ok(body.tools && body.tools.length >= 4);
+      assert.ok(body.tools?.some((t) => t.name === 'check_availability'));
+      assert.equal(body.tool_choice, 'auto');
     },
   );
 });
