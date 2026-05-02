@@ -35,12 +35,6 @@ function verificationLabel(status: ProviderRecord['verificationStatus']) {
   if (status === 'partial') return 'Some details may vary by plan or device';
   return 'Check with your provider before using exact settings';
 }
-function setupVerificationLabel(status: ProviderRecord['setupInstructions']['verificationStatus']) {
-  if (status === 'official_verified') return 'Official provider docs checked';
-  if (status === 'skipcalls_sourced') return 'SkipCalls-sourced setup reference';
-  return 'Needs official provider verification';
-}
-
 function providerInitials(name: string) {
   return name
     .split(/\s+/)
@@ -201,7 +195,7 @@ function SetupGuidePanel({
           </ol>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="space-y-6">
           <div>
             <h4 className="text-lg font-bold text-slate-900">Turn forwarding off</h4>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-[15px] leading-7 text-slate-600">
@@ -240,28 +234,6 @@ function SetupGuidePanel({
             </Link>
           </div>
         </div>
-
-        {provider.setupInstructions.verificationStatus !== 'official_verified' ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">
-            <p className="font-semibold">Source note: {setupVerificationLabel(provider.setupInstructions.verificationStatus)}</p>
-            <p className="mt-1">
-              These instructions are based on publicly available call forwarding references and should be tested with your provider before going live.
-            </p>
-          </div>
-        ) : null}
-
-        <details className="rounded-xl border border-slate-200 p-4 text-xs text-slate-500">
-          <summary className="cursor-pointer font-semibold text-slate-700">Sources & last checked area</summary>
-          <ul className="mt-2 list-disc pl-4">
-            {provider.setupInstructions.sourceUrls.map((url) => (
-              <li key={url}>
-                <a href={url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
-                  {url}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </details>
       </div>
     </section>
   );
