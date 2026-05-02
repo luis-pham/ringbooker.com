@@ -27,7 +27,7 @@ anytime at:
 https://ringbooker.com/demo
 
 Talk soon,
-The RingBooker Team
+Luis Pham, RingBooker
 
 ---
 RingBooker · AI receptionist for beauty businesses

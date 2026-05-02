@@ -45,6 +45,14 @@ import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
 import type { EmailService } from '@/src/backend/services/email/types';
 import { getDemoRequestConfirmationEmail } from '@/src/backend/services/email/templates/demo-request-confirmation';
+import { buildPasswordResetEmail } from '@/src/backend/services/email/templates/password-reset';
+import {
+  contactSalesEmail,
+  emailDefaultFrom,
+  emailFounderFrom,
+  emailReplyTo,
+  emailSupportAddress,
+} from '@/src/backend/services/email/config';
 import { getEnv } from '@/src/backend/config/env';
 import { logger } from '@/src/backend/observability/logger';
 import { trackApiStatusForAlerts } from '@/src/backend/observability/security-alerts';
@@ -900,7 +908,7 @@ function buildSignupWelcomeEmail(params: {
     `Onboarding: ${onboardingUrl}`,
     '',
     'Thanks,',
-    'RingBooker Team',
+    'Luis Pham, RingBooker',
   ].join('\n');
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
@@ -910,7 +918,7 @@ function buildSignupWelcomeEmail(params: {
       <p style="margin:0 0 16px">Complete setup and start taking calls.</p>
       <p style="margin:0 0 8px"><a href="${dashboardUrl}">Open dashboard</a></p>
       <p style="margin:0 0 8px"><a href="${onboardingUrl}">Complete onboarding</a></p>
-      <p style="margin:16px 0 0">Thanks,<br/>RingBooker Team</p>
+      <p style="margin:16px 0 0">Thanks,<br/>Luis Pham, RingBooker</p>
     </div>
   `;
   return { subject, text, html };
@@ -939,6 +947,8 @@ async function sendSignupWelcomeEmail(params: {
       category: 'welcome_signup',
       idempotencyKey: params.idempotencyKey,
       shopId: params.shopId,
+      from: emailFounderFrom(),
+      replyTo: emailReplyTo(),
     });
   } catch (error) {
     logger.error(
@@ -948,6 +958,41 @@ async function sendSignupWelcomeEmail(params: {
         email: params.email,
       },
       'signup_welcome_email_failed',
+    );
+  }
+}
+
+async function sendPasswordResetEmail(params: {
+  emailService?: EmailService;
+  email: string;
+  resetToken: string;
+  role: 'user' | 'admin';
+  appBaseUrl: string;
+}): Promise<void> {
+  if (!params.emailService) return;
+  const base = params.appBaseUrl.replace(/\/+$/, '');
+  const path = params.role === 'admin' ? '/admin/reset-password' : '/user/reset-password';
+  const resetUrl = `${base}${path}?token=${encodeURIComponent(params.resetToken)}`;
+  const message = buildPasswordResetEmail({ resetUrl, role: params.role });
+  try {
+    await params.emailService.sendEmail({
+      to: params.email,
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+      category: 'password_reset',
+      idempotencyKey: `password_reset_email:${hashPasswordResetToken(params.resetToken)}`,
+      from: emailDefaultFrom(),
+      replyTo: emailSupportAddress(),
+    });
+  } catch (error) {
+    logger.error(
+      {
+        err: error,
+        email: params.email,
+        role: params.role,
+      },
+      'password_reset_email_failed',
     );
   }
 }
@@ -1628,7 +1673,13 @@ export function createBackendApp(deps: {
       }
     }
 
-    const salesTo = process.env.CONTACT_SALES_EMAIL?.trim() || process.env.EMAIL_FROM_ADDRESS?.trim() || '';
+    const salesTo = contactSalesEmail();
+    if (getEnv().EMAIL_PROVIDER === 'noop') {
+      logger.warn(
+        { requestId },
+        'public_contact_email_skipped_set_EMAIL_PROVIDER_resend_and_RESEND_API_KEY',
+      );
+    }
     if (deps.emailService && salesTo) {
       const subject = `New Contact Request — ${parsed.data.businessName}`;
       const lines = [
@@ -1668,6 +1719,7 @@ export function createBackendApp(deps: {
           `,
           category: 'contact_request',
           idempotencyKey: `public_contact:${requestId}`,
+          from: emailDefaultFrom(),
           replyTo: normalizedEmail,
         });
       } catch (error) {
@@ -1684,7 +1736,6 @@ export function createBackendApp(deps: {
 
     if (deps.emailService) {
       const firstName = parsed.data.fullName.trim().split(/\s+/).filter(Boolean)[0] ?? '';
-      const confirmationFrom = 'RingBooker <hello@ringbooker.com>';
       try {
         const { subject, text } = getDemoRequestConfirmationEmail({
           firstName,
@@ -1692,13 +1743,13 @@ export function createBackendApp(deps: {
           businessType: parsed.data.businessType,
         });
         await deps.emailService.sendEmail({
-          from: confirmationFrom,
+          from: emailFounderFrom(),
           to: normalizedEmail,
           subject,
           text,
           category: 'demo_request_confirmation',
           idempotencyKey: `public_contact_customer:${requestId}`,
-          replyTo: 'hello@ringbooker.com',
+          replyTo: emailReplyTo(),
         });
       } catch (error) {
         logger.error(
@@ -1713,8 +1764,8 @@ export function createBackendApp(deps: {
 
       try {
         await deps.emailService.sendEmail({
-          from: 'RingBooker Notifications <hello@ringbooker.com>',
-          to: 'hello@ringbooker.com',
+          from: emailDefaultFrom(),
+          to: salesTo,
           subject: `New demo request: ${parsed.data.businessName || parsed.data.fullName}`,
           text: `New demo request received:
 
@@ -1728,6 +1779,7 @@ Main need: ${parsed.data.helpNeed || 'Not provided'}
 Submitted at: ${new Date().toISOString()}`,
           category: 'demo_request_internal',
           idempotencyKey: `public_contact_internal:${requestId}`,
+          replyTo: normalizedEmail,
         });
       } catch (error) {
         logger.error(
@@ -2686,6 +2738,13 @@ Submitted at: ${new Date().toISOString()}`,
         ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
         path: c.req.path,
       });
+      await sendPasswordResetEmail({
+        emailService: deps.emailService,
+        email,
+        resetToken,
+        role: 'user',
+        appBaseUrl: getAppBaseUrl(c.req.header('host') ?? null),
+      });
     }
 
     return c.json({
@@ -2719,6 +2778,13 @@ Submitted at: ${new Date().toISOString()}`,
         actorId: authUser.email,
         ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
         path: c.req.path,
+      });
+      await sendPasswordResetEmail({
+        emailService: deps.emailService,
+        email,
+        resetToken,
+        role: 'admin',
+        appBaseUrl: getAppBaseUrl(c.req.header('host') ?? null),
       });
     }
 

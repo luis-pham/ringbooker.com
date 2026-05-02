@@ -7,7 +7,7 @@ import { buildMetadata } from '@/lib/site';
 const thankYouStyles = [
   String.raw`
 .thank-you-page{background:#fff;min-height:50vh}
-.thank-you-main{max-width:640px;margin:0 auto;padding:80px 24px 60px;text-align:center}
+.thank-you-main{max-width:640px;margin:0 auto;padding:160px 24px 60px;text-align:center}
 .thank-you-check{width:56px;height:56px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:26px;line-height:1;color:#16a34a}
 .thank-you-h1{font-size:24px;font-weight:500;margin:20px 0 0;color:#111827}
 .thank-you-lead{font-size:15px;color:#64748b;margin:12px auto 48px;max-width:420px;line-height:1.55}

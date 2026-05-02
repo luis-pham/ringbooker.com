@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export function AdminResetPasswordForm() {
   const router = useRouter();
   const [token, setToken] = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = params.get('token');
+    if (fromQuery) setToken(fromQuery);
+  }, []);
   const [newPassword, setNewPassword] = useState('');
   const [status, setStatus] = useState<string | null>(null);
 
