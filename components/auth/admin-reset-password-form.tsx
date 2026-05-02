@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { apiUserVisibleMessage } from '@/lib/api-user-message';
+
 export function AdminResetPasswordForm() {
   const router = useRouter();
   const [token, setToken] = useState('');
@@ -47,13 +49,15 @@ export function AdminResetPasswordForm() {
           newPassword,
         }),
       });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
       if (!response.ok || !body?.ok) {
         setFeedback('error');
         if (body?.error === 'invalid_or_expired_token') {
           setMessage('This reset link is invalid or has expired. Request a new email.');
+        } else if (body?.error === 'invalid_payload') {
+          setMessage('Invalid request. Please try again.');
         } else {
-          setMessage('Could not reset your password. Please try again.');
+          setMessage(apiUserVisibleMessage(body, 'Could not reset your password. Please try again.'));
         }
         setLoading(false);
         return;

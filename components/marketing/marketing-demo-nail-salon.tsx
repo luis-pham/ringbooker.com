@@ -4,6 +4,7 @@ import Script from 'next/script';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
+import { apiUserVisibleMessage } from '@/lib/api-user-message';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 
 interface NailSalonDemoConfig {
@@ -37,6 +38,7 @@ type DemoApiResponse = {
   requestId?: string;
   previewToken?: string;
   error?: string;
+  message?: string;
 };
 
 type DemoStatusResponse = {
@@ -49,6 +51,7 @@ type DemoStatusResponse = {
     transcriptStatus?: string | null;
   } | null;
   error?: string;
+  message?: string;
 };
 
 type BusinessHoursPreset = {
@@ -424,7 +427,7 @@ export function MarketingNailSalonDemoTemplate() {
       );
       const body = (await response.json()) as DemoStatusResponse;
       if (!body.ok || !body.stage) {
-        setRequestError(body.error ?? 'Unable to refresh live demo status.');
+        setRequestError(apiUserVisibleMessage(body, 'Unable to refresh live demo status.'));
         return;
       }
       const nextStage = body.stage;
@@ -515,7 +518,7 @@ export function MarketingNailSalonDemoTemplate() {
           setCaptchaToken(null);
         }
         setStage('failed');
-        setRequestError(body.error ?? 'Unable to start demo call.');
+        setRequestError(apiUserVisibleMessage(body, 'Unable to start demo call.'));
         return;
       }
 

@@ -8,6 +8,7 @@ import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
+import { apiUserVisibleMessage } from '@/lib/api-user-message';
 
 type NavStateResponse = {
   ok: boolean;
@@ -90,7 +91,7 @@ export function UserAccountLive() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      const body = (await response.json()) as { ok?: boolean; error?: string };
+      const body = (await response.json()) as { ok?: boolean; error?: string; message?: string };
       if (!response.ok || !body.ok) {
         const err =
           body.error === 'invalid_current_password'
@@ -99,7 +100,7 @@ export function UserAccountLive() {
               ? 'Choose a different new password.'
               : body.error === 'invalid_payload'
                 ? 'Check password fields and try again.'
-                : body.error ?? 'Could not update password.';
+                : apiUserVisibleMessage(body, 'Could not update password.');
         setPwMessage({ type: 'err', text: err });
         return;
       }

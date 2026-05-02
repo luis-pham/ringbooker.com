@@ -393,7 +393,12 @@ const scripts: string[] = [
         const response = await fetch('/api/backend/public/demo/status/' + encodeURIComponent(activePreview.requestId) + '?token=' + encodeURIComponent(activePreview.previewToken));
         const body = await response.json();
         if (!body.ok) {
-          helper.textContent = 'Unable to refresh demo status right now.';
+          var stDetail = (typeof body.message === 'string' && body.message.trim())
+            ? body.message.trim()
+            : (body.error === 'rate_limited'
+                ? 'Too many requests. Please wait a few minutes and try again.'
+                : '');
+          helper.textContent = stDetail || 'Unable to refresh demo status right now.';
           return;
         }
         updateUiFromStatus(body);
@@ -464,7 +469,12 @@ const scripts: string[] = [
           pending = false;
           startButtons.forEach(btn => { if (btn) btn.disabled = false; });
           setMobileLiveView(false);
-          helper.textContent = 'Unable to start live demo: ' + (body.error || 'unknown_error');
+          var detail = (typeof body.message === 'string' && body.message.trim())
+            ? body.message.trim()
+            : (body.error === 'rate_limited'
+                ? 'Too many requests. Please wait a few minutes and try again.'
+                : (body.error || 'unknown_error'));
+          helper.textContent = 'Unable to start live demo: ' + detail;
           setStatus('Ready for demo');
           setProgress('');
           setSignalState('');

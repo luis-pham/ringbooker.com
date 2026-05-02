@@ -5,6 +5,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 
 import styles from '@/components/auth/user-auth-template.module.css';
+import { apiUserVisibleMessage } from '@/lib/api-user-message';
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -41,9 +42,13 @@ export function UserLoginForm() {
           remember,
         }),
       });
-      const body = (await response.json().catch(() => null)) as { error?: string; onboardingRequired?: boolean } | null;
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+        message?: string;
+        onboardingRequired?: boolean;
+      } | null;
       if (!response.ok) {
-        setError(body?.error ?? 'Login failed');
+        setError(apiUserVisibleMessage(body, 'Login failed'));
         setLoading(false);
         return;
       }

@@ -10,6 +10,7 @@ import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-acco
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { DEMO_VERTICALS, type DemoServiceCategory, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
+import { apiUserVisibleMessage } from '@/lib/api-user-message';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
@@ -25,12 +26,19 @@ type DemoBusinessConfig = {
   services: DemoServiceCategory[];
 };
 
-type DemoApiResponse = { ok: boolean; requestId?: string; previewToken?: string; error?: string };
+type DemoApiResponse = {
+  ok: boolean;
+  requestId?: string;
+  previewToken?: string;
+  error?: string;
+  message?: string;
+};
 type DemoStatusResponse = {
   ok: boolean;
   stage?: 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
   call?: { startedAt?: string | null; endedAt?: string | null; outcome?: string | null } | null;
   error?: string;
+  message?: string;
 };
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
@@ -374,7 +382,10 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     try {
       const res = await fetch(`/api/backend/public/demo/status/${encodeURIComponent(p.requestId)}?token=${encodeURIComponent(p.previewToken)}`);
       const body = (await res.json()) as DemoStatusResponse;
-      if (!body.ok || !body.stage) { setRequestError(body.error ?? 'Unable to check demo status.'); return; }
+      if (!body.ok || !body.stage) {
+        setRequestError(apiUserVisibleMessage(body, 'Unable to check demo status.'));
+        return;
+      }
       setStage(body.stage);
       if (body.stage === 'queued') setStatusText('Preparing your demo call — this takes a few seconds.');
       if (body.stage === 'dialing') setStatusText('Calling your number now. Pick up and try a prompt.');
@@ -430,7 +441,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       const body = (await res.json()) as { ok?: boolean; error?: string };
       if (!body.ok) {
         setSipPrepMessage(null);
-        setRequestError(body.error ?? 'sip_prep_failed');
+        setRequestError(apiUserVisibleMessage(body, 'Unable to save call-in pilot context.'));
         return;
       }
       setSipPrepMessage(`Saved. Call ${sipPilotNumber} from the phone number you entered above so the pilot can match your context.`);
@@ -472,7 +483,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       const res = await fetch('/api/backend/public/demo/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const body = (await res.json()) as DemoApiResponse;
       if (!body.ok || !body.requestId || !body.previewToken) {
-        resetTurnstile(); setStage('failed'); setRequestError(body.error ?? 'Unable to start demo call.');
+        resetTurnstile(); setStage('failed'); setRequestError(apiUserVisibleMessage(body, 'Unable to start demo call.'));
         return;
       }
       setStatusText('Request sent — calling your number now.');

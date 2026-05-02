@@ -168,6 +168,26 @@ export function getClientIp(headers: {
   return 'unknown';
 }
 
+/**
+ * Human-readable text for JSON 429 responses. Aligns with `Retry-After` / `retryAfterSec`.
+ */
+export function rateLimitUserMessage(retryAfterSec: number): string {
+  const sec = Math.max(1, Math.floor(retryAfterSec));
+  if (sec <= 90) {
+    return 'Too many requests. Please wait about a minute and try again.';
+  }
+  if (sec < 3600) {
+    const mins = Math.max(1, Math.ceil(sec / 60));
+    return mins <= 1
+      ? 'Too many requests. Please wait about a minute and try again.'
+      : `Too many requests. Please wait about ${mins} minutes and try again.`;
+  }
+  const hours = Math.max(1, Math.round(sec / 3600));
+  return hours === 1
+    ? 'Too many requests. Please wait about an hour and try again.'
+    : `Too many requests. Please wait about ${hours} hours and try again.`;
+}
+
 export const RATE_LIMIT_POLICIES = {
   auth_signup_phone_search: {
     name: 'auth_signup_phone_search',

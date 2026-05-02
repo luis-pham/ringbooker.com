@@ -9,7 +9,12 @@ import { incrementMetric } from '@/src/backend/observability/metrics';
 import type { DemoSessionsRepository, ProviderEventsRepository, SipDemoSessionEnrichment } from '@/src/backend/ports/repositories';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { verifyOpenAiStandardWebhookV1 } from '@/src/backend/security/openai-standard-webhook';
-import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitUserMessage,
+  RATE_LIMIT_POLICIES,
+} from '@/src/backend/security/rate-limit';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   extractSipHeader,
@@ -139,7 +144,15 @@ export async function handleOpenAiRealtimeSipWebhook(
   const callLimited = await consumeRateLimit(RATE_LIMIT_POLICIES.openai_sip_per_call_id, `call:${callId}`);
   if (!callLimited.ok) {
     logger.warn({ callId }, 'openai_sip_call_id_rate_limited');
-    return c.json({ ok: false, error: 'rate_limited' }, 429);
+    return c.json(
+      {
+        ok: false,
+        error: 'rate_limited',
+        message: rateLimitUserMessage(callLimited.retryAfterSec),
+        retryAfterSec: callLimited.retryAfterSec,
+      },
+      429,
+    );
   }
 
   const sipTo = extractSipHeader(data.sip_headers, 'To');

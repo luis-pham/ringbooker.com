@@ -215,7 +215,9 @@ const scripts: string[] = [
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data?.ok) {
         const error = data?.error || 'submit_failed';
-        if (error === 'rate_limited') {
+        if (typeof data?.message === 'string' && data.message.trim()) {
+          setHelper(data.message.trim(), 'error');
+        } else if (error === 'rate_limited') {
           setHelper('Too many requests. Please wait before submitting again.', 'error');
         } else if (error === 'captcha_failed') {
           setHelper('Captcha verification failed. Please try again.', 'error');

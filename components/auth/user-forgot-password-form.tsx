@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 
 import styles from '@/components/auth/user-auth-template.module.css';
+import { apiUserVisibleMessage } from '@/lib/api-user-message';
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -40,10 +41,11 @@ export function UserForgotPasswordForm() {
       outcome?: 'reset_email_sent' | 'account_not_found';
       resetToken?: string;
       error?: string;
+      message?: string;
     } | null;
     if (!response.ok || !body?.ok) {
       setFeedback('error');
-      setErrorDetail(body?.error ?? 'request_failed');
+      setErrorDetail(apiUserVisibleMessage(body, 'Something went wrong. Please try again.'));
       return;
     }
     setFeedback(body.outcome === 'reset_email_sent' ? 'sent' : 'not_found');

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { apiUserVisibleMessage } from '@/lib/api-user-message';
+
 const showDevResetToken = process.env.NEXT_PUBLIC_SHOW_DEV_RESET_TOKEN === 'true';
 
 const FORGOT_ADMIN_MSG = {
@@ -32,10 +34,11 @@ export function AdminForgotPasswordForm() {
       outcome?: 'reset_email_sent' | 'account_not_found';
       resetToken?: string;
       error?: string;
+      message?: string;
     } | null;
     if (!response.ok || !body?.ok) {
       setFeedback('error');
-      setErrorDetail(body?.error ?? 'request_failed');
+      setErrorDetail(apiUserVisibleMessage(body, 'Something went wrong. Please try again.'));
       return;
     }
     setFeedback(body.outcome === 'reset_email_sent' ? 'sent' : 'not_found');

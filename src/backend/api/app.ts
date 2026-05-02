@@ -66,7 +66,12 @@ import {
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { signDemoPreviewToken, verifyDemoPreviewToken } from '@/src/backend/security/demo-preview';
 import { hashPassword, verifyPassword } from '@/src/backend/security/password';
-import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitUserMessage,
+  RATE_LIMIT_POLICIES,
+} from '@/src/backend/security/rate-limit';
 import { verifyTurnstileToken } from '@/src/backend/security/turnstile';
 import { handlePaddleWebhook } from '@/src/backend/webhooks/paddle';
 import { handleOpenAiRealtimeSipWebhook } from '@/src/backend/webhooks/openai-realtime-sip';
@@ -781,6 +786,8 @@ async function enforceRateLimit(
       {
         ok: false,
         error: 'rate_limited',
+        message: rateLimitUserMessage(result.retryAfterSec),
+        retryAfterSec: result.retryAfterSec,
       },
       429,
     );
@@ -813,6 +820,8 @@ async function enforceRateLimitWithIdentity(
       {
         ok: false,
         error: 'rate_limited',
+        message: rateLimitUserMessage(result.retryAfterSec),
+        retryAfterSec: result.retryAfterSec,
       },
       429,
     );

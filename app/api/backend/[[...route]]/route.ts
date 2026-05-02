@@ -3,7 +3,12 @@ import { Hono } from 'hono';
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
 import { executeSingleJobsWorkerTickWithRuntime } from '@/src/backend/jobs/runner';
 import { securityAudit } from '@/src/backend/security/audit-log';
-import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
+import {
+  consumeRateLimit,
+  getClientIp,
+  rateLimitUserMessage,
+  RATE_LIMIT_POLICIES,
+} from '@/src/backend/security/rate-limit';
 
 /**
  * Lazy-init avoids calling getEnv()/getBackendRuntime() while Next.js imports this module
@@ -33,7 +38,15 @@ function getHonoApp(): Hono {
         path: c.req.path,
         details: { policy: RATE_LIMIT_POLICIES.jobs_enqueue.name },
       });
-      return c.json({ ok: false, error: 'rate_limited' }, 429);
+      return c.json(
+        {
+          ok: false,
+          error: 'rate_limited',
+          message: rateLimitUserMessage(rate.retryAfterSec),
+          retryAfterSec: rate.retryAfterSec,
+        },
+        429,
+      );
     }
 
     const internalKey = process.env.BACKEND_INTERNAL_API_KEY;

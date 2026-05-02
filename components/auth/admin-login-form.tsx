@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { apiUserVisibleMessage } from '@/lib/api-user-message';
+
 export function AdminLoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -27,9 +29,9 @@ export function AdminLoginForm() {
           remember,
         }),
       });
-      const body = (await response.json().catch(() => null)) as { error?: string } | null;
+      const body = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
       if (!response.ok) {
-        setError(body?.error ?? 'Login failed');
+        setError(apiUserVisibleMessage(body, 'Login failed'));
         setLoading(false);
         return;
       }
