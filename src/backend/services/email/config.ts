@@ -1,4 +1,4 @@
-export const EMAIL_DEFAULT_FROM = 'RingBooker Notifications <notifications@send.ringbooker.com>';
+export const EMAIL_DEFAULT_FROM = 'Ringbooker <notifications@send.ringbooker.com>';
 export const EMAIL_FOUNDER_FROM_DEFAULT = 'Luis Pham from RingBooker <luis@send.ringbooker.com>';
 export const EMAIL_REPLY_TO_DEFAULT = 'hello@ringbooker.com';
 export const EMAIL_SUPPORT_ADDRESS_DEFAULT = 'support@ringbooker.com';

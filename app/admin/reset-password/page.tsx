@@ -1,7 +1,7 @@
 import { AdminResetPasswordForm } from '@/components/auth/admin-reset-password-form';
 
 export const metadata = {
-  title: 'Reset password.',
+  title: 'Admin reset password | RingBooker',
 };
 
 export default function AdminResetPasswordPage() {

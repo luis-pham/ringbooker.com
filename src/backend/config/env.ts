@@ -106,7 +106,7 @@ function createValidatedEnv() {
       PADDLE_PRICE_ENTERPRISE: z.string().min(1),
 
       EMAIL_PROVIDER: z.enum(['noop', 'resend']).default('noop'),
-      EMAIL_FROM_ADDRESS: z.string().min(1).default('RingBooker Notifications <notifications@send.ringbooker.com>'),
+      EMAIL_FROM_ADDRESS: z.string().min(1).default('Ringbooker <notifications@send.ringbooker.com>'),
       EMAIL_FOUNDER_FROM: z.string().min(1).default('Luis Pham from RingBooker <luis@send.ringbooker.com>'),
       EMAIL_REPLY_TO: z.string().email().default('hello@ringbooker.com'),
       CONTACT_SALES_EMAIL: z.string().email().default('hello@ringbooker.com'),

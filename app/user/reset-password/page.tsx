@@ -1,7 +1,7 @@
 import { UserResetPasswordForm } from '@/components/auth/user-reset-password-form';
 
 export const metadata = {
-  title: 'User reset password.',
+  title: 'Reset password | RingBooker',
 };
 
 export default function UserResetPasswordPage() {

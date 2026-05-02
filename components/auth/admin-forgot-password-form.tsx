@@ -4,14 +4,21 @@ import { useState } from 'react';
 
 const showDevResetToken = process.env.NEXT_PUBLIC_SHOW_DEV_RESET_TOKEN === 'true';
 
+const FORGOT_ADMIN_MSG = {
+  sent: 'Đã gửi email đặt lại mật khẩu. Vui lòng kiểm tra hộp thư của bạn (kể cả thư mục Spam).',
+  not_found: 'Không tìm thấy tài khoản admin với email này. Vui lòng kiểm tra lại địa chỉ email.',
+} as const;
+
 export function AdminForgotPasswordForm() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<'sent' | 'not_found' | 'error' | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus(null);
+    setFeedback(null);
+    setErrorDetail(null);
     setResetToken(null);
     const response = await fetch('/api/backend/auth/admin/forgot-password', {
       method: 'POST',
@@ -20,12 +27,18 @@ export function AdminForgotPasswordForm() {
       },
       body: JSON.stringify({ email }),
     });
-    const body = (await response.json().catch(() => null)) as { ok?: boolean; resetToken?: string; error?: string } | null;
+    const body = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      outcome?: 'reset_email_sent' | 'account_not_found';
+      resetToken?: string;
+      error?: string;
+    } | null;
     if (!response.ok || !body?.ok) {
-      setStatus(body?.error ?? 'request_failed');
+      setFeedback('error');
+      setErrorDetail(body?.error ?? 'request_failed');
       return;
     }
-    setStatus('accepted');
+    setFeedback(body.outcome === 'reset_email_sent' ? 'sent' : 'not_found');
     setResetToken(body.resetToken ?? null);
   }
 
@@ -87,8 +100,14 @@ export function AdminForgotPasswordForm() {
             Send reset request
           </button>
         </form>
-        <p style={{ marginTop: 12, minHeight: 22, color: status === 'accepted' ? '#86efac' : '#fca5a5' }}>
-          {status ? `Status: ${status}` : ''}
+        <p style={{ marginTop: 12, minHeight: 22, color: feedback === 'sent' ? '#86efac' : feedback ? '#fca5a5' : 'transparent' }}>
+          {feedback === 'sent'
+            ? FORGOT_ADMIN_MSG.sent
+            : feedback === 'not_found'
+              ? FORGOT_ADMIN_MSG.not_found
+              : feedback === 'error'
+                ? errorDetail ?? 'Đã xảy ra lỗi. Vui lòng thử lại.'
+                : ''}
         </p>
         {showDevResetToken && resetToken ? (
           <p style={{ marginTop: 2, color: '#cbd5e1', fontSize: 13 }}>

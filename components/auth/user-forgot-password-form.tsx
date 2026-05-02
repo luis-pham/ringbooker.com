@@ -12,14 +12,21 @@ const plusJakarta = Plus_Jakarta_Sans({
 
 const showDevResetToken = process.env.NEXT_PUBLIC_SHOW_DEV_RESET_TOKEN === 'true';
 
+const FORGOT_USER_MSG = {
+  sent: 'Email đặt lại mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư của bạn (kể cả thư mục Spam).',
+  not_found: 'Không tìm thấy tài khoản với email này trong hệ thống. Vui lòng kiểm tra lại địa chỉ email.',
+} as const;
+
 export function UserForgotPasswordForm() {
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<'sent' | 'not_found' | 'error' | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus(null);
+    setFeedback(null);
+    setErrorDetail(null);
     setResetToken(null);
     const response = await fetch('/api/backend/auth/user/forgot-password', {
       method: 'POST',
@@ -28,12 +35,18 @@ export function UserForgotPasswordForm() {
       },
       body: JSON.stringify({ email }),
     });
-    const body = (await response.json().catch(() => null)) as { ok?: boolean; resetToken?: string; error?: string } | null;
+    const body = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      outcome?: 'reset_email_sent' | 'account_not_found';
+      resetToken?: string;
+      error?: string;
+    } | null;
     if (!response.ok || !body?.ok) {
-      setStatus(body?.error ?? 'request_failed');
+      setFeedback('error');
+      setErrorDetail(body?.error ?? 'request_failed');
       return;
     }
-    setStatus('accepted');
+    setFeedback(body.outcome === 'reset_email_sent' ? 'sent' : 'not_found');
     setResetToken(body.resetToken ?? null);
   }
 
@@ -67,9 +80,13 @@ export function UserForgotPasswordForm() {
               Send reset link
             </button>
           </form>
-          {status ? (
-            <p className={status === 'accepted' ? styles.success : styles.error}>
-              {status === 'accepted' ? 'If your account exists, reset instructions have been sent.' : status}
+          {feedback ? (
+            <p className={feedback === 'sent' ? styles.success : styles.error}>
+              {feedback === 'sent'
+                ? FORGOT_USER_MSG.sent
+                : feedback === 'not_found'
+                  ? FORGOT_USER_MSG.not_found
+                  : errorDetail ?? 'Đã xảy ra lỗi. Vui lòng thử lại.'}
             </p>
           ) : null}
           {showDevResetToken && resetToken ? <p className={styles.fine}>Dev reset token: <code>{resetToken}</code></p> : null}

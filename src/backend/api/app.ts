@@ -2724,7 +2724,9 @@ Submitted at: ${new Date().toISOString()}`,
     const email = parsed.data.email.toLowerCase();
     const authUser = await deps.authUsersRepository.findByEmail(email);
     let resetToken: string | undefined;
+    let outcome: 'reset_email_sent' | 'account_not_found' = 'account_not_found';
     if (authUser && authUser.role === 'user' && authUser.active) {
+      outcome = 'reset_email_sent';
       resetToken = `${randomUUID()}${randomBytes(12).toString('hex')}`;
       await deps.authUsersRepository.createPasswordResetToken({
         userId: authUser.id,
@@ -2749,7 +2751,8 @@ Submitted at: ${new Date().toISOString()}`,
 
     return c.json({
       ok: true,
-      accepted: true,
+      outcome,
+      accepted: outcome === 'reset_email_sent',
       ...(process.env.NODE_ENV !== 'production' && resetToken ? { resetToken } : {}),
     });
   });
@@ -2765,7 +2768,9 @@ Submitted at: ${new Date().toISOString()}`,
     const email = parsed.data.email.toLowerCase();
     const authUser = await deps.authUsersRepository.findByEmail(email);
     let resetToken: string | undefined;
+    let outcome: 'reset_email_sent' | 'account_not_found' = 'account_not_found';
     if (authUser && authUser.role === 'admin' && authUser.active) {
+      outcome = 'reset_email_sent';
       resetToken = `${randomUUID()}${randomBytes(12).toString('hex')}`;
       await deps.authUsersRepository.createPasswordResetToken({
         userId: authUser.id,
@@ -2790,7 +2795,8 @@ Submitted at: ${new Date().toISOString()}`,
 
     return c.json({
       ok: true,
-      accepted: true,
+      outcome,
+      accepted: outcome === 'reset_email_sent',
       ...(process.env.NODE_ENV !== 'production' && resetToken ? { resetToken } : {}),
     });
   });
