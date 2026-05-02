@@ -178,6 +178,7 @@ export const metadata = buildMetadata({
 export default function PeakHourOverflowCallsPage() {
   return (
     <MarketingSeoPage
+      shellVariant="plain"
       breadcrumb={
         <>
           <Link href="/">Home</Link>
