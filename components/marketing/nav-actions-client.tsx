@@ -67,12 +67,14 @@ function getPlanLabel(plan: string): string {
   return labels[plan] ?? plan;
 }
 
-function navFetchTimeoutMs(): AbortSignal {
-  return AbortSignal.timeout(12_000);
-}
-
-function authMeTimeoutMs(): AbortSignal {
-  return AbortSignal.timeout(6_000);
+/** Safari & older browsers may lack `AbortSignal.timeout`; avoid hanging fetches. */
+function abortAfter(ms: number): AbortSignal {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(ms);
+  }
+  const c = new AbortController();
+  setTimeout(() => c.abort(), ms);
+  return c.signal;
 }
 
 function dashboardFallbackFromEmail(email: string): NavUserState {
@@ -96,7 +98,7 @@ async function fetchNavState(opts?: FetchNavStateOpts): Promise<NavUserState> {
     const res = await fetch('/api/backend/user/nav-state', {
       cache: 'no-store',
       credentials: 'include',
-      signal: navFetchTimeoutMs(),
+      signal: abortAfter(12_000),
     });
     if (res.status === 401 || res.status === 403) {
       return { type: 'visitor' };
@@ -142,13 +144,13 @@ async function fetchNavState(opts?: FetchNavStateOpts): Promise<NavUserState> {
  * Single resolver: cheap JWT session first, then account-aware nav-state.
  * Guests resolve from /auth/me only (no dependency on a slow /user/nav-state).
  */
-export async function resolveMarketingNav(): Promise<NavUserState> {
+async function resolveMarketingNavOnce(): Promise<NavUserState> {
   let meRes: Response;
   try {
     meRes = await fetch('/api/backend/auth/me', {
       credentials: 'include',
       cache: 'no-store',
-      signal: authMeTimeoutMs(),
+      signal: abortAfter(6_000),
     });
   } catch {
     return { type: 'visitor' };
@@ -173,6 +175,18 @@ export async function resolveMarketingNav(): Promise<NavUserState> {
   return fetchNavState({ confirmedUserEmail: meJson.session.email });
 }
 
+/** One in-flight resolve shared by desktop + mobile nav (both call `useNavState`). */
+let marketingNavInflight: Promise<NavUserState> | null = null;
+
+export async function resolveMarketingNav(): Promise<NavUserState> {
+  if (!marketingNavInflight) {
+    marketingNavInflight = resolveMarketingNavOnce().finally(() => {
+      marketingNavInflight = null;
+    });
+  }
+  return marketingNavInflight;
+}
+
 /** Last resolved marketing nav (never `loading`). Survives route changes in the same tab to avoid nav skeleton flicker. */
 let marketingNavResolvedCache: NavUserState | null = null;
 
@@ -181,6 +195,7 @@ let marketingNavResolvedCache: NavUserState | null = null;
 /** Cleared on sign-out so the next session never inherits the previous user’s nav. */
 export function clearMarketingNavCache() {
   marketingNavResolvedCache = null;
+  marketingNavInflight = null;
 }
 
 async function handleSignOut() {
@@ -284,6 +299,14 @@ export function useNavState() {
     if (!hasCache) {
       setState({ type: 'loading' });
     }
+    const safetyTimer = window.setTimeout(() => {
+      if (myGen !== genRef.current) return;
+      setState((prev) => {
+        if (prev.type !== 'loading') return prev;
+        marketingNavResolvedCache = { type: 'visitor' };
+        return { type: 'visitor' };
+      });
+    }, 12_000);
     void (async () => {
       const next = await resolveMarketingNav();
       if (myGen !== genRef.current) return;
@@ -293,6 +316,7 @@ export function useNavState() {
       setState(next);
     })();
     return () => {
+      window.clearTimeout(safetyTimer);
       genRef.current += 1;
     };
   }, [pathname]);
