@@ -3,6 +3,12 @@ import { z } from 'zod';
 
 import { validateVoiceArchitectureAtStartup } from '@/src/backend/config/voice-transport';
 
+/** Empty/unset → undefined; positive integer ms when set (Telnyx REST timeout overrides). */
+const optionalPositiveIntEnv = z.preprocess(
+  (val) => (val === '' || val === undefined || val === null ? undefined : val),
+  z.coerce.number().int().positive().optional(),
+);
+
 function createValidatedEnv() {
   return createEnv({
     server: {
@@ -62,6 +68,12 @@ function createValidatedEnv() {
         .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
       /** Connection / Call Control Application ID for `dial` (defaults to `TELNYX_APP_ID`). */
       TELNYX_CALL_CONTROL_CONNECTION_ID: z.string().min(1).optional(),
+      /** Override default per-action timeouts for all Call Control POST actions (ms). */
+      TELNYX_CALL_CONTROL_TIMEOUT_MS: optionalPositiveIntEnv,
+      TELNYX_SMS_TIMEOUT_MS: optionalPositiveIntEnv,
+      TELNYX_PROVISIONING_TIMEOUT_MS: optionalPositiveIntEnv,
+      /** POST /v2/calls (outbound Calls API), not Call Control actions. */
+      TELNYX_OUTBOUND_CALL_TIMEOUT_MS: optionalPositiveIntEnv,
 
       GOOGLE_AI_API_KEY: z.string().min(1),
       GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),

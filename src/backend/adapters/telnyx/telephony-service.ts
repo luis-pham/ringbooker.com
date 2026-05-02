@@ -7,7 +7,10 @@ import { getEnv } from '@/src/backend/config/env';
 import type { HandoffSessionsRepository, JobsRepository } from '@/src/backend/ports/repositories';
 import { dialOwnerFromParentCall } from '@/src/backend/services/calls/handoff-call-control';
 import { isTelnyxCallControlDryRunEnv } from '@/src/backend/webhooks/telnyx-call-control';
-import { isRetryableHttpStatus, RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
+import { telnyxHttpFailureIsRetryable } from '@/src/backend/adapters/telnyx/telnyx-errors';
+import { telnyxHttpJson } from '@/src/backend/adapters/telnyx/telnyx-http';
+import { getTelnyxCallsCreateTimeoutMs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
+import { RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
 import { retryAsync } from '@/src/backend/net/retry';
 
 type TelnyxCallCreateResponse = {
@@ -157,7 +160,14 @@ export class TelnyxTelephonyService implements TelephonyService {
     }
 
     log.warn(
-      { status: result.status, body: result.text, handoffId: session.id, parentCallControlId: params.parentCallControlId },
+      {
+        status: result.status,
+        body: result.text,
+        handoffId: session.id,
+        parentCallControlId: params.parentCallControlId,
+        telnyx_duration_ms: result.durationMs,
+        errorKind: result.errorKind,
+      },
       'telnyx_handoff_owner_dial_failed',
     );
 
@@ -374,51 +384,50 @@ export class TelnyxTelephonyService implements TelephonyService {
       );
     }
 
-    const response = await retryAsync(
-      async (attempt) => {
-        const res = await fetch('https://api.telnyx.com/v2/calls', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'Idempotency-Key': params.idempotencyKey,
-          },
-          body: JSON.stringify({
-            connection_id: this.appId,
-            to: params.to,
-            from: params.from,
+    let httpResult;
+    try {
+      httpResult = await retryAsync(
+        async () =>
+          telnyxHttpJson({
+            method: 'POST',
+            path: 'calls',
+            body: {
+              connection_id: this.appId,
+              to: params.to,
+              from: params.from,
+            },
+            extraHeaders: { 'Idempotency-Key': params.idempotencyKey },
+            timeoutMs: getTelnyxCallsCreateTimeoutMs(),
+            operation: 'calls.create',
+            apiKey: this.apiKey,
+            correlation: {
+              shopId: params.shopId,
+              purpose: params.purpose,
+              requestId: params.requestId,
+            },
           }),
-        });
-        if (!res.ok && isRetryableHttpStatus(res.status)) {
-          const error = new Error(`telnyx_retryable_status:${res.status}`) as Error & { retryable?: boolean };
-          error.retryable = true;
-          log.warn({ status: res.status, attempt, purpose: params.purpose }, 'telnyx_call_retryable_error');
-          throw error;
-        }
-        return res;
-      },
-      {
-        retries: RETRY_POLICIES.telnyxCall.retries,
-        initialDelayMs: RETRY_POLICIES.telnyxCall.initialDelayMs,
-        maxDelayMs: RETRY_POLICIES.telnyxCall.maxDelayMs,
-        shouldRetry: (error) => Boolean((error as { retryable?: boolean })?.retryable),
-      },
-    );
-
-    if (!response.ok) {
-      const bodyText = await response.text();
+        {
+          retries: RETRY_POLICIES.telnyxCall.retries,
+          initialDelayMs: RETRY_POLICIES.telnyxCall.initialDelayMs,
+          maxDelayMs: RETRY_POLICIES.telnyxCall.maxDelayMs,
+          shouldRetry: telnyxHttpFailureIsRetryable,
+        },
+      );
+    } catch (err: unknown) {
+      const status =
+        err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
       log.error(
         {
-          status: response.status,
+          status,
           purpose: params.purpose,
-          bodyText,
+          err,
         },
         'telnyx_outbound_call_failed',
       );
-      throw new Error(`telnyx_outbound_call_failed:${response.status}`);
+      throw new Error(`telnyx_outbound_call_failed:${status ?? 'unknown'}`);
     }
 
-    const data = (await response.json()) as TelnyxCallCreateResponse;
+    const data = httpResult.parsedJson as TelnyxCallCreateResponse;
     const providerCallId = data.data?.call_control_id;
 
     log.info(

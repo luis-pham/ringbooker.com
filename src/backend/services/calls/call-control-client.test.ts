@@ -48,3 +48,46 @@ test('callControlDial delegates to dial action', async () => {
   const res = await callControlDial('cc_y', { to: 'sip:x@y' }, { fetchImpl, apiKey: 'k' });
   assert.equal(res.ok, true);
 });
+
+test('postCallControlAction maps HTTP error to ok false and errorKind http', async () => {
+  const fetchImpl: typeof fetch = async () => new Response('bad', { status: 422 });
+  const res = await postCallControlAction('cc_z', 'answer', {}, { fetchImpl, apiKey: 'k' });
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 422);
+  assert.equal(res.errorKind, 'http');
+  assert.ok(typeof res.durationMs === 'number');
+});
+
+test('postCallControlAction maps slow fetch past timeout to errorKind timeout', async () => {
+  const prev = process.env.TELNYX_CALL_CONTROL_TIMEOUT_MS;
+  try {
+    process.env.TELNYX_CALL_CONTROL_TIMEOUT_MS = '60';
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      await new Promise<void>((resolve, reject) => {
+        const signal = init?.signal;
+        if (!signal) {
+          reject(new Error('expected AbortSignal'));
+          return;
+        }
+        if (signal.aborted) {
+          reject(new DOMException('Aborted', 'AbortError'));
+          return;
+        }
+        signal.addEventListener('abort', () => {
+          reject(new DOMException('Aborted', 'AbortError'));
+        });
+      });
+      return new Response('{}', { status: 200 });
+    };
+
+    const res = await postCallControlAction('cc_t', 'hangup', {}, { fetchImpl, apiKey: 'k' });
+    assert.equal(res.ok, false);
+    assert.equal(res.errorKind, 'timeout');
+  } finally {
+    if (prev === undefined) {
+      delete process.env.TELNYX_CALL_CONTROL_TIMEOUT_MS;
+    } else {
+      process.env.TELNYX_CALL_CONTROL_TIMEOUT_MS = prev;
+    }
+  }
+});

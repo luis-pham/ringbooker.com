@@ -1,7 +1,10 @@
+import { telnyxHttpFailureIsRetryable } from '@/src/backend/adapters/telnyx/telnyx-errors';
+import { telnyxHttpJson } from '@/src/backend/adapters/telnyx/telnyx-http';
+import { getTelnyxSmsTimeoutMs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { getEnv } from '@/src/backend/config/env';
 import { withLogContext } from '@/src/backend/observability/logger';
 import type { SmsSendResult, SmsService } from '@/src/backend/services/sms/types';
-import { isRetryableHttpStatus, RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
+import { RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
 import { retryAsync } from '@/src/backend/net/retry';
 
 type TelnyxMessageCreateResponse = {
@@ -37,51 +40,50 @@ export class TelnyxSmsService implements SmsService {
       provider: 'telnyx',
     });
 
-    const response = await retryAsync(
-      async (attempt) => {
-        const res = await fetch('https://api.telnyx.com/v2/messages', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'Idempotency-Key': params.idempotencyKey,
-          },
-          body: JSON.stringify({
-            to: params.to,
-            from,
-            text: params.body,
+    let httpResult;
+    try {
+      httpResult = await retryAsync(
+        async () =>
+          telnyxHttpJson({
+            method: 'POST',
+            path: 'messages',
+            body: {
+              to: params.to,
+              from,
+              text: params.body,
+            },
+            extraHeaders: { 'Idempotency-Key': params.idempotencyKey },
+            timeoutMs: getTelnyxSmsTimeoutMs(),
+            operation: 'sms.send',
+            apiKey: this.apiKey,
+            correlation: {
+              shopId: params.shopId,
+              category: params.category,
+              messagePurpose: params.category,
+            },
           }),
-        });
-        if (!res.ok && isRetryableHttpStatus(res.status)) {
-          const error = new Error(`telnyx_retryable_status:${res.status}`) as Error & { retryable?: boolean };
-          error.retryable = true;
-          log.warn({ status: res.status, attempt, category: params.category }, 'telnyx_sms_retryable_error');
-          throw error;
-        }
-        return res;
-      },
-      {
-        retries: RETRY_POLICIES.telnyxSms.retries,
-        initialDelayMs: RETRY_POLICIES.telnyxSms.initialDelayMs,
-        maxDelayMs: RETRY_POLICIES.telnyxSms.maxDelayMs,
-        shouldRetry: (error) => Boolean((error as { retryable?: boolean })?.retryable),
-      },
-    );
-
-    if (!response.ok) {
-      const bodyText = await response.text();
+        {
+          retries: RETRY_POLICIES.telnyxSms.retries,
+          initialDelayMs: RETRY_POLICIES.telnyxSms.initialDelayMs,
+          maxDelayMs: RETRY_POLICIES.telnyxSms.maxDelayMs,
+          shouldRetry: telnyxHttpFailureIsRetryable,
+        },
+      );
+    } catch (err: unknown) {
+      const status =
+        err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
       log.error(
         {
-          status: response.status,
+          status,
           category: params.category,
-          bodyText,
+          err,
         },
         'telnyx_sms_send_failed',
       );
-      throw new Error(`telnyx_sms_send_failed:${response.status}`);
+      throw new Error(`telnyx_sms_send_failed:${status ?? 'unknown'}`);
     }
 
-    const data = (await response.json()) as TelnyxMessageCreateResponse;
+    const data = httpResult.parsedJson as TelnyxMessageCreateResponse;
     const providerMessageId = data.data?.id;
 
     log.info(

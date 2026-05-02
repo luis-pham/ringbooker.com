@@ -1,5 +1,11 @@
+import { telnyxHttpFailureIsRetryable } from '@/src/backend/adapters/telnyx/telnyx-errors';
+import { telnyxHttpJson } from '@/src/backend/adapters/telnyx/telnyx-http';
+import {
+  getTelnyxProvisioningOrderTimeoutMs,
+  getTelnyxProvisioningSearchTimeoutMs,
+} from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { withLogContext } from '@/src/backend/observability/logger';
-import { isRetryableHttpStatus, RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
+import { RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
 import { retryAsync } from '@/src/backend/net/retry';
 import type { AvailablePhoneNumber, PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
 
@@ -56,21 +62,15 @@ export class TelnyxPhoneProvisioningService implements PhoneProvisioningService 
       'filter[administrative_area]': params.administrativeArea,
       'filter[limit]': limit,
     });
-    const url = `https://api.telnyx.com/v2/available_phone_numbers?${query}`;
-    const response = await fetch(url, {
+    const httpResult = await telnyxHttpJson({
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      path: `available_phone_numbers?${query}`,
+      timeoutMs: getTelnyxProvisioningSearchTimeoutMs(),
+      operation: 'phone_numbers.search',
+      apiKey: this.apiKey,
     });
 
-    if (!response.ok) {
-      const bodyText = await response.text();
-      throw new Error(`telnyx_available_phone_numbers_failed:${response.status}:${bodyText}`);
-    }
-
-    const parsed = (await response.json()) as TelnyxNumberSearchResponse;
+    const parsed = httpResult.parsedJson as TelnyxNumberSearchResponse;
     const numbers = parsed.data ?? [];
     return numbers
       .map((item) => ({
@@ -96,44 +96,39 @@ export class TelnyxPhoneProvisioningService implements PhoneProvisioningService 
       requestId: params.requestId,
     });
 
-    const response = await retryAsync(
-      async (attempt) => {
-        const res = await fetch('https://api.telnyx.com/v2/number_orders', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'Idempotency-Key': `rb-number-order:${params.requestId}:${params.phoneNumber}`,
-          },
-          body: JSON.stringify({
-            phone_numbers: [{ phone_number: params.phoneNumber }],
-            connection_id: this.connectionId,
-            messaging_profile_id: this.messagingProfileId,
+    let httpResult;
+    try {
+      httpResult = await retryAsync(
+        async () =>
+          telnyxHttpJson({
+            method: 'POST',
+            path: 'number_orders',
+            body: {
+              phone_numbers: [{ phone_number: params.phoneNumber }],
+              connection_id: this.connectionId,
+              messaging_profile_id: this.messagingProfileId,
+            },
+            extraHeaders: { 'Idempotency-Key': `rb-number-order:${params.requestId}:${params.phoneNumber}` },
+            timeoutMs: getTelnyxProvisioningOrderTimeoutMs(),
+            operation: 'number_orders.create',
+            apiKey: this.apiKey,
+            correlation: { requestId: params.requestId },
           }),
-        });
-        if (!res.ok && isRetryableHttpStatus(res.status)) {
-          const error = new Error(`telnyx_retryable_status:${res.status}`) as Error & { retryable?: boolean };
-          error.retryable = true;
-          log.warn({ status: res.status, attempt }, 'telnyx_phone_order_retryable_error');
-          throw error;
-        }
-        return res;
-      },
-      {
-        retries: RETRY_POLICIES.telnyxCall.retries,
-        initialDelayMs: RETRY_POLICIES.telnyxCall.initialDelayMs,
-        maxDelayMs: RETRY_POLICIES.telnyxCall.maxDelayMs,
-        shouldRetry: (error) => Boolean((error as { retryable?: boolean })?.retryable),
-      },
-    );
-
-    if (!response.ok) {
-      const bodyText = await response.text();
-      log.error({ status: response.status, bodyText }, 'telnyx_phone_order_failed');
-      throw new Error(`telnyx_phone_order_failed:${response.status}`);
+        {
+          retries: RETRY_POLICIES.telnyxCall.retries,
+          initialDelayMs: RETRY_POLICIES.telnyxCall.initialDelayMs,
+          maxDelayMs: RETRY_POLICIES.telnyxCall.maxDelayMs,
+          shouldRetry: telnyxHttpFailureIsRetryable,
+        },
+      );
+    } catch (err: unknown) {
+      const status =
+        err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
+      log.error({ status, err }, 'telnyx_phone_order_failed');
+      throw new Error(`telnyx_phone_order_failed:${status ?? 'unknown'}`);
     }
 
-    const parsed = (await response.json()) as TelnyxNumberOrderResponse;
+    const parsed = httpResult.parsedJson as TelnyxNumberOrderResponse;
     const ordered =
       parsed.data?.phone_numbers?.find((item) => item.phone_number === params.phoneNumber) ?? parsed.data?.phone_numbers?.[0];
     return {

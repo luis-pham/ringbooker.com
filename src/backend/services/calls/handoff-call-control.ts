@@ -109,7 +109,15 @@ export async function dialOwnerFromParentCall(params: DialOwnerHandoffParams): P
       timeout_secs: 20,
       client_state,
     },
-    { fetchImpl: params.fetchImpl, apiKey: params.apiKey },
+    {
+      fetchImpl: params.fetchImpl,
+      apiKey: params.apiKey,
+      correlation: {
+        rbCallId: params.rbCallId,
+        handoffId: params.handoffId,
+        shopId: params.shopId,
+      },
+    },
   );
 
   let ownerDialCallControlId: string | undefined;
