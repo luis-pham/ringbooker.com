@@ -368,10 +368,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .vc-ctrl-spk{background:rgba(255,255,255,.12)}
 .vc-ctrl-spk svg{width:18px;height:18px;fill:rgba(255,255,255,.7)}
 
-/* live badge */
-.vc-live-badge{display:flex;align-items:center;gap:5px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:var(--r-pill);padding:3px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#10B981;margin-bottom:10px}
-.live-dot{width:6px;height:6px;border-radius:50%;background:#10B981;animation:pulse 1.5s infinite}
-
 /* ─── TRUSTED ─── */
 .trusted{padding:36px 48px 56px;text-align:center}
 .trusted-label{font-size:var(--mk-meta);color:var(--text-light);font-weight:500;margin-bottom:28px}
@@ -897,7 +893,6 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .cta-vc-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1;padding:12px 14px 14px}
 .cta-vc-status{display:flex;justify-content:space-between;width:100%;margin-bottom:10px}
 .cta-vc-status span{font-size:10px;color:rgba(255,255,255,.6);font-weight:600}
-.cta-live-badge{font-size:9px;padding:2px 8px;margin-bottom:8px}
 .cta-vc-label{font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
 .cta-vc-name{font-size:14px;font-weight:700;color:#fff;margin-bottom:2px}
 .cta-vc-timer{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:14px}
@@ -943,7 +938,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   footer,.hero,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.mfaq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
   .industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.vc-ring,.user-image-corners::before,.user-image-corners::after{display:none}
-  .pulse-dot,.wv span,.vc-wave span,.live-dot,.cta-vc-wave span{animation:none}
+  .pulse-dot,.wv span,.vc-wave span,.cta-vc-wave span{animation:none}
   .hero-visual{height:480px}
   .phone-frame{width:230px;height:460px}
   .fc{display:none}
@@ -986,7 +981,6 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 /* Font floor: raise all small text under 14px */
 .legacy-marketing .fc-sm,
 .legacy-marketing .fc-tag,
-.legacy-marketing .vc-live-badge,
 .legacy-marketing .trusted-label,
 .legacy-marketing .sec-label,
 .legacy-marketing .feat-card p,
@@ -1302,11 +1296,6 @@ export function MarketingHomeTemplate() {
                       <div className="vc-mini-status">
                         <span className="vc-mini-time">9:41</span>
                         <span className="vc-mini-icons">▲⬛</span>
-                      </div>
-                      {/* Live badge */}
-                      <div className="vc-live-badge">
-                        <span className="live-dot" />
-                        AI Phone Agent Answering
                       </div>
                       <div className="vc-label">Incoming Call</div>
                       <div className="vc-name">Luxe Hair Studio</div>
@@ -1789,10 +1778,6 @@ export function MarketingHomeTemplate() {
                       <div className="cta-vc-status">
                         <span>9:41</span>
                         <span>▲⬛</span>
-                      </div>
-                      <div className="vc-live-badge cta-live-badge">
-                        <span className="live-dot" />
-                        AI Answering
                       </div>
                       <div className="cta-vc-label">Active Call</div>
                       <div className="cta-vc-name">Luxe Hair Studio</div>

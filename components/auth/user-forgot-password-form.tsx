@@ -14,8 +14,8 @@ const plusJakarta = Plus_Jakarta_Sans({
 const showDevResetToken = process.env.NEXT_PUBLIC_SHOW_DEV_RESET_TOKEN === 'true';
 
 const FORGOT_USER_MSG = {
-  sent: 'Email đặt lại mật khẩu đã được gửi. Vui lòng kiểm tra hộp thư của bạn (kể cả thư mục Spam).',
-  not_found: 'Không tìm thấy tài khoản với email này trong hệ thống. Vui lòng kiểm tra lại địa chỉ email.',
+  sent: 'Password reset instructions were sent. Check your inbox (including Spam).',
+  not_found: 'No account found for this email. Double-check the address or sign up.',
 } as const;
 
 export function UserForgotPasswordForm() {
@@ -88,7 +88,7 @@ export function UserForgotPasswordForm() {
                 ? FORGOT_USER_MSG.sent
                 : feedback === 'not_found'
                   ? FORGOT_USER_MSG.not_found
-                  : errorDetail ?? 'Đã xảy ra lỗi. Vui lòng thử lại.'}
+                  : errorDetail ?? 'Something went wrong. Please try again.'}
             </p>
           ) : null}
           {showDevResetToken && resetToken ? <p className={styles.fine}>Dev reset token: <code>{resetToken}</code></p> : null}

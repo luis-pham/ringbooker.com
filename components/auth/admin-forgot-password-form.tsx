@@ -7,8 +7,8 @@ import { apiUserVisibleMessage } from '@/lib/api-user-message';
 const showDevResetToken = process.env.NEXT_PUBLIC_SHOW_DEV_RESET_TOKEN === 'true';
 
 const FORGOT_ADMIN_MSG = {
-  sent: 'Đã gửi email đặt lại mật khẩu. Vui lòng kiểm tra hộp thư của bạn (kể cả thư mục Spam).',
-  not_found: 'Không tìm thấy tài khoản admin với email này. Vui lòng kiểm tra lại địa chỉ email.',
+  sent: 'Reset instructions were sent. Check your inbox (including Spam).',
+  not_found: 'No admin account found for this email. Double-check the address.',
 } as const;
 
 export function AdminForgotPasswordForm() {
@@ -109,7 +109,7 @@ export function AdminForgotPasswordForm() {
             : feedback === 'not_found'
               ? FORGOT_ADMIN_MSG.not_found
               : feedback === 'error'
-                ? errorDetail ?? 'Đã xảy ra lỗi. Vui lòng thử lại.'
+                ? errorDetail ?? 'Something went wrong. Please try again.'
                 : ''}
         </p>
         {showDevResetToken && resetToken ? (
