@@ -48,6 +48,18 @@ function createValidatedEnv() {
       TELNYX_SMS_SENDER_NUMBER: z.string().optional(),
       TELNYX_WEBHOOK_PUBLIC_KEY: z.string().min(1),
       TELNYX_WEBHOOK_MAX_SKEW_SECONDS: z.coerce.number().int().positive().default(300),
+      /** When true, POST /webhooks/telnyx/call-control accepts Telnyx Call Control Application events (Phase 2+). */
+      TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: z
+        .string()
+        .optional()
+        .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
+      /** On `call.answered`, send Call Control `dial` to `OPENAI_SIP_URI` with bridge (production pilot). */
+      TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP: z
+        .string()
+        .optional()
+        .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
+      /** Connection / Call Control Application ID for `dial` (defaults to `TELNYX_APP_ID`). */
+      TELNYX_CALL_CONTROL_CONNECTION_ID: z.string().min(1).optional(),
 
       GOOGLE_AI_API_KEY: z.string().min(1),
       GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),
@@ -82,9 +94,9 @@ function createValidatedEnv() {
         .string()
         .optional()
         .transform((s) => {
-          if (s === undefined || s === null || String(s).trim() === '') return true;
+          if (s === undefined || s === null || String(s).trim() === '') return false;
           const t = String(s).trim().toLowerCase();
-          return !(t === 'false' || t === '0' || t === 'no');
+          return t === 'true' || t === '1' || t === 'yes' || t === 'on';
         }),
       /** JSON array: `[{ "did": "+1…", "vertical": "nail-salon", "defaultShopName": "…" }]` */
       OPENAI_SIP_DEMO_DID_MAP_JSON: z.string().optional(),

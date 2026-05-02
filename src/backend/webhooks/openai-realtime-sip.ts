@@ -2,11 +2,27 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 
 import { type VoicePromptVertical, openAiRealtimeVoiceForVertical } from '@/src/agent/prompts';
+import { SIP_SHOP_TOOLS } from '@/src/agent/sip/sip-tool-definitions';
+import {
+  createSipAgentToolContext,
+  executeSipShopToolCall,
+  type SipToolExecutorDeps,
+} from '@/src/agent/sip/sip-tool-executor';
 import { getEnv } from '@/src/backend/config/env';
+import type { Shop, ShopVertical } from '@/src/backend/domain/types';
 import { buildPublicDemoSystemPrompt, type DemoConfigInput } from '@/src/backend/demo/public-demo-system-prompt';
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
-import type { DemoSessionsRepository, ProviderEventsRepository, SipDemoSessionEnrichment } from '@/src/backend/ports/repositories';
+import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
+import type {
+  BookingsRepository,
+  CallbacksRepository,
+  DemoSessionsRepository,
+  JobsRepository,
+  ProviderEventsRepository,
+  ShopsRepository,
+  SipDemoSessionEnrichment,
+} from '@/src/backend/ports/repositories';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { verifyOpenAiStandardWebhookV1 } from '@/src/backend/security/openai-standard-webhook';
 import {
@@ -15,15 +31,20 @@ import {
   rateLimitUserMessage,
   RATE_LIMIT_POLICIES,
 } from '@/src/backend/security/rate-limit';
+import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
+import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
+  collectOpenAiSipDidCandidates,
   extractSipHeader,
   parseE164FromSipValue,
   parseOpenAiProjectUserFromSipTo,
   parseOpenAiSipDidMapJson,
   resolveOpenAiSipDidContext,
+  type OpenAiSipDidContext,
 } from '@/src/backend/webhooks/openai-sip-did';
 import { startOpenAiRealtimeSipSideband } from '@/src/backend/webhooks/openai-realtime-sip-sideband';
+import { decodeCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
 
 const incomingEventSchema = z.object({
   type: z.string(),
@@ -47,6 +68,43 @@ function sipDemoConfigToPromptInput(raw: NonNullable<SipDemoSessionEnrichment['d
     secondaryHours: raw.secondaryHours ?? undefined,
     staffNames: raw.staffNames,
     services: raw.services,
+  };
+}
+
+function voiceVerticalFromShopVertical(v: ShopVertical | null | undefined): VoicePromptVertical | undefined {
+  if (!v) return undefined;
+  const map: Record<ShopVertical, VoicePromptVertical> = {
+    nail_salon: 'nail-salon',
+    hair_salon: 'hair-salon',
+    day_spa: 'day-spa',
+    med_spa: 'med-spa',
+    beauty_clinic: 'beauty-clinic',
+  };
+  return map[v];
+}
+
+type OpenAiSipRoute = { kind: 'demo'; ctx: OpenAiSipDidContext } | { kind: 'shop'; shop: Shop; matchedRaw: string };
+
+function resolveOpenAiSipShopRoomContext(params: {
+  sipHeaders: Array<{ name: string; value: string }> | undefined;
+  shop: Shop;
+  callId: string;
+}): { requestId: string; roomName: string } {
+  const rawState =
+    extractSipHeader(params.sipHeaders, 'X-Ringbooker-Call-Control-State') ??
+    extractSipHeader(params.sipHeaders, 'X-Telnyx-Client-State');
+  const decoded = decodeCallControlClientState(rawState);
+  if (decoded && decoded.shopId === params.shop.id) {
+    const safeReq = decoded.requestId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+    return {
+      requestId: decoded.requestId,
+      roomName: `sip-${safeReq || 'session'}`,
+    };
+  }
+  const safeCall = params.callId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48);
+  return {
+    requestId: `sip-${params.callId}`,
+    roomName: `sip-${safeCall || 'call'}`,
   };
 }
 
@@ -75,6 +133,11 @@ export async function handleOpenAiRealtimeSipWebhook(
   deps: {
     providerEventsRepository: ProviderEventsRepository;
     demoSessionsRepository?: DemoSessionsRepository;
+    shopsRepository?: ShopsRepository;
+    jobsRepository?: JobsRepository;
+    bookingsRepository?: BookingsRepository;
+    callbacksRepository?: CallbacksRepository;
+    telephonyService?: TelephonyService;
     fetchImpl?: typeof fetch;
   },
 ): Promise<Response> {
@@ -167,6 +230,18 @@ export async function handleOpenAiRealtimeSipWebhook(
     openAiRealtimeProjectId: openAiProjectIdForDid,
   });
 
+  let route: OpenAiSipRoute | null = didCtx ? { kind: 'demo', ctx: didCtx } : null;
+  if (!route && deps.shopsRepository) {
+    for (const raw of collectOpenAiSipDidCandidates(data.sip_headers)) {
+      const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, raw);
+      if (shop) {
+        route = { kind: 'shop', shop, matchedRaw: raw };
+        logger.info({ callId, shopId: shop.id }, 'openai_sip_routed_via_shop_db');
+        break;
+      }
+    }
+  }
+
   const fetchImpl = deps.fetchImpl ?? fetch;
   const apiKey = env.OPENAI_API_KEY?.trim();
 
@@ -182,7 +257,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     incrementMetric('openai_sip_call_outcomes_total', { outcome: 'reject', reason });
   }
 
-  if (!didCtx) {
+  if (!route) {
     if (sipTo?.toLowerCase().includes('sip.api.openai.com')) {
       logger.warn(
         {
@@ -224,7 +299,11 @@ export async function handleOpenAiRealtimeSipWebhook(
     }
   }
 
-  const didLim = await consumeRateLimit(RATE_LIMIT_POLICIES.openai_sip_per_did, `did:${didCtx.did}`);
+  const rateLimitDid =
+    route.kind === 'demo'
+      ? route.ctx.did
+      : normalizeInboundE164(route.matchedRaw) ?? route.shop.phone_number;
+  const didLim = await consumeRateLimit(RATE_LIMIT_POLICIES.openai_sip_per_did, `did:${rateLimitDid}`);
   if (!didLim.ok) {
     if (apiKey) await rejectCall(486, 'did_rate_limited');
     await deps.providerEventsRepository.markProcessed({
@@ -236,34 +315,47 @@ export async function handleOpenAiRealtimeSipWebhook(
     return c.json({ ok: true });
   }
 
-  let enrichment: SipDemoSessionEnrichment | null = null;
-  if (deps.demoSessionsRepository && normalizedFrom) {
-    try {
-      enrichment = await deps.demoSessionsRepository.findLatestSipDemoContext({
-        callerPhone: normalizedFrom,
-      });
-    } catch (err) {
-      logger.warn({ err, callId }, 'openai_sip_demo_context_lookup_failed');
+  let instructions: string;
+  let demoVertical: VoicePromptVertical | undefined;
+
+  if (route.kind === 'demo') {
+    let enrichment: SipDemoSessionEnrichment | null = null;
+    if (deps.demoSessionsRepository && normalizedFrom) {
+      try {
+        enrichment = await deps.demoSessionsRepository.findLatestSipDemoContext({
+          callerPhone: normalizedFrom,
+        });
+      } catch (err) {
+        logger.warn({ err, callId }, 'openai_sip_demo_context_lookup_failed');
+      }
     }
+
+    const demoCtx = route.ctx;
+    const shopName = enrichment?.shopName ?? demoCtx.defaultShopName;
+    const businessType = enrichment?.verticalSlug
+      ? enrichment.verticalSlug.replace(/-/g, ' ')
+      : demoCtx.businessType;
+    demoVertical = asVoiceVertical(enrichment?.verticalSlug ?? demoCtx.vertical) ?? demoCtx.vertical;
+
+    instructions = buildPublicDemoSystemPrompt({
+      shopName,
+      businessType,
+      demoVertical,
+      staffName: enrichment?.demoConfig?.staffNames?.[0],
+      notes: enrichment?.notes ?? undefined,
+      demoConfig: enrichment?.demoConfig ? sipDemoConfigToPromptInput(enrichment.demoConfig) : undefined,
+      demoChannel: 'inbound_sip',
+      voiceCallType: 'inbound_booking',
+    });
+  } else {
+    demoVertical = voiceVerticalFromShopVertical(route.shop.vertical);
+    instructions = buildSystemPrompt({
+      shop: route.shop,
+      customer: null,
+      mode: 'inbound',
+      vertical: demoVertical,
+    });
   }
-
-  const shopName = enrichment?.shopName ?? didCtx.defaultShopName;
-  const businessType = enrichment?.verticalSlug
-    ? enrichment.verticalSlug.replace(/-/g, ' ')
-    : didCtx.businessType;
-  const demoVertical =
-    asVoiceVertical(enrichment?.verticalSlug ?? didCtx.vertical) ?? didCtx.vertical;
-
-  const instructions = buildPublicDemoSystemPrompt({
-    shopName,
-    businessType,
-    demoVertical,
-    staffName: enrichment?.demoConfig?.staffNames?.[0],
-    notes: enrichment?.notes ?? undefined,
-    demoConfig: enrichment?.demoConfig ? sipDemoConfigToPromptInput(enrichment.demoConfig) : undefined,
-    demoChannel: 'inbound_sip',
-    voiceCallType: 'inbound_booking',
-  });
 
   const acceptEnabled = env.OPENAI_SIP_ACCEPT_ENABLED && !!apiKey;
   if (!acceptEnabled) {
@@ -282,11 +374,39 @@ export async function handleOpenAiRealtimeSipWebhook(
   const model = env.AGENT_VOICE_MODEL?.trim() || 'gpt-realtime';
   const voiceOverride = env.OPENAI_REALTIME_SIP_VOICE?.trim();
   const voice = voiceOverride || openAiRealtimeVoiceForVertical(demoVertical, 'alloy');
+
+  const shopRoomContext =
+    route.kind === 'shop'
+      ? resolveOpenAiSipShopRoomContext({
+          sipHeaders: data.sip_headers,
+          shop: route.shop,
+          callId,
+        })
+      : null;
+
+  const shopSidebandDepsReady =
+    route.kind === 'shop' &&
+    !!deps.shopsRepository &&
+    !!deps.jobsRepository &&
+    !!deps.bookingsRepository &&
+    !!deps.callbacksRepository &&
+    !!deps.telephonyService;
+
+  const shopToolsAndSideband =
+    Boolean(env.OPENAI_SIP_SIDEBAND_ENABLED) && route.kind === 'shop' && shopSidebandDepsReady;
+
+  if (route.kind === 'shop' && env.OPENAI_SIP_SIDEBAND_ENABLED && !shopSidebandDepsReady) {
+    logger.warn({ callId }, 'openai_sip_shop_tools_missing_dependencies');
+  }
+
+  const includeDemoNoopTool = Boolean(env.OPENAI_SIP_SIDEBAND_ENABLED) && route.kind === 'demo';
   const acceptBody = buildOpenAiSipAcceptBody({
     instructions,
     model,
     voice,
-    includeDemoNoopTool: env.OPENAI_SIP_SIDEBAND_ENABLED,
+    includeDemoNoopTool,
+    shopBusinessTools: shopToolsAndSideband ? SIP_SHOP_TOOLS : undefined,
+    toolChoice: shopToolsAndSideband ? 'auto' : undefined,
   });
 
   const acceptRes = await postOpenAiCallAction({
@@ -307,11 +427,43 @@ export async function handleOpenAiRealtimeSipWebhook(
     logger.info({ callId, model }, 'openai_sip_call_accepted');
     incrementMetric('openai_sip_call_outcomes_total', { outcome: 'accepted' });
     if (env.OPENAI_SIP_SIDEBAND_ENABLED) {
-      startOpenAiRealtimeSipSideband({
-        callId,
-        apiKey: apiKey!,
-        enableToolLoop: true,
-      });
+      if (route.kind === 'demo') {
+        startOpenAiRealtimeSipSideband({
+          variant: 'demo',
+          callId,
+          apiKey: apiKey!,
+          enableToolLoop: true,
+        });
+      } else if (shopToolsAndSideband && shopRoomContext && route.kind === 'shop') {
+        const executorDeps: SipToolExecutorDeps = {
+          shopsRepository: deps.shopsRepository!,
+          jobsRepository: deps.jobsRepository!,
+          bookingsRepository: deps.bookingsRepository!,
+          callbacksRepository: deps.callbacksRepository!,
+          telephonyService: deps.telephonyService!,
+        };
+        const toolCtx = createSipAgentToolContext({
+          shop: route.shop,
+          callerPhone: normalizedFrom ?? '',
+          requestId: shopRoomContext.requestId,
+          roomName: shopRoomContext.roomName,
+          deps: executorDeps,
+        });
+        startOpenAiRealtimeSipSideband({
+          variant: 'shop',
+          callId,
+          apiKey: apiKey!,
+          executeBusinessTool: (name, argsJson) => {
+            let parsed: unknown = {};
+            try {
+              parsed = argsJson.trim() ? JSON.parse(argsJson) : {};
+            } catch {
+              parsed = {};
+            }
+            return executeSipShopToolCall(toolCtx, name, parsed);
+          },
+        });
+      }
     }
   }
 
@@ -321,6 +473,8 @@ export async function handleOpenAiRealtimeSipWebhook(
     eventType: 'realtime.call.incoming',
     payload: {
       callId,
+      route: route.kind,
+      shopId: route.kind === 'shop' ? route.shop.id : undefined,
       outcome: acceptRes.ok ? 'accepted' : 'accept_failed',
       acceptStatus: acceptRes.status,
     },

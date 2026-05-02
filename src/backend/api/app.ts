@@ -1278,6 +1278,8 @@ export function createBackendApp(deps: {
   realtimeAgentRuntime?: RealtimeAgentRuntime;
   /** Test-only: mock OpenAI HTTP for SIP accept/reject. */
   testingOpenAiFetch?: typeof fetch;
+  /** Test-only: mock Telnyx Call Control REST (answer/reject/dial). */
+  testingTelnyxFetch?: typeof fetch;
 }) {
   const app = new Hono();
   const path = (route: string) => `${deps.basePath ?? ''}${route}`;
@@ -1519,6 +1521,11 @@ export function createBackendApp(deps: {
       return handleOpenAiRealtimeSipWebhook(c, {
         providerEventsRepository: deps.providerEventsRepository,
         demoSessionsRepository: deps.demoSessionsRepository,
+        shopsRepository: deps.shopsRepository,
+        jobsRepository: deps.jobsRepository,
+        bookingsRepository: deps.bookingsRepository,
+        callbacksRepository: deps.callbacksRepository,
+        telephonyService: deps.telephonyService,
         fetchImpl: deps.testingOpenAiFetch,
       });
     })(),

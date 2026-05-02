@@ -5,6 +5,7 @@ export type LogContext = {
   shopId?: string;
   callId?: string;
   provider?: string;
+  telnyxEventId?: string;
 };
 
 export const logger = pino({

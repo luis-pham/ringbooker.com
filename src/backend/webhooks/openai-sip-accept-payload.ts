@@ -5,6 +5,13 @@
  * @see https://platform.openai.com/docs/guides/realtime-sip
  * @see https://platform.openai.com/docs/api-reference/realtime-calls/accept-call
  */
+export type OpenAiSipFunctionTool = {
+  type: 'function';
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+};
+
 export type OpenAiRealtimeAcceptBody = {
   type: 'realtime';
   model: string;
@@ -18,12 +25,8 @@ export type OpenAiRealtimeAcceptBody = {
       voice?: string;
     };
   };
-  tools?: Array<{
-    type: 'function';
-    name: string;
-    description: string;
-    parameters: Record<string, unknown>;
-  }>;
+  tools?: OpenAiSipFunctionTool[];
+  tool_choice?: 'auto';
 };
 
 function parseBoolean(value: string | undefined, defaultValue: boolean): boolean {
@@ -93,23 +96,30 @@ export function buildOpenAiSipAcceptBody(params: {
   instructions: string;
   model: string;
   voice: string;
-  includeDemoNoopTool: boolean;
+  /** Demo pilot: single `demo_noop` tool (mutually exclusive with `shopBusinessTools` in callers). */
+  includeDemoNoopTool?: boolean;
+  /** Production shop SIP: business tools from shared Realtime definitions. */
+  shopBusinessTools?: OpenAiSipFunctionTool[];
+  toolChoice?: 'auto';
 }): OpenAiRealtimeAcceptBody {
-  const tools = params.includeDemoNoopTool
-    ? [
-        {
-          type: 'function' as const,
-          name: 'demo_noop',
-          description:
-            'Pilot tool: acknowledge a test ping. Returns a short static string. Do not use for real bookings.',
-          parameters: {
-            type: 'object',
-            properties: {},
-            additionalProperties: false,
-          },
+  let tools: OpenAiSipFunctionTool[] | undefined;
+  if (params.includeDemoNoopTool) {
+    tools = [
+      {
+        type: 'function' as const,
+        name: 'demo_noop',
+        description:
+          'Pilot tool: acknowledge a test ping. Returns a short static string. Do not use for real bookings.',
+        parameters: {
+          type: 'object',
+          properties: {},
+          additionalProperties: false,
         },
-      ]
-    : undefined;
+      },
+    ];
+  } else if (params.shopBusinessTools?.length) {
+    tools = params.shopBusinessTools;
+  }
 
   const audioInput = buildOpenAiSipAcceptAudioInputFromEnv();
 
@@ -123,6 +133,7 @@ export function buildOpenAiSipAcceptBody(params: {
         voice: params.voice,
       },
     },
+    ...(params.toolChoice && tools?.length ? { tool_choice: params.toolChoice } : {}),
     ...(tools ? { tools } : {}),
   };
 }
