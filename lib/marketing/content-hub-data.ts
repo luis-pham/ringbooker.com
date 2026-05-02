@@ -432,6 +432,7 @@ export const currentNumberHub: ContentHubPageConfig = {
           icon: '🔀',
           title: 'Forwarding-based setup',
           body: 'Forward your line for after-hours and overflow — no system migration.',
+          link: { href: '/current-number/call-forwarding', label: 'View setup guide →' },
         },
         {
           icon: '🧪',
