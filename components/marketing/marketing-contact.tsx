@@ -154,10 +154,10 @@ const scripts: string[] = [
   };
 
   const getCaptchaToken = () => {
-    if (${JSON.stringify(turnstileSiteKey)} && window.__rbContactCaptchaToken) {
-      return window.__rbContactCaptchaToken;
+    if (!${JSON.stringify(turnstileSiteKey)}) {
+      return 'dev-turnstile-bypass';
     }
-    return 'dev-turnstile-bypass';
+    return typeof window.__rbContactCaptchaToken === 'string' ? window.__rbContactCaptchaToken : '';
   };
 
   const setHelper = (message, tone = 'muted') => {

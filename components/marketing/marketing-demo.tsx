@@ -415,14 +415,19 @@ const scripts: string[] = [
     }
 
     function getCaptchaToken(){
-      if (${JSON.stringify(turnstileSiteKey)} && window.__rbDemoCaptchaToken) {
-        return window.__rbDemoCaptchaToken;
+      if (!${JSON.stringify(turnstileSiteKey)}) {
+        return 'dev-turnstile-bypass';
       }
-      return 'dev-turnstile-bypass';
+      return typeof window.__rbDemoCaptchaToken === 'string' ? window.__rbDemoCaptchaToken : '';
     }
 
     async function startDemo(){
       if (pending) return;
+      var captchaToken = getCaptchaToken();
+      if (${JSON.stringify(turnstileSiteKey)} && !captchaToken) {
+        helper.textContent = 'Please complete captcha verification before starting the demo.';
+        return;
+      }
       pending = true;
       startButtons.forEach(btn => { if (btn) btn.disabled = true; });
       clearPoll();
@@ -443,7 +448,7 @@ const scripts: string[] = [
       setSignalState('thinking');
       setMobileLiveView(true);
       helper.textContent = ${JSON.stringify(turnstileSiteKey)}
-        ? 'Captcha verified, requesting a live outbound call.'
+        ? 'Submitting your live demo request…'
         : 'Turnstile is not configured in this environment. Using local development bypass.';
 
       try {
@@ -459,7 +464,7 @@ const scripts: string[] = [
             scenario,
             staffName: staff,
             notes,
-            captchaToken: getCaptchaToken(),
+            captchaToken: captchaToken,
             sessionId: ensureSessionId(),
             website,
           }),
