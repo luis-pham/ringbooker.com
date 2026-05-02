@@ -63,6 +63,15 @@ export class InMemoryShopsRepository implements ShopsRepository {
     return null;
   }
 
+  async findByTelnyxNumber(e164: string): Promise<Shop | null> {
+    for (const shop of this.shops.values()) {
+      if (shop.active && shop.telnyx_number && shop.telnyx_number === e164) {
+        return shop;
+      }
+    }
+    return null;
+  }
+
   async findById(shopId: string): Promise<Shop | null> {
     return this.shops.get(shopId) ?? null;
   }

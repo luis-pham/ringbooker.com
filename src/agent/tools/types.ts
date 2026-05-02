@@ -17,6 +17,10 @@ export type AgentToolContext = {
   callbacksRepository: CallbacksRepository;
   shopsRepository: ShopsRepository;
   telephonyService: TelephonyService;
+  /** Present when inbound used Telnyx Call Control (client_state on SIP). Needed for owner handoff. */
+  parentTelnyxCallControlId?: string | null;
+  /** Correlation id (matches Call Control `requestId` / rb_call_id). */
+  rbCallId?: string;
 };
 
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

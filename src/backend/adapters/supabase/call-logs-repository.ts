@@ -197,6 +197,17 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }
   }
 
+  async setOutcomeByProviderCallId(params: { provider: string; providerCallId: string; outcome: string }): Promise<void> {
+    const { error } = await this.supabase
+      .from('call_logs')
+      .update({ outcome: params.outcome })
+      .eq('provider', params.provider)
+      .eq('provider_call_id', params.providerCallId);
+    if (error) {
+      throw new Error(`call_logs_set_outcome_failed:${error.message}`);
+    }
+  }
+
   async countByShop(
     shopId: string,
     params?: CallLogsQueryParams,

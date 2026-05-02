@@ -1,6 +1,25 @@
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 
 export class NoopTelephonyService implements TelephonyService {
+  async requestHumanHandoffViaCallControl(params: {
+    shopId: string;
+    parentCallControlId: string;
+    ownerPhone: string;
+    inboundDid: string;
+    rbCallId: string;
+    reason: string;
+    urgency: string;
+    summary: string;
+    callerPhone: string;
+    callerName?: string;
+    serviceRequested?: string;
+    preferredTime?: string;
+    idempotencyKey: string;
+  }) {
+    void params;
+    return { started: false, failureCode: 'noop_telephony' };
+  }
+
   async transferLiveCallToUser(params: {
     shopId: string;
     userPhone: string;

@@ -39,7 +39,8 @@ export type JobType =
   | 'cancellation_request_alert'
   | 'callback_outbound_call'
   | 'review_request_sms'
-  | 'post_call_summary';
+  | 'post_call_summary'
+  | 'handoff_failed_owner_sms';
 
 export type TranscriptStatus = 'pending' | 'completed' | 'failed';
 

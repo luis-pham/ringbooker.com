@@ -40,7 +40,8 @@ export const SMS_REMINDER_2H = (shop: Shop, booking: BookingView) =>
 
 export const SMS_MISSED_CALL = (shop: Shop) =>
   `${shop.name}: We missed your call. Reply YES and we will call you back, ` +
-  `or visit ${shop.booking_url ?? 'our booking page'} to book.`;
+  `or visit ${shop.booking_url ?? 'our booking page'} to book. ` +
+  'Reply STOP to opt out of automated texts.';
 
 export const SMS_CALLBACK_ACK = (shop: Shop) => `${shop.name}: Thanks! Someone will call you back shortly.`;
 

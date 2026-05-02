@@ -23,6 +23,9 @@ function memoryDeps() {
 
 function transferOkTelephony(): TelephonyService {
   return {
+    async requestHumanHandoffViaCallControl() {
+      return { started: false, failureCode: 'test_stub' };
+    },
     async transferLiveCallToUser() {
       return { initiated: true, target: 'user', providerCallId: 'sip-transfer-test' };
     },
@@ -118,26 +121,65 @@ test('invalid create_booking input returns error JSON without throwing', async (
   assert.ok(parsed.error);
 });
 
+test('request_human_handoff returns false when no parent Telnyx call_control_id (SIP direct)', async () => {
+  const prevVt = process.env.VOICE_TRANSPORT;
+  const prevH = process.env.HANDOFF_TRANSPORT;
+  process.env.VOICE_TRANSPORT = 'openai_sip_direct';
+  process.env.HANDOFF_TRANSPORT = 'telnyx_call_control';
+  try {
+    const deps = memoryDeps();
+    const shop = await deps.shopsRepository.findById('demo-shop');
+    assert.ok(shop);
+    const ctx = createSipAgentToolContext({
+      shop,
+      callerPhone: '+15550001111',
+      requestId: 'sip-handoff-1',
+      roomName: 'sip-room-handoff-1',
+      deps,
+    });
+    const json = await executeSipShopToolCall(ctx, 'request_human_handoff', {
+      reason: 'caller_requested_human',
+      urgency: 'normal',
+      summary: 'Customer wants the owner',
+    });
+    const parsed = JSON.parse(json) as { handoff_possible?: boolean; success?: boolean };
+    assert.equal(parsed.success, false);
+    assert.equal(parsed.handoff_possible, false);
+  } finally {
+    if (prevVt === undefined) delete process.env.VOICE_TRANSPORT;
+    else process.env.VOICE_TRANSPORT = prevVt;
+    if (prevH === undefined) delete process.env.HANDOFF_TRANSPORT;
+    else process.env.HANDOFF_TRANSPORT = prevH;
+  }
+});
+
 test('transfer_to_user delegates to telephony when transfers allowed', async () => {
-  const shopsRepo = new InMemoryShopsRepository();
-  const shop = await shopsRepo.findById('demo-shop');
-  assert.ok(shop);
-  const ctx = createSipAgentToolContext({
-    shop,
-    callerPhone: '+15550001111',
-    requestId: 'sip-transfer-req',
-    roomName: 'sip-room-transfer',
-    deps: {
-      shopsRepository: shopsRepo,
-      jobsRepository: new InMemoryJobsRepository(),
-      bookingsRepository: new InMemoryBookingsRepository(),
-      callbacksRepository: new InMemoryCallbacksRepository(),
-      telephonyService: transferOkTelephony(),
-    },
-  });
-  const json = await executeSipShopToolCall(ctx, 'transfer_to_user', { reason: 'Caller asks for the owner' });
-  assert.ok(json.includes('"success":true'));
-  assert.ok(json.includes('"target":"user"'));
+  const prevVt = process.env.VOICE_TRANSPORT;
+  process.env.VOICE_TRANSPORT = 'livekit_media';
+  try {
+    const shopsRepo = new InMemoryShopsRepository();
+    const shop = await shopsRepo.findById('demo-shop');
+    assert.ok(shop);
+    const ctx = createSipAgentToolContext({
+      shop,
+      callerPhone: '+15550001111',
+      requestId: 'sip-transfer-req',
+      roomName: 'sip-room-transfer',
+      deps: {
+        shopsRepository: shopsRepo,
+        jobsRepository: new InMemoryJobsRepository(),
+        bookingsRepository: new InMemoryBookingsRepository(),
+        callbacksRepository: new InMemoryCallbacksRepository(),
+        telephonyService: transferOkTelephony(),
+      },
+    });
+    const json = await executeSipShopToolCall(ctx, 'transfer_to_user', { reason: 'Caller asks for the owner' });
+    assert.ok(json.includes('"success":true'));
+    assert.ok(json.includes('"target":"user"'));
+  } finally {
+    if (prevVt === undefined) delete process.env.VOICE_TRANSPORT;
+    else process.env.VOICE_TRANSPORT = prevVt;
+  }
 });
 
 test('unexpected calendar throw maps to JSON tool error via check_availability', async () => {

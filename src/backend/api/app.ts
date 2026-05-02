@@ -39,6 +39,7 @@ import type {
   AuthUsersRepository,
   ContactRequestsRepository,
   DemoSessionsRepository,
+  HandoffSessionsRepository,
 } from '@/src/backend/ports/repositories';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -76,6 +77,7 @@ import { verifyTurnstileToken } from '@/src/backend/security/turnstile';
 import { handlePaddleWebhook } from '@/src/backend/webhooks/paddle';
 import { handleOpenAiRealtimeSipWebhook } from '@/src/backend/webhooks/openai-realtime-sip';
 import { handleTelnyxWebhook } from '@/src/backend/webhooks/telnyx';
+import { handleTelnyxCallControlWebhook } from '@/src/backend/webhooks/telnyx-call-control-webhook';
 import { handleTelnyxTexmlOpenAiInbound } from '@/src/backend/webhooks/telnyx-texml-openai-inbound';
 import { handleVagaroWebhook } from '@/src/backend/webhooks/vagaro';
 import {
@@ -1265,6 +1267,7 @@ export function createBackendApp(deps: {
   emailService?: EmailService;
   callLogsRepository?: CallLogsRepository;
   missedCallsRepository?: MissedCallsRepository;
+  handoffSessionsRepository?: HandoffSessionsRepository;
   authUsersRepository?: AuthUsersRepository;
   billingProvider?: BillingProviderAdapter;
   basePath?: string;
@@ -1488,10 +1491,29 @@ export function createBackendApp(deps: {
     })(),
   );
 
-  // NEW: Telnyx TeXML inbound (Voice URL) → <Dial><Sip>OPENAI_SIP_URI</Sip></Dial> → OpenAI SIP (see telnyx-texml-openai-inbound.ts).
-  // EXISTING: JSON Telnyx webhooks stay on POST /webhooks/telnyx; OpenAI realtime SIP stays on POST /webhooks/openai.
-  app.post(path('/telnyx/texml/inbound'), (c) => handleTelnyxTexmlOpenAiInbound(c));
-  app.get(path('/telnyx/texml/inbound'), (c) => handleTelnyxTexmlOpenAiInbound(c));
+  app.post(path('/webhooks/telnyx/call-control'), (c) =>
+    (async () => {
+      const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.webhook_telnyx, 'webhook_telnyx_cc');
+      if (limited) return limited;
+      return handleTelnyxCallControlWebhook(c, {
+        providerEventsRepository: deps.providerEventsRepository,
+        shopsRepository: deps.shopsRepository,
+        callLogsRepository: deps.callLogsRepository,
+        jobsRepository: deps.jobsRepository,
+        missedCallsRepository: deps.missedCallsRepository,
+        handoffSessionsRepository: deps.handoffSessionsRepository,
+        testingTelnyxFetch: deps.testingTelnyxFetch,
+      });
+    })(),
+  );
+
+  // TeXML OpenAI SIP ingress adapter — Voice URL when TELNYX_INBOUND_ROUTING_MODE=texml_to_openai_sip (see telnyx-texml-openai-inbound.ts).
+  app.post(path('/telnyx/texml/inbound'), (c) =>
+    handleTelnyxTexmlOpenAiInbound(c, { shopsRepository: deps.shopsRepository }),
+  );
+  app.get(path('/telnyx/texml/inbound'), (c) =>
+    handleTelnyxTexmlOpenAiInbound(c, { shopsRepository: deps.shopsRepository }),
+  );
 
   app.post(path('/webhooks/paddle'), (c) =>
     (async () => {

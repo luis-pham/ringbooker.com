@@ -1,7 +1,12 @@
 import { SipClient } from 'livekit-server-sdk';
 
 import { withLogContext } from '@/src/backend/observability/logger';
+import { incrementMetric } from '@/src/backend/observability/metrics';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
+import { getEnv } from '@/src/backend/config/env';
+import type { HandoffSessionsRepository, JobsRepository } from '@/src/backend/ports/repositories';
+import { dialOwnerFromParentCall } from '@/src/backend/services/calls/handoff-call-control';
+import { isTelnyxCallControlDryRunEnv } from '@/src/backend/webhooks/telnyx-call-control';
 import { isRetryableHttpStatus, RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
 import { retryAsync } from '@/src/backend/net/retry';
 
@@ -22,6 +27,178 @@ function parseBooleanEnv(value: string | undefined, defaultValue: boolean): bool
 export class TelnyxTelephonyService implements TelephonyService {
   private readonly sipClient: SipClient | null;
 
+  async requestHumanHandoffViaCallControl(params: {
+    shopId: string;
+    parentCallControlId: string;
+    ownerPhone: string;
+    inboundDid: string;
+    rbCallId: string;
+    reason: string;
+    urgency: string;
+    summary: string;
+    callerPhone: string;
+    callerName?: string;
+    serviceRequested?: string;
+    preferredTime?: string;
+    idempotencyKey: string;
+  }) {
+    const log = withLogContext({
+      shopId: params.shopId,
+      provider: 'telnyx',
+      requestId: params.rbCallId,
+    });
+
+    const handoffRepo = this.options?.handoffSessionsRepository;
+    const jobsRepo = this.options?.jobsRepository;
+
+    if (!handoffRepo) {
+      log.warn({ rbCallId: params.rbCallId, shopId: params.shopId }, 'handoff_sessions_repository_unconfigured');
+      return {
+        started: false,
+        failureCode: 'handoff_repo_unconfigured',
+        messageForAi:
+          "I wasn't able to start a live handoff on this deployment. I can make sure the team gets your message.",
+      };
+    }
+
+    if (isTelnyxCallControlDryRunEnv()) {
+      log.info(
+        { parentCallControlId: params.parentCallControlId, rbCallId: params.rbCallId, shopId: params.shopId },
+        'telnyx_handoff_dry_run',
+      );
+      incrementMetric('handoff_requested_total', { shopId: params.shopId, dry_run: 'true' });
+      return {
+        started: true,
+        dryRun: true,
+        handoffId: 'dry-run',
+        messageForAi: 'Let me try to reach the team now.',
+      };
+    }
+
+    const env = getEnv();
+    const connectionId = env.TELNYX_CALL_CONTROL_CONNECTION_ID?.trim() || env.TELNYX_APP_ID;
+    const fromDid = params.inboundDid?.trim();
+    if (!fromDid || !fromDid.startsWith('+')) {
+      log.warn({ rbCallId: params.rbCallId }, 'handoff_inbound_did_missing');
+      return {
+        started: false,
+        failureCode: 'missing_inbound_did',
+        messageForAi:
+          "I wasn't able to complete the transfer setup. I can make sure the team gets your message.",
+      };
+    }
+
+    const owner = params.ownerPhone.replace(/[^\d+]/g, '');
+    const ownerE164 = owner.startsWith('+') ? owner : `+${owner.replace(/^\+/, '')}`;
+
+    const active = await handoffRepo.findActiveByRbCallId(params.shopId, params.rbCallId);
+    if (active) {
+      incrementMetric('handoff_duplicate_request_total', { shopId: params.shopId });
+      log.info(
+        { handoffId: active.id, rbCallId: params.rbCallId, parentCallControlId: params.parentCallControlId },
+        'telnyx_handoff_duplicate_in_flight',
+      );
+      return {
+        started: true,
+        handoffId: active.id,
+        duplicate: true,
+        messageForAi: 'Let me try to reach the team now.',
+      };
+    }
+
+    const idempotencyKey = `handoff:${params.rbCallId}:${params.reason}:${params.ownerPhone}`;
+
+    const session = await handoffRepo.create({
+      shopId: params.shopId,
+      rbCallId: params.rbCallId,
+      idempotencyKey,
+      parentCallControlId: params.parentCallControlId,
+      ownerPhone: ownerE164,
+      callerPhone: params.callerPhone,
+      callerName: params.callerName ?? null,
+      reason: params.reason,
+      urgency: params.urgency,
+      summary: params.summary,
+      serviceRequested: params.serviceRequested ?? null,
+      preferredTime: params.preferredTime ?? null,
+      status: 'handoff_requested',
+    });
+
+    await handoffRepo.update(session.id, { status: 'owner_dialing' });
+    incrementMetric('handoff_requested_total', { shopId: params.shopId });
+
+    log.info(
+      { parentCallControlId: params.parentCallControlId, rbCallId: params.rbCallId, handoffId: session.id, urgency: params.urgency },
+      'telnyx_handoff_owner_dial_started',
+    );
+
+    const result = await dialOwnerFromParentCall({
+      parentCallControlId: params.parentCallControlId,
+      ownerE164,
+      fromDidE164: fromDid,
+      connectionId,
+      apiKey: this.apiKey,
+      rbCallId: params.rbCallId,
+      shopId: params.shopId,
+      handoffId: session.id,
+      reason: params.reason,
+      urgency: params.urgency,
+      callerPhone: params.callerPhone,
+      inboundDid: params.inboundDid,
+      fetchImpl: this.options?.testingTelnyxFetch,
+    });
+
+    if (result.ok) {
+      if (result.ownerDialCallControlId) {
+        await handoffRepo.update(session.id, { ownerCallControlId: result.ownerDialCallControlId });
+      }
+      incrementMetric('handoff_owner_dial_started_total', { shopId: params.shopId });
+      return { started: true, handoffId: session.id, ownerDialCallControlId: result.ownerDialCallControlId };
+    }
+
+    log.warn(
+      { status: result.status, body: result.text, handoffId: session.id, parentCallControlId: params.parentCallControlId },
+      'telnyx_handoff_owner_dial_failed',
+    );
+
+    await handoffRepo.update(session.id, {
+      status: 'handoff_failed_bridge_error',
+      failedReason: 'owner_dial_http',
+      errorMessage: `${result.status}`,
+      completedAt: new Date(),
+    });
+
+    if (jobsRepo) {
+      try {
+        await jobsRepo.enqueue({
+          shopId: params.shopId,
+          type: 'handoff_failed_owner_sms',
+          payload: {
+            rbCallId: params.rbCallId,
+            handoffId: session.id,
+            summary: params.summary,
+            reason: params.reason,
+            urgency: params.urgency,
+            callerPhone: params.callerPhone,
+            failureCode: `dial_http_${result.status}`,
+          },
+          runAt: new Date(),
+          idempotencyKey: `handoff_failed_owner_summary:${params.rbCallId}:${session.id}`,
+        });
+      } catch (err) {
+        log.warn({ err, shopId: params.shopId, rbCallId: params.rbCallId }, 'handoff_failed_owner_sms_enqueue_after_dial_fail');
+      }
+    }
+
+    return {
+      started: false,
+      failureCode: `dial_http_${result.status}`,
+      handoffId: session.id,
+      messageForAi:
+        "I couldn't reach the team on the phone right now. I'll make sure they get your message after this call.",
+    };
+  }
+
   constructor(
     private readonly apiKey: string,
     private readonly appId: string,
@@ -30,6 +207,10 @@ export class TelnyxTelephonyService implements TelephonyService {
       livekitApiKey?: string;
       livekitApiSecret?: string;
       sipOutboundTrunkId?: string;
+      handoffSessionsRepository?: HandoffSessionsRepository;
+      jobsRepository?: JobsRepository;
+      /** Test double for Call Control HTTP (handoff dial). */
+      testingTelnyxFetch?: typeof fetch;
     },
   ) {
     if (options?.livekitUrl && options.livekitApiKey && options.livekitApiSecret) {

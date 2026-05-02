@@ -165,6 +165,59 @@ export class SupabaseShopsRepository implements ShopsRepository {
     return data ? toShop(data) : null;
   }
 
+  async findByTelnyxNumber(e164: string): Promise<Shop | null> {
+    const { data, error } = await this.supabase
+      .from('shops')
+      .select(
+        [
+          'id',
+          'name',
+          'vertical',
+          'brand_slug',
+          'phone_number',
+          'user_phone',
+          'backup_phone',
+          'user_name',
+          'address',
+          'timezone',
+          'services',
+          'hours',
+          'cancel_policy',
+          'promotions',
+          'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
+          'ai_voice',
+          'ai_welcome_message',
+          'ai_custom_instructions',
+          'allow_transfers',
+          'allow_callbacks',
+          'send_reminder_sms',
+          'send_review_request_sms',
+          'send_missed_call_followup_sms',
+          'plan',
+          'active',
+          'google_cal_id',
+          'google_cal_credentials_encrypted',
+        ].join(','),
+      )
+      .eq('telnyx_number', e164)
+      .eq('active', true)
+      .maybeSingle<ShopsRow>();
+
+    if (error) {
+      throw new Error(`shops_find_by_telnyx_number_failed:${error.message}`);
+    }
+
+    return data ? toShop(data) : null;
+  }
+
   async findById(shopId: string): Promise<Shop | null> {
     const { data, error } = await this.supabase
       .from('shops')

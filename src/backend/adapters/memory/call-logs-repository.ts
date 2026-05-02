@@ -196,6 +196,13 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     }
   }
 
+  async setOutcomeByProviderCallId(params: { provider: string; providerCallId: string; outcome: string }): Promise<void> {
+    const key = callKey(params.provider, params.providerCallId);
+    const existing = this.logsByCall.get(key);
+    if (!existing) return;
+    this.logsByCall.set(key, { ...existing, outcome: params.outcome });
+  }
+
   async countByShop(
     shopId: string,
     params?: CallLogsQueryParams,

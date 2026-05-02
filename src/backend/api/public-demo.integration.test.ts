@@ -11,6 +11,10 @@ import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
 class FakeTelephonyService implements TelephonyService {
+  async requestHumanHandoffViaCallControl() {
+    return { started: false, failureCode: 'fake' };
+  }
+
   async transferLiveCallToUser() {
     return {
       initiated: false,

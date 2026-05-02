@@ -1,6 +1,8 @@
 import { createEnv } from '@t3-oss/env-core';
 import { z } from 'zod';
 
+import { validateVoiceArchitectureAtStartup } from '@/src/backend/config/voice-transport';
+
 function createValidatedEnv() {
   return createEnv({
     server: {
@@ -105,6 +107,14 @@ function createValidatedEnv() {
       OPENAI_SIP_URI: z.string().min(1).optional(),
       /** Optional: force one Realtime voice for all SIP calls. If unset, voice follows marketing vertical. */
       OPENAI_REALTIME_SIP_VOICE: z.string().min(1).optional(),
+      /** Preferred alias for OpenAI Realtime model on SIP accept; falls back to AGENT_VOICE_MODEL. */
+      OPENAI_REALTIME_MODEL: z.string().min(1).optional(),
+      /** openai_sip_direct | livekit_media — drives SIP tool surface (see voice-transport.ts). */
+      VOICE_TRANSPORT: z.string().optional(),
+      /** telnyx_call_control | livekit_sip | none */
+      HANDOFF_TRANSPORT: z.string().optional(),
+      /** texml_to_openai_sip | call_control_to_openai_sip */
+      TELNYX_INBOUND_ROUTING_MODE: z.string().optional(),
 
       SUPABASE_URL: z.string().url(),
       SUPABASE_SERVICE_KEY: z.string().min(1),
@@ -153,6 +163,7 @@ let warnedMissingVagaroWebhookToken = false;
 export function getEnv() {
   if (!cachedEnv) {
     cachedEnv = createValidatedEnv();
+    validateVoiceArchitectureAtStartup();
   }
   const vagaroLooksEnabled =
     process.env.CALENDAR_PROVIDER_DEFAULT === 'vagaro' ||

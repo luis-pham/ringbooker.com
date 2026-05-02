@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { SIP_SHOP_TOOLS } from '@/src/agent/sip/sip-tool-definitions';
+import { getSipShopToolsForOpenAiAccept } from '@/src/agent/sip/sip-tool-definitions';
 import { buildOpenAiSipAcceptAudioInputFromEnv, buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 
 function withEnv(updates: Record<string, string | undefined>, fn: () => void) {
@@ -84,13 +84,14 @@ test('buildOpenAiSipAcceptBody adds shop tools + tool_choice when provided', () 
     {
       AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
       AGENT_OPENAI_TURN_DETECTION: 'server_vad',
+      VOICE_TRANSPORT: 'openai_sip_direct',
     },
     () => {
       const body = buildOpenAiSipAcceptBody({
         instructions: 'Prod',
         model: 'gpt-realtime',
         voice: 'alloy',
-        shopBusinessTools: SIP_SHOP_TOOLS,
+        shopBusinessTools: getSipShopToolsForOpenAiAccept(),
         toolChoice: 'auto',
       });
       assert.ok(body.tools && body.tools.length >= 4);

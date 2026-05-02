@@ -1,3 +1,5 @@
+import { InMemoryHandoffSessionsRepository } from '@/src/backend/adapters/memory/handoff-sessions-repository';
+import { SupabaseHandoffSessionsRepository } from '@/src/backend/adapters/supabase/handoff-sessions-repository';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
@@ -150,6 +152,7 @@ export function createBackendRuntime() {
             blogPostsRepository: new SupabaseBlogPostsRepository(supabase),
             contactRequestsRepository: new SupabaseContactRequestsRepository(supabase),
             demoSessionsRepository: new SupabaseDemoSessionsRepository(supabase),
+            handoffSessionsRepository: new SupabaseHandoffSessionsRepository(supabase),
           };
         })()
       : {
@@ -167,6 +170,7 @@ export function createBackendRuntime() {
           blogPostsRepository: new InMemoryBlogPostsRepository(),
           contactRequestsRepository: new InMemoryContactRequestsRepository(),
           demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+          handoffSessionsRepository: new InMemoryHandoffSessionsRepository(),
         };
   const services =
     commProvider === 'telnyx'
@@ -177,6 +181,8 @@ export function createBackendRuntime() {
             livekitApiKey: getEnv().LIVEKIT_API_KEY,
             livekitApiSecret: getEnv().LIVEKIT_API_SECRET,
             sipOutboundTrunkId: getEnv().LIVEKIT_SIP_OUTBOUND_TRUNK_ID,
+            handoffSessionsRepository: repositories.handoffSessionsRepository,
+            jobsRepository: repositories.jobsRepository,
           }),
           phoneProvisioningService: new TelnyxPhoneProvisioningService(
             getEnv().TELNYX_API_KEY,
@@ -248,6 +254,7 @@ export function createBackendRuntime() {
     realtimeAgentRuntime,
     callLogsRepository: repositories.callLogsRepository,
     missedCallsRepository: repositories.missedCallsRepository,
+    handoffSessionsRepository: repositories.handoffSessionsRepository,
     authUsersRepository: repositories.authUsersRepository,
     blogPostsRepository: repositories.blogPostsRepository,
     contactRequestsRepository: repositories.contactRequestsRepository,
@@ -280,6 +287,7 @@ export function createBackendRuntime() {
     outboundMessagesRepository: repositories.outboundMessagesRepository,
     callLogsRepository: repositories.callLogsRepository,
     missedCallsRepository: repositories.missedCallsRepository,
+    handoffSessionsRepository: repositories.handoffSessionsRepository,
     authUsersRepository: repositories.authUsersRepository,
     blogPostsRepository: repositories.blogPostsRepository,
     contactRequestsRepository: repositories.contactRequestsRepository,

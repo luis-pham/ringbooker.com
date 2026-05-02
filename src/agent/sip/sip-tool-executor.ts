@@ -4,6 +4,7 @@ import { createBookingTool } from '@/src/agent/tools/create-booking';
 import { getShopInfoTool } from '@/src/agent/tools/get-shop-info';
 import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
+import { requestHumanHandoffTool } from '@/src/agent/tools/request-human-handoff';
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
 import type { AgentToolContext } from '@/src/agent/tools/types';
 import type { Shop } from '@/src/backend/domain/types';
@@ -11,6 +12,7 @@ import type { BookingsRepository, CallbacksRepository, JobsRepository, ShopsRepo
 import { logger } from '@/src/backend/observability/logger';
 import { getCalendarProvider } from '@/src/backend/services/calendar/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
+import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 
 export type SipToolExecutorDeps = {
   shopsRepository: ShopsRepository;
@@ -35,6 +37,8 @@ export function createSipAgentToolContext(params: {
   requestId: string;
   roomName: string;
   deps: SipToolExecutorDeps;
+  parentTelnyxCallControlId?: string | null;
+  rbCallId?: string;
 }): AgentToolContext {
   const calendarProvider = getCalendarProvider(params.shop, {
     persistCredentials: async (encodedCredentials) => {
@@ -56,6 +60,8 @@ export function createSipAgentToolContext(params: {
     callbacksRepository: params.deps.callbacksRepository,
     shopsRepository: params.deps.shopsRepository,
     telephonyService: params.deps.telephonyService,
+    parentTelnyxCallControlId: params.parentTelnyxCallControlId ?? null,
+    rbCallId: params.rbCallId ?? params.requestId,
   };
 }
 
@@ -85,7 +91,16 @@ export async function executeSipShopToolCall(
       case 'send_booking_link':
         result = await sendBookingLinkTool(ctx, toolInput);
         break;
+      case 'request_human_handoff':
+        result = await requestHumanHandoffTool(ctx, toolInput);
+        break;
       case 'transfer_to_user':
+        if (getResolvedVoiceTransport() === 'openai_sip_direct') {
+          return compactSipToolJson({
+            error:
+              'transfer_to_user is disabled on OpenAI SIP direct; use request_human_handoff when live transfer is needed.',
+          });
+        }
         result = await transferToUserTool(ctx, toolInput);
         break;
       default:

@@ -2,10 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  collectOpenAiSipDidCandidates,
   parseOpenAiProjectUserFromSipTo,
   parseOpenAiSipDidMapJson,
   resolveOpenAiSipDidContext,
 } from '@/src/backend/webhooks/openai-sip-did';
+
+test('collectOpenAiSipDidCandidates preserves order and dedupes', () => {
+  const headers = [
+    { name: 'To', value: 'sip:first@x' },
+    { name: 'to', value: 'sip:first@x' },
+    { name: 'X-Telnyx-Called-Number', value: 'sip:+15551234001@telnyx.com' },
+  ];
+  assert.deepEqual(collectOpenAiSipDidCandidates(headers), ['sip:first@x', 'sip:+15551234001@telnyx.com']);
+});
 
 test('parseOpenAiProjectUserFromSipTo reads proj user from OpenAI SIP To', () => {
   assert.equal(

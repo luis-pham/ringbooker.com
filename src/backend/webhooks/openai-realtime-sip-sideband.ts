@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 
-import { SIP_SHOP_TOOL_NAME_SET } from '@/src/agent/sip/sip-tool-definitions';
+import { getSipShopToolNameSet } from '@/src/agent/sip/sip-tool-definitions';
 import { logger } from '@/src/backend/observability/logger';
 
 function compactToolOutput(output: string): string {
@@ -97,7 +97,7 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     }
 
     const toolName = evt.name;
-    if (!toolName || !SIP_SHOP_TOOL_NAME_SET.has(toolName)) return;
+    if (!toolName || !getSipShopToolNameSet().has(toolName)) return;
     const callIdTool = typeof evt.call_id === 'string' ? evt.call_id : undefined;
     if (!callIdTool) return;
 

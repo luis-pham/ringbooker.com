@@ -16,6 +16,7 @@ import { withLogContext } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { getClientIp } from '@/src/backend/security/rate-limit';
+import { resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
 
 const telnyxEnvelopeSchema = z.object({
   data: z.object({
@@ -202,7 +203,7 @@ export async function handleTelnyxWebhook(
       const destinationPhone = normalizePhone(firstString(event.payload, ['to', 'called_number', 'to_number']));
       const callerPhone = normalizePhone(firstString(event.payload, ['from', 'from_number', 'caller_number']));
       if (destinationPhone) {
-        const shop = await deps.shopsRepository.findByDestinationPhone(destinationPhone);
+        const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, destinationPhone);
         if (shop) {
           await deps.callLogsRepository.createOrUpdateInboundCall({
             provider: 'telnyx',
@@ -232,7 +233,7 @@ export async function handleTelnyxWebhook(
       const destinationPhone = normalizePhone(firstString(event.payload, ['to', 'called_number', 'to_number']));
       const callerPhone = normalizePhone(firstString(event.payload, ['from', 'from_number', 'caller_number']));
       if (destinationPhone && callerPhone) {
-        const shop = await deps.shopsRepository.findByDestinationPhone(destinationPhone);
+        const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, destinationPhone);
         if (shop) {
           const dedupe = deps.missedCallsRepository
             ? await deps.missedCallsRepository.createOncePerHour({
@@ -262,7 +263,7 @@ export async function handleTelnyxWebhook(
       const destinationPhone = normalizePhone(firstString(event.payload, ['to', 'to_number']));
       const callerPhone = normalizePhone(firstString(event.payload, ['from', 'from_number']));
       if (destinationPhone && callerPhone) {
-        const shop = await deps.shopsRepository.findByDestinationPhone(destinationPhone);
+        const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, destinationPhone);
         if (shop) {
           const callback = deps.callbacksRepository
             ? await deps.callbacksRepository.create({

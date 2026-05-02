@@ -1,17 +1,30 @@
 /**
- * NEW: Telnyx TeXML inbound path — PSTN → Telnyx number (Voice URL) → this handler →
- * `<Dial><Sip>OPENAI_SIP_URI</Sip></Dial>` → OpenAI SIP → `realtime.call.incoming` on your OpenAI webhook.
+ * OpenAI SIP ingress adapter (TeXML) — **not** handoff, not a replacement for Call Control.
  *
- * EXISTING (unchanged): OpenAI Standard Webhook `POST …/webhooks/openai` → verify → accept/reject
- * lives in `openai-realtime-sip.ts`. This module does not call OpenAI HTTP APIs.
+ * Flow: PSTN → Telnyx number (Voice URL) → this handler →
+ * `<Dial><Sip>OPENAI_SIP_URI</Sip></Dial>` → OpenAI Realtime SIP → `realtime.call.incoming` on `POST /webhooks/openai`.
+ *
+ * **Why this still exists when Call Control is implemented:** TeXML is the most reliable way to hand Telnyx
+ * a full `sip:…@sip.api.openai.com;transport=tls` URI. Call Control can optionally `dial` the same URI on
+ * `call.answered` when `TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP=true` (see `telnyx-call-control-webhook.ts`) —
+ * confirm on your Telnyx account that `dial` accepts that SIP target.
+ *
+ * **Routing:** use `TELNYX_INBOUND_ROUTING_MODE=texml_to_openai_sip` if this URL is the number’s Voice URL.
+ * If the number is attached to a Call Control Application, use `call_control_to_openai_sip` and do not
+ * point Voice URL here.
  */
+import { randomUUID } from 'node:crypto';
+
 import type { Context } from 'hono';
 
 import { getEnv } from '@/src/backend/config/env';
+import { getTelnyxInboundRoutingMode } from '@/src/backend/config/voice-transport';
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { maskPhone } from '@/src/backend/security/pii';
 import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
+import type { ShopsRepository } from '@/src/backend/ports/repositories';
+import { resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8"?>';
 
@@ -43,12 +56,35 @@ function texmlXmlResponse(xml: string): Response {
 }
 
 /** Telnyx Voice URL (TeXML) — POST or GET, typically `application/x-www-form-urlencoded`. */
-export async function handleTelnyxTexmlOpenAiInbound(c: Context): Promise<Response> {
+export async function handleTelnyxTexmlOpenAiInbound(
+  c: Context,
+  deps?: { shopsRepository?: ShopsRepository },
+): Promise<Response> {
   const env = getEnv();
   const sipUriConfigured = env.OPENAI_SIP_URI?.trim() ?? '';
+  const inboundRoutingMode = getTelnyxInboundRoutingMode();
+  const rbCallId = randomUUID();
 
   const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
-  logger.info({ method: c.req.method, path: c.req.path, ip }, 'telnyx_texml_openai_inbound_hit');
+  logger.info(
+    {
+      method: c.req.method,
+      path: c.req.path,
+      ip,
+      telnyx_inbound_routing_mode: inboundRoutingMode,
+      rb_call_id: rbCallId,
+    },
+    'telnyx_texml_openai_sip_ingress_hit',
+  );
+
+  if (inboundRoutingMode === 'call_control_to_openai_sip') {
+    logger.warn(
+      { rb_call_id: rbCallId },
+      'telnyx_texml_reject_wrong_routing_mode_use_call_control_app',
+    );
+    incrementMetric('texml_openai_inbound_total', { outcome: 'reject_routing_mode_mismatch' });
+    return texmlXmlResponse(buildTelnyxTexmlRejectXml());
+  }
 
   const limited = await consumeRateLimit(RATE_LIMIT_POLICIES.texml_telnyx_openai_inbound, `texml_openai:${ip}`);
   if (!limited.ok) {
@@ -77,18 +113,31 @@ export async function handleTelnyxTexmlOpenAiInbound(c: Context): Promise<Respon
 
   const sipHost =
     sipUriConfigured.includes('@') ? (sipUriConfigured.split('@')[1]?.split(';')[0] ?? 'unknown') : 'unknown';
+
+  let shopId: string | undefined;
+  if (deps?.shopsRepository && form.To) {
+    try {
+      const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, form.To);
+      shopId = shop?.id;
+    } catch {
+      shopId = undefined;
+    }
+  }
+
   logger.info(
     {
       sipUriHost: sipHost,
       callerCli: form.From ? maskPhone(form.From) : undefined,
       dialedDid: form.To ? maskPhone(form.To) : undefined,
       callSid: form.CallSid,
+      rb_call_id: rbCallId,
+      shop_id: shopId,
     },
-    'telnyx_texml_openai_inbound_sip_uri_selected',
+    'telnyx_texml_openai_sip_dial_selected',
   );
 
   const xml = buildTelnyxTexmlDialOpenAiXml(sipUriConfigured);
   incrementMetric('texml_openai_inbound_total', { outcome: 'dial_openai' });
-  logger.info({ responseChars: xml.length }, 'telnyx_texml_openai_inbound_response_returned');
+  logger.info({ responseChars: xml.length, rb_call_id: rbCallId }, 'telnyx_texml_openai_inbound_response_returned');
   return texmlXmlResponse(xml);
 }

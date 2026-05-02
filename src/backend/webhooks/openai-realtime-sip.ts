@@ -2,13 +2,14 @@ import type { Context } from 'hono';
 import { z } from 'zod';
 
 import { type VoicePromptVertical, openAiRealtimeVoiceForVertical } from '@/src/agent/prompts';
-import { SIP_SHOP_TOOLS } from '@/src/agent/sip/sip-tool-definitions';
+import { getSipShopToolsForOpenAiAccept } from '@/src/agent/sip/sip-tool-definitions';
 import {
   createSipAgentToolContext,
   executeSipShopToolCall,
   type SipToolExecutorDeps,
 } from '@/src/agent/sip/sip-tool-executor';
 import { getEnv } from '@/src/backend/config/env';
+import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 import type { Shop, ShopVertical } from '@/src/backend/domain/types';
 import { buildPublicDemoSystemPrompt, type DemoConfigInput } from '@/src/backend/demo/public-demo-system-prompt';
 import { logger } from '@/src/backend/observability/logger';
@@ -89,22 +90,41 @@ function resolveOpenAiSipShopRoomContext(params: {
   sipHeaders: Array<{ name: string; value: string }> | undefined;
   shop: Shop;
   callId: string;
-}): { requestId: string; roomName: string } {
+}): {
+  requestId: string;
+  roomName: string;
+  parentTelnyxCallControlId: string | null;
+  rbCallId: string;
+} {
   const rawState =
     extractSipHeader(params.sipHeaders, 'X-Ringbooker-Call-Control-State') ??
     extractSipHeader(params.sipHeaders, 'X-Telnyx-Client-State');
   const decoded = decodeCallControlClientState(rawState);
   if (decoded && decoded.shopId === params.shop.id) {
     const safeReq = decoded.requestId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
+    const rbCallId = decoded.rbCallId ?? decoded.requestId;
     return {
       requestId: decoded.requestId,
       roomName: `sip-${safeReq || 'session'}`,
+      parentTelnyxCallControlId: decoded.telnyxCallControlId ?? null,
+      rbCallId,
     };
   }
   const safeCall = params.callId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48);
+  const fallbackReq = `sip-${params.callId}`;
+  logger.warn(
+    {
+      shopId: params.shop.id,
+      callId: params.callId,
+      rbCallId: fallbackReq,
+    },
+    'openai_sip_missing_telnyx_client_state_live_handoff_limited',
+  );
   return {
-    requestId: `sip-${params.callId}`,
+    requestId: fallbackReq,
     roomName: `sip-${safeCall || 'call'}`,
+    parentTelnyxCallControlId: null,
+    rbCallId: fallbackReq,
   };
 }
 
@@ -371,7 +391,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     return c.json({ ok: true });
   }
 
-  const model = env.AGENT_VOICE_MODEL?.trim() || 'gpt-realtime';
+  const model = env.OPENAI_REALTIME_MODEL?.trim() || env.AGENT_VOICE_MODEL?.trim() || 'gpt-realtime';
   const voiceOverride = env.OPENAI_REALTIME_SIP_VOICE?.trim();
   const voice = voiceOverride || openAiRealtimeVoiceForVertical(demoVertical, 'alloy');
 
@@ -383,6 +403,19 @@ export async function handleOpenAiRealtimeSipWebhook(
           callId,
         })
       : null;
+
+  if (route.kind === 'shop' && shopRoomContext) {
+    logger.info(
+      {
+        callId,
+        shopId: route.shop.id,
+        voiceTransport: getResolvedVoiceTransport(),
+        rbCallId: shopRoomContext.rbCallId,
+        parentTelnyxCallControlId: shopRoomContext.parentTelnyxCallControlId,
+      },
+      'openai_sip_shop_correlation',
+    );
+  }
 
   const shopSidebandDepsReady =
     route.kind === 'shop' &&
@@ -405,7 +438,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     model,
     voice,
     includeDemoNoopTool,
-    shopBusinessTools: shopToolsAndSideband ? SIP_SHOP_TOOLS : undefined,
+    shopBusinessTools: shopToolsAndSideband ? getSipShopToolsForOpenAiAccept() : undefined,
     toolChoice: shopToolsAndSideband ? 'auto' : undefined,
   });
 
@@ -448,6 +481,8 @@ export async function handleOpenAiRealtimeSipWebhook(
           requestId: shopRoomContext.requestId,
           roomName: shopRoomContext.roomName,
           deps: executorDeps,
+          parentTelnyxCallControlId: shopRoomContext.parentTelnyxCallControlId,
+          rbCallId: shopRoomContext.rbCallId,
         });
         startOpenAiRealtimeSipSideband({
           variant: 'shop',

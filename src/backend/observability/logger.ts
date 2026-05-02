@@ -4,6 +4,8 @@ export type LogContext = {
   requestId?: string;
   shopId?: string;
   callId?: string;
+  /** Correlation id across Telnyx Call Control + OpenAI SIP (when present). */
+  rbCallId?: string;
   provider?: string;
   telnyxEventId?: string;
 };

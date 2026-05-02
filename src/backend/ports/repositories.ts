@@ -1,3 +1,4 @@
+import type { HandoffSessionRecord, HandoffSessionStatus } from '@/src/backend/domain/handoff';
 import type {
   BlogPost,
   BlogPostStatus,
@@ -249,6 +250,8 @@ export interface CallLogsRepository {
     outcome?: string;
     humanAnswered?: boolean;
   }): Promise<void>;
+  /** Mid-call outcome update (e.g. transferred_to_owner) without ending the call. */
+  setOutcomeByProviderCallId(params: { provider: string; providerCallId: string; outcome: string }): Promise<void>;
   listByShop(
     shopId: string,
     params?: CallLogsQueryParams,
@@ -342,6 +345,8 @@ export interface MissedCallsRepository {
 
 export interface ShopsRepository {
   findByDestinationPhone(destinationPhone: string): Promise<Shop | null>;
+  /** Telnyx DID / PSTN number provisioned for this shop (E.164). Active shops only. */
+  findByTelnyxNumber(e164: string): Promise<Shop | null>;
   findById(shopId: string): Promise<Shop | null>;
   /** ISO timestamps of shop creation, for admin charts (UTC). */
   listCreatedAtInRange(params: { createdAfter: Date; createdBefore: Date }): Promise<string[]>;
@@ -667,4 +672,43 @@ export interface ContactRequestsRepository {
       handledBy?: string | null;
     },
   ): Promise<ContactRequest | null>;
+}
+
+export interface HandoffSessionsRepository {
+  create(params: {
+    shopId: string;
+    rbCallId: string;
+    idempotencyKey: string;
+    parentCallControlId: string;
+    parentCallSessionId?: string | null;
+    ownerPhone: string;
+    callerPhone?: string | null;
+    callerName?: string | null;
+    reason: string;
+    urgency: string;
+    summary: string;
+    serviceRequested?: string | null;
+    preferredTime?: string | null;
+    status: HandoffSessionStatus;
+  }): Promise<HandoffSessionRecord>;
+  findById(id: string): Promise<HandoffSessionRecord | null>;
+  findActiveByRbCallId(shopId: string, rbCallId: string): Promise<HandoffSessionRecord | null>;
+  findByOwnerCallControlId(callControlId: string): Promise<HandoffSessionRecord | null>;
+  findByParentCallControlId(parentCallControlId: string): Promise<HandoffSessionRecord | null>;
+  /** Latest non-terminal session whose parent Telnyx leg matches (caller leg). */
+  findActiveByParentCallControlId(parentCallControlId: string): Promise<HandoffSessionRecord | null>;
+  update(
+    id: string,
+    patch: Partial<{
+      status: HandoffSessionStatus;
+      ownerCallControlId: string | null;
+      openaiCallId: string | null;
+      parentCallSessionId: string | null;
+      failedReason: string | null;
+      errorMessage: string | null;
+      dtmfRetryCount: number;
+      fallbackSmsSent: boolean;
+      completedAt: Date | null;
+    }>,
+  ): Promise<void>;
 }

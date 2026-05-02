@@ -50,6 +50,25 @@ export function extractSipHeader(headers: Array<{ name: string; value: string }>
   return null;
 }
 
+/** Headers that may carry the PSTN DID when `To` is an OpenAI SIP URI (TeXML / bridged legs). */
+const SIP_DID_ROUTING_HEADER_NAMES = ['To', 'P-Asserted-Identity', 'Diversion', 'X-Telnyx-Called-Number'] as const;
+
+export function collectOpenAiSipDidCandidates(
+  headers: Array<{ name: string; value: string }> | undefined,
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const name of SIP_DID_ROUTING_HEADER_NAMES) {
+    const v = extractSipHeader(headers, name);
+    if (!v?.trim()) continue;
+    const key = v.trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
 export function parseOpenAiSipDidMapJson(json: string | undefined): Map<string, OpenAiSipDidContext> {
   const out = new Map<string, OpenAiSipDidContext>();
   if (!json?.trim()) return out;

@@ -180,6 +180,15 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
     error: z.string().nullable().optional(),
     occurredAt: z.string().nullable().optional(),
   });
+  const handoffFailedOwnerSmsPayloadSchema = z.object({
+    rbCallId: z.string().min(1),
+    summary: z.string().min(1),
+    reason: z.string().min(1),
+    urgency: z.string().min(1),
+    callerPhone: z.string().min(1).optional(),
+    failureCode: z.string().min(1).optional(),
+    handoffId: z.string().min(1).optional(),
+  });
 
   const handlers: Partial<Record<JobType, (params: { jobId: string; shopId: string; payload: Record<string, unknown>; attemptCount: number }) => Promise<void>>> = {
     realtime_session_dispatch: async (params) => {
@@ -355,6 +364,56 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
       });
 
       await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
+    },
+    handoff_failed_owner_sms: async (params) => {
+      const payload = handoffFailedOwnerSmsPayloadSchema.safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'handoff_failed_owner_sms_invalid_payload');
+        return;
+      }
+
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'handoff_failed_owner_sms_shop_not_found');
+        return;
+      }
+      if (!shop.user_phone?.trim()) {
+        return;
+      }
+
+      const callerPart = payload.data.callerPhone ? `Caller: ${payload.data.callerPhone}.` : '';
+      const body = [
+        `RingBooker: A caller requested live help but we couldn't connect the call. ${callerPart}`,
+        `Reason: ${payload.data.summary.slice(0, 400)}`,
+        `Shop: ${shop.name}.`,
+        'Please follow up.',
+        'Reply STOP to opt out.',
+      ]
+        .filter(Boolean)
+        .join(' ');
+      const idempotencyKey = `job:${params.jobId}:handoff-failed-owner`;
+
+      try {
+        const sms = await runtime.smsService.sendSms({
+          to: shop.user_phone,
+          from: shop.phone_number,
+          body,
+          shopId: shop.id,
+          category: 'user_alert',
+          idempotencyKey,
+        });
+        await runtime.outboundMessagesRepository.create({
+          shopId: shop.id,
+          customerPhone: shop.user_phone,
+          category: 'user_alert',
+          body,
+          idempotencyKey,
+          status: 'sent',
+          providerMessageId: sms.providerMessageId,
+        });
+      } catch (error) {
+        logger.error({ err: error, jobId: params.jobId, shopId: shop.id }, 'handoff_failed_owner_sms_failed');
+      }
     },
     missed_call_followup_sms: async (params) => {
       const payload = missedCallPayloadSchema.safeParse(params.payload);
