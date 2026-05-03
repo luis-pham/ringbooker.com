@@ -66,64 +66,6 @@ const parentOpenAiBridgeWatch = new Map<
   { answeredAtMs: number; rbCallId: string; shopId: string; telnyxEventId?: string }
 >();
 
-function comfortMessageText(): string {
-  return getEnv().TELNYX_CALL_CONTROL_COMFORT_MESSAGE?.trim() || 'Thanks for calling. One moment please.';
-}
-
-async function telnyxComfortSpeakParent(params: {
-  parentCallControlId: string;
-  rbCallId: string;
-  shopId: string;
-  telnyxEventId: string;
-  fetchDeps: { fetchImpl?: typeof fetch; apiKey: string };
-  log: ReturnType<typeof withLogContext>;
-}): Promise<void> {
-  const t0 = Date.now();
-  params.log.info(
-    {
-      rbCallId: params.rbCallId,
-      shopId: params.shopId,
-      parentCallControlId: params.parentCallControlId,
-      telnyxEventId: params.telnyxEventId,
-    },
-    'telnyx_call_control_comfort_speak_started',
-  );
-  const sr = await callControlSpeak(
-    params.parentCallControlId,
-    {
-      payload: comfortMessageText(),
-      voice: 'Polly.Joanna',
-      language: 'en-US',
-    },
-    params.fetchDeps,
-  );
-  const durationMs = Date.now() - t0;
-  if (!sr.ok) {
-    params.log.warn(
-      {
-        rbCallId: params.rbCallId,
-        shopId: params.shopId,
-        parentCallControlId: params.parentCallControlId,
-        telnyxEventId: params.telnyxEventId,
-        durationMs,
-        httpStatus: sr.status,
-      },
-      'telnyx_call_control_comfort_speak_failed',
-    );
-    return;
-  }
-  params.log.info(
-    {
-      rbCallId: params.rbCallId,
-      shopId: params.shopId,
-      parentCallControlId: params.parentCallControlId,
-      telnyxEventId: params.telnyxEventId,
-      durationMs,
-    },
-    'telnyx_call_control_comfort_speak_succeeded',
-  );
-}
-
 function scheduleSilentCallerRiskWatch(params: {
   parentCallControlId: string;
   rbCallId: string;
@@ -825,15 +767,6 @@ async function processCallAnswered(
           const rbCallId = decodedClient.rbCallId ?? decodedClient.requestId;
           const parentCallSessionId = firstStringFromPayload(payload, ['call_session_id']) ?? decodedClient.telnyxCallSessionId;
           const parentAnsweredReceivedAt = Date.now();
-
-          await telnyxComfortSpeakParent({
-            parentCallControlId: callControlId,
-            rbCallId,
-            shopId: decodedClient.shopId,
-            telnyxEventId: event.id,
-            fetchDeps,
-            log,
-          });
 
           scheduleSilentCallerRiskWatch({
             parentCallControlId: callControlId,

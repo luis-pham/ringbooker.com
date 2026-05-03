@@ -1,36 +1,16 @@
+import { buildDemoRequestCustomerEmailPayload } from '@/src/backend/services/email/base-email-builders';
+
+/** @deprecated Use `buildDemoRequestCustomerEmailPayload` + `renderBaseEmailHtml` in the API layer. Kept for tests. */
 export function getDemoRequestConfirmationEmail(params: {
   firstName: string;
   businessName?: string;
   businessType?: string;
-}): {
-  subject: string;
-  text: string;
-} {
-  const name = params.firstName || 'there';
-
-  return {
-    subject: `We got your demo request, ${name} — talk soon!`,
-    text: `Hi ${name},
-
-Thanks for reaching out about RingBooker!
-
-We received your demo request and will be in touch 
-within 24 hours to schedule a time.
-
-Here's what to expect:
-- A quick 15-minute demo call
-- We'll show how it works on your current number
-- No pressure — just a walkthrough
-
-In the meantime, you can try a live demo call 
-anytime at:
-https://ringbooker.com/demo
-
-Talk soon,
-Luis Pham, RingBooker
-
----
-RingBooker · AI receptionist for beauty businesses
-hello@ringbooker.com | ringbooker.com`,
-  };
+}): { subject: string; text: string } {
+  const { input, text } = buildDemoRequestCustomerEmailPayload({
+    firstName: params.firstName,
+    businessName: params.businessName ?? '',
+    businessType: params.businessType,
+    demoCtaUrl: 'https://ringbooker.com/demo',
+  });
+  return { subject: input.title, text };
 }

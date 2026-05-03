@@ -32,7 +32,7 @@ export const REQUEST_HUMAN_HANDOFF_TOOL: OpenAiSipFunctionTool = {
   type: 'function',
   name: 'request_human_handoff',
   description:
-    'Request a human handoff for the current caller. Use only when the caller explicitly asks for a human, is upset, has a complex request, or business rules require escalation.',
+    'Start a live handoff attempt to the team (not a guaranteed bridge). Use only if they ask for a person, sound upset, need complex/urgent help, or you are unsure—not for simple hours, services, prices, policies, location, or rules already in runtime. After the call returns, follow message_for_ai exactly; never claim they are transferred or connected unless the product confirms a completed bridge. Do not use transfer_to_user.',
   parameters: {
     type: 'object',
     additionalProperties: false,

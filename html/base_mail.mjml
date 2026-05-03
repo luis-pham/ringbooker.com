@@ -1,483 +1,190 @@
-<!doctype html>
-<html lang="und" dir="auto" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-  <head>
-    <title>Welcome to RingBooker</title>
-    <!--[if !mso]><!-->
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <!--<![endif]-->
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <style type="text/css">
-    #outlook a {
-      padding: 0;
-    }
-    body {
-      margin: 0;
-      padding: 0;
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
-    }
-    table,
-    td {
-      border-collapse: collapse;
-      mso-table-lspace: 0pt;
-      mso-table-rspace: 0pt;
-    }
-    img {
-      border: 0;
-      height: auto;
-      line-height: 100%;
-      outline: none;
-      text-decoration: none;
-      -ms-interpolation-mode: bicubic;
-    }
-    p {
-      display: block;
-      margin: 13px 0;
-    }
-    </style>
-    <!--[if mso]>
-    <noscript>
-    <xml>
-    <o:OfficeDocumentSettings>
-      <o:AllowPNG/>
-      <o:PixelsPerInch>96</o:PixelsPerInch>
-    </o:OfficeDocumentSettings>
-    </xml>
-    </noscript>
-    <![endif]-->
-    <!--[if lte mso 11]>
-    <style type="text/css">
-      .mj-outlook-group-fix { width:100% !important; }
-    </style>
-    <![endif]-->
+<mjml>
+  <mj-head>
+    <mj-title>{{rb_email_title}}</mj-title>
+    <mj-preview>{{rb_preview_text}}</mj-preview>
 
-    <style type="text/css">
-    @media only screen and (min-width: 480px) {
-      .mj-column-per-100 {
-        width: 100% !important;
-        max-width: 100%;
-      }
-    }
-    </style>
-    <style media="screen and (min-width:480px)">
-    .moz-text-html .mj-column-per-100 {
-      width: 100% !important;
-      max-width: 100%;
-    }
-    </style>
+    <mj-attributes>
+      <mj-all font-family="Arial, Helvetica, sans-serif" />
+      <mj-text font-size="15px" line-height="23px" color="#374151" />
+      <mj-section padding="0" />
+      <mj-column padding="0" />
+      <mj-button font-size="16px" font-weight="700" border-radius="8px" inner-padding="14px 28px" />
+    </mj-attributes>
+  </mj-head>
 
-    <style type="text/css">
-    @media only screen and (max-width: 479px) {
-      table.mj-full-width-mobile {
-        width: 100% !important;
-      }
-      td.mj-full-width-mobile {
-        width: auto !important;
-      }
-    }
-    </style>
-  </head>
+  <mj-body background-color="#f4f6f8">
 
-  <body style="word-spacing:normal;background-color:#f4f6f8;">
-    <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">Your RingBooker account is ready. Complete onboarding in a few minutes.</div>
+    <mj-wrapper background-color="#ffffff" border-radius="16px" padding="0">
 
-    <div aria-label="Welcome to RingBooker" aria-roledescription="email" role="article" lang="en" dir="ltr" style="word-spacing:normal;background-color:#f4f6f8;">
-      <!--[if mso | IE]><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" bgcolor="#ffffff" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
+      <mj-section padding="32px 32px 20px 32px">
+        <mj-column>
+          <mj-image
+            src="https://ringbooker.com/images/logo.jpg"
+            alt="RingBooker"
+            width="56px"
+            height="56px"
+            border-radius="12px"
+            padding="0"
+          />
+        </mj-column>
+      </mj-section>
 
-      <div style="background:#ffffff;background-color:#ffffff;margin:0px auto;max-width:600px;border-radius:16px;overflow:hidden;">
-        <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff;background-color:#ffffff;width:100%;border-collapse:separate;">
-          <tbody>
-            <tr>
-              <td style="border-radius:16px;direction:ltr;font-size:0px;padding:0;text-align:center;">
-                <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><![endif]-->
+      <mj-section padding="0 32px">
+        <mj-column>
+          <mj-divider border-width="1px" border-color="#e5e7eb" padding="0" />
+        </mj-column>
+      </mj-section>
 
-                <!-- Logo -->
-                <!--[if mso | IE]><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
+      <mj-section padding="40px 32px 16px 32px">
+        <mj-column>
+          <mj-text
+            align="center"
+            font-size="32px"
+            line-height="40px"
+            font-weight="700"
+            color="#111827"
+            padding="0"
+          >
+            {{rb_hero_title}}
+          </mj-text>
+<!--@@RB_HERO_SUBTITLE@@-->
+          <mj-text
+            align="center"
+            font-size="16px"
+            line-height="24px"
+            color="#4b5563"
+            padding="16px 0 0 0"
+          >
+            {{rb_hero_subtitle_html}}
+          </mj-text>
+<!--@@/RB_HERO_SUBTITLE@@-->
+        </mj-column>
+      </mj-section>
 
-                <div style="margin:0px auto;max-width:600px;">
-                  <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
-                    <tbody>
-                      <tr>
-                        <td style="direction:ltr;font-size:0px;padding:32px 32px 20px 32px;text-align:center;">
-                          <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:536px;" ><![endif]-->
+      <mj-section padding="24px 32px 8px 32px">
+        <mj-column
+          background-color="#f3e8ff"
+          border-radius="12px"
+          padding="20px"
+        >
+<!--@@RB_GREETING@@-->
+          <mj-text padding="0" color="#312e81">
+            {{rb_greeting_html}}
+          </mj-text>
+<!--@@/RB_GREETING@@-->
 
-                          <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
-                              <tbody>
-                                <tr>
-                                  <td style="vertical-align:top;padding:0;">
-                                    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="" width="100%">
-                                      <tbody>
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:0;word-break:break-word;">
-                                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-spacing:0px;">
-                                              <tbody>
-                                                <tr>
-                                                  <td style="width:56px;">
-                                                    <img
-                                                      alt="RingBooker"
-                                                      src="https://ringbooker.com/images/logo.jpg"
-                                                      style="border:0;border-radius:12px;display:block;outline:none;text-decoration:none;height:56px;width:100%;font-size:13px;"
-                                                      width="56"
-                                                      height="56"
-                                                    />
-                                                  </td>
-                                                </tr>
-                                              </tbody>
-                                            </table>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
+          <mj-text padding="12px 0 0 0" color="#312e81">
+            {{rb_body_html}}
+          </mj-text>
 
-                          <!--[if mso | IE]></td></tr></table><![endif]-->
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+<!--@@RB_CTA@@-->
+          <mj-button
+            background-color="#8B5CF6"
+            color="#ffffff"
+            href="{{rb_cta_url}}"
+            padding="20px 0 4px 0"
+          >
+            {{rb_cta_label}}
+          </mj-button>
+<!--@@/RB_CTA@@-->
 
-                <!--[if mso | IE]></td></tr></table></td></tr><![endif]-->
-                <!-- Divider -->
-                <!--[if mso | IE]><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
+<!--@@RB_SECONDARY@@-->
+          <mj-text padding="16px 0 0 0" color="#312e81">
+            {{rb_secondary_body_html}}
+          </mj-text>
+<!--@@/RB_SECONDARY@@-->
 
-                <div style="margin:0px auto;max-width:600px;">
-                  <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
-                    <tbody>
-                      <tr>
-                        <td style="direction:ltr;font-size:0px;padding:0 32px;text-align:center;">
-                          <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:536px;" ><![endif]-->
+<!--@@RB_SIGNATURE@@-->
+          <mj-text padding="16px 0 0 0" color="#312e81">
+            {{rb_signature_html}}
+          </mj-text>
+<!--@@/RB_SIGNATURE@@-->
+        </mj-column>
+      </mj-section>
 
-                          <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
-                              <tbody>
-                                <tr>
-                                  <td style="vertical-align:top;padding:0;">
-                                    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="" width="100%">
-                                      <tbody>
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:0;word-break:break-word;">
-                                            <p style="border-top:solid 1px #e5e7eb;font-size:1px;margin:0px auto;width:100%;"></p>
+<!--@@RB_LINK_FALLBACK@@-->
+      <mj-section padding="24px 32px 8px 32px">
+        <mj-column>
+          <mj-text
+            align="center"
+            font-size="13px"
+            line-height="20px"
+            color="#6b7280"
+            padding="0"
+          >
+            If the button does not work, copy and paste this link into your browser:
+          </mj-text>
 
-                                            <!--[if mso | IE]><table align="center" border="0" cellpadding="0" cellspacing="0" style="border-top:solid 1px #e5e7eb;font-size:1px;margin:0px auto;width:536px;" role="presentation" width="536px" ><tr><td style="height:0;line-height:0;"> &nbsp;
-</td></tr></table><![endif]-->
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
+          <mj-text
+            align="center"
+            font-size="13px"
+            line-height="20px"
+            color="#2563eb"
+            padding="8px 0 0 0"
+          >
+            <a href="{{rb_cta_url}}" target="_blank" style="color:#2563eb; text-decoration:underline; word-break:break-all;">
+              {{rb_cta_url_display}}
+            </a>
+          </mj-text>
+        </mj-column>
+      </mj-section>
+<!--@@/RB_LINK_FALLBACK@@-->
 
-                          <!--[if mso | IE]></td></tr></table><![endif]-->
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+<!--@@RB_SECURITY@@-->
+      <mj-section padding="24px 32px 32px 32px">
+        <mj-column>
+          <mj-text
+            align="center"
+            font-size="12px"
+            line-height="18px"
+            color="#9ca3af"
+            padding="0"
+          >
+            {{rb_security_note}}
+          </mj-text>
+        </mj-column>
+      </mj-section>
+<!--@@/RB_SECURITY@@-->
 
-                <!--[if mso | IE]></td></tr></table></td></tr><![endif]-->
-                <!-- Hero -->
-                <!--[if mso | IE]><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
+      <mj-section background-color="#f3f4f6" padding="24px 32px">
+        <mj-column>
+          <mj-text
+            align="center"
+            font-size="13px"
+            line-height="20px"
+            color="#6b7280"
+            padding="0"
+          >
+            <a href="https://ringbooker.com" target="_blank" style="color:#2563eb; text-decoration:none;">Website</a>
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            <a href="https://ringbooker.com/pricing" target="_blank" style="color:#2563eb; text-decoration:none;">Pricing</a>
+            &nbsp;&nbsp;|&nbsp;&nbsp;
+            <a href="mailto:hello@ringbooker.com" style="color:#2563eb; text-decoration:none;">Contact</a>
+          </mj-text>
 
-                <div style="margin:0px auto;max-width:600px;">
-                  <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
-                    <tbody>
-                      <tr>
-                        <td style="direction:ltr;font-size:0px;padding:40px 32px 16px 32px;text-align:center;">
-                          <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:536px;" ><![endif]-->
+          <mj-text
+            align="center"
+            font-size="12px"
+            line-height="18px"
+            color="#9ca3af"
+            padding="10px 0 0 0"
+          >
+            Sent by RingBooker
+          </mj-text>
 
-                          <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
-                              <tbody>
-                                <tr>
-                                  <td style="vertical-align:top;padding:0;">
-                                    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="" width="100%">
-                                      <tbody>
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:32px;font-weight:700;line-height:40px;text-align:center;color:#111827;">Welcome to RingBooker</div>
-                                          </td>
-                                        </tr>
+          <mj-text
+            align="center"
+            font-size="12px"
+            line-height="18px"
+            color="#9ca3af"
+            padding="8px 0 0 0"
+          >
+            Reply to this email to contact us.
+          </mj-text>
+        </mj-column>
+      </mj-section>
 
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:16px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:16px;line-height:24px;text-align:center;color:#4b5563;">Your account for <strong>{{business_name}}</strong> is ready.</div>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
+    </mj-wrapper>
 
-                          <!--[if mso | IE]></td></tr></table><![endif]-->
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <!--[if mso | IE]></td></tr></table></td></tr><![endif]-->
-                <!-- Main message purple box -->
-                <!--[if mso | IE]><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-
-                <div style="margin:0px auto;max-width:600px;">
-                  <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
-                    <tbody>
-                      <tr>
-                        <td style="direction:ltr;font-size:0px;padding:24px 32px 8px 32px;text-align:center;">
-                          <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:536px;" ><![endif]-->
-
-                          <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%" style="border-collapse:separate;">
-                              <tbody>
-                                <tr>
-                                  <td style="background-color:#f3e8ff;border-radius:12px;vertical-align:top;border-collapse:separate;padding:20px;">
-                                    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="" width="100%">
-                                      <tbody>
-                                        <tr>
-                                          <td align="left" style="font-size:0px;padding:0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:15px;line-height:23px;text-align:left;color:#312e81;">Hi {{customer_name}},</div>
-                                          </td>
-                                        </tr>
-
-                                        <tr>
-                                          <td align="left" style="font-size:0px;padding:12px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:15px;line-height:23px;text-align:left;color:#312e81;">
-                                              Welcome to RingBooker — your account for <strong>{{business_name}}</strong> is ready.
-                                            </div>
-                                          </td>
-                                        </tr>
-
-                                        <tr>
-                                          <td align="left" style="font-size:0px;padding:12px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:15px;line-height:23px;text-align:left;color:#312e81;">
-                                              Your AI receptionist setup has been created. Next, review your business details, services, hours, and call handling preferences before RingBooker answers real callers.
-                                            </div>
-                                          </td>
-                                        </tr>
-
-                                        <tr>
-                                          <td align="left" style="font-size:0px;padding:12px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:15px;line-height:23px;text-align:left;color:#312e81;">Most businesses can finish this in a few minutes.</div>
-                                          </td>
-                                        </tr>
-                                        <!-- CTA black button inside content box -->
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:20px 0 4px 0;word-break:break-word;">
-                                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:separate;line-height:100%;">
-                                              <tbody>
-                                                <tr>
-                                                  <td align="center" bgcolor="#8B5CF6" role="presentation" style="border:none;border-radius:8px;cursor:auto;mso-padding-alt:14px 28px;background:#8B5CF6;" valign="middle">
-                                                    <a
-                                                      href="{{onboarding_link}}"
-                                                      style="display:inline-block;background:#8B5CF6;color:#ffffff;font-family:Arial, Helvetica, sans-serif;font-size:16px;font-weight:700;line-height:120%;margin:0;text-decoration:none;text-transform:none;padding:14px 28px;mso-padding-alt:0px;border-radius:8px;"
-                                                      target="_blank"
-                                                    >
-                                                      Complete onboarding
-                                                    </a>
-                                                  </td>
-                                                </tr>
-                                              </tbody>
-                                            </table>
-                                          </td>
-                                        </tr>
-
-                                        <tr>
-                                          <td align="left" style="font-size:0px;padding:16px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:15px;line-height:23px;text-align:left;color:#312e81;">
-                                              After setup, you can test your AI receptionist and choose whether to use your current business number or a RingBooker test number.
-                                            </div>
-                                          </td>
-                                        </tr>
-
-                                        <tr>
-                                          <td align="left" style="font-size:0px;padding:16px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:15px;line-height:23px;text-align:left;color:#312e81;">
-                                              Thanks,<br />
-                                              Luis Pham<br />
-                                              RingBooker
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <!--[if mso | IE]></td></tr></table><![endif]-->
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <!--[if mso | IE]></td></tr></table></td></tr><![endif]-->
-                <!-- Plain link fallback -->
-                <!--[if mso | IE]><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-
-                <div style="margin:0px auto;max-width:600px;">
-                  <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
-                    <tbody>
-                      <tr>
-                        <td style="direction:ltr;font-size:0px;padding:24px 32px 8px 32px;text-align:center;">
-                          <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:536px;" ><![endif]-->
-
-                          <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
-                              <tbody>
-                                <tr>
-                                  <td style="vertical-align:top;padding:0;">
-                                    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="" width="100%">
-                                      <tbody>
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:13px;line-height:20px;text-align:center;color:#6b7280;">
-                                              If the button does not work, copy and paste this link into your browser:
-                                            </div>
-                                          </td>
-                                        </tr>
-
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:8px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:13px;line-height:20px;text-align:center;color:#2563eb;">
-                                              <a href="{{onboarding_link}}" target="_blank" style="color:#2563eb; text-decoration:underline; word-break:break-all;">{{onboarding_link}}</a>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <!--[if mso | IE]></td></tr></table><![endif]-->
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <!--[if mso | IE]></td></tr></table></td></tr><![endif]-->
-                <!-- Security note -->
-                <!--[if mso | IE]><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-
-                <div style="margin:0px auto;max-width:600px;">
-                  <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
-                    <tbody>
-                      <tr>
-                        <td style="direction:ltr;font-size:0px;padding:24px 32px 32px 32px;text-align:center;">
-                          <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:536px;" ><![endif]-->
-
-                          <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
-                              <tbody>
-                                <tr>
-                                  <td style="vertical-align:top;padding:0;">
-                                    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="" width="100%">
-                                      <tbody>
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:12px;line-height:18px;text-align:center;color:#9ca3af;">
-                                              If you did not create a RingBooker account, you can safely ignore this email.
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <!--[if mso | IE]></td></tr></table><![endif]-->
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <!--[if mso | IE]></td></tr></table></td></tr><![endif]-->
-                <!-- Footer -->
-                <!--[if mso | IE]><tr><td class="" width="600px" ><table align="center" border="0" cellpadding="0" cellspacing="0" class="" role="presentation" style="width:600px;" width="600" bgcolor="#f3f4f6" ><tr><td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;"><![endif]-->
-
-                <div style="background:#f3f4f6;background-color:#f3f4f6;margin:0px auto;max-width:600px;">
-                  <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background:#f3f4f6;background-color:#f3f4f6;width:100%;">
-                    <tbody>
-                      <tr>
-                        <td style="direction:ltr;font-size:0px;padding:24px 32px;text-align:center;">
-                          <!--[if mso | IE]><table role="presentation" border="0" cellpadding="0" cellspacing="0"><tr><td class="" style="vertical-align:top;width:536px;" ><![endif]-->
-
-                          <div class="mj-column-per-100 mj-outlook-group-fix" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-                            <table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%">
-                              <tbody>
-                                <tr>
-                                  <td style="vertical-align:top;padding:0;">
-                                    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="" width="100%">
-                                      <tbody>
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:13px;line-height:20px;text-align:center;color:#6b7280;">
-                                              <a href="https://ringbooker.com" target="_blank" style="color:#2563eb; text-decoration:none;">Website</a>
-                                              &nbsp;&nbsp;|&nbsp;&nbsp;
-                                              <a href="https://ringbooker.com/pricing" target="_blank" style="color:#2563eb; text-decoration:none;">Pricing</a>
-                                              &nbsp;&nbsp;|&nbsp;&nbsp;
-                                              <a href="mailto:hello@ringbooker.com" style="color:#2563eb; text-decoration:none;">Contact</a>
-                                            </div>
-                                          </td>
-                                        </tr>
-
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:10px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:12px;line-height:18px;text-align:center;color:#9ca3af;">Sent by RingBooker</div>
-                                          </td>
-                                        </tr>
-
-                                        <tr>
-                                          <td align="center" style="font-size:0px;padding:8px 0 0 0;word-break:break-word;">
-                                            <div style="font-family:Arial, Helvetica, sans-serif;font-size:12px;line-height:18px;text-align:center;color:#9ca3af;">Reply to this email to contact us.</div>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          <!--[if mso | IE]></td></tr></table><![endif]-->
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <!--[if mso | IE]></td></tr></table></td></tr></table><![endif]-->
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!--[if mso | IE]></td></tr></table><![endif]-->
-    </div>
-  </body>
-</html>
+  </mj-body>
+</mjml>

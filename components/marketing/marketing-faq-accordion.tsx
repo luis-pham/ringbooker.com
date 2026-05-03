@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type MarketingFaqItem = { q: string; a: string };
+export type MarketingFaqItem = { q: string; a: ReactNode };
 
 export type MarketingFaqAccordionProps = {
   items: MarketingFaqItem[];
@@ -62,7 +62,7 @@ export function MarketingFaqAccordion({
                 </span>
               </summary>
               <div className="mfaq-a">
-                <p>{faq.a}</p>
+                <div className="mfaq-a-content">{typeof faq.a === 'string' ? <p>{faq.a}</p> : faq.a}</div>
               </div>
             </details>
           ))}
@@ -174,13 +174,24 @@ export function MarketingFaqAccordion({
   overflow:hidden;
   transition:max-height .35s ease;
 }
-.mfaq-a p{
+.mfaq-a-content{
   margin:0;
   padding:0 24px 20px;
   font-size:var(--mk-body);
   color:var(--mfaq-muted);
   line-height:var(--mk-body-lh);
   text-align:left;
+}
+.mfaq-a-content p{margin:0}
+.mfaq-a-content p + p{margin-top:.75em}
+.mfaq-a-content a{
+  color:inherit;
+  text-decoration:underline;
+  text-decoration-color:rgba(100,116,139,0.45);
+  text-underline-offset:3px;
+}
+.mfaq-a-content a:hover{
+  text-decoration-color:rgba(91,33,182,0.55);
 }
 .mfaq-item[open] .mfaq-a{max-height:2000px}
 .mfaq-section--embedded{padding-top:28px;padding-bottom:36px;padding-left:0;padding-right:0}

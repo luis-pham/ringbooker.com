@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
-import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
+import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import {
   CALL_FORWARDING_COUNTRY_GROUPS,
   CALL_FORWARDING_OTHER_COUNTRIES,
@@ -12,15 +12,39 @@ import {
   type ProviderCountryCode,
   type ProviderRecord,
 } from '@/lib/marketing/call-forwarding-providers';
+import { CALL_FORWARDING_FAQ_ITEMS, cfBodyLink } from '@/lib/marketing/current-number-call-forwarding-faq';
 
-const FAQ_ITEMS: MarketingFaqItem[] = [
-  { q: 'Will customers see a different number?', a: 'No. Your public business number stays the same. RingBooker works through forwarding behind the scenes.' },
-  { q: 'Should I forward all calls or only missed calls?', a: 'Most teams start with missed, busy, or after-hours forwarding so staff can still answer normal calls first.' },
-  { q: 'Can I use RingBooker after hours only?', a: 'Yes. Most providers support time-based routing so RingBooker handles off-hours calls only.' },
-  { q: 'Can I turn call forwarding off?', a: 'Yes. Disable forwarding in provider settings or deactivation flow, then verify with one test call.' },
-  { q: 'What if my provider is not listed?', a: 'Many systems still support call forwarding. RingBooker can help your team test setup before go-live.' },
-  { q: 'Will this affect my Google Business Profile number?', a: 'No listing change is required when you keep your published number and only add forwarding.' },
-  { q: 'Are RingBooker and these phone providers affiliated?', a: 'No. Provider names and logos are used for identification only. RingBooker is not affiliated with or endorsed by these providers unless stated otherwise.' },
+const RELATED_GUIDES: { href: string; title: string; blurb: string }[] = [
+  {
+    href: '/current-number/keep-your-current-number-for-nail-salons-why-this-matters-more-than-owners-think',
+    title: 'Keep your current number for nail salons',
+    blurb: 'Why the published line matters for walk-ins, reviews, and repeat clients.',
+  },
+  {
+    href: '/current-number/keep-your-current-number-for-med-spas-why-high-value-consultation-calls-need-a-lower-friction-path',
+    title: 'Keep your current number for med spas',
+    blurb: 'High-intent calls often need a calm first touch—without swapping numbers.',
+  },
+  {
+    href: '/current-number/why-nap-consistency-still-matters-for-salons-in-2026',
+    title: 'Why NAP consistency still matters in 2026',
+    blurb: 'Name, address, and phone alignment across listings and your real routing.',
+  },
+  {
+    href: '/current-number/why-keeping-your-current-business-number-matters-for-local-seo',
+    title: 'Your current number and local SEO',
+    blurb: 'How a stable public number supports trust signals and discovery.',
+  },
+  {
+    href: '/current-number/ai-receptionist-on-your-current-number-how-it-works-for-salons-spas-and-clinics',
+    title: 'AI receptionist on your current number',
+    blurb: 'How RingBooker sits behind forwarding while callers dial the line they already know.',
+  },
+  {
+    href: '/current-number/can-i-keep-my-current-salon-phone-number-with-an-ai-receptionist',
+    title: 'Keep your salon number with an AI receptionist',
+    blurb: 'Straight answer on keeping the same customer-facing number.',
+  },
 ];
 
 function track(event: string, payload?: Record<string, unknown>) {
@@ -287,17 +311,32 @@ export function CurrentNumberCallForwardingTool() {
         </p>
         <h1 className="mx-auto mt-4 max-w-4xl text-[clamp(34px,5vw,56px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-slate-900">Call Forwarding Setup Guides</h1>
         <p className="mx-auto mt-4 max-w-3xl text-[17px] leading-[1.72] text-[#64748B]">
-          Keep your current number. Choose your provider and see how to forward missed, busy, or after-hours calls to RingBooker.
+          <Link href="/current-number/can-i-keep-my-current-salon-phone-number-with-an-ai-receptionist" className={cfBodyLink}>
+            Keep your current number
+          </Link>
+          . Choose your provider and see how to forward missed, busy, or after-hours calls to RingBooker.
         </p>
         <ul className="mx-auto mt-6 flex max-w-2xl flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-600">
-          {['Keep your public number', 'Forward only selected calls', 'Test before going live'].map((line) => (
-            <li key={line} className="inline-flex items-center gap-2">
-              <span className="text-emerald-600" aria-hidden>
-                ✓
-              </span>
-              {line}
-            </li>
-          ))}
+          <li className="inline-flex items-center gap-2">
+            <span className="text-emerald-600" aria-hidden>
+              ✓
+            </span>
+            Keep your public number
+          </li>
+          <li className="inline-flex items-center gap-2">
+            <span className="text-emerald-600" aria-hidden>
+              ✓
+            </span>
+            <Link href="/current-number/ai-receptionist-on-your-current-number-how-it-works-for-salons-spas-and-clinics" className={cfBodyLink}>
+              Forward only selected calls
+            </Link>
+          </li>
+          <li className="inline-flex items-center gap-2">
+            <span className="text-emerald-600" aria-hidden>
+              ✓
+            </span>
+            Test before going live
+          </li>
         </ul>
         </div>
       </section>
@@ -437,7 +476,30 @@ export function CurrentNumberCallForwardingTool() {
       </section>
 
       <section className="mx-auto mt-20 max-w-6xl px-6">
-        <MarketingFaqAccordion items={FAQ_ITEMS} embedded eyebrow="FAQ" title="Call forwarding setup questions" subtitle={null} openFirstItem />
+        <MarketingFaqAccordion items={CALL_FORWARDING_FAQ_ITEMS} embedded eyebrow="FAQ" title="Call forwarding setup questions" subtitle={null} openFirstItem />
+      </section>
+
+      <section className="mx-auto mt-20 max-w-6xl px-6" id="related-guides" aria-labelledby="related-guides-heading">
+        <h2 id="related-guides-heading" className="text-center text-2xl font-bold tracking-tight text-slate-900 md:text-[clamp(24px,2.5vw,32px)]">
+          Related guides
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] leading-relaxed text-slate-600">
+          Deeper reads on keeping your published line, local SEO, and how AI fits behind forwarding.
+        </p>
+        <ul className="mx-auto mt-8 grid max-w-4xl gap-4 md:grid-cols-2">
+          {RELATED_GUIDES.map((g) => (
+            <li key={g.href}>
+              <Link
+                href={g.href}
+                className="group block h-full rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-[0_12px_28px_-8px_rgba(17,24,39,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+              >
+                <span className="text-base font-bold text-slate-900">{g.title}</span>
+                <span className="mt-2 block text-sm leading-relaxed text-slate-600">{g.blurb}</span>
+                <span className="mt-3 inline-block text-sm font-semibold text-slate-500 transition group-hover:text-violet-700">Read guide →</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="mx-auto mt-16 max-w-6xl px-6 md:hidden">
@@ -447,7 +509,7 @@ export function CurrentNumberCallForwardingTool() {
             RingBooker helps appointment-based businesses answer after-hours, busy, and unanswered calls while keeping their current public number.
           </p>
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Explore <Link href="/current-number" className="underline underline-offset-2">current number guide</Link>, <Link href="/how-it-works" className="underline underline-offset-2">how it works</Link>, <Link href="/works-with" className="underline underline-offset-2">works with</Link>, <Link href="/trust" className="underline underline-offset-2">trust</Link>, and pages for <Link href="/industries/nail-salon" className="underline underline-offset-2">nail salons</Link>, <Link href="/industries/hair-salon" className="underline underline-offset-2">hair salons</Link>, <Link href="/industries/med-spa" className="underline underline-offset-2">med spas</Link>, and <Link href="/industries/spa" className="underline underline-offset-2">day spas</Link>.
+            Explore <Link href="/current-number" className={cfBodyLink}>current number guide</Link>, <Link href="/how-it-works" className={cfBodyLink}>how it works</Link>, <Link href="/works-with" className={cfBodyLink}>works with</Link>, <Link href="/trust" className={cfBodyLink}>trust</Link>, and pages for <Link href="/industries/nail-salon" className={cfBodyLink}>nail salons</Link>, <Link href="/industries/hair-salon" className={cfBodyLink}>hair salons</Link>, <Link href="/industries/med-spa" className={cfBodyLink}>med spas</Link>, and <Link href="/industries/spa" className={cfBodyLink}>day spas</Link>.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/demo" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-br from-violet-700 via-violet-600 to-violet-600 px-6 py-3 text-sm font-bold text-white shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)] transition hover:-translate-y-0.5 hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600" onClick={() => track('call_forwarding_demo_clicked', { source: 'final_cta' })}>

@@ -1,1 +1,1 @@
-HARD POLICY: Only use data from this call context and tool outputs. If out-of-scope, refuse briefly and offer callback or transfer.
+HARD POLICY: Only use data from this call context and tool outputs. If out-of-scope, refuse briefly and offer callback or a handoff attempt.

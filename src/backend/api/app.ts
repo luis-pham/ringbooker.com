@@ -46,8 +46,12 @@ import type { BillingProviderAdapter } from '@/src/backend/services/billing/type
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
 import type { EmailService } from '@/src/backend/services/email/types';
-import { getDemoRequestConfirmationEmail } from '@/src/backend/services/email/templates/demo-request-confirmation';
-import { buildPasswordResetEmail } from '@/src/backend/services/email/templates/password-reset';
+import {
+  buildDemoRequestCustomerEmailPayload,
+  buildPasswordResetEmailPayload,
+  buildWelcomeSignupEmailPayload,
+} from '@/src/backend/services/email/base-email-builders';
+import { renderBaseEmailHtml } from '@/src/backend/services/email/base-email-mjml';
 import {
   contactSalesEmail,
   emailDefaultFrom,
@@ -902,40 +906,6 @@ function createOAuthFallbackPasswordHash(): string {
   return hashPassword(`${randomUUID()}${randomBytes(24).toString('hex')}`);
 }
 
-function buildSignupWelcomeEmail(params: {
-  email: string;
-  shopName: string;
-  appBaseUrl: string;
-}): { subject: string; text: string; html: string } {
-  const dashboardUrl = `${params.appBaseUrl.replace(/\/+$/, '')}/user`;
-  const onboardingUrl = `${params.appBaseUrl.replace(/\/+$/, '')}/user/onboarding`;
-  const subject = `Welcome to RingBooker, ${params.shopName}`;
-  const text = [
-    `Hi ${params.email},`,
-    '',
-    `Welcome to RingBooker. Your account for "${params.shopName}" is ready.`,
-    '',
-    `Next step: complete your setup and start taking calls.`,
-    `Dashboard: ${dashboardUrl}`,
-    `Onboarding: ${onboardingUrl}`,
-    '',
-    'Thanks,',
-    'Luis Pham, RingBooker',
-  ].join('\n');
-  const html = `
-    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-      <h2 style="margin:0 0 12px">Welcome to RingBooker</h2>
-      <p style="margin:0 0 12px">Hi ${params.email},</p>
-      <p style="margin:0 0 12px">Your account for <strong>${params.shopName}</strong> is ready.</p>
-      <p style="margin:0 0 16px">Complete setup and start taking calls.</p>
-      <p style="margin:0 0 8px"><a href="${dashboardUrl}">Open dashboard</a></p>
-      <p style="margin:0 0 8px"><a href="${onboardingUrl}">Complete onboarding</a></p>
-      <p style="margin:16px 0 0">Thanks,<br/>Luis Pham, RingBooker</p>
-    </div>
-  `;
-  return { subject, text, html };
-}
-
 async function sendSignupWelcomeEmail(params: {
   emailService?: EmailService;
   email: string;
@@ -945,17 +915,18 @@ async function sendSignupWelcomeEmail(params: {
   idempotencyKey: string;
 }): Promise<void> {
   if (!params.emailService) return;
-  const message = buildSignupWelcomeEmail({
-    email: params.email,
-    shopName: params.shopName,
-    appBaseUrl: params.appBaseUrl,
-  });
   try {
+    const { input, text } = buildWelcomeSignupEmailPayload({
+      email: params.email,
+      shopName: params.shopName,
+      appBaseUrl: params.appBaseUrl,
+    });
+    const html = await renderBaseEmailHtml(input);
     await params.emailService.sendEmail({
       to: params.email,
-      subject: message.subject,
-      text: message.text,
-      html: message.html,
+      subject: input.title,
+      text,
+      html,
       category: 'welcome_signup',
       idempotencyKey: params.idempotencyKey,
       shopId: params.shopId,
@@ -985,13 +956,18 @@ async function sendPasswordResetEmail(params: {
   const base = params.appBaseUrl.replace(/\/+$/, '');
   const path = params.role === 'admin' ? '/admin/reset-password' : '/user/reset-password';
   const resetUrl = `${base}${path}?token=${encodeURIComponent(params.resetToken)}`;
-  const message = buildPasswordResetEmail({ resetUrl, role: params.role });
   try {
+    const { input, text } = buildPasswordResetEmailPayload({
+      email: params.email,
+      resetUrl,
+      role: params.role,
+    });
+    const html = await renderBaseEmailHtml(input);
     await params.emailService.sendEmail({
       to: params.email,
-      subject: message.subject,
-      text: message.text,
-      html: message.html,
+      subject: input.title,
+      text,
+      html,
       category: 'password_reset',
       idempotencyKey: `password_reset_email:${hashPasswordResetToken(params.resetToken)}`,
       from: emailDefaultFrom(),
@@ -1778,16 +1754,19 @@ export function createBackendApp(deps: {
     if (deps.emailService) {
       const firstName = parsed.data.fullName.trim().split(/\s+/).filter(Boolean)[0] ?? '';
       try {
-        const { subject, text } = getDemoRequestConfirmationEmail({
+        const { input, text } = buildDemoRequestCustomerEmailPayload({
           firstName,
           businessName: parsed.data.businessName,
           businessType: parsed.data.businessType,
+          demoCtaUrl: 'https://ringbooker.com/demo',
         });
+        const html = await renderBaseEmailHtml(input);
         await deps.emailService.sendEmail({
           from: emailFounderFrom(),
           to: normalizedEmail,
-          subject,
+          subject: input.title,
           text,
+          html,
           category: 'demo_request_confirmation',
           idempotencyKey: `public_contact_customer:${requestId}`,
           replyTo: emailReplyTo(),

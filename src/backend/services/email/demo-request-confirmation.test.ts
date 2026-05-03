@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 
 import { getDemoRequestConfirmationEmail } from '@/src/backend/services/email/templates/demo-request-confirmation';
 
-test('subject includes first name', () => {
+test('subject is stable RingBooker demo copy', () => {
   const { subject } = getDemoRequestConfirmationEmail({ firstName: 'Jane' });
-  assert.ok(subject.includes('Jane'));
+  assert.ok(subject.includes('RingBooker'));
+  assert.ok(subject.includes('demo request'));
 });
 
 test('subject fallback when no name does not contain undefined', () => {

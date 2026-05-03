@@ -68,8 +68,6 @@ function createValidatedEnv() {
         .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
       /** Connection / Call Control Application ID for outbound `POST /v2/calls` (required in production when create_and_bridge + bridge OpenAI SIP). */
       TELNYX_CALL_CONTROL_CONNECTION_ID: z.string().min(1).optional(),
-      /** Spoken on parent leg after answer while OpenAI SIP leg is created (Call Control `speak`). */
-      TELNYX_CALL_CONTROL_COMFORT_MESSAGE: z.string().min(1).max(500).optional(),
       /** Outbound OpenAI SIP leg ring/answer timeout for `POST /v2/calls` (`timeout_secs`). Default 15 in code when unset. */
       TELNYX_OPENAI_SIP_LEG_TIMEOUT_SECS: z.coerce.number().int().min(5).max(120).optional(),
       /** When true, include `max_duration_secs` on inbound `answer` (Telnyx may reject unknown fields — keep off until verified). */
@@ -153,7 +151,7 @@ function createValidatedEnv() {
       PADDLE_PRICE_ENTERPRISE: z.string().min(1),
 
       EMAIL_PROVIDER: z.enum(['noop', 'resend']).default('noop'),
-      EMAIL_FROM_ADDRESS: z.string().min(1).default('Ringbooker <notifications@send.ringbooker.com>'),
+      EMAIL_FROM_ADDRESS: z.string().min(1).default('RingBooker <notifications@send.ringbooker.com>'),
       EMAIL_FOUNDER_FROM: z.string().min(1).default('Luis Pham from RingBooker <luis@send.ringbooker.com>'),
       EMAIL_REPLY_TO: z.string().email().default('hello@ringbooker.com'),
       CONTACT_SALES_EMAIL: z.string().email().default('hello@ringbooker.com'),

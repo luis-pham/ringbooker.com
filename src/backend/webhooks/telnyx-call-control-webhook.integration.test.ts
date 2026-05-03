@@ -234,7 +234,7 @@ test('telnyx call-control webhook invokes reject for unknown DID when dry-run of
   assert.match(rejectUrl, /\/v2\/calls\/cc_reject\/actions\/reject$/);
 });
 
-test('telnyx call-control call.answered invokes speak then POST /v2/calls when bridge flag set', async () => {
+test('telnyx call-control call.answered invokes POST /v2/calls when bridge flag set', async () => {
   resetEnvCacheForTests();
   applyRequiredTestEnv({
     ...TELNYX_INBOUND_CALL_CONTROL_STACK,
@@ -298,7 +298,6 @@ test('telnyx call-control call.answered invokes speak then POST /v2/calls when b
   assert.equal(json.phase, 'answered');
   assert.equal(json.bridged, false);
   assert.equal(json.bridge_reason, 'openai_leg_created_waiting_answered');
-  assert.ok(urls.some((u) => /\/actions\/speak$/.test(u)));
   assert.ok(urls.some((u) => /\/v2\/calls$/.test(u)));
   const openaiLeg = await voiceCallLegsRepository.findOpenAiLegByRbCallId('demo-shop', 'req_parent_answered');
   assert.ok(openaiLeg);
