@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSign, generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, sign } from 'node:crypto';
 
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
@@ -12,15 +12,12 @@ import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
 
-const keyPair = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+const keyPair = generateKeyPairSync('ed25519');
 const publicPem = keyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
-const privatePem = keyPair.privateKey.export({ type: 'sec1', format: 'pem' }).toString();
 
-function signTelnyxPayload(params: { body: string; timestamp: string; privateKeyPem: string }): string {
-  const signer = createSign('sha256');
-  signer.update(`${params.timestamp}|${params.body}`);
-  signer.end();
-  return signer.sign(params.privateKeyPem).toString('base64');
+function signTelnyxPayload(params: { body: string; timestamp: string }): string {
+  const message = Buffer.from(`${params.timestamp}|${params.body}`, 'utf8');
+  return sign(null, message, keyPair.privateKey).toString('base64');
 }
 
 function callInitiatedBody(params: { id: string; to: string; from: string; callControlId: string }) {
@@ -62,7 +59,7 @@ test('telnyx call-control webhook returns 404 when TELNYX_CALL_CONTROL_WEBHOOK_E
     headers: {
       'content-type': 'application/json',
       'telnyx-timestamp': ts,
-      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts, privateKeyPem: privatePem }),
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
     },
     body,
   });
@@ -108,7 +105,7 @@ test('telnyx call-control webhook dry-run does not call Telnyx REST', async () =
     headers: {
       'content-type': 'application/json',
       'telnyx-timestamp': ts,
-      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts, privateKeyPem: privatePem }),
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
     },
     body,
   });
@@ -161,7 +158,7 @@ test('telnyx call-control webhook invokes answer when dry-run off', async () => 
     headers: {
       'content-type': 'application/json',
       'telnyx-timestamp': ts,
-      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts, privateKeyPem: privatePem }),
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
     },
     body,
   });
@@ -206,7 +203,7 @@ test('telnyx call-control webhook invokes reject for unknown DID when dry-run of
     headers: {
       'content-type': 'application/json',
       'telnyx-timestamp': ts,
-      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts, privateKeyPem: privatePem }),
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
     },
     body,
   });
@@ -258,7 +255,7 @@ test('telnyx call-control call.answered invokes dial when bridge flag set', asyn
     headers: {
       'content-type': 'application/json',
       'telnyx-timestamp': ts,
-      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts, privateKeyPem: privatePem }),
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
     },
     body,
   });
@@ -318,7 +315,7 @@ test('telnyx call-control call.hangup missed enqueues follow-up SMS job', async 
     headers: {
       'content-type': 'application/json',
       'telnyx-timestamp': ts,
-      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts, privateKeyPem: privatePem }),
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
     },
     body,
   });

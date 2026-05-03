@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createSign, generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, sign } from 'node:crypto';
 
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
@@ -8,16 +8,14 @@ import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
-const keyPair = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+const keyPair = generateKeyPairSync('ed25519');
 applyRequiredTestEnv({
   TELNYX_WEBHOOK_PUBLIC_KEY: keyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString(),
 });
 
-function signTelnyxPayload(params: { body: string; timestamp: string; privateKeyPem: string }): string {
-  const signer = createSign('sha256');
-  signer.update(`${params.timestamp}|${params.body}`);
-  signer.end();
-  return signer.sign(params.privateKeyPem).toString('base64');
+function signTelnyxPayload(params: { body: string; timestamp: string }): string {
+  const message = Buffer.from(`${params.timestamp}|${params.body}`, 'utf8');
+  return sign(null, message, keyPair.privateKey).toString('base64');
 }
 
 test('telnyx webhook dedupes and enqueues one missed-call followup job', async () => {
@@ -41,11 +39,7 @@ test('telnyx webhook dedupes and enqueues one missed-call followup job', async (
     },
   });
   const timestamp = `${Date.now()}`;
-  const signature = signTelnyxPayload({
-    body,
-    timestamp,
-    privateKeyPem: keyPair.privateKey.export({ type: 'sec1', format: 'pem' }).toString(),
-  });
+  const signature = signTelnyxPayload({ body, timestamp });
 
   const firstResponse = await app.request('/webhooks/telnyx', {
     method: 'POST',
@@ -106,11 +100,7 @@ test('telnyx incoming YES message enqueues callback outbound call', async () => 
     },
   });
   const timestamp = `${Date.now()}`;
-  const signature = signTelnyxPayload({
-    body,
-    timestamp,
-    privateKeyPem: keyPair.privateKey.export({ type: 'sec1', format: 'pem' }).toString(),
-  });
+  const signature = signTelnyxPayload({ body, timestamp });
 
   const response = await app.request('/webhooks/telnyx', {
     method: 'POST',
