@@ -83,7 +83,7 @@ const styles: string[] = [
   .vd-wrap{margin:0 auto;padding:18px 20px 56px;display:flex;flex-direction:column}
 
   /* page header (full-width, centered) */
-  .vd-page-header{max-width:1120px;margin:0 auto;padding:24px 20px 8px;display:flex;flex-direction:column;align-items:center}
+  .vd-page-header{max-width:1120px;margin:0 auto;padding:24px 20px 18px;display:flex;flex-direction:column;align-items:center}
   .vd-breadcrumb{align-self:flex-start;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8);margin-bottom:10px}
   .vd-breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
   .vd-breadcrumb a:hover{color:var(--va)}
@@ -109,9 +109,30 @@ const styles: string[] = [
     backdrop-filter:blur(8px);
   }
   .vd-icon{width:22px;height:22px;border-radius:7px;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
-
+  .vd-hero-h1{
+    margin:0 auto 12px;
+    max-width:min(920px,100%);
+    font-size:clamp(26px,3.6vw,40px);
+    font-weight:900;
+    letter-spacing:-.03em;
+    line-height:1.1;
+    text-align:center;
+    color:#111827;
+    text-wrap:balance;
+  }
+  .vd-hero-sub{
+    margin:0 auto 0;
+    max-width:min(560px,100%);
+    font-size:16px;
+    line-height:1.62;
+    text-align:center;
+    color:#64748B;
+    font-weight:500;
+  }
   @media(min-width:800px){
-    .vd-page-header{padding:34px 40px 10px}
+    .vd-hero-h1{margin-bottom:14px}
+    .vd-hero-sub{font-size:17px;max-width:min(600px,100%);line-height:1.65}
+    .vd-page-header{padding:34px 40px 26px}
   }
 
   /* phone field — hero */
@@ -536,6 +557,8 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
               <span>{verticalLabel}</span>
             </nav>
             <div className="vd-badge">{config.eyebrow}</div>
+            <h1 className="vd-hero-h1">{config.title}</h1>
+            <p className="vd-hero-sub">{config.subtitle}</p>
           </div>
 
           <div className="vd-wrap">
