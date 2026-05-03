@@ -151,10 +151,6 @@ const styles: string[] = [
   .vd-field textarea{min-height:68px;resize:vertical}
   .vd-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-  /* topic chips (pre-call info) */
-  .vd-topics{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:18px}
-  .vd-topic{border:1px solid color-mix(in srgb,var(--va) 20%,#E5E7EB);background:color-mix(in srgb,var(--va) 5%,#fff);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700;color:#4B5563}
-
   /* advanced toggle */
   .vd-adv-toggle{display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:#6B7280;padding:10px 0;margin-bottom:4px}
   .vd-adv-toggle:hover{color:var(--va)}
@@ -588,18 +584,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   <div className="vd-field">
                     <label htmlFor="vd-biz">Business name (for this demo)</label>
                     <input id="vd-biz" value={business.businessName} onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))} />
-                  </div>
-
-                  {/* Topic chips — what the demo covers */}
-                  <div className="vd-topics">
-                    <span className="vd-topic">📅 Booking</span>
-                    <span className="vd-topic">💰 Pricing</span>
-                    <span className="vd-topic">🔄 Reschedule</span>
-                    {vertical === 'nail-salon' ? <span className="vd-topic">🇻🇳 Vietnamese</span> : null}
-                    {vertical === 'med-spa' ? <span className="vd-topic">💉 Consultation</span> : null}
-                    {vertical === 'day-spa' ? <span className="vd-topic">💑 Couples</span> : null}
-                    {vertical === 'hair-salon' ? <span className="vd-topic">✂️ Stylist match</span> : null}
-                    {vertical === 'beauty-clinic' ? <span className="vd-topic">✨ Provider continuity</span> : null}
                   </div>
 
                   {/* Advanced toggle */}
