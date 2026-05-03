@@ -20,6 +20,15 @@ function signTelnyxPayload(params: { body: string; timestamp: string }): string 
   return sign(null, message, keyPair.privateKey).toString('base64');
 }
 
+/** Env required for `evaluateTelnyxCallControlInboundInitiated` to reach answer/dry_run (voice stack gates). */
+const TELNYX_INBOUND_CALL_CONTROL_STACK: Record<string, string> = {
+  TELNYX_INBOUND_ROUTING_MODE: 'call_control_to_openai_sip',
+  TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP: 'true',
+  OPENAI_SIP_URI: 'sip:proj_test@sip.api.openai.com;transport=tls',
+  VOICE_TRANSPORT: 'openai_sip_direct',
+  HANDOFF_TRANSPORT: 'telnyx_call_control',
+};
+
 function callInitiatedBody(params: { id: string; to: string; from: string; callControlId: string }) {
   return JSON.stringify({
     data: {
@@ -70,6 +79,7 @@ test('telnyx call-control webhook returns 404 when TELNYX_CALL_CONTROL_WEBHOOK_E
 test('telnyx call-control webhook dry-run does not call Telnyx REST', async () => {
   resetEnvCacheForTests();
   applyRequiredTestEnv({
+    ...TELNYX_INBOUND_CALL_CONTROL_STACK,
     TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
     TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
     TELNYX_CALL_CONTROL_DRY_RUN: 'true',
@@ -121,6 +131,7 @@ test('telnyx call-control webhook dry-run does not call Telnyx REST', async () =
 test('telnyx call-control webhook invokes answer when dry-run off', async () => {
   resetEnvCacheForTests();
   applyRequiredTestEnv({
+    ...TELNYX_INBOUND_CALL_CONTROL_STACK,
     TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
     TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
     TELNYX_CALL_CONTROL_DRY_RUN: 'false',
@@ -180,8 +191,10 @@ test('telnyx call-control webhook invokes reject for unknown DID when dry-run of
   });
 
   let rejectUrl = '';
-  const testingTelnyxFetch: typeof fetch = async (input) => {
+  let rejectBody = '';
+  const testingTelnyxFetch: typeof fetch = async (input, init) => {
     rejectUrl = String(input);
+    rejectBody = typeof init?.body === 'string' ? init.body : '';
     return new Response(JSON.stringify({ data: {} }), { status: 200 });
   };
 
@@ -213,6 +226,9 @@ test('telnyx call-control webhook invokes reject for unknown DID when dry-run of
   assert.equal(json.handled, true);
   assert.equal(json.phase, 'initiated');
   assert.equal(json.decision, 'reject');
+  assert.equal(json.reject_reason, 'shop_not_found');
+  assert.equal(json.reject_cause_telnyx, 'CALL_REJECTED');
+  assert.deepEqual(JSON.parse(rejectBody), { cause: 'CALL_REJECTED' });
   assert.match(rejectUrl, /\/v2\/calls\/cc_reject\/actions\/reject$/);
 });
 

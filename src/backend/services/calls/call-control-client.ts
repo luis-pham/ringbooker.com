@@ -100,6 +100,13 @@ export async function callControlAnswer(
   return postCallControlAction(callControlId, 'answer', body, deps);
 }
 
+/** Telnyx Call Control `reject` action — only these values are accepted (API 422 otherwise). */
+export type TelnyxCallControlRejectCause = 'CALL_REJECTED' | 'USER_BUSY';
+
+export function buildTelnyxCallRejectPayload(cause: TelnyxCallControlRejectCause): { cause: TelnyxCallControlRejectCause } {
+  return { cause };
+}
+
 export async function callControlReject(
   callControlId: string,
   body: Record<string, unknown>,

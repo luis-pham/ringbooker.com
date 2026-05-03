@@ -1,6 +1,11 @@
 import type { Context } from 'hono';
 
 import { getEnv } from '@/src/backend/config/env';
+import {
+  getResolvedHandoffTransport,
+  getResolvedVoiceTransport,
+  getTelnyxInboundRoutingMode,
+} from '@/src/backend/config/voice-transport';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { withLogContext } from '@/src/backend/observability/logger';
 import type {
@@ -16,6 +21,7 @@ import { verifyTelnyxSignature } from '@/src/backend/security/telnyx-signature';
 import { getClientIp } from '@/src/backend/security/rate-limit';
 import { maskPhone } from '@/src/backend/security/pii';
 import {
+  buildTelnyxCallRejectPayload,
   callControlAnswer,
   callControlDial,
   callControlReject,
@@ -44,6 +50,17 @@ import {
 } from '@/src/backend/webhooks/telnyx-call-control';
 
 const CALL_CONTROL_EVENTS_PROVIDER = 'telnyx_call_control';
+
+function inboundArchitectureLogFields() {
+  const env = getEnv();
+  return {
+    inboundRoutingMode: getTelnyxInboundRoutingMode(),
+    voiceTransport: getResolvedVoiceTransport(),
+    handoffTransport: getResolvedHandoffTransport(),
+    bridgeOpenAiSipEnabled: Boolean(env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP),
+    openaiSipUriConfigured: /^sips?:/i.test(env.OPENAI_SIP_URI?.trim() ?? ''),
+  };
+}
 
 function buildHandoffOrchestratorDeps(deps: {
   handoffSessionsRepository?: HandoffSessionsRepository;
@@ -215,9 +232,109 @@ async function processCallInitiated(
     }
 
     const env = getEnv();
+    const plInbound = event.payload;
+    const plInboundRec =
+      plInbound && typeof plInbound === 'object' ? (plInbound as Record<string, unknown>) : {};
+    const fromRawInbound = firstStringFromPayload(plInbound, ['from', 'from_number', 'caller_number']);
+    const toRawInbound =
+      firstStringFromPayload(plInbound, ['to', 'called_number', 'to_number']) ??
+      firstStringFromPayload(plInbound, ['destination']);
+
     const result = await evaluateTelnyxCallControlInboundInitiated(event.payload, {
       shopsRepository: deps.shopsRepository,
     });
+
+    const arch = inboundArchitectureLogFields();
+    const directionInbound =
+      typeof plInboundRec.direction === 'string'
+        ? plInboundRec.direction
+        : typeof plInboundRec.call_direction === 'string'
+          ? plInboundRec.call_direction
+          : undefined;
+
+    if (!result.handled) {
+      log.info(
+        {
+          ...arch,
+          telnyxEventId: event.id,
+          event_type: event.event_type,
+          handled: false,
+          not_handled_reason: result.reason,
+          reject_reason: result.reason === 'not_incoming' ? 'unsupported_direction' : 'unknown',
+          call_control_id: firstStringFromPayload(plInbound, ['call_control_id', 'call_leg_id']),
+          call_session_id: firstStringFromPayload(plInbound, ['call_session_id']),
+          direction: directionInbound,
+          from_masked: maskPhone(fromRawInbound ?? ''),
+          to_masked: maskPhone(toRawInbound ?? ''),
+        },
+        'telnyx_call_control_inbound_decision',
+      );
+    } else if (result.decision === 'answer') {
+      log.info(
+        {
+          ...arch,
+          telnyxEventId: event.id,
+          event_type: event.event_type,
+          decision: 'answer',
+          reason: 'shop_resolved_and_mode_enabled',
+          call_control_id: result.callControlId,
+          call_session_id: firstStringFromPayload(plInbound, ['call_session_id']),
+          direction: directionInbound,
+          from_masked: maskPhone(fromRawInbound ?? ''),
+          to_masked: maskPhone(toRawInbound ?? ''),
+          from_e164_masked: result.callerPhone ? maskPhone(result.callerPhone) : null,
+          to_e164_masked: result.destinationPhone ? maskPhone(result.destinationPhone) : null,
+          rbCallId: result.internalRequestId ?? null,
+          shopId: result.shopId ?? null,
+          resolver: result.resolver,
+        },
+        'telnyx_call_control_inbound_decision',
+      );
+    } else if (result.decision === 'dry_run') {
+      log.info(
+        {
+          ...arch,
+          telnyxEventId: event.id,
+          event_type: event.event_type,
+          decision: 'dry_run',
+          reason: 'shop_resolved_dry_run_env',
+          call_control_id: result.callControlId,
+          call_session_id: firstStringFromPayload(plInbound, ['call_session_id']),
+          direction: directionInbound,
+          from_masked: maskPhone(fromRawInbound ?? ''),
+          to_masked: maskPhone(toRawInbound ?? ''),
+          from_e164_masked: result.callerPhone ? maskPhone(result.callerPhone) : null,
+          to_e164_masked: result.destinationPhone ? maskPhone(result.destinationPhone) : null,
+          rbCallId: result.internalRequestId ?? null,
+          shopId: result.shopId ?? null,
+          resolver: result.resolver,
+        },
+        'telnyx_call_control_inbound_decision',
+      );
+    } else if (result.decision === 'reject') {
+      log.info(
+        {
+          ...arch,
+          telnyxEventId: event.id,
+          event_type: event.event_type,
+          decision: 'reject',
+          reject_reason: result.reject_reason ?? 'unknown',
+          reject_cause_telnyx: result.reject_cause_telnyx ?? 'CALL_REJECTED',
+          internal_reason: result.reason,
+          call_control_id: result.callControlId,
+          call_session_id: firstStringFromPayload(plInbound, ['call_session_id']),
+          direction: directionInbound,
+          from_masked: maskPhone(fromRawInbound ?? ''),
+          to_masked: maskPhone(toRawInbound ?? ''),
+          from_e164_masked: result.callerPhone ? maskPhone(result.callerPhone) : null,
+          to_e164_masked: result.destinationPhone ? maskPhone(result.destinationPhone) : null,
+          rbCallId: result.internalRequestId ?? null,
+          shopId: result.shopId ?? null,
+          resolver: result.resolver,
+        },
+        'telnyx_call_control_inbound_decision',
+      );
+    }
 
     const dryRun = isTelnyxCallControlDryRunEnv();
     const fetchDeps = { fetchImpl: deps.testingTelnyxFetch, apiKey: env.TELNYX_API_KEY };
@@ -251,9 +368,17 @@ async function processCallInitiated(
           log.warn({ status: ar.status, body: ar.text }, 'telnyx_call_control_answer_failed');
         }
       } else if (result.decision === 'reject') {
-        const rr = await callControlReject(result.callControlId, { cause: 'busy' }, fetchDeps);
+        const cause = result.reject_cause_telnyx ?? 'CALL_REJECTED';
+        const rr = await callControlReject(
+          result.callControlId,
+          buildTelnyxCallRejectPayload(cause),
+          fetchDeps,
+        );
         if (!rr.ok) {
-          log.warn({ status: rr.status, body: rr.text }, 'telnyx_call_control_reject_failed');
+          log.warn(
+            { status: rr.status, body: rr.text, reject_cause_telnyx: cause },
+            'telnyx_call_control_reject_failed',
+          );
         }
       }
     }
@@ -276,6 +401,12 @@ async function processCallInitiated(
               decision: result.decision,
               shopId: result.shopId,
               dry_run: dryRun,
+              ...(result.decision === 'reject'
+                ? {
+                    reject_reason: result.reject_reason,
+                    reject_cause_telnyx: result.reject_cause_telnyx,
+                  }
+                : {}),
             }
           : { reason: result.reason }),
       },

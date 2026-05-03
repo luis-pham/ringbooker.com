@@ -2,12 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
+import { resetEnvCacheForTests } from '@/src/backend/config/env';
+import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import {
   buildCallControlClientState,
   decodeCallControlClientState,
   handleTelnyxCallControlPhase1,
   isTelnyxCallControlDryRunEnv,
 } from '@/src/backend/webhooks/telnyx-call-control';
+
+function applyCallControlInboundStackEnv() {
+  applyRequiredTestEnv({
+    TELNYX_INBOUND_ROUTING_MODE: 'call_control_to_openai_sip',
+    TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP: 'true',
+    OPENAI_SIP_URI: 'sip:proj_test@sip.api.openai.com;transport=tls',
+    VOICE_TRANSPORT: 'openai_sip_direct',
+    HANDOFF_TRANSPORT: 'telnyx_call_control',
+  });
+}
 
 test('buildCallControlClientState produces stable base64 JSON', () => {
   const s = buildCallControlClientState({
@@ -43,6 +55,8 @@ test('decodeCallControlClientState returns null on garbage', () => {
 
 test('handleTelnyxCallControlPhase1 returns dry_run for callable inbound call.initiated', async () => {
   const prev = process.env.TELNYX_CALL_CONTROL_DRY_RUN;
+  resetEnvCacheForTests();
+  applyCallControlInboundStackEnv();
   process.env.TELNYX_CALL_CONTROL_DRY_RUN = 'true';
   try {
     assert.equal(isTelnyxCallControlDryRunEnv(), true);
@@ -76,6 +90,7 @@ test('handleTelnyxCallControlPhase1 returns dry_run for callable inbound call.in
   } finally {
     if (prev === undefined) delete process.env.TELNYX_CALL_CONTROL_DRY_RUN;
     else process.env.TELNYX_CALL_CONTROL_DRY_RUN = prev;
+    resetEnvCacheForTests();
   }
 });
 
@@ -99,6 +114,8 @@ test('handleTelnyxCallControlPhase1 rejects unknown DID', async () => {
   if (!result.handled) assert.fail();
   assert.equal(result.decision, 'reject');
   assert.equal(result.reason, 'unknown_did');
+  assert.equal(result.reject_reason, 'shop_not_found');
+  assert.equal(result.reject_cause_telnyx, 'CALL_REJECTED');
 });
 
 test('handleTelnyxCallControlPhase1 ignores non-initiated events', async () => {
@@ -117,6 +134,8 @@ test('handleTelnyxCallControlPhase1 ignores non-initiated events', async () => {
 
 test('handleTelnyxCallControlPhase1 labels answer when dry run disabled', async () => {
   const prev = process.env.TELNYX_CALL_CONTROL_DRY_RUN;
+  resetEnvCacheForTests();
+  applyCallControlInboundStackEnv();
   process.env.TELNYX_CALL_CONTROL_DRY_RUN = 'false';
   try {
     const repo = new InMemoryShopsRepository();
@@ -145,5 +164,6 @@ test('handleTelnyxCallControlPhase1 labels answer when dry run disabled', async 
   } finally {
     if (prev === undefined) delete process.env.TELNYX_CALL_CONTROL_DRY_RUN;
     else process.env.TELNYX_CALL_CONTROL_DRY_RUN = prev;
+    resetEnvCacheForTests();
   }
 });

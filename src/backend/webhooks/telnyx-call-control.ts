@@ -14,10 +14,20 @@ import { randomUUID } from 'node:crypto';
 
 import { z } from 'zod';
 
+import type { Shop } from '@/src/backend/domain/types';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
-
+import { getEnv } from '@/src/backend/config/env';
+import {
+  getResolvedHandoffTransport,
+  getResolvedVoiceTransport,
+  getTelnyxInboundRoutingMode,
+} from '@/src/backend/config/voice-transport';
 import { isShopCallable } from '@/src/backend/services/calls/callable-check';
-import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
+import {
+  normalizeInboundE164,
+  resolveShopByInboundDidWithMeta,
+  type ResolveShopByInboundDidResult,
+} from '@/src/backend/services/calls/shop-resolver';
 
 export const telnyxCallControlEnvelopeSchema = z.object({
   data: z.object({
@@ -29,19 +39,77 @@ export const telnyxCallControlEnvelopeSchema = z.object({
 
 export type TelnyxCallControlParsedEvent = z.infer<typeof telnyxCallControlEnvelopeSchema>['data'];
 
+/** Canonical reject reason for logs / metrics (aligned with `evaluateTelnyxCallControlInboundInitiated`). */
+export type TelnyxCallControlInboundRejectReason =
+  | 'shop_not_found'
+  | 'shop_inactive'
+  | 'call_control_webhook_disabled'
+  | 'unsupported_direction'
+  | 'missing_call_control_id'
+  | 'missing_inbound_did'
+  | 'missing_openai_sip_uri'
+  | 'bridge_openai_sip_disabled'
+  | 'invalid_inbound_routing_mode'
+  | 'voice_transport_not_openai_sip_direct'
+  | 'handoff_transport_not_telnyx_call_control'
+  | 'unknown';
+
+export type TelnyxCallControlTelnyxRejectCause = 'CALL_REJECTED' | 'USER_BUSY';
+
+export type TelnyxCallControlResolverSnapshot = {
+  inboundDid: string | null;
+  matchedBy: 'telnyx_number' | 'phone_number' | 'none';
+  telnyxNumberMatch: boolean;
+  shopId?: string;
+  shopName?: string;
+  shopActive?: boolean;
+  allowTransfers?: boolean;
+  aiVoiceConfigured?: boolean;
+  callableBlockReason?: string;
+};
+
 export type TelnyxCallControlPhase1Result =
   | { handled: false; reason: 'invalid_json' | 'invalid_envelope' | 'unsupported_event' | 'not_incoming' }
   | {
       handled: true;
       decision: 'reject' | 'dry_run' | 'answer';
-      shopId?: string;
+      /** Legacy / internal detail (tests, debugging). */
       reason?: string;
+      reject_reason?: TelnyxCallControlInboundRejectReason;
+      reject_cause_telnyx?: TelnyxCallControlTelnyxRejectCause;
+      resolver?: TelnyxCallControlResolverSnapshot;
+      shopId?: string;
       clientState?: string;
       callControlId?: string;
       internalRequestId?: string;
       destinationPhone?: string;
       callerPhone?: string | null;
     };
+
+export function telnyxInboundRejectCauseFor(
+  reason: TelnyxCallControlInboundRejectReason,
+): TelnyxCallControlTelnyxRejectCause {
+  return reason === 'shop_inactive' ? 'USER_BUSY' : 'CALL_REJECTED';
+}
+
+function baseResolverFromLookup(meta: ResolveShopByInboundDidResult): TelnyxCallControlResolverSnapshot {
+  return {
+    inboundDid: meta.inboundDid,
+    matchedBy: meta.matchedBy,
+    telnyxNumberMatch: meta.matchedBy === 'telnyx_number',
+  };
+}
+
+function resolverFromShop(shop: Shop, meta: ResolveShopByInboundDidResult): TelnyxCallControlResolverSnapshot {
+  return {
+    ...baseResolverFromLookup(meta),
+    shopId: shop.id,
+    shopName: shop.name,
+    shopActive: shop.active,
+    allowTransfers: shop.allow_transfers,
+    aiVoiceConfigured: Boolean(shop.ai_voice?.trim()),
+  };
+}
 
 export type CallControlClientStatePayload = {
   shopId: string;
@@ -245,38 +313,144 @@ export async function evaluateTelnyxCallControlInboundInitiated(
 
   const callControlId = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
   if (!callControlId) {
-    return { handled: true, decision: 'reject', reason: 'missing_call_control_id' };
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'missing_call_control_id',
+      reject_reason: 'missing_call_control_id',
+      reject_cause_telnyx: telnyxInboundRejectCauseFor('missing_call_control_id'),
+    };
   }
 
   const toRaw =
     firstStringFromPayload(payload, ['to', 'called_number', 'to_number']) ??
     firstStringFromPayload(payload, ['destination']);
   const fromRaw = firstStringFromPayload(payload, ['from', 'from_number', 'caller_number']);
-  const destinationPhone = toRaw ? normalizeInboundE164(toRaw) ?? undefined : undefined;
   const callerPhone = normalizeInboundE164(fromRaw);
 
-  const shop = toRaw ? await resolveShopByInboundDid(deps, toRaw) : null;
-  if (!shop) {
+  if (!toRaw?.trim()) {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'missing_to',
+      reject_reason: 'missing_inbound_did',
+      reject_cause_telnyx: telnyxInboundRejectCauseFor('missing_inbound_did'),
+      callControlId,
+      callerPhone,
+      resolver: { inboundDid: null, matchedBy: 'none', telnyxNumberMatch: false },
+    };
+  }
+
+  const meta = await resolveShopByInboundDidWithMeta(deps, toRaw);
+  const destinationPhone = meta.inboundDid ?? normalizeInboundE164(toRaw) ?? undefined;
+
+  if (!meta.shop) {
     return {
       handled: true,
       decision: 'reject',
       reason: 'unknown_did',
+      reject_reason: 'shop_not_found',
+      reject_cause_telnyx: telnyxInboundRejectCauseFor('shop_not_found'),
       callControlId,
       destinationPhone,
       callerPhone,
+      resolver: baseResolverFromLookup(meta),
     };
   }
 
+  const shop = meta.shop;
   const callable = isShopCallable(shop);
   if (!callable.ok) {
+    const reject_reason: TelnyxCallControlInboundRejectReason =
+      callable.reason === 'shop_inactive' ? 'shop_inactive' : 'unknown';
     return {
       handled: true,
       decision: 'reject',
       reason: callable.reason,
+      reject_reason,
+      reject_cause_telnyx: telnyxInboundRejectCauseFor(reject_reason),
       shopId: shop.id,
       callControlId,
       destinationPhone,
       callerPhone,
+      resolver: { ...resolverFromShop(shop, meta), callableBlockReason: callable.reason },
+    };
+  }
+
+  const env = getEnv();
+  if (getTelnyxInboundRoutingMode() !== 'call_control_to_openai_sip') {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'invalid_inbound_routing_mode',
+      reject_reason: 'invalid_inbound_routing_mode',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: shop.id,
+      callControlId,
+      destinationPhone,
+      callerPhone,
+      resolver: resolverFromShop(shop, meta),
+    };
+  }
+
+  if (getResolvedVoiceTransport() !== 'openai_sip_direct') {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'voice_transport_mismatch',
+      reject_reason: 'voice_transport_not_openai_sip_direct',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: shop.id,
+      callControlId,
+      destinationPhone,
+      callerPhone,
+      resolver: resolverFromShop(shop, meta),
+    };
+  }
+
+  if (getResolvedHandoffTransport() !== 'telnyx_call_control') {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'handoff_transport_mismatch',
+      reject_reason: 'handoff_transport_not_telnyx_call_control',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: shop.id,
+      callControlId,
+      destinationPhone,
+      callerPhone,
+      resolver: resolverFromShop(shop, meta),
+    };
+  }
+
+  if (!env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP) {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'bridge_disabled',
+      reject_reason: 'bridge_openai_sip_disabled',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: shop.id,
+      callControlId,
+      destinationPhone,
+      callerPhone,
+      resolver: resolverFromShop(shop, meta),
+    };
+  }
+
+  const sip = env.OPENAI_SIP_URI?.trim() ?? '';
+  if (!/^sips?:/i.test(sip)) {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'missing_openai_sip_uri',
+      reject_reason: 'missing_openai_sip_uri',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: shop.id,
+      callControlId,
+      destinationPhone,
+      callerPhone,
+      resolver: resolverFromShop(shop, meta),
     };
   }
 
@@ -305,6 +479,7 @@ export async function evaluateTelnyxCallControlInboundInitiated(
     internalRequestId,
     destinationPhone,
     callerPhone,
+    resolver: resolverFromShop(shop, meta),
   };
 }
 

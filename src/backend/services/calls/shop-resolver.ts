@@ -22,19 +22,45 @@ export function normalizeInboundE164(raw: string | null | undefined): string | n
   return null;
 }
 
+export type InboundDidShopMatch = 'telnyx_number' | 'phone_number' | 'none';
+
+export type ResolveShopByInboundDidResult = {
+  shop: Shop | null;
+  matchedBy: InboundDidShopMatch;
+  /** Normalized E.164 from `to` when parsable. */
+  inboundDid: string | null;
+};
+
 /**
  * Production inbound routing: Telnyx DID on `telnyx_number` wins over published `phone_number`.
  * Both queries enforce active shops via repository implementations.
  */
+export async function resolveShopByInboundDidWithMeta(
+  deps: { shopsRepository: ShopsRepository },
+  toRaw: string,
+): Promise<ResolveShopByInboundDidResult> {
+  const inboundDid = normalizeInboundE164(toRaw);
+  if (!inboundDid) {
+    return { shop: null, matchedBy: 'none', inboundDid: null };
+  }
+
+  const byTelnyx = await deps.shopsRepository.findByTelnyxNumber(inboundDid);
+  if (byTelnyx) {
+    return { shop: byTelnyx, matchedBy: 'telnyx_number', inboundDid };
+  }
+
+  const byPhone = await deps.shopsRepository.findByDestinationPhone(inboundDid);
+  if (byPhone) {
+    return { shop: byPhone, matchedBy: 'phone_number', inboundDid };
+  }
+
+  return { shop: null, matchedBy: 'none', inboundDid };
+}
+
 export async function resolveShopByInboundDid(
   deps: { shopsRepository: ShopsRepository },
   toRaw: string,
 ): Promise<Shop | null> {
-  const e164 = normalizeInboundE164(toRaw);
-  if (!e164) return null;
-
-  const byTelnyx = await deps.shopsRepository.findByTelnyxNumber(e164);
-  if (byTelnyx) return byTelnyx;
-
-  return deps.shopsRepository.findByDestinationPhone(e164);
+  const { shop } = await resolveShopByInboundDidWithMeta(deps, toRaw);
+  return shop;
 }
