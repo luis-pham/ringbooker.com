@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 
 import { getSipShopToolNameSet } from '@/src/agent/sip/sip-tool-definitions';
+import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { logger } from '@/src/backend/observability/logger';
 
 function compactToolOutput(output: string): string {
@@ -20,6 +21,10 @@ export type OpenAiRealtimeSipSidebandParams =
       callId: string;
       apiKey: string;
       executeBusinessTool: (toolName: string, argsJson: string) => Promise<string>;
+      /** One short greeting instruction for first `response.create` (shop welcome or default). */
+      initialResponseInstructions?: string | null;
+      /** When set, used for `openai_accepted_to_initial_response_ms` after first greeting send. */
+      acceptedAtMs?: number;
     };
 
 /**
@@ -45,8 +50,49 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     }
   }, timeoutMs);
 
+  let initialResponseSent = false;
+  let sawUserSpeechBeforeInitial = false;
+  let initialTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function cancelInitialTimer(): void {
+    if (initialTimer) {
+      clearTimeout(initialTimer);
+      initialTimer = null;
+    }
+  }
+
+  function trySendShopInitialResponse(): void {
+    if (params.variant !== 'shop') return;
+    const instructions = params.initialResponseInstructions?.trim();
+    if (!instructions || initialResponseSent) return;
+    if (sawUserSpeechBeforeInitial) {
+      return;
+    }
+    logger.info({ callId: params.callId }, 'openai_sip_initial_response_create_started');
+    try {
+      ws.send(
+        JSON.stringify({
+          type: 'response.create',
+          response: { instructions },
+        }),
+      );
+      initialResponseSent = true;
+      logger.info({ callId: params.callId }, 'openai_sip_initial_response_create_sent');
+      incrementMetric('initial_response_create_total', { outcome: 'sent' });
+      if (typeof params.acceptedAtMs === 'number') {
+        observeDurationMs('openai_accepted_to_initial_response_ms', Date.now() - params.acceptedAtMs, {});
+      }
+    } catch (err) {
+      logger.warn({ err, callId: params.callId }, 'openai_sip_initial_response_failed');
+      incrementMetric('initial_response_create_total', { outcome: 'failed' });
+    }
+  }
+
   ws.on('open', () => {
-    logger.info({ callId: params.callId, variant: params.variant }, 'openai_sip_sideband_ws_open');
+    logger.info(
+      { callId: params.callId, variant: params.variant },
+      params.variant === 'shop' ? 'openai_sip_sideband_connected' : 'openai_sip_sideband_ws_open',
+    );
     if (params.variant === 'demo') {
       if (!params.enableToolLoop) {
         try {
@@ -56,11 +102,26 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
         }
         return;
       }
+      try {
+        ws.send(JSON.stringify({ type: 'response.create' }));
+      } catch (err) {
+        logger.warn({ err, callId: params.callId }, 'openai_sip_sideband_initial_response_create_failed');
+      }
+      return;
     }
-    try {
-      ws.send(JSON.stringify({ type: 'response.create' }));
-    } catch (err) {
-      logger.warn({ err, callId: params.callId }, 'openai_sip_sideband_initial_response_create_failed');
+
+    const instructions = params.initialResponseInstructions?.trim();
+    if (instructions) {
+      initialTimer = setTimeout(() => {
+        initialTimer = null;
+        trySendShopInitialResponse();
+      }, 300);
+    } else {
+      try {
+        ws.send(JSON.stringify({ type: 'response.create' }));
+      } catch (err) {
+        logger.warn({ err, callId: params.callId }, 'openai_sip_sideband_initial_response_create_failed');
+      }
     }
   });
 
@@ -71,6 +132,14 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     } catch {
       return;
     }
+
+    if (params.variant === 'shop' && evt.type === 'input_audio_buffer.speech_started' && !initialResponseSent) {
+      sawUserSpeechBeforeInitial = true;
+      cancelInitialTimer();
+      logger.info({ callId: params.callId }, 'openai_sip_initial_response_skipped_user_speaking');
+      incrementMetric('initial_response_create_total', { outcome: 'skipped_speaking' });
+    }
+
     if (evt.type !== 'response.function_call_arguments.done') return;
 
     if (params.variant === 'demo') {
@@ -132,6 +201,7 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
   });
 
   ws.on('close', () => {
+    cancelInitialTimer();
     clearTimeout(t);
     logger.info({ callId: params.callId }, 'openai_sip_sideband_ws_close');
   });

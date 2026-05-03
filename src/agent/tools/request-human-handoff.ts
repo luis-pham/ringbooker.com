@@ -123,6 +123,7 @@ export async function requestHumanHandoffTool(
   const dialResult = await ctx.telephonyService.requestHumanHandoffViaCallControl({
     shopId: ctx.shop.id,
     parentCallControlId: parentId,
+    openAiLegCallControlId: ctx.openAiLegCallControlId ?? undefined,
     ownerPhone,
     inboundDid: ctx.shop.phone_number ?? ctx.shop.telnyx_number ?? '',
     rbCallId,

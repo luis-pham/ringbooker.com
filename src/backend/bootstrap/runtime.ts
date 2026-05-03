@@ -1,4 +1,6 @@
+import { InMemoryVoiceCallLegsRepository } from '@/src/backend/adapters/memory/voice-call-legs-repository';
 import { InMemoryHandoffSessionsRepository } from '@/src/backend/adapters/memory/handoff-sessions-repository';
+import { SupabaseVoiceCallLegsRepository } from '@/src/backend/adapters/supabase/voice-call-legs-repository';
 import { SupabaseHandoffSessionsRepository } from '@/src/backend/adapters/supabase/handoff-sessions-repository';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
@@ -153,6 +155,7 @@ export function createBackendRuntime() {
             contactRequestsRepository: new SupabaseContactRequestsRepository(supabase),
             demoSessionsRepository: new SupabaseDemoSessionsRepository(supabase),
             handoffSessionsRepository: new SupabaseHandoffSessionsRepository(supabase),
+            voiceCallLegsRepository: new SupabaseVoiceCallLegsRepository(supabase),
           };
         })()
       : {
@@ -171,6 +174,7 @@ export function createBackendRuntime() {
           contactRequestsRepository: new InMemoryContactRequestsRepository(),
           demoSessionsRepository: new InMemoryDemoSessionsRepository(),
           handoffSessionsRepository: new InMemoryHandoffSessionsRepository(),
+          voiceCallLegsRepository: new InMemoryVoiceCallLegsRepository(),
         };
   const services =
     commProvider === 'telnyx'
@@ -255,6 +259,7 @@ export function createBackendRuntime() {
     callLogsRepository: repositories.callLogsRepository,
     missedCallsRepository: repositories.missedCallsRepository,
     handoffSessionsRepository: repositories.handoffSessionsRepository,
+    voiceCallLegsRepository: repositories.voiceCallLegsRepository,
     authUsersRepository: repositories.authUsersRepository,
     blogPostsRepository: repositories.blogPostsRepository,
     contactRequestsRepository: repositories.contactRequestsRepository,
@@ -288,6 +293,7 @@ export function createBackendRuntime() {
     callLogsRepository: repositories.callLogsRepository,
     missedCallsRepository: repositories.missedCallsRepository,
     handoffSessionsRepository: repositories.handoffSessionsRepository,
+    voiceCallLegsRepository: repositories.voiceCallLegsRepository,
     authUsersRepository: repositories.authUsersRepository,
     blogPostsRepository: repositories.blogPostsRepository,
     contactRequestsRepository: repositories.contactRequestsRepository,

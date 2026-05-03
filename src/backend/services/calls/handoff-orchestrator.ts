@@ -3,7 +3,13 @@ import { HANDOFF_TERMINAL_STATUSES, type HandoffSessionStatus } from '@/src/back
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { withLogContext } from '@/src/backend/observability/logger';
 import { maskPhone } from '@/src/backend/security/pii';
-import type { CallLogsRepository, HandoffSessionsRepository, JobsRepository, ShopsRepository } from '@/src/backend/ports/repositories';
+import type {
+  CallLogsRepository,
+  HandoffSessionsRepository,
+  JobsRepository,
+  ShopsRepository,
+  VoiceCallLegsRepository,
+} from '@/src/backend/ports/repositories';
 import {
   callControlBridgeCalls,
   callControlGatherUsingSpeak,
@@ -21,6 +27,7 @@ export type HandoffOrchestratorDeps = {
   shopsRepository: ShopsRepository;
   jobsRepository?: JobsRepository;
   callLogsRepository?: CallLogsRepository;
+  voiceCallLegsRepository?: VoiceCallLegsRepository;
   testingTelnyxFetch?: typeof fetch;
   apiKey: string;
 };
@@ -269,13 +276,71 @@ export async function handoffOnGatherEnded(payload: unknown, deps: HandoffOrches
     const t0 = Date.now();
     await deps.handoffSessionsRepository.update(session.id, { status: 'owner_accepted' });
     incrementMetric('handoff_owner_accepted_total', { shopId: session.shopId });
+    log.info({ ...handoffLogFields(session, 'call.gather.ended', ownerCc), digit: '1' }, 'owner_dtmf_received');
+
+    let openaiCc = session.openaiCallId?.trim() || null;
+    if (!openaiCc && deps.voiceCallLegsRepository) {
+      openaiCc =
+        (await deps.voiceCallLegsRepository.findActiveOpenAiLegCallControlIdByRbCallId(session.shopId, session.rbCallId)) ??
+        (await deps.voiceCallLegsRepository.findActiveOpenAiLegCallControlIdByParent(session.parentCallControlId));
+    }
+
+    if (openaiCc) {
+      const hr = await callControlHangup(openaiCc, {}, fetchDeps(deps));
+      if (!hr.ok) {
+        log.warn(
+          {
+            httpStatus: hr.status,
+            body: hr.text,
+            ...handoffLogFields(session, 'hangup_openai_leg', openaiCc),
+          },
+          'telnyx_call_control_hangup_openai_leg_before_owner_bridge_failed',
+        );
+      } else {
+        log.info(
+          {
+            ...handoffLogFields(session, 'hangup_openai_leg', openaiCc),
+            openaiLegCallControlId: openaiCc,
+          },
+          'telnyx_call_control_hangup_openai_leg_before_owner_bridge',
+        );
+        if (deps.voiceCallLegsRepository) {
+          try {
+            await deps.voiceCallLegsRepository.markCallLegEnded(openaiCc, 'openai_sip_leg');
+          } catch (err) {
+            log.warn({ err, openaiLegCallControlId: openaiCc }, 'voice_call_leg_mark_openai_ended_failed');
+          }
+        }
+      }
+    } else {
+      log.warn(
+        {
+          ...handoffLogFields(session, 'hangup_openai_leg', ownerCc),
+          severity: 'high',
+        },
+        'handoff_openai_hangup_skipped_no_id',
+      );
+      incrementMetric('handoff_openai_hangup_skipped_total', { shopId: session.shopId });
+    }
 
     await deps.handoffSessionsRepository.update(session.id, { status: 'bridge_requested' });
+    log.info(
+      {
+        ...handoffLogFields(session, 'bridge_owner_started', ownerCc),
+        bridgePurpose: 'owner_handoff',
+      },
+      'telnyx_call_control_bridge_owner_started',
+    );
     const br = await callControlBridgeCalls(session.parentCallControlId, ownerCc, fetchDeps(deps));
     if (!br.ok) {
       log.warn(
-        { httpStatus: br.status, body: br.text, ...handoffLogFields(session, 'bridge', ownerCc) },
-        'handoff_bridge_failed',
+        {
+          httpStatus: br.status,
+          body: br.text,
+          bridgePurpose: 'owner_handoff',
+          ...handoffLogFields(session, 'bridge', ownerCc),
+        },
+        'telnyx_call_control_bridge_owner_failed',
       );
       await deps.handoffSessionsRepository.update(session.id, {
         status: 'handoff_failed_bridge_error',
@@ -308,6 +373,13 @@ export async function handoffOnGatherEnded(payload: unknown, deps: HandoffOrches
       status: 'handoff_completed',
       completedAt: new Date(),
     });
+    log.info(
+      {
+        ...handoffLogFields(session, 'bridge_owner_succeeded', ownerCc),
+        bridgePurpose: 'owner_handoff',
+      },
+      'telnyx_call_control_bridge_owner_succeeded',
+    );
     logCtx({ digit: '1', bridged: true });
     return;
   }

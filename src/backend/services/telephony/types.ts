@@ -34,12 +34,13 @@ export interface TelephonyService {
   }): Promise<{ providerCallId?: string }>;
 
   /**
-   * Owner handoff via Telnyx Call Control (`dial` from parent leg). Not used for LiveKit room transfers.
+   * Owner handoff via Telnyx Call Control (outbound owner leg + bridge). Not used for LiveKit room transfers.
    * No-op implementations should return `{ started: false }`.
    */
   requestHumanHandoffViaCallControl(params: {
     shopId: string;
     parentCallControlId: string;
+    openAiLegCallControlId?: string;
     ownerPhone: string;
     inboundDid: string;
     rbCallId: string;

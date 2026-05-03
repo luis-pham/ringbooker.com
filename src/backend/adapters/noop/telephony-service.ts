@@ -4,6 +4,7 @@ export class NoopTelephonyService implements TelephonyService {
   async requestHumanHandoffViaCallControl(params: {
     shopId: string;
     parentCallControlId: string;
+    openAiLegCallControlId?: string;
     ownerPhone: string;
     inboundDid: string;
     rbCallId: string;

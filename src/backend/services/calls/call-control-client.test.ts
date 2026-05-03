@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   callControlAnswer,
+  callControlCreateCall,
   callControlDial,
   postCallControlAction,
 } from '@/src/backend/services/calls/call-control-client';
@@ -40,13 +41,39 @@ test('callControlAnswer delegates to answer action', async () => {
   assert.equal(res.ok, true);
 });
 
-test('callControlDial delegates to dial action', async () => {
-  const fetchImpl: typeof fetch = async (input) => {
-    assert.ok(String(input).endsWith('/actions/dial'));
+test('callControlAnswer can include max_duration_secs in JSON body', async () => {
+  let body = '';
+  const fetchImpl: typeof fetch = async (_input, init) => {
+    body = String(init?.body ?? '');
     return new Response('{}', { status: 200 });
   };
-  const res = await callControlDial('cc_y', { to: 'sip:x@y' }, { fetchImpl, apiKey: 'k' });
+  await callControlAnswer(
+    'cc_x',
+    { client_state: 'e30=', max_duration_secs: 1800 },
+    { fetchImpl, apiKey: 'k' },
+  );
+  assert.deepEqual(JSON.parse(body), { client_state: 'e30=', max_duration_secs: 1800 });
+});
+
+test('callControlCreateCall posts to /v2/calls and extracts call_control_id', async () => {
+  const fetchImpl: typeof fetch = async (input) => {
+    assert.ok(String(input).endsWith('/v2/calls'));
+    return new Response(
+      JSON.stringify({ data: { call_control_id: 'cc_new', call_leg_id: 'leg_1', call_session_id: 'sess_1' } }),
+      { status: 200 },
+    );
+  };
+  const res = await callControlCreateCall({ to: 'sip:x@y', from: '+1555', connection_id: 'app_1' }, { fetchImpl, apiKey: 'k' });
   assert.equal(res.ok, true);
+  assert.equal(res.callControlId, 'cc_new');
+  assert.equal(res.callLegId, 'leg_1');
+});
+
+test('callControlDial throws unsupported endpoint error', async () => {
+  await assert.rejects(
+    async () => callControlDial('cc_y', { to: 'sip:x@y' }),
+    /Unsupported Telnyx action: \/actions\/dial is not valid; use POST \/v2\/calls/,
+  );
 });
 
 test('postCallControlAction maps HTTP error to ok false and errorKind http', async () => {

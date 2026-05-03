@@ -1,4 +1,5 @@
 import type { HandoffSessionRecord, HandoffSessionStatus } from '@/src/backend/domain/handoff';
+import type { VoiceCallLegPurpose, VoiceCallLegRecord } from '@/src/backend/domain/voice-call-leg';
 import type {
   BlogPost,
   BlogPostStatus,
@@ -711,4 +712,42 @@ export interface HandoffSessionsRepository {
       completedAt: Date | null;
     }>,
   ): Promise<void>;
+}
+
+export interface VoiceCallLegsRepository {
+  createOrUpdateCallLeg(params: {
+    shopId: string;
+    rbCallId: string;
+    purpose: VoiceCallLegPurpose;
+    callControlId?: string | null;
+    callSessionId?: string | null;
+    callLegId?: string | null;
+    parentCallControlId?: string | null;
+    parentCallSessionId?: string | null;
+    status: string;
+    clientState?: unknown | null;
+    metadata?: unknown | null;
+  }): Promise<VoiceCallLegRecord>;
+
+  findCallLegByCallControlId(callControlId: string): Promise<VoiceCallLegRecord | null>;
+
+  findOpenAiLegByRbCallId(shopId: string, rbCallId: string): Promise<VoiceCallLegRecord | null>;
+
+  findOpenAiLegByParentCallControlId(parentCallControlId: string): Promise<VoiceCallLegRecord | null>;
+
+  /** Active OpenAI SIP leg `call_control_id` for hangup (not ended). */
+  findActiveOpenAiLegCallControlIdByRbCallId(shopId: string, rbCallId: string): Promise<string | null>;
+
+  findActiveOpenAiLegCallControlIdByParent(parentCallControlId: string): Promise<string | null>;
+
+  markCallLegStatus(params: {
+    shopId: string;
+    rbCallId: string;
+    purpose: VoiceCallLegPurpose;
+    status: string;
+    callControlId?: string | null;
+    callSessionId?: string | null;
+  }): Promise<void>;
+
+  markCallLegEnded(callControlId: string, purpose?: VoiceCallLegPurpose): Promise<void>;
 }

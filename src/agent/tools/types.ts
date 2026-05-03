@@ -21,6 +21,8 @@ export type AgentToolContext = {
   parentTelnyxCallControlId?: string | null;
   /** Correlation id (matches Call Control `requestId` / rb_call_id). */
   rbCallId?: string;
+  /** Optional OpenAI SIP outbound Telnyx leg call_control_id, when available from SIP headers. */
+  openAiLegCallControlId?: string | null;
 };
 
 export const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

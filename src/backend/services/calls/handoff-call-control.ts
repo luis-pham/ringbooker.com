@@ -1,6 +1,5 @@
 import {
-  callControlDial,
-  parseTelnyxCallControlJsonResponse,
+  callControlCreateCall,
   type CallControlHttpResult,
 } from '@/src/backend/services/calls/call-control-client';
 
@@ -82,7 +81,7 @@ export type DialOwnerResult = CallControlHttpResult & {
 };
 
 /**
- * Dials the shop owner from the **parent** inbound Call Control leg.
+ * Creates outbound owner leg (POST /v2/calls) with Call Control state.
  * Screening + DTMF gather + bridge are handled via Call Control webhooks (handoff-orchestrator).
  */
 export async function dialOwnerFromParentCall(params: DialOwnerHandoffParams): Promise<DialOwnerResult> {
@@ -100,8 +99,7 @@ export async function dialOwnerFromParentCall(params: DialOwnerHandoffParams): P
     telnyxCallSessionId: params.telnyxCallSessionId,
   });
 
-  const result = await callControlDial(
-    params.parentCallControlId,
+  const result = await callControlCreateCall(
     {
       to: params.ownerE164,
       from: params.fromDidE164,
@@ -112,6 +110,7 @@ export async function dialOwnerFromParentCall(params: DialOwnerHandoffParams): P
     {
       fetchImpl: params.fetchImpl,
       apiKey: params.apiKey,
+      operation: 'call_control.create_owner_leg',
       correlation: {
         rbCallId: params.rbCallId,
         handoffId: params.handoffId,
@@ -120,12 +119,7 @@ export async function dialOwnerFromParentCall(params: DialOwnerHandoffParams): P
     },
   );
 
-  let ownerDialCallControlId: string | undefined;
-  const parsed = parseTelnyxCallControlJsonResponse(result.text);
-  const maybeId = parsed?.data?.call_control_id;
-  if (typeof maybeId === 'string' && maybeId.trim()) {
-    ownerDialCallControlId = maybeId.trim();
-  }
+  const ownerDialCallControlId = result.callControlId;
 
   return { ...result, ownerDialCallControlId };
 }

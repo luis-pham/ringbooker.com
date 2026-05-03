@@ -66,8 +66,21 @@ function createValidatedEnv() {
         .string()
         .optional()
         .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
-      /** Connection / Call Control Application ID for `dial` (defaults to `TELNYX_APP_ID`). */
+      /** Connection / Call Control Application ID for outbound `POST /v2/calls` (required in production when create_and_bridge + bridge OpenAI SIP). */
       TELNYX_CALL_CONTROL_CONNECTION_ID: z.string().min(1).optional(),
+      /** Spoken on parent leg after answer while OpenAI SIP leg is created (Call Control `speak`). */
+      TELNYX_CALL_CONTROL_COMFORT_MESSAGE: z.string().min(1).max(500).optional(),
+      /** Outbound OpenAI SIP leg ring/answer timeout for `POST /v2/calls` (`timeout_secs`). Default 15 in code when unset. */
+      TELNYX_OPENAI_SIP_LEG_TIMEOUT_SECS: z.coerce.number().int().min(5).max(120).optional(),
+      /** When true, include `max_duration_secs` on inbound `answer` (Telnyx may reject unknown fields — keep off until verified). */
+      TELNYX_ANSWER_MAX_DURATION_ENABLED: z
+        .string()
+        .optional()
+        .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
+      /** Cap for inbound parent call duration when answer max-duration is enabled. */
+      TELNYX_INBOUND_MAX_DURATION_SECS: z.coerce.number().int().min(60).max(28_800).default(1800),
+      /** transfer | create_and_bridge | texml_fallback | disabled */
+      TELNYX_OPENAI_CONNECT_MODE: z.string().optional(),
       /** Override default per-action timeouts for all Call Control POST actions (ms). */
       TELNYX_CALL_CONTROL_TIMEOUT_MS: optionalPositiveIntEnv,
       TELNYX_SMS_TIMEOUT_MS: optionalPositiveIntEnv,

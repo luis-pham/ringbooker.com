@@ -15,6 +15,7 @@ import type {
   MissedCallsRepository,
   ProviderEventsRepository,
   ShopsRepository,
+  VoiceCallLegsRepository,
 } from '@/src/backend/ports/repositories';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { verifyTelnyxSignature } from '@/src/backend/security/telnyx-signature';
@@ -23,8 +24,10 @@ import { maskPhone } from '@/src/backend/security/pii';
 import {
   buildTelnyxCallRejectPayload,
   callControlAnswer,
-  callControlDial,
+  callControlBridgeCalls,
+  callControlCreateCall,
   callControlReject,
+  callControlSpeak,
 } from '@/src/backend/services/calls/call-control-client';
 import {
   handoffOnGatherEnded,
@@ -33,12 +36,16 @@ import {
   handoffOnOwnerOutboundInitiated,
   type HandoffOrchestratorDeps,
 } from '@/src/backend/services/calls/handoff-orchestrator';
+import { getTelnyxOpenAiSipLegTimeoutSecs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
+import { resolveTelnyxOutboundCallsConnectionId } from '@/src/backend/adapters/telnyx/telnyx-outbound-connection-id';
 import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
 import {
+  bridgedPeerCallControlIdFromPayload,
   decodeCallControlClientState,
   evaluateTelnyxCallControlInboundInitiated,
   firstStringFromPayload,
   isCallAnsweredEvent,
+  isCallBridgedEvent,
   isCallGatherEndedEvent,
   isCallHangupEvent,
   isCallInitiatedEvent,
@@ -50,6 +57,131 @@ import {
 } from '@/src/backend/webhooks/telnyx-call-control';
 
 const CALL_CONTROL_EVENTS_PROVIDER = 'telnyx_call_control';
+/** Idempotency for parent↔OpenAI bridge (survives duplicate `call.answered` with new event ids). */
+const OPENAI_BRIDGE_COMMIT_PROVIDER = 'telnyx_cc_openai_bridge_commit';
+
+/** Parent leg answered → OpenAI bridge not yet confirmed; used for silent-caller risk logging. */
+const parentOpenAiBridgeWatch = new Map<
+  string,
+  { answeredAtMs: number; rbCallId: string; shopId: string; telnyxEventId?: string }
+>();
+
+function comfortMessageText(): string {
+  return getEnv().TELNYX_CALL_CONTROL_COMFORT_MESSAGE?.trim() || 'Thanks for calling. One moment please.';
+}
+
+async function telnyxComfortSpeakParent(params: {
+  parentCallControlId: string;
+  rbCallId: string;
+  shopId: string;
+  telnyxEventId: string;
+  fetchDeps: { fetchImpl?: typeof fetch; apiKey: string };
+  log: ReturnType<typeof withLogContext>;
+}): Promise<void> {
+  const t0 = Date.now();
+  params.log.info(
+    {
+      rbCallId: params.rbCallId,
+      shopId: params.shopId,
+      parentCallControlId: params.parentCallControlId,
+      telnyxEventId: params.telnyxEventId,
+    },
+    'telnyx_call_control_comfort_speak_started',
+  );
+  const sr = await callControlSpeak(
+    params.parentCallControlId,
+    {
+      payload: comfortMessageText(),
+      voice: 'Polly.Joanna',
+      language: 'en-US',
+    },
+    params.fetchDeps,
+  );
+  const durationMs = Date.now() - t0;
+  if (!sr.ok) {
+    params.log.warn(
+      {
+        rbCallId: params.rbCallId,
+        shopId: params.shopId,
+        parentCallControlId: params.parentCallControlId,
+        telnyxEventId: params.telnyxEventId,
+        durationMs,
+        httpStatus: sr.status,
+      },
+      'telnyx_call_control_comfort_speak_failed',
+    );
+    return;
+  }
+  params.log.info(
+    {
+      rbCallId: params.rbCallId,
+      shopId: params.shopId,
+      parentCallControlId: params.parentCallControlId,
+      telnyxEventId: params.telnyxEventId,
+      durationMs,
+    },
+    'telnyx_call_control_comfort_speak_succeeded',
+  );
+}
+
+function scheduleSilentCallerRiskWatch(params: {
+  parentCallControlId: string;
+  rbCallId: string;
+  shopId: string;
+  telnyxEventId?: string;
+  log: ReturnType<typeof withLogContext>;
+  answeredAtMs?: number;
+}): void {
+  const answeredAtMs = params.answeredAtMs ?? Date.now();
+  parentOpenAiBridgeWatch.set(params.parentCallControlId, {
+    answeredAtMs,
+    rbCallId: params.rbCallId,
+    shopId: params.shopId,
+    telnyxEventId: params.telnyxEventId,
+  });
+  const parentCc = params.parentCallControlId;
+  setTimeout(() => {
+    const pending = parentOpenAiBridgeWatch.get(parentCc);
+    if (!pending) return;
+    params.log.warn(
+      {
+        rbCallId: pending.rbCallId,
+        shopId: pending.shopId,
+        parentCallControlId: parentCc,
+        telnyxEventId: pending.telnyxEventId,
+        elapsedMs: Date.now() - pending.answeredAtMs,
+      },
+      'silent_caller_risk_detected',
+    );
+    incrementMetric('silent_caller_risk_total', { shopId: pending.shopId });
+  }, 7000);
+}
+
+function clearSilentCallerRiskWatch(parentCallControlId: string): void {
+  parentOpenAiBridgeWatch.delete(parentCallControlId);
+}
+
+function openAiBridgeCommitKey(parentCallControlId: string, openaiLegCallControlId: string): string {
+  return `v1:${parentCallControlId}:${openaiLegCallControlId}`;
+}
+
+type TelnyxOpenAiConnectMode = 'transfer' | 'create_and_bridge' | 'texml_fallback' | 'disabled';
+
+function getTelnyxOpenAiConnectMode(): TelnyxOpenAiConnectMode {
+  const raw = (process.env.TELNYX_OPENAI_CONNECT_MODE ?? 'create_and_bridge').trim().toLowerCase();
+  if (raw === 'transfer') return 'transfer';
+  if (raw === 'texml_fallback') return 'texml_fallback';
+  if (raw === 'disabled') return 'disabled';
+  return 'create_and_bridge';
+}
+
+function sipUriHostOnly(uri: string): string {
+  const trimmed = uri.trim();
+  const noScheme = trimmed.replace(/^sips?:/i, '');
+  const hostPart = noScheme.includes('@') ? noScheme.split('@')[1] ?? '' : noScheme;
+  const host = hostPart.split(';')[0]?.trim() ?? '';
+  return host || 'unknown';
+}
 
 function inboundArchitectureLogFields() {
   const env = getEnv();
@@ -67,6 +199,7 @@ function buildHandoffOrchestratorDeps(deps: {
   shopsRepository?: ShopsRepository;
   jobsRepository?: JobsRepository;
   callLogsRepository?: CallLogsRepository;
+  voiceCallLegsRepository?: VoiceCallLegsRepository;
   testingTelnyxFetch?: typeof fetch;
 }): HandoffOrchestratorDeps | null {
   if (!deps.handoffSessionsRepository || !deps.shopsRepository) return null;
@@ -75,6 +208,7 @@ function buildHandoffOrchestratorDeps(deps: {
     shopsRepository: deps.shopsRepository,
     jobsRepository: deps.jobsRepository,
     callLogsRepository: deps.callLogsRepository,
+    voiceCallLegsRepository: deps.voiceCallLegsRepository,
     testingTelnyxFetch: deps.testingTelnyxFetch,
     apiKey: getEnv().TELNYX_API_KEY,
   };
@@ -89,6 +223,7 @@ export async function handleTelnyxCallControlWebhook(
     jobsRepository?: JobsRepository;
     missedCallsRepository?: MissedCallsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
+    voiceCallLegsRepository?: VoiceCallLegsRepository;
     testingTelnyxFetch?: typeof fetch;
   },
 ) {
@@ -178,6 +313,9 @@ export async function handleTelnyxCallControlWebhook(
   if (isCallGatherEndedEvent(event.event_type)) {
     return processCallGatherEnded(c, { ...deps, shopsRepository }, event, bodyText, log);
   }
+  if (isCallBridgedEvent(event.event_type)) {
+    return processCallBridged(c, { ...deps, shopsRepository }, event, bodyText, log);
+  }
   if (isCallHangupEvent(event.event_type)) {
     return processCallHangup(c, { ...deps, shopsRepository }, event, bodyText, log);
   }
@@ -193,6 +331,7 @@ async function processCallInitiated(
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
+    voiceCallLegsRepository?: VoiceCallLegsRepository;
     testingTelnyxFetch?: typeof fetch;
   },
   event: { event_type: string; id: string; payload?: unknown },
@@ -228,6 +367,40 @@ async function processCallInitiated(
         await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
         incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
         return c.json({ ok: true, phase: 'owner_outbound_initiated' }, 200);
+      }
+      if (dec?.purpose === 'openai_sip_leg') {
+        log.info(
+          {
+            rbCallId: dec.rbCallId ?? dec.requestId,
+            shopId: dec.shopId,
+            parentCallControlId: dec.parentCallControlId ?? dec.telnyxCallControlId,
+            openaiLegCallControlId: firstStringFromPayload(pl, ['call_control_id', 'call_leg_id']),
+            purpose: dec.purpose,
+            event_type: event.event_type,
+          },
+          'telnyx_call_control_openai_leg_webhook_received',
+        );
+        const rbCallId = dec.rbCallId ?? dec.requestId;
+        const shopId = dec.shopId;
+        const legCc = firstStringFromPayload(pl, ['call_control_id', 'call_leg_id']);
+        if (deps.voiceCallLegsRepository && rbCallId && shopId) {
+          try {
+            await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+              shopId,
+              rbCallId,
+              purpose: 'openai_sip_leg',
+              callControlId: legCc ?? null,
+              parentCallControlId: dec.parentCallControlId ?? dec.telnyxCallControlId ?? null,
+              status: 'openai_leg_initiated',
+            });
+            log.info({ shopId, rbCallId, parentCallControlId: dec.parentCallControlId ?? dec.telnyxCallControlId }, 'openai_leg_webhook_upserted');
+          } catch (err) {
+            log.warn({ err, shopId, rbCallId }, 'openai_leg_webhook_upsert_failed');
+          }
+        }
+        await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+        incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+        return c.json({ ok: true, phase: 'openai_leg_initiated' }, 200);
       }
     }
 
@@ -359,13 +532,47 @@ async function processCallInitiated(
 
     if (!dryRun && result.handled && result.callControlId) {
       if (result.decision === 'answer' && result.clientState) {
-        const ar = await callControlAnswer(
-          result.callControlId,
-          { client_state: result.clientState },
-          fetchDeps,
-        );
+        const answerBody: Record<string, unknown> = { client_state: result.clientState };
+        if (getEnv().TELNYX_ANSWER_MAX_DURATION_ENABLED) {
+          answerBody.max_duration_secs = getEnv().TELNYX_INBOUND_MAX_DURATION_SECS;
+        }
+        const ar = await callControlAnswer(result.callControlId, answerBody, fetchDeps);
         if (!ar.ok) {
           log.warn({ status: ar.status, body: ar.text }, 'telnyx_call_control_answer_failed');
+        } else {
+          log.info(
+            {
+              telnyxEventId: event.id,
+              shopId: result.shopId,
+              rbCallId: result.internalRequestId,
+              parentCallControlId: result.callControlId,
+              maxDurationOnAnswer: Boolean(getEnv().TELNYX_ANSWER_MAX_DURATION_ENABLED),
+            },
+            'telnyx_call_control_answer_succeeded',
+          );
+          if (deps.voiceCallLegsRepository && result.shopId && result.internalRequestId) {
+            try {
+              await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+                shopId: result.shopId,
+                rbCallId: result.internalRequestId,
+                purpose: 'parent_caller_leg',
+                callControlId: result.callControlId,
+                callSessionId: firstStringFromPayload(plInbound, ['call_session_id']) ?? null,
+                status: 'parent_leg_answered',
+              });
+              log.info(
+                {
+                  shopId: result.shopId,
+                  rbCallId: result.internalRequestId,
+                  purpose: 'parent_caller_leg',
+                  parentCallControlId: result.callControlId,
+                },
+                'voice_call_leg_persisted',
+              );
+            } catch (err) {
+              log.warn({ err, shopId: result.shopId, rbCallId: result.internalRequestId }, 'voice_call_leg_persist_parent_failed');
+            }
+          }
         }
       } else if (result.decision === 'reject') {
         const cause = result.reject_cause_telnyx ?? 'CALL_REJECTED';
@@ -435,6 +642,7 @@ async function processCallAnswered(
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
+    voiceCallLegsRepository?: VoiceCallLegsRepository;
     testingTelnyxFetch?: typeof fetch;
   },
   event: { event_type: string; id: string; payload?: unknown },
@@ -477,51 +685,360 @@ async function processCallAnswered(
 
     let bridged = false;
     let bridgeReason: string | undefined;
+    const connectMode = getTelnyxOpenAiConnectMode();
 
-    if (!dryRun && env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP && callControlId) {
+    if (decodedClient?.purpose === 'openai_sip_leg') {
+      const openaiLegCallControlId = callControlId;
+      const parentCallControlId = decodedClient.parentCallControlId ?? decodedClient.telnyxCallControlId;
+      if (!dryRun && parentCallControlId && openaiLegCallControlId) {
+        const rbId = decodedClient.rbCallId ?? decodedClient.requestId;
+        if (deps.voiceCallLegsRepository && decodedClient.shopId && rbId) {
+          try {
+            await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+              shopId: decodedClient.shopId,
+              rbCallId: rbId,
+              purpose: 'openai_sip_leg',
+              callControlId: openaiLegCallControlId,
+              parentCallControlId,
+              status: 'openai_leg_answered',
+            });
+            log.info(
+              { shopId: decodedClient.shopId, rbCallId: rbId, parentCallControlId },
+              'openai_leg_webhook_upserted',
+            );
+          } catch (err) {
+            log.warn({ err, shopId: decodedClient.shopId, rbCallId: rbId }, 'openai_leg_webhook_upsert_failed');
+          }
+        }
+        const commitKey = openAiBridgeCommitKey(parentCallControlId, openaiLegCallControlId);
+        const alreadyBridged = await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, commitKey);
+        if (alreadyBridged) {
+          bridged = true;
+          bridgeReason = 'openai_bridge_idempotent_skip';
+          clearSilentCallerRiskWatch(parentCallControlId);
+        } else {
+          log.info(
+            {
+              rbCallId: decodedClient.rbCallId ?? decodedClient.requestId,
+              shopId: decodedClient.shopId,
+              parentCallControlId,
+              openaiLegCallControlId,
+              bridgePurpose: 'openai',
+            },
+            'telnyx_call_control_bridge_openai_started',
+          );
+          const tBridge0 = Date.now();
+          const br = await callControlBridgeCalls(parentCallControlId, openaiLegCallControlId, fetchDeps);
+          bridged = br.ok;
+          if (!br.ok) {
+            log.warn(
+              {
+                status: br.status,
+                body: br.text,
+                rbCallId: decodedClient.rbCallId ?? decodedClient.requestId,
+                shopId: decodedClient.shopId,
+                parentCallControlId,
+                openaiLegCallControlId,
+                bridgePurpose: 'openai',
+                bridgeDurationMs: Date.now() - tBridge0,
+              },
+              'telnyx_call_control_bridge_openai_failed',
+            );
+            await callControlSpeak(
+              parentCallControlId,
+              {
+                payload:
+                  "Sorry, we're having trouble connecting the AI receptionist right now. Please call back shortly.",
+                voice: 'Polly.Joanna',
+                language: 'en-US',
+              },
+              fetchDeps,
+            );
+            clearSilentCallerRiskWatch(parentCallControlId);
+            bridgeReason = 'openai_bridge_http_error';
+          } else {
+            await deps.providerEventsRepository.markProcessed({
+              provider: OPENAI_BRIDGE_COMMIT_PROVIDER,
+              providerEventId: commitKey,
+              eventType: 'openai_bridge_commit',
+              payload: {
+                sourceEventId: event.id,
+                parentCallControlId,
+                openaiLegCallControlId,
+              },
+            });
+            const pending = parentOpenAiBridgeWatch.get(parentCallControlId);
+            clearSilentCallerRiskWatch(parentCallControlId);
+            const rbCallId = decodedClient.rbCallId ?? decodedClient.requestId;
+            const shopId = decodedClient.shopId;
+            if (pending) {
+              log.info(
+                {
+                  rbCallId,
+                  shopId,
+                  parentCallControlId,
+                  openaiLegCallControlId,
+                  call_answered_to_openai_bridged_ms: Date.now() - pending.answeredAtMs,
+                  bridgeDurationMs: Date.now() - tBridge0,
+                },
+                'call_timing_openai_bridged',
+              );
+            }
+            log.info(
+              {
+                rbCallId,
+                shopId,
+                parentCallControlId,
+                openaiLegCallControlId,
+                bridgePurpose: 'openai',
+              },
+              'telnyx_call_control_bridge_openai_succeeded',
+            );
+            if (deps.voiceCallLegsRepository && rbCallId && shopId) {
+              try {
+                await deps.voiceCallLegsRepository.markCallLegStatus({
+                  shopId,
+                  rbCallId,
+                  purpose: 'openai_sip_leg',
+                  status: 'openai_bridge_confirmed',
+                  callControlId: openaiLegCallControlId,
+                });
+                log.info({ shopId, rbCallId, openaiLegCallControlId }, 'voice_call_leg_persisted');
+              } catch (err) {
+                log.warn({ err, shopId, rbCallId }, 'voice_call_leg_openai_bridge_status_failed');
+              }
+            }
+            bridgeReason = 'openai_bridge_api_ok';
+          }
+        }
+      } else {
+        bridgeReason = dryRun ? 'dry_run' : 'missing_parent_for_openai_leg';
+      }
+    } else if (connectMode === 'create_and_bridge' && !dryRun && env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP && callControlId) {
       const sipUri = env.OPENAI_SIP_URI?.trim() ?? '';
       if (/^sips?:/i.test(sipUri)) {
-        const connectionId = env.TELNYX_CALL_CONTROL_CONNECTION_ID?.trim() || env.TELNYX_APP_ID;
         const toRaw =
           firstStringFromPayload(payload, ['to', 'called_number', 'to_number']) ??
           firstStringFromPayload(payload, ['destination']);
         const fromCli = toRaw ? normalizeInboundE164(toRaw) : null;
-        if (fromCli) {
-          const dr = await callControlDial(
-            callControlId,
-            {
-              to: sipUri,
-              from: fromCli,
-              connection_id: connectionId,
-              link_to: callControlId,
-              bridge_intent: true,
-              bridge_on_answer: true,
-              sip_transport_protocol: 'TLS',
-              ...(clientStateRaw?.trim() ? { client_state: clientStateRaw.trim() } : {}),
-            },
+        if (fromCli && decodedClient?.shopId) {
+          const rbCallId = decodedClient.rbCallId ?? decodedClient.requestId;
+          const parentCallSessionId = firstStringFromPayload(payload, ['call_session_id']) ?? decodedClient.telnyxCallSessionId;
+          const parentAnsweredReceivedAt = Date.now();
+
+          await telnyxComfortSpeakParent({
+            parentCallControlId: callControlId,
+            rbCallId,
+            shopId: decodedClient.shopId,
+            telnyxEventId: event.id,
             fetchDeps,
-          );
-          bridged = dr.ok;
-          if (!dr.ok) {
+            log,
+          });
+
+          scheduleSilentCallerRiskWatch({
+            parentCallControlId: callControlId,
+            rbCallId,
+            shopId: decodedClient.shopId,
+            telnyxEventId: event.id,
+            log,
+            answeredAtMs: parentAnsweredReceivedAt,
+          });
+
+          if (deps.voiceCallLegsRepository) {
+            try {
+              await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+                shopId: decodedClient.shopId,
+                rbCallId,
+                purpose: 'parent_caller_leg',
+                callControlId,
+                callSessionId: parentCallSessionId ?? null,
+                status: 'parent_leg_answered',
+              });
+              log.info(
+                {
+                  shopId: decodedClient.shopId,
+                  rbCallId,
+                  purpose: 'parent_caller_leg',
+                  parentCallControlId: callControlId,
+                },
+                'voice_call_leg_persisted',
+              );
+            } catch (err) {
+              log.warn({ err, shopId: decodedClient.shopId, rbCallId }, 'voice_call_leg_persist_parent_failed');
+            }
+          }
+
+          const resolvedConn = resolveTelnyxOutboundCallsConnectionId(log);
+          if (!resolvedConn) {
             log.warn(
-              {
-                status: dr.status,
-                body: dr.text,
-                rbCallId: decodedClient?.rbCallId ?? decodedClient?.requestId,
-                shopId: decodedClient?.shopId,
-                call_control_id: callControlId,
-                phase: 'openai_sip_dial',
-              },
-              'telnyx_call_control_dial_openai_failed',
+              { rbCallId, shopId: decodedClient.shopId, parentCallControlId: callControlId },
+              'telnyx_create_openai_leg_skipped_no_connection_id',
             );
-            bridgeReason = 'dial_http_error';
+            await callControlSpeak(
+              callControlId,
+              {
+                payload:
+                  "Sorry, we're having trouble connecting the AI receptionist right now. Please call back shortly.",
+                voice: 'Polly.Joanna',
+                language: 'en-US',
+              },
+              fetchDeps,
+            );
+            clearSilentCallerRiskWatch(callControlId);
+            bridgeReason = 'telnyx_connection_id_misconfigured';
+          } else {
+            log.info(
+              {
+                rbCallId,
+                shopId: decodedClient.shopId,
+                usingConnectionIdSource: resolvedConn.usingConnectionIdSource,
+              },
+              'telnyx_create_openai_leg_connection_resolved',
+            );
+
+            const openAiClientState = Buffer.from(
+              JSON.stringify({
+                shopId: decodedClient.shopId,
+                requestId: decodedClient.requestId,
+                rbCallId,
+                callerPhone: decodedClient.callerPhone ?? null,
+                ts: new Date().toISOString(),
+                telnyxCallControlId: callControlId,
+                parentCallControlId: callControlId,
+                parentCallSessionId,
+                inboundDid: decodedClient.inboundDid ?? fromCli,
+                transport: 'openai_sip_direct',
+                handoffTransport: 'telnyx_call_control',
+                purpose: 'openai_sip_leg',
+              }),
+              'utf8',
+            ).toString('base64');
+
+            const tCreate0 = Date.now();
+            log.info(
+              {
+                rbCallId,
+                shopId: decodedClient.shopId,
+                parentCallControlId: callControlId,
+                purpose: 'openai_sip_leg',
+                openaiSipHost: sipUriHostOnly(sipUri),
+              },
+              'telnyx_call_control_create_openai_leg_started',
+            );
+
+            const cr = await callControlCreateCall(
+              {
+                to: sipUri,
+                from: fromCli,
+                connection_id: resolvedConn.connectionId,
+                client_state: openAiClientState,
+                timeout_secs: getTelnyxOpenAiSipLegTimeoutSecs(),
+                sip_transport_protocol: 'TLS',
+              },
+              {
+                ...fetchDeps,
+                operation: 'call_control.create_openai_sip_leg',
+                correlation: {
+                  rbCallId,
+                  shopId: decodedClient.shopId,
+                },
+              },
+            );
+
+            if (!cr.ok) {
+              log.warn(
+                {
+                  status: cr.status,
+                  body: cr.text,
+                  rbCallId,
+                  shopId: decodedClient.shopId,
+                  parentCallControlId: callControlId,
+                  phase: 'create_openai_leg',
+                  createDurationMs: Date.now() - tCreate0,
+                  call_answered_to_openai_created_ms: Date.now() - parentAnsweredReceivedAt,
+                },
+                'telnyx_call_control_create_openai_leg_failed',
+              );
+              await callControlSpeak(
+                callControlId,
+                {
+                  payload:
+                    "Sorry, we're having trouble connecting the AI receptionist right now. Please call back shortly.",
+                  voice: 'Polly.Joanna',
+                  language: 'en-US',
+                },
+                fetchDeps,
+              );
+              clearSilentCallerRiskWatch(callControlId);
+              bridgeReason = 'create_openai_leg_http_error';
+            } else {
+              log.info(
+                {
+                  rbCallId,
+                  shopId: decodedClient.shopId,
+                  parentCallControlId: callControlId,
+                  openaiLegCallControlId: cr.callControlId ?? null,
+                  openaiLegCallLegId: cr.callLegId ?? null,
+                  purpose: 'openai_sip_leg',
+                  createDurationMs: Date.now() - tCreate0,
+                  call_answered_to_openai_created_ms: Date.now() - parentAnsweredReceivedAt,
+                },
+                'telnyx_call_control_create_openai_leg_succeeded',
+              );
+              if (deps.voiceCallLegsRepository) {
+                try {
+                  await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+                    shopId: decodedClient.shopId,
+                    rbCallId,
+                    purpose: 'openai_sip_leg',
+                    callControlId: cr.callControlId ?? null,
+                    callLegId: cr.callLegId ?? null,
+                    parentCallControlId: callControlId,
+                    parentCallSessionId: parentCallSessionId ?? null,
+                    status: 'openai_leg_created',
+                  });
+                  log.info(
+                    {
+                      shopId: decodedClient.shopId,
+                      rbCallId,
+                      purpose: 'openai_sip_leg',
+                      parentCallControlId: callControlId,
+                    },
+                    'voice_call_leg_persisted',
+                  );
+                  if (cr.callControlId) {
+                    log.info(
+                      { shopId: decodedClient.shopId, rbCallId, openaiLegCallControlId: cr.callControlId },
+                      'openai_leg_callcontrolid_stored',
+                    );
+                  } else {
+                    log.warn(
+                      { shopId: decodedClient.shopId, rbCallId, parentCallControlId: callControlId },
+                      'openai_leg_callcontrolid_missing',
+                    );
+                  }
+                } catch (err) {
+                  log.warn({ err, shopId: decodedClient.shopId, rbCallId }, 'voice_call_leg_persist_openai_failed');
+                }
+              } else if (!cr.callControlId) {
+                log.warn(
+                  { shopId: decodedClient.shopId, rbCallId, parentCallControlId: callControlId },
+                  'openai_leg_callcontrolid_missing',
+                );
+              }
+              bridgeReason = 'openai_leg_created_waiting_answered';
+            }
           }
         } else {
-          bridgeReason = 'missing_from_cli';
+          bridgeReason = 'missing_from_cli_or_shop';
         }
       } else {
         bridgeReason = 'openai_sip_uri_missing';
       }
+    } else if (connectMode === 'disabled') {
+      bridgeReason = 'connect_mode_disabled';
+    } else if (connectMode === 'texml_fallback') {
+      bridgeReason = 'texml_fallback_mode';
     } else {
       bridgeReason = dryRun
         ? 'dry_run'
@@ -569,6 +1086,7 @@ async function processCallGatherEnded(
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
+    voiceCallLegsRepository?: VoiceCallLegsRepository;
     testingTelnyxFetch?: typeof fetch;
   },
   event: { event_type: string; id: string; payload?: unknown },
@@ -610,6 +1128,119 @@ async function processCallGatherEnded(
   }
 }
 
+async function processCallBridged(
+  c: Context,
+  deps: {
+    providerEventsRepository: ProviderEventsRepository;
+    shopsRepository: ShopsRepository;
+    callLogsRepository?: CallLogsRepository;
+    jobsRepository?: JobsRepository;
+    handoffSessionsRepository?: HandoffSessionsRepository;
+    voiceCallLegsRepository?: VoiceCallLegsRepository;
+    testingTelnyxFetch?: typeof fetch;
+  },
+  event: { event_type: string; id: string; payload?: unknown },
+  bodyText: string,
+  log: ReturnType<typeof withLogContext>,
+) {
+  try {
+    const alreadyProcessed = await deps.providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+    if (alreadyProcessed) {
+      incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'duplicate' });
+      return c.json({ ok: true, duplicate: true }, 200);
+    }
+
+    const validatedRoot = telnyxCallControlEnvelopeSchema.parse(JSON.parse(bodyText));
+    await deps.providerEventsRepository.markProcessed({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: validatedRoot,
+    });
+
+    const payload = event.payload;
+    const selfCc = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
+    const peerCc = bridgedPeerCallControlIdFromPayload(payload);
+    const clientStateRaw = firstStringFromPayload(payload, ['client_state']);
+    const decoded = decodeCallControlClientState(clientStateRaw);
+
+    if (decoded?.purpose === 'openai_sip_leg') {
+      const parentCallControlId = decoded.parentCallControlId ?? decoded.telnyxCallControlId;
+      const openaiLegCallControlId = selfCc;
+      log.info(
+        {
+          rbCallId: decoded.rbCallId ?? decoded.requestId,
+          shopId: decoded.shopId,
+          parentCallControlId,
+          openaiLegCallControlId,
+          peerCallControlId: peerCc ?? undefined,
+          bridgePurpose: 'openai',
+          event_type: event.event_type,
+        },
+        'telnyx_call_control_openai_bridge_confirmed',
+      );
+    } else if (selfCc && peerCc) {
+      const k1 = openAiBridgeCommitKey(selfCc, peerCc);
+      const k2 = openAiBridgeCommitKey(peerCc, selfCc);
+      const confirmed =
+        (await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, k1)) ||
+        (await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, k2));
+      if (confirmed) {
+        log.info(
+          {
+            callControlId: selfCc,
+            peerCallControlId: peerCc,
+            event_type: event.event_type,
+          },
+          'telnyx_call_control_openai_bridge_confirmed',
+        );
+      }
+    }
+
+    const handoffDeps = buildHandoffOrchestratorDeps(deps);
+    if (handoffDeps && selfCc && peerCc) {
+      const s1 = await handoffDeps.handoffSessionsRepository.findByParentCallControlId(selfCc);
+      const s2 = await handoffDeps.handoffSessionsRepository.findByParentCallControlId(peerCc);
+      const session =
+        s1 && s1.ownerCallControlId === peerCc && ['bridged', 'handoff_completed'].includes(s1.status)
+          ? s1
+          : s2 && s2.ownerCallControlId === selfCc && ['bridged', 'handoff_completed'].includes(s2.status)
+            ? s2
+            : null;
+      if (session) {
+        log.info(
+          {
+            rbCallId: session.rbCallId,
+            shopId: session.shopId,
+            handoffId: session.id,
+            parentCallControlId: session.parentCallControlId,
+            ownerLegCallControlId: session.ownerCallControlId ?? undefined,
+            openaiLegCallControlId: session.openaiCallId ?? undefined,
+            peerCallControlId: peerCc,
+            bridgePurpose: 'owner_handoff',
+            status: session.status,
+            event_type: event.event_type,
+          },
+          'telnyx_call_control_owner_bridge_confirmed',
+        );
+      }
+    }
+
+    await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+    incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+    return c.json({ ok: true, phase: 'bridged' }, 200);
+  } catch (error) {
+    await deps.providerEventsRepository.markProcessingError(
+      CALL_CONTROL_EVENTS_PROVIDER,
+      event.id,
+      error instanceof Error ? error.message : 'webhook_processing_failed',
+    );
+    incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'failed' });
+    log.error({ err: error, eventId: event.id }, 'telnyx_call_control_bridged_failed');
+    return c.json({ ok: false }, 500);
+  }
+}
+
 async function processCallHangup(
   c: Context,
   deps: {
@@ -619,6 +1250,7 @@ async function processCallHangup(
     jobsRepository?: JobsRepository;
     missedCallsRepository?: MissedCallsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
+    voiceCallLegsRepository?: VoiceCallLegsRepository;
     testingTelnyxFetch?: typeof fetch;
   },
   event: { event_type: string; id: string; payload?: unknown },
@@ -656,6 +1288,29 @@ async function processCallHangup(
     ]);
     const clientStateRaw = firstStringFromPayload(payload, ['client_state']);
     const decoded = decodeCallControlClientState(clientStateRaw);
+
+    const callControlLegId = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
+    if (deps.voiceCallLegsRepository && decoded?.purpose === 'openai_sip_leg' && callControlLegId) {
+      const hangCause = (
+        firstStringFromPayload(payload, ['hangup_cause', 'sip_disconnect_cause', 'termination_reason']) ?? ''
+      ).toLowerCase();
+      if (hangCause.includes('timeout') || hangCause.includes('no_answer') || hangCause.includes('time')) {
+        log.warn(
+          {
+            rbCallId: decoded.rbCallId ?? decoded.requestId,
+            shopId: decoded.shopId,
+            parentCallControlId: decoded.parentCallControlId ?? decoded.telnyxCallControlId,
+            hangCause,
+          },
+          'telnyx_call_control_openai_leg_timeout',
+        );
+      }
+      try {
+        await deps.voiceCallLegsRepository.markCallLegEnded(callControlLegId, 'openai_sip_leg');
+      } catch (err) {
+        log.warn({ err, callControlLegId }, 'voice_call_leg_mark_openai_hangup_failed');
+      }
+    }
 
     const destinationRaw =
       firstStringFromPayload(payload, ['to', 'called_number', 'to_number']) ??

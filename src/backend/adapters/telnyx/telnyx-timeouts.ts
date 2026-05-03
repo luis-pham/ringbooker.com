@@ -1,3 +1,5 @@
+import { getEnv } from '@/src/backend/config/env';
+
 /**
  * Default timeouts (ms) for Telnyx REST. Override globally via env when set.
  * @see telnyx-http.ts
@@ -40,6 +42,16 @@ export function getTelnyxCallsCreateTimeoutMs(): number {
     if (n > 0) return n;
   }
   return 10_000;
+}
+
+/** `timeout_secs` on Telnyx `POST /v2/calls` for OpenAI SIP outbound leg (not HTTP client timeout). */
+export function getTelnyxOpenAiSipLegTimeoutSecs(): number {
+  const v = getEnv().TELNYX_OPENAI_SIP_LEG_TIMEOUT_SECS;
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    const n = Math.floor(v);
+    if (n >= 5 && n <= 120) return n;
+  }
+  return 15;
 }
 
 export function getTelnyxProvisioningSearchTimeoutMs(): number {

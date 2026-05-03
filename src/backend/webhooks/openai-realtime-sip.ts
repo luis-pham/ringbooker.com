@@ -95,7 +95,12 @@ function resolveOpenAiSipShopRoomContext(params: {
   roomName: string;
   parentTelnyxCallControlId: string | null;
   rbCallId: string;
+  openAiLegCallControlId: string | null;
 } {
+  const openAiLegCallControlId =
+    extractSipHeader(params.sipHeaders, 'X-Telnyx-Call-Control-Id') ??
+    extractSipHeader(params.sipHeaders, 'X-Call-Control-Id') ??
+    null;
   const rawState =
     extractSipHeader(params.sipHeaders, 'X-Ringbooker-Call-Control-State') ??
     extractSipHeader(params.sipHeaders, 'X-Telnyx-Client-State');
@@ -108,6 +113,7 @@ function resolveOpenAiSipShopRoomContext(params: {
       roomName: `sip-${safeReq || 'session'}`,
       parentTelnyxCallControlId: decoded.telnyxCallControlId ?? null,
       rbCallId,
+      openAiLegCallControlId,
     };
   }
   const safeCall = params.callId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48);
@@ -125,6 +131,7 @@ function resolveOpenAiSipShopRoomContext(params: {
     roomName: `sip-${safeCall || 'call'}`,
     parentTelnyxCallControlId: null,
     rbCallId: fallbackReq,
+    openAiLegCallControlId,
   };
 }
 
@@ -460,6 +467,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     logger.info({ callId, model }, 'openai_sip_call_accepted');
     incrementMetric('openai_sip_call_outcomes_total', { outcome: 'accepted' });
     if (env.OPENAI_SIP_SIDEBAND_ENABLED) {
+      const acceptedAtMs = Date.now();
       if (route.kind === 'demo') {
         startOpenAiRealtimeSipSideband({
           variant: 'demo',
@@ -483,11 +491,15 @@ export async function handleOpenAiRealtimeSipWebhook(
           deps: executorDeps,
           parentTelnyxCallControlId: shopRoomContext.parentTelnyxCallControlId,
           rbCallId: shopRoomContext.rbCallId,
+          openAiLegCallControlId: shopRoomContext.openAiLegCallControlId,
         });
         startOpenAiRealtimeSipSideband({
           variant: 'shop',
           callId,
           apiKey: apiKey!,
+          acceptedAtMs,
+          initialResponseInstructions:
+            route.shop.ai_welcome_message?.trim() || 'Thanks for calling. How can I help you today?',
           executeBusinessTool: (name, argsJson) => {
             let parsed: unknown = {};
             try {

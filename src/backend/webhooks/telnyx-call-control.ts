@@ -8,7 +8,7 @@
  * HTTP wiring: `telnyx-call-control-webhook.ts` → POST `/webhooks/telnyx/call-control` when
  * `TELNYX_CALL_CONTROL_WEBHOOK_ENABLED` is true.
  *
- * Phase 3: optional `dial` bridge to `OPENAI_SIP_URI` on `call.answered`; `call.hangup` closes logs / missed-call SMS.
+ * Phase 3: optional `POST /v2/calls` + bridge to `OPENAI_SIP_URI` after inbound `call.answered`; `call.hangup` closes logs / missed-call SMS.
  */
 import { randomUUID } from 'node:crypto';
 
@@ -130,7 +130,7 @@ export type CallControlClientStatePayload = {
    * `owner_handoff_leg` — outbound owner screening leg (do not dial OpenAI SIP on `call.answered`).
    * Inbound path leaves this unset.
    */
-  purpose?: 'owner_handoff_leg' | string;
+  purpose?: 'owner_handoff_leg' | 'openai_sip_leg' | string;
   handoffId?: string;
   parentCallControlId?: string;
   ownerPhone?: string;
@@ -239,6 +239,21 @@ export function isCallHangupEvent(eventType: string): boolean {
 export function isCallGatherEndedEvent(eventType: string): boolean {
   const t = eventType.toLowerCase();
   return t.includes('call.gather.ended') || t.includes('gather.ended');
+}
+
+export function isCallBridgedEvent(eventType: string): boolean {
+  const t = eventType.toLowerCase();
+  return t.includes('call.bridged') || t.includes('call_bridged');
+}
+
+/** Telnyx `call.bridged` — peer leg id field name varies by API version. */
+export function bridgedPeerCallControlIdFromPayload(payload: unknown): string | null {
+  return firstStringFromPayload(payload, [
+    'peer_call_control_id',
+    'bridged_call_control_id',
+    'bridged_with_call_control_id',
+    'other_call_control_id',
+  ]);
 }
 
 export function isOutboundCallPayload(payload: unknown): boolean {

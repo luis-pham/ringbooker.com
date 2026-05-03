@@ -87,4 +87,35 @@ export function validateVoiceArchitectureAtStartup(): void {
       );
     }
   }
+
+  const bridgeOpenAi = process.env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP?.trim().toLowerCase();
+  const connectMode = (process.env.TELNYX_OPENAI_CONNECT_MODE ?? 'create_and_bridge').trim().toLowerCase();
+  const createAndBridge = connectMode === 'create_and_bridge' || connectMode === '';
+  const needsExplicitConnectionId =
+    (bridgeOpenAi === 'true' || bridgeOpenAi === '1') && createAndBridge;
+  const hasConnectionId = Boolean(process.env.TELNYX_CALL_CONTROL_CONNECTION_ID?.trim());
+  const hasAppId = Boolean(process.env.TELNYX_APP_ID?.trim());
+  let usingConnectionIdSource: 'telnyx_call_control_connection_id' | 'telnyx_app_id_fallback_test_only' | 'missing';
+  if (hasConnectionId) usingConnectionIdSource = 'telnyx_call_control_connection_id';
+  else if (needsExplicitConnectionId && process.env.NODE_ENV === 'production') usingConnectionIdSource = 'missing';
+  else usingConnectionIdSource = 'telnyx_app_id_fallback_test_only';
+
+  console.info(
+    '[voice] telnyx_outbound_calls_connection_id_config',
+    JSON.stringify({
+      connectionIdConfigured: hasConnectionId,
+      appIdConfigured: hasAppId,
+      usingConnectionIdSource,
+    }),
+  );
+
+  if (needsExplicitConnectionId && !hasConnectionId && process.env.NODE_ENV === 'production') {
+    console.error(
+      '[voice] TELNYX_CALL_CONTROL_CONNECTION_ID is required in production when TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP is enabled and TELNYX_OPENAI_CONNECT_MODE=create_and_bridge. POST /v2/calls will not fall back to TELNYX_APP_ID.',
+    );
+  } else if (needsExplicitConnectionId && !hasConnectionId && process.env.NODE_ENV !== 'test') {
+    console.warn(
+      '[voice] TELNYX_CALL_CONTROL_CONNECTION_ID is unset; non-production may fall back to TELNYX_APP_ID for POST /v2/calls (test-only style; set explicit connection id for production).',
+    );
+  }
 }

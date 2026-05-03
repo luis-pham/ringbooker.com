@@ -4,7 +4,10 @@ import {
   isTelnyxTimeoutError,
 } from '@/src/backend/adapters/telnyx/telnyx-errors';
 import { telnyxHttpJson } from '@/src/backend/adapters/telnyx/telnyx-http';
-import { getCallControlActionTimeoutMs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
+import {
+  getCallControlActionTimeoutMs,
+  getTelnyxCallsCreateTimeoutMs,
+} from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { getEnv } from '@/src/backend/config/env';
 
 export type CallControlHttpResult = {
@@ -13,6 +16,13 @@ export type CallControlHttpResult = {
   text: string;
   durationMs?: number;
   errorKind?: 'timeout' | 'network' | 'http';
+};
+
+export type TelnyxCreateCallResult = CallControlHttpResult & {
+  data?: unknown;
+  callControlId?: string;
+  callLegId?: string;
+  callSessionId?: string;
 };
 
 export type CallControlClientDeps = {
@@ -92,6 +102,97 @@ export async function postCallControlAction(
   }
 }
 
+function mapTelnyxHttpErrorToResult(e: unknown): CallControlHttpResult | null {
+  if (isTelnyxTimeoutError(e)) {
+    return {
+      ok: false,
+      status: 0,
+      text: e.message,
+      durationMs: e.durationMs,
+      errorKind: 'timeout',
+    };
+  }
+  if (isTelnyxNetworkError(e)) {
+    return {
+      ok: false,
+      status: 0,
+      text: e.message,
+      durationMs: e.durationMs,
+      errorKind: 'network',
+    };
+  }
+  if (isTelnyxApiError(e)) {
+    return {
+      ok: false,
+      status: e.status ?? 0,
+      text: (e.responseText ?? e.message).slice(0, 500),
+      durationMs: e.durationMs,
+      errorKind: 'http',
+    };
+  }
+  return null;
+}
+
+function readDataObject(parsed: unknown): Record<string, unknown> | null {
+  if (!parsed || typeof parsed !== 'object') return null;
+  const top = parsed as Record<string, unknown>;
+  const data = top.data;
+  return data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
+}
+
+export function extractCallControlIdFromTelnyxCreateCallResponse(parsed: unknown): string | null {
+  const data = readDataObject(parsed);
+  const cc = data?.call_control_id;
+  return typeof cc === 'string' && cc.trim() ? cc.trim() : null;
+}
+
+export function extractCallLegIdFromTelnyxCreateCallResponse(parsed: unknown): string | null {
+  const data = readDataObject(parsed);
+  const id = data?.call_leg_id;
+  return typeof id === 'string' && id.trim() ? id.trim() : null;
+}
+
+function extractCallSessionIdFromTelnyxCreateCallResponse(parsed: unknown): string | null {
+  const data = readDataObject(parsed);
+  const id = data?.call_session_id;
+  return typeof id === 'string' && id.trim() ? id.trim() : null;
+}
+
+export async function callControlCreateCall(
+  body: Record<string, unknown>,
+  deps?: CallControlClientDeps & { operation?: string },
+): Promise<TelnyxCreateCallResult> {
+  const apiKey = deps?.apiKey ?? getEnv().TELNYX_API_KEY;
+  const operation = deps?.operation ?? 'call_control.create_call';
+  try {
+    const result = await telnyxHttpJson({
+      method: 'POST',
+      path: 'calls',
+      body,
+      timeoutMs: getTelnyxCallsCreateTimeoutMs(),
+      operation,
+      apiKey,
+      fetchImpl: deps?.fetchImpl,
+      correlation: deps?.correlation,
+    });
+    const parsed = result.parsedJson;
+    return {
+      ok: true,
+      status: result.status,
+      text: result.rawText.slice(0, 500),
+      durationMs: result.durationMs,
+      data: parsed,
+      callControlId: extractCallControlIdFromTelnyxCreateCallResponse(parsed) ?? undefined,
+      callLegId: extractCallLegIdFromTelnyxCreateCallResponse(parsed) ?? undefined,
+      callSessionId: extractCallSessionIdFromTelnyxCreateCallResponse(parsed) ?? undefined,
+    };
+  } catch (e: unknown) {
+    const mapped = mapTelnyxHttpErrorToResult(e);
+    if (mapped) return mapped;
+    throw e;
+  }
+}
+
 export async function callControlAnswer(
   callControlId: string,
   body: Record<string, unknown>,
@@ -131,13 +232,13 @@ export async function callControlSpeak(
   return postCallControlAction(callControlId, 'speak', body, deps);
 }
 
-/** Outbound leg toward PSTN or SIP (e.g. bridge caller to OpenAI Realtime SIP). */
+/** @deprecated `/actions/dial` is not supported; use `callControlCreateCall` + bridge/transfer. */
 export async function callControlDial(
-  callControlId: string,
-  body: Record<string, unknown>,
-  deps?: CallControlClientDeps,
+  _callControlId: string,
+  _body: Record<string, unknown>,
+  _deps?: CallControlClientDeps,
 ): Promise<CallControlHttpResult> {
-  return postCallControlAction(callControlId, 'dial', body, deps);
+  throw new Error('Unsupported Telnyx action: /actions/dial is not valid; use POST /v2/calls');
 }
 
 /** @see https://developers.telnyx.com/api/call-control/gather-using-speak */

@@ -40,6 +40,7 @@ import type {
   ContactRequestsRepository,
   DemoSessionsRepository,
   HandoffSessionsRepository,
+  VoiceCallLegsRepository,
 } from '@/src/backend/ports/repositories';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -1268,6 +1269,7 @@ export function createBackendApp(deps: {
   callLogsRepository?: CallLogsRepository;
   missedCallsRepository?: MissedCallsRepository;
   handoffSessionsRepository?: HandoffSessionsRepository;
+  voiceCallLegsRepository?: VoiceCallLegsRepository;
   authUsersRepository?: AuthUsersRepository;
   billingProvider?: BillingProviderAdapter;
   basePath?: string;
@@ -1502,6 +1504,7 @@ export function createBackendApp(deps: {
         jobsRepository: deps.jobsRepository,
         missedCallsRepository: deps.missedCallsRepository,
         handoffSessionsRepository: deps.handoffSessionsRepository,
+        voiceCallLegsRepository: deps.voiceCallLegsRepository,
         testingTelnyxFetch: deps.testingTelnyxFetch,
       });
     })(),

@@ -3,12 +3,12 @@ import { SipClient } from 'livekit-server-sdk';
 import { withLogContext } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
-import { getEnv } from '@/src/backend/config/env';
 import type { HandoffSessionsRepository, JobsRepository } from '@/src/backend/ports/repositories';
 import { dialOwnerFromParentCall } from '@/src/backend/services/calls/handoff-call-control';
 import { isTelnyxCallControlDryRunEnv } from '@/src/backend/webhooks/telnyx-call-control';
 import { telnyxHttpFailureIsRetryable } from '@/src/backend/adapters/telnyx/telnyx-errors';
 import { telnyxHttpJson } from '@/src/backend/adapters/telnyx/telnyx-http';
+import { resolveTelnyxOutboundCallsConnectionId } from '@/src/backend/adapters/telnyx/telnyx-outbound-connection-id';
 import { getTelnyxCallsCreateTimeoutMs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
 import { retryAsync } from '@/src/backend/net/retry';
@@ -33,6 +33,7 @@ export class TelnyxTelephonyService implements TelephonyService {
   async requestHumanHandoffViaCallControl(params: {
     shopId: string;
     parentCallControlId: string;
+    openAiLegCallControlId?: string;
     ownerPhone: string;
     inboundDid: string;
     rbCallId: string;
@@ -78,8 +79,17 @@ export class TelnyxTelephonyService implements TelephonyService {
       };
     }
 
-    const env = getEnv();
-    const connectionId = env.TELNYX_CALL_CONTROL_CONNECTION_ID?.trim() || env.TELNYX_APP_ID;
+    const resolvedConn = resolveTelnyxOutboundCallsConnectionId(log);
+    if (!resolvedConn) {
+      log.warn({ rbCallId: params.rbCallId, shopId: params.shopId }, 'telnyx_owner_leg_connection_id_unresolved');
+      return {
+        started: false,
+        failureCode: 'telnyx_connection_id_misconfigured',
+        messageForAi:
+          "I wasn't able to complete the transfer setup. I can make sure the team gets your message.",
+      };
+    }
+    const connectionId = resolvedConn.connectionId;
     const fromDid = params.inboundDid?.trim();
     if (!fromDid || !fromDid.startsWith('+')) {
       log.warn({ rbCallId: params.rbCallId }, 'handoff_inbound_did_missing');
@@ -126,13 +136,22 @@ export class TelnyxTelephonyService implements TelephonyService {
       preferredTime: params.preferredTime ?? null,
       status: 'handoff_requested',
     });
+    if (params.openAiLegCallControlId?.trim()) {
+      await handoffRepo.update(session.id, { openaiCallId: params.openAiLegCallControlId.trim() });
+    }
 
     await handoffRepo.update(session.id, { status: 'owner_dialing' });
     incrementMetric('handoff_requested_total', { shopId: params.shopId });
 
     log.info(
-      { parentCallControlId: params.parentCallControlId, rbCallId: params.rbCallId, handoffId: session.id, urgency: params.urgency },
-      'telnyx_handoff_owner_dial_started',
+      {
+        parentCallControlId: params.parentCallControlId,
+        rbCallId: params.rbCallId,
+        handoffId: session.id,
+        urgency: params.urgency,
+        openaiLegCallControlId: params.openAiLegCallControlId ?? null,
+      },
+      'telnyx_call_control_create_owner_leg_started',
     );
 
     const result = await dialOwnerFromParentCall({
@@ -155,6 +174,16 @@ export class TelnyxTelephonyService implements TelephonyService {
       if (result.ownerDialCallControlId) {
         await handoffRepo.update(session.id, { ownerCallControlId: result.ownerDialCallControlId });
       }
+      log.info(
+        {
+          parentCallControlId: params.parentCallControlId,
+          ownerLegCallControlId: result.ownerDialCallControlId ?? null,
+          rbCallId: params.rbCallId,
+          shopId: params.shopId,
+          handoffId: session.id,
+        },
+        'telnyx_call_control_create_owner_leg_succeeded',
+      );
       incrementMetric('handoff_owner_dial_started_total', { shopId: params.shopId });
       return { started: true, handoffId: session.id, ownerDialCallControlId: result.ownerDialCallControlId };
     }
@@ -168,7 +197,7 @@ export class TelnyxTelephonyService implements TelephonyService {
         telnyx_duration_ms: result.durationMs,
         errorKind: result.errorKind,
       },
-      'telnyx_handoff_owner_dial_failed',
+      'telnyx_call_control_create_owner_leg_failed',
     );
 
     await handoffRepo.update(session.id, {

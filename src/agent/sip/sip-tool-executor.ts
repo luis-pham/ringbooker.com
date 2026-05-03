@@ -39,6 +39,7 @@ export function createSipAgentToolContext(params: {
   deps: SipToolExecutorDeps;
   parentTelnyxCallControlId?: string | null;
   rbCallId?: string;
+  openAiLegCallControlId?: string | null;
 }): AgentToolContext {
   const calendarProvider = getCalendarProvider(params.shop, {
     persistCredentials: async (encodedCredentials) => {
@@ -62,6 +63,7 @@ export function createSipAgentToolContext(params: {
     telephonyService: params.deps.telephonyService,
     parentTelnyxCallControlId: params.parentTelnyxCallControlId ?? null,
     rbCallId: params.rbCallId ?? params.requestId,
+    openAiLegCallControlId: params.openAiLegCallControlId ?? null,
   };
 }
 
