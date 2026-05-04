@@ -371,7 +371,7 @@ export function MarketingHowItWorksTemplate() {
                   <p>
                     Forward your current business number{' '}
                     <a href="/current-number/call-forwarding" style={{ color: '#5B21B6', textDecoration: 'underline' }}>
-                      (see carrier-specific setup guides for Verizon, AT&amp;T, T-Mobile, and 20+ providers)
+                      (see setup guides for 20+ carriers)
                     </a>{' '}
                     for after-hours or overflow coverage, or add a dedicated RingBooker line if that fits your rollout better.
                   </p>

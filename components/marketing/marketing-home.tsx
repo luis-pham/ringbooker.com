@@ -342,24 +342,14 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .vc-name{font-size:18px;font-weight:700;color:#fff;margin-bottom:4px}
 .vc-timer{font-size:14px;color:rgba(255,255,255,.45);margin-bottom:20px;font-variant-numeric:tabular-nums}
 
-/* AI avatar with rings */
-.vc-avatar-wrap{position:relative;margin-bottom:18px}
-.vc-ring{position:absolute;border-radius:50%;border:1px solid rgba(139,92,246,.3);top:50%;left:50%;transform:translate(-50%,-50%);animation:ring-expand 2.5s ease-out infinite}
-.vc-ring-1{width:80px;height:80px;animation-delay:0s}
-.vc-ring-2{width:108px;height:108px;animation-delay:.5s}
-.vc-ring-3{width:136px;height:136px;animation-delay:1s}
-@keyframes ring-expand{0%{opacity:.7;transform:translate(-50%,-50%) scale(.85)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
-.vc-avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#7C3AED,#A855F7);display:flex;align-items:center;justify-content:center;position:relative;z-index:2;box-shadow:0 0 0 3px rgba(139,92,246,.4)}
-.vc-avatar svg{width:30px;height:30px;fill:#fff}
-
 /* waveform */
 .vc-wave{display:flex;align-items:center;justify-content:center;gap:2.5px;height:28px;margin-bottom:12px}
-.vc-wave span{width:3px;background:rgba(167,139,250,.7);border-radius:2px;animation:vc-wv .8s ease-in-out infinite}
+.vc-wave span{width:3px;background:#10B981;border-radius:2px;animation:vc-wv .8s ease-in-out infinite}
 .vc-wave span:nth-child(1){height:8px}.vc-wave span:nth-child(2){height:18px;animation-delay:.07s}.vc-wave span:nth-child(3){height:24px;animation-delay:.14s}.vc-wave span:nth-child(4){height:14px;animation-delay:.21s}.vc-wave span:nth-child(5){height:20px;animation-delay:.28s}.vc-wave span:nth-child(6){height:10px;animation-delay:.35s}.vc-wave span:nth-child(7){height:16px;animation-delay:.42s}.vc-wave span:nth-child(8){height:24px;animation-delay:.49s}.vc-wave span:nth-child(9){height:12px;animation-delay:.56s}
 @keyframes vc-wv{0%,100%{transform:scaleY(.45);opacity:.5}50%{transform:scaleY(1);opacity:1}}
 
 /* call controls */
-.vc-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:0}
+.vc-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:auto}
 .vc-ctrl{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:default}
 .vc-ctrl-mute{background:rgba(255,255,255,.12)}
 .vc-ctrl-mute svg{width:18px;height:18px;fill:rgba(255,255,255,.7)}
@@ -609,7 +599,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .pt-btn{padding:10px 22px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
 .pt-btn.on{background:var(--purple);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
 .pt-btn:not(.on){background:transparent;color:var(--text-desc)}
-.save-tag{background:linear-gradient(180deg,#f1f5f9,#e2e8f0);color:#334155;font-size:11px;font-weight:600;padding:4px 10px;border-radius:var(--r-pill);border:1px solid #cbd5e1}
+.save-tag{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ecfdf5,#d1fae5);color:#047857;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 12px;border-radius:var(--r-pill);border:1px solid rgba(16,185,129,.4);box-shadow:0 2px 10px rgba(16,185,129,.14)}
 .price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
 .plan{background:#fff;border-radius:var(--r-lg);padding:24px 20px;border:1px solid var(--border);position:relative;display:flex;flex-direction:column;height:100%;transition:transform .2s,box-shadow .2s,border-color .2s;box-shadow:var(--home-shadow-soft)}
 .plan:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.55)}
@@ -937,7 +927,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .cta-phone-wrap{display:none}
   footer,.hero,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.mfaq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
   .industry-tag{backdrop-filter:none}
-  .hero-blob,.vc-glow,.vc-ring,.user-image-corners::before,.user-image-corners::after{display:none}
+  .hero-blob,.vc-glow,.user-image-corners::before,.user-image-corners::after{display:none}
   .pulse-dot,.wv span,.vc-wave span,.cta-vc-wave span{animation:none}
   .hero-visual{height:480px}
   .phone-frame{width:230px;height:460px}
@@ -1300,15 +1290,6 @@ export function MarketingHomeTemplate() {
                       <div className="vc-label">Incoming Call</div>
                       <div className="vc-name">Luxe Hair Studio</div>
                       <div className="vc-timer" id="vc-timer">00:24</div>
-                      {/* AI Avatar with pulse rings */}
-                      <div className="vc-avatar-wrap">
-                        <div className="vc-ring vc-ring-1" />
-                        <div className="vc-ring vc-ring-2" />
-                        <div className="vc-ring vc-ring-3" />
-                        <div className="vc-avatar">
-                          <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" /></svg>
-                        </div>
-                      </div>
                       {/* Waveform */}
                       <div className="vc-wave">
                         <span /><span /><span /><span /><span /><span /><span /><span /><span />
