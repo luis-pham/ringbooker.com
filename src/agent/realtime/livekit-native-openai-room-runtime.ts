@@ -5,6 +5,7 @@ import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handle
 import {
   compactRealtimeSystemInstruction,
   getOpenAiVietnameseBookingTranscriptionPrompt,
+  normalizeOpenAiRealtimeVoice,
   openAiRealtimeVoiceForDemoVerticalSlug,
   renderFallbackGreeting,
   renderRealtimeGreetingInstructions,
@@ -52,10 +53,9 @@ function resolveOpenAIVoice(input?: RealtimeDispatchInput): string {
     input?.realtime.metadata as { dispatchPayload?: { demo?: { vertical?: string } } } | undefined
   )?.dispatchPayload?.demo?.vertical;
 
-  const mapped = openAiRealtimeVoiceForDemoVerticalSlug(demoVertical ?? undefined);
-  if (mapped) return mapped;
+  if (demoVertical) return openAiRealtimeVoiceForDemoVerticalSlug(demoVertical);
 
-  return process.env.AGENT_OPENAI_VOICE?.trim() || 'marin';
+  return normalizeOpenAiRealtimeVoice(process.env.AGENT_OPENAI_VOICE, 'marin');
 }
 
 function resolveOpenAIAudioSpeed(): number | undefined {

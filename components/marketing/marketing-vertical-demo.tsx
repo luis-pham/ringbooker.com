@@ -46,6 +46,9 @@ const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '
 
 const VERTICAL_DEMO_PHONE_E164 = '+16265013960';
 const VERTICAL_DEMO_PHONE_TEL = 'tel:+16265013960';
+const DEMO_STATUS_POLL_INTERVAL_MS = 2200;
+const DEMO_STATUS_MAX_POLL_ATTEMPTS = 30;
+const DEMO_STATUS_TIMEOUT_MESSAGE = 'The web demo is taking longer than expected. Please try again, or call the demo number instead.';
 
 const VERTICAL_DEMO_FAQ_ITEMS: MarketingFaqItem[] = [
   {
@@ -367,7 +370,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
             ? 3
             : 0;
 
-  useEffect(() => () => { if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current); }, []);
+  useEffect(() => () => clearPollTimer(), []);
 
   /** When leaving the form for the live demo, remove Turnstile so the widget can mount again on return. */
   useEffect(() => {
@@ -455,12 +458,33 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     return errs;
   }
 
-  async function pollStatus(p: { requestId: string; previewToken: string }) {
+  function clearPollTimer() {
+    if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current);
+    pollTimerRef.current = null;
+  }
+
+  async function pollStatus(p: { requestId: string; previewToken: string; attempt?: number }) {
+    const attempt = p.attempt ?? 1;
+    if (attempt > DEMO_STATUS_MAX_POLL_ATTEMPTS) {
+      clearPollTimer();
+      setStage('failed');
+      setStatusText(DEMO_STATUS_TIMEOUT_MESSAGE);
+      setRequestError(DEMO_STATUS_TIMEOUT_MESSAGE);
+      if (roomRef.current) {
+        roomRef.current.disconnect();
+        roomRef.current = null;
+      }
+      return;
+    }
+
     try {
       const res = await fetch(`/api/backend/public/demo/status/${encodeURIComponent(p.requestId)}?token=${encodeURIComponent(p.previewToken)}`);
       const body = (await res.json()) as DemoStatusResponse;
       if (!body.ok || !body.stage) {
+        clearPollTimer();
         setRequestError(apiUserVisibleMessage(body, 'Unable to check demo status.'));
+        setStage('failed');
+        setStatusText('Unable to check demo status. Please try again.');
         return;
       }
       setStage(body.stage);
@@ -475,8 +499,12 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
         setStatusText('The demo session could not complete. You can try again or call the demo line.');
         return;
       }
-      pollTimerRef.current = window.setTimeout(() => void pollStatus(p), 2200);
+      const nextAttempt = body.stage === 'live' ? 1 : attempt + 1;
+      pollTimerRef.current = window.setTimeout(() => void pollStatus({ ...p, attempt: nextAttempt }), DEMO_STATUS_POLL_INTERVAL_MS);
     } catch {
+      clearPollTimer();
+      setStage('failed');
+      setStatusText('Network error while checking demo status.');
       setRequestError('Network error while checking demo status.');
     }
   }
@@ -518,13 +546,21 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     setRequestError(null);
     if (errs.length > 0) return;
 
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setErrors(['Microphone access is required for the browser demo. Please allow audio and try again.']);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setErrors([
+        'Your browser does not support microphone access for the web demo. Please try Chrome or Safari, or call the demo number instead.',
+      ]);
       return;
     }
 
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setErrors(['Microphone access is needed to start the web demo. Please allow microphone access and try again.']);
+      return;
+    }
+
+    clearPollTimer();
     setStage('queued');
     setStatusText('Starting browser demo…');
     const payload = {
@@ -585,8 +621,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   }
 
   function resetDemo() {
-    if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current);
-    pollTimerRef.current = null;
+    clearPollTimer();
     if (roomRef.current) {
       roomRef.current.disconnect();
       roomRef.current = null;
@@ -833,15 +868,15 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                 <div className="vd-states">
                   <div className={`vd-state ${stage === 'live' ? 'ai-answer' : ''}`}>
                     <span className="vd-state-dot" />
-                    <span className="vd-state-text">AI listening</span>
+                    <span className="vd-state-text">Live web demo</span>
                   </div>
                   <div className={`vd-state ${stage === 'live' ? 'vd-state-user-live' : ''}`}>
                     <span className="vd-state-dot" />
-                    <span className="vd-state-text">User speaking</span>
+                    <span className="vd-state-text">Speak naturally</span>
                   </div>
                   <div className={`vd-state ${stage === 'live' ? 'ai-answer' : ''}`}>
                     <span className="vd-state-dot" />
-                    <span className="vd-state-text">AI responding</span>
+                    <span className="vd-state-text">AI receptionist is connected</span>
                   </div>
                   <div className="vd-state">
                     <span className="vd-state-dot" />

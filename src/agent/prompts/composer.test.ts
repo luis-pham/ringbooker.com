@@ -1,7 +1,12 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { composeVoicePrompt, inferVerticalFromBusinessConfig } from './index';
+import {
+  composeVoicePrompt,
+  inferVerticalFromBusinessConfig,
+  normalizeOpenAiRealtimeVoice,
+  openAiRealtimeVoiceForDemoVerticalSlug,
+} from './index';
 
 describe('voice prompt composer', () => {
   it('keeps demo behavior isolated from production prompts', () => {
@@ -59,5 +64,15 @@ describe('voice prompt composer', () => {
       }),
       'hair-salon',
     );
+  });
+
+  it('maps OpenAI Realtime demo voices by vertical with marin fallback', () => {
+    assert.equal(openAiRealtimeVoiceForDemoVerticalSlug('nail-salon'), 'coral');
+    assert.equal(openAiRealtimeVoiceForDemoVerticalSlug('hair-salon'), 'marin');
+    assert.equal(openAiRealtimeVoiceForDemoVerticalSlug('day-spa'), 'sage');
+    assert.equal(openAiRealtimeVoiceForDemoVerticalSlug('med-spa'), 'cedar');
+    assert.equal(openAiRealtimeVoiceForDemoVerticalSlug('beauty-clinic'), 'cedar');
+    assert.equal(openAiRealtimeVoiceForDemoVerticalSlug('unknown-vertical'), 'marin');
+    assert.equal(normalizeOpenAiRealtimeVoice('not-a-voice'), 'marin');
   });
 });

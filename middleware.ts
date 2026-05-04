@@ -5,7 +5,7 @@ const USER_SESSION_COOKIE = 'rb_user_session';
 const ADMIN_SESSION_COOKIE = 'rb_admin_session';
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self'",
@@ -18,7 +18,9 @@ const CONTENT_SECURITY_POLICY = [
     'wss://*.openai.com',
     'https://api.resend.com',
     'https://api.paddle.com',
+    'https://challenges.cloudflare.com',
   ].join(' '),
+  "frame-src 'self' https://challenges.cloudflare.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -146,11 +148,12 @@ async function maybeBlogPostRedirect301(req: NextRequest): Promise<NextResponse 
   }
 }
 
-function withSecurityHeaders(response: NextResponse): NextResponse {
+function withSecurityHeaders(response: NextResponse, pathname = ''): NextResponse {
+  const microphonePolicy = pathname.startsWith('/demo') ? 'microphone=(self)' : 'microphone=()';
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('Permissions-Policy', `camera=(), ${microphonePolicy}, geolocation=()`);
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
   response.headers.set('Cross-Origin-Resource-Policy', 'same-site');
   response.headers.set('Content-Security-Policy', CONTENT_SECURITY_POLICY);
@@ -167,7 +170,7 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
   const blog301 = await maybeBlogPostRedirect301(req);
-  if (blog301) return withSecurityHeaders(blog301);
+  if (blog301) return withSecurityHeaders(blog301, pathname);
 
   const isUserRoute = pathname.startsWith('/user');
   const isAdminRoute = pathname.startsWith('/admin');
@@ -178,7 +181,7 @@ export async function middleware(req: NextRequest) {
   const isAdminPasswordRecovery = pathname === '/admin/forgot-password' || pathname === '/admin/reset-password';
 
   if (!isUserRoute && !isAdminRoute) {
-    return withSecurityHeaders(NextResponse.next());
+    return withSecurityHeaders(NextResponse.next(), pathname);
   }
 
   const userToken = req.cookies.get(USER_SESSION_COOKIE)?.value ?? null;
@@ -189,28 +192,28 @@ export async function middleware(req: NextRequest) {
   if (isUserRoute) {
     if (isUserLogin || isUserSignup || isUserPasswordRecovery) {
       if (userSessionValid) {
-        return withSecurityHeaders(NextResponse.redirect(new URL('/user', req.url)));
+        return withSecurityHeaders(NextResponse.redirect(new URL('/user', req.url)), pathname);
       }
-      return withSecurityHeaders(NextResponse.next());
+      return withSecurityHeaders(NextResponse.next(), pathname);
     }
     if (!userSessionValid) {
-      return withSecurityHeaders(NextResponse.redirect(new URL('/user/login', req.url)));
+      return withSecurityHeaders(NextResponse.redirect(new URL('/user/login', req.url)), pathname);
     }
   }
 
   if (isAdminRoute) {
     if (isAdminLogin || isAdminPasswordRecovery) {
       if (adminSessionValid) {
-        return withSecurityHeaders(NextResponse.redirect(new URL('/admin', req.url)));
+        return withSecurityHeaders(NextResponse.redirect(new URL('/admin', req.url)), pathname);
       }
-      return withSecurityHeaders(NextResponse.next());
+      return withSecurityHeaders(NextResponse.next(), pathname);
     }
     if (!adminSessionValid) {
-      return withSecurityHeaders(NextResponse.redirect(new URL('/admin/login', req.url)));
+      return withSecurityHeaders(NextResponse.redirect(new URL('/admin/login', req.url)), pathname);
     }
   }
 
-  return withSecurityHeaders(NextResponse.next());
+  return withSecurityHeaders(NextResponse.next(), pathname);
 }
 
 export const config = {
