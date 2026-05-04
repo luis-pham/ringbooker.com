@@ -49,6 +49,7 @@ const VERTICAL_DEMO_PHONE_TEL = 'tel:+16265013960';
 const DEMO_STATUS_POLL_INTERVAL_MS = 2200;
 const DEMO_STATUS_MAX_POLL_ATTEMPTS = 30;
 const DEMO_STATUS_TIMEOUT_MESSAGE = 'The web demo is taking longer than expected. Please try again, or call the demo number instead.';
+const LIVEKIT_CONNECT_ERROR_MESSAGE = 'Unable to connect to the voice room. Please check your network and try again, or call the demo number instead.';
 
 const VERTICAL_DEMO_FAQ_ITEMS: MarketingFaqItem[] = [
   {
@@ -631,19 +632,29 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
         room.on(RoomEvent.Disconnected, () => {
           roomRef.current = null;
         });
-        await room.connect(liveKitUrl, liveKitToken);
-        await room.localParticipant.setMicrophoneEnabled(true);
+        try {
+          await room.connect(liveKitUrl, liveKitToken);
+          await room.localParticipant.setMicrophoneEnabled(true);
+        } catch {
+          room.disconnect();
+          roomRef.current = null;
+          throw new Error('livekit_connect_failed');
+        }
       }
       setStatusText('Joining demo room…');
       await pollStatus({ requestId: body.requestId, previewToken: body.previewToken });
-    } catch {
+    } catch (error) {
       resetTurnstile();
       if (roomRef.current) {
         roomRef.current.disconnect();
         roomRef.current = null;
       }
       setStage('failed');
-      setRequestError('Network error. Please try again.');
+      const message = error instanceof Error && error.message === 'livekit_connect_failed'
+        ? LIVEKIT_CONNECT_ERROR_MESSAGE
+        : 'Network error. Please try again.';
+      setStatusText(message);
+      setRequestError(message);
     }
   }
 
