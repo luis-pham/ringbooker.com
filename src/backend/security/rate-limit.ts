@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 
-type RateLimitPolicy = {
+export type RateLimitPolicy = {
   name: string;
   limit: number;
   windowMs: number;
@@ -21,6 +21,11 @@ type MemoryState = {
 };
 
 const memoryStore = new Map<string, MemoryState>();
+
+/** Clears in-memory counters (used by integration tests; no-op for Redis-backed limits). */
+export function __resetRateLimitMemoryStoreForTests(): void {
+  memoryStore.clear();
+}
 let redisClient: Redis | null | undefined;
 
 function getRedisClient(): Redis | null {
@@ -301,4 +306,6 @@ export const RATE_LIMIT_POLICIES = {
   openai_sip_per_caller: { name: 'openai_sip_per_caller', limit: 12, windowMs: 60 * 60_000 },
   /** Per pilot DID */
   openai_sip_per_did: { name: 'openai_sip_per_did', limit: 60, windowMs: 60_000 },
+  /** Client beacon to release concurrent direct-demo slot (per IP). */
+  public_demo_realtime_release: { name: 'public_demo_realtime_release', limit: 60, windowMs: 60_000 },
 } as const;

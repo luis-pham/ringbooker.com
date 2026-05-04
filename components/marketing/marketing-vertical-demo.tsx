@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Script from 'next/script';
+import { flushSync } from 'react-dom';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Room, RoomEvent } from 'livekit-client';
 
@@ -11,6 +12,7 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 import { DEMO_VERTICALS, type DemoServiceCategory, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
+import { DIRECT_REALTIME_DEMO_DURATION_MESSAGE, userMessageForDirectDemoRealtimeJson } from '@/lib/marketing-vertical-demo-errors';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
@@ -34,6 +36,18 @@ type DemoApiResponse = {
   error?: string;
   message?: string;
 };
+type DirectRealtimeApiResponse = {
+  ok: boolean;
+  requestId?: string;
+  clientSecret?: string;
+  expiresAt?: number;
+  model?: string;
+  voice?: string;
+  error?: string;
+  code?: string;
+  message?: string;
+  retryAfterSeconds?: number;
+};
 type DemoStatusResponse = {
   ok: boolean;
   stage?: 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
@@ -50,6 +64,10 @@ const DEMO_STATUS_POLL_INTERVAL_MS = 2200;
 const DEMO_STATUS_MAX_POLL_ATTEMPTS = 30;
 const DEMO_STATUS_TIMEOUT_MESSAGE = 'The web demo is taking longer than expected. Please try again, or call the demo number instead.';
 const LIVEKIT_CONNECT_ERROR_MESSAGE = 'Unable to connect to the voice room. Please check your network and try again, or call the demo number instead.';
+const DIRECT_OPENAI_CONNECT_TIMEOUT_MS = 45_000;
+const DIRECT_OPENAI_MAX_SESSION_MS = 5 * 60 * 1000;
+const OPENAI_REALTIME_WEBRTC_URL = 'https://api.openai.com/v1/realtime/calls';
+const demoWebCallMode = process.env.NEXT_PUBLIC_DEMO_WEB_CALL_MODE === 'direct_openai' ? 'direct_openai' : 'livekit';
 
 const VERTICAL_DEMO_FAQ_ITEMS: MarketingFaqItem[] = [
   {
@@ -198,6 +216,7 @@ const styles: string[] = [
   .vd-phone-demo-tel{display:none}
   .vd-phone-demo-note{font-size:11px;color:#9CA3AF;line-height:1.45;margin:10px 0 0}
   @media(max-width:799px){
+    .vd-badge{display:none}
     .vd-phone-demo-tel{display:inline-flex;align-items:center;justify-content:center;width:100%;border-radius:999px;border:2px solid color-mix(in srgb,var(--va) 45%,#E5E7EB);background:#fff;color:var(--va);padding:12px;font-size:14px;font-weight:900;text-decoration:none;margin-top:4px}
   }
   .vd-sip-panel{margin-top:18px;padding:16px;border-radius:18px;border:1px dashed color-mix(in srgb,var(--va) 35%,#E5E7EB);background:color-mix(in srgb,var(--va) 4%,#fff)}
@@ -372,6 +391,16 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   const turnstileRenderedRef = useRef(false);
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const directPeerRef = useRef<RTCPeerConnection | null>(null);
+  const directStreamRef = useRef<MediaStream | null>(null);
+  const directDataChannelRef = useRef<RTCDataChannel | null>(null);
+  const directAudioRef = useRef<HTMLAudioElement | null>(null);
+  const directConnectTimerRef = useRef<number | null>(null);
+  const directMaxDurationTimerRef = useRef<number | null>(null);
+  const directRealtimeRequestIdRef = useRef<string | null>(null);
+  const directDurationTimerStartedRef = useRef(false);
+  const directPeerFailureMutedRef = useRef(false);
+  const demoStartLockRef = useRef(false);
 
   const [captchaHint, setCaptchaHint] = useState<string | null>(null);
   const [captchaEpoch, setCaptchaEpoch] = useState(0);
@@ -396,7 +425,10 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
             ? 3
             : 0;
 
-  useEffect(() => () => clearPollTimer(), []);
+  useEffect(() => () => {
+    clearPollTimer();
+    cleanupDirectRealtime();
+  }, []);
 
   /** When leaving the form for the live demo, remove Turnstile so the widget can mount again on return. */
   useEffect(() => {
@@ -566,36 +598,33 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     }
   }
 
-  async function startWebDemo() {
-    const errs = validate();
-    setErrors(errs);
-    setRequestError(null);
-    if (errs.length > 0) return;
-
+  async function requestDemoMicrophone({ keepAlive }: { keepAlive: boolean }): Promise<MediaStream | null> {
     if (!window.isSecureContext) {
       setErrors([microphoneErrorMessage(null)]);
-      return;
+      return null;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
       setErrors([
         'Your browser does not support microphone access for the web demo. Please try Chrome or Safari, or call the demo number instead.',
       ]);
-      return;
+      return null;
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((track) => track.stop());
+      if (!keepAlive) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+      return stream;
     } catch (error) {
       setErrors([microphoneErrorMessage(error)]);
-      return;
+      return null;
     }
+  }
 
-    clearPollTimer();
-    setStage('queued');
-    setStatusText('Starting browser demo…');
-    const payload = {
+  function buildDemoPayload() {
+    return {
       shopName: business.businessName,
       businessType: config.businessType,
       notes: business.notes || undefined,
@@ -615,8 +644,237 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       demoMode: 'quick',
       demoSource: 'vertical_demo_page',
     };
+  }
+
+  function clearDirectConnectTimer() {
+    if (directConnectTimerRef.current) window.clearTimeout(directConnectTimerRef.current);
+    directConnectTimerRef.current = null;
+  }
+
+  function clearDirectMaxDurationTimer() {
+    if (directMaxDurationTimerRef.current != null) {
+      window.clearTimeout(directMaxDurationTimerRef.current);
+      directMaxDurationTimerRef.current = null;
+    }
+  }
+
+  function releaseDirectRealtimeSlotFireAndForget(requestId: string) {
+    void fetch('/api/backend/public/demo/realtime-session/release', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(typeof window !== 'undefined' && window.location?.origin
+          ? { Origin: window.location.origin }
+          : {}),
+      },
+      body: JSON.stringify({ requestId }),
+    }).catch(() => {
+      /* ignore */
+    });
+  }
+
+  function beginDirectDemoMaxDurationTimer() {
+    if (directDurationTimerStartedRef.current) return;
+    directDurationTimerStartedRef.current = true;
+    clearDirectMaxDurationTimer();
+    directMaxDurationTimerRef.current = window.setTimeout(() => {
+      directPeerFailureMutedRef.current = true;
+      cleanupDirectRealtime();
+      resetTurnstile();
+      setStage('failed');
+      setStatusText(DIRECT_REALTIME_DEMO_DURATION_MESSAGE);
+      setRequestError(DIRECT_REALTIME_DEMO_DURATION_MESSAGE);
+    }, DIRECT_OPENAI_MAX_SESSION_MS);
+  }
+
+  function cleanupDirectRealtime() {
+    clearDirectMaxDurationTimer();
+    clearDirectConnectTimer();
+    const releaseRequestId = directRealtimeRequestIdRef.current;
+    directRealtimeRequestIdRef.current = null;
+    directDurationTimerStartedRef.current = false;
+    if (releaseRequestId) {
+      releaseDirectRealtimeSlotFireAndForget(releaseRequestId);
+    }
+    directDataChannelRef.current?.close();
+    directDataChannelRef.current = null;
+    if (directPeerRef.current) {
+      directPeerRef.current.ontrack = null;
+      directPeerRef.current.onconnectionstatechange = null;
+      directPeerRef.current.close();
+    }
+    directPeerRef.current = null;
+    directStreamRef.current?.getTracks().forEach((track) => track.stop());
+    directStreamRef.current = null;
+    if (directAudioRef.current) {
+      directAudioRef.current.pause();
+      directAudioRef.current.srcObject = null;
+      directAudioRef.current = null;
+    }
+  }
+
+  async function startDirectOpenAiDemo() {
+    cleanupDirectRealtime();
+    directPeerFailureMutedRef.current = false;
+    clearPollTimer();
+    setStatusText('Requesting microphone…');
+
+    const stream = await requestDemoMicrophone({ keepAlive: true });
+    if (!stream) {
+      setStage('idle');
+      setStatusText('');
+      return;
+    }
+    directStreamRef.current = stream;
+
+    setStatusText('Creating demo session…');
+    const sessionResponse = await fetch('/api/backend/public/demo/realtime-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(typeof window !== 'undefined' && window.location?.origin
+          ? { Origin: window.location.origin }
+          : {}),
+      },
+      body: JSON.stringify(buildDemoPayload()),
+    });
+    const sessionBody = (await sessionResponse.json().catch(() => ({}))) as DirectRealtimeApiResponse;
+
+    if (!sessionResponse.ok || !sessionBody.ok || !sessionBody.clientSecret) {
+      const msg = userMessageForDirectDemoRealtimeJson(sessionResponse.status, sessionBody as Record<string, unknown>);
+      cleanupDirectRealtime();
+      resetTurnstile();
+      setRequestError(msg);
+      setStage('idle');
+      setStatusText('');
+      return;
+    }
+
+    directRealtimeRequestIdRef.current = sessionBody.requestId ?? null;
+
     try {
-      const res = await fetch('/api/backend/public/demo/web-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      setStatusText('Connecting to the voice demo…');
+      const pc = new RTCPeerConnection();
+      directPeerRef.current = pc;
+      let connected = false;
+
+      directConnectTimerRef.current = window.setTimeout(() => {
+        if (connected) return;
+        directPeerFailureMutedRef.current = true;
+        cleanupDirectRealtime();
+        resetTurnstile();
+        setStage('failed');
+        setStatusText(DEMO_STATUS_TIMEOUT_MESSAGE);
+        setRequestError(DEMO_STATUS_TIMEOUT_MESSAGE);
+      }, DIRECT_OPENAI_CONNECT_TIMEOUT_MS);
+
+      const audio = new Audio();
+      audio.autoplay = true;
+      directAudioRef.current = audio;
+      pc.ontrack = (event) => {
+        audio.srcObject = event.streams[0] ?? null;
+        void audio.play().catch(() => {
+          /* Browser may require the user gesture already used to start the demo. */
+        });
+        connected = true;
+        clearDirectConnectTimer();
+        beginDirectDemoMaxDurationTimer();
+        setStage('live');
+        setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+      };
+      pc.onconnectionstatechange = () => {
+        if (pc.connectionState === 'connected') {
+          connected = true;
+          clearDirectConnectTimer();
+          beginDirectDemoMaxDurationTimer();
+          setStage('live');
+          setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+        }
+        if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+          if (directPeerFailureMutedRef.current) return;
+          directPeerFailureMutedRef.current = true;
+          clearDirectConnectTimer();
+          cleanupDirectRealtime();
+          resetTurnstile();
+          setStage('failed');
+          setStatusText('The web demo could not connect. Please check your connection and try again.');
+          setRequestError('The web demo could not connect. Please check your connection and try again.');
+        }
+      };
+
+      stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
+      const dc = pc.createDataChannel('oai-events');
+      directDataChannelRef.current = dc;
+      dc.addEventListener('open', () => {
+        dc.send(JSON.stringify({
+          type: 'response.create',
+          response: {
+            modalities: ['audio', 'text'],
+            instructions: 'Start with the configured welcome message, then wait for the caller.',
+          },
+        }));
+      });
+      dc.addEventListener('message', (event) => {
+        try {
+          const data = JSON.parse(String(event.data)) as { type?: string };
+          if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
+          if (data.type === 'response.done') setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+          if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
+        } catch {
+          /* Ignore non-JSON data channel frames. */
+        }
+      });
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      const sdpResponse = await fetch(OPENAI_REALTIME_WEBRTC_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${sessionBody.clientSecret}`,
+          'Content-Type': 'application/sdp',
+        },
+        body: offer.sdp,
+      });
+      if (!sdpResponse.ok) {
+        throw new Error('webrtc_connect_failed');
+      }
+      await pc.setRemoteDescription({
+        type: 'answer',
+        sdp: await sdpResponse.text(),
+      });
+    } catch {
+      directPeerFailureMutedRef.current = true;
+      cleanupDirectRealtime();
+      resetTurnstile();
+      setStage('failed');
+      setStatusText('The web demo could not connect. Please check your connection and try again.');
+      setRequestError('The web demo could not connect. Please check your connection and try again.');
+    }
+  }
+
+  async function startLiveKitWebDemo() {
+    setStatusText('Requesting microphone…');
+    const stream = await requestDemoMicrophone({ keepAlive: false });
+    if (!stream) {
+      setStage('idle');
+      setStatusText('');
+      return;
+    }
+
+    clearPollTimer();
+    setStatusText('Starting browser demo…');
+    const payload = buildDemoPayload();
+    try {
+      const res = await fetch('/api/backend/public/demo/web-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(typeof window !== 'undefined' && window.location?.origin
+            ? { Origin: window.location.origin }
+            : {}),
+        },
+        body: JSON.stringify(payload),
+      });
       const body = (await res.json()) as DemoApiResponse;
       if (!body.ok || !body.requestId || !body.previewToken) {
         resetTurnstile();
@@ -658,12 +916,44 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     }
   }
 
+  async function startWebDemo() {
+    const errs = validate();
+    setErrors(errs);
+    setRequestError(null);
+    if (errs.length > 0) return;
+    if (demoStartLockRef.current) return;
+    demoStartLockRef.current = true;
+    flushSync(() => {
+      setStage('queued');
+      setStatusText(
+        demoWebCallMode === 'direct_openai' ? 'Requesting microphone…' : 'Starting browser demo…',
+      );
+    });
+    try {
+      if (demoWebCallMode === 'direct_openai') await startDirectOpenAiDemo();
+      else await startLiveKitWebDemo();
+    } finally {
+      demoStartLockRef.current = false;
+    }
+  }
+
   async function copyPrompt(prompt: string) {
     try { await navigator.clipboard.writeText(prompt); setCopied(prompt); window.setTimeout(() => setCopied(null), 1600); } catch { /* ignore */ }
   }
 
+  function endDirectDemo() {
+    directPeerFailureMutedRef.current = true;
+    cleanupDirectRealtime();
+    resetTurnstile();
+    setStage('completed');
+    setRequestError(null);
+    setStatusText('Session ended. Here\'s what a follow-up SMS could look like.');
+  }
+
   function resetDemo() {
+    directPeerFailureMutedRef.current = false;
     clearPollTimer();
+    cleanupDirectRealtime();
     if (roomRef.current) {
       roomRef.current.disconnect();
       roomRef.current = null;
@@ -859,6 +1149,11 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                         </button>
                       ) : null}
                       {copied ? <div className="vd-copied">Copied!</div> : null}
+                      {demoWebCallMode === 'direct_openai' ? (
+                        <div className="vd-complete-cta">
+                          <button type="button" className="vd-btn-ghost" onClick={endDirectDemo}>End demo</button>
+                        </div>
+                      ) : null}
                     </>
                   ) : null}
 

@@ -8,7 +8,18 @@ import type { RealtimeAgentRuntime } from '@/src/agent/realtime/types';
 import { handleRealtimeDispatch, parseRealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
 import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
 import { createInboundAgentSession } from '@/src/agent/runtime/session';
+import { openAiRealtimeVoiceForDemoVerticalSlug } from '@/src/agent/prompts';
 import { buildPublicDemoSystemPrompt } from '@/src/backend/demo/public-demo-system-prompt';
+import {
+  clearDirectDemoActiveSlot,
+  consumePublicDemoRealtimeLimits,
+  directDemoActiveTtlMs,
+  enforcePublicDemoRealtimeOrigin,
+  jsonPublicDemoRealtimeBlocked,
+  runDirectDemoSerialized,
+  tryOccupyDirectDemoActiveSlot,
+  releaseDirectDemoActiveSlot,
+} from '@/src/backend/demo/public-demo-realtime-guard';
 import { effectiveDemoClientCountry, resolveDemoClientCountryForPersistence } from '@/src/backend/lib/demo-client-country';
 import {
   CAPABILITY_MIN_PLAN,
@@ -190,6 +201,69 @@ const publicDemoWebSessionSchema = publicDemoRequestSchema.omit({ phoneNumber: t
 
 /** E.164 placeholder stored on demo sessions for web-only demos — outbound dial to visitor is never performed. */
 const PUBLIC_DEMO_WEB_SESSION_CALLBACK_PHONE_E164 = '+15555550100';
+
+type OpenAiRealtimeClientSecretResponse = {
+  value?: string;
+  expires_at?: number;
+  client_secret?: {
+    value?: string;
+    expires_at?: number;
+  };
+};
+
+function directOpenAiRealtimeModel() {
+  return process.env.OPENAI_REALTIME_MODEL?.trim() || 'gpt-realtime';
+}
+
+async function createOpenAiRealtimeClientSecret(params: {
+  model: string;
+  voice: string;
+  instructions: string;
+}): Promise<{ value: string; expiresAt?: number }> {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error('openai_config_missing');
+  }
+
+  const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      ...(process.env.OPENAI_ORGANIZATION ? { 'OpenAI-Organization': process.env.OPENAI_ORGANIZATION } : {}),
+      ...(process.env.OPENAI_PROJECT ? { 'OpenAI-Project': process.env.OPENAI_PROJECT } : {}),
+    },
+    body: JSON.stringify({
+      session: {
+        type: 'realtime',
+        model: params.model,
+        instructions: params.instructions,
+        audio: {
+          output: {
+            voice: params.voice,
+          },
+        },
+      },
+    }),
+  }).catch(() => null);
+
+  if (!response) {
+    throw new Error('realtime_session_failed');
+  }
+  if (!response.ok) {
+    throw new Error(response.status === 401 || response.status === 403 ? 'openai_config_missing' : 'realtime_session_failed');
+  }
+
+  const body = (await response.json().catch(() => null)) as OpenAiRealtimeClientSecretResponse | null;
+  const value = body?.value ?? body?.client_secret?.value;
+  if (!value) {
+    throw new Error('realtime_session_failed');
+  }
+  return {
+    value,
+    expiresAt: body?.expires_at ?? body?.client_secret?.expires_at,
+  };
+}
 
 const publicContactRequestSchema = z.object({
   fullName: z.string().min(1).max(120),
@@ -1881,6 +1955,277 @@ Submitted at: ${new Date().toISOString()}`,
       },
       410,
     );
+  });
+
+  app.post(path('/public/demo/realtime-session'), async (c) => {
+    const body = await c.req.json().catch(() => null);
+    const normalizedBody =
+      body && typeof body === 'object' && !Array.isArray(body)
+        ? {
+            ...body,
+            shopName:
+              typeof (body as { shopName?: unknown }).shopName === 'string'
+                ? (body as { shopName: string }).shopName
+                : (body as { businessName?: unknown }).businessName,
+          }
+        : body;
+    const parsed = publicDemoWebSessionSchema.safeParse(normalizedBody);
+    if (!parsed.success) {
+      return c.json(
+        {
+          ok: false,
+          code: 'invalid_demo_payload',
+          message: 'Please check your demo details and try again.',
+          retryAfterSeconds: 0,
+        },
+        400,
+      );
+    }
+
+    if (parsed.data.website && parsed.data.website.trim().length > 0) {
+      securityAudit({
+        action: 'public_demo_honeypot_triggered',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+      });
+      return c.json(
+        {
+          ok: false,
+          code: 'invalid_demo_payload',
+          message: 'Please check your demo details and try again.',
+          retryAfterSeconds: 0,
+        },
+        400,
+      );
+    }
+
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    const originDenied = enforcePublicDemoRealtimeOrigin(c);
+    if (originDenied) return originDenied;
+
+    const captcha = await verifyTurnstileToken({
+      token: parsed.data.captchaToken,
+      ip,
+    });
+    if (!captcha.ok) {
+      securityAudit({
+        action: 'public_demo_captcha_failed',
+        actorType: 'public',
+        ip,
+        path: c.req.path,
+        details: { reason: captcha.reason },
+      });
+      return c.json(
+        {
+          ok: false,
+          code: 'captcha_failed',
+          error: 'captcha_failed',
+          message: 'Captcha verification failed. Please try again.',
+          retryAfterSeconds: 0,
+        },
+        403,
+      );
+    }
+
+    const demoVertical = parsed.data.demoVertical ?? parsed.data.businessType.toLowerCase().replace(/\s+/g, '-');
+
+    return runDirectDemoSerialized(ip, async () => {
+      const limits = await consumePublicDemoRealtimeLimits(ip, parsed.data.sessionId);
+      if (!limits.ok) {
+        return jsonPublicDemoRealtimeBlocked(c, limits.code, { vertical: demoVertical });
+      }
+
+      const requestId = `demo-direct-${randomUUID()}`;
+      const ttlMs = directDemoActiveTtlMs();
+      if (!tryOccupyDirectDemoActiveSlot(ip, requestId, ttlMs)) {
+        return jsonPublicDemoRealtimeBlocked(c, 'demo_concurrent_session_limit', {
+          requestId,
+          vertical: demoVertical,
+        });
+      }
+
+      const demoMode = parsed.data.demoMode ?? 'quick';
+      const demoSource = parsed.data.demoSource ?? 'vertical_demo_direct_openai';
+      const model = directOpenAiRealtimeModel();
+      const voice = openAiRealtimeVoiceForDemoVerticalSlug(parsed.data.demoVertical ?? demoVertical);
+      const systemPrompt = buildPublicDemoSystemPrompt({
+        shopName: parsed.data.shopName,
+        businessType: parsed.data.businessType,
+        demoVertical: parsed.data.demoVertical,
+        staffName: parsed.data.staffName,
+        notes: parsed.data.notes,
+        demoConfig: parsed.data.demoConfig,
+      });
+
+      const services =
+        parsed.data.demoConfig?.services?.map((s) => ({
+          category: s.category,
+          name: s.name,
+          price: s.price ?? null,
+          duration: s.duration ?? null,
+          enabled: s.enabled ?? true,
+        })) ?? [];
+      const staff =
+        parsed.data.demoConfig?.staffNames?.length
+          ? parsed.data.demoConfig.staffNames
+          : parsed.data.staffName
+            ? [parsed.data.staffName]
+            : [];
+
+      if (deps.demoSessionsRepository) {
+        try {
+          const demoSession = await deps.demoSessionsRepository.createSession({
+            publicSessionId: parsed.data.sessionId,
+            verticalSlug: demoVertical,
+            mode: demoMode,
+            source: demoSource,
+            callbackPhone: PUBLIC_DEMO_WEB_SESSION_CALLBACK_PHONE_E164,
+            businessName: parsed.data.shopName,
+            city: parsed.data.demoConfig?.city ?? null,
+            businessHours: {
+              primaryHours: parsed.data.demoConfig?.primaryHours,
+              secondaryHours: parsed.data.demoConfig?.secondaryHours,
+            },
+            staff,
+            notes: parsed.data.notes ?? null,
+            systemPrompt,
+            services,
+            clientIp: ip,
+            clientCountry: resolveDemoClientCountryForPersistence(
+              normalizeCfIpCountry(c.req.header('CF-IPCountry')),
+              PUBLIC_DEMO_WEB_SESSION_CALLBACK_PHONE_E164,
+            ),
+          });
+          await deps.demoSessionsRepository.addStatusEvent({
+            demoSessionId: demoSession.id,
+            requestId,
+            eventType: 'demo_realtime_session_requested',
+            payload: {
+              demoVertical,
+              demoMode,
+              demoSource,
+              model,
+              voice,
+            },
+          });
+        } catch (error) {
+          logger.warn({ err: error, requestId }, 'public_demo_realtime_session_persist_failed');
+        }
+      }
+
+      securityAudit({
+        action: 'public_demo_realtime_session_requested',
+        actorType: 'public',
+        ip,
+        path: c.req.path,
+        details: {
+          requestId,
+          businessType: parsed.data.businessType,
+          demoVertical,
+          demoMode,
+          demoSource,
+          model,
+          voice,
+        },
+      });
+
+      try {
+        const clientSecret = await createOpenAiRealtimeClientSecret({
+          model,
+          voice,
+          instructions: systemPrompt,
+        });
+
+        securityAudit({
+          action: 'public_demo_realtime_token_created',
+          actorType: 'public',
+          ip,
+          path: c.req.path,
+          details: {
+            requestId,
+            demoVertical,
+            model,
+            voice,
+            expiresAt: clientSecret.expiresAt ?? null,
+          },
+        });
+
+        return c.json({
+          ok: true,
+          requestId,
+          clientSecret: clientSecret.value,
+          expiresAt: clientSecret.expiresAt,
+          model,
+          voice,
+        });
+      } catch (error) {
+        clearDirectDemoActiveSlot(ip, requestId);
+        const code = error instanceof Error && error.message === 'openai_config_missing' ? 'openai_config_missing' : 'realtime_session_failed';
+        logger.error(
+          {
+            err: error,
+            requestId,
+            demoVertical,
+            model,
+            voice,
+          },
+          'public_demo_realtime_session_failed',
+        );
+        const status = code === 'openai_config_missing' ? 503 : 502;
+        const message =
+          code === 'openai_config_missing'
+            ? 'The voice demo is temporarily unavailable. Please try again later.'
+            : "We couldn't connect to the voice demo. Please try again in a moment.";
+        return c.json(
+          {
+            ok: false,
+            code,
+            message,
+            retryAfterSeconds: 60,
+          },
+          status,
+        );
+      }
+    });
+  });
+
+  app.post(path('/public/demo/realtime-session/release'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_realtime_release, 'demo_realtime_release');
+    if (limited) return limited;
+
+    const originDenied = enforcePublicDemoRealtimeOrigin(c);
+    if (originDenied) return originDenied;
+
+    const body = await c.req.json().catch(() => null);
+    const releaseParsed = z.object({ requestId: z.string().min(1).max(200) }).safeParse(body);
+    if (!releaseParsed.success) {
+      return c.json(
+        {
+          ok: false,
+          code: 'invalid_demo_payload',
+          message: 'Please check your demo details and try again.',
+          retryAfterSeconds: 0,
+        },
+        400,
+      );
+    }
+
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    const released = releaseDirectDemoActiveSlot(ip, releaseParsed.data.requestId);
+    if (!released) {
+      return c.json(
+        {
+          ok: false,
+          code: 'demo_session_expired',
+          message:
+            'This demo session has ended. You can start a new demo when you are ready.',
+          retryAfterSeconds: 60,
+        },
+        404,
+      );
+    }
+    return c.json({ ok: true });
   });
 
   app.post(path('/public/demo/web-session'), async (c) => {
