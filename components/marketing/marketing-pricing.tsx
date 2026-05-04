@@ -9,43 +9,27 @@ import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     q: 'Do I need a credit card to start?',
-    a: 'No. You can start a 14-day trial, complete setup, and run test calls without a card. A payment method is required before RingBooker answers real callers on your business number.',
+    a: 'No. Start a 14-day trial, complete setup, and run test calls without a card. Add a payment method before RingBooker answers real callers on your business number.',
   },
   {
     q: 'Do I need a new number?',
-    a: 'No. Current-number setup is the primary path. A dedicated RingBooker line is available as an optional deployment path where supported.',
+    a: 'No. Current-number setup is the primary path. A dedicated RingBooker line is optional where supported.',
   },
   {
     q: 'Do I need to change booking software?',
-    a: 'No. RingBooker works alongside your current booking tools. It captures the call context and helps move routine scheduling requests forward.',
+    a: 'No. RingBooker works alongside your booking tools and captures call context for routine scheduling requests.',
   },
   {
     q: 'Which plan is right for me?',
-    a: 'Start with Starter if your main issue is missed after-hours or overflow calls. Choose Professional if you need stronger follow-up, caller context, and provider preference capture.',
-  },
-  {
-    q: 'Can it handle reschedules and cancellations?',
-    a: 'Yes, for routine cases. RingBooker can understand the request, capture context, confirm next steps, and escalate edge cases when a person should step in.',
-  },
-  {
-    q: 'Does Starter include owner call transfer?',
-    a: 'Starter captures callback requests and sends call summaries with next steps. Owner call transfer is included in Professional and Custom plans.',
+    a: 'Starter for after-hours, overflow, and missed-call recovery. Professional when you need reminder SMS, returning caller context, provider preferences, and owner transfer. Custom for multi-location, higher volume, or custom routing and integrations.',
   },
   {
     q: 'What happens when a caller needs a real person?',
-    a: 'RingBooker can collect the caller’s request, mark it for human follow-up, and send your team a clear summary. On Professional and Custom plans, RingBooker can also transfer the call to the owner based on your handoff settings.',
+    a: 'RingBooker captures the request and sends your team a clear summary. Starter emphasizes callback capture; Professional and Custom can also transfer to the owner when configured.',
   },
   {
-    q: 'What is the difference between Professional and Custom?',
-    a: 'Professional is for busier teams that need stronger follow-up, caller context, provider preferences, language notes captured during setup, insights, and owner call transfer. Custom is for multi-location groups, higher call volume, custom routing, escalation rules, and integration planning.',
-  },
-  {
-    q: 'Can I use my current business number?',
-    a: 'Yes. RingBooker is designed to work with your current business number. You can set up and test first, then add a payment method before live answering is enabled.',
-  },
-  {
-    q: 'Is this a generic AI receptionist for any business?',
-    a: 'No. RingBooker is AI phone answering and call recovery for nail salons, hair salons, day spas, med spas, and beauty clinics — after-hours intent, overflow, consult calls, and missed-call follow-up, not a broad SMB chatbot.',
+    q: 'Does RingBooker replace my booking software or staff?',
+    a: 'No. RingBooker is a phone answering and call recovery layer. It does not replace your booking software, your team’s judgment, or human follow-up for special cases.',
   },
 ];
 
@@ -283,9 +267,8 @@ const plans = [
       'Returning caller notes and preferences',
       'Preferred stylist or provider context',
       'Owner call transfer with caller context',
-      'Language settings noted for setup',
-      'Call recovery insights',
-      'Advanced call insights',
+      'Language preferences captured during setup',
+      'Advanced call recovery insights',
       'Priority support',
     ],
   },
@@ -309,19 +292,6 @@ const plans = [
       'Priority implementation support',
     ],
   },
-];
-
-const everyPlanFeatures = [
-  ['🌙', 'After-hours calls', 'Answer callers when the front desk is closed.'],
-  ['📞', 'Overflow coverage', 'Step in when staff are busy with clients.'],
-  ['📅', 'Booking requests', 'Capture service, timing, and caller details.'],
-  ['🔁', 'Reschedules', 'Handle routine change requests with context.'],
-  ['✕', 'Cancellations', 'Confirm cancellations and protect recovery opportunities.'],
-  ['💬', 'Missed-call text back', 'Follow up when callers hang up or reach a busy window.'],
-  ['🏪', 'Current number', 'Use your existing business number first.'],
-  ['📋', 'Call summaries with next steps', 'Structured recap after each call so your team knows what to do next.'],
-  ['📥', 'Callback request capture', 'When a caller needs a human, RingBooker records the request for follow-up.'],
-  ['☎️', 'Dedicated line where supported', 'Available as an optional deployment path when your setup benefits from a separate line.'],
 ];
 
 type CompareRow = { feature: string; starter: string; pro: string; custom: string };
@@ -353,7 +323,7 @@ const PRICING_COMPARE_GROUPS: CompareGroup[] = [
     title: 'Handoff and routing',
     rows: [
       { feature: 'Owner call transfer', starter: '—', pro: 'Yes', custom: 'Yes' },
-      { feature: 'Language setup notes', starter: '—', pro: 'Yes, where noted', custom: 'Custom' },
+      { feature: 'Language preferences', starter: '—', pro: 'Yes', custom: 'Custom' },
       { feature: 'Custom routing and escalation', starter: '—', pro: '—', custom: 'Yes' },
       { feature: 'Multi-location setup', starter: '—', pro: '—', custom: 'Yes' },
     ],
@@ -361,8 +331,7 @@ const PRICING_COMPARE_GROUPS: CompareGroup[] = [
   {
     title: 'Insights and support',
     rows: [
-      { feature: 'Call recovery insights', starter: '—', pro: 'Yes', custom: 'Custom reporting' },
-      { feature: 'Advanced call insights', starter: '—', pro: 'Yes', custom: 'Custom reporting' },
+      { feature: 'Call recovery insights', starter: '—', pro: 'Advanced', custom: 'Custom reporting' },
       { feature: 'Guided setup and test call', starter: 'Yes', pro: 'Yes', custom: 'Concierge onboarding' },
       { feature: 'Priority support', starter: '—', pro: 'Yes', custom: 'Priority implementation support' },
       { feature: 'Custom integration planning', starter: '—', pro: '—', custom: 'Yes' },
@@ -418,7 +387,7 @@ export function MarketingPricingTemplate() {
                 <div className="badge">Pricing for booking call recovery</div>
                 <h1>Pricing for Missed-Call Recovery and Revenue Protection</h1>
                 <p>
-                  You are not paying for generic AI — you are paying to reduce missed bookings and protect booking revenue. Every plan starts from the same ladder: missed calls → missed bookings → lost revenue, and RingBooker → recovered intent → protected revenue. Configure the essentials in about 15 minutes, then add after-hours answering, peak-hour overflow, and missed-call text back on your current number.
+                  Choose the right plan to answer after-hours calls, busy-time overflow, and missed-call follow-up — without changing your current number or booking tools.
                 </p>
                 <div className="trust-row">
                   <div className="trust-pill"><span>🏪</span> Current number first</div>
@@ -434,7 +403,9 @@ export function MarketingPricingTemplate() {
             <div className="container">
               <div className="sec-label">Plans</div>
               <h2 className="sec-title">Choose the right level of call recovery.</h2>
-              <p className="sec-sub">Starter protects revenue from the most common leaks: after-hours, overflow, and silent hang-ups. Professional adds caller context and stronger follow-up for busier desks. Custom is for complex routing, higher volume, and multi-location rollouts.</p>
+              <p className="sec-sub">
+                Starter covers after-hours, overflow, and missed-call recovery. Professional adds follow-up, caller context, and owner transfer where configured. Custom is for multi-location teams, higher volume, and custom routing.
+              </p>
               <div className="pt-toggle">
                 <button className="pt-btn on" id="pricing-tog-m" type="button">Monthly</button>
                 <button className="pt-btn" id="pricing-tog-a" type="button">Annual</button>
@@ -515,93 +486,13 @@ export function MarketingPricingTemplate() {
             </div>
           </section>
 
-          <section className="section tight">
-            <div className="container">
-              <div className="sec-label">Best fit</div>
-              <h2 className="sec-title">Who each plan is for.</h2>
-              <p className="sec-sub">Pick based on call volume and operational complexity, not on whether you want a new number. Current-number setup is available across plans.</p>
-              <div className="self-grid">
-                <div className="self-card"><div className="feature-icon">💅</div><h3>Starter</h3><p>Solo owners and smaller beauty teams that mainly need after-hours, overflow, and missed-call recovery.</p></div>
-                <div className="self-card"><div className="feature-icon">✂️</div><h3>Professional</h3><p>Busy salons, spas, med spas, and clinics with multiple providers, repeat clients, and more follow-up needs.</p></div>
-                <div className="self-card"><div className="feature-icon">🏬</div><h3>Custom</h3><p>Multi-location teams or advanced workflows that need custom routing, onboarding, or integration planning.</p></div>
-              </div>
-            </div>
-          </section>
-
-          <section className="section gray">
-            <div className="container">
-              <div className="sec-label">Every plan</div>
-              <h2 className="sec-title">What RingBooker handles in every plan.</h2>
-              <p className="sec-sub">The product stays focused on beauty-industry phone behavior: turn more rings into recovered bookings and fewer dead-end voicemails — without asking you to replace your calendar stack.</p>
-              <div className="feature-grid">
-                {everyPlanFeatures.map(([icon, title, body]) => (
-                  <div className="feature-card" key={title}><div className="feature-icon">{icon}</div><h3>{title}</h3><p>{body}</p></div>
-                ))}
-              </div>
-            </div>
-          </section>
-
           <section className="section">
-            <div className="container">
-              <div className="sec-label">Upgrade path</div>
-              <h2 className="sec-title">What changes as you upgrade.</h2>
-              <p className="sec-sub">Upgrading is less about “more AI” and more about better context, stronger follow-up, and more operational control as your call volume grows.</p>
-              <div className="upgrade-grid">
-                <div className="upgrade-card"><div className="feature-icon">🧠</div><div><h3>More caller context</h3><p>Professional adds returning caller memory and preference handling so repeat clients feel less like a cold start.</p></div></div>
-                <div className="upgrade-card"><div className="feature-icon">✂️</div><div><h3>Provider and stylist continuity</h3><p>Preserve preferred stylist, technician, provider, or treatment context when the caller asks for someone specific.</p></div></div>
-                <div className="upgrade-card"><div className="feature-icon">🌐</div><div><h3>Language setup support</h3><p>When you note languages during setup, summaries and follow-up context can reflect that so your team stays aligned with how callers reached you.</p></div></div>
-                <div className="upgrade-card"><div className="feature-icon">📊</div><div><h3>Better performance visibility</h3><p>Professional and Custom help you see patterns in missed calls, booking demand, and follow-up opportunities.</p></div></div>
-                <div className="upgrade-card"><div className="feature-icon">🧭</div><div><h3>Custom routing</h3><p>Custom supports more complex call flows, multi-location rules, and implementation planning.</p></div></div>
-                <div className="upgrade-card"><div className="feature-icon">🤝</div><div><h3>Onboarding support</h3><p>Custom adds higher-touch rollout help for teams that need more setup guidance before going live.</p></div></div>
-              </div>
-            </div>
-          </section>
-
-          <section className="section gray">
             <div className="container">
               <div className="sec-label">Number setup</div>
               <h2 className="sec-title">Current number first. Dedicated line if you prefer.</h2>
-              <p className="sec-sub">RingBooker is a missed booking protection layer, not a phone system replacement. Your deployment choice should match how callers already reach your business.</p>
-              <div className="line-choice">
-                <div className="line-card recommended">
-                  <div className="line-card-head"><div className="plan-icon">🏪</div><span className="pill">Recommended</span></div>
-                  <h3>Use your current business number</h3>
-                  <p>Most businesses start here. RingBooker can support after-hours and overflow coverage while customers keep calling the number they already know.</p>
-                </div>
-                <div className="line-card">
-                  <div className="line-card-head"><div className="plan-icon">☎️</div><span className="pill optional">Optional</span></div>
-                  <h3>Add a dedicated RingBooker line</h3>
-                  <p>If you want a separate booking or campaign line, RingBooker can provide one. It is a deployment option, not a requirement.</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="section">
-            <div className="container">
-              <div className="expect-band">
-                <div className="note-box">
-                  <h3>Included now</h3>
-                  <ul>
-                    <li>AI phone answering for after-hours and overflow calls</li>
-                    <li>Booking request capture and SMS confirmation</li>
-                    <li>Reschedule and cancellation handling for routine calls</li>
-                    <li>Missed-call text back</li>
-                    <li>Call summaries with next steps and callback request capture</li>
-                    <li>Current-number setup; dedicated line available where supported</li>
-                  </ul>
-                </div>
-                <div className="note-box">
-                  <h3>What RingBooker does not replace</h3>
-                  <ul>
-                    <li>Your existing booking software or calendar workflow</li>
-                    <li>Your team’s control over special cases and human follow-up</li>
-                    <li>Complex medical or policy-sensitive decisions</li>
-                    <li>Payment/deposit collection in the base call recovery flow</li>
-                    <li>Custom integrations unless scoped into the right plan</li>
-                  </ul>
-                </div>
-              </div>
+              <p className="sec-sub" style={{ maxWidth: '720px', marginBottom: 0 }}>
+                Most businesses forward missed, busy, or after-hours calls to RingBooker while customers keep calling the number they already know. A dedicated RingBooker line is optional.
+              </p>
             </div>
           </section>
 
@@ -618,7 +509,7 @@ export function MarketingPricingTemplate() {
               <div className="cta-box">
                 <div>
                   <h2>Stop letting booking calls leak after hours or during busy windows.</h2>
-                  <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that helps turn missed calls into recovered bookings and protected revenue.</p>
+                  <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that helps recover missed booking intent.</p>
                 </div>
                 <div className="cta-actions">
                   <a className="btn-demo-live" href="/demo" data-demo-picker>

@@ -288,11 +288,12 @@ test('public demo realtime-session returns ephemeral client secret without LiveK
       session?: {
         model?: string;
         instructions?: string;
-        audio?: { output?: { voice?: string } };
+        audio?: { input?: { turn_detection?: { create_response?: boolean } }; output?: { voice?: string } };
       };
     };
     assert.equal(openAiBody.session?.model, 'gpt-realtime');
     assert.equal(openAiBody.session?.audio?.output?.voice, 'coral');
+    assert.equal(openAiBody.session?.audio?.input?.turn_detection?.create_response, false);
     assert.match(openAiBody.session?.instructions ?? '', /ABC Nails Studio/);
   } finally {
     globalThis.fetch = originalFetch;

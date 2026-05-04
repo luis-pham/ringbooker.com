@@ -10,6 +10,7 @@ import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
 import { createInboundAgentSession } from '@/src/agent/runtime/session';
 import { openAiRealtimeVoiceForDemoVerticalSlug } from '@/src/agent/prompts';
 import { buildPublicDemoSystemPrompt } from '@/src/backend/demo/public-demo-system-prompt';
+import { buildOpenAiSipAcceptAudioInputFromEnv } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   clearDirectDemoActiveSlot,
   consumePublicDemoRealtimeLimits,
@@ -233,6 +234,12 @@ async function createOpenAiRealtimeClientSecret(params: {
     throw new Error('openai_config_missing');
   }
 
+  /** Match SIP/agent VAD env; force `create_response: false` so VAD does not emit a stray first turn before the client `response.create` with WELCOME MESSAGE. */
+  const envAudioInput = buildOpenAiSipAcceptAudioInputFromEnv();
+  const td = envAudioInput.turn_detection;
+  const turnDetection =
+    td && typeof td === 'object' && !Array.isArray(td) ? { ...td, create_response: false } : td;
+
   const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
     method: 'POST',
     headers: {
@@ -247,6 +254,9 @@ async function createOpenAiRealtimeClientSecret(params: {
         model: params.model,
         instructions: params.instructions,
         audio: {
+          input: {
+            turn_detection: turnDetection,
+          },
           output: {
             voice: params.voice,
           },

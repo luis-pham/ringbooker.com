@@ -856,8 +856,7 @@ export function MarketingVerticalDemoTemplate({
       let realtimeSessionReady = false;
       const requestInitialGreeting = () => {
         if (initialGreetingRequested || !realtimeSessionReady || dc.readyState !== 'open') return;
-        // Set before sends: `open` + 250ms timer and `session.created`/`session.updated` can fire close
-        // together; two callers could both pass the guard if the flag were flipped only after I/O.
+        // Set before sends: `session.created` / `session.updated` may arrive back-to-back; guard must flip before I/O.
         initialGreetingRequested = true;
         setStatusText('The receptionist is greeting you…');
         try {
@@ -889,9 +888,6 @@ export function MarketingVerticalDemoTemplate({
           initialGreetingRequested = false;
         }
       };
-      dc.addEventListener('open', () => {
-        window.setTimeout(requestInitialGreeting, 250);
-      });
       dc.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(String(event.data)) as { error?: { message?: string }; type?: string };
