@@ -2,7 +2,10 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
-import { DEMO_VERTICAL_ORDER, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
+import type { DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
+
+/** Hub `/demo`: only these industry cards (hair / day / med / beauty hub cards removed). */
+const DEMO_HUB_CARD_SLUGS: DemoVerticalSlug[] = ['nail-salon'];
 import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
@@ -54,8 +57,8 @@ const DEMO_HUB_FAQ_ITEMS: MarketingFaqItem[] = [
     a: 'Most demos take about two to three minutes. Pick the industry that matches your business and answer naturally, like a real caller would.',
   },
   {
-    q: 'Which industries have tailored demos?',
-    a: 'Nail salon, hair salon, day spa, med spa, and beauty clinic demos are available from this hub. Each uses different sample services and scenarios.',
+    q: 'What is included on this demo hub?',
+    a: 'This hub features the nail salon live web demo with sample services and scenarios. Production RingBooker can be configured for additional business types separately.',
   },
   {
     q: 'What should I do after the demo?',
@@ -118,7 +121,7 @@ const styles = [
     /* GRID */
     .demo-hub-picks{padding:36px 0 56px}
     .demo-hub-picks h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mk-text-desc,#64748B);text-align:center;margin:0 0 20px}
-    .demo-hub-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px}
+    .demo-hub-grid{display:grid;grid-template-columns:minmax(0,min(420px,100%));justify-content:center;gap:16px;margin:0 auto;max-width:min(420px,100%)}
     .demo-hub-card{
       background:#fff;border:1px solid var(--demo-hub-border);border-radius:24px;
       padding:22px 20px;text-decoration:none;color:inherit;
@@ -174,7 +177,6 @@ const styles = [
     .demo-hub-step p{margin:0;font-size:14px;line-height:1.55;color:var(--demo-hub-muted)}
 
     @media (max-width:1100px){
-      .demo-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
       .demo-hub-step-grid{grid-template-columns:1fr}
     }
     @media (max-width:640px){
@@ -208,8 +210,8 @@ export function MarketingDemoVerticalIndexTemplate() {
               <p className="demo-hub-eyebrow">Live demo hub</p>
               <h1>Hear how RingBooker handles real booking calls.</h1>
               <p className="demo-hub-lead">
-                Choose a live web demo for your business type. Each vertical uses sample salon or clinic context—booking,
-                reschedules, pricing, and after-hours scenarios—so you can judge tone and pacing in a few minutes.
+                Open the nail salon live web demo with sample studio context—booking, reschedules, pricing, and
+                after-hours scenarios—so you can judge tone and pacing in a few minutes.
               </p>
               <div className="demo-hub-trust">
                 <TrustChip>
@@ -232,7 +234,7 @@ export function MarketingDemoVerticalIndexTemplate() {
             <div className="demo-hub-inner">
               <h2>Industry demos</h2>
               <div className="demo-hub-grid">
-                {DEMO_VERTICAL_ORDER.map((slug) => {
+                {DEMO_HUB_CARD_SLUGS.map((slug) => {
                   const hub = DEMO_HUB[slug];
                   return (
                     <Link key={slug} href={`/demo/${slug}`} className={`demo-hub-card demo-hub-card-${slug}`}>
@@ -261,8 +263,8 @@ export function MarketingDemoVerticalIndexTemplate() {
               <div className="demo-hub-step-grid">
                 <div className="demo-hub-step">
                   <div className="demo-hub-step-num">1</div>
-                  <h3>Pick your industry</h3>
-                  <p>Select the demo that matches your salon, spa, or clinic. Each uses tailored scripts and sample services.</p>
+                  <h3>Open the demo</h3>
+                  <p>Start the nail salon preview with tailored scripts and sample services.</p>
                 </div>
                 <div className="demo-hub-step">
                   <div className="demo-hub-step-num">2</div>

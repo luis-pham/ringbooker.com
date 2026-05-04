@@ -15,6 +15,9 @@ import { apiUserVisibleMessage } from '@/lib/api-user-message';
 import { DIRECT_REALTIME_DEMO_DURATION_MESSAGE, userMessageForDirectDemoRealtimeJson } from '@/lib/marketing-vertical-demo-errors';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
+/** No cross-links to these verticals from demo pages (hub no longer promotes them). */
+const VERTICAL_DEMO_CROSS_LINK_EXCLUDE: DemoVerticalSlug[] = ['hair-salon', 'day-spa', 'med-spa', 'beauty-clinic'];
+
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
 
 type DemoBusinessConfig = {
@@ -245,9 +248,9 @@ const styles: string[] = [
   .vd-step{border:1px solid #E5E7EB;border-radius:12px;padding:8px 6px;text-align:center;font-size:11px;font-weight:800;color:#9CA3AF}
   .vd-step.on{border-color:var(--va);background:color-mix(in srgb,var(--va) 10%,#fff);color:#111827}
   .vd-wave{height:30px;display:flex;justify-content:center;align-items:center;gap:3px;margin-bottom:14px}
-  .vd-wave span{display:block;width:3px;border-radius:4px;background:var(--va);animation:vdWave 1.1s ease-in-out infinite}
-  .vd-wave span:nth-child(1){height:8px}.vd-wave span:nth-child(2){height:20px;animation-delay:.08s}.vd-wave span:nth-child(3){height:28px;animation-delay:.16s}.vd-wave span:nth-child(4){height:16px;animation-delay:.24s}.vd-wave span:nth-child(5){height:24px;animation-delay:.32s}
-  @keyframes vdWave{0%,100%{transform:scaleY(.4);opacity:.4}50%{transform:scaleY(1);opacity:1}}
+  .vd-wave span{display:block;width:3px;border-radius:4px;background:#047857;animation:vdWave 1.65s ease-in-out infinite}
+  .vd-wave span:nth-child(1){height:8px}.vd-wave span:nth-child(2){height:20px;animation-delay:.12s}.vd-wave span:nth-child(3){height:28px;animation-delay:.24s}.vd-wave span:nth-child(4){height:16px;animation-delay:.36s}.vd-wave span:nth-child(5){height:24px;animation-delay:.48s}
+  @keyframes vdWave{0%,100%{transform:scaleY(.4);opacity:.45}50%{transform:scaleY(1);opacity:1}}
 
   /* sms + completion */
   .vd-sms{border:1px solid #E5E7EB;border-radius:18px;background:#F8FAFC;padding:14px;margin-bottom:14px}
@@ -256,8 +259,9 @@ const styles: string[] = [
   .vd-complete-cta{display:flex;flex-direction:column;gap:9px;margin-top:4px}
   .vd-btn-primary{display:flex;align-items:center;justify-content:center;background:#111827;color:#fff;border:none;border-radius:999px;padding:14px 20px;font-size:15px;font-weight:900;cursor:pointer;text-decoration:none;transition:.18s}
   .vd-btn-primary:hover{background:#1F2937;transform:translateY(-1px)}
-  .vd-btn-ghost{display:flex;align-items:center;justify-content:center;background:#fff;color:#374151;border:1px solid #E5E7EB;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:700;cursor:pointer;transition:.18s}
-  .vd-btn-ghost:hover{border-color:var(--va);color:var(--va)}
+  .vd-btn-ghost{display:flex;align-items:center;justify-content:center;background:#EF4444;color:#fff;border:1px solid #EF4444;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:700;cursor:pointer;transition:.18s;box-shadow:0 4px 14px rgba(239,68,68,.35)}
+  .vd-btn-ghost:hover{background:#DC2626;border-color:#DC2626;color:#fff;transform:translateY(-1px);box-shadow:0 6px 18px rgba(220,38,38,.38)}
+  .vd-btn-ghost:focus-visible{outline:2px solid #FECACA;outline-offset:2px}
 
   /* footer links */
   .vd-others{display:flex;flex-wrap:wrap;gap:7px;padding-top:22px;border-top:1px solid #F1F5F9;margin-top:28px}
@@ -365,6 +369,13 @@ function microphoneErrorMessage(error: unknown): string {
 
 export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVerticalSlug }) {
   const config = DEMO_VERTICALS[vertical];
+  const otherDemoVerticals = useMemo(
+    () =>
+      Object.values(DEMO_VERTICALS).filter(
+        (v) => v.slug !== vertical && !VERTICAL_DEMO_CROSS_LINK_EXCLUDE.includes(v.slug),
+      ),
+    [vertical],
+  );
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: config.defaultBusinessName,
@@ -780,7 +791,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
         clearDirectConnectTimer();
         beginDirectDemoMaxDurationTimer();
         setStage('live');
-        setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+        setStatusText('You\'re connected — the receptionist will greet you first, then you can speak or tap a prompt below.');
       };
       pc.onconnectionstatechange = () => {
         if (pc.connectionState === 'connected') {
@@ -788,7 +799,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
           clearDirectConnectTimer();
           beginDirectDemoMaxDurationTimer();
           setStage('live');
-          setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+          setStatusText('You\'re connected — the receptionist will greet you first, then you can speak or tap a prompt below.');
         }
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
           if (directPeerFailureMutedRef.current) return;
@@ -806,19 +817,42 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       const dc = pc.createDataChannel('oai-events');
       directDataChannelRef.current = dc;
       dc.addEventListener('open', () => {
-        dc.send(JSON.stringify({
-          type: 'response.create',
-          response: {
-            modalities: ['audio', 'text'],
-            instructions: 'Start with the configured welcome message, then wait for the caller.',
-          },
-        }));
+        queueMicrotask(() => {
+          setStatusText('The receptionist is greeting you…');
+          dc.send(
+            JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'message',
+                role: 'system',
+                content: [
+                  {
+                    type: 'input_text',
+                    text: 'The caller is connected on the web demo with live audio. Speak your opening greeting aloud immediately—one short welcome per your session instructions. Do not wait for the caller to speak first.',
+                  },
+                ],
+              },
+            }),
+          );
+          dc.send(
+            JSON.stringify({
+              type: 'response.create',
+              response: {
+                modalities: ['audio', 'text'],
+                instructions:
+                  'Say only your opening greeting now: welcome the caller, orient to the demo, under fifteen seconds. Then stop speaking and listen for the caller.',
+              },
+            }),
+          );
+        });
       });
       dc.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(String(event.data)) as { type?: string };
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
-          if (data.type === 'response.done') setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+          if (data.type === 'response.done') {
+            setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+          }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
         } catch {
           /* Ignore non-JSON data channel frames. */
@@ -1180,13 +1214,15 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
               )}
 
               {/* Other verticals + disclaimer */}
-              <div className="vd-others">
-                {Object.values(DEMO_VERTICALS).filter((v) => v.slug !== vertical).map((v) => (
-                  <Link key={v.slug} href={`/demo/${v.slug}`} className="vd-other">
-                    {v.businessType.replace(/-/g, ' ')}
-                  </Link>
-                ))}
-              </div>
+              {otherDemoVerticals.length > 0 ? (
+                <div className="vd-others">
+                  {otherDemoVerticals.map((v) => (
+                    <Link key={v.slug} href={`/demo/${v.slug}`} className="vd-other">
+                      {v.businessType.replace(/-/g, ' ')}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
               <p className="vd-disclaimer">{config.demoVsReal}</p>
             </div>
 
