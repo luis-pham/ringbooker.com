@@ -5,6 +5,7 @@ import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
 import { InMemoryBillingCustomersRepository } from '@/src/backend/adapters/memory/billing-customers-repository';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
+import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
@@ -27,6 +28,7 @@ applyRequiredTestEnv({
 test('user billing and admin billing endpoints return normalized billing state', async () => {
   const billingCustomersRepository = new InMemoryBillingCustomersRepository();
   const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
   const shopsRepository = new InMemoryShopsRepository();
 
   const app = createBackendApp({
@@ -35,6 +37,7 @@ test('user billing and admin billing endpoints return normalized billing state',
     bookingsRepository: new InMemoryBookingsRepository(),
     billingCustomersRepository,
     billingSubscriptionsRepository,
+    shopAccessStatesRepository,
     callbacksRepository: new InMemoryCallbacksRepository(),
     shopsRepository,
     telephonyService: new NoopTelephonyService(),
@@ -44,6 +47,7 @@ test('user billing and admin billing endpoints return normalized billing state',
     billingProvider: new PaddleBillingProvider({
       billingCustomersRepository,
       billingSubscriptionsRepository,
+      shopAccessStatesRepository,
       shopsRepository,
     }),
   });

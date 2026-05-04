@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
+import { canUseOwnerTransfer } from '@/src/backend/domain/shop-plan-capabilities';
 import type { ToolError } from '@/src/backend/domain/types';
+import { logger } from '@/src/backend/observability/logger';
 import { type AgentToolContext, toToolError } from '@/src/agent/tools/types';
 
 const schema = z.object({
@@ -11,7 +13,13 @@ export async function transferToUserTool(
   ctx: AgentToolContext,
   input: unknown,
 ): Promise<{ success: boolean; target: 'user' | 'frontdesk' | 'voicemail'; providerCallId?: string } | ToolError> {
-  if (!ctx.shop.allow_transfers) {
+  if (!ctx.shop.allow_transfers || !canUseOwnerTransfer(ctx.shop.plan)) {
+    if (ctx.shop.allow_transfers && !canUseOwnerTransfer(ctx.shop.plan)) {
+      logger.warn(
+        { shopId: ctx.shop.id, plan: ctx.shop.plan, feature: 'owner_transfer' },
+        'plan_feature_locked_transfer_skipped',
+      );
+    }
     return toToolError('Live transfers are disabled for this shop right now. I can help schedule a callback instead.', {
       code: 'TRANSFER_FAILED',
       retryable: false,

@@ -6,12 +6,19 @@ import type {
   BillingCustomer,
   BillingProvider,
   BillingSubscription,
+  BillingNotification,
+  BillingNotificationChannel,
+  BillingNotificationType,
   BillingSubscriptionStatus,
   ContactRequest,
   ContactRequestStatus,
   JobStatus,
   JobType,
   Shop,
+  ShopAccessState,
+  TestCallAttempt,
+  TestCallAttemptStatus,
+  TestCallAttemptType,
 } from '@/src/backend/domain/types';
 
 export interface ProviderEventRecord {
@@ -426,34 +433,131 @@ export interface BillingCustomersRepository {
   upsert(params: {
     shopId: string;
     provider: BillingProvider;
-    providerCustomerId: string;
+    providerCustomerId?: string | null;
     email?: string | null;
+    name?: string | null;
+    metadata?: Record<string, unknown> | null;
   }): Promise<BillingCustomer>;
 }
 
 export interface BillingSubscriptionsRepository {
   findCurrentByShopId(shopId: string, provider?: BillingProvider): Promise<BillingSubscription | null>;
+  findById(id: string): Promise<BillingSubscription | null>;
   findByProviderSubscriptionId(
     provider: BillingProvider,
     providerSubscriptionId: string,
   ): Promise<BillingSubscription | null>;
   list(params?: { limit?: number; shopId?: string }): Promise<BillingSubscription[]>;
+  updateById(
+    id: string,
+    params: {
+      provider?: BillingProvider;
+      providerSubscriptionId?: string | null;
+      providerCustomerId?: string | null;
+      providerPriceId?: string | null;
+      providerProductId?: string | null;
+      plan?: Shop['plan'];
+      status?: BillingSubscriptionStatus;
+      interval?: 'month' | 'year';
+      currency?: string;
+      amount?: number;
+      amountCents?: number | null;
+      cancelAtPeriodEnd?: boolean;
+      currentPeriodStart?: string | null;
+      currentPeriodEnd?: string | null;
+      trialStartedAt?: string | null;
+      trialEndsAt?: string | null;
+      trialExpiredAt?: string | null;
+      canceledAt?: string | null;
+      pausedAt?: string | null;
+      paymentMethodStatus?: BillingSubscription['paymentMethodStatus'];
+      paymentMethodAddedAt?: string | null;
+      activatedAt?: string | null;
+      metadata?: Record<string, unknown> | null;
+    },
+  ): Promise<BillingSubscription | null>;
   upsert(params: {
     shopId: string;
     provider: BillingProvider;
-    providerSubscriptionId: string;
+    providerSubscriptionId?: string | null;
     providerCustomerId?: string | null;
+    providerPriceId?: string | null;
+    providerProductId?: string | null;
     plan: Shop['plan'];
     status: BillingSubscriptionStatus;
     interval: 'month' | 'year';
     currency: string;
     amount: number;
+    amountCents?: number | null;
     cancelAtPeriodEnd?: boolean;
     currentPeriodStart?: string | null;
     currentPeriodEnd?: string | null;
+    trialStartedAt?: string | null;
     trialEndsAt?: string | null;
+    trialExpiredAt?: string | null;
+    canceledAt?: string | null;
+    pausedAt?: string | null;
+    paymentMethodStatus?: BillingSubscription['paymentMethodStatus'];
+    paymentMethodAddedAt?: string | null;
+    activatedAt?: string | null;
     metadata?: Record<string, unknown> | null;
   }): Promise<BillingSubscription>;
+}
+
+export interface ShopAccessStatesRepository {
+  findByShopId(shopId: string): Promise<ShopAccessState | null>;
+  upsert(params: {
+    shopId: string;
+    liveCallsEnabled?: boolean;
+    goLiveAt?: string | null;
+    liveCallsPausedReason?: string | null;
+    liveCallsPausedAt?: string | null;
+    lastAccessCheckAt?: string | null;
+  }): Promise<ShopAccessState>;
+}
+
+export interface TestCallAttemptsRepository {
+  create(params: {
+    shopId: string;
+    userId?: string | null;
+    type: TestCallAttemptType;
+    status: TestCallAttemptStatus;
+    destinationPhone?: string | null;
+    sourceNumber?: string | null;
+    testNumberId?: string | null;
+    transcriptId?: string | null;
+    callSummaryId?: string | null;
+    durationSeconds?: number | null;
+    errorReason?: string | null;
+    completedAt?: string | null;
+    metadata?: Record<string, unknown> | null;
+  }): Promise<TestCallAttempt>;
+  countRecentByShopId(params: { shopId: string; since: Date; type?: TestCallAttemptType }): Promise<number>;
+  updateStatus(
+    id: string,
+    params: {
+      status: TestCallAttemptStatus;
+      errorReason?: string | null;
+      completedAt?: string | null;
+      metadata?: Record<string, unknown> | null;
+    },
+  ): Promise<TestCallAttempt | null>;
+}
+
+export interface BillingNotificationsRepository {
+  hasSent(params: {
+    shopId: string;
+    subscriptionId?: string | null;
+    type: BillingNotificationType;
+    channel: BillingNotificationChannel;
+  }): Promise<boolean>;
+  markSent(params: {
+    shopId: string;
+    subscriptionId?: string | null;
+    type: BillingNotificationType;
+    channel: BillingNotificationChannel;
+    metadata?: Record<string, unknown> | null;
+  }): Promise<BillingNotification>;
 }
 
 export interface JobsRepository {

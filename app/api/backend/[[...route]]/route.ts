@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
-import { executeSingleJobsWorkerTickWithRuntime } from '@/src/backend/jobs/runner';
+import { executeSingleJobsWorkerTickWithRuntime, scheduleTrialLifecycleJobsWithRuntime } from '@/src/backend/jobs/runner';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import {
   consumeRateLimit,
@@ -66,6 +66,29 @@ function getHonoApp(): Hono {
     return c.json({
       ok: true,
       processed: result.processed,
+      executedAt: new Date().toISOString(),
+    });
+  });
+
+  app.post('/api/backend/jobs/trial-lifecycle', async (c) => {
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    const internalKey = process.env.BACKEND_INTERNAL_API_KEY;
+    const providedKey = c.req.header('x-backend-key');
+    if ((internalKey && providedKey !== internalKey) || (!internalKey && process.env.NODE_ENV === 'production')) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip,
+        path: c.req.path,
+        details: { reason: 'internal_key_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+
+    const result = await scheduleTrialLifecycleJobsWithRuntime(backendRuntime);
+    return c.json({
+      ok: true,
+      ...result,
       executedAt: new Date().toISOString(),
     });
   });

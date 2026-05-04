@@ -16,7 +16,7 @@ import { z } from 'zod';
 
 import type { VoicePromptVertical } from '@/src/agent/prompts';
 import type { Shop } from '@/src/backend/domain/types';
-import type { ShopsRepository } from '@/src/backend/ports/repositories';
+import type { BillingSubscriptionsRepository, ShopAccessStatesRepository, ShopsRepository } from '@/src/backend/ports/repositories';
 import { getEnv } from '@/src/backend/config/env';
 import { resolveVerticalDemoInboundRoute } from '@/src/backend/demo/demo-vertical-phone-map';
 import {
@@ -25,6 +25,7 @@ import {
   getTelnyxInboundRoutingMode,
 } from '@/src/backend/config/voice-transport';
 import { isShopCallable } from '@/src/backend/services/calls/callable-check';
+import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import {
   normalizeInboundE164,
   resolveShopByInboundDidWithMeta,
@@ -433,7 +434,11 @@ function runOpenAiSipBridgeEnvGates(params: {
  */
 export async function evaluateTelnyxCallControlInboundInitiated(
   payload: unknown,
-  deps: { shopsRepository: ShopsRepository },
+  deps: {
+    shopsRepository: ShopsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+    shopAccessStatesRepository?: ShopAccessStatesRepository;
+  },
 ): Promise<TelnyxCallControlPhase1Result> {
   if (!isIncomingCallPayload(payload)) {
     return { handled: false, reason: 'not_incoming' };
@@ -560,6 +565,31 @@ export async function evaluateTelnyxCallControlInboundInitiated(
       callerPhone,
       resolver: { ...resolverFromShop(shop, meta), callableBlockReason: callable.reason },
     };
+  }
+
+  if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
+    const access = await getShopBillingAccess(
+      {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      },
+      { shopId: shop.id, onboardingComplete: true },
+    );
+    if (!access.canReceiveLiveCalls) {
+      return {
+        handled: true,
+        decision: 'reject',
+        reason: access.blockReason,
+        reject_reason: 'shop_inactive',
+        reject_cause_telnyx: telnyxInboundRejectCauseFor('shop_inactive'),
+        shopId: shop.id,
+        callControlId,
+        destinationPhone: destinationPhoneShop,
+        callerPhone,
+        resolver: { ...resolverFromShop(shop, meta), callableBlockReason: access.blockReason },
+      };
+    }
   }
 
   const shopResolver = resolverFromShop(shop, meta);

@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "next lint",
     "worker": "tsx src/backend/jobs/worker-entry.ts",
+    "cron:trial-lifecycle": "node scripts/run-trial-lifecycle.mjs",
     "agent:worker": "tsx src/agent/realtime/worker-entry.ts",
     "agent:livekit:native:openai": "tsx src/agent/realtime/livekit-native-openai-agent.ts start",
     "test": "tsx --test src/**/*.test.ts",

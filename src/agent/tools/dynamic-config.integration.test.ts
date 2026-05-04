@@ -83,3 +83,34 @@ test('dynamic shop config gates tool behavior and reminder job enqueueing', asyn
   assert.equal(leasedTypes.has('appointment_reminder_2h'), false);
   assert.equal(leasedTypes.has('review_request_sms'), false);
 });
+
+test('Starter plan cannot use owner transfer even if transfer flag is true', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  await shopsRepository.updatePlanAndActivation('demo-shop', { plan: 'starter', active: true });
+  await shopsRepository.updateDynamicConfig('demo-shop', { allow_transfers: true });
+
+  const session = await createInboundAgentSession(
+    {
+      shopsRepository,
+      jobsRepository: new InMemoryJobsRepository(),
+      bookingsRepository: new InMemoryBookingsRepository(),
+      callbacksRepository: new InMemoryCallbacksRepository(),
+      telephonyService: new NoopTelephonyService(),
+      realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+    },
+    {
+      destinationPhone: '+17145550123',
+      callerPhone: '+14155550199',
+      requestId: 'test-starter-transfer-locked',
+      roomName: 'rb-call-test-starter-transfer-locked',
+    },
+  );
+
+  assert.ok(session);
+
+  const transferResult = (await session.runTool('transfer_to_user', {
+    reason: 'Caller wants a human.',
+  })) as Record<string, unknown>;
+  assert.equal('success' in transferResult, false);
+  assert.equal(transferResult.code, 'TRANSFER_FAILED');
+});

@@ -1,16 +1,19 @@
 export type ShopPlan = 'starter' | 'professional' | 'enterprise';
 export type ShopVertical = 'nail_salon' | 'hair_salon' | 'day_spa' | 'med_spa' | 'beauty_clinic';
-export type BillingProvider = 'paddle' | 'stripe' | 'manual';
+export type BillingProvider = 'internal' | 'paddle' | 'stripe' | 'manual';
 export type BillingInterval = 'month' | 'year';
 export type BlogPostStatus = 'draft' | 'published' | 'archived';
 export type BillingSubscriptionStatus =
+  | 'incomplete'
   | 'trialing'
   | 'active'
   | 'past_due'
-  | 'canceled'
-  | 'incomplete'
   | 'paused'
+  | 'canceled'
+  | 'trial_expired'
+  | 'unpaid'
   | 'unknown';
+export type BillingPaymentMethodStatus = 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
 
 export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
 
@@ -40,7 +43,9 @@ export type JobType =
   | 'callback_outbound_call'
   | 'review_request_sms'
   | 'post_call_summary'
-  | 'handoff_failed_owner_sms';
+  | 'handoff_failed_owner_sms'
+  | 'trial_reminder_email'
+  | 'trial_expiry_check';
 
 export type TranscriptStatus = 'pending' | 'completed' | 'failed';
 
@@ -180,8 +185,10 @@ export interface BillingCustomer {
   id: string;
   shopId: string;
   provider: BillingProvider;
-  providerCustomerId: string;
+  providerCustomerId?: string | null;
   email?: string | null;
+  name?: string | null;
+  metadata?: Record<string, unknown> | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -190,20 +197,86 @@ export interface BillingSubscription {
   id: string;
   shopId: string;
   provider: BillingProvider;
-  providerSubscriptionId: string;
+  providerSubscriptionId?: string | null;
   providerCustomerId?: string | null;
+  providerPriceId?: string | null;
+  providerProductId?: string | null;
   plan: ShopPlan;
   status: BillingSubscriptionStatus;
   interval: BillingInterval;
   currency: string;
+  /** Legacy dollar amount kept for existing UI/tests; prefer amountCents for new code. */
   amount: number;
+  amountCents?: number | null;
   cancelAtPeriodEnd: boolean;
   currentPeriodStart?: string | null;
   currentPeriodEnd?: string | null;
+  trialStartedAt?: string | null;
   trialEndsAt?: string | null;
+  trialExpiredAt?: string | null;
+  canceledAt?: string | null;
+  pausedAt?: string | null;
+  paymentMethodStatus?: BillingPaymentMethodStatus;
+  paymentMethodAddedAt?: string | null;
+  activatedAt?: string | null;
   metadata?: Record<string, unknown> | null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface ShopAccessState {
+  id: string;
+  shopId: string;
+  liveCallsEnabled: boolean;
+  goLiveAt?: string | null;
+  liveCallsPausedReason?: string | null;
+  liveCallsPausedAt?: string | null;
+  lastAccessCheckAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type TestCallAttemptType = 'outbound_call_me' | 'inbound_test_number' | 'demo_vertical';
+export type TestCallAttemptStatus = 'requested' | 'started' | 'completed' | 'failed' | 'canceled';
+
+export interface TestCallAttempt {
+  id: string;
+  shopId: string;
+  userId?: string | null;
+  type: TestCallAttemptType;
+  status: TestCallAttemptStatus;
+  destinationPhone?: string | null;
+  sourceNumber?: string | null;
+  testNumberId?: string | null;
+  transcriptId?: string | null;
+  callSummaryId?: string | null;
+  durationSeconds?: number | null;
+  errorReason?: string | null;
+  createdAt?: string;
+  completedAt?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+export type BillingNotificationType =
+  | 'trial_started'
+  | 'trial_ends_7_days'
+  | 'trial_ends_3_days'
+  | 'trial_ends_1_day'
+  | 'trial_ended'
+  | 'payment_method_added'
+  | 'subscription_active'
+  | 'payment_failed'
+  | 'live_answering_enabled';
+export type BillingNotificationChannel = 'email' | 'app';
+
+export interface BillingNotification {
+  id: string;
+  shopId: string;
+  subscriptionId?: string | null;
+  type: BillingNotificationType;
+  channel: BillingNotificationChannel;
+  sentAt: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface BillingCheckoutSession {

@@ -23,8 +23,9 @@ import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { maskPhone } from '@/src/backend/security/pii';
 import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
-import type { ShopsRepository } from '@/src/backend/ports/repositories';
+import type { BillingSubscriptionsRepository, ShopAccessStatesRepository, ShopsRepository } from '@/src/backend/ports/repositories';
 import { resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
+import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8"?>';
 
@@ -58,7 +59,11 @@ function texmlXmlResponse(xml: string): Response {
 /** Telnyx Voice URL (TeXML) — POST or GET, typically `application/x-www-form-urlencoded`. */
 export async function handleTelnyxTexmlOpenAiInbound(
   c: Context,
-  deps?: { shopsRepository?: ShopsRepository },
+  deps?: {
+    shopsRepository?: ShopsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+    shopAccessStatesRepository?: ShopAccessStatesRepository;
+  },
 ): Promise<Response> {
   const env = getEnv();
   const sipUriConfigured = env.OPENAI_SIP_URI?.trim() ?? '';
@@ -115,10 +120,22 @@ export async function handleTelnyxTexmlOpenAiInbound(
     sipUriConfigured.includes('@') ? (sipUriConfigured.split('@')[1]?.split(';')[0] ?? 'unknown') : 'unknown';
 
   let shopId: string | undefined;
+  let billingBlockedReason: string | undefined;
   if (deps?.shopsRepository && form.To) {
     try {
       const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, form.To);
       shopId = shop?.id;
+      if (shop && deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
+        const access = await getShopBillingAccess(
+          {
+            shopsRepository: deps.shopsRepository,
+            billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+            shopAccessStatesRepository: deps.shopAccessStatesRepository,
+          },
+          { shopId: shop.id, onboardingComplete: true },
+        );
+        if (!access.canReceiveLiveCalls) billingBlockedReason = access.blockReason;
+      }
     } catch {
       shopId = undefined;
     }
@@ -132,9 +149,15 @@ export async function handleTelnyxTexmlOpenAiInbound(
       callSid: form.CallSid,
       rb_call_id: rbCallId,
       shop_id: shopId,
+      billing_blocked_reason: billingBlockedReason,
     },
     'telnyx_texml_openai_sip_dial_selected',
   );
+
+  if (billingBlockedReason) {
+    incrementMetric('texml_openai_inbound_total', { outcome: 'billing_blocked' });
+    return texmlXmlResponse(buildTelnyxTexmlRejectXml());
+  }
 
   const xml = buildTelnyxTexmlDialOpenAiXml(sipUriConfigured);
   incrementMetric('texml_openai_inbound_total', { outcome: 'dial_openai' });

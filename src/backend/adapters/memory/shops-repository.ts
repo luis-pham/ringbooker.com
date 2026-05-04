@@ -105,6 +105,8 @@ export class InMemoryShopsRepository implements ShopsRepository {
     active?: boolean;
   }): Promise<Shop> {
     const id = `shop-${randomUUID()}`;
+    const plan = params.plan ?? 'starter';
+    const enableProfessionalDefaults = plan === 'professional' || plan === 'enterprise';
     const created: Shop = {
       id,
       name: params.name,
@@ -128,12 +130,12 @@ export class InMemoryShopsRepository implements ShopsRepository {
       forwarding_carrier: null,
       forwarding_country: 'us',
       telnyx_number: null,
-      allow_transfers: true,
+      allow_transfers: enableProfessionalDefaults,
       allow_callbacks: true,
-      send_reminder_sms: true,
-      send_review_request_sms: true,
+      send_reminder_sms: enableProfessionalDefaults,
+      send_review_request_sms: enableProfessionalDefaults,
       send_missed_call_followup_sms: true,
-      plan: params.plan ?? 'starter',
+      plan,
       active: params.active ?? true,
     };
     this.shops.set(id, created);

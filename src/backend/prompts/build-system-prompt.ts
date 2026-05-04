@@ -1,4 +1,5 @@
 import type { Customer, Shop } from '@/src/backend/domain/types';
+import { canUseReturningCallerContext } from '@/src/backend/domain/shop-plan-capabilities';
 import {
   composeVoicePrompt,
   inferVerticalFromBusinessConfig,
@@ -52,6 +53,7 @@ function mapPromptModeToCallType(mode: PromptMode): VoicePromptCallType {
 }
 
 function buildProductionBusinessConfig(shop: Shop, customer: Customer | null): RuntimeBusinessConfig {
+  const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   return {
     businessName: shop.name,
     businessType: 'service business',
@@ -72,7 +74,7 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null): R
       voiceStyle: shop.ai_voice,
       shopCustomInstructions: shop.ai_custom_instructions ? compactLine(shop.ai_custom_instructions, 700) : null,
     }),
-    callerContext: buildCustomerSection(customer),
+    callerContext: buildCustomerSection(promptCustomer),
   };
 }
 

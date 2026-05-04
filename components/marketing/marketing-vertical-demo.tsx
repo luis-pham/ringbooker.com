@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Script from 'next/script';
 import { flushSync } from 'react-dom';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Room, RoomEvent } from 'livekit-client';
+import { Room, RoomEvent, Track } from 'livekit-client';
 
 import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
@@ -856,32 +856,38 @@ export function MarketingVerticalDemoTemplate({
       let realtimeSessionReady = false;
       const requestInitialGreeting = () => {
         if (initialGreetingRequested || !realtimeSessionReady || dc.readyState !== 'open') return;
-        setStatusText('The receptionist is greeting you…');
-        dc.send(
-          JSON.stringify({
-            type: 'conversation.item.create',
-            item: {
-              type: 'message',
-              role: 'user',
-              content: [
-                {
-                  type: 'input_text',
-                  text: 'The call just connected. Please say the configured WELCOME MESSAGE before I say anything.',
-                },
-              ],
-            },
-          }),
-        );
-        dc.send(
-          JSON.stringify({
-            type: 'response.create',
-            response: {
-              instructions:
-                'Speak first now. Say only the exact WELCOME MESSAGE from RUNTIME BUSINESS CONFIG, naturally and once, then stop and listen. Do not say "welcome to the demo" or mention the demo unless the WELCOME MESSAGE itself says it. Do not wait for the caller to speak.',
-            },
-          }),
-        );
+        // Set before sends: `open` + 250ms timer and `session.created`/`session.updated` can fire close
+        // together; two callers could both pass the guard if the flag were flipped only after I/O.
         initialGreetingRequested = true;
+        setStatusText('The receptionist is greeting you…');
+        try {
+          dc.send(
+            JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'message',
+                role: 'user',
+                content: [
+                  {
+                    type: 'input_text',
+                    text: 'The call just connected. Please say the configured WELCOME MESSAGE before I say anything.',
+                  },
+                ],
+              },
+            }),
+          );
+          dc.send(
+            JSON.stringify({
+              type: 'response.create',
+              response: {
+                instructions:
+                  'Speak first now. Say only the exact WELCOME MESSAGE from RUNTIME BUSINESS CONFIG, naturally and once, then stop and listen. Do not say "welcome to the demo" or mention the demo unless the WELCOME MESSAGE itself says it. Do not wait for the caller to speak.',
+              },
+            }),
+          );
+        } catch {
+          initialGreetingRequested = false;
+        }
       };
       dc.addEventListener('open', () => {
         window.setTimeout(requestInitialGreeting, 250);
@@ -933,15 +939,15 @@ export function MarketingVerticalDemoTemplate({
     }
   }
 
-  async function startLiveKitWebDemo(options?: { microphonePreflightOk?: boolean }) {
-    setStatusText('Requesting microphone…');
-    if (!options?.microphonePreflightOk) {
-      const stream = await requestDemoMicrophone({ keepAlive: false });
-      if (!stream) {
-        setStage('idle');
-        setStatusText('');
-        return;
-      }
+  async function startLiveKitWebDemo(params: { micStream: MediaStream }) {
+    const { micStream } = params;
+    const micTrack = micStream.getAudioTracks()[0];
+    if (!micTrack) {
+      resetTurnstile();
+      setStage('idle');
+      setStatusText('');
+      setErrors(['No microphone audio track was returned. Please try again or call the demo number instead.']);
+      return;
     }
 
     clearPollTimer();
@@ -961,6 +967,7 @@ export function MarketingVerticalDemoTemplate({
       const body = (await res.json()) as DemoApiResponse;
       if (!body.ok || !body.requestId || !body.previewToken) {
         resetTurnstile();
+        micStream.getTracks().forEach((t) => t.stop());
         setStage('failed');
         setRequestError(apiUserVisibleMessage(body, 'Unable to start browser demo.'));
         return;
@@ -975,7 +982,9 @@ export function MarketingVerticalDemoTemplate({
         });
         try {
           await room.connect(liveKitUrl, liveKitToken);
-          await room.localParticipant.setMicrophoneEnabled(true);
+          // Publish the mic track acquired during the Start click (same user-gesture chain). Calling
+          // setMicrophoneEnabled after await fetch often loses activation and surfaces NotAllowedError.
+          await room.localParticipant.publishTrack(micTrack, { source: Track.Source.Microphone });
         } catch {
           room.disconnect();
           roomRef.current = null;
@@ -990,6 +999,7 @@ export function MarketingVerticalDemoTemplate({
         roomRef.current.disconnect();
         roomRef.current = null;
       }
+      micStream.getTracks().forEach((t) => t.stop());
       setStage('failed');
       const message = error instanceof Error && error.message === 'livekit_connect_failed'
         ? LIVEKIT_CONNECT_ERROR_MESSAGE
@@ -1009,8 +1019,9 @@ export function MarketingVerticalDemoTemplate({
     try {
       // Request mic while the Start button click is still the active user gesture.
       // Some browsers are flaky on first permission prompt if we unmount the form first.
+      // Keep the LiveKit preflight stream alive until publishTrack — do not stop tracks before async work.
       setStatusText('Requesting microphone…');
-      const preflightStream = await requestDemoMicrophone({ keepAlive: demoWebCallMode === 'direct_openai' });
+      const preflightStream = await requestDemoMicrophone({ keepAlive: true });
       if (!preflightStream) return;
 
       flushSync(() => {
@@ -1021,7 +1032,7 @@ export function MarketingVerticalDemoTemplate({
       });
 
       if (demoWebCallMode === 'direct_openai') await startDirectOpenAiDemo(preflightStream);
-      else await startLiveKitWebDemo({ microphonePreflightOk: true });
+      else await startLiveKitWebDemo({ micStream: preflightStream });
     } finally {
       demoStartLockRef.current = false;
     }

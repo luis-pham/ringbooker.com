@@ -5,34 +5,7 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 
 import styles from '@/components/auth/user-auth-template.module.css';
-import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
-import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
-
-const LOGIN_FAQ_ITEMS: MarketingFaqItem[] = [
-  {
-    q: 'I signed up with Google — how do I sign in?',
-    a: 'Use “Continue with Google” and pick the same Google account you used to create your RingBooker user. Email/password sign-in is separate from Google sign-in.',
-  },
-  {
-    q: 'I forgot my password',
-    a: (
-      <>
-        Use{' '}
-        <a href="/user/forgot-password">Forgot password</a> to send a reset link to your work email.
-      </>
-    ),
-  },
-  {
-    q: 'How do I start a free trial?',
-    a: (
-      <>
-        Choose a plan on the{' '}
-        <a href="/pricing">Pricing</a> page, then continue to account creation with your selected plan.
-      </>
-    ),
-  },
-];
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -46,17 +19,29 @@ export function UserLoginForm() {
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [showPricingHint, setShowPricingHint] = useState(false);
+  const [oauthBanner, setOauthBanner] = useState<'no_account' | 'account_exists' | null>(null);
+  const [oauthErrorCode, setOauthErrorCode] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setOauthError(params.get('error'));
+    const err = params.get('error');
+    if (err === 'no_ringbooker_account') {
+      setOauthBanner('no_account');
+      return;
+    }
+    if (err === 'account_exists') {
+      setOauthBanner('account_exists');
+      return;
+    }
+    if (err) setOauthErrorCode(err);
   }, []);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setShowPricingHint(false);
     try {
       const response = await fetch('/api/backend/auth/user/login', {
         method: 'POST',
@@ -73,13 +58,21 @@ export function UserLoginForm() {
         error?: string;
         message?: string;
         onboardingRequired?: boolean;
+        postAuthRedirect?: string;
       } | null;
       if (!response.ok) {
         setError(apiUserVisibleMessage(body, 'Login failed'));
+        setShowPricingHint(response.status === 401);
         setLoading(false);
         return;
       }
-      router.push(body?.onboardingRequired ? '/user/onboarding' : '/user');
+      const next =
+        typeof body?.postAuthRedirect === 'string' && body.postAuthRedirect.startsWith('/')
+          ? body.postAuthRedirect
+          : body?.onboardingRequired
+            ? '/user/onboarding'
+            : '/user';
+      router.push(next);
       router.refresh();
     } catch {
       setError('Network error. Please try again.');
@@ -135,8 +128,34 @@ export function UserLoginForm() {
               </a>
             </div>
 
-            {oauthError ? <p className={styles.error}>Google sign-in failed. Please try again.</p> : null}
+            {oauthBanner === 'no_account' ? (
+              <div className={styles.error} role="alert">
+                <p>No RingBooker account found. Please choose a trial plan first.</p>
+                <p style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+                  <a className={styles.link} href="/pricing?intent=signup&reason=no_account">
+                    View pricing and start trial
+                  </a>
+                </p>
+              </div>
+            ) : null}
+            {oauthBanner === 'account_exists' ? (
+              <p className={styles.error} role="alert">
+                Account already exists. Please log in to continue.
+              </p>
+            ) : null}
+            {oauthErrorCode && !oauthBanner ? (
+              <p className={styles.error}>Google sign-in failed. Please try again.</p>
+            ) : null}
             {error ? <p className={styles.error}>{error}</p> : null}
+            {showPricingHint ? (
+              <p className={styles.fine} style={{ marginTop: error ? '-0.25rem' : undefined }}>
+                New to RingBooker?{' '}
+                <a className={styles.link} href="/pricing?intent=signup">
+                  Choose a trial plan
+                </a>
+                .
+              </p>
+            ) : null}
             <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={loading}>
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
@@ -166,17 +185,6 @@ export function UserLoginForm() {
             </p>
             <p className={styles.fine}>If you signed up with Google, please log in with Google.</p>
           </div>
-        </div>
-        <div className={styles.authWideBelow}>
-          <MarketingFaqAccordion
-            items={LOGIN_FAQ_ITEMS}
-            embedded
-            wide
-            eyebrow={null}
-            title="Common questions"
-            subtitle={null}
-            id="login-faq"
-          />
         </div>
       </section>
       <footer className={styles.pageFooter}>

@@ -172,6 +172,14 @@ function createValidatedEnv() {
       PADDLE_PRICE_STARTER: z.string().min(1),
       PADDLE_PRICE_PROFESSIONAL: z.string().min(1),
       PADDLE_PRICE_ENTERPRISE: z.string().min(1),
+      /**
+       * Must be true only after Paddle dashboard prices are verified to collect
+       * payment method now and not charge until the configured 14-day trial ends.
+       */
+      PADDLE_TRIAL_CONFIG_VERIFIED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
 
       EMAIL_PROVIDER: z.enum(['noop', 'resend']).default('noop'),
       EMAIL_FROM_ADDRESS: z.string().min(1).default('RingBooker <notifications@send.ringbooker.com>'),

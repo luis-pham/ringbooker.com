@@ -5,11 +5,14 @@ import { getEnv } from '@/src/backend/config/env';
 import type {
   CallLogsRepository,
   CallbacksRepository,
+  BillingSubscriptionsRepository,
   DemoSessionsRepository,
   JobsRepository,
   MissedCallsRepository,
   ProviderEventsRepository,
+  ShopAccessStatesRepository,
   ShopsRepository,
+  TestCallAttemptsRepository,
 } from '@/src/backend/ports/repositories';
 import { verifyTelnyxSignature } from '@/src/backend/security/telnyx-signature';
 import { withLogContext } from '@/src/backend/observability/logger';
@@ -17,6 +20,7 @@ import { incrementMetric } from '@/src/backend/observability/metrics';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { getClientIp } from '@/src/backend/security/rate-limit';
 import { resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
+import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 
 const telnyxEnvelopeSchema = z.object({
   data: z.object({
@@ -85,6 +89,9 @@ export async function handleTelnyxWebhook(
     callLogsRepository?: CallLogsRepository;
     missedCallsRepository?: MissedCallsRepository;
     demoSessionsRepository?: DemoSessionsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+    shopAccessStatesRepository?: ShopAccessStatesRepository;
+    testCallAttemptsRepository?: TestCallAttemptsRepository;
   },
 ) {
   const bodyText = await c.req.text();
@@ -235,25 +242,61 @@ export async function handleTelnyxWebhook(
       if (destinationPhone && callerPhone) {
         const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, destinationPhone);
         if (shop) {
-          const dedupe = deps.missedCallsRepository
-            ? await deps.missedCallsRepository.createOncePerHour({
-                shopId: shop.id,
-                callerPhone,
-                callLogProviderCallId: providerCallId ?? undefined,
-              })
-            : { created: true };
-
-          if (dedupe.created) {
-            await deps.jobsRepository.enqueue({
-              shopId: shop.id,
-              type: 'missed_call_followup_sms',
-              payload: { customerPhone: callerPhone },
-              runAt: new Date(),
-              idempotencyKey: `telnyx_missed_call_followup:${event.id}`,
-            });
-            log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_missed_call_followup_queued');
+          const subsRepo = deps.billingSubscriptionsRepository;
+          const accessStatesRepo = deps.shopAccessStatesRepository;
+          let canEnqueueMissedPaidFollowup = false;
+          if (!subsRepo || !accessStatesRepo) {
+            log.warn(
+              { eventId: event.id, shopId: shop.id, callerPhone },
+              'paid_followup_gate_unavailable',
+            );
           } else {
-            log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_missed_call_followup_deduped');
+            const access = await getShopBillingAccess(
+              {
+                shopsRepository: deps.shopsRepository,
+                billingSubscriptionsRepository: subsRepo,
+                shopAccessStatesRepository: accessStatesRepo,
+                testCallAttemptsRepository: deps.testCallAttemptsRepository,
+              },
+              { shopId: shop.id },
+            );
+            if (!access.canReceiveLiveCalls) {
+              log.info(
+                { eventId: event.id, shopId: shop.id, callerPhone, blockReason: access.blockReason },
+                'telnyx_missed_call_followup_blocked_by_billing',
+              );
+              incrementMetric('billing_blocked_workflows_total', {
+                workflow: 'missed_call_followup_sms',
+                reason: access.blockReason,
+              });
+            } else {
+              canEnqueueMissedPaidFollowup = true;
+            }
+          }
+
+          if (canEnqueueMissedPaidFollowup) {
+            const dedupe = deps.missedCallsRepository
+              ? await deps.missedCallsRepository.createOncePerHour({
+                  shopId: shop.id,
+                  callerPhone,
+                  callLogProviderCallId: providerCallId ?? undefined,
+                })
+              : { created: true };
+
+            if (dedupe.created) {
+              await deps.jobsRepository.enqueue({
+                shopId: shop.id,
+                type: 'missed_call_followup_sms',
+                payload: { customerPhone: callerPhone },
+                runAt: new Date(),
+                idempotencyKey: `telnyx_missed_call_followup:${event.id}`,
+              });
+              log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_missed_call_followup_queued');
+            } else {
+              log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_missed_call_followup_deduped');
+            }
+          } else if (subsRepo && accessStatesRepo) {
+            log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_missed_call_followup_not_queued');
           }
         }
       }
@@ -265,6 +308,32 @@ export async function handleTelnyxWebhook(
       if (destinationPhone && callerPhone) {
         const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, destinationPhone);
         if (shop) {
+          let canUsePaidFollowup = true;
+          if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
+            const access = await getShopBillingAccess(
+              {
+                shopsRepository: deps.shopsRepository,
+                billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+                shopAccessStatesRepository: deps.shopAccessStatesRepository,
+                testCallAttemptsRepository: deps.testCallAttemptsRepository,
+              },
+              { shopId: shop.id },
+            );
+            if (!access.canReceiveLiveCalls) {
+              log.info(
+                { eventId: event.id, shopId: shop.id, callerPhone, blockReason: access.blockReason },
+                'telnyx_callback_request_blocked_by_billing',
+              );
+              incrementMetric('billing_blocked_workflows_total', {
+                workflow: 'callback_outbound_call',
+                reason: access.blockReason,
+              });
+              canUsePaidFollowup = false;
+            }
+          }
+          if (!canUsePaidFollowup) {
+            log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_callback_request_not_queued');
+          } else {
           const callback = deps.callbacksRepository
             ? await deps.callbacksRepository.create({
                 shopId: shop.id,
@@ -282,6 +351,7 @@ export async function handleTelnyxWebhook(
             idempotencyKey: `telnyx_callback_request:${event.id}`,
           });
           log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_callback_request_queued');
+          }
         }
       }
     }

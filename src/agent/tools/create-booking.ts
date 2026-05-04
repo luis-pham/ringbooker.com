@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import type { ToolError } from '@/src/backend/domain/types';
+import { canUseReminderSms, canUseReviewRequestSms } from '@/src/backend/domain/shop-plan-capabilities';
+import { logger } from '@/src/backend/observability/logger';
 import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import {
   dateSchema,
@@ -114,8 +116,16 @@ export async function createBookingTool(
 
     const bookingAt = new Date(utcIso).getTime();
     if (Number.isFinite(bookingAt)) {
+      const canEnqueueReminderSms = canUseReminderSms(ctx.shop.plan);
+      const canEnqueueReviewRequestSms = canUseReviewRequestSms(ctx.shop.plan);
       const reminder24hAt = new Date(bookingAt - 24 * 60 * 60 * 1000);
-      if (ctx.shop.send_reminder_sms && reminder24hAt.getTime() > Date.now()) {
+      if (ctx.shop.send_reminder_sms && !canEnqueueReminderSms) {
+        logger.warn(
+          { shopId: ctx.shop.id, plan: ctx.shop.plan, feature: 'reminder_sms' },
+          'plan_feature_locked_booking_job_enqueue_skipped',
+        );
+      }
+      if (ctx.shop.send_reminder_sms && canEnqueueReminderSms && reminder24hAt.getTime() > Date.now()) {
         await ctx.jobsRepository.enqueue({
           shopId: ctx.shop.id,
           type: 'appointment_reminder_24h',
@@ -126,7 +136,7 @@ export async function createBookingTool(
       }
 
       const reminder2hAt = new Date(bookingAt - 2 * 60 * 60 * 1000);
-      if (ctx.shop.send_reminder_sms && reminder2hAt.getTime() > Date.now()) {
+      if (ctx.shop.send_reminder_sms && canEnqueueReminderSms && reminder2hAt.getTime() > Date.now()) {
         await ctx.jobsRepository.enqueue({
           shopId: ctx.shop.id,
           type: 'appointment_reminder_2h',
@@ -137,7 +147,13 @@ export async function createBookingTool(
       }
 
       const reviewAt = new Date(bookingAt + 4 * 60 * 60 * 1000);
-      if (ctx.shop.send_review_request_sms) {
+      if (ctx.shop.send_review_request_sms && !canEnqueueReviewRequestSms) {
+        logger.warn(
+          { shopId: ctx.shop.id, plan: ctx.shop.plan, feature: 'review_request_sms' },
+          'plan_feature_locked_booking_job_enqueue_skipped',
+        );
+      }
+      if (ctx.shop.send_review_request_sms && canEnqueueReviewRequestSms) {
         await ctx.jobsRepository.enqueue({
           shopId: ctx.shop.id,
           type: 'review_request_sms',

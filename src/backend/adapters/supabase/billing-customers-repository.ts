@@ -7,8 +7,10 @@ type BillingCustomersRow = {
   id: string;
   shop_id: string;
   provider: BillingCustomer['provider'];
-  provider_customer_id: string;
+  provider_customer_id: string | null;
   email: string | null;
+  name: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };
@@ -20,6 +22,8 @@ function toBillingCustomer(row: BillingCustomersRow): BillingCustomer {
     provider: row.provider,
     providerCustomerId: row.provider_customer_id,
     email: row.email,
+    name: row.name,
+    metadata: row.metadata,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -57,9 +61,30 @@ export class SupabaseBillingCustomersRepository implements BillingCustomersRepos
   async upsert(params: {
     shopId: string;
     provider: BillingCustomer['provider'];
-    providerCustomerId: string;
+    providerCustomerId?: string | null;
     email?: string | null;
+    name?: string | null;
+    metadata?: Record<string, unknown> | null;
   }): Promise<BillingCustomer> {
+    if (!params.providerCustomerId) {
+      const existing = await this.findByShopId(params.shopId, params.provider);
+      if (existing) {
+        const { data, error } = await this.supabase
+          .from('billing_customers')
+          .update({
+            email: params.email ?? existing.email ?? null,
+            name: params.name ?? existing.name ?? null,
+            metadata: params.metadata ?? existing.metadata ?? {},
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id)
+          .select('*')
+          .single<BillingCustomersRow>();
+        if (error) throw new Error(`billing_customers_upsert_failed:${error.message}`);
+        return toBillingCustomer(data);
+      }
+    }
+
     const { data, error } = await this.supabase
       .from('billing_customers')
       .upsert(
@@ -68,10 +93,12 @@ export class SupabaseBillingCustomersRepository implements BillingCustomersRepos
           provider: params.provider,
           provider_customer_id: params.providerCustomerId,
           email: params.email ?? null,
+          name: params.name ?? null,
+          metadata: params.metadata ?? {},
           updated_at: new Date().toISOString(),
         },
         {
-          onConflict: 'provider,provider_customer_id',
+          onConflict: params.providerCustomerId ? 'provider,provider_customer_id' : 'shop_id,provider',
         },
       )
       .select('*')

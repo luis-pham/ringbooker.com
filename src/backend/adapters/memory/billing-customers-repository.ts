@@ -13,6 +13,8 @@ export class InMemoryBillingCustomersRepository implements BillingCustomersRepos
         provider: 'paddle',
         providerCustomerId: 'ctm_demo_paddle',
         email: 'user@ringbooker.local',
+        name: 'RingBooker Demo Salon',
+        metadata: { seeded: true },
         createdAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
         updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
       },
@@ -43,17 +45,23 @@ export class InMemoryBillingCustomersRepository implements BillingCustomersRepos
   async upsert(params: {
     shopId: string;
     provider: BillingCustomer['provider'];
-    providerCustomerId: string;
+    providerCustomerId?: string | null;
     email?: string | null;
+    name?: string | null;
+    metadata?: Record<string, unknown> | null;
   }): Promise<BillingCustomer> {
-    const existing = await this.findByProviderCustomerId(params.provider, params.providerCustomerId);
+    const existing = params.providerCustomerId
+      ? await this.findByProviderCustomerId(params.provider, params.providerCustomerId)
+      : await this.findByShopId(params.shopId, params.provider);
     const now = new Date().toISOString();
     const next: BillingCustomer = {
       id: existing?.id ?? `bc_${randomUUID()}`,
       shopId: params.shopId,
       provider: params.provider,
-      providerCustomerId: params.providerCustomerId,
+      providerCustomerId: params.providerCustomerId ?? existing?.providerCustomerId ?? null,
       email: params.email ?? existing?.email ?? null,
+      name: params.name ?? existing?.name ?? null,
+      metadata: params.metadata ?? existing?.metadata ?? null,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

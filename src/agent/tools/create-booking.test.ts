@@ -40,6 +40,7 @@ function createShop(provider: 'square_appointments' | 'manual' = 'square_appoint
 
 function createContext(params?: {
   provider?: 'square_appointments' | 'manual';
+  shop?: Partial<Shop>;
   findTeamMemberByName?: (name: string) => Promise<string | null>;
   checkAvailability?: AgentToolContext['calendarProvider']['checkAvailability'];
   createBooking?: (input: BookingInput) => Promise<BookingResult>;
@@ -53,7 +54,7 @@ function createContext(params?: {
   const createBooking = params?.createBooking ?? (async (input: BookingInput) => ({ bookingId: 'calendar-booking-123', confirmed: true }));
 
   const ctx: AgentToolContext = {
-    shop: createShop(params?.provider ?? 'square_appointments'),
+    shop: { ...createShop(params?.provider ?? 'square_appointments'), ...params?.shop },
     callerPhone: '+15551234567',
     requestId: 'req-create-booking-test',
     roomName: 'room-create-booking-test',
@@ -243,4 +244,65 @@ test('SMS confirmation enqueue failure does not break booking', async () => {
   });
 
   assert.equal('success' in result && result.success, true);
+});
+
+test('Starter does not enqueue reminder jobs even when reminder flag is true', async () => {
+  const harness = createContext({
+    shop: {
+      plan: 'starter',
+      send_reminder_sms: true,
+      send_review_request_sms: false,
+    },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'appointment_reminder_24h'), false);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'appointment_reminder_2h'), false);
+});
+
+test('Starter does not enqueue review request SMS even when review flag is true', async () => {
+  const harness = createContext({
+    shop: {
+      plan: 'starter',
+      send_reminder_sms: false,
+      send_review_request_sms: true,
+    },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'review_request_sms'), false);
+});
+
+test('Professional enqueues reminder and review SMS jobs when flags are true', async () => {
+  const harness = createContext({
+    shop: {
+      plan: 'professional',
+      send_reminder_sms: true,
+      send_review_request_sms: true,
+    },
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  const jobTypes = harness.enqueuedJobs.map((job) => (job as { type?: string }).type);
+  assert.ok(jobTypes.includes('appointment_reminder_24h'));
+  assert.ok(jobTypes.includes('appointment_reminder_2h'));
+  assert.ok(jobTypes.includes('review_request_sms'));
 });

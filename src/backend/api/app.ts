@@ -38,6 +38,7 @@ import type {
 import type {
   BlogPostsRepository,
   BookingsRepository,
+  BillingNotificationsRepository,
   BillingCustomersRepository,
   BillingSubscriptionsRepository,
   CallbacksRepository,
@@ -51,9 +52,14 @@ import type {
   ContactRequestsRepository,
   DemoSessionsRepository,
   HandoffSessionsRepository,
+  ShopAccessStatesRepository,
+  TestCallAttemptsRepository,
   VoiceCallLegsRepository,
 } from '@/src/backend/ports/repositories';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
+import { createNoCardTrialForShop } from '@/src/backend/services/billing/no-card-trial';
+import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { formatPlanPrice, getPlanCatalogEntry, isSelfServeTrialPlan } from '@/src/backend/domain/plan-catalog';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
 import type { EmailService } from '@/src/backend/services/email/types';
@@ -128,6 +134,8 @@ const jobTypeSchema = z.enum([
   'callback_outbound_call',
   'review_request_sms',
   'post_call_summary',
+  'trial_reminder_email',
+  'trial_expiry_check',
 ]);
 
 const enqueueJobSchema = z.object({
@@ -320,14 +328,11 @@ const userSignupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),
   remember: z.boolean().optional(),
+  plan: z.enum(['starter', 'professional']),
 });
 
 const forgotPasswordSchema = z.object({
   email: z.string().email(),
-});
-
-const googleStartQuerySchema = z.object({
-  intent: z.enum(['login', 'signup']).optional(),
 });
 
 const resetPasswordSchema = z.object({
@@ -443,7 +448,7 @@ const adminUserSetPasswordSchema = z.object({
 });
 
 const userBillingCheckoutSchema = z.object({
-  plan: z.enum(['starter', 'professional', 'enterprise']),
+  plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
 });
@@ -993,6 +998,7 @@ async function sendSignupWelcomeEmail(params: {
   email: string;
   shopName: string;
   shopId: string;
+  trialEndsAt?: string;
   appBaseUrl: string;
   idempotencyKey: string;
 }): Promise<void> {
@@ -1001,7 +1007,9 @@ async function sendSignupWelcomeEmail(params: {
     const { input, text } = buildWelcomeSignupEmailPayload({
       email: params.email,
       shopName: params.shopName,
+      trialEndsAt: params.trialEndsAt,
       appBaseUrl: params.appBaseUrl,
+      paddleTrialConfigVerified: process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true',
     });
     const html = await renderBaseEmailHtml(input);
     await params.emailService.sendEmail({
@@ -1025,6 +1033,13 @@ async function sendSignupWelcomeEmail(params: {
       'signup_welcome_email_failed',
     );
   }
+}
+
+export function buildGoLivePaymentRequiredMessage(params?: { paddleTrialConfigVerified?: boolean }): string {
+  const verified = params?.paddleTrialConfigVerified ?? process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true';
+  return verified
+    ? "Add a payment method to go live. You won't be charged until your trial ends."
+    : 'Add a payment method to go live. A payment method is required before RingBooker answers real callers on your business number.';
 }
 
 async function sendPasswordResetEmail(params: {
@@ -1197,6 +1212,23 @@ function isShopOnboardingComplete(shop: Shop): boolean {
   return hasVertical && hasOwnerName && hasOwnerPhone && hasTimezone && hasHours;
 }
 
+/** Where to send the user after a successful user login or signup (email or Google). */
+function computeUserPostAuthRedirectPath(params: { shop: Shop | null; shopId: string | null | undefined }): string {
+  if (!params.shopId || !params.shop) {
+    return '/pricing?reason=plan_required';
+  }
+  if (!isShopOnboardingComplete(params.shop)) {
+    return '/user/onboarding';
+  }
+  return '/user';
+}
+
+function clearUserGoogleOAuthCookies(c: Context) {
+  deleteCookie(c, 'rb_google_oauth_state', { path: '/' });
+  deleteCookie(c, 'rb_google_oauth_intent', { path: '/' });
+  deleteCookie(c, 'rb_google_oauth_selected_plan', { path: '/' });
+}
+
 function parseCalendarProviderParam(value: string): CalendarProviderParam | null {
   const parsed = calendarProviderParamSchema.safeParse({ provider: value });
   return parsed.success ? parsed.data.provider : null;
@@ -1333,6 +1365,9 @@ export function createBackendApp(deps: {
   bookingsRepository?: BookingsRepository;
   billingCustomersRepository?: BillingCustomersRepository;
   billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+  billingNotificationsRepository?: BillingNotificationsRepository;
+  shopAccessStatesRepository?: ShopAccessStatesRepository;
+  testCallAttemptsRepository?: TestCallAttemptsRepository;
   callbacksRepository?: CallbacksRepository;
   blogPostsRepository?: BlogPostsRepository;
   contactRequestsRepository?: ContactRequestsRepository;
@@ -1564,6 +1599,9 @@ export function createBackendApp(deps: {
       callLogsRepository: deps.callLogsRepository,
       missedCallsRepository: deps.missedCallsRepository,
       demoSessionsRepository: deps.demoSessionsRepository,
+      billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+      shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      testCallAttemptsRepository: deps.testCallAttemptsRepository,
       });
     })(),
   );
@@ -1575,6 +1613,8 @@ export function createBackendApp(deps: {
       return handleTelnyxCallControlWebhook(c, {
         providerEventsRepository: deps.providerEventsRepository,
         shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
         callLogsRepository: deps.callLogsRepository,
         jobsRepository: deps.jobsRepository,
         missedCallsRepository: deps.missedCallsRepository,
@@ -1587,10 +1627,18 @@ export function createBackendApp(deps: {
 
   // TeXML OpenAI SIP ingress adapter — Voice URL when TELNYX_INBOUND_ROUTING_MODE=texml_to_openai_sip (see telnyx-texml-openai-inbound.ts).
   app.post(path('/telnyx/texml/inbound'), (c) =>
-    handleTelnyxTexmlOpenAiInbound(c, { shopsRepository: deps.shopsRepository }),
+    handleTelnyxTexmlOpenAiInbound(c, {
+      shopsRepository: deps.shopsRepository,
+      billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+      shopAccessStatesRepository: deps.shopAccessStatesRepository,
+    }),
   );
   app.get(path('/telnyx/texml/inbound'), (c) =>
-    handleTelnyxTexmlOpenAiInbound(c, { shopsRepository: deps.shopsRepository }),
+    handleTelnyxTexmlOpenAiInbound(c, {
+      shopsRepository: deps.shopsRepository,
+      billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+      shopAccessStatesRepository: deps.shopAccessStatesRepository,
+    }),
   );
 
   app.post(path('/webhooks/paddle'), (c) =>
@@ -1622,6 +1670,8 @@ export function createBackendApp(deps: {
         providerEventsRepository: deps.providerEventsRepository,
         demoSessionsRepository: deps.demoSessionsRepository,
         shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
         jobsRepository: deps.jobsRepository,
         bookingsRepository: deps.bookingsRepository,
         callbacksRepository: deps.callbacksRepository,
@@ -2684,8 +2734,21 @@ Submitted at: ${new Date().toISOString()}`,
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
     const body = await c.req.json().catch(() => null);
+    const rawPlan =
+      body && typeof body === 'object' && 'plan' in body ? (body as { plan?: unknown }).plan : undefined;
+    const hasValidTrialPlan = rawPlan === 'starter' || rawPlan === 'professional';
     const parsed = userSignupSchema.safeParse(body);
     if (!parsed.success) {
+      if (!hasValidTrialPlan) {
+        return c.json(
+          {
+            ok: false,
+            error: 'plan_required',
+            message: 'Please choose a trial plan first.',
+          },
+          400,
+        );
+      }
       return c.json({ ok: false, error: 'invalid_payload' }, 400);
     }
     const normalizedEmail = parsed.data.email.toLowerCase();
@@ -2698,10 +2761,20 @@ Submitted at: ${new Date().toISOString()}`,
     if (!deps.authUsersRepository || !deps.shopsRepository) {
       return c.json({ ok: false, error: 'signup_dependencies_unavailable' }, 500);
     }
+    if (!deps.billingCustomersRepository || !deps.billingSubscriptionsRepository || !deps.shopAccessStatesRepository) {
+      return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
+    }
 
     const existing = await deps.authUsersRepository.findByEmail(normalizedEmail);
     if (existing) {
-      return c.json({ ok: false, error: 'email_already_exists' }, 409);
+      return c.json(
+        {
+          ok: false,
+          error: 'email_already_exists',
+          message: 'Account already exists. Please log in to continue.',
+        },
+        409,
+      );
     }
 
     const requestId = randomUUID();
@@ -2740,7 +2813,7 @@ Submitted at: ${new Date().toISOString()}`,
       user_phone: parsed.data.userPhone ?? assignedPhoneNumber,
       user_name: parsed.data.userName ?? null,
       timezone: parsed.data.timezone,
-      plan: 'starter',
+      plan: parsed.data.plan,
       active: true,
     });
 
@@ -2752,6 +2825,19 @@ Submitted at: ${new Date().toISOString()}`,
       active: true,
       mfaEnabled: false,
     });
+
+    const trial = await createNoCardTrialForShop(
+      {
+        billingCustomersRepository: deps.billingCustomersRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      },
+      {
+        shopId: createdShop.id,
+        email: authUser.email,
+        plan: parsed.data.plan,
+      },
+    );
 
     const token = await signSessionToken({
       role: 'user',
@@ -2785,9 +2871,12 @@ Submitted at: ${new Date().toISOString()}`,
       email: authUser.email,
       shopName: createdShop.name,
       shopId: createdShop.id,
+      trialEndsAt: trial.subscription.trialEndsAt ?? undefined,
       appBaseUrl: getAppBaseUrl(c.req),
       idempotencyKey: `signup-welcome:${authUser.id}`,
     });
+
+    const postAuthRedirect = computeUserPostAuthRedirectPath({ shop: createdShop, shopId: createdShop.id });
 
     return c.json(
       {
@@ -2795,6 +2884,13 @@ Submitted at: ${new Date().toISOString()}`,
         role: 'user',
         shopId: createdShop.id,
         onboardingRequired: !isShopOnboardingComplete(createdShop),
+        postAuthRedirect,
+        billing: {
+          subscriptionStatus: trial.subscription.status,
+          trialEndsAt: trial.subscription.trialEndsAt ?? null,
+          paymentMethodStatus: trial.subscription.paymentMethodStatus ?? 'none',
+          liveCallsEnabled: trial.accessState.liveCallsEnabled,
+        },
         shop: {
           id: createdShop.id,
           name: createdShop.name,
@@ -2806,11 +2902,16 @@ Submitted at: ${new Date().toISOString()}`,
   });
 
   app.get(path('/auth/user/google/start'), async (c) => {
-    const query = googleStartQuerySchema.safeParse({
-      intent: c.req.query('intent') ?? undefined,
-    });
-    if (!query.success) return c.json({ ok: false, error: 'invalid_query' }, 400);
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_google_user, `auth_google_start:${query.data.intent ?? 'login'}`);
+    const appBaseUrl = getAppBaseUrl(c.req);
+    const intentRaw = c.req.query('intent');
+    const planRaw = c.req.query('plan');
+    const intent: 'login' | 'signup' = intentRaw === 'signup' ? 'signup' : 'login';
+    if (intent === 'signup') {
+      if (planRaw !== 'starter' && planRaw !== 'professional') {
+        return c.redirect(`${appBaseUrl}/pricing?reason=plan_required`, 302);
+      }
+    }
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_google_user, `auth_google_start:${intent}`);
     if (limited) return limited;
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
     if (!clientId) {
@@ -2818,7 +2919,6 @@ Submitted at: ${new Date().toISOString()}`,
     }
 
     const oauthState = randomUUID();
-    const intent = query.data.intent ?? 'login';
     setCookie(c, 'rb_google_oauth_state', oauthState, {
       httpOnly: true,
       secure: process.env.NODE_ENV !== 'development',
@@ -2833,7 +2933,17 @@ Submitted at: ${new Date().toISOString()}`,
       path: '/',
       maxAge: 600,
     });
-    const appBaseUrl = getAppBaseUrl(c.req);
+    if (intent === 'signup' && (planRaw === 'starter' || planRaw === 'professional')) {
+      setCookie(c, 'rb_google_oauth_selected_plan', planRaw, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV !== 'development',
+        sameSite: 'Lax',
+        path: '/',
+        maxAge: 600,
+      });
+    } else {
+      deleteCookie(c, 'rb_google_oauth_selected_plan', { path: '/' });
+    }
     const redirectUri = `${appBaseUrl}/api/backend/auth/user/google/callback`;
     const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     googleAuthUrl.searchParams.set('client_id', clientId);
@@ -2849,17 +2959,25 @@ Submitted at: ${new Date().toISOString()}`,
 
   app.get(path('/auth/user/google/callback'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_google_user, 'auth_google_callback');
-    if (limited) return limited;
+    if (limited) {
+      clearUserGoogleOAuthCookies(c);
+      return limited;
+    }
     if (!deps.authUsersRepository || !deps.shopsRepository) {
+      clearUserGoogleOAuthCookies(c);
       return c.json({ ok: false, error: 'signup_dependencies_unavailable' }, 500);
+    }
+    if (!deps.billingCustomersRepository || !deps.billingSubscriptionsRepository || !deps.shopAccessStatesRepository) {
+      clearUserGoogleOAuthCookies(c);
+      return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
     }
     const state = c.req.query('state');
     const code = c.req.query('code');
     const oauthError = c.req.query('error');
     const oauthStateCookie = getCookie(c, 'rb_google_oauth_state');
     const oauthIntent = getCookie(c, 'rb_google_oauth_intent') ?? 'login';
-    deleteCookie(c, 'rb_google_oauth_state', { path: '/' });
-    deleteCookie(c, 'rb_google_oauth_intent', { path: '/' });
+    const oauthSelectedPlanRaw = getCookie(c, 'rb_google_oauth_selected_plan');
+    clearUserGoogleOAuthCookies(c);
 
     const appBaseUrl = getAppBaseUrl(c.req);
     if (oauthError || !code || !state || !oauthStateCookie || state !== oauthStateCookie) {
@@ -2914,10 +3032,21 @@ Submitted at: ${new Date().toISOString()}`,
     if (authUser && !authUser.active) {
       return c.redirect(`${appBaseUrl}/user/login?error=account_inactive`, 302);
     }
+    if (authUser && oauthIntent === 'signup') {
+      return c.redirect(`${appBaseUrl}/user/login?error=account_exists`, 302);
+    }
 
     let createdViaGoogleSignup = false;
     let shop: Shop | null = null;
     if (!authUser) {
+      if (oauthIntent === 'login') {
+        return c.redirect(`${appBaseUrl}/user/login?error=no_ringbooker_account`, 302);
+      }
+      const selectedPlan =
+        oauthSelectedPlanRaw === 'starter' || oauthSelectedPlanRaw === 'professional' ? oauthSelectedPlanRaw : null;
+      if (!selectedPlan) {
+        return c.redirect(`${appBaseUrl}/pricing?reason=plan_required`, 302);
+      }
       const requestId = randomUUID();
       const shopName = buildDefaultShopNameFromEmail(googleProfile.email);
       let assignedPhoneNumber = createTemporaryPhoneNumber();
@@ -2946,7 +3075,7 @@ Submitted at: ${new Date().toISOString()}`,
         user_phone: assignedPhoneNumber,
         user_name: googleProfile.name?.trim() || null,
         timezone: process.env.DEFAULT_SHOP_TIMEZONE ?? 'America/Los_Angeles',
-        plan: 'starter',
+        plan: selectedPlan,
         active: true,
       });
       authUser = await deps.authUsersRepository.create({
@@ -2957,6 +3086,18 @@ Submitted at: ${new Date().toISOString()}`,
         active: true,
         mfaEnabled: false,
       });
+      await createNoCardTrialForShop(
+        {
+          billingCustomersRepository: deps.billingCustomersRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+          shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        },
+        {
+          shopId: shop.id,
+          email: authUser.email,
+          plan: selectedPlan,
+        },
+      );
       createdViaGoogleSignup = true;
     } else if (authUser.shopId) {
       shop = await deps.shopsRepository.findById(authUser.shopId);
@@ -2990,18 +3131,20 @@ Submitted at: ${new Date().toISOString()}`,
     });
 
     if (createdViaGoogleSignup && shop) {
+      const trial = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
       await sendSignupWelcomeEmail({
         emailService: deps.emailService,
         email: authUser.email,
         shopName: shop.name,
         shopId: shop.id,
+        trialEndsAt: trial?.trialEndsAt ?? undefined,
         appBaseUrl,
         idempotencyKey: `google-signup-welcome:${authUser.id}`,
       });
     }
 
-    const onboardingRequired = shop ? !isShopOnboardingComplete(shop) : true;
-    return c.redirect(`${appBaseUrl}${onboardingRequired ? '/user/onboarding' : '/user'}`, 302);
+    const postAuthRedirect = computeUserPostAuthRedirectPath({ shop, shopId: authUser.shopId });
+    return c.redirect(`${appBaseUrl}${postAuthRedirect}`, 302);
   });
 
   app.post(path('/auth/user/login'), async (c) => {
@@ -3061,11 +3204,14 @@ Submitted at: ${new Date().toISOString()}`,
     const shop =
       authUser.shopId && deps.shopsRepository ? await deps.shopsRepository.findById(authUser.shopId) : null;
 
+    const postAuthRedirect = computeUserPostAuthRedirectPath({ shop, shopId: authUser.shopId });
+
     return c.json({
       ok: true,
       role: 'user',
       shopId: authUser.shopId ?? undefined,
       onboardingRequired: shop ? !isShopOnboardingComplete(shop) : false,
+      postAuthRedirect,
     });
   });
 
@@ -3411,9 +3557,43 @@ Submitted at: ${new Date().toISOString()}`,
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
     let subscriptionStatus: string | null = null;
+    let trialEndsAt: string | null = null;
+    let trialDaysRemaining: number | null = null;
+    let paymentMethodStatus = 'none';
+    let liveCallsEnabled = false;
+    let canGoLive = false;
+    let billingBannerVariant = 'payment_required_go_live';
     if (deps.billingSubscriptionsRepository) {
       const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
       subscriptionStatus = subscription?.status ?? null;
+      trialEndsAt = subscription?.trialEndsAt ?? null;
+    }
+    if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
+      const access = await getShopBillingAccess(
+        {
+          shopsRepository: deps.shopsRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+          shopAccessStatesRepository: deps.shopAccessStatesRepository,
+          testCallAttemptsRepository: deps.testCallAttemptsRepository,
+        },
+        { shopId: shop.id, onboardingComplete: isShopOnboardingComplete(shop) },
+      );
+      trialDaysRemaining = access.trialDaysRemaining;
+      paymentMethodStatus = access.paymentMethodStatus ?? 'none';
+      liveCallsEnabled = access.liveCallsEnabled;
+      canGoLive = access.canGoLive;
+      billingBannerVariant =
+        subscriptionStatus === 'active'
+          ? 'active'
+          : subscriptionStatus === 'trial_expired'
+            ? 'trial_expired'
+            : subscriptionStatus === 'trialing' && paymentMethodStatus === 'valid'
+              ? 'trialing_setup'
+              : subscriptionStatus === 'trialing' && (trialDaysRemaining ?? 99) <= 3
+                ? 'trial_ending'
+                : subscriptionStatus === 'past_due'
+                  ? 'past_due'
+                  : 'payment_required_go_live';
     }
 
     return c.json({
@@ -3424,6 +3604,13 @@ Submitted at: ${new Date().toISOString()}`,
       plan: shop.plan,
       onboardingRequired: !isShopOnboardingComplete(shop),
       subscriptionStatus,
+      billingStatus: subscriptionStatus,
+      trialEndsAt,
+      trialDaysRemaining,
+      paymentMethodStatus,
+      liveCallsEnabled,
+      canGoLive,
+      billingBannerVariant,
     });
   });
 
@@ -4246,7 +4433,7 @@ Submitted at: ${new Date().toISOString()}`,
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.shopsRepository || !deps.billingSubscriptionsRepository || !deps.billingCustomersRepository) {
+    if (!deps.shopsRepository || !deps.billingSubscriptionsRepository || !deps.billingCustomersRepository || !deps.shopAccessStatesRepository) {
       return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
     }
 
@@ -4257,6 +4444,17 @@ Submitted at: ${new Date().toISOString()}`,
       deps.billingCustomersRepository.findByShopId(shop.id),
       deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id),
     ]);
+    const access = await getShopBillingAccess(
+      {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      },
+      { shopId: shop.id, onboardingComplete: isShopOnboardingComplete(shop) },
+    );
+    const catalog = getPlanCatalogEntry(subscription?.plan ?? shop.plan);
+    const amountCents = access.amountCents ?? catalog.amountCents ?? 0;
 
     return c.json({
       ok: true,
@@ -4270,6 +4468,29 @@ Submitted at: ${new Date().toISOString()}`,
         provider: subscription?.provider ?? customer?.provider ?? deps.billingProvider?.provider ?? 'manual',
         customer,
         subscription,
+        plan: subscription?.plan ?? shop.plan,
+        planLabel: catalog.label,
+        status: subscription?.status ?? 'incomplete',
+        amountCents,
+        formattedPrice: amountCents > 0 ? formatPlanPrice({ ...catalog, amountCents }) : 'Custom',
+        currency: subscription?.currency ?? catalog.currency,
+        interval: subscription?.interval ?? catalog.interval,
+        trialStartedAt: subscription?.trialStartedAt ?? null,
+        trialEndsAt: subscription?.trialEndsAt ?? null,
+        trialDaysRemaining: access.trialDaysRemaining,
+        currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+        paymentMethodStatus: access.paymentMethodStatus,
+        hasPaymentMethod: access.paymentMethodStatus === 'valid',
+        liveCallsEnabled: access.liveCallsEnabled,
+        canOnboard: true,
+        canTestCall: access.canTestCall,
+        canGoLive: access.canGoLive,
+        canReceiveLiveCalls: access.canReceiveLiveCalls,
+        blockReason: access.blockReason,
+        requiresPaymentMethodBeforeGoLive: access.paymentMethodStatus !== 'valid',
+        trialNoChargeUntilEndVerified: process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true',
+        checkoutAvailable: Boolean(deps.billingProvider && isSelfServeTrialPlan(shop.plan)),
+        manageBillingAvailable: false,
       },
     });
   });
@@ -4281,7 +4502,7 @@ Submitted at: ${new Date().toISOString()}`,
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.shopsRepository || !deps.billingProvider) {
+    if (!deps.shopsRepository || !deps.billingProvider || !deps.billingSubscriptionsRepository) {
       return c.json({ ok: false, error: 'billing_provider_unavailable' }, 500);
     }
 
@@ -4291,12 +4512,23 @@ Submitted at: ${new Date().toISOString()}`,
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    if (!subscription || !['trialing', 'trial_expired', 'paused', 'canceled', 'active'].includes(subscription.status)) {
+      return c.json({ ok: false, error: 'subscription_not_ready_for_checkout' }, 409);
+    }
+    const checkoutPlan = subscription.plan;
+    if (!isSelfServeTrialPlan(checkoutPlan)) {
+      return c.json({ ok: false, error: 'plan_not_self_serve', message: 'Please contact sales for custom plans.' }, 400);
+    }
 
     const appBaseUrl = getAppBaseUrl(c.req);
     const session = await deps.billingProvider.createCheckoutSession({
       shop,
-      plan: parsed.data.plan,
+      plan: checkoutPlan,
       email: sessionResult.email,
+      internalSubscriptionId: subscription.id,
+      trialEndsAt: subscription.trialEndsAt ?? null,
+      source: 'add_payment_method_before_go_live',
       successUrl: parsed.data.successUrl ?? `${appBaseUrl}/user/billing?checkout=success`,
       cancelUrl: parsed.data.cancelUrl ?? `${appBaseUrl}/user/billing?checkout=cancelled`,
     });
@@ -4307,7 +4539,159 @@ Submitted at: ${new Date().toISOString()}`,
       checkoutUrl: session.checkoutUrl,
       providerTransactionId: session.providerTransactionId ?? null,
       providerCustomerId: session.providerCustomerId ?? null,
+      trialConfigVerified: session.trialConfigVerified ?? false,
     });
+  });
+
+  app.post(path('/user/billing/reactivate'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_billing_reactivate');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.billingProvider || !deps.billingSubscriptionsRepository) {
+      return c.json({ ok: false, error: 'billing_provider_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    if (!subscription || !['trial_expired', 'paused', 'canceled', 'past_due', 'unpaid'].includes(subscription.status)) {
+      return c.json({ ok: false, error: 'subscription_not_reactivatable' }, 409);
+    }
+    if (!isSelfServeTrialPlan(subscription.plan)) {
+      return c.json({ ok: false, error: 'plan_not_self_serve', message: 'Please contact sales for custom plans.' }, 400);
+    }
+    const appBaseUrl = getAppBaseUrl(c.req);
+    const session = await deps.billingProvider.createCheckoutSession({
+      shop,
+      plan: subscription.plan,
+      email: sessionResult.email,
+      internalSubscriptionId: subscription.id,
+      source: 'reactivate_subscription',
+      successUrl: `${appBaseUrl}/user/billing?checkout=success`,
+      cancelUrl: `${appBaseUrl}/user/billing?checkout=cancelled`,
+    });
+    return c.json({
+      ok: true,
+      provider: session.provider,
+      checkoutUrl: session.checkoutUrl,
+      trialConfigVerified: session.trialConfigVerified ?? false,
+    });
+  });
+
+  app.post(path('/user/go-live/enable'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_go_live_enable');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.billingSubscriptionsRepository || !deps.shopAccessStatesRepository) {
+      return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
+    }
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const access = await getShopBillingAccess(
+      {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      },
+      { shopId: shop.id, onboardingComplete: isShopOnboardingComplete(shop) },
+    );
+    if (!access.canGoLive) {
+      const status = access.blockReason === 'payment_method_required' ? 402 : 409;
+      return c.json(
+        {
+          ok: false,
+          error: access.blockReason === 'payment_method_required' ? 'payment_method_required' : access.blockReason,
+          message:
+            access.blockReason === 'payment_method_required'
+              ? buildGoLivePaymentRequiredMessage()
+              : 'RingBooker cannot go live until your account is ready.',
+          billingUrl: '/user/billing',
+        },
+        status,
+      );
+    }
+    const next = await deps.shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      liveCallsEnabled: true,
+      goLiveAt: new Date().toISOString(),
+      liveCallsPausedReason: null,
+      liveCallsPausedAt: null,
+    });
+    return c.json({ ok: true, liveCallsEnabled: next.liveCallsEnabled, goLiveAt: next.goLiveAt });
+  });
+
+  app.post(path('/user/test-calls/call-me'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_test_calls_call_me');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (
+      !deps.shopsRepository ||
+      !deps.billingSubscriptionsRepository ||
+      !deps.shopAccessStatesRepository ||
+      !deps.testCallAttemptsRepository ||
+      !deps.telephonyService
+    ) {
+      return c.json({ ok: false, error: 'test_call_dependencies_unavailable' }, 500);
+    }
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = z.object({ phoneNumber: z.string().min(6).max(32).optional() }).safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const access = await getShopBillingAccess(
+      {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      },
+      { shopId: shop.id, onboardingComplete: isShopOnboardingComplete(shop) },
+    );
+    if (!access.canTestCall) {
+      return c.json({ ok: false, error: access.blockReason, message: 'Test calls are not available for this account state.' }, 409);
+    }
+    const destination = parsed.data.phoneNumber ?? shop.user_phone;
+    const attempt = await deps.testCallAttemptsRepository.create({
+      shopId: shop.id,
+      userId: null,
+      type: 'outbound_call_me',
+      status: 'requested',
+      destinationPhone: destination,
+      metadata: { source: 'call_me_test', no_card_required: true },
+    });
+    const requestId = `test-call-${attempt.id}`;
+    try {
+      const result = await deps.telephonyService.createOutboundCall({
+        shopId: shop.id,
+        to: destination,
+        from: shop.phone_number,
+        purpose: 'callback',
+        requestId,
+        idempotencyKey: `test_call:${attempt.id}`,
+      });
+      await deps.testCallAttemptsRepository.updateStatus(attempt.id, {
+        status: 'started',
+        metadata: { providerCallId: result.providerCallId ?? null, requestId },
+      });
+      return c.json({ ok: true, attemptId: attempt.id, status: 'started', providerCallId: result.providerCallId ?? null });
+    } catch (error) {
+      await deps.testCallAttemptsRepository.updateStatus(attempt.id, {
+        status: 'failed',
+        errorReason: error instanceof Error ? error.message : 'test_call_failed',
+        completedAt: new Date().toISOString(),
+      });
+      return c.json({ ok: false, error: 'test_call_failed', attemptId: attempt.id }, 502);
+    }
   });
 
   app.put(path('/user/settings'), async (c) => {

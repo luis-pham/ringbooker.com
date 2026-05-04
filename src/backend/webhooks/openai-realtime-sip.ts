@@ -20,11 +20,13 @@ import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import type {
+  BillingSubscriptionsRepository,
   BookingsRepository,
   CallbacksRepository,
   DemoSessionsRepository,
   JobsRepository,
   ProviderEventsRepository,
+  ShopAccessStatesRepository,
   ShopsRepository,
   SipDemoSessionEnrichment,
 } from '@/src/backend/ports/repositories';
@@ -37,6 +39,7 @@ import {
   RATE_LIMIT_POLICIES,
 } from '@/src/backend/security/rate-limit';
 import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
+import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
@@ -164,6 +167,8 @@ export async function handleOpenAiRealtimeSipWebhook(
     providerEventsRepository: ProviderEventsRepository;
     demoSessionsRepository?: DemoSessionsRepository;
     shopsRepository?: ShopsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+    shopAccessStatesRepository?: ShopAccessStatesRepository;
     jobsRepository?: JobsRepository;
     bookingsRepository?: BookingsRepository;
     callbacksRepository?: CallbacksRepository;
@@ -355,6 +360,32 @@ export async function handleOpenAiRealtimeSipWebhook(
     return c.json({ ok: true });
   }
 
+  if (
+    route.kind === 'shop' &&
+    deps.shopsRepository &&
+    deps.billingSubscriptionsRepository &&
+    deps.shopAccessStatesRepository
+  ) {
+    const access = await getShopBillingAccess(
+      {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      },
+      { shopId: route.shop.id, onboardingComplete: true },
+    );
+    if (!access.canReceiveLiveCalls) {
+      if (apiKey) await rejectCall(603, access.blockReason);
+      await deps.providerEventsRepository.markProcessed({
+        provider: 'openai',
+        providerEventId: webhookId,
+        eventType: 'realtime.call.incoming',
+        payload: { callId, shopId: route.shop.id, outcome: 'billing_blocked', reason: access.blockReason },
+      });
+      return c.json({ ok: true, blocked: true, reason: access.blockReason });
+    }
+  }
+
   const normalizedFrom = parseE164FromSipValue(extractSipHeader(data.sip_headers, 'From'));
 
   if (normalizedFrom) {
@@ -493,6 +524,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     model,
     voice,
     includeDemoNoopTool,
+    sipPilotSuppressVadCreateResponse: includeDemoNoopTool,
     shopBusinessTools: shopToolsAndSideband ? getSipShopToolsForOpenAiAccept() : undefined,
     toolChoice: shopToolsAndSideband ? 'auto' : undefined,
   });

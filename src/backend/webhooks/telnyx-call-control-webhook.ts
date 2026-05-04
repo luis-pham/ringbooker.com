@@ -10,10 +10,12 @@ import { incrementMetric } from '@/src/backend/observability/metrics';
 import { withLogContext } from '@/src/backend/observability/logger';
 import type {
   CallLogsRepository,
+  BillingSubscriptionsRepository,
   HandoffSessionsRepository,
   JobsRepository,
   MissedCallsRepository,
   ProviderEventsRepository,
+  ShopAccessStatesRepository,
   ShopsRepository,
   VoiceCallLegsRepository,
 } from '@/src/backend/ports/repositories';
@@ -36,6 +38,7 @@ import {
   handoffOnOwnerOutboundInitiated,
   type HandoffOrchestratorDeps,
 } from '@/src/backend/services/calls/handoff-orchestrator';
+import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import { getTelnyxOpenAiSipLegTimeoutSecs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { resolveTelnyxOutboundCallsConnectionId } from '@/src/backend/adapters/telnyx/telnyx-outbound-connection-id';
 import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
@@ -161,6 +164,8 @@ export async function handleTelnyxCallControlWebhook(
   deps: {
     providerEventsRepository: ProviderEventsRepository;
     shopsRepository?: ShopsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+    shopAccessStatesRepository?: ShopAccessStatesRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     missedCallsRepository?: MissedCallsRepository;
@@ -270,6 +275,8 @@ async function processCallInitiated(
   deps: {
     providerEventsRepository: ProviderEventsRepository;
     shopsRepository: ShopsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+    shopAccessStatesRepository?: ShopAccessStatesRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
@@ -357,6 +364,8 @@ async function processCallInitiated(
 
     const result = await evaluateTelnyxCallControlInboundInitiated(event.payload, {
       shopsRepository: deps.shopsRepository,
+      billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+      shopAccessStatesRepository: deps.shopAccessStatesRepository,
     });
 
     const arch = inboundArchitectureLogFields();
@@ -1189,6 +1198,8 @@ async function processCallHangup(
   deps: {
     providerEventsRepository: ProviderEventsRepository;
     shopsRepository: ShopsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+    shopAccessStatesRepository?: ShopAccessStatesRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     missedCallsRepository?: MissedCallsRepository;
@@ -1290,23 +1301,54 @@ async function processCallHangup(
       callerPhone &&
       shop
     ) {
-      const dedupe = deps.missedCallsRepository
-        ? await deps.missedCallsRepository.createOncePerHour({
-            shopId: shop.id,
-            callerPhone,
-            callLogProviderCallId: providerCallId ?? undefined,
-          })
-        : { created: true };
+      const subsRepo = deps.billingSubscriptionsRepository;
+      const accessStatesRepo = deps.shopAccessStatesRepository;
+      let canEnqueueMissedPaidFollowup = false;
+      if (!subsRepo || !accessStatesRepo) {
+        log.warn(
+          { eventId: event.id, shopId: shop.id, callerPhone },
+          'paid_followup_gate_unavailable',
+        );
+      } else {
+        const access = await getShopBillingAccess(
+          {
+            shopsRepository: deps.shopsRepository,
+            billingSubscriptionsRepository: subsRepo,
+            shopAccessStatesRepository: accessStatesRepo,
+          },
+          { shopId: shop.id, onboardingComplete: true },
+        );
+        if (!access.canReceiveLiveCalls) {
+          log.warn(
+            { eventId: event.id, shopId: shop.id, callerPhone, blockReason: access.blockReason },
+            'telnyx_cc_missed_call_followup_billing_blocked',
+          );
+        } else {
+          canEnqueueMissedPaidFollowup = true;
+        }
+      }
 
-      if (dedupe.created) {
-        await deps.jobsRepository.enqueue({
-          shopId: shop.id,
-          type: 'missed_call_followup_sms',
-          payload: { customerPhone: callerPhone },
-          runAt: new Date(),
-          idempotencyKey: `telnyx_cc_missed_call_followup:${event.id}`,
-        });
-        log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_cc_missed_call_followup_queued');
+      if (canEnqueueMissedPaidFollowup) {
+        const dedupe = deps.missedCallsRepository
+          ? await deps.missedCallsRepository.createOncePerHour({
+              shopId: shop.id,
+              callerPhone,
+              callLogProviderCallId: providerCallId ?? undefined,
+            })
+          : { created: true };
+
+        if (dedupe.created) {
+          await deps.jobsRepository.enqueue({
+            shopId: shop.id,
+            type: 'missed_call_followup_sms',
+            payload: { customerPhone: callerPhone },
+            runAt: new Date(),
+            idempotencyKey: `telnyx_cc_missed_call_followup:${event.id}`,
+          });
+          log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_cc_missed_call_followup_queued');
+        }
+      } else if (subsRepo && accessStatesRepo) {
+        log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_cc_missed_call_followup_not_queued');
       }
     }
 

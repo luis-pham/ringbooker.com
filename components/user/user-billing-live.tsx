@@ -38,12 +38,28 @@ type UserBillingResponse = {
       plan: ShopPlan;
       status: BillingSubscriptionStatus;
       amount: number;
+      amountCents?: number | null;
       currency: string;
       interval: 'month' | 'year';
       currentPeriodEnd?: string | null;
       trialEndsAt?: string | null;
+      paymentMethodStatus?: 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
       cancelAtPeriodEnd: boolean;
     } | null;
+    planLabel?: string;
+    formattedPrice?: string;
+    trialDaysRemaining?: number | null;
+    paymentMethodStatus?: 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
+    hasPaymentMethod?: boolean;
+    liveCallsEnabled?: boolean;
+    canTestCall?: boolean;
+    canGoLive?: boolean;
+    canReceiveLiveCalls?: boolean;
+    blockReason?: string;
+    requiresPaymentMethodBeforeGoLive?: boolean;
+    trialNoChargeUntilEndVerified?: boolean;
+    checkoutAvailable?: boolean;
+    manageBillingAvailable?: boolean;
   };
   error?: string;
 };
@@ -164,6 +180,8 @@ export function UserBillingLive() {
 
   const subscription = data?.billing?.subscription ?? null;
   const currentPlan = subscription?.plan ?? data?.shop?.plan ?? 'starter';
+  const paymentMethodStatus = data?.billing?.paymentMethodStatus ?? subscription?.paymentMethodStatus ?? 'none';
+  const trialNoChargeUntilEndVerified = data?.billing?.trialNoChargeUntilEndVerified === true;
 
   const billingHistory = useMemo(() => {
     if (!subscription) return [];
@@ -250,9 +268,13 @@ export function UserBillingLive() {
                     {subscription ? `${currentPlan} plan` : 'No active subscription'}
                   </span>
                   <h3 style={{ fontSize: 30, marginTop: 14, marginBottom: 8, letterSpacing: '-1px' }}>
-                    {subscription
-                      ? 'Your AI phone agent billing is live and tracked in normalized subscription state.'
-                      : 'Choose a plan to activate your billing account and launch your AI phone agent.'}
+                    {data.billing?.canReceiveLiveCalls
+                      ? 'RingBooker is live and ready to answer real callers.'
+                      : data.billing?.hasPaymentMethod
+                        ? trialNoChargeUntilEndVerified
+                          ? "You're ready to go live. You won't be charged until your trial ends."
+                          : "You're ready to go live. Your payment method is on file for after-trial continuation."
+                        : 'No card is needed for setup and test calls. Add a payment method before live answering.'}
                   </h3>
                   <p>
                     Provider: <strong>{data.billing?.provider.toUpperCase()}</strong>
@@ -261,18 +283,24 @@ export function UserBillingLive() {
                 </div>
                 <div>
                   <div className="metric" style={{ fontSize: 44 }}>
-                    {subscription ? formatMoney(subscription.amount, subscription.currency) : '$0'}
+                    {data.billing?.formattedPrice ?? (subscription ? formatMoney(subscription.amount, subscription.currency) : '$0')}
                     <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: 0 }}>
                       {subscription ? ` / ${subscription.interval}` : ''}
                     </span>
                   </div>
                   <div className="metric-sub" style={{ color: 'rgba(255,255,255,.72)', marginTop: 6 }}>
                     {subscription?.trialEndsAt
-                      ? `Trial ends: ${formatDate(subscription.trialEndsAt)}`
+                      ? `Trial ends: ${formatDate(subscription.trialEndsAt)}${typeof data.billing?.trialDaysRemaining === 'number' ? ` · ${data.billing.trialDaysRemaining} day(s) left` : ''}`
                       : `Next renewal: ${formatDate(subscription?.currentPeriodEnd)}`}
                   </div>
-                  <div style={{ marginTop: 16 }}>
+                  <div className="metric-sub" style={{ color: 'rgba(255,255,255,.72)', marginTop: 6 }}>
+                    Payment method: <strong>{paymentMethodStatus}</strong> · Live answering:{' '}
+                    <strong>{data.billing?.liveCallsEnabled ? 'enabled' : 'disabled'}</strong>
+                  </div>
+                  <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <span className={`tag ${getStatusTone(subscription?.status)}`}>{getStatusLabel(subscription?.status)}</span>
+                    {data.billing?.canGoLive ? <span className="tag green">Ready to go live</span> : null}
+                    {data.billing?.blockReason ? <span className="tag orange">{data.billing.blockReason}</span> : null}
                   </div>
                 </div>
               </section>
@@ -302,8 +330,13 @@ export function UserBillingLive() {
                           onClick={() => void openCheckout(plan.plan)}
                           disabled={isBusy}
                         >
-                          {isBusy ? 'Starting checkout...' : isCurrent ? 'Refresh plan checkout' : 'Choose this plan'}
+                          {isBusy ? 'Starting checkout...' : isCurrent ? 'Add payment method' : 'Choose this plan'}
                         </button>
+                        <p className="sub" style={{ marginTop: 8 }}>
+                          {trialNoChargeUntilEndVerified
+                            ? "You won't be charged until your trial ends."
+                            : 'Add a payment method to continue after your trial.'}
+                        </p>
                       </div>
                     </div>
                   );

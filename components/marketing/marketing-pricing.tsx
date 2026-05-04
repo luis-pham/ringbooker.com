@@ -1,3 +1,5 @@
+import { Fragment } from 'react';
+
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
@@ -6,8 +8,12 @@ import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
 const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
+    q: 'Do I need a credit card to start?',
+    a: 'No. You can start a 14-day trial, complete setup, and run test calls without a card. A payment method is required before RingBooker answers real callers on your business number.',
+  },
+  {
     q: 'Do I need a new number?',
-    a: 'No. Current-number setup is the primary path. A dedicated RingBooker line is available only if you prefer a separate line.',
+    a: 'No. Current-number setup is the primary path. A dedicated RingBooker line is available as an optional deployment path where supported.',
   },
   {
     q: 'Do I need to change booking software?',
@@ -22,8 +28,20 @@ const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
     a: 'Yes, for routine cases. RingBooker can understand the request, capture context, confirm next steps, and escalate edge cases when a person should step in.',
   },
   {
+    q: 'Does Starter include owner call transfer?',
+    a: 'Starter captures callback requests and sends call summaries with next steps. Owner call transfer is included in Professional and Custom plans.',
+  },
+  {
     q: 'What happens when a caller needs a real person?',
-    a: 'RingBooker keeps a human path clear and can hand off the context so your team does not have to restart the conversation.',
+    a: 'RingBooker can collect the caller’s request, mark it for human follow-up, and send your team a clear summary. On Professional and Custom plans, RingBooker can also transfer the call to the owner based on your handoff settings.',
+  },
+  {
+    q: 'What is the difference between Professional and Custom?',
+    a: 'Professional is for busier teams that need stronger follow-up, caller context, provider preferences, language notes captured during setup, insights, and owner call transfer. Custom is for multi-location groups, higher call volume, custom routing, escalation rules, and integration planning.',
+  },
+  {
+    q: 'Can I use my current business number?',
+    a: 'Yes. RingBooker is designed to work with your current business number. You can set up and test first, then add a payment method before live answering is enabled.',
   },
   {
     q: 'Is this a generic AI receptionist for any business?',
@@ -152,6 +170,26 @@ a{text-decoration:none;color:inherit}
 .cta-box .btn-dark{background:#fff;color:#111827}
 .cta-box .btn-trial-soft{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.28);color:#fff}
 .cta-box .btn-trial-soft:hover{border-color:rgba(255,255,255,.45);color:#fff}
+.pricing-trial-note{max-width:760px;margin:28px auto 0;padding:16px 20px;border-radius:var(--r-lg);background:rgba(245,243,255,.65);border:1px solid rgba(196,181,253,.45);font-size:14px;line-height:1.65;color:#475569;text-align:center}
+.compare-section{margin-top:48px}
+.compare-wrap{margin:0 -8px;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.compare-table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:#fff;box-shadow:var(--shadow);font-size:14px}
+.compare-table th,.compare-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.compare-table tr:last-child td{border-bottom:none}
+.compare-table thead th{background:linear-gradient(180deg,#faf9ff 0%,#fff 100%);font-weight:700;color:var(--text-dark);text-align:left}
+.compare-table thead th:not(:first-child){text-align:center}
+.compare-table td:first-child{font-weight:500;color:#334155;text-align:left}
+.compare-table .compare-group td{background:var(--bg-gray);font-weight:700;color:#5B21B6;font-size:13px;letter-spacing:.02em;text-transform:uppercase}
+.compare-yes{text-align:center;font-weight:700;color:var(--green)}
+.compare-dash{text-align:center;color:var(--text-light);font-weight:600}
+.compare-val{font-size:14px;line-height:1.45}
+.compare-cta{margin-top:36px;text-align:center}
+.compare-cta p{font-size:15px;color:var(--text-gray);margin-bottom:18px;line-height:1.6}
+.compare-cta-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.compare-cta-row a{padding:12px 20px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--border);color:var(--text-dark);background:#fff;transition:all .2s}
+.compare-cta-row a:hover{border-color:rgba(139,92,246,.45);color:var(--purple-dark);background:rgba(245,243,255,.4)}
+.compare-cta-row a.primary{background:var(--text-dark);color:#fff;border-color:var(--text-dark)}
+.compare-cta-row a.primary:hover{background:#1f2937;border-color:#1f2937;color:#fff}
 @media(max-width:960px){
   .hero-page,.section{padding-left:22px;padding-right:22px}
   .trust-row,.plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.cta-box{grid-template-columns:1fr}
@@ -218,13 +256,14 @@ const plans = [
     href: '/user/signup?plan=starter',
     featured: false,
     benefits: [
-      ['🏪', 'Works with your current business number'],
-      ['🌙', 'After-hours and overflow call answering'],
-      ['📅', 'Booking request capture and confirmation'],
-      ['🔁', 'Basic reschedule and cancellation handling'],
-      ['💬', 'Missed-call text back'],
-      ['☎️', 'Optional dedicated RingBooker line'],
-      ['📝', 'Basic call logs and summaries'],
+      'Works with your current business number',
+      'After-hours and overflow call answering',
+      'Booking request capture and confirmation',
+      'Basic reschedule and cancellation handling',
+      'Missed-call text back',
+      'Callback request capture for calls that need a human',
+      'Call summaries with next steps',
+      'Guided setup and test call',
     ],
   },
   {
@@ -239,14 +278,15 @@ const plans = [
     href: '/user/signup?plan=professional',
     featured: true,
     benefits: [
-      ['✅', 'Everything in Starter'],
-      ['⏰', 'Reminder SMS and stronger follow-up'],
-      ['🧠', 'Returning caller notes and preferences'],
-      ['✂️', 'Preferred stylist or provider context'],
-      ['🌐', 'Bilingual workflows where configured'],
-      ['📊', 'Call recovery insights'],
-      ['📈', 'Advanced call insights'],
-      ['⚡', 'Priority support'],
+      'Everything in Starter',
+      'Reminder SMS and stronger follow-up',
+      'Returning caller notes and preferences',
+      'Preferred stylist or provider context',
+      'Owner call transfer with caller context',
+      'Language settings noted for setup',
+      'Call recovery insights',
+      'Advanced call insights',
+      'Priority support',
     ],
   },
   {
@@ -257,16 +297,16 @@ const plans = [
     priceId: undefined,
     price: 'Let’s talk',
     note: 'Best when you need implementation planning before rollout.',
-    cta: 'Book a demo',
+    cta: 'Talk to us',
     href: '/contact',
     featured: false,
     benefits: [
-      ['🏬', 'Multi-location setup'],
-      ['🧭', 'Custom call flows and routing rules'],
-      ['🔌', 'Custom integration planning'],
-      ['📈', 'Higher call volume planning'],
-      ['🤝', 'Concierge onboarding'],
-      ['🛠️', 'Priority implementation support'],
+      'Multi-location setup',
+      'Custom call flows, routing, and escalation rules',
+      'Custom integration planning',
+      'Higher call volume planning',
+      'Concierge onboarding',
+      'Priority implementation support',
     ],
   },
 ];
@@ -279,8 +319,72 @@ const everyPlanFeatures = [
   ['✕', 'Cancellations', 'Confirm cancellations and protect recovery opportunities.'],
   ['💬', 'Missed-call text back', 'Follow up when callers hang up or reach a busy window.'],
   ['🏪', 'Current number', 'Use your existing business number first.'],
-  ['☎️', 'Optional line', 'Add a dedicated RingBooker line if preferred.'],
+  ['📋', 'Call summaries with next steps', 'Structured recap after each call so your team knows what to do next.'],
+  ['📥', 'Callback request capture', 'When a caller needs a human, RingBooker records the request for follow-up.'],
+  ['☎️', 'Dedicated line where supported', 'Available as an optional deployment path when your setup benefits from a separate line.'],
 ];
+
+type CompareRow = { feature: string; starter: string; pro: string; custom: string };
+type CompareGroup = { title: string; rows: CompareRow[] };
+
+const PRICING_COMPARE_GROUPS: CompareGroup[] = [
+  {
+    title: 'Call answering',
+    rows: [
+      { feature: 'Works with current business number', starter: 'Yes', pro: 'Yes', custom: 'Yes' },
+      { feature: 'After-hours answering', starter: 'Yes', pro: 'Yes', custom: 'Yes' },
+      { feature: 'Overflow / missed-call coverage', starter: 'Yes', pro: 'Yes', custom: 'Yes' },
+      { feature: 'Booking request capture', starter: 'Yes', pro: 'Yes', custom: 'Yes' },
+      { feature: 'Basic reschedule/cancel handling', starter: 'Yes', pro: 'Yes', custom: 'Custom rules' },
+    ],
+  },
+  {
+    title: 'Follow-up',
+    rows: [
+      { feature: 'Missed-call text back', starter: 'Yes', pro: 'Yes', custom: 'Custom rules' },
+      { feature: 'Call summaries with next steps', starter: 'Yes', pro: 'Yes', custom: 'Yes' },
+      { feature: 'Callback request capture', starter: 'Yes', pro: 'Yes', custom: 'Yes' },
+      { feature: 'Reminder SMS', starter: '—', pro: 'Yes', custom: 'Custom' },
+      { feature: 'Returning caller notes', starter: '—', pro: 'Yes', custom: 'Yes' },
+      { feature: 'Preferred stylist/provider context', starter: '—', pro: 'Yes', custom: 'Yes' },
+    ],
+  },
+  {
+    title: 'Handoff and routing',
+    rows: [
+      { feature: 'Owner call transfer', starter: '—', pro: 'Yes', custom: 'Yes' },
+      { feature: 'Language setup notes', starter: '—', pro: 'Yes, where noted', custom: 'Custom' },
+      { feature: 'Custom routing and escalation', starter: '—', pro: '—', custom: 'Yes' },
+      { feature: 'Multi-location setup', starter: '—', pro: '—', custom: 'Yes' },
+    ],
+  },
+  {
+    title: 'Insights and support',
+    rows: [
+      { feature: 'Call recovery insights', starter: '—', pro: 'Yes', custom: 'Custom reporting' },
+      { feature: 'Advanced call insights', starter: '—', pro: 'Yes', custom: 'Custom reporting' },
+      { feature: 'Guided setup and test call', starter: 'Yes', pro: 'Yes', custom: 'Concierge onboarding' },
+      { feature: 'Priority support', starter: '—', pro: 'Yes', custom: 'Priority implementation support' },
+      { feature: 'Custom integration planning', starter: '—', pro: '—', custom: 'Yes' },
+    ],
+  },
+];
+
+const trialNoChargeCopyVerified = process.env.NEXT_PUBLIC_PADDLE_TRIAL_CONFIG_VERIFIED === 'true';
+
+function ComparePlanCell({ value }: { value: string }) {
+  if (value === 'Yes') {
+    return <td className="compare-yes">✓</td>;
+  }
+  if (value === '—') {
+    return <td className="compare-dash">—</td>;
+  }
+  return (
+    <td className="compare-val" style={{ textAlign: 'center', fontWeight: 500, color: '#475569' }}>
+      {value}
+    </td>
+  );
+}
 
 const pricingFaqJsonLd = buildFaqPageJsonLd(PRICING_FAQ_ITEMS);
 const pricingBreadcrumbJsonLd = {
@@ -320,7 +424,7 @@ export function MarketingPricingTemplate() {
                   <div className="trust-pill"><span>🏪</span> Current number first</div>
                   <div className="trust-pill"><span>🌙</span> After-hours + overflow</div>
                   <div className="trust-pill"><span>📅</span> No booking migration</div>
-                  <div className="trust-pill"><span>☎️</span> Optional dedicated line</div>
+                  <div className="trust-pill"><span>📋</span> Summaries &amp; callback capture</div>
                 </div>
               </div>
             </div>
@@ -346,13 +450,67 @@ export function MarketingPricingTemplate() {
                     <div className={`plan-price ${plan.priceId ? '' : 'plan-price-custom'}`} id={plan.priceId}>{plan.price} {plan.priceId ? <span>/ month</span> : <span>/ contact us</span>}</div>
                     <div className="plan-div" />
                     <ul className="plan-feats">
-                      {plan.benefits.map(([, benefit]) => (
+                      {plan.benefits.map((benefit) => (
                         <li key={benefit}>{benefit}</li>
                       ))}
                     </ul>
                     <a className={`plan-btn ${plan.featured ? 'pb-dark' : 'pb-outline'}`} href={plan.href}>{plan.cta}</a>
                   </div>
                 ))}
+              </div>
+
+              <p className="pricing-trial-note">
+                <strong>14-day free trial.</strong> No card needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
+                {trialNoChargeCopyVerified ? <> You won&apos;t be charged until your trial ends.</> : null}
+              </p>
+
+              <div className="compare-section">
+                <div className="sec-label">Compare plans</div>
+                <h2 className="sec-title" style={{ maxWidth: '36ch' }}>
+                  Compare RingBooker plans
+                </h2>
+                <p className="sec-sub" style={{ marginBottom: 28 }}>
+                  See what is included in Starter, Professional, and Custom.
+                </p>
+                <div className="compare-wrap">
+                  <table className="compare-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Feature</th>
+                        <th scope="col">Starter</th>
+                        <th scope="col">Professional</th>
+                        <th scope="col">Custom</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {PRICING_COMPARE_GROUPS.map((group) => (
+                        <Fragment key={group.title}>
+                          <tr className="compare-group">
+                            <td colSpan={4}>{group.title}</td>
+                          </tr>
+                          {group.rows.map((row) => (
+                            <tr key={`${group.title}-${row.feature}`}>
+                              <td>{row.feature}</td>
+                              <ComparePlanCell value={row.starter} />
+                              <ComparePlanCell value={row.pro} />
+                              <ComparePlanCell value={row.custom} />
+                            </tr>
+                          ))}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="compare-cta">
+                  <p>Start with the plan that fits your call flow. You can change plans later.</p>
+                  <div className="compare-cta-row">
+                    <a href="/user/signup?plan=starter">Start Starter trial</a>
+                    <a className="primary" href="/user/signup?plan=professional">
+                      Start Professional trial
+                    </a>
+                    <a href="/contact">Talk to us</a>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -391,7 +549,7 @@ export function MarketingPricingTemplate() {
               <div className="upgrade-grid">
                 <div className="upgrade-card"><div className="feature-icon">🧠</div><div><h3>More caller context</h3><p>Professional adds returning caller memory and preference handling so repeat clients feel less like a cold start.</p></div></div>
                 <div className="upgrade-card"><div className="feature-icon">✂️</div><div><h3>Provider and stylist continuity</h3><p>Preserve preferred stylist, technician, provider, or treatment context when the caller asks for someone specific.</p></div></div>
-                <div className="upgrade-card"><div className="feature-icon">🌐</div><div><h3>Bilingual summaries</h3><p>Where available, summaries help your team understand call outcomes faster across English and bilingual call scenarios.</p></div></div>
+                <div className="upgrade-card"><div className="feature-icon">🌐</div><div><h3>Language setup support</h3><p>When you note languages during setup, summaries and follow-up context can reflect that so your team stays aligned with how callers reached you.</p></div></div>
                 <div className="upgrade-card"><div className="feature-icon">📊</div><div><h3>Better performance visibility</h3><p>Professional and Custom help you see patterns in missed calls, booking demand, and follow-up opportunities.</p></div></div>
                 <div className="upgrade-card"><div className="feature-icon">🧭</div><div><h3>Custom routing</h3><p>Custom supports more complex call flows, multi-location rules, and implementation planning.</p></div></div>
                 <div className="upgrade-card"><div className="feature-icon">🤝</div><div><h3>Onboarding support</h3><p>Custom adds higher-touch rollout help for teams that need more setup guidance before going live.</p></div></div>
@@ -428,15 +586,16 @@ export function MarketingPricingTemplate() {
                     <li>AI phone answering for after-hours and overflow calls</li>
                     <li>Booking request capture and SMS confirmation</li>
                     <li>Reschedule and cancellation handling for routine calls</li>
-                    <li>Missed-call text back and caller summaries</li>
-                    <li>Current-number setup or optional dedicated line</li>
+                    <li>Missed-call text back</li>
+                    <li>Call summaries with next steps and callback request capture</li>
+                    <li>Current-number setup; dedicated line available where supported</li>
                   </ul>
                 </div>
                 <div className="note-box">
                   <h3>What RingBooker does not replace</h3>
                   <ul>
                     <li>Your existing booking software or calendar workflow</li>
-                    <li>Your team’s control over special cases and human handoff</li>
+                    <li>Your team’s control over special cases and human follow-up</li>
                     <li>Complex medical or policy-sensitive decisions</li>
                     <li>Payment/deposit collection in the base call recovery flow</li>
                     <li>Custom integrations unless scoped into the right plan</li>
@@ -466,7 +625,7 @@ export function MarketingPricingTemplate() {
                     <DemoCtaPhoneIcon width={18} height={18} />
                     Try a live demo call
                   </a>
-                  <a className="btn-trial-soft" href="/pricing">Start free trial →</a>
+                  <a className="btn-trial-soft" href="/user/signup?plan=starter">Start free trial →</a>
                 </div>
               </div>
             </div>

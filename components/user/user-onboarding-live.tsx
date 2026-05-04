@@ -256,6 +256,7 @@ export function UserOnboardingLive() {
   const [vagaroOpen, setVagaroOpen] = useState(false);
   const [vagaroForm, setVagaroForm] = useState({ clientId: '', clientSecretKey: '', region: 'us', businessId: '', bookingUrl: '' });
   const [forwardingConfirmed, setForwardingConfirmed] = useState(false);
+  const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
   const [setupMethod, setSetupMethod] = useState<'forward' | 'new_number' | undefined>();
   const [forwardingType, setForwardingType] = useState<ForwardingType>('no_answer');
   const [forwardingCarrier, setForwardingCarrier] = useState<string | undefined>();
@@ -453,6 +454,21 @@ export function UserOnboardingLive() {
     router.refresh();
   }
 
+  async function requestTestCall() {
+    setTestCallStatus('Requesting test call...');
+    try {
+      const response = await fetch('/api/backend/user/test-calls/call-me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: businessPhone }),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      setTestCallStatus(response.ok && body?.ok ? 'Test call started. Please answer your phone.' : body?.error ?? 'test_call_failed');
+    } catch {
+      setTestCallStatus('Network error. Please try again.');
+    }
+  }
+
   const mergedStyles = useMemo(
     () => [
       ...userSettingsStyles,
@@ -630,7 +646,7 @@ export function UserOnboardingLive() {
           </section>
           <section>
             <div className="onb-field">
-              <label>Languages for call handling</label>
+              <label>Languages noted for setup</label>
               <div className="lang-list">
                 <label className="lang-pill locked"><input type="checkbox" checked disabled /> EN ✓ <span className="required-badge">Required</span></label>
                 <label className={`lang-pill ${languages.includes('vi') ? 'selected' : ''}`}>
@@ -716,8 +732,16 @@ export function UserOnboardingLive() {
         {selectedProvider ? renderPlatformPanel(selectedProvider) : null}
         <button className="onb-help onb-help-link" type="button" onClick={() => document.getElementById('call-forwarding-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Skip — I'll connect my booking software later →</button>
         <div className="section-divider">then</div>
+        <div className="no-platform-box" style={{ textAlign: 'left' }}>
+          <p className="onb-section-title">Test your AI receptionist</p>
+          <p className="onb-subtitle">We&apos;ll call your phone so you can hear RingBooker answer using your business setup. No credit card required.</p>
+          <button className="onb-btn-primary" type="button" onClick={requestTestCall}>Call me now</button>
+          {testCallStatus ? <p className="onb-subtitle" style={{ marginTop: 8 }}>{testCallStatus}</p> : null}
+        </div>
         <div id="call-forwarding-section">
           <p className="onb-section-title">Call handling <span className="onb-optional-badge">Optional</span></p>
+          <p className="onb-subtitle">A payment method is required before RingBooker answers real callers. Add a payment method to continue after your trial.</p>
+          <p className="onb-subtitle"><a href="/user/billing">Add payment method before go-live</a></p>
           <CallForwardingSetup
             ringbookerNumber={telnyxNumber || businessPhone || ''}
             callForwardingPageUrl="/current-number/call-forwarding"

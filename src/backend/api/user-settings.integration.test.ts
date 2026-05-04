@@ -64,11 +64,12 @@ test('starter plan user settings expose capabilities and reject locked fields', 
   const getBody = (await getResponse.json()) as {
     ok: boolean;
     shop: { plan: string };
-    capabilities: { edit_ai_voice: boolean; edit_ai_custom_instructions: boolean };
+    capabilities: { edit_ai_voice: boolean; edit_transfer_settings: boolean; edit_ai_custom_instructions: boolean };
   };
   assert.equal(getBody.ok, true);
   assert.equal(getBody.shop.plan, 'starter');
   assert.equal(getBody.capabilities.edit_ai_voice, false);
+  assert.equal(getBody.capabilities.edit_transfer_settings, false);
   assert.equal(getBody.capabilities.edit_ai_custom_instructions, false);
 
   const blockedResponse = await app.request('/user/settings', {

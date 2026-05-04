@@ -52,6 +52,26 @@ test('SIP accept audio.input turn_detection null when VAD disabled', () => {
   );
 });
 
+test('buildOpenAiSipAcceptBody can suppress VAD create_response for SIP demo pilot', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
+      AGENT_OPENAI_TURN_DETECTION: 'semantic_vad',
+      AGENT_OPENAI_CREATE_RESPONSE: 'true',
+    },
+    () => {
+      const body = buildOpenAiSipAcceptBody({
+        instructions: 'Demo',
+        model: 'gpt-realtime',
+        voice: 'alloy',
+        includeDemoNoopTool: true,
+        sipPilotSuppressVadCreateResponse: true,
+      });
+      assert.equal(body.audio?.input?.turn_detection?.create_response, false);
+    },
+  );
+});
+
 test('buildOpenAiSipAcceptBody nests audio.input + audio.output', () => {
   withEnv(
     {

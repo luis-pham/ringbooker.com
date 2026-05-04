@@ -1,4 +1,6 @@
 import { getEnv } from '@/src/backend/config/env';
+import { resolvePaddlePriceIdFromCatalog } from '@/src/backend/domain/plan-catalog';
+import { logger } from '@/src/backend/observability/logger';
 import type {
   BillingCustomer,
   BillingSubscription,
@@ -9,6 +11,7 @@ import type {
 import type {
   BillingCustomersRepository,
   BillingSubscriptionsRepository,
+  ShopAccessStatesRepository,
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
 import type { BillingProviderAdapter, BillingWebhookSyncResult } from '@/src/backend/services/billing/types';
@@ -18,15 +21,8 @@ function getPaddleApiBaseUrl() {
 }
 
 function resolvePaddlePriceId(plan: ShopPlan): string {
-  const env = getEnv();
-  switch (plan) {
-    case 'starter':
-      return env.PADDLE_PRICE_STARTER;
-    case 'professional':
-      return env.PADDLE_PRICE_PROFESSIONAL;
-    case 'enterprise':
-      return env.PADDLE_PRICE_ENTERPRISE;
-  }
+  getEnv();
+  return resolvePaddlePriceIdFromCatalog(plan);
 }
 
 function mapPaddlePriceToPlan(data: Record<string, unknown> | undefined): ShopPlan | null {
@@ -104,6 +100,60 @@ function extractProviderSubscriptionId(data: Record<string, unknown> | undefined
   return null;
 }
 
+function extractInternalSubscriptionId(data: Record<string, unknown> | undefined): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const candidates = [
+    (data.custom_data as Record<string, unknown> | undefined)?.internal_subscription_id,
+    (data.customData as Record<string, unknown> | undefined)?.internal_subscription_id,
+    (data.metadata as Record<string, unknown> | undefined)?.internal_subscription_id,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim().length > 0) return candidate.trim();
+  }
+  return null;
+}
+
+function extractProviderPriceId(data: Record<string, unknown> | undefined): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const direct = (data as { price_id?: unknown }).price_id;
+  if (typeof direct === 'string' && direct.trim()) return direct.trim();
+  const item = Array.isArray(data.items) ? data.items[0] : null;
+  if (item && typeof item === 'object') {
+    const price = (item as { price?: { id?: unknown }; price_id?: unknown }).price;
+    const candidate = typeof (item as { price_id?: unknown }).price_id === 'string'
+      ? (item as { price_id: string }).price_id
+      : typeof price?.id === 'string'
+        ? price.id
+        : null;
+    if (candidate?.trim()) return candidate.trim();
+  }
+  return null;
+}
+
+function hasPaymentMethodEvidence(eventType: string, data: Record<string, unknown> | undefined): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const normalized = eventType.toLowerCase();
+  const candidates = [
+    (data as { payment_method_id?: unknown }).payment_method_id,
+    (data as { payment_method?: Record<string, unknown> }).payment_method?.id,
+    (data as { paymentMethod?: Record<string, unknown> }).paymentMethod?.id,
+    (data as { payment_method?: Record<string, unknown> }).payment_method?.type,
+  ];
+  if (candidates.some((value) => typeof value === 'string' && value.trim().length > 0)) return true;
+  const payments = Array.isArray((data as { payments?: unknown }).payments) ? ((data as { payments: unknown[] }).payments) : [];
+  if (
+    payments.some((payment) => {
+      if (!payment || typeof payment !== 'object') return false;
+      const status = String((payment as Record<string, unknown>).status ?? '').toLowerCase();
+      const method = (payment as Record<string, unknown>).payment_method_id ?? (payment as Record<string, unknown>).payment_method;
+      return ['authorized', 'captured', 'paid', 'succeeded', 'completed'].includes(status) || Boolean(method);
+    })
+  ) {
+    return true;
+  }
+  return normalized.includes('payment_method') && !normalized.includes('deleted') && !normalized.includes('failed');
+}
+
 function extractMoneyAmount(data: Record<string, unknown> | undefined): { amount: number; currency: string } {
   if (!data || typeof data !== 'object') return { amount: 0, currency: 'USD' };
   const totals = data as {
@@ -164,6 +214,7 @@ function mapPaddleStatus(eventType: string, data: Record<string, unknown> | unde
   if (statusCandidate === 'paused') return 'paused';
   if (statusCandidate === 'canceled' || statusCandidate === 'cancelled') return 'canceled';
   if (statusCandidate === 'incomplete') return 'incomplete';
+  if (statusCandidate === 'unpaid') return 'unpaid';
 
   if (normalized.includes('subscription.canceled') || normalized.includes('subscription_cancelled')) return 'canceled';
   if (normalized.includes('subscription.created') || normalized.includes('subscription.updated')) return 'active';
@@ -179,6 +230,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     private readonly deps: {
       billingCustomersRepository: BillingCustomersRepository;
       billingSubscriptionsRepository: BillingSubscriptionsRepository;
+      shopAccessStatesRepository?: ShopAccessStatesRepository;
       shopsRepository: ShopsRepository;
     },
   ) {}
@@ -187,10 +239,24 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     shop: Shop;
     plan: Shop['plan'];
     email?: string | null;
+    internalSubscriptionId?: string | null;
+    trialEndsAt?: string | null;
+    source?: string;
     successUrl: string;
     cancelUrl: string;
   }) {
     const priceId = resolvePaddlePriceId(params.plan);
+    const trialConfigVerified = getEnv().PADDLE_TRIAL_CONFIG_VERIFIED;
+    if (!trialConfigVerified) {
+      logger.warn(
+        {
+          plan: params.plan,
+          shopId: params.shop.id,
+          trialEndsAt: params.trialEndsAt ?? null,
+        },
+        'paddle_trial_config_not_verified_checkout_may_charge_immediately',
+      );
+    }
     const response = await fetch(`${getPaddleApiBaseUrl()}/transactions`, {
       method: 'POST',
       headers: {
@@ -202,7 +268,12 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         customer_email: params.email ?? undefined,
         custom_data: {
           shop_id: params.shop.id,
+          internal_subscription_id: params.internalSubscriptionId ?? undefined,
           requested_plan: params.plan,
+          plan: params.plan,
+          source: params.source ?? 'add_payment_method_before_go_live',
+          internal_trial_ends_at: params.trialEndsAt ?? undefined,
+          no_charge_until_trial_end_verified: trialConfigVerified,
         },
         checkout: {
           url: params.successUrl,
@@ -244,6 +315,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       checkoutUrl,
       providerTransactionId: json.data?.id ?? null,
       providerCustomerId: json.data?.customer_id ?? null,
+      trialConfigVerified,
     };
   }
 
@@ -269,30 +341,69 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       });
     }
 
+    const internalSubscriptionId = extractInternalSubscriptionId(params.payload);
     const providerSubscriptionId = extractProviderSubscriptionId(params.payload);
+    const existingProviderSubscription = providerSubscriptionId
+      ? await this.deps.billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', providerSubscriptionId)
+      : null;
+    const explicitInternalSubscription = internalSubscriptionId
+      ? await this.deps.billingSubscriptionsRepository.findById(internalSubscriptionId)
+      : null;
+    const currentInternalSubscription = !explicitInternalSubscription && !existingProviderSubscription
+      ? await this.deps.billingSubscriptionsRepository.findCurrentByShopId(shopId, 'internal')
+      : null;
+    const internalSubscription =
+      explicitInternalSubscription ?? (currentInternalSubscription?.status === 'trialing' ? currentInternalSubscription : null);
     let subscription: BillingSubscription | null = null;
-    if (providerSubscriptionId) {
+    if (providerSubscriptionId || internalSubscription) {
       const mappedPlan = mapPaddlePriceToPlan(params.payload) ?? shop.plan;
       const mappedStatus = mapPaddleStatus(params.eventType, params.payload);
       const amount = extractMoneyAmount(params.payload);
       const period = extractPeriod(params.payload);
+      const providerPriceId = extractProviderPriceId(params.payload);
+      const paymentMethodStatus: BillingSubscription['paymentMethodStatus'] = hasPaymentMethodEvidence(params.eventType, params.payload)
+        ? 'valid'
+        : mappedStatus === 'past_due' || mappedStatus === 'unpaid'
+          ? 'failed'
+          : internalSubscription?.paymentMethodStatus === 'valid'
+            ? 'valid'
+            : 'unknown';
+      const now = new Date().toISOString();
 
-      subscription = await this.deps.billingSubscriptionsRepository.upsert({
-        shopId,
-        provider: 'paddle',
-        providerSubscriptionId,
+      const subscriptionPatch = {
+        provider: 'paddle' as const,
+        providerSubscriptionId: providerSubscriptionId ?? internalSubscription?.providerSubscriptionId ?? null,
         providerCustomerId,
+        providerPriceId,
+        providerProductId: null,
         plan: mappedPlan,
         status: mappedStatus,
         interval: period.interval,
         currency: amount.currency,
         amount: amount.amount,
+        amountCents: Math.round(amount.amount * 100),
         cancelAtPeriodEnd: period.cancelAtPeriodEnd,
-        currentPeriodStart: period.currentPeriodStart ?? null,
-        currentPeriodEnd: period.currentPeriodEnd ?? null,
-        trialEndsAt: period.trialEndsAt ?? null,
-        metadata: params.payload,
+        currentPeriodStart: period.currentPeriodStart ?? internalSubscription?.currentPeriodStart ?? null,
+        currentPeriodEnd: period.currentPeriodEnd ?? internalSubscription?.currentPeriodEnd ?? null,
+        trialStartedAt: internalSubscription?.trialStartedAt ?? null,
+        trialEndsAt: period.trialEndsAt ?? internalSubscription?.trialEndsAt ?? null,
+        paymentMethodStatus,
+        paymentMethodAddedAt: paymentMethodStatus === 'valid' ? now : null,
+        activatedAt: mappedStatus === 'active' || mappedStatus === 'trialing' ? now : null,
+        pausedAt: mappedStatus === 'paused' ? now : null,
+        canceledAt: mappedStatus === 'canceled' ? now : null,
+        metadata: {
+          ...params.payload,
+          internal_subscription_id: internalSubscriptionId,
+        },
+      };
+      subscription = internalSubscription
+        ? await this.deps.billingSubscriptionsRepository.updateById(internalSubscription.id, subscriptionPatch)
+        : await this.deps.billingSubscriptionsRepository.upsert({
+        shopId,
+        ...subscriptionPatch,
       });
+      if (!subscription) return null;
 
       const shouldBeActive = subscription.status === 'active' || subscription.status === 'trialing';
       const existingPlan = shop.plan;
@@ -301,6 +412,14 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         plan: subscription.plan,
         active: shouldBeActive,
       });
+      if (!shouldBeActive) {
+        await this.deps.shopAccessStatesRepository?.upsert({
+          shopId,
+          liveCallsEnabled: false,
+          liveCallsPausedReason: subscription.status,
+          liveCallsPausedAt: new Date().toISOString(),
+        });
+      }
 
       return {
         provider: 'paddle',

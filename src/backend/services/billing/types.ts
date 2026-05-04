@@ -20,9 +20,12 @@ export interface BillingProviderAdapter {
     shop: Shop;
     plan: Shop['plan'];
     email?: string | null;
+    internalSubscriptionId?: string | null;
+    trialEndsAt?: string | null;
+    source?: string;
     successUrl: string;
     cancelUrl: string;
-  }): Promise<BillingCheckoutSession>;
+  }): Promise<BillingCheckoutSession & { trialConfigVerified?: boolean }>;
   syncWebhookEvent(params: {
     eventType: string;
     payload: Record<string, unknown>;

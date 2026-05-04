@@ -97,10 +97,10 @@ function toShop(row: ShopsRow): Shop {
     ai_voice: row.ai_voice ?? 'Aoede',
     ai_welcome_message: row.ai_welcome_message,
     ai_custom_instructions: row.ai_custom_instructions,
-    allow_transfers: row.allow_transfers ?? true,
+    allow_transfers: row.allow_transfers ?? false,
     allow_callbacks: row.allow_callbacks ?? true,
-    send_reminder_sms: row.send_reminder_sms ?? true,
-    send_review_request_sms: row.send_review_request_sms ?? true,
+    send_reminder_sms: row.send_reminder_sms ?? false,
+    send_review_request_sms: row.send_review_request_sms ?? false,
     send_missed_call_followup_sms: row.send_missed_call_followup_sms ?? true,
     plan: normalizePlan(row.plan),
     active: row.active ?? false,
@@ -320,6 +320,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
     plan?: Shop['plan'];
     active?: boolean;
   }): Promise<Shop> {
+    const plan = params.plan ?? 'starter';
+    const enableProfessionalDefaults = plan === 'professional' || plan === 'enterprise';
     const { data, error } = await this.supabase
       .from('shops')
       .insert({
@@ -329,13 +331,13 @@ export class SupabaseShopsRepository implements ShopsRepository {
         user_phone: params.user_phone,
         user_name: params.user_name ?? null,
         timezone: params.timezone,
-        plan: params.plan ?? 'starter',
+        plan,
         active: params.active ?? true,
         ai_voice: 'Aoede',
-        allow_transfers: true,
+        allow_transfers: enableProfessionalDefaults,
         allow_callbacks: true,
-        send_reminder_sms: true,
-        send_review_request_sms: true,
+        send_reminder_sms: enableProfessionalDefaults,
+        send_review_request_sms: enableProfessionalDefaults,
         send_missed_call_followup_sms: true,
         services: [],
         hours: {},

@@ -25,6 +25,7 @@ const REQUIRED_TEST_ENV: Record<string, string> = {
   PADDLE_PRICE_STARTER: 'pri_test_starter',
   PADDLE_PRICE_PROFESSIONAL: 'pri_test_professional',
   PADDLE_PRICE_ENTERPRISE: 'pri_test_enterprise',
+  PADDLE_TRIAL_CONFIG_VERIFIED: 'true',
   APP_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef',
   APP_SIGNING_SECRET: 'abcdef0123456789abcdef0123456789',
   DEFAULT_SHOP_TIMEZONE: 'America/Los_Angeles',

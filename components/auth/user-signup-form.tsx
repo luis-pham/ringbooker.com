@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { Plus_Jakarta_Sans } from 'next/font/google';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import styles from '@/components/auth/user-auth-template.module.css';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
@@ -12,22 +12,39 @@ const plusJakarta = Plus_Jakarta_Sans({
   weight: ['400', '500', '600', '700', '800'],
 });
 
+function isTrialPlan(value: string | null): value is 'starter' | 'professional' {
+  return value === 'starter' || value === 'professional';
+}
+
 export function UserSignupForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const trialPlan = searchParams.get('plan');
+  const planOk = isTrialPlan(trialPlan);
+
+  useLayoutEffect(() => {
+    if (!isTrialPlan(trialPlan)) {
+      router.replace('/pricing?reason=plan_required');
+    }
+  }, [trialPlan, router]);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicateSignup, setDuplicateSignup] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!planOk) return;
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
     setLoadingSubmit(true);
     setError(null);
+    setDuplicateSignup(false);
     try {
       const response = await fetch('/api/backend/auth/user/signup', {
         method: 'POST',
@@ -38,6 +55,7 @@ export function UserSignupForm() {
           email,
           password,
           remember: true,
+          plan: trialPlan,
         }),
       });
       const body = (await response.json().catch(() => null)) as {
@@ -45,19 +63,33 @@ export function UserSignupForm() {
         error?: string;
         message?: string;
         onboardingRequired?: boolean;
+        postAuthRedirect?: string;
       } | null;
       if (!response.ok) {
+        setDuplicateSignup(response.status === 409);
         setError(apiUserVisibleMessage(body, 'Signup failed'));
         setLoadingSubmit(false);
         return;
       }
-      router.push(body?.onboardingRequired ? '/user/onboarding' : '/user');
+      const next =
+        typeof body?.postAuthRedirect === 'string' && body.postAuthRedirect.startsWith('/')
+          ? body.postAuthRedirect
+          : body?.onboardingRequired
+            ? '/user/onboarding'
+            : '/user';
+      router.push(next);
       router.refresh();
     } catch {
       setError('Network error. Please try again.');
       setLoadingSubmit(false);
     }
   }
+
+  if (!planOk) {
+    return null;
+  }
+
+  const googleStartUrl = `/api/backend/auth/user/google/start?intent=signup&plan=${encodeURIComponent(trialPlan)}`;
 
   return (
     <main className={`${styles.page} ${plusJakarta.className}`}>
@@ -72,9 +104,12 @@ export function UserSignupForm() {
       <section className={styles.wrap}>
         <div className={styles.card}>
           <h1 className={styles.title}>Start your free trial</h1>
-          <p className={styles.sub}>Create account with email now, then complete setup after first login.</p>
+          <p className={styles.sub}>
+            Plan: <strong>{trialPlan === 'starter' ? 'Starter' : 'Professional'}</strong>. Create your account, then
+            complete setup.
+          </p>
 
-          <a href="/api/backend/auth/user/google/start?intent=signup" className={`${styles.btn} ${styles.btnSecondary}`}>
+          <a href={googleStartUrl} className={`${styles.btn} ${styles.btnSecondary}`}>
             <svg className={styles.googleIcon} aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
               <g clipPath="url(#google-signup-clip)">
                 <path d="M8.00018 3.16667C9.18018 3.16667 10.2368 3.57333 11.0702 4.36667L13.3535 2.08333C11.9668 0.793333 10.1568 0 8.00018 0C4.87352 0 2.17018 1.79333 0.853516 4.40667L3.51352 6.47C4.14352 4.57333 5.91352 3.16667 8.00018 3.16667Z" fill="#EA4335" />
@@ -130,6 +165,13 @@ export function UserSignupForm() {
             </div>
 
             {error ? <p className={styles.error}>{error}</p> : null}
+            {duplicateSignup ? (
+              <p className={styles.fine}>
+                <a className={styles.link} href="/user/login">
+                  Go to sign in
+                </a>
+              </p>
+            ) : null}
             <button type="submit" disabled={loadingSubmit} className={`${styles.btn} ${styles.btnPrimary}`}>
               {loadingSubmit ? 'Creating account...' : 'Create account'}
             </button>

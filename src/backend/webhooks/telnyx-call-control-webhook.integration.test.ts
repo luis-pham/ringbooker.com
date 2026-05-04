@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 
 import { createBackendApp } from '@/src/backend/api/app';
+import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryHandoffSessionsRepository } from '@/src/backend/adapters/memory/handoff-sessions-repository';
+import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryVoiceCallLegsRepository } from '@/src/backend/adapters/memory/voice-call-legs-repository';
 import { InMemoryMissedCallsRepository } from '@/src/backend/adapters/memory/missed-calls-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
@@ -597,11 +599,17 @@ test('telnyx call-control call.hangup missed enqueues follow-up SMS job', async 
     ts: new Date().toISOString(),
   });
 
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  await shopAccessStatesRepository.upsert({ shopId: 'demo-shop', liveCallsEnabled: true });
+
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     shopsRepository,
     jobsRepository,
     missedCallsRepository: new InMemoryMissedCallsRepository(),
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
   });
 
   const body = JSON.stringify({
@@ -641,4 +649,138 @@ test('telnyx call-control call.hangup missed enqueues follow-up SMS job', async 
   });
   assert.ok(leased);
   assert.equal(leased.type, 'missed_call_followup_sms');
+});
+
+test('telnyx call-control call.hangup missed does not enqueue when billing gate deps are missing', async () => {
+  resetEnvCacheForTests();
+  applyRequiredTestEnv({
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+    TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  await shopsRepository.updateUserSettings('demo-shop', {
+    telnyx_number: '+15551110008',
+    phone_number: '+15552220002',
+  });
+
+  const clientState = buildCallControlClientState({
+    shopId: 'demo-shop',
+    requestId: 'req-hangup-no-billing-gate',
+    callerPhone: '+14155550113',
+    ts: new Date().toISOString(),
+  });
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository,
+    jobsRepository,
+    missedCallsRepository: new InMemoryMissedCallsRepository(),
+  });
+
+  const body = JSON.stringify({
+    data: {
+      event_type: 'call.hangup',
+      id: 'evt-cc-hangup-missed-no-billing-gate',
+      payload: {
+        call_control_id: 'cc_hang_no_gate',
+        call_direction: 'inbound',
+        hangup_cause: 'no_answer',
+        to: '+15551110008',
+        from: '+14155550113',
+        client_state: clientState,
+      },
+    },
+  });
+  const ts = `${Date.now()}`;
+  const res = await app.request('/webhooks/telnyx/call-control', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+    },
+    body,
+  });
+
+  assert.equal(res.status, 200);
+  const leased = await jobsRepository.leaseNext({
+    now: new Date(),
+    leaseSeconds: 30,
+    workerId: 'test-worker',
+  });
+  assert.equal(leased, null);
+});
+
+test('telnyx call-control missed follow-up is not queued when billing blocks live calls', async () => {
+  resetEnvCacheForTests();
+  applyRequiredTestEnv({
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+    TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+  });
+
+  const jobsRepository = new InMemoryJobsRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const blockedShop = await shopsRepository.create({
+    name: 'Blocked Starter Salon',
+    phone_number: '+15552220003',
+    user_phone: '+15552220004',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+  await shopsRepository.updateUserSettings(blockedShop.id, {
+    telnyx_number: '+15551110006',
+    phone_number: '+15552220003',
+  });
+
+  const clientState = buildCallControlClientState({
+    shopId: blockedShop.id,
+    requestId: 'req-hangup-billing-blocked',
+    callerPhone: '+14155550112',
+    ts: new Date().toISOString(),
+  });
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository,
+    jobsRepository,
+    missedCallsRepository: new InMemoryMissedCallsRepository(),
+    billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
+    shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
+  });
+
+  const body = JSON.stringify({
+    data: {
+      event_type: 'call.hangup',
+      id: 'evt-cc-hangup-missed-billing-blocked',
+      payload: {
+        call_control_id: 'cc_hang_blocked',
+        call_direction: 'inbound',
+        hangup_cause: 'no_answer',
+        to: '+15551110006',
+        from: '+14155550112',
+        client_state: clientState,
+      },
+    },
+  });
+  const ts = `${Date.now()}`;
+  const res = await app.request('/webhooks/telnyx/call-control', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+    },
+    body,
+  });
+
+  assert.equal(res.status, 200);
+  const leased = await jobsRepository.leaseNext({
+    now: new Date(),
+    leaseSeconds: 30,
+    workerId: 'test-worker',
+  });
+  assert.equal(leased, null);
 });

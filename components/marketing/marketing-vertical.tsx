@@ -646,7 +646,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         heading="What RingBooker handles for nail salon calls"
         features={[
           { icon: '📞', title: 'Works on your current number', body: 'No new phone number needed — just forward overflow or after-hours calls.' },
-          { icon: '🇻🇳', title: 'English + Vietnamese workflows', body: 'Can be configured for bilingual call flows, summaries, and salon-specific scripts.' },
+          { icon: '🇻🇳', title: 'English + Vietnamese callers', body: 'Salon-specific scripts plus language preferences noted during setup, with summaries your team can use for follow-up.' },
           { icon: '💅', title: 'Pricing questions answered clearly', body: 'Full set, gel, acrylic, dip, pedicure — answered from your configured service menu and prices.' },
           { icon: '📅', title: 'Same-day and walk-in booking', body: 'Captures high-intent callers who want a slot today or this weekend.' },
           { icon: '🔄', title: 'Reschedule and cancel support', body: 'Captures routine change requests and routes anything uncertain with context for your team.' },
@@ -674,7 +674,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         rows={[
           { scenario: 'After-hours pricing call', without: 'Voicemail — caller hangs up', with: 'Answered, price given, booking captured' },
           { scenario: 'Weekend overflow', without: 'Call drops, client calls next salon', with: 'Overflow intent captured instead of disappearing' },
-          { scenario: 'Vietnamese-speaking caller', without: 'Language barrier, lost booking', with: 'Bilingual workflow or summary support when configured' },
+          { scenario: 'Vietnamese-speaking caller', without: 'Language barrier, lost booking', with: 'Language setup notes and summaries when configured' },
           { scenario: 'Same-day walk-in request', without: 'Missed — tech can\'t pick up', with: 'Availability captured or booked when connected' },
         ]}
       />
@@ -1541,7 +1541,7 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
   'nail-salon': [
     {
       q: 'Can RingBooker answer English and Vietnamese nail salon calls?',
-      a: 'Yes. RingBooker can support bilingual nail salon call flows in English and Vietnamese when configured.',
+      a: 'Yes. Nail salon vertical packs can reflect English and Vietnamese callers when configured, alongside language notes captured during setup.',
     },
     {
       q: 'Can it handle nail salon overflow during peak hours?',
@@ -1747,7 +1747,7 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
 const VERTICAL_HUB_COPY: Record<MarketingVerticalKey, { heading: string; sub: string }> = {
   'nail-salon': {
     heading: 'Nail salon guides and playbooks',
-    sub: 'Explore in-depth guides for missed calls, overflow windows, bilingual handling, and revenue recovery workflows built specifically for nail salons.',
+    sub: 'Explore in-depth guides for missed calls, overflow windows, language-aware handling, and revenue recovery workflows built specifically for nail salons.',
   },
   'hair-salon': {
     heading: 'Hair salon guides and playbooks',
@@ -1899,7 +1899,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
     'nail-salon': {
       label: 'For Nail Salons',
       title: 'Stop losing bookings to missed calls.',
-      subtitle: 'Answer after-hours and overflow calls on your current number with configurable bilingual workflows built for nail salons.',
+      subtitle: 'Answer after-hours and overflow calls on your current number with salon-specific scripts and language setup support where configured.',
     },
     'hair-salon': {
       label: 'For Hair Salons',

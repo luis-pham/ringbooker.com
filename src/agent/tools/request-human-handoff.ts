@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { canUseOwnerTransfer } from '@/src/backend/domain/shop-plan-capabilities';
 import type { AgentToolContext } from '@/src/agent/tools/types';
 import { getResolvedHandoffTransport, getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 import { logger } from '@/src/backend/observability/logger';
@@ -65,7 +66,13 @@ export async function requestHumanHandoffTool(
     };
   }
 
-  if (!ctx.shop.allow_transfers) {
+  if (!ctx.shop.allow_transfers || !canUseOwnerTransfer(ctx.shop.plan)) {
+    if (ctx.shop.allow_transfers && !canUseOwnerTransfer(ctx.shop.plan)) {
+      logger.warn(
+        { shopId: ctx.shop.id, plan: ctx.shop.plan, feature: 'owner_transfer' },
+        'plan_feature_locked_handoff_skipped',
+      );
+    }
     return {
       success: false,
       handoff_possible: false,

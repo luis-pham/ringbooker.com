@@ -6,7 +6,12 @@ export type EmailCategory =
   | 'review_request'
   | 'contact_request'
   | 'demo_request_confirmation'
-  | 'demo_request_internal';
+  | 'demo_request_internal'
+  | 'billing_trial_reminder'
+  | 'billing_trial_ended'
+  | 'billing_payment_method_added'
+  | 'billing_subscription_active'
+  | 'billing_payment_failed';
 
 export type EmailSendResult = {
   providerMessageId?: string;

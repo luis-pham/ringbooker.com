@@ -31,7 +31,7 @@ export const CAPABILITY_MIN_PLAN: Record<ShopSettingCapability, ShopPlan> = {
   edit_promotions: 'starter',
   edit_services: 'starter',
   edit_hours: 'starter',
-  edit_transfer_settings: 'starter',
+  edit_transfer_settings: 'professional',
   edit_callback_settings: 'starter',
   edit_missed_call_followup_sms: 'starter',
   edit_ai_voice: 'professional',
@@ -66,7 +66,7 @@ export function getShopPlanCapabilities(plan: ShopPlan): ShopPlanCapabilities {
     edit_promotions: true,
     edit_services: true,
     edit_hours: true,
-    edit_transfer_settings: true,
+    edit_transfer_settings: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
     edit_callback_settings: true,
     edit_missed_call_followup_sms: true,
     edit_ai_voice: PLAN_ORDER[plan] >= PLAN_ORDER.professional,
@@ -79,4 +79,24 @@ export function getShopPlanCapabilities(plan: ShopPlan): ShopPlanCapabilities {
 
 export function isCapabilityAllowed(plan: ShopPlan, capability: ShopSettingCapability): boolean {
   return PLAN_ORDER[plan] >= PLAN_ORDER[CAPABILITY_MIN_PLAN[capability]];
+}
+
+export function canUseReminderSms(plan: ShopPlan): boolean {
+  return isCapabilityAllowed(plan, 'edit_reminder_sms');
+}
+
+export function canUseReviewRequestSms(plan: ShopPlan): boolean {
+  return isCapabilityAllowed(plan, 'edit_review_request_sms');
+}
+
+export function canUseReturningCallerContext(plan: ShopPlan): boolean {
+  return PLAN_ORDER[plan] >= PLAN_ORDER.professional;
+}
+
+export function canUseBilingualWorkflow(plan: ShopPlan): boolean {
+  return PLAN_ORDER[plan] >= PLAN_ORDER.professional;
+}
+
+export function canUseOwnerTransfer(plan: ShopPlan): boolean {
+  return isCapabilityAllowed(plan, 'edit_transfer_settings');
 }

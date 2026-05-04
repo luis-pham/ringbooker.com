@@ -23,7 +23,7 @@ const HOME_FAQS = [
   },
   {
     q: 'What happens if a caller wants to speak to a real person?',
-    a: 'RingBooker can offer a callback, route the request, and send your team a call summary so the caller does not have to repeat everything.',
+    a: 'RingBooker can collect the caller’s request, mark it for human follow-up, and send your team a clear summary. On Professional and Custom plans, RingBooker can also transfer the call to the owner based on your handoff settings.',
   },
   {
     q: "Will my customers know they're talking to AI?",
@@ -42,6 +42,8 @@ const HOME_FAQS = [
     a: 'Yes. RingBooker can answer after-hours and weekend calls, capture booking intent, send confirmations, and make sure your team sees what happened when you are back online.',
   },
 ];
+
+const homeTrialNoChargeVerified = process.env.NEXT_PUBLIC_PADDLE_TRIAL_CONFIG_VERIFIED === 'true';
 
 const homeFaqJsonLd = {
   '@context': 'https://schema.org',
@@ -595,6 +597,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 /* ─── PRICING ─── */
 .pricing{padding:88px 48px 72px;background:var(--bg-gray)}
 .pricing-inner{max-width:1100px;margin:0 auto}
+.home-pricing-trial-note{max-width:760px;margin:0 auto 28px;padding:14px 18px;border-radius:var(--r-lg);background:rgba(245,243,255,.65);border:1px solid rgba(196,181,253,.45);font-size:13px;line-height:1.65;color:#475569;text-align:center}
 .price-toggle{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:40px}
 .pt-btn{padding:10px 22px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
 .pt-btn.on{background:var(--purple);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
@@ -1403,8 +1406,8 @@ export function MarketingHomeTemplate() {
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                 </HomeLineIcon>
               </div>
-              <h3>Missed-Call Text Back &amp; Smart Callback.</h3>
-              <p>Texts callers who hang up or reach you after hours, then queues the right follow-up for your team.</p>
+              <h3>Missed-Call Text Back &amp; Callback Follow-Up.</h3>
+              <p>Texts callers who hang up or reach you after hours, then captures callback details so your team can follow up.</p>
             </div>
             <div className="feat-card reveal">
               <div className="feat-ico fi-y" aria-hidden>
@@ -1434,8 +1437,8 @@ export function MarketingHomeTemplate() {
                   <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
                 </HomeLineIcon>
               </div>
-              <h3>Human Handoff When the Caller Needs It.</h3>
-              <p>If the request is complex, RingBooker collects context, offers a callback, and hands the conversation back cleanly.</p>
+              <h3>Human Follow-Up When the Caller Needs It.</h3>
+              <p>RingBooker can collect the caller’s request, mark it for follow-up, and on supported plans transfer the call to the owner when needed.</p>
             </div>
           </div>
         </section>
@@ -1670,55 +1673,67 @@ export function MarketingHomeTemplate() {
           <div className="pricing-inner">
             <div className="sec-label sec-label-center">Pricing</div>
             <h2 className="sec-title reveal">Start with the coverage<br />you need.</h2>
-            <p className="sec-sub reveal">No contracts. 14-day free trial on every plan.</p>
+            <p className="sec-sub reveal">No contracts. Pick monthly or annual billing when you subscribe.</p>
             <div className="price-toggle">
               <button className="pt-btn on" id="tog-m" type="button">Monthly</button>
               <button className="pt-btn" id="tog-a" type="button">Annual</button>
               <span className="save-tag">SAVE 20%</span>
             </div>
+            <p className="home-pricing-trial-note reveal">
+              <strong>14-day free trial.</strong> No card needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
+              {homeTrialNoChargeVerified ? <> You won&apos;t be charged until your trial ends.</> : null}
+            </p>
             <div className="home-carousel" id="pricingCarousel">
             <div className="price-grid home-carousel-track reveal">
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Starter</div>
-                <div className="plan-desc">For small businesses that need after-hours and overflow coverage on their current number.</div>
+                <div className="plan-desc">For smaller salons, spas, and clinics that need reliable after-hours and overflow call coverage.</div>
                 <div className="plan-price" id="ps">$79<span>/month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
-                  <li>Current-number forwarding or included US number</li>
-                  <li>After-hours and overflow call handling</li>
+                  <li>Works with your current business number</li>
+                  <li>After-hours and overflow call answering</li>
+                  <li>Booking request capture and confirmation</li>
                   <li>Missed-call text back</li>
-                  <li>Basic call summaries</li>
-                  <li>Vietnamese onboarding support for nail salons</li>
+                  <li>Callback request capture for calls that need a human</li>
+                  <li>Call summaries with next steps</li>
+                  <li>Guided setup and test call</li>
                 </ul>
-                <a className="plan-btn pb-outline" href="/user/signup?plan=starter">Start Free Trial →</a>
+                <a className="plan-btn pb-outline" href="/user/signup?plan=starter">Start free trial →</a>
               </div>
               <div className="plan star home-carousel-slide">
-                <div className="plan-badge">⭐ Most Popular</div>
+                <div className="plan-badge">Most popular</div>
                 <div className="plan-name">Professional</div>
-                <div className="plan-desc">For busy teams that need stronger follow-up, reporting, and customer context.</div>
+                <div className="plan-desc">For busier teams that need stronger follow-up, caller context, and provider preference capture.</div>
                 <div className="plan-price" id="pp">$149<span>/month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Everything in Starter</li>
-                  <li>Reminder and follow-up SMS workflows</li>
-                  <li>Returning caller and provider preference notes</li>
+                  <li>Reminder SMS and stronger follow-up</li>
+                  <li>Returning caller notes and preferences</li>
+                  <li>Preferred stylist or provider context</li>
+                  <li>Owner call transfer with caller context</li>
+                  <li>Language settings noted for setup</li>
                   <li>Call recovery insights</li>
+                  <li>Advanced call insights</li>
                   <li>Priority support</li>
                 </ul>
-                <a className="plan-btn pb-dark" href="/user/signup?plan=professional">Start Free Trial →</a>
+                <a className="plan-btn pb-dark" href="/user/signup?plan=professional">Start free trial →</a>
               </div>
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Custom</div>
-                <div className="plan-desc">For multi-location teams, higher call volume, or deeper routing and integration needs.</div>
-                <div className="plan-price plan-price-custom">Custom<span>/contact us</span></div>
+                <div className="plan-desc">For multi-location groups, higher-volume call flows, or businesses with custom routing needs.</div>
+                <div className="plan-price plan-price-custom">Let&apos;s talk<span>/contact us</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Multi-location setup</li>
-                  <li>Custom call flows and handoff rules</li>
-                  <li>Custom integrations</li>
+                  <li>Custom call flows, routing, and escalation rules</li>
+                  <li>Custom integration planning</li>
+                  <li>Higher call volume planning</li>
                   <li>Concierge onboarding</li>
+                  <li>Priority implementation support</li>
                 </ul>
-                <a className="plan-btn pb-outline" href="/contact">Contact Sales →</a>
+                <a className="plan-btn pb-outline" href="/contact">Talk to us →</a>
               </div>
             </div>
               <div className="home-carousel-controls" aria-label="Pricing carousel controls">
@@ -1736,7 +1751,7 @@ export function MarketingHomeTemplate() {
             <div className="cta-banner reveal">
               <div className="cta-text">
                 <h2>Keep your number.<br />Cover the calls your team can’t.</h2>
-                <p>Configure the essentials in about 15 minutes, then start recovering booking intent from after-hours calls, overflow, missed rings, and human handoff moments.</p>
+                <p>Configure the essentials in about 15 minutes, then start recovering booking intent from after-hours calls, overflow, missed rings, and moments when a caller needs a person.</p>
               </div>
               <div className="cta-actions">
                 <a href="/demo" className="btn-white" data-demo-picker>
@@ -1746,8 +1761,8 @@ export function MarketingHomeTemplate() {
                     <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                   </svg>
                 </a>
-                <a href="/#pricing" className="btn-ghost-w">
-                  Start 14-Day Free Trial
+                <a href="/user/signup?plan=starter" className="btn-ghost-w">
+                  Start free trial
                 </a>
               </div>
               {/* CTA Phone — voice call UI */}

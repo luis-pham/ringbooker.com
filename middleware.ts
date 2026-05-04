@@ -155,7 +155,9 @@ async function maybeBlogPostRedirect301(req: NextRequest): Promise<NextResponse 
 }
 
 function withSecurityHeaders(response: NextResponse, pathname = ''): NextResponse {
-  const microphonePolicy = pathname.startsWith('/demo') ? 'microphone=(self)' : 'microphone=()';
+  // Client-side navigations keep the first document's Permissions-Policy. If users land on / then
+  // `<Link>` to `/demo/*`, microphone would stay disabled unless we allow mic site-wide (except admin).
+  const microphonePolicy = pathname.startsWith('/admin') ? 'microphone=()' : 'microphone=(self)';
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

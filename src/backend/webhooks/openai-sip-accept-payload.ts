@@ -98,6 +98,8 @@ export function buildOpenAiSipAcceptBody(params: {
   voice: string;
   /** Demo pilot: single `demo_noop` tool (mutually exclusive with `shopBusinessTools` in callers). */
   includeDemoNoopTool?: boolean;
+  /** When true, force `create_response: false` on VAD so the first turn is not doubled with sideband `response.create`. */
+  sipPilotSuppressVadCreateResponse?: boolean;
   /** Production shop SIP: business tools from shared Realtime definitions. */
   shopBusinessTools?: OpenAiSipFunctionTool[];
   toolChoice?: 'auto';
@@ -121,7 +123,17 @@ export function buildOpenAiSipAcceptBody(params: {
     tools = params.shopBusinessTools;
   }
 
-  const audioInput = buildOpenAiSipAcceptAudioInputFromEnv();
+  let audioInput = buildOpenAiSipAcceptAudioInputFromEnv();
+  if (
+    params.sipPilotSuppressVadCreateResponse &&
+    audioInput.turn_detection &&
+    typeof audioInput.turn_detection === 'object' &&
+    !Array.isArray(audioInput.turn_detection)
+  ) {
+    audioInput = {
+      turn_detection: { ...audioInput.turn_detection, create_response: false },
+    };
+  }
 
   return {
     type: 'realtime',

@@ -1,11 +1,16 @@
 import { dispatchRealtimeSession, RealtimeDispatchError } from '@/src/agent/realtime/dispatch-session';
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
 import type { JobType, Shop } from '@/src/backend/domain/types';
+import { canUseReminderSms, canUseReviewRequestSms } from '@/src/backend/domain/shop-plan-capabilities';
 import { JobExecutionError, JobWorker } from '@/src/backend/jobs/worker';
 import { logger } from '@/src/backend/observability/logger';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import { z } from 'zod';
 import { extractCallSummary } from '@/src/backend/services/calls/extract-call-summary';
+import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { buildTrialEndedEmailPayload, buildTrialReminderEmailPayload } from '@/src/backend/services/email/base-email-builders';
+import { renderBaseEmailHtml } from '@/src/backend/services/email/base-email-mjml';
+import { emailFounderFrom, emailReplyTo } from '@/src/backend/services/email/config';
 import { SMS_MISSED_CALL, SMS_REMINDER_24H, SMS_REMINDER_2H } from '@/src/backend/services/sms/types';
 
 type WorkerControls = {
@@ -61,7 +66,84 @@ export async function executeSingleJobsWorkerTickWithRuntime(
   return { processed };
 }
 
-function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
+export async function scheduleTrialLifecycleJobsWithRuntime(
+  runtime: ReturnType<typeof getBackendRuntime>,
+  now: Date = new Date(),
+): Promise<{ expiryChecksEnqueued: number; reminderEmailsEnqueued: number; accessStatesRepaired: number }> {
+  if (!runtime.billingSubscriptionsRepository || !runtime.jobsRepository) {
+    throw new Error('trial_lifecycle_scheduler_dependencies_unavailable');
+  }
+  const subscriptions = await runtime.billingSubscriptionsRepository.list({ limit: 5000 });
+  let expiryChecksEnqueued = 0;
+  let reminderEmailsEnqueued = 0;
+  let accessStatesRepaired = 0;
+
+  for (const subscription of subscriptions) {
+    if (subscription.status !== 'trialing' || subscription.paymentMethodStatus === 'valid' || !subscription.trialEndsAt) {
+      continue;
+    }
+
+    const trialEndsAt = new Date(subscription.trialEndsAt);
+    if (!Number.isFinite(trialEndsAt.getTime())) continue;
+    const msRemaining = trialEndsAt.getTime() - now.getTime();
+
+    if (msRemaining <= 0) {
+      await runtime.jobsRepository.enqueue({
+        shopId: subscription.shopId,
+        type: 'trial_expiry_check',
+        payload: {},
+        runAt: now,
+        idempotencyKey: `trial_expiry_check:${subscription.id}:${subscription.trialEndsAt}`,
+      });
+      expiryChecksEnqueued += 1;
+      continue;
+    }
+
+    const daysRemaining = Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+    if (daysRemaining === 7 || daysRemaining === 3 || daysRemaining === 1) {
+      const type =
+        daysRemaining === 1
+          ? 'trial_ends_1_day'
+          : daysRemaining === 3
+            ? 'trial_ends_3_days'
+            : 'trial_ends_7_days';
+      const alreadySent = runtime.billingNotificationsRepository
+        ? await runtime.billingNotificationsRepository.hasSent({
+            shopId: subscription.shopId,
+            subscriptionId: subscription.id,
+            type,
+            channel: 'email',
+          })
+        : false;
+      if (!alreadySent) {
+        await runtime.jobsRepository.enqueue({
+          shopId: subscription.shopId,
+          type: 'trial_reminder_email',
+          payload: { daysRemaining },
+          runAt: now,
+          idempotencyKey: `trial_reminder_email:${subscription.id}:${type}`,
+        });
+        reminderEmailsEnqueued += 1;
+      }
+    }
+
+    if (runtime.shopAccessStatesRepository) {
+      const state = await runtime.shopAccessStatesRepository.findByShopId(subscription.shopId);
+      if (!state) {
+        await runtime.shopAccessStatesRepository.upsert({
+          shopId: subscription.shopId,
+          liveCallsEnabled: false,
+          liveCallsPausedReason: 'payment_method_required_before_go_live',
+        });
+        accessStatesRepaired += 1;
+      }
+    }
+  }
+
+  return { expiryChecksEnqueued, reminderEmailsEnqueued, accessStatesRepaired };
+}
+
+export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
   const livekitSipOutboundTrunkId = process.env.LIVEKIT_SIP_OUTBOUND_TRUNK_ID?.trim();
   const shouldUseSipRealtime = Boolean(
     livekitSipOutboundTrunkId && runtime.agentTransportMode === 'livekit' && runtime.commProvider === 'telnyx',
@@ -280,6 +362,14 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
         await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
         return;
       }
+      if (!canUseReminderSms(shop.plan)) {
+        logger.warn(
+          { jobId: params.jobId, shopId: shop.id, plan: shop.plan, feature: 'reminder_sms' },
+          'plan_feature_locked',
+        );
+        await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
+        return;
+      }
 
       const local = toLocalLabels(booking.datetimeUtc, booking.timezone);
       const smsBody = SMS_REMINDER_24H(shop, {
@@ -329,6 +419,14 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
         throw new JobExecutionError('shop_not_found', { retryable: false });
       }
       if (!shop.send_reminder_sms) {
+        await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
+        return;
+      }
+      if (!canUseReminderSms(shop.plan)) {
+        logger.warn(
+          { jobId: params.jobId, shopId: shop.id, plan: shop.plan, feature: 'reminder_sms' },
+          'plan_feature_locked',
+        );
         await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
         return;
       }
@@ -426,6 +524,17 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
         throw new JobExecutionError('shop_not_found', { retryable: false });
       }
       if (!shop.send_missed_call_followup_sms) {
+        return;
+      }
+      const access = await getShopBillingAccess(runtime, {
+        shopId: shop.id,
+        onboardingComplete: true,
+      });
+      if (!access.canReceiveLiveCalls) {
+        logger.warn(
+          { jobId: params.jobId, shopId: shop.id, blockReason: access.blockReason },
+          'missed_call_followup_sms_billing_blocked',
+        );
         return;
       }
 
@@ -656,6 +765,14 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
         await runtime.bookingsRepository.markReviewRequestSent(booking.id);
         return;
       }
+      if (!canUseReviewRequestSms(shop.plan)) {
+        logger.warn(
+          { jobId: params.jobId, shopId: shop.id, plan: shop.plan, feature: 'review_request_sms' },
+          'plan_feature_locked',
+        );
+        await runtime.bookingsRepository.markReviewRequestSent(booking.id);
+        return;
+      }
 
       const body = `${shop.name}: Thanks for visiting us! We'd love your feedback!`;
       const idempotencyKey = `job:${params.jobId}:review-request`;
@@ -748,6 +865,101 @@ function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>) {
         });
       } catch (summaryErr) {
         console.warn('[post_call_summary] Structured extraction failed:', summaryErr);
+      }
+    },
+    trial_reminder_email: async (params) => {
+      const payload = z.object({ daysRemaining: z.union([z.literal(7), z.literal(3), z.literal(1)]) }).safeParse(params.payload);
+      if (!payload.success) throw new JobExecutionError('invalid_trial_reminder_payload', { retryable: false });
+      if (!runtime.billingSubscriptionsRepository || !runtime.billingNotificationsRepository || !runtime.shopsRepository || !runtime.billingCustomersRepository || !runtime.emailService) {
+        throw new JobExecutionError('trial_reminder_dependencies_unavailable', { retryable: true });
+      }
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      const subscription = await runtime.billingSubscriptionsRepository.findCurrentByShopId(params.shopId);
+      if (!shop || !subscription?.trialEndsAt || subscription.status !== 'trialing') return;
+      const type =
+        payload.data.daysRemaining === 1
+          ? 'trial_ends_1_day'
+          : payload.data.daysRemaining === 3
+            ? 'trial_ends_3_days'
+            : 'trial_ends_7_days';
+      if (await runtime.billingNotificationsRepository.hasSent({ shopId: params.shopId, subscriptionId: subscription.id, type, channel: 'email' })) return;
+      const customer = await runtime.billingCustomersRepository.findByShopId(params.shopId);
+      const email = customer?.email?.trim() || process.env.USER_AUTH_EMAIL?.trim() || 'user@ringbooker.local';
+      const { input, text } = buildTrialReminderEmailPayload({
+        email,
+        shopName: shop.name,
+        daysRemaining: payload.data.daysRemaining,
+        trialEndsAt: subscription.trialEndsAt,
+        appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
+        paddleTrialConfigVerified: process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true',
+      });
+      await runtime.emailService.sendEmail({
+        to: email,
+        subject: input.title,
+        text,
+        html: await renderBaseEmailHtml(input),
+        category: 'billing_trial_reminder',
+        idempotencyKey: `billing:${params.shopId}:${type}:${subscription.id}`,
+        shopId: params.shopId,
+        from: emailFounderFrom(),
+        replyTo: emailReplyTo(),
+      });
+      await runtime.billingNotificationsRepository.markSent({ shopId: params.shopId, subscriptionId: subscription.id, type, channel: 'email' });
+    },
+    trial_expiry_check: async (params) => {
+      if (!runtime.billingSubscriptionsRepository || !runtime.shopAccessStatesRepository || !runtime.billingNotificationsRepository || !runtime.shopsRepository || !runtime.billingCustomersRepository) {
+        throw new JobExecutionError('trial_expiry_dependencies_unavailable', { retryable: true });
+      }
+      const now = new Date();
+      const subscription = await runtime.billingSubscriptionsRepository.findCurrentByShopId(params.shopId);
+      if (!subscription || subscription.status !== 'trialing' || subscription.paymentMethodStatus === 'valid') return;
+      if (!subscription.trialEndsAt || new Date(subscription.trialEndsAt).getTime() > now.getTime()) return;
+      const expired = await runtime.billingSubscriptionsRepository.upsert({
+        shopId: params.shopId,
+        provider: subscription.provider,
+        providerSubscriptionId: subscription.providerSubscriptionId ?? null,
+        providerCustomerId: subscription.providerCustomerId ?? null,
+        plan: subscription.plan,
+        status: 'trial_expired',
+        interval: subscription.interval,
+        currency: subscription.currency,
+        amount: subscription.amount,
+        amountCents: subscription.amountCents ?? Math.round(subscription.amount * 100),
+        currentPeriodStart: subscription.currentPeriodStart ?? null,
+        currentPeriodEnd: subscription.currentPeriodEnd ?? subscription.trialEndsAt,
+        trialStartedAt: subscription.trialStartedAt ?? null,
+        trialEndsAt: subscription.trialEndsAt,
+        trialExpiredAt: now.toISOString(),
+        paymentMethodStatus: subscription.paymentMethodStatus ?? 'none',
+        metadata: { ...(subscription.metadata ?? {}), expired_by: 'trial_expiry_check' },
+      });
+      await runtime.shopAccessStatesRepository.upsert({
+        shopId: params.shopId,
+        liveCallsEnabled: false,
+        liveCallsPausedReason: 'trial_expired',
+        liveCallsPausedAt: now.toISOString(),
+      });
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (shop && runtime.emailService && !(await runtime.billingNotificationsRepository.hasSent({ shopId: params.shopId, subscriptionId: expired.id, type: 'trial_ended', channel: 'email' }))) {
+        const customer = await runtime.billingCustomersRepository.findByShopId(params.shopId);
+        const email = customer?.email?.trim() || process.env.USER_AUTH_EMAIL?.trim() || 'user@ringbooker.local';
+        const { input, text } = buildTrialEndedEmailPayload({
+          email,
+          shopName: shop.name,
+          appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
+        });
+        await runtime.emailService.sendEmail({
+          to: email,
+          subject: input.title,
+          text,
+          html: await renderBaseEmailHtml(input),
+          category: 'billing_trial_ended',
+          idempotencyKey: `billing:${params.shopId}:trial_ended:${expired.id}`,
+          shopId: params.shopId,
+          from: emailFounderFrom(),
+          replyTo: emailReplyTo(),
+        });
+        await runtime.billingNotificationsRepository.markSent({ shopId: params.shopId, subscriptionId: expired.id, type: 'trial_ended', channel: 'email' });
       }
     },
   };

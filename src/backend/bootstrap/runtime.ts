@@ -7,6 +7,7 @@ import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repos
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
 import { InMemoryBillingCustomersRepository } from '@/src/backend/adapters/memory/billing-customers-repository';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
+import { InMemoryBillingNotificationsRepository } from '@/src/backend/adapters/memory/billing-notifications-repository';
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
 import { InMemoryOutboundMessagesRepository } from '@/src/backend/adapters/memory/outbound-messages-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
@@ -17,6 +18,8 @@ import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-
 import { InMemoryBlogPostsRepository } from '@/src/backend/adapters/memory/blog-posts-repository';
 import { InMemoryContactRequestsRepository } from '@/src/backend/adapters/memory/contact-requests-repository';
 import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
+import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
+import { InMemoryTestCallAttemptsRepository } from '@/src/backend/adapters/memory/test-call-attempts-repository';
 import { NoopEmailService } from '@/src/backend/adapters/noop/email-service';
 import { NoopPhoneProvisioningService } from '@/src/backend/adapters/noop/phone-provisioning-service';
 import { NoopSmsService } from '@/src/backend/adapters/noop/sms-service';
@@ -26,6 +29,7 @@ import { SupabaseJobsRepository } from '@/src/backend/adapters/supabase/jobs-rep
 import { SupabaseBookingsRepository } from '@/src/backend/adapters/supabase/bookings-repository';
 import { SupabaseBillingCustomersRepository } from '@/src/backend/adapters/supabase/billing-customers-repository';
 import { SupabaseBillingSubscriptionsRepository } from '@/src/backend/adapters/supabase/billing-subscriptions-repository';
+import { SupabaseBillingNotificationsRepository } from '@/src/backend/adapters/supabase/billing-notifications-repository';
 import { SupabaseCallbacksRepository } from '@/src/backend/adapters/supabase/callbacks-repository';
 import { SupabaseOutboundMessagesRepository } from '@/src/backend/adapters/supabase/outbound-messages-repository';
 import { SupabaseProviderEventsRepository } from '@/src/backend/adapters/supabase/provider-events-repository';
@@ -36,6 +40,8 @@ import { SupabaseAuthUsersRepository } from '@/src/backend/adapters/supabase/aut
 import { SupabaseBlogPostsRepository } from '@/src/backend/adapters/supabase/blog-posts-repository';
 import { SupabaseContactRequestsRepository } from '@/src/backend/adapters/supabase/contact-requests-repository';
 import { SupabaseDemoSessionsRepository } from '@/src/backend/adapters/supabase/demo-sessions-repository';
+import { SupabaseShopAccessStatesRepository } from '@/src/backend/adapters/supabase/shop-access-states-repository';
+import { SupabaseTestCallAttemptsRepository } from '@/src/backend/adapters/supabase/test-call-attempts-repository';
 import { TelnyxPhoneProvisioningService } from '@/src/backend/adapters/telnyx/phone-provisioning-service';
 import { TelnyxSmsService } from '@/src/backend/adapters/telnyx/sms-service';
 import { TelnyxTelephonyService } from '@/src/backend/adapters/telnyx/telephony-service';
@@ -144,6 +150,9 @@ export function createBackendRuntime() {
             shopsRepository: new SupabaseShopsRepository(supabase),
             billingCustomersRepository: new SupabaseBillingCustomersRepository(supabase),
             billingSubscriptionsRepository: new SupabaseBillingSubscriptionsRepository(supabase),
+            billingNotificationsRepository: new SupabaseBillingNotificationsRepository(supabase),
+            shopAccessStatesRepository: new SupabaseShopAccessStatesRepository(supabase),
+            testCallAttemptsRepository: new SupabaseTestCallAttemptsRepository(supabase),
             jobsRepository: new SupabaseJobsRepository(supabase),
             bookingsRepository: new SupabaseBookingsRepository(supabase),
             callbacksRepository: new SupabaseCallbacksRepository(supabase),
@@ -163,6 +172,9 @@ export function createBackendRuntime() {
           shopsRepository: new InMemoryShopsRepository(),
           billingCustomersRepository: new InMemoryBillingCustomersRepository(),
           billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
+          billingNotificationsRepository: new InMemoryBillingNotificationsRepository(),
+          shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
+          testCallAttemptsRepository: new InMemoryTestCallAttemptsRepository(),
           jobsRepository: new InMemoryJobsRepository(),
           bookingsRepository: new InMemoryBookingsRepository(),
           callbacksRepository: new InMemoryCallbacksRepository(),
@@ -240,6 +252,7 @@ export function createBackendRuntime() {
       ? new PaddleBillingProvider({
           billingCustomersRepository: repositories.billingCustomersRepository,
           billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+          shopAccessStatesRepository: repositories.shopAccessStatesRepository,
           shopsRepository: repositories.shopsRepository,
         })
       : undefined;
@@ -250,6 +263,9 @@ export function createBackendRuntime() {
     bookingsRepository: repositories.bookingsRepository,
     billingCustomersRepository: repositories.billingCustomersRepository,
     billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+    billingNotificationsRepository: repositories.billingNotificationsRepository,
+    shopAccessStatesRepository: repositories.shopAccessStatesRepository,
+    testCallAttemptsRepository: repositories.testCallAttemptsRepository,
     callbacksRepository: repositories.callbacksRepository,
     shopsRepository: repositories.shopsRepository,
     telephonyService: services.telephonyService,
@@ -286,6 +302,9 @@ export function createBackendRuntime() {
     shopsRepository: repositories.shopsRepository,
     billingCustomersRepository: repositories.billingCustomersRepository,
     billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
+    billingNotificationsRepository: repositories.billingNotificationsRepository,
+    shopAccessStatesRepository: repositories.shopAccessStatesRepository,
+    testCallAttemptsRepository: repositories.testCallAttemptsRepository,
     jobsRepository: repositories.jobsRepository,
     bookingsRepository: repositories.bookingsRepository,
     callbacksRepository: repositories.callbacksRepository,
