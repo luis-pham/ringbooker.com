@@ -308,11 +308,8 @@ const styles: string[] = [
   .vd-phone-dock{display:flex;justify-content:center;align-items:flex-end;padding:8px 0 6px;width:100%}
   .vd-phone-ios-act{display:flex;flex-direction:column;align-items:center;gap:7px;width:100%}
   .vd-phone-ios-btn{border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;transition:transform .15s,filter .15s,box-shadow .15s}
-  .vd-phone-ios-btn--decline{width:40px;height:40px;padding:0;border-radius:999px;background:transparent;box-shadow:none}
-  .vd-phone-ios-btn--decline:hover{filter:none;transform:scale(1.04);box-shadow:none}
-  .vd-phone-ios-btn--decline svg{width:40px;height:40px;display:block}
-  .vd-phone-ios-btn--accept{width:auto;height:auto;padding:0;background:transparent;box-shadow:none;border-radius:0}
-  .vd-phone-ios-btn--accept:hover:not(:disabled){filter:none;transform:none;box-shadow:none}
+  .vd-phone-ios-btn--accept,.vd-phone-ios-btn--end{width:auto;height:auto;padding:0;background:transparent;box-shadow:none;border-radius:0}
+  .vd-phone-ios-btn--accept:hover:not(:disabled),.vd-phone-ios-btn--end:hover:not(:disabled){filter:none;transform:none;box-shadow:none}
   .vd-phone-ios-btn-face{
     width:40px;height:40px;aspect-ratio:1;border-radius:999px;
     display:flex;align-items:center;justify-content:center;
@@ -324,15 +321,27 @@ const styles: string[] = [
   .vd-phone-ios-btn--accept:disabled .vd-phone-ios-btn-face{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
   .vd-phone-ios-btn--accept:disabled{cursor:not-allowed}
   .vd-phone-ios-btn-face svg{width:16px;height:16px;display:block}
+  /* End call — same footprint as Start Demo Call circle (vc-ctrl / video-call style) */
+  .vc-ctrl.vc-ctrl-end{
+    width:40px;height:40px;aspect-ratio:1;border-radius:999px;
+    display:flex;align-items:center;justify-content:center;
+    background:#EF4444;color:#fff;flex-shrink:0;
+    box-shadow:0 12px 28px rgba(239,68,68,.45);
+    transition:transform .15s,filter .15s,box-shadow .15s;
+  }
+  .vc-ctrl.vc-ctrl-end svg{width:22px;height:22px;display:block}
+  .vc-ctrl.vc-ctrl-end path{fill:currentColor}
+  .vd-phone-ios-btn--end:hover:not(:disabled) .vc-ctrl.vc-ctrl-end{filter:brightness(1.06);transform:scale(1.03);box-shadow:0 14px 34px rgba(239,68,68,.52)}
+  .vd-phone-ios-btn--end:disabled .vc-ctrl.vc-ctrl-end{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
   @media(min-width:800px){
     .vd-phone-ios-btn-face{width:56px;height:56px}
     .vd-phone-ios-btn-face svg{width:20px;height:20px}
-    .vd-phone-ios-btn--decline{width:56px;height:56px}
-    .vd-phone-ios-btn--decline svg{width:56px;height:56px}
+    .vc-ctrl.vc-ctrl-end{width:56px;height:56px}
+    .vc-ctrl.vc-ctrl-end svg{width:30px;height:30px}
   }
   .vd-phone-ios-btn:focus-visible{outline:2px solid rgba(255,255,255,.55);outline-offset:3px}
   .vd-phone-ios-btn:disabled{opacity:1;cursor:not-allowed}
-  .vd-phone-ios-btn--decline:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+  .vd-phone-ios-btn--end:disabled{cursor:not-allowed}
   .vd-phone-ios-label{font-size:11px;font-weight:600;color:rgba(255,255,255,.88);letter-spacing:.02em;line-height:1.25;text-align:center;max-width:200px}
   /* form card */
   .vd-form-card{border:1px solid #E5E7EB;border-radius:24px;background:#fff;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
@@ -1319,12 +1328,15 @@ export function MarketingVerticalDemoTemplate({
                 <div className="vd-phone-dock">
                   {stage === 'live' ? (
                     <div className="vd-phone-ios-act">
-                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--decline" onClick={endWebDemoFromPhone} aria-label="End call">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden>
-                          <g transform="rotate(135 12 12)">
-                            <path fill="#ff3b30" d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
-                          </g>
-                        </svg>
+                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--end" onClick={endWebDemoFromPhone} aria-label="End call">
+                        <span className="vc-ctrl vc-ctrl-end" aria-hidden>
+                          <svg viewBox="0 0 24 24">
+                            <path
+                              d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"
+                              transform="rotate(135 12 12)"
+                            />
+                          </svg>
+                        </span>
                       </button>
                       <span className="vd-phone-ios-label">End Call</span>
                     </div>
