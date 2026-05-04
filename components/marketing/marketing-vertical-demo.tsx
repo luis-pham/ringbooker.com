@@ -9,7 +9,7 @@ import { Room, RoomEvent } from 'livekit-client';
 import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
-import { DEMO_VERTICALS, type DemoServiceCategory, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
+import { DEMO_VERTICALS, type DemoServiceCategory, type DemoVerticalConfig, type DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
 import { DIRECT_REALTIME_DEMO_DURATION_MESSAGE, userMessageForDirectDemoRealtimeJson } from '@/lib/marketing-vertical-demo-errors';
@@ -287,9 +287,9 @@ const styles: string[] = [
   .vd-phone-dock{display:flex;justify-content:center;align-items:flex-end;padding:8px 0 6px;width:100%}
   .vd-phone-ios-act{display:flex;flex-direction:column;align-items:center;gap:7px;width:100%}
   .vd-phone-ios-btn{border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;transition:transform .15s,filter .15s,box-shadow .15s}
-  .vd-phone-ios-btn--decline{width:72px;height:72px;border-radius:50%;background:#FF3B30;box-shadow:0 12px 28px rgba(255,59,48,.45)}
-  .vd-phone-ios-btn--decline:hover{filter:brightness(1.06);transform:scale(1.03);box-shadow:0 14px 34px rgba(255,59,48,.5)}
-  .vd-phone-ios-btn--decline svg{width:30px;height:30px;display:block}
+  .vd-phone-ios-btn--decline{width:56px;height:56px;border-radius:999px;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.14)}
+  .vd-phone-ios-btn--decline:hover{filter:none;transform:scale(1.04);box-shadow:0 6px 20px rgba(0,0,0,.2)}
+  .vd-phone-ios-btn--decline svg{width:32px;height:32px;display:block}
   .vd-phone-ios-btn--accept{width:auto;height:auto;padding:0;background:transparent;box-shadow:none;border-radius:0}
   .vd-phone-ios-btn--accept:hover:not(:disabled){filter:none;transform:none;box-shadow:none}
   .vd-phone-ios-btn-face{
@@ -385,7 +385,7 @@ function microphoneErrorMessage(error: unknown): string {
 
 export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVerticalSlug }) {
   const config = DEMO_VERTICALS[vertical];
-  const otherDemoVerticals = useMemo(() => [], []);
+  const otherDemoVerticals = useMemo((): DemoVerticalConfig[] => [], []);
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: config.defaultBusinessName,
@@ -1292,11 +1292,13 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                 <div className="vd-phone-dock">
                   {stage === 'live' ? (
                     <div className="vd-phone-ios-act">
-                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--decline" onClick={endWebDemoFromPhone} aria-label="End Call">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.05" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                          <g transform="rotate(135 12 12)">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                          </g>
+                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--decline" onClick={endWebDemoFromPhone} aria-label="End call">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.88 122.88" width="32" height="32" aria-hidden>
+                          <path
+                            fill="#ff3b30"
+                            fillRule="evenodd"
+                            d="M104.89,104.89a61.47,61.47,0,1,1,18-43.45,61.21,61.21,0,0,1-18,43.45ZM74.59,55.72a49.79,49.79,0,0,0-12.38-2.07A41.52,41.52,0,0,0,48,55.8a1.16,1.16,0,0,0-.74.67,4.53,4.53,0,0,0-.27,1.7,16.14,16.14,0,0,0,.2,2c.42,3,.93,6.8-2.42,8l-.22.07-12,3.24-.12,0A4.85,4.85,0,0,1,28,70a11.44,11.44,0,0,1-2.68-4.92,11,11,0,0,1,.42-6.93A23.69,23.69,0,0,1,29,52.39,21.52,21.52,0,0,1,36.55,46a42.74,42.74,0,0,1,10.33-3.6l.29-.07C49,42,51,41.48,53.08,41.17a62.76,62.76,0,0,1,25.14,1.59c6.87,2,13,5.43,16.8,10.7a13.88,13.88,0,0,1,2.92,9.59,12.64,12.64,0,0,1-4.88,8.43,1.34,1.34,0,0,1-1.26.28L78.6,68.38A3.69,3.69,0,0,1,75.41,66a7.73,7.73,0,0,1-.22-4,15.21,15.21,0,0,1,.22-1.6c.3-1.89.63-4.06-.89-4.72Z"
+                          />
                         </svg>
                       </button>
                       <span className="vd-phone-ios-label">End Call</span>
