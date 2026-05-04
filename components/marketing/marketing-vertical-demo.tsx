@@ -287,9 +287,9 @@ const styles: string[] = [
   .vd-phone-dock{display:flex;justify-content:center;align-items:flex-end;padding:8px 0 6px;width:100%}
   .vd-phone-ios-act{display:flex;flex-direction:column;align-items:center;gap:7px;width:100%}
   .vd-phone-ios-btn{border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;transition:transform .15s,filter .15s,box-shadow .15s}
-  .vd-phone-ios-btn--decline{width:56px;height:56px;border-radius:999px;background:#fff;box-shadow:0 4px 16px rgba(0,0,0,.14)}
-  .vd-phone-ios-btn--decline:hover{filter:none;transform:scale(1.04);box-shadow:0 6px 20px rgba(0,0,0,.2)}
-  .vd-phone-ios-btn--decline svg{width:32px;height:32px;display:block}
+  .vd-phone-ios-btn--decline{width:40px;height:40px;padding:0;border-radius:999px;background:transparent;box-shadow:none}
+  .vd-phone-ios-btn--decline:hover{filter:none;transform:scale(1.04);box-shadow:none}
+  .vd-phone-ios-btn--decline svg{width:40px;height:40px;display:block}
   .vd-phone-ios-btn--accept{width:auto;height:auto;padding:0;background:transparent;box-shadow:none;border-radius:0}
   .vd-phone-ios-btn--accept:hover:not(:disabled){filter:none;transform:none;box-shadow:none}
   .vd-phone-ios-btn-face{
@@ -306,6 +306,8 @@ const styles: string[] = [
   @media(min-width:800px){
     .vd-phone-ios-btn-face{width:56px;height:56px}
     .vd-phone-ios-btn-face svg{width:20px;height:20px}
+    .vd-phone-ios-btn--decline{width:56px;height:56px}
+    .vd-phone-ios-btn--decline svg{width:56px;height:56px}
   }
   .vd-phone-ios-btn:focus-visible{outline:2px solid rgba(255,255,255,.55);outline-offset:3px}
   .vd-phone-ios-btn:disabled{opacity:1;cursor:not-allowed}
@@ -826,44 +828,49 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
       const dc = pc.createDataChannel('oai-events');
       directDataChannelRef.current = dc;
+      let initialGreetingRequested = false;
+      const requestInitialGreeting = () => {
+        if (initialGreetingRequested || dc.readyState !== 'open') return;
+        initialGreetingRequested = true;
+        setStatusText('The receptionist is greeting you…');
+        dc.send(
+          JSON.stringify({
+            type: 'response.create',
+            response: {
+              modalities: ['audio', 'text'],
+              instructions:
+                'The caller has just connected to the live web demo. Speak first now. Say one short, natural receptionist greeting, welcome them to the demo, then stop and listen. Do not wait for the caller to speak.',
+              input: [
+                {
+                  type: 'message',
+                  role: 'user',
+                  content: [
+                    {
+                      type: 'input_text',
+                      text: 'I just connected to the web voice demo. Please greet me first before I say anything.',
+                    },
+                  ],
+                },
+              ],
+            },
+          }),
+        );
+      };
       dc.addEventListener('open', () => {
-        queueMicrotask(() => {
-          setStatusText('The receptionist is greeting you…');
-          dc.send(
-            JSON.stringify({
-              type: 'conversation.item.create',
-              item: {
-                type: 'message',
-                role: 'system',
-                content: [
-                  {
-                    type: 'input_text',
-                    text: 'The caller is connected on the web demo with live audio. Speak your opening greeting aloud immediately—one short welcome per your session instructions. Do not wait for the caller to speak first.',
-                  },
-                ],
-              },
-            }),
-          );
-          dc.send(
-            JSON.stringify({
-              type: 'response.create',
-              response: {
-                modalities: ['audio', 'text'],
-                instructions:
-                  'Say only your opening greeting now: welcome the caller, orient to the demo, under fifteen seconds. Then stop speaking and listen for the caller.',
-              },
-            }),
-          );
-        });
+        window.setTimeout(requestInitialGreeting, 250);
       });
       dc.addEventListener('message', (event) => {
         try {
-          const data = JSON.parse(String(event.data)) as { type?: string };
+          const data = JSON.parse(String(event.data)) as { error?: { message?: string }; type?: string };
+          if (data.type === 'session.created') requestInitialGreeting();
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
           if (data.type === 'response.done') {
             setStatusText('You\'re connected — speak naturally or tap a prompt below.');
           }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
+          if (data.type === 'error') {
+            console.warn('OpenAI Realtime web demo event error', data.error);
+          }
         } catch {
           /* Ignore non-JSON data channel frames. */
         }
