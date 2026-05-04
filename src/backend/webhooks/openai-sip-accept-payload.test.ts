@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { getSipShopToolsForOpenAiAccept } from '@/src/agent/sip/sip-tool-definitions';
-import { buildOpenAiSipAcceptAudioInputFromEnv, buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
+import { buildDirectWebDemoClientSecretAudioInput, buildOpenAiSipAcceptAudioInputFromEnv, buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 
 function withEnv(updates: Record<string, string | undefined>, fn: () => void) {
   const prev: Record<string, string | undefined> = {};
@@ -119,4 +119,30 @@ test('buildOpenAiSipAcceptBody adds shop tools + tool_choice when provided', () 
       assert.equal(body.tool_choice, 'auto');
     },
   );
+});
+
+test('buildDirectWebDemoClientSecretAudioInput suppresses then restores create_response', () => {
+  withEnv(
+    {
+      AGENT_OPENAI_SERVER_VAD_ENABLED: 'true',
+      AGENT_OPENAI_TURN_DETECTION: 'semantic_vad',
+      AGENT_OPENAI_SEMANTIC_VAD_EAGERNESS: 'medium',
+      AGENT_OPENAI_CREATE_RESPONSE: 'true',
+    },
+    () => {
+      const { turnDetectionForSecret, turnDetectionAfterWelcome } = buildDirectWebDemoClientSecretAudioInput();
+      assert.equal(turnDetectionForSecret?.create_response, false);
+      assert.equal(turnDetectionAfterWelcome?.create_response, true);
+      assert.equal(turnDetectionForSecret?.type, 'semantic_vad');
+      assert.equal(turnDetectionAfterWelcome?.type, 'semantic_vad');
+    },
+  );
+});
+
+test('buildDirectWebDemoClientSecretAudioInput returns nulls when VAD disabled', () => {
+  withEnv({ AGENT_OPENAI_SERVER_VAD_ENABLED: 'false' }, () => {
+    const { turnDetectionForSecret, turnDetectionAfterWelcome } = buildDirectWebDemoClientSecretAudioInput();
+    assert.equal(turnDetectionForSecret, null);
+    assert.equal(turnDetectionAfterWelcome, null);
+  });
 });

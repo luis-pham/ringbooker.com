@@ -92,6 +92,28 @@ export function buildOpenAiSipAcceptAudioInputFromEnv(): { turn_detection: Recor
   };
 }
 
+/**
+ * Browser WebRTC direct demo (`client_secrets`): mint session with `create_response: false` so VAD does not
+ * start a stray assistant turn before the page sends the scripted welcome `response.create`. After that
+ * welcome finishes, the client must apply `turnDetectionAfterWelcome` via `session.update` so user speech
+ * triggers responses again.
+ */
+export function buildDirectWebDemoClientSecretAudioInput(): {
+  turnDetectionForSecret: Record<string, unknown> | null;
+  turnDetectionAfterWelcome: Record<string, unknown> | null;
+} {
+  const envAudioInput = buildOpenAiSipAcceptAudioInputFromEnv();
+  const td = envAudioInput.turn_detection;
+  if (!td || typeof td !== 'object' || Array.isArray(td)) {
+    return { turnDetectionForSecret: null, turnDetectionAfterWelcome: null };
+  }
+  const createResponse = parseBoolean(process.env.AGENT_OPENAI_CREATE_RESPONSE, true);
+  return {
+    turnDetectionForSecret: { ...td, create_response: false },
+    turnDetectionAfterWelcome: { ...td, create_response: createResponse },
+  };
+}
+
 export function buildOpenAiSipAcceptBody(params: {
   instructions: string;
   model: string;

@@ -47,6 +47,8 @@ type DirectRealtimeApiResponse = {
   code?: string;
   message?: string;
   retryAfterSeconds?: number;
+  /** Present when server VAD is on: apply via `session.update` after scripted welcome so mic turns get replies. */
+  turnDetectionAfterWelcome?: Record<string, unknown> | null;
 };
 type DemoStatusResponse = {
   ok: boolean;
@@ -855,6 +857,40 @@ export function MarketingVerticalDemoTemplate({
       directDataChannelRef.current = dc;
       let initialGreetingRequested = false;
       let realtimeSessionReady = false;
+      let vadResumeAfterWelcomeSent = false;
+
+      const maybeResumeVadAfterWelcome = () => {
+        const td = sessionBody.turnDetectionAfterWelcome;
+        if (
+          !td ||
+          typeof td !== 'object' ||
+          Array.isArray(td) ||
+          vadResumeAfterWelcomeSent ||
+          dc.readyState !== 'open'
+        ) {
+          return;
+        }
+        if (td.create_response !== true) return;
+        vadResumeAfterWelcomeSent = true;
+        try {
+          dc.send(
+            JSON.stringify({
+              type: 'session.update',
+              session: {
+                type: 'realtime',
+                audio: {
+                  input: {
+                    turn_detection: td,
+                  },
+                },
+              },
+            }),
+          );
+        } catch {
+          vadResumeAfterWelcomeSent = false;
+        }
+      };
+
       const requestInitialGreeting = () => {
         if (initialGreetingRequested || !realtimeSessionReady || dc.readyState !== 'open') return;
         // Set before sends: `session.created` / `session.updated` may arrive back-to-back; guard must flip before I/O.
@@ -899,6 +935,7 @@ export function MarketingVerticalDemoTemplate({
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
           if (data.type === 'response.done') {
             setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+            maybeResumeVadAfterWelcome();
           }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
           if (data.type === 'error') {

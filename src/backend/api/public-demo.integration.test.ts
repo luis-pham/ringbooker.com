@@ -269,6 +269,7 @@ test('public demo realtime-session returns ephemeral client secret without LiveK
       liveKitUrl?: string;
       systemPrompt?: string;
       openAiApiKey?: string;
+      turnDetectionAfterWelcome?: Record<string, unknown> | null;
     };
     assert.equal(body.ok, true);
     assert.match(body.requestId ?? '', /^demo-direct-/);
@@ -280,6 +281,7 @@ test('public demo realtime-session returns ephemeral client secret without LiveK
     assert.equal(body.liveKitUrl, undefined);
     assert.equal(body.systemPrompt, undefined);
     assert.equal(body.openAiApiKey, undefined);
+    assert.equal(body.turnDetectionAfterWelcome?.create_response, true);
     assert.equal(openAiRequestCount, 1);
     assert.equal(realtime.startInboundSessionCount, 0);
     assert.equal(telephony.createOutboundCallCount, 0);
