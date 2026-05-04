@@ -4,9 +4,11 @@ import assert from 'node:assert/strict';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
+import { isShopCallable } from '@/src/backend/services/calls/callable-check';
 import {
   buildCallControlClientState,
   decodeCallControlClientState,
+  evaluateTelnyxCallControlInboundInitiated,
   handleTelnyxCallControlPhase1,
   isTelnyxCallControlDryRunEnv,
 } from '@/src/backend/webhooks/telnyx-call-control';
@@ -19,6 +21,19 @@ function applyCallControlInboundStackEnv() {
     VOICE_TRANSPORT: 'openai_sip_direct',
     HANDOFF_TRANSPORT: 'telnyx_call_control',
   });
+}
+
+function clearVerticalDemoPhoneEnv() {
+  for (const k of [
+    'DEMO_PHONE_NAIL_SALON',
+    'DEMO_PHONE_HAIR_SALON',
+    'DEMO_PHONE_DAY_SPA',
+    'DEMO_PHONE_MED_SPA',
+    'DEMO_PHONE_BEAUTY_CLINIC',
+    'OPENAI_SIP_DEMO_DID_MAP_JSON',
+  ]) {
+    delete process.env[k];
+  }
 }
 
 test('buildCallControlClientState produces stable base64 JSON', () => {
@@ -43,6 +58,9 @@ test('decodeCallControlClientState round-trips buildCallControlClientState', () 
     requestId: 'rid',
     callerPhone: '+1',
     ts: '2026-05-01T12:00:00.000Z',
+    routeKind: 'demo' as const,
+    demoVertical: 'hair-salon',
+    purpose: 'vertical_demo_inbound',
   };
   const encoded = buildCallControlClientState(payload);
   assert.deepEqual(decodeCallControlClientState(encoded), payload);
@@ -166,4 +184,123 @@ test('handleTelnyxCallControlPhase1 labels answer when dry run disabled', async 
     else process.env.TELNYX_CALL_CONTROL_DRY_RUN = prev;
     resetEnvCacheForTests();
   }
+});
+
+const demoVerticalCases: ReadonlyArray<{
+  envKey: string;
+  phone: string;
+  vertical: string;
+}> = [
+  { envKey: 'DEMO_PHONE_NAIL_SALON', phone: '+15550001001', vertical: 'nail-salon' },
+  { envKey: 'DEMO_PHONE_HAIR_SALON', phone: '+15550001002', vertical: 'hair-salon' },
+  { envKey: 'DEMO_PHONE_DAY_SPA', phone: '+15550001003', vertical: 'day-spa' },
+  { envKey: 'DEMO_PHONE_MED_SPA', phone: '+15550001004', vertical: 'med-spa' },
+  { envKey: 'DEMO_PHONE_BEAUTY_CLINIC', phone: '+15550001005', vertical: 'beauty-clinic' },
+];
+
+for (const row of demoVerticalCases) {
+  test(`evaluateTelnyxCallControlInboundInitiated demo vertical ${row.vertical}`, async () => {
+    resetEnvCacheForTests();
+    clearVerticalDemoPhoneEnv();
+    applyCallControlInboundStackEnv();
+    applyRequiredTestEnv({ PUBLIC_DEMO_SHOP_ID: 'demo-shop', [row.envKey]: row.phone });
+    process.env.TELNYX_CALL_CONTROL_DRY_RUN = 'false';
+    const repo = new InMemoryShopsRepository();
+    const result = await evaluateTelnyxCallControlInboundInitiated(
+      {
+        call_control_id: `cc_demo_${row.vertical}`,
+        direction: 'inbound',
+        to: row.phone,
+        from: '+15550009999',
+      },
+      { shopsRepository: repo },
+    );
+    assert.equal(result.handled, true);
+    if (!result.handled) assert.fail();
+    assert.equal(result.decision, 'answer');
+    assert.equal(result.routeKind, 'demo');
+    assert.equal(result.demoVertical, row.vertical);
+    assert.equal(result.reason, 'vertical_demo_did_matched');
+    assert.equal(result.resolver?.matchedBy, 'demo_number');
+    assert.equal(result.resolver?.demoNumberMatched, true);
+    assert.equal(result.resolver?.shopLookupSkippedForDemo, true);
+    const decoded = decodeCallControlClientState(result.clientState ?? '');
+    assert.equal(decoded?.routeKind, 'demo');
+    assert.equal(decoded?.demoVertical, row.vertical);
+    assert.equal(decoded?.purpose, 'vertical_demo_inbound');
+    resetEnvCacheForTests();
+    clearVerticalDemoPhoneEnv();
+    delete process.env.TELNYX_CALL_CONTROL_DRY_RUN;
+  });
+}
+
+test('evaluateTelnyxCallControlInboundInitiated demo DID wins over shop with same phone_number', async () => {
+  resetEnvCacheForTests();
+  clearVerticalDemoPhoneEnv();
+  applyCallControlInboundStackEnv();
+  const demoPhone = '+15558887701';
+  applyRequiredTestEnv({
+    PUBLIC_DEMO_SHOP_ID: 'demo-shop',
+    DEMO_PHONE_NAIL_SALON: demoPhone,
+  });
+  process.env.TELNYX_CALL_CONTROL_DRY_RUN = 'false';
+  const repo = new InMemoryShopsRepository();
+  const conflict = await repo.create({
+    name: 'Conflict Shop',
+    phone_number: demoPhone,
+    user_phone: '+15550004000',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+  });
+  await repo.updateUserSettings(conflict.id, {
+    services: [{ name: 'Solo', duration_min: 15, price: 10 }],
+  });
+  const conflictShop = await repo.findById(conflict.id);
+  assert.ok(conflictShop);
+  const callable = isShopCallable(conflictShop);
+  assert.equal(callable.ok, false);
+  if (callable.ok) assert.fail();
+  assert.equal(callable.reason, 'plan_requires_ai_config');
+
+  const result = await evaluateTelnyxCallControlInboundInitiated(
+    { call_control_id: 'cc_col', direction: 'inbound', to: demoPhone, from: '+15551111111' },
+    { shopsRepository: repo },
+  );
+  assert.equal(result.handled, true);
+  if (!result.handled) assert.fail();
+  assert.equal(result.decision, 'answer');
+  assert.equal(result.routeKind, 'demo');
+  assert.equal(result.reason, 'vertical_demo_did_matched');
+  assert.notEqual(result.reason, 'plan_requires_ai_config');
+
+  resetEnvCacheForTests();
+  clearVerticalDemoPhoneEnv();
+  delete process.env.TELNYX_CALL_CONTROL_DRY_RUN;
+});
+
+test('evaluateTelnyxCallControlInboundInitiated production shop keeps routeKind shop', async () => {
+  resetEnvCacheForTests();
+  clearVerticalDemoPhoneEnv();
+  applyCallControlInboundStackEnv();
+  applyRequiredTestEnv({ PUBLIC_DEMO_SHOP_ID: 'demo-shop' });
+  process.env.TELNYX_CALL_CONTROL_DRY_RUN = 'true';
+  const repo = new InMemoryShopsRepository();
+  await repo.updateUserSettings('demo-shop', {
+    telnyx_number: '+15551110020',
+    phone_number: '+15552220020',
+  });
+
+  const result = await evaluateTelnyxCallControlInboundInitiated(
+    { call_control_id: 'cc_shop_route', direction: 'inbound', to: '+15551110020', from: '+15550001111' },
+    { shopsRepository: repo },
+  );
+  assert.equal(result.handled, true);
+  if (!result.handled) assert.fail();
+  assert.equal(result.routeKind, 'shop');
+  assert.equal(result.shopId, 'demo-shop');
+  assert.equal(result.resolver?.matchedBy, 'telnyx_number');
+
+  resetEnvCacheForTests();
+  clearVerticalDemoPhoneEnv();
+  delete process.env.TELNYX_CALL_CONTROL_DRY_RUN;
 });

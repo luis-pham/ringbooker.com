@@ -14,9 +14,11 @@ import { randomUUID } from 'node:crypto';
 
 import { z } from 'zod';
 
+import type { VoicePromptVertical } from '@/src/agent/prompts';
 import type { Shop } from '@/src/backend/domain/types';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
 import { getEnv } from '@/src/backend/config/env';
+import { resolveVerticalDemoInboundRoute } from '@/src/backend/demo/demo-vertical-phone-map';
 import {
   getResolvedHandoffTransport,
   getResolvedVoiceTransport,
@@ -58,7 +60,7 @@ export type TelnyxCallControlTelnyxRejectCause = 'CALL_REJECTED' | 'USER_BUSY';
 
 export type TelnyxCallControlResolverSnapshot = {
   inboundDid: string | null;
-  matchedBy: 'telnyx_number' | 'phone_number' | 'none';
+  matchedBy: 'telnyx_number' | 'phone_number' | 'none' | 'demo_number';
   telnyxNumberMatch: boolean;
   shopId?: string;
   shopName?: string;
@@ -66,6 +68,10 @@ export type TelnyxCallControlResolverSnapshot = {
   allowTransfers?: boolean;
   aiVoiceConfigured?: boolean;
   callableBlockReason?: string;
+  /** Present when inbound matched merged vertical demo DID map (Call Control). */
+  demoNumberMatched?: boolean;
+  demoVertical?: VoicePromptVertical;
+  shopLookupSkippedForDemo?: boolean;
 };
 
 export type TelnyxCallControlPhase1Result =
@@ -84,7 +90,12 @@ export type TelnyxCallControlPhase1Result =
       internalRequestId?: string;
       destinationPhone?: string;
       callerPhone?: string | null;
+      /** `demo` = vertical demo DID (no shop plan gate). `shop` = production tenant. */
+      routeKind?: 'demo' | 'shop';
+      demoVertical?: VoicePromptVertical;
     };
+
+export type TelnyxCallControlPhase1HandledResult = Extract<TelnyxCallControlPhase1Result, { handled: true }>;
 
 export function telnyxInboundRejectCauseFor(
   reason: TelnyxCallControlInboundRejectReason,
@@ -112,6 +123,7 @@ function resolverFromShop(shop: Shop, meta: ResolveShopByInboundDidResult): Teln
 }
 
 export type CallControlClientStatePayload = {
+  /** Production shop id, or `PUBLIC_DEMO_SHOP_ID` for vertical demo Call Control legs (DB FK for voice_call_legs). */
   shopId: string;
   requestId: string;
   callerPhone: string | null;
@@ -130,12 +142,16 @@ export type CallControlClientStatePayload = {
    * `owner_handoff_leg` — outbound owner screening leg (do not dial OpenAI SIP on `call.answered`).
    * Inbound path leaves this unset.
    */
-  purpose?: 'owner_handoff_leg' | 'openai_sip_leg' | string;
+  purpose?: 'owner_handoff_leg' | 'openai_sip_leg' | 'vertical_demo_inbound' | string;
   handoffId?: string;
   parentCallControlId?: string;
   ownerPhone?: string;
   reason?: string;
   urgency?: string;
+  /** When `demo`, OpenAI SIP accept uses public demo prompt for `demoVertical` (not shop production). */
+  routeKind?: 'demo' | 'shop';
+  /** Marketing vertical slug, e.g. `nail-salon` (only when routeKind is `demo`). */
+  demoVertical?: string;
 };
 
 /** Telnyx echoes this on subsequent Call Control webhooks (base64-encoded JSON string). */
@@ -191,6 +207,12 @@ export function decodeCallControlClientState(raw: string | null | undefined): Ca
     }
     if (typeof parsed.urgency === 'string' && parsed.urgency.trim()) {
       base.urgency = parsed.urgency.trim();
+    }
+    if (typeof parsed.routeKind === 'string' && (parsed.routeKind === 'demo' || parsed.routeKind === 'shop')) {
+      base.routeKind = parsed.routeKind;
+    }
+    if (typeof parsed.demoVertical === 'string' && parsed.demoVertical.trim()) {
+      base.demoVertical = parsed.demoVertical.trim();
     }
     return base;
   } catch {
@@ -316,6 +338,97 @@ export function parseTelnyxCallControlEnvelope(
 }
 
 /**
+ * Shared env gates for Telnyx → OpenAI SIP bridge (production shop or vertical demo DID).
+ * Returns a reject result when misconfigured; `null` when OK to proceed to `answer`.
+ */
+function runOpenAiSipBridgeEnvGates(params: {
+  callControlId: string;
+  callerPhone: string | null;
+  destinationPhone: string | undefined;
+  resolver: TelnyxCallControlResolverSnapshot;
+  shopId?: string;
+}): TelnyxCallControlPhase1HandledResult | null {
+  const env = getEnv();
+  if (getTelnyxInboundRoutingMode() !== 'call_control_to_openai_sip') {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'invalid_inbound_routing_mode',
+      reject_reason: 'invalid_inbound_routing_mode',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: params.shopId,
+      callControlId: params.callControlId,
+      destinationPhone: params.destinationPhone,
+      callerPhone: params.callerPhone,
+      resolver: params.resolver,
+    };
+  }
+
+  if (getResolvedVoiceTransport() !== 'openai_sip_direct') {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'voice_transport_mismatch',
+      reject_reason: 'voice_transport_not_openai_sip_direct',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: params.shopId,
+      callControlId: params.callControlId,
+      destinationPhone: params.destinationPhone,
+      callerPhone: params.callerPhone,
+      resolver: params.resolver,
+    };
+  }
+
+  if (getResolvedHandoffTransport() !== 'telnyx_call_control') {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'handoff_transport_mismatch',
+      reject_reason: 'handoff_transport_not_telnyx_call_control',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: params.shopId,
+      callControlId: params.callControlId,
+      destinationPhone: params.destinationPhone,
+      callerPhone: params.callerPhone,
+      resolver: params.resolver,
+    };
+  }
+
+  if (!env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP) {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'bridge_disabled',
+      reject_reason: 'bridge_openai_sip_disabled',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: params.shopId,
+      callControlId: params.callControlId,
+      destinationPhone: params.destinationPhone,
+      callerPhone: params.callerPhone,
+      resolver: params.resolver,
+    };
+  }
+
+  const sip = env.OPENAI_SIP_URI?.trim() ?? '';
+  if (!/^sips?:/i.test(sip)) {
+    return {
+      handled: true,
+      decision: 'reject',
+      reason: 'missing_openai_sip_uri',
+      reject_reason: 'missing_openai_sip_uri',
+      reject_cause_telnyx: 'CALL_REJECTED',
+      shopId: params.shopId,
+      callControlId: params.callControlId,
+      destinationPhone: params.destinationPhone,
+      callerPhone: params.callerPhone,
+      resolver: params.resolver,
+    };
+  }
+
+  return null;
+}
+
+/**
  * Core routing for inbound `call.initiated` payload (after envelope parse + event filter).
  */
 export async function evaluateTelnyxCallControlInboundInitiated(
@@ -356,8 +469,65 @@ export async function evaluateTelnyxCallControlInboundInitiated(
     };
   }
 
+  const env = getEnv();
+  const destinationPhone = normalizeInboundE164(toRaw) ?? undefined;
+  const demoCtx = destinationPhone ? resolveVerticalDemoInboundRoute(destinationPhone, env) : null;
+
+  if (demoCtx) {
+    const demoResolver: TelnyxCallControlResolverSnapshot = {
+      inboundDid: destinationPhone ?? null,
+      matchedBy: 'demo_number',
+      telnyxNumberMatch: false,
+      demoNumberMatched: true,
+      demoVertical: demoCtx.vertical,
+      shopLookupSkippedForDemo: true,
+    };
+    const gate = runOpenAiSipBridgeEnvGates({
+      callControlId,
+      callerPhone,
+      destinationPhone,
+      resolver: demoResolver,
+      shopId: env.PUBLIC_DEMO_SHOP_ID,
+    });
+    if (gate) return gate;
+
+    const internalRequestId = randomUUID();
+    const callSessionId = firstStringFromPayload(payload, ['call_session_id']);
+    const clientState = buildCallControlClientState({
+      shopId: env.PUBLIC_DEMO_SHOP_ID,
+      requestId: internalRequestId,
+      callerPhone,
+      ts: new Date().toISOString(),
+      rbCallId: internalRequestId,
+      telnyxCallControlId: callControlId,
+      inboundDid: destinationPhone,
+      telnyxCallSessionId: callSessionId ?? undefined,
+      transport: 'openai_sip_direct',
+      handoffTransport: 'telnyx_call_control',
+      routeKind: 'demo',
+      demoVertical: demoCtx.vertical,
+      purpose: 'vertical_demo_inbound',
+    });
+
+    const dryRunDemo = isTelnyxCallControlDryRunEnv();
+    return {
+      handled: true,
+      decision: dryRunDemo ? 'dry_run' : 'answer',
+      reason: 'vertical_demo_did_matched',
+      routeKind: 'demo',
+      demoVertical: demoCtx.vertical,
+      shopId: env.PUBLIC_DEMO_SHOP_ID,
+      clientState,
+      callControlId,
+      internalRequestId,
+      destinationPhone,
+      callerPhone,
+      resolver: demoResolver,
+    };
+  }
+
   const meta = await resolveShopByInboundDidWithMeta(deps, toRaw);
-  const destinationPhone = meta.inboundDid ?? normalizeInboundE164(toRaw) ?? undefined;
+  const destinationPhoneShop = meta.inboundDid ?? normalizeInboundE164(toRaw) ?? undefined;
 
   if (!meta.shop) {
     return {
@@ -367,7 +537,7 @@ export async function evaluateTelnyxCallControlInboundInitiated(
       reject_reason: 'shop_not_found',
       reject_cause_telnyx: telnyxInboundRejectCauseFor('shop_not_found'),
       callControlId,
-      destinationPhone,
+      destinationPhone: destinationPhoneShop,
       callerPhone,
       resolver: baseResolverFromLookup(meta),
     };
@@ -386,88 +556,21 @@ export async function evaluateTelnyxCallControlInboundInitiated(
       reject_cause_telnyx: telnyxInboundRejectCauseFor(reject_reason),
       shopId: shop.id,
       callControlId,
-      destinationPhone,
+      destinationPhone: destinationPhoneShop,
       callerPhone,
       resolver: { ...resolverFromShop(shop, meta), callableBlockReason: callable.reason },
     };
   }
 
-  const env = getEnv();
-  if (getTelnyxInboundRoutingMode() !== 'call_control_to_openai_sip') {
-    return {
-      handled: true,
-      decision: 'reject',
-      reason: 'invalid_inbound_routing_mode',
-      reject_reason: 'invalid_inbound_routing_mode',
-      reject_cause_telnyx: 'CALL_REJECTED',
-      shopId: shop.id,
-      callControlId,
-      destinationPhone,
-      callerPhone,
-      resolver: resolverFromShop(shop, meta),
-    };
-  }
-
-  if (getResolvedVoiceTransport() !== 'openai_sip_direct') {
-    return {
-      handled: true,
-      decision: 'reject',
-      reason: 'voice_transport_mismatch',
-      reject_reason: 'voice_transport_not_openai_sip_direct',
-      reject_cause_telnyx: 'CALL_REJECTED',
-      shopId: shop.id,
-      callControlId,
-      destinationPhone,
-      callerPhone,
-      resolver: resolverFromShop(shop, meta),
-    };
-  }
-
-  if (getResolvedHandoffTransport() !== 'telnyx_call_control') {
-    return {
-      handled: true,
-      decision: 'reject',
-      reason: 'handoff_transport_mismatch',
-      reject_reason: 'handoff_transport_not_telnyx_call_control',
-      reject_cause_telnyx: 'CALL_REJECTED',
-      shopId: shop.id,
-      callControlId,
-      destinationPhone,
-      callerPhone,
-      resolver: resolverFromShop(shop, meta),
-    };
-  }
-
-  if (!env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP) {
-    return {
-      handled: true,
-      decision: 'reject',
-      reason: 'bridge_disabled',
-      reject_reason: 'bridge_openai_sip_disabled',
-      reject_cause_telnyx: 'CALL_REJECTED',
-      shopId: shop.id,
-      callControlId,
-      destinationPhone,
-      callerPhone,
-      resolver: resolverFromShop(shop, meta),
-    };
-  }
-
-  const sip = env.OPENAI_SIP_URI?.trim() ?? '';
-  if (!/^sips?:/i.test(sip)) {
-    return {
-      handled: true,
-      decision: 'reject',
-      reason: 'missing_openai_sip_uri',
-      reject_reason: 'missing_openai_sip_uri',
-      reject_cause_telnyx: 'CALL_REJECTED',
-      shopId: shop.id,
-      callControlId,
-      destinationPhone,
-      callerPhone,
-      resolver: resolverFromShop(shop, meta),
-    };
-  }
+  const shopResolver = resolverFromShop(shop, meta);
+  const gateShop = runOpenAiSipBridgeEnvGates({
+    callControlId,
+    callerPhone,
+    destinationPhone: destinationPhoneShop,
+    resolver: shopResolver,
+    shopId: shop.id,
+  });
+  if (gateShop) return { ...gateShop, routeKind: 'shop' };
 
   const internalRequestId = randomUUID();
   const callSessionId = firstStringFromPayload(payload, ['call_session_id']);
@@ -478,23 +581,26 @@ export async function evaluateTelnyxCallControlInboundInitiated(
     ts: new Date().toISOString(),
     rbCallId: internalRequestId,
     telnyxCallControlId: callControlId,
-    inboundDid: destinationPhone,
+    inboundDid: destinationPhoneShop,
     telnyxCallSessionId: callSessionId ?? undefined,
     transport: 'openai_sip_direct',
     handoffTransport: 'telnyx_call_control',
+    routeKind: 'shop',
   });
 
   const dryRun = isTelnyxCallControlDryRunEnv();
   return {
     handled: true,
     decision: dryRun ? 'dry_run' : 'answer',
+    reason: 'shop_resolved_and_mode_enabled',
+    routeKind: 'shop',
     shopId: shop.id,
     clientState,
     callControlId,
     internalRequestId,
-    destinationPhone,
+    destinationPhone: destinationPhoneShop,
     callerPhone,
-    resolver: resolverFromShop(shop, meta),
+    resolver: shopResolver,
   };
 }
 

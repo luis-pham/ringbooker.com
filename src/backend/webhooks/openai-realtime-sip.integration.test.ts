@@ -12,6 +12,7 @@ import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-rep
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
+import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
 
 function whsecSecret(): { secret: string; raw: Buffer } {
   const raw = randomBytes(32);
@@ -369,4 +370,94 @@ test('openai SIP shop route registers business tools when sideband enabled and r
   assert.ok(acceptJson.tools?.some((t) => t.name === 'request_human_handoff'));
   assert.ok(!acceptJson.tools?.some((t) => t.name === 'transfer_to_user'));
   assert.equal(acceptJson.tool_choice, 'auto');
+});
+
+test('openai SIP client_state routeKind demo uses public demo prompt and skips shop handoff tools', async () => {
+  const { secret, raw } = whsecSecret();
+  applyRequiredTestEnv({
+    OPENAI_SIP_WEBHOOK_ENABLED: 'true',
+    OPENAI_WEBHOOK_SECRET: secret,
+    OPENAI_SIP_ACCEPT_ENABLED: 'true',
+    OPENAI_API_KEY: 'sk-test-openai',
+    OPENAI_SIP_SIDEBAND_ENABLED: 'false',
+    PUBLIC_DEMO_SHOP_ID: 'demo-shop',
+  });
+  delete process.env.OPENAI_SIP_DEMO_DID_MAP_JSON;
+  delete process.env.DEMO_PHONE_NAIL_SALON;
+  delete process.env.DEMO_PHONE_HAIR_SALON;
+  delete process.env.DEMO_PHONE_DAY_SPA;
+  delete process.env.DEMO_PHONE_MED_SPA;
+  delete process.env.DEMO_PHONE_BEAUTY_CLINIC;
+  resetEnvCacheForTests();
+
+  const shopDid = '+17145550123';
+  const clientState = buildCallControlClientState({
+    shopId: 'demo-shop',
+    requestId: 'req_demo_cs_med',
+    callerPhone: '+15559871234',
+    ts: new Date().toISOString(),
+    rbCallId: 'rb_demo_cs',
+    telnyxCallControlId: 'cc_parent_demo',
+    inboundDid: shopDid,
+    routeKind: 'demo',
+    demoVertical: 'med-spa',
+    purpose: 'openai_sip_leg',
+  });
+
+  const calls: Array<{ url: string; body: string }> = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    calls.push({ url, body: typeof init?.body === 'string' ? init.body : '' });
+    return new Response('{}', { status: 200 });
+  };
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+    shopsRepository: new InMemoryShopsRepository(),
+    testingOpenAiFetch: fetchImpl,
+  });
+
+  const webhookId = 'wh_evt_client_state_demo';
+  const ts = `${Math.floor(Date.now() / 1000)}`;
+  const rawBody = JSON.stringify({
+    type: 'realtime.call.incoming',
+    data: {
+      call_id: 'call_client_state_demo_1',
+      sip_headers: [
+        { name: 'To', value: `sip:${shopDid.replace('+', '')}@pstn.twilio.com` },
+        { name: 'From', value: 'sip:+15559871234@sip.example.com' },
+        { name: 'X-Telnyx-Client-State', value: clientState },
+      ],
+    },
+  });
+  const sig = signV1({ raw, webhookId, webhookTimestamp: ts, rawBody });
+
+  const res = await app.request('/webhooks/openai', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'webhook-id': webhookId,
+      'webhook-timestamp': ts,
+      'webhook-signature': sig,
+    },
+    body: rawBody,
+  });
+  assert.equal(res.status, 200);
+
+  const acceptCalls = calls.filter((c) => c.url.includes('/accept'));
+  assert.equal(acceptCalls.length, 1);
+  const acceptJson = JSON.parse(acceptCalls[0].body) as {
+    instructions?: string;
+    tools?: { name: string }[];
+  };
+  assert.ok(
+    typeof acceptJson.instructions === 'string' && acceptJson.instructions.includes('Astra Med Spa'),
+    'med-spa public demo default shop name',
+  );
+  assert.ok(
+    typeof acceptJson.instructions === 'string' && !acceptJson.instructions.includes('RingBooker Demo Salon'),
+    'must not use in-memory demo shop system prompt',
+  );
+  assert.ok(!acceptJson.tools?.some((t) => t.name === 'request_human_handoff'));
 });

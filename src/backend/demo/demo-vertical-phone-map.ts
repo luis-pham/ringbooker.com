@@ -101,6 +101,20 @@ export function buildMergedOpenAiSipDemoDidMap(env: VerticalDemoPhoneEnv): Map<s
  * Note: OpenAI SIP inbound still rejects unknown DIDs (no map entry); this helper is for
  * tooling, tests, and future Telnyx paths — not a substitute for configuring each demo DID.
  */
+/**
+ * Telnyx Call Control + OpenAI SIP: resolve inbound E.164 against merged vertical demo DID map.
+ * Returns null when the number is not a configured demo line.
+ */
+export function resolveVerticalDemoInboundRoute(
+  inboundDidRaw: string | null | undefined,
+  env: VerticalDemoPhoneEnv,
+): OpenAiSipDidContext | null {
+  const e164 = normalizeInboundE164(inboundDidRaw ?? '');
+  if (!e164) return null;
+  const map = buildMergedOpenAiSipDemoDidMap(env);
+  return map.get(e164) ?? null;
+}
+
 export function getDemoVerticalByPhoneNumber(
   calledNumber: string | null | undefined,
   mergedMap: Map<string, OpenAiSipDidContext>,

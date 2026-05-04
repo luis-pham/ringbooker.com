@@ -11,7 +11,10 @@ import {
 import { getEnv } from '@/src/backend/config/env';
 import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 import type { Shop, ShopVertical } from '@/src/backend/domain/types';
-import { buildMergedOpenAiSipDemoDidMap } from '@/src/backend/demo/demo-vertical-phone-map';
+import {
+  buildMergedOpenAiSipDemoDidMap,
+  SIP_DEMO_DEFAULT_SHOP_BY_VERTICAL,
+} from '@/src/backend/demo/demo-vertical-phone-map';
 import { buildPublicDemoSystemPrompt, type DemoConfigInput } from '@/src/backend/demo/public-demo-system-prompt';
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
@@ -256,6 +259,42 @@ export async function handleOpenAiRealtimeSipWebhook(
     DEMO_PHONE_BEAUTY_CLINIC: env.DEMO_PHONE_BEAUTY_CLINIC,
     DEMO_PHONE_FALLBACK_VERTICAL: env.DEMO_PHONE_FALLBACK_VERTICAL,
   });
+  const rawCallControlState =
+    extractSipHeader(data.sip_headers, 'X-Ringbooker-Call-Control-State') ??
+    extractSipHeader(data.sip_headers, 'X-Telnyx-Client-State');
+  const ccDecoded = decodeCallControlClientState(rawCallControlState);
+
+  /** Telnyx Call Control → SIP bridge: prefer encoded client_state so demo lines never fall through to shop DB. */
+  let route: OpenAiSipRoute | null = null;
+  if (ccDecoded?.routeKind === 'demo' && ccDecoded.demoVertical) {
+    const v = asVoiceVertical(ccDecoded.demoVertical);
+    if (v) {
+      const inboundKey = ccDecoded.inboundDid ? normalizeInboundE164(ccDecoded.inboundDid) : null;
+      const fromMap = inboundKey ? didMap.get(inboundKey) : undefined;
+      const demoCtxForRoute: OpenAiSipDidContext =
+        fromMap ??
+        ({
+          did: (ccDecoded.inboundDid && ccDecoded.inboundDid.trim()) || inboundKey || '+0',
+          mode: 'demo',
+          vertical: v,
+          defaultShopName: SIP_DEMO_DEFAULT_SHOP_BY_VERTICAL[v].defaultShopName,
+          businessType: SIP_DEMO_DEFAULT_SHOP_BY_VERTICAL[v].businessType,
+        } as OpenAiSipDidContext);
+      route = { kind: 'demo', ctx: demoCtxForRoute };
+      logger.info(
+        {
+          callId,
+          route_kind: 'demo',
+          demo_vertical: v,
+          demo_prompt_selected: true,
+          demoNumberMatched: true,
+          shop_lookup_skipped_for_demo: true,
+        },
+        'demo_prompt_selected',
+      );
+    }
+  }
+
   /** TeXML pilots often set `OPENAI_SIP_URI` but omit `OPENAI_REALTIME_PROJECT_ID` — derive proj id from URI. */
   const openAiProjectIdForDid =
     env.OPENAI_REALTIME_PROJECT_ID?.trim() || parseOpenAiProjectUserFromSipTo(env.OPENAI_SIP_URI ?? null) || null;
@@ -266,7 +305,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     openAiRealtimeProjectId: openAiProjectIdForDid,
   });
 
-  let route: OpenAiSipRoute | null = didCtx ? { kind: 'demo', ctx: didCtx } : null;
+  if (!route && didCtx) route = { kind: 'demo', ctx: didCtx };
   if (!route && deps.shopsRepository) {
     for (const raw of collectOpenAiSipDidCandidates(data.sip_headers)) {
       const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, raw);

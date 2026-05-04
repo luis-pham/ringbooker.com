@@ -391,7 +391,9 @@ async function processCallInitiated(
           telnyxEventId: event.id,
           event_type: event.event_type,
           decision: 'answer',
-          reason: 'shop_resolved_and_mode_enabled',
+          reason: result.reason ?? 'shop_resolved_and_mode_enabled',
+          route_kind: result.routeKind ?? 'shop',
+          demo_vertical: result.demoVertical ?? null,
           call_control_id: result.callControlId,
           call_session_id: firstStringFromPayload(plInbound, ['call_session_id']),
           direction: directionInbound,
@@ -402,8 +404,10 @@ async function processCallInitiated(
           rbCallId: result.internalRequestId ?? null,
           shopId: result.shopId ?? null,
           resolver: result.resolver,
+          demo_number_matched: result.resolver?.demoNumberMatched === true,
+          shop_lookup_skipped_for_demo: result.resolver?.shopLookupSkippedForDemo === true,
         },
-        'telnyx_call_control_inbound_decision',
+        result.routeKind === 'demo' ? 'vertical_demo_did_matched' : 'telnyx_call_control_inbound_decision',
       );
     } else if (result.decision === 'dry_run') {
       log.info(
@@ -412,7 +416,9 @@ async function processCallInitiated(
           telnyxEventId: event.id,
           event_type: event.event_type,
           decision: 'dry_run',
-          reason: 'shop_resolved_dry_run_env',
+          reason: result.reason ?? 'shop_resolved_dry_run_env',
+          route_kind: result.routeKind ?? 'shop',
+          demo_vertical: result.demoVertical ?? null,
           call_control_id: result.callControlId,
           call_session_id: firstStringFromPayload(plInbound, ['call_session_id']),
           direction: directionInbound,
@@ -423,8 +429,10 @@ async function processCallInitiated(
           rbCallId: result.internalRequestId ?? null,
           shopId: result.shopId ?? null,
           resolver: result.resolver,
+          demo_number_matched: result.resolver?.demoNumberMatched === true,
+          shop_lookup_skipped_for_demo: result.resolver?.shopLookupSkippedForDemo === true,
         },
-        'telnyx_call_control_inbound_decision',
+        result.routeKind === 'demo' ? 'vertical_demo_did_matched' : 'telnyx_call_control_inbound_decision',
       );
     } else if (result.decision === 'reject') {
       log.info(
@@ -829,23 +837,25 @@ async function processCallAnswered(
               'telnyx_create_openai_leg_connection_resolved',
             );
 
-            const openAiClientState = Buffer.from(
-              JSON.stringify({
-                shopId: decodedClient.shopId,
-                requestId: decodedClient.requestId,
-                rbCallId,
-                callerPhone: decodedClient.callerPhone ?? null,
-                ts: new Date().toISOString(),
-                telnyxCallControlId: callControlId,
-                parentCallControlId: callControlId,
-                parentCallSessionId,
-                inboundDid: decodedClient.inboundDid ?? fromCli,
-                transport: 'openai_sip_direct',
-                handoffTransport: 'telnyx_call_control',
-                purpose: 'openai_sip_leg',
-              }),
-              'utf8',
-            ).toString('base64');
+            const openAiLegPayload: Record<string, unknown> = {
+              shopId: decodedClient.shopId,
+              requestId: decodedClient.requestId,
+              rbCallId,
+              callerPhone: decodedClient.callerPhone ?? null,
+              ts: new Date().toISOString(),
+              telnyxCallControlId: callControlId,
+              parentCallControlId: callControlId,
+              parentCallSessionId,
+              inboundDid: decodedClient.inboundDid ?? fromCli,
+              transport: 'openai_sip_direct',
+              handoffTransport: 'telnyx_call_control',
+              purpose: 'openai_sip_leg',
+            };
+            if (decodedClient.routeKind === 'demo' && decodedClient.demoVertical) {
+              openAiLegPayload.routeKind = 'demo';
+              openAiLegPayload.demoVertical = decodedClient.demoVertical;
+            }
+            const openAiClientState = Buffer.from(JSON.stringify(openAiLegPayload), 'utf8').toString('base64');
 
             const tCreate0 = Date.now();
             log.info(

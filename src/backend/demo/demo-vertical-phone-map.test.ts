@@ -6,6 +6,7 @@ import {
   buildOpenAiSipDemoDidMapFromVerticalEnvPhones,
   getDemoVerticalByPhoneNumber,
   mergeOpenAiSipJsonAndVerticalEnvDemoMaps,
+  resolveVerticalDemoInboundRoute,
 } from '@/src/backend/demo/demo-vertical-phone-map';
 import { parseOpenAiSipDidMapJson } from '@/src/backend/webhooks/openai-sip-did';
 
@@ -41,4 +42,31 @@ test('getDemoVerticalByPhoneNumber falls back when no match', () => {
   const miss = getDemoVerticalByPhoneNumber('+19999999999', merged, { fallbackVertical: 'beauty-clinic' });
   assert.equal(miss.vertical, 'beauty-clinic');
   assert.equal(miss.matchedConfiguredLine, false);
+});
+
+test('resolveVerticalDemoInboundRoute returns vertical for each DEMO_PHONE_* line', () => {
+  const env = {
+    DEMO_PHONE_NAIL_SALON: '+15550001001',
+    DEMO_PHONE_HAIR_SALON: '+15550001002',
+    DEMO_PHONE_DAY_SPA: '+15550001003',
+    DEMO_PHONE_MED_SPA: '+15550001004',
+    DEMO_PHONE_BEAUTY_CLINIC: '+15550001005',
+  };
+  assert.equal(resolveVerticalDemoInboundRoute('+15550001001', env)?.vertical, 'nail-salon');
+  assert.equal(resolveVerticalDemoInboundRoute('+15550001002', env)?.vertical, 'hair-salon');
+  assert.equal(resolveVerticalDemoInboundRoute('+15550001003', env)?.vertical, 'day-spa');
+  assert.equal(resolveVerticalDemoInboundRoute('+15550001004', env)?.vertical, 'med-spa');
+  assert.equal(resolveVerticalDemoInboundRoute('+15550001005', env)?.vertical, 'beauty-clinic');
+  assert.equal(resolveVerticalDemoInboundRoute('+19999999999', env), null);
+});
+
+test('resolveVerticalDemoInboundRoute honors OPENAI_SIP_DEMO_DID_MAP_JSON override', () => {
+  const env = {
+    DEMO_PHONE_NAIL_SALON: '+15550002001',
+    OPENAI_SIP_DEMO_DID_MAP_JSON: JSON.stringify([
+      { did: '+15550002001', vertical: 'med-spa', defaultShopName: 'Override Med' },
+    ]),
+  };
+  assert.equal(resolveVerticalDemoInboundRoute('+15550002001', env)?.vertical, 'med-spa');
+  assert.equal(resolveVerticalDemoInboundRoute('+15550002001', env)?.defaultShopName, 'Override Med');
 });
