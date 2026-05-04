@@ -205,8 +205,8 @@ const styles: string[] = [
   .vd-error{font-size:13px;color:#B91C1C;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:9px 12px}
 
   /* CTA */
-  .vd-cta{width:100%;border:none;border-radius:999px;background:#34C759;color:#fff;padding:16px;font-size:16px;font-weight:900;cursor:pointer;transition:.18s;box-shadow:0 10px 28px rgba(52,199,89,.35);-webkit-appearance:none}
-  .vd-cta:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 12px 32px rgba(52,199,89,.42)}
+  .vd-cta{width:100%;border:none;border-radius:999px;background:#10B981;color:#fff;padding:16px;font-size:16px;font-weight:900;cursor:pointer;transition:.18s;box-shadow:0 10px 28px rgba(16,185,129,.35);-webkit-appearance:none}
+  .vd-cta:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 12px 32px rgba(16,185,129,.42)}
   .vd-cta:disabled{opacity:.55;cursor:not-allowed}
   .vd-cta-note{font-size:12px;color:#9CA3AF;text-align:center;margin-top:8px;line-height:1.5}
   .vd-phone-demo-secondary{margin-top:22px;padding:16px;border-radius:18px;border:1px solid #E5E7EB;background:#F9FAFB}
@@ -248,7 +248,7 @@ const styles: string[] = [
   .vd-step{border:1px solid #E5E7EB;border-radius:12px;padding:8px 6px;text-align:center;font-size:11px;font-weight:800;color:#9CA3AF}
   .vd-step.on{border-color:var(--va);background:color-mix(in srgb,var(--va) 10%,#fff);color:#111827}
   .vd-wave{height:30px;display:flex;justify-content:center;align-items:center;gap:3px;margin-bottom:14px}
-  .vd-wave span{display:block;width:3px;border-radius:4px;background:#34C759;animation:vdWave 1.65s ease-in-out infinite}
+  .vd-wave span{display:block;width:3px;border-radius:4px;background:#10B981;animation:vdWave 1.65s ease-in-out infinite}
   .vd-wave span:nth-child(1){height:8px}.vd-wave span:nth-child(2){height:20px;animation-delay:.12s}.vd-wave span:nth-child(3){height:28px;animation-delay:.24s}.vd-wave span:nth-child(4){height:16px;animation-delay:.36s}.vd-wave span:nth-child(5){height:24px;animation-delay:.48s}
   @keyframes vdWave{0%,100%{transform:scaleY(.4);opacity:.45}50%{transform:scaleY(1);opacity:1}}
 
@@ -282,20 +282,22 @@ const styles: string[] = [
   .vd-phone-name{text-align:center;position:relative;margin-bottom:4px;font-size:17px;font-weight:800}
   .vd-phone-subtitle{color:rgba(255,255,255,.5);font-size:11px;font-weight:700;letter-spacing:.06em;text-align:center;text-transform:uppercase;position:relative;margin-bottom:16px}
   .vd-phone-wave{height:26px;display:flex;justify-content:center;align-items:center;gap:3px;margin-bottom:16px}
-  .vd-phone-wave span{display:block;width:3px;border-radius:3px;background:#34C759;animation:vdWave 1.1s ease-in-out infinite}
+  .vd-phone-wave span{display:block;width:3px;border-radius:3px;background:#10B981;animation:vdWave 1.1s ease-in-out infinite}
   .vd-phone-wave span:nth-child(1){height:7px}.vd-phone-wave span:nth-child(2){height:18px;animation-delay:.08s}.vd-phone-wave span:nth-child(3){height:24px;animation-delay:.16s}.vd-phone-wave span:nth-child(4){height:14px;animation-delay:.24s}.vd-phone-wave span:nth-child(5){height:20px;animation-delay:.32s}
   .vd-phone-mid{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:120px;padding:4px 0 8px}
-  .vd-phone-connecting{display:flex;align-items:center;justify-content:center;gap:9px;color:#34C759;font-size:15px;font-weight:800;letter-spacing:.02em;margin-bottom:4px}
-  .vd-phone-connecting-dot{width:8px;height:8px;border-radius:50%;background:#34C759;animation:vdPulse 1s ease-in-out infinite}
-  .vd-phone-dock{display:flex;justify-content:center;align-items:center;padding:10px 0 2px;width:100%}
-  .vd-phone-btn-accept{display:flex;align-items:center;justify-content:center;width:100%;max-width:232px;min-height:54px;padding:12px 18px;border:none;border-radius:999px;background:#34C759;color:#fff;font-size:15px;font-weight:800;letter-spacing:-.02em;cursor:pointer;box-shadow:0 10px 28px rgba(52,199,89,.35);transition:transform .15s,filter .15s,box-shadow .15s}
-  .vd-phone-btn-accept:hover{filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 12px 32px rgba(52,199,89,.42)}
-  .vd-phone-btn-accept:focus-visible{outline:2px solid #86efac;outline-offset:3px}
-  .vd-phone-btn-accept:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
-  .vd-phone-btn-end{width:72px;height:72px;border-radius:50%;border:none;background:#FF3B30;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 28px rgba(255,59,48,.45);transition:transform .15s,filter .15s,box-shadow .15s}
-  .vd-phone-btn-end:hover{filter:brightness(1.06);transform:scale(1.03);box-shadow:0 14px 34px rgba(255,59,48,.5)}
-  .vd-phone-btn-end:focus-visible{outline:2px solid #fecaca;outline-offset:3px}
-  .vd-phone-btn-end svg{width:30px;height:30px;display:block}
+  .vd-phone-connecting{display:flex;align-items:center;justify-content:center;gap:9px;color:#10B981;font-size:15px;font-weight:800;letter-spacing:.02em;margin-bottom:4px}
+  .vd-phone-connecting-dot{width:8px;height:8px;border-radius:50%;background:#10B981;animation:vdPulse 1s ease-in-out infinite}
+  .vd-phone-dock{display:flex;justify-content:center;align-items:flex-end;padding:8px 0 6px;width:100%}
+  .vd-phone-ios-act{display:flex;flex-direction:column;align-items:center;gap:7px;width:100%}
+  .vd-phone-ios-btn{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;transition:transform .15s,filter .15s,box-shadow .15s}
+  .vd-phone-ios-btn--accept{background:#10B981;box-shadow:0 12px 28px rgba(16,185,129,.42)}
+  .vd-phone-ios-btn--accept:hover:not(:disabled){filter:brightness(1.06);transform:scale(1.03);box-shadow:0 14px 34px rgba(16,185,129,.48)}
+  .vd-phone-ios-btn--decline{background:#FF3B30;box-shadow:0 12px 28px rgba(255,59,48,.45)}
+  .vd-phone-ios-btn--decline:hover{filter:brightness(1.06);transform:scale(1.03);box-shadow:0 14px 34px rgba(255,59,48,.5)}
+  .vd-phone-ios-btn:focus-visible{outline:2px solid rgba(255,255,255,.55);outline-offset:3px}
+  .vd-phone-ios-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+  .vd-phone-ios-btn svg{width:30px;height:30px;display:block}
+  .vd-phone-ios-label{font-size:11px;font-weight:600;color:rgba(255,255,255,.88);letter-spacing:.02em;line-height:1.25;text-align:center;max-width:200px}
   /* form card */
   .vd-form-card{border:1px solid #E5E7EB;border-radius:24px;background:#fff;padding:24px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 
@@ -1282,21 +1284,40 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                 </div>
                 <div className="vd-phone-dock">
                   {stage === 'live' ? (
-                    <button type="button" className="vd-phone-btn-end" onClick={endWebDemoFromPhone} aria-label="End demo call">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden>
-                        <path d="M7 12h10" />
-                      </svg>
-                    </button>
+                    <div className="vd-phone-ios-act">
+                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--decline" onClick={endWebDemoFromPhone} aria-label="End Call">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.05" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <g transform="rotate(135 12 12)">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                          </g>
+                        </svg>
+                      </button>
+                      <span className="vd-phone-ios-label">End Call</span>
+                    </div>
                   ) : null}
                   {stage === 'idle' ? (
-                    <button type="button" className="vd-phone-btn-accept" onClick={() => void startWebDemo()} disabled={isSubmitting}>
-                      Start Demo Call
-                    </button>
+                    <div className="vd-phone-ios-act">
+                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--accept" onClick={() => void startWebDemo()} disabled={isSubmitting} aria-label="Start Demo Call">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.05" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <g transform="rotate(-42 12 12)">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                          </g>
+                        </svg>
+                      </button>
+                      <span className="vd-phone-ios-label">Start Demo Call</span>
+                    </div>
                   ) : null}
                   {stage === 'completed' || stage === 'failed' ? (
-                    <button type="button" className="vd-phone-btn-accept" onClick={resetDemo}>
-                      Start Demo Call
-                    </button>
+                    <div className="vd-phone-ios-act">
+                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--accept" onClick={resetDemo} aria-label="Start Demo Call">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.05" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                          <g transform="rotate(-42 12 12)">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 10.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                          </g>
+                        </svg>
+                      </button>
+                      <span className="vd-phone-ios-label">Start Demo Call</span>
+                    </div>
                   ) : null}
                 </div>
               </div>
