@@ -49,6 +49,8 @@ type DirectRealtimeApiResponse = {
   retryAfterSeconds?: number;
   /** Present when server VAD is on: apply via `session.update` after scripted welcome so mic turns get replies. */
   turnDetectionAfterWelcome?: Record<string, unknown> | null;
+  /** Exact first-spoken greeting (matches WELCOME MESSAGE in system prompt). */
+  scriptedWelcomeLine?: string;
 };
 type DemoStatusResponse = {
   ok: boolean;
@@ -94,6 +96,30 @@ const DIRECT_OPENAI_CONNECT_TIMEOUT_MS = 45_000;
 const DIRECT_OPENAI_MAX_SESSION_MS = 5 * 60 * 1000;
 const OPENAI_REALTIME_WEBRTC_URL = 'https://api.openai.com/v1/realtime/calls';
 const demoWebCallMode = process.env.NEXT_PUBLIC_DEMO_WEB_CALL_MODE === 'direct_openai' ? 'direct_openai' : 'livekit';
+
+/** Set `NEXT_PUBLIC_DEMO_WEB_REALTIME_DEBUG=true` to log WebRTC + VAD milestones in the browser console (no secrets). */
+const demoWebRealtimeDebug = process.env.NEXT_PUBLIC_DEMO_WEB_REALTIME_DEBUG === 'true';
+
+const DEMO_REALTIME_LOG_EVENT_TYPES = new Set([
+  'session.created',
+  'session.updated',
+  'response.created',
+  'response.done',
+  'response.cancelled',
+  'output_audio_buffer.started',
+  'output_audio_buffer.stopped',
+  'input_audio_buffer.speech_started',
+  'input_audio_buffer.speech_stopped',
+  'input_audio_buffer.committed',
+  'error',
+]);
+
+function logDemoRealtime(phase: string, detail?: Record<string, unknown>) {
+  if (!demoWebRealtimeDebug) return;
+  if (typeof window === 'undefined') return;
+  const payload = detail && Object.keys(detail).length > 0 ? detail : undefined;
+  console.info('[rb-demo-realtime]', phase, payload ?? '');
+}
 
 const VERTICAL_DEMO_FAQ_ITEMS: MarketingFaqItem[] = [
   {
@@ -662,7 +688,13 @@ export function MarketingVerticalDemoTemplate({
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       if (!keepAlive) {
         stream.getTracks().forEach((track) => track.stop());
       }
@@ -801,6 +833,12 @@ export function MarketingVerticalDemoTemplate({
     }
 
     directRealtimeRequestIdRef.current = sessionBody.requestId ?? null;
+    logDemoRealtime('session_ok', {
+      mode: 'direct_openai',
+      hasScriptedWelcome: Boolean(sessionBody.scriptedWelcomeLine?.trim()),
+      hasVadResumePayload: Boolean(sessionBody.turnDetectionAfterWelcome),
+      vadResumeCreateResponse: sessionBody.turnDetectionAfterWelcome?.create_response,
+    });
 
     try {
       setStatusText('Connecting to the voice demo…');
@@ -852,32 +890,46 @@ export function MarketingVerticalDemoTemplate({
         }
       };
 
-      stream.getAudioTracks().forEach((track) => pc.addTrack(track, stream));
+      for (const track of stream.getAudioTracks()) {
+        logDemoRealtime('mic_track', {
+          trackId: track.id,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+          label: track.label,
+        });
+        pc.addTrack(track, stream);
+      }
       const dc = pc.createDataChannel('oai-events');
       directDataChannelRef.current = dc;
       let initialGreetingRequested = false;
       let realtimeSessionReady = false;
       let vadResumeAfterWelcomeSent = false;
 
-      const maybeResumeVadAfterWelcome = () => {
+      const maybeResumeVadAfterWelcome = (fromEvent: string) => {
         const td = sessionBody.turnDetectionAfterWelcome;
-        if (
-          !td ||
-          typeof td !== 'object' ||
-          Array.isArray(td) ||
-          vadResumeAfterWelcomeSent ||
-          dc.readyState !== 'open'
-        ) {
+        if (!td || typeof td !== 'object' || Array.isArray(td)) {
+          logDemoRealtime('vad_resume_skip', { fromEvent, reason: 'no_turn_detection_payload' });
           return;
         }
-        if (td.create_response !== true) return;
+        if (vadResumeAfterWelcomeSent) {
+          logDemoRealtime('vad_resume_skip', { fromEvent, reason: 'already_sent' });
+          return;
+        }
+        if (dc.readyState !== 'open') {
+          logDemoRealtime('vad_resume_skip', { fromEvent, reason: 'data_channel_not_open', dcState: dc.readyState });
+          return;
+        }
+        if (td.create_response !== true) {
+          logDemoRealtime('vad_resume_skip', { fromEvent, reason: 'create_response_not_true', create_response: td.create_response });
+          return;
+        }
         vadResumeAfterWelcomeSent = true;
         try {
           dc.send(
             JSON.stringify({
               type: 'session.update',
               session: {
-                type: 'realtime',
                 audio: {
                   input: {
                     turn_detection: td,
@@ -886,8 +938,10 @@ export function MarketingVerticalDemoTemplate({
               },
             }),
           );
-        } catch {
+          logDemoRealtime('vad_resume_sent', { fromEvent, vadType: (td as { type?: string }).type });
+        } catch (err) {
           vadResumeAfterWelcomeSent = false;
+          logDemoRealtime('vad_resume_send_failed', { fromEvent, err: err instanceof Error ? err.message : String(err) });
         }
       };
 
@@ -897,6 +951,10 @@ export function MarketingVerticalDemoTemplate({
         initialGreetingRequested = true;
         setStatusText('The receptionist is greeting you…');
         try {
+          const scripted = sessionBody.scriptedWelcomeLine?.trim();
+          const greetingInstructions = scripted
+            ? `Speak first now. Say this opening line exactly once (natural contractions allowed), then stop and listen for the caller: ${scripted}`
+            : 'Speak first now. Say only the exact WELCOME MESSAGE from RUNTIME BUSINESS CONFIG, naturally and once, then stop and listen. Do not say "welcome to the demo" or mention the demo unless the WELCOME MESSAGE itself says it. Do not wait for the caller to speak.';
           dc.send(
             JSON.stringify({
               type: 'conversation.item.create',
@@ -916,33 +974,50 @@ export function MarketingVerticalDemoTemplate({
             JSON.stringify({
               type: 'response.create',
               response: {
-                instructions:
-                  'Speak first now. Say only the exact WELCOME MESSAGE from RUNTIME BUSINESS CONFIG, naturally and once, then stop and listen. Do not say "welcome to the demo" or mention the demo unless the WELCOME MESSAGE itself says it. Do not wait for the caller to speak.',
+                instructions: greetingInstructions,
               },
             }),
           );
+          logDemoRealtime('greeting_sent', {
+            scriptedWelcomeChars: scripted?.length ?? 0,
+            fallbackRuntimeWelcome: !scripted,
+          });
         } catch {
           initialGreetingRequested = false;
         }
       };
       dc.addEventListener('message', (event) => {
         try {
-          const data = JSON.parse(String(event.data)) as { error?: { message?: string }; type?: string };
+          const data = JSON.parse(String(event.data)) as {
+            error?: { message?: string; code?: string; type?: string };
+            type?: string;
+          };
+          const evType = data.type;
+          if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) {
+            logDemoRealtime('oai_event', { type: evType });
+          }
           if (data.type === 'session.created' || data.type === 'session.updated') {
             realtimeSessionReady = true;
             requestInitialGreeting();
           }
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
-          if (data.type === 'response.done') {
-            setStatusText('You\'re connected — speak naturally or tap a prompt below.');
-            maybeResumeVadAfterWelcome();
+          if (data.type === 'response.done' || data.type === 'output_audio_buffer.stopped') {
+            if (data.type === 'response.done') {
+              setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+            }
+            maybeResumeVadAfterWelcome(data.type ?? 'unknown');
           }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
           if (data.type === 'error') {
-            console.warn('OpenAI Realtime web demo event error', data.error);
+            console.warn('OpenAI Realtime web demo event error', data);
+            logDemoRealtime('oai_error', {
+              message: data.error?.message,
+              code: data.error?.code,
+              errType: data.error?.type,
+            });
           }
         } catch {
-          /* Ignore non-JSON data channel frames. */
+          logDemoRealtime('oai_parse_non_json', { dataType: typeof event.data });
         }
       });
 

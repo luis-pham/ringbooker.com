@@ -9,7 +9,7 @@ import { handleRealtimeDispatch, parseRealtimeDispatchInput } from '@/src/agent/
 import { dispatchRealtimeSession } from '@/src/agent/realtime/dispatch-session';
 import { createInboundAgentSession } from '@/src/agent/runtime/session';
 import { openAiRealtimeVoiceForDemoVerticalSlug } from '@/src/agent/prompts';
-import { buildPublicDemoSystemPrompt } from '@/src/backend/demo/public-demo-system-prompt';
+import { buildPublicDemoScriptedWelcomeLine, buildPublicDemoSystemPrompt } from '@/src/backend/demo/public-demo-system-prompt';
 import { buildDirectWebDemoClientSecretAudioInput } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   clearDirectDemoActiveSlot,
@@ -2119,6 +2119,11 @@ Submitted at: ${new Date().toISOString()}`,
         notes: parsed.data.notes,
         demoConfig: parsed.data.demoConfig,
       });
+      const scriptedWelcomeLine = buildPublicDemoScriptedWelcomeLine({
+        shopName: parsed.data.shopName,
+        businessType: parsed.data.businessType,
+        demoVertical: parsed.data.demoVertical,
+      });
 
       const services =
         parsed.data.demoConfig?.services?.map((s) => ({
@@ -2220,6 +2225,7 @@ Submitted at: ${new Date().toISOString()}`,
           expiresAt: clientSecret.expiresAt,
           model,
           voice,
+          scriptedWelcomeLine,
           ...(clientSecret.turnDetectionAfterWelcome
             ? { turnDetectionAfterWelcome: clientSecret.turnDetectionAfterWelcome }
             : {}),
