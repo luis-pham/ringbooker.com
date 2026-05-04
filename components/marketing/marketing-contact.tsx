@@ -66,6 +66,9 @@ a{text-decoration:none;color:inherit}
 .field textarea{min-height:96px;resize:vertical}
 .field.full{grid-column:1/-1}
 .helper{font-size:var(--mk-meta);color:var(--text-light);line-height:1.55}
+.contact-turnstile-label{font-size:var(--mk-meta);font-weight:700;color:var(--text-dark);margin-bottom:8px;display:block}
+.contact-turnstile-frame{min-height:72px;min-width:240px;border:1px dashed var(--border);border-radius:16px;padding:10px;background:#FAFAFA;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.contact-turnstile-hint{font-size:12px;color:var(--text-light);line-height:1.45;margin-top:6px}
 .contact-honeypot{display:none}
 .contact-form-actions{margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .btn-dark,.btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;border:none;cursor:pointer}
@@ -138,7 +141,49 @@ const scripts: string[] = [
   const helper = document.getElementById('contactHelper');
   const submitButton = document.getElementById('contactSubmitButton');
   const captchaMount = document.getElementById('contactTurnstileMount');
+  const hintEl = document.getElementById('contactTurnstileHint');
   if (!form || !helper || !submitButton) return;
+
+  const mountContactTurnstile = () => {
+    if (!captchaMount) return;
+    if (!${JSON.stringify(turnstileSiteKey)}) {
+      captchaMount.innerHTML = '';
+      window.__rbContactCaptchaToken = 'dev-turnstile-bypass';
+      return;
+    }
+    if (!window.turnstile) return;
+    if (window.__rbContactTurnstileWidgetId) {
+      try {
+        window.turnstile.remove(window.__rbContactTurnstileWidgetId);
+      } catch (e) {}
+      window.__rbContactTurnstileWidgetId = null;
+    }
+    captchaMount.innerHTML = '';
+    captchaMount.dataset.rendered = 'false';
+    try {
+      const widgetId = window.turnstile.render(captchaMount, {
+        sitekey: ${JSON.stringify(turnstileSiteKey)},
+        theme: 'light',
+        callback: (token) => {
+          window.__rbContactCaptchaToken = token;
+          if (hintEl) hintEl.textContent = '';
+        },
+        'expired-callback': () => {
+          window.__rbContactCaptchaToken = '';
+        },
+        'error-callback': () => {
+          window.__rbContactCaptchaToken = '';
+          if (hintEl) {
+            hintEl.textContent = 'Verification could not load. Try disabling ad blockers or allow challenges.cloudflare.com.';
+          }
+        },
+      });
+      window.__rbContactTurnstileWidgetId = widgetId;
+      captchaMount.dataset.rendered = 'true';
+    } catch (e) {
+      if (hintEl) hintEl.textContent = 'Verification widget failed to start. Please refresh the page.';
+    }
+  };
 
   const ensureSessionId = () => {
     const key = 'rb_contact_session_id';
@@ -188,7 +233,7 @@ const scripts: string[] = [
 
     const captchaToken = getCaptchaToken();
     if (!captchaToken) {
-      setHelper('Please complete captcha before submitting.', 'error');
+      setHelper('Please complete human verification (checkbox above), or wait for it to load.', 'error');
       return;
     }
 
@@ -221,6 +266,7 @@ const scripts: string[] = [
           setHelper('Too many requests. Please wait before submitting again.', 'error');
         } else if (error === 'captcha_failed') {
           setHelper('Captcha verification failed. Please try again.', 'error');
+          mountContactTurnstile();
         } else {
           setHelper('Unable to submit right now. Please try again in a moment.', 'error');
         }
@@ -241,40 +287,30 @@ const scripts: string[] = [
     }
   });
 
-  const renderTurnstile = () => {
-    if (!captchaMount) return;
-    if (!${JSON.stringify(turnstileSiteKey)}) {
-      captchaMount.innerHTML = '';
-      window.__rbContactCaptchaToken = 'dev-turnstile-bypass';
-      return;
-    }
-    if (!window.turnstile || captchaMount.dataset.rendered === 'true') return;
-    const widgetId = window.turnstile.render(captchaMount, {
-      sitekey: ${JSON.stringify(turnstileSiteKey)},
-      theme: 'light',
-      callback: (token) => {
-        window.__rbContactCaptchaToken = token;
-      },
-      'expired-callback': () => {
-        window.__rbContactCaptchaToken = '';
-      },
-      'error-callback': () => {
-        window.__rbContactCaptchaToken = '';
-      },
-    });
-    window.__rbContactTurnstileWidgetId = widgetId;
-    captchaMount.dataset.rendered = 'true';
+  let initialTurnstileBooted = false;
+  const bootInitialTurnstile = () => {
+    if (initialTurnstileBooted || !window.turnstile) return;
+    initialTurnstileBooted = true;
+    mountContactTurnstile();
   };
 
+  window.addEventListener('rb-contact-turnstile-ready', bootInitialTurnstile);
+
   if (${JSON.stringify(turnstileSiteKey)}) {
+    let hintTimer = window.setTimeout(() => {
+      if (captchaMount && captchaMount.dataset.rendered !== 'true' && hintEl && !hintEl.textContent) {
+        hintEl.textContent = 'If no checkbox appears, allow Cloudflare scripts or try another browser.';
+      }
+    }, 8000);
     const interval = window.setInterval(() => {
       if (window.turnstile) {
         window.clearInterval(interval);
-        renderTurnstile();
+        window.clearTimeout(hintTimer);
+        bootInitialTurnstile();
       }
     }, 200);
   } else {
-    renderTurnstile();
+    mountContactTurnstile();
   }
 
 })();
@@ -293,7 +329,15 @@ export function MarketingContactTemplate() {
       <>
         <MarketingChromeStyles />
         {turnstileSiteKey ? (
-          <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            strategy="afterInteractive"
+            onLoad={() => {
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('rb-contact-turnstile-ready'));
+              }
+            }}
+          />
         ) : null}
         <MarketingHeader active="contact" />
         <main className="contact-page">
@@ -362,7 +406,13 @@ export function MarketingContactTemplate() {
                         />
                       </div>
                       <div className="field full contact-honeypot"><label htmlFor="contactWebsite">Website</label><input id="contactWebsite" autoComplete="off" tabIndex={-1} /></div>
-                      <div className="field full"><div id="contactTurnstileMount" /></div>
+                      <div className="field full">
+                        <span className="contact-turnstile-label" id="contactTurnstileFieldLabel">Human verification</span>
+                        <div className="contact-turnstile-frame" role="region" aria-labelledby="contactTurnstileFieldLabel">
+                          <div id="contactTurnstileMount" />
+                        </div>
+                        <p className="contact-turnstile-hint" id="contactTurnstileHint" aria-live="polite" />
+                      </div>
                     </div>
                     <div className="contact-form-actions">
                       <button id="contactSubmitButton" type="submit" className="btn-dark">Request demo</button>

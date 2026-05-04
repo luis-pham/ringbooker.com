@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Script from 'next/script';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Room, RoomEvent } from 'livekit-client';
 
 import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
@@ -203,7 +203,10 @@ const styles: string[] = [
   .vd-sip-secondary{width:100%;border-radius:999px;border:2px solid color-mix(in srgb,var(--va) 45%,#E5E7EB);background:#fff;color:var(--va);padding:14px;font-size:14px;font-weight:900;cursor:pointer;transition:.18s}
   .vd-sip-secondary:hover:not(:disabled){background:color-mix(in srgb,var(--va) 8%,#fff)}
   .vd-sip-secondary:disabled{opacity:.5;cursor:not-allowed}
-  .vd-captcha{margin-bottom:14px}
+  .vd-captcha{margin-bottom:14px;min-height:70px;min-width:240px;border:1px dashed #E5E7EB;border-radius:14px;padding:10px;background:#FAFAFA;display:flex;align-items:center;justify-content:center}
+  .vd-captcha-inner{min-height:65px;width:100%;max-width:340px;display:flex;align-items:center;justify-content:center}
+  .vd-captcha-label{font-size:13px;font-weight:700;color:#374151;margin-bottom:8px}
+  .vd-captcha-hint{font-size:12px;color:#9CA3AF;margin-top:8px;line-height:1.45}
 
   /* status */
   .vd-status-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #E5E7EB;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:800;color:#374151;background:#fff;margin-bottom:16px;width:fit-content}
@@ -341,6 +344,9 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   const turnstileWidgetIdRef = useRef<string | null>(null);
   const roomRef = useRef<Room | null>(null);
 
+  const [captchaHint, setCaptchaHint] = useState<string | null>(null);
+  const [captchaEpoch, setCaptchaEpoch] = useState(0);
+
   const activeCategory = useMemo(
     () => business.services.find((c) => c.id === selectedCategory) ?? business.services[0],
     [business.services, selectedCategory],
@@ -363,27 +369,75 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
 
   useEffect(() => () => { if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current); }, []);
 
+  /** When leaving the form for the live demo, remove Turnstile so the widget can mount again on return. */
+  useEffect(() => {
+    if (!isActive || !turnstileSiteKey) return;
+    return () => {
+      const tw = (window as Window & { turnstile?: { remove: (id: string) => void } }).turnstile;
+      if (turnstileWidgetIdRef.current && tw) {
+        try {
+          tw.remove(turnstileWidgetIdRef.current);
+        } catch {
+          /* ignore */
+        }
+      }
+      turnstileWidgetIdRef.current = null;
+      turnstileRenderedRef.current = false;
+      setCaptchaToken(null);
+    };
+  }, [isActive, turnstileSiteKey]);
+
   useEffect(() => {
     if (!turnstileSiteKey || turnstileReady) return;
     const t = window.setInterval(() => {
       if ((window as Window & { turnstile?: unknown }).turnstile) setTurnstileReady(true);
     }, 300);
     return () => window.clearInterval(t);
-  }, [turnstileReady]);
+  }, [turnstileReady, turnstileSiteKey]);
+
+  useLayoutEffect(() => {
+    if (!turnstileSiteKey || !turnstileReady || turnstileRenderedRef.current || isActive) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const el = turnstileRef.current;
+        const tw = (window as Window & { turnstile?: { render: (el: HTMLElement, o: Record<string, unknown>) => string; reset: (id: string) => void } }).turnstile;
+        if (!el || !tw || turnstileRenderedRef.current) return;
+        try {
+          turnstileWidgetIdRef.current = tw.render(el, {
+            sitekey: turnstileSiteKey,
+            theme: 'light',
+            callback: (token: string) => {
+              setCaptchaHint(null);
+              setCaptchaToken(token);
+            },
+            'error-callback': () => {
+              setCaptchaToken(null);
+              setCaptchaHint('Verification could not load. Try disabling ad blockers or allow challenges.cloudflare.com.');
+            },
+            'expired-callback': () => setCaptchaToken(null),
+          });
+          turnstileRenderedRef.current = true;
+        } catch {
+          setCaptchaHint('Verification widget failed to start. Please refresh the page.');
+        }
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [turnstileReady, turnstileSiteKey, isActive, captchaEpoch]);
 
   useEffect(() => {
-    if (!turnstileSiteKey || !turnstileReady || turnstileRenderedRef.current || !turnstileRef.current) return;
-    const tw = (window as Window & { turnstile?: { render: (el: HTMLElement, o: Record<string, unknown>) => string; reset: (id: string) => void } }).turnstile;
-    if (!tw) return;
-    turnstileWidgetIdRef.current = tw.render(turnstileRef.current, {
-      sitekey: turnstileSiteKey,
-      theme: 'light',
-      callback: (token: string) => setCaptchaToken(token),
-      'error-callback': () => setCaptchaToken(null),
-      'expired-callback': () => setCaptchaToken(null),
-    });
-    turnstileRenderedRef.current = true;
-  }, [turnstileReady]);
+    if (!turnstileSiteKey || !turnstileReady || isActive) return;
+    const t = window.setTimeout(() => {
+      if (!turnstileRenderedRef.current) {
+        setCaptchaHint((h) => h ?? 'If you do not see a checkbox, allow scripts from Cloudflare or try another browser.');
+      }
+    }, 8000);
+    return () => window.clearTimeout(t);
+  }, [turnstileReady, turnstileSiteKey, isActive, captchaEpoch]);
 
   function updateService(catId: string, idx: number, patch: Partial<DemoServiceCategory['items'][number]>) {
     setBusiness((cur) => ({
@@ -397,7 +451,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   function validate(): string[] {
     const errs: string[] = [];
     if (!business.businessName.trim()) errs.push('Business name is required.');
-    if (turnstileSiteKey && !captchaToken) errs.push('Please complete the verification below.');
+    if (turnstileSiteKey && !captchaToken) errs.push('Please complete human verification (checkbox above).');
     return errs;
   }
 
@@ -428,9 +482,24 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   }
 
   function resetTurnstile() {
-    if (!turnstileSiteKey || !turnstileWidgetIdRef.current) return;
-    (window as Window & { turnstile?: { reset: (id: string) => void } }).turnstile?.reset(turnstileWidgetIdRef.current);
+    if (!turnstileSiteKey) return;
+    const tw = (window as Window & { turnstile?: { reset: (id: string) => void; remove: (id: string) => void } }).turnstile;
+    if (turnstileWidgetIdRef.current && tw) {
+      try {
+        tw.remove(turnstileWidgetIdRef.current);
+      } catch {
+        try {
+          tw.reset(turnstileWidgetIdRef.current);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    turnstileWidgetIdRef.current = null;
+    turnstileRenderedRef.current = false;
     setCaptchaToken(null);
+    setCaptchaHint(null);
+    setCaptchaEpoch((e) => e + 1);
   }
 
   async function copyDemoPhoneNumber() {
@@ -522,6 +591,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       roomRef.current.disconnect();
       roomRef.current = null;
     }
+    resetTurnstile();
     setStage('idle');
     setRequestError(null);
     setStatusText('');
@@ -632,7 +702,15 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   ) : null}
 
                   {/* Captcha */}
-                  {turnstileSiteKey ? <div className="vd-captcha" ref={turnstileRef} /> : null}
+                  {turnstileSiteKey ? (
+                    <div style={{ marginBottom: 14 }}>
+                      <div className="vd-captcha-label">Human verification</div>
+                      <div className="vd-captcha">
+                        <div className="vd-captcha-inner" ref={turnstileRef} />
+                      </div>
+                      {captchaHint ? <p className="vd-captcha-hint">{captchaHint}</p> : null}
+                    </div>
+                  ) : null}
 
                   {/* Errors */}
                   {errors.length > 0 || requestError ? (
