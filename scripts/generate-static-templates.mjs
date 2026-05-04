@@ -6,6 +6,9 @@ const repoRoot = '/Users/huypq/Documents/Projects/Others/ringbooker.ai/ringbooke
 const templateRoot = '/Users/huypq/Documents/Projects/Others/ringbooker.ai/template';
 const outputRoot = path.join(repoRoot, 'components');
 
+// NOTE: Regenerating marketing-demo from template HTML can reintroduce legacy outbound UI.
+// After `node scripts/generate-static-templates.mjs`, restore web-only `components/marketing/marketing-demo.tsx` from git if needed.
+
 const definitions = [
   {
     key: 'marketing-home',

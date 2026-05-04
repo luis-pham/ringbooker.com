@@ -5,7 +5,34 @@ import { Plus_Jakarta_Sans } from 'next/font/google';
 import { useRouter } from 'next/navigation';
 
 import styles from '@/components/auth/user-auth-template.module.css';
+import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
+import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
+
+const LOGIN_FAQ_ITEMS: MarketingFaqItem[] = [
+  {
+    q: 'I signed up with Google — how do I sign in?',
+    a: 'Use “Continue with Google” and pick the same Google account you used to create your RingBooker user. Email/password sign-in is separate from Google sign-in.',
+  },
+  {
+    q: 'I forgot my password',
+    a: (
+      <>
+        Use{' '}
+        <a href="/user/forgot-password">Forgot password</a> to send a reset link to your work email.
+      </>
+    ),
+  },
+  {
+    q: 'How do I start a free trial?',
+    a: (
+      <>
+        Choose a plan on the{' '}
+        <a href="/pricing">Pricing</a> page, then continue to account creation with your selected plan.
+      </>
+    ),
+  },
+];
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -135,10 +162,21 @@ export function UserLoginForm() {
 
           <div className={styles.foot}>
             <p>
-              New to RingBooker? <a className={styles.link} href="/user/signup">Start free trial</a>
+              New to RingBooker? <a className={styles.link} href="/pricing">Start free trial</a>
             </p>
             <p className={styles.fine}>If you signed up with Google, please log in with Google.</p>
           </div>
+        </div>
+        <div className={styles.authWideBelow}>
+          <MarketingFaqAccordion
+            items={LOGIN_FAQ_ITEMS}
+            embedded
+            wide
+            eyebrow={null}
+            title="Common questions"
+            subtitle={null}
+            id="login-faq"
+          />
         </div>
       </section>
       <footer className={styles.pageFooter}>

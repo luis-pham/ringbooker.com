@@ -137,7 +137,7 @@ export function BlogPostDefaultPageCta() {
           </>
         }
         primary={{ href: '/demo', label: 'Try a Live Demo', demoPicker: true }}
-        secondary={{ href: '/user/signup', label: 'Start 14-Day Free Trial →' }}
+        secondary={{ href: '/pricing', label: 'Start 14-Day Free Trial →' }}
       />
     </section>
   );

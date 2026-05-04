@@ -71,6 +71,8 @@ import {
 } from '@/src/backend/security/session';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { signDemoPreviewToken, verifyDemoPreviewToken } from '@/src/backend/security/demo-preview';
+import { AccessToken } from 'livekit-server-sdk';
+import { toLiveKitBrowserWsUrl } from '@/src/backend/lib/livekit-browser-url';
 import { hashPassword, verifyPassword } from '@/src/backend/security/password';
 import {
   consumeRateLimit,
@@ -182,6 +184,12 @@ const publicDemoRequestSchema = z.object({
   sessionId: z.string().min(8).max(120),
   website: z.string().max(120).optional(),
 });
+
+/** Same fields as `publicDemoRequestSchema` except visitor phone (web demo uses browser audio only). */
+const publicDemoWebSessionSchema = publicDemoRequestSchema.omit({ phoneNumber: true });
+
+/** E.164 placeholder stored on demo sessions for web-only demos — outbound dial to visitor is never performed. */
+const PUBLIC_DEMO_WEB_SESSION_CALLBACK_PHONE_E164 = '+15555550100';
 
 const publicContactRequestSchema = z.object({
   fullName: z.string().min(1).max(120),
@@ -985,10 +993,27 @@ async function sendPasswordResetEmail(params: {
   }
 }
 
-function getAppBaseUrl(hostHeader: string | null): string {
-  const fromEnv = process.env.APP_BASE_URL?.trim();
-  if (fromEnv) return fromEnv.replace(/\/+$/, '');
-  if (hostHeader && hostHeader.length > 0) return `http://${hostHeader}`;
+/**
+ * Canonical public origin for redirects and OAuth `redirect_uri`.
+ * Prefer validated `APP_BASE_URL`; otherwise derive from `x-forwarded-*` / `host` so HTTPS
+ * behind a reverse proxy is not downgraded to `http://` (Square redirect URI must match the dashboard).
+ */
+function getAppBaseUrl(req: { header(name: string): string | undefined }): string {
+  try {
+    const fromEnv = getEnv().APP_BASE_URL?.trim();
+    if (fromEnv) return fromEnv.replace(/\/+$/, '');
+  } catch {
+    /* env may be unavailable in some import/build paths */
+  }
+  const xfHost = req.header('x-forwarded-host')?.trim();
+  const host = (xfHost && xfHost.length > 0 ? xfHost : req.header('host')?.trim()) ?? '';
+  if (host.length > 0) {
+    const xfProto = req.header('x-forwarded-proto')?.split(',')[0]?.trim().toLowerCase();
+    const isLocal =
+      host.startsWith('localhost:') || host === 'localhost' || host.startsWith('127.0.0.1');
+    const scheme = xfProto === 'http' || xfProto === 'https' ? xfProto : isLocal ? 'http' : 'https';
+    return `${scheme}://${host}`.replace(/\/+$/, '');
+  }
   return 'http://localhost:3000';
 }
 
@@ -1831,12 +1856,39 @@ Submitted at: ${new Date().toISOString()}`,
     });
   });
 
+  /**
+   * Legacy public outbound visitor demo — permanently disabled.
+   * Browser voice demos use `POST /public/demo/web-session` instead (no visitor phone dial).
+   */
   app.post(path('/public/demo/request'), async (c) => {
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_request, 'public_demo_request');
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_request, 'public_demo_outbound_disabled');
+    if (limited) return limited;
+
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+    securityAudit({
+      action: 'public_demo_outbound_disabled',
+      actorType: 'public',
+      ip,
+      path: c.req.path,
+      details: { reason: 'outbound_visitor_demo_removed' },
+    });
+
+    return c.json(
+      {
+        ok: false,
+        error: 'outbound_demo_disabled',
+        message: 'Outbound demo calls are no longer supported. Please use the browser web demo.',
+      },
+      410,
+    );
+  });
+
+  app.post(path('/public/demo/web-session'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_web_session, 'public_demo_web_session');
     if (limited) return limited;
 
     const body = await c.req.json().catch(() => null);
-    const parsed = publicDemoRequestSchema.safeParse(body);
+    const parsed = publicDemoWebSessionSchema.safeParse(body);
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_payload' }, 400);
     }
@@ -1851,41 +1903,16 @@ Submitted at: ${new Date().toISOString()}`,
       return c.json({ ok: false, error: 'invalid_request' }, 400);
     }
 
-    // Bind session rate limit to IP+sessionId so attackers cannot bypass by cycling sessionIds.
     const sessionIp = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
     const sessionLimited = await enforceRateLimitWithIdentity(
       c,
       RATE_LIMIT_POLICIES.public_demo_request_session,
-      `public_demo_request_session:${sessionIp}:${parsed.data.sessionId}`,
+      `public_demo_web_session:${sessionIp}:${parsed.data.sessionId}`,
     );
     if (sessionLimited) return sessionLimited;
 
-    const normalizedPhone = normalizePhone(parsed.data.phoneNumber);
-    if (!normalizedPhone) {
-      return c.json({ ok: false, error: 'invalid_phone' }, 400);
-    }
-
+    const normalizedPhone = PUBLIC_DEMO_WEB_SESSION_CALLBACK_PHONE_E164;
     const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
-    const phoneShortLimited = await enforceRateLimitWithIdentity(
-      c,
-      RATE_LIMIT_POLICIES.public_demo_request_phone_short,
-      `public_demo_request_phone_short:${normalizedPhone}`,
-    );
-    if (phoneShortLimited) return phoneShortLimited;
-
-    const phoneDailyLimited = await enforceRateLimitWithIdentity(
-      c,
-      RATE_LIMIT_POLICIES.public_demo_request_phone_daily,
-      `public_demo_request_phone_daily:${normalizedPhone}`,
-    );
-    if (phoneDailyLimited) return phoneDailyLimited;
-
-    const ipPhoneLimited = await enforceRateLimitWithIdentity(
-      c,
-      RATE_LIMIT_POLICIES.public_demo_request_ip_phone,
-      `public_demo_request_ip_phone:${ip}:${normalizedPhone}`,
-    );
-    if (ipPhoneLimited) return ipPhoneLimited;
 
     const captcha = await verifyTurnstileToken({
       token: parsed.data.captchaToken,
@@ -1902,7 +1929,7 @@ Submitted at: ${new Date().toISOString()}`,
       return c.json({ ok: false, error: 'captcha_failed' }, 403);
     }
 
-    if (!deps.shopsRepository || !deps.telephonyService || !deps.realtimeAgentRuntime || !deps.demoSessionsRepository) {
+    if (!deps.shopsRepository || !deps.realtimeAgentRuntime || !deps.demoSessionsRepository) {
       return c.json({ ok: false, error: 'demo_dependencies_unavailable' }, 503);
     }
 
@@ -1925,9 +1952,7 @@ Submitted at: ${new Date().toISOString()}`,
     const roomName = `rb-demo-${requestId.slice(-12)}`;
     const demoVertical = parsed.data.demoVertical ?? parsed.data.businessType.toLowerCase().replace(/\s+/g, '-');
     const demoMode = parsed.data.demoMode ?? 'free-form';
-    const demoSource = parsed.data.demoSource ?? 'public_demo';
-    // System prompt is always built server-side from validated structured inputs.
-    // Raw client-submitted prompts are not accepted to prevent prompt injection.
+    const demoSource = parsed.data.demoSource ?? 'vertical_demo_web';
     const systemPrompt = buildPublicDemoSystemPrompt({
       shopName: parsed.data.shopName,
       businessType: parsed.data.businessType,
@@ -1937,6 +1962,22 @@ Submitted at: ${new Date().toISOString()}`,
       demoConfig: parsed.data.demoConfig,
     });
 
+    const services =
+      parsed.data.demoConfig?.services?.map((s) => ({
+        category: s.category,
+        name: s.name,
+        price: s.price ?? null,
+        duration: s.duration ?? null,
+        enabled: s.enabled ?? true,
+      })) ?? [];
+
+    const staff =
+      parsed.data.demoConfig?.staffNames?.length
+        ? parsed.data.demoConfig.staffNames
+        : parsed.data.staffName
+          ? [parsed.data.staffName]
+          : [];
+
     try {
       const demoSession = await deps.demoSessionsRepository.createSession({
         publicSessionId: parsed.data.sessionId,
@@ -1945,19 +1986,22 @@ Submitted at: ${new Date().toISOString()}`,
         source: demoSource,
         callbackPhone: normalizedPhone,
         businessName: parsed.data.shopName,
-        city: null,
-        businessHours: {},
-        staff: parsed.data.staffName ? [parsed.data.staffName] : [],
+        city: parsed.data.demoConfig?.city ?? null,
+        businessHours: {
+          primaryHours: parsed.data.demoConfig?.primaryHours,
+          secondaryHours: parsed.data.demoConfig?.secondaryHours,
+        },
+        staff,
         notes: parsed.data.notes ?? null,
         systemPrompt,
-        services: [],
+        services,
         clientIp: ip,
         clientCountry: resolveDemoClientCountryForPersistence(normalizeCfIpCountry(c.req.header('CF-IPCountry')), normalizedPhone),
       });
       await deps.demoSessionsRepository.createCallRun({
         demoSessionId: demoSession.id,
         requestId,
-        provider: 'marketing_demo',
+        provider: 'marketing_demo_web',
         roomName,
         status: 'dialing',
         startedAt: new Date(),
@@ -1965,7 +2009,7 @@ Submitted at: ${new Date().toISOString()}`,
       await deps.demoSessionsRepository.addStatusEvent({
         demoSessionId: demoSession.id,
         requestId,
-        eventType: 'demo_requested',
+        eventType: 'demo_web_session_requested',
         payload: {
           demoVertical,
           demoMode,
@@ -1988,7 +2032,7 @@ Submitted at: ${new Date().toISOString()}`,
             requestId,
             mode: realtime.mode,
           },
-          'public_demo_realtime_mode_not_allowed_in_production',
+          'public_demo_web_session_realtime_mode_not_allowed_in_production',
         );
         return c.json({ ok: false, error: 'demo_runtime_not_configured' }, 503);
       }
@@ -2015,21 +2059,13 @@ Submitted at: ${new Date().toISOString()}`,
         realtime,
       });
 
-      const outbound = await deps.telephonyService.createOutboundCall({
-        shopId: demoShop.id,
-        to: normalizedPhone,
-        from: demoShop.phone_number,
-        purpose: 'callback',
-        requestId,
-        idempotencyKey: `public_demo:${requestId}`,
-        roomName: realtime.mode === 'livekit_realtime' ? roomName : undefined,
-      });
       await deps.demoSessionsRepository.addStatusEvent({
         demoSessionId: demoSession.id,
         requestId,
-        eventType: 'demo_outbound_call_created',
+        eventType: 'demo_web_realtime_dispatched',
         payload: {
-          providerCallId: outbound.providerCallId ?? null,
+          demoVertical,
+          mode: realtime.mode,
         },
       });
 
@@ -2039,8 +2075,22 @@ Submitted at: ${new Date().toISOString()}`,
         callerPhone: normalizedPhone,
       });
 
+      const liveKitBrowserUrl = toLiveKitBrowserWsUrl(env.LIVEKIT_URL);
+      const at = new AccessToken(env.LIVEKIT_API_KEY, env.LIVEKIT_API_SECRET, {
+        identity: `web-demo-${requestId.slice(-18)}`,
+        name: 'Web demo',
+        ttl: '45m',
+      });
+      at.addGrant({
+        roomJoin: true,
+        room: roomName,
+        canPublish: true,
+        canSubscribe: true,
+      });
+      const liveKitToken = await at.toJwt();
+
       securityAudit({
-        action: 'public_demo_requested',
+        action: 'public_demo_web_session_requested',
         actorType: 'public',
         ip,
         path: c.req.path,
@@ -2059,7 +2109,8 @@ Submitted at: ${new Date().toISOString()}`,
         requestId,
         previewToken,
         roomName,
-        providerCallId: outbound.providerCallId ?? null,
+        liveKitUrl: liveKitBrowserUrl,
+        liveKitToken,
         mode: realtime.mode,
       });
     } catch (error) {
@@ -2071,18 +2122,17 @@ Submitted at: ${new Date().toISOString()}`,
       });
       await deps.demoSessionsRepository.addStatusEvent({
         requestId,
-        eventType: 'demo_request_failed',
+        eventType: 'demo_web_session_failed',
         payload: { error: error instanceof Error ? error.message : 'unknown_error' },
       });
       logger.error(
         {
           err: error,
           requestId,
-          callerPhone: normalizedPhone,
         },
-        'public_demo_request_failed',
+        'public_demo_web_session_failed',
       );
-      return c.json({ ok: false, error: 'demo_call_failed' }, 502);
+      return c.json({ ok: false, error: 'demo_web_session_failed' }, 502);
     }
   });
 
@@ -2390,7 +2440,7 @@ Submitted at: ${new Date().toISOString()}`,
       email: authUser.email,
       shopName: createdShop.name,
       shopId: createdShop.id,
-      appBaseUrl: getAppBaseUrl(c.req.header('host') ?? null),
+      appBaseUrl: getAppBaseUrl(c.req),
       idempotencyKey: `signup-welcome:${authUser.id}`,
     });
 
@@ -2438,7 +2488,7 @@ Submitted at: ${new Date().toISOString()}`,
       path: '/',
       maxAge: 600,
     });
-    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
+    const appBaseUrl = getAppBaseUrl(c.req);
     const redirectUri = `${appBaseUrl}/api/backend/auth/user/google/callback`;
     const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     googleAuthUrl.searchParams.set('client_id', clientId);
@@ -2466,7 +2516,7 @@ Submitted at: ${new Date().toISOString()}`,
     deleteCookie(c, 'rb_google_oauth_state', { path: '/' });
     deleteCookie(c, 'rb_google_oauth_intent', { path: '/' });
 
-    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
+    const appBaseUrl = getAppBaseUrl(c.req);
     if (oauthError || !code || !state || !oauthStateCookie || state !== oauthStateCookie) {
       return c.redirect(`${appBaseUrl}/user/login?error=google_oauth_denied`, 302);
     }
@@ -2765,7 +2815,7 @@ Submitted at: ${new Date().toISOString()}`,
         email,
         resetToken,
         role: 'user',
-        appBaseUrl: getAppBaseUrl(c.req.header('host') ?? null),
+        appBaseUrl: getAppBaseUrl(c.req),
       });
     }
 
@@ -2809,7 +2859,7 @@ Submitted at: ${new Date().toISOString()}`,
         email,
         resetToken,
         role: 'admin',
-        appBaseUrl: getAppBaseUrl(c.req.header('host') ?? null),
+        appBaseUrl: getAppBaseUrl(c.req),
       });
     }
 
@@ -3407,12 +3457,15 @@ Submitted at: ${new Date().toISOString()}`,
   app.get(path('/user/calendar/providers/:provider/connect/start'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_connect_start');
     if (limited) return limited;
+    const appBaseUrl = getAppBaseUrl(c.req);
     const sessionResult = await requireSession(c, 'user');
-    if (sessionResult instanceof Response) return sessionResult;
+    if (sessionResult instanceof Response) {
+      logger.warn({ path: c.req.path }, 'square_oauth_start_unauthenticated');
+      return c.redirect(`${appBaseUrl}/user/login?error=calendar_connect_login_required`, 302);
+    }
     const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
     if (!provider) return c.json({ ok: false, error: 'provider_not_supported' }, 400);
 
-    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
     if (provider !== 'square_appointments') {
       return c.redirect(
         buildCalendarSettingsRedirect({
@@ -3448,10 +3501,26 @@ Submitted at: ${new Date().toISOString()}`,
     });
 
     try {
+      const redirectUri = buildSquareCallbackUrl(appBaseUrl);
       const authorizeUrl = squareAuthorizeUrl({
         state,
-        redirectUri: buildSquareCallbackUrl(appBaseUrl),
+        redirectUri,
       });
+      let authorizeHost = '';
+      try {
+        authorizeHost = new URL(authorizeUrl).host;
+      } catch {
+        /* ignore malformed URL (should not happen) */
+      }
+      logger.info(
+        {
+          event: 'square_oauth_start',
+          authorize_host: authorizeHost,
+          redirect_uri_suffix: '/api/backend/user/calendar/providers/square_appointments/connect/callback',
+          state_len: state.length,
+        },
+        'square_oauth_authorize_redirect',
+      );
       return c.redirect(authorizeUrl);
     } catch (error) {
       logger.error({ err: error }, 'square_oauth_start_failed');
@@ -3469,9 +3538,23 @@ Submitted at: ${new Date().toISOString()}`,
   app.get(path('/user/calendar/providers/:provider/connect/callback'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_connect_callback');
     if (limited) return limited;
+    const appBaseUrl = getAppBaseUrl(c.req);
     const sessionResult = await requireSession(c, 'user');
-    if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    if (sessionResult instanceof Response) {
+      logger.warn({ path: c.req.path }, 'square_oauth_callback_unauthenticated');
+      return c.redirect(`${appBaseUrl}/user/login?error=calendar_oauth_login_required`, 302);
+    }
+    if (!deps.shopsRepository) {
+      logger.error({ path: c.req.path }, 'square_oauth_callback_shops_repository_unavailable');
+      return c.redirect(
+        buildCalendarSettingsRedirect({
+          appBaseUrl,
+          result: 'error',
+          provider: 'square_appointments',
+          message: 'user_dependencies_unavailable',
+        }),
+      );
+    }
 
     const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
     const state = c.req.query('state') ?? '';
@@ -3481,11 +3564,22 @@ Submitted at: ${new Date().toISOString()}`,
     const cookieProvider = getCookie(c, 'rb_calendar_provider_name') ?? '';
     const cookieShopId = getCookie(c, 'rb_calendar_provider_shop') ?? '';
 
+    logger.info(
+      {
+        event: 'square_oauth_callback',
+        provider: provider || undefined,
+        oauth_error: oauthError || undefined,
+        has_code: Boolean(code),
+        has_state: Boolean(state),
+        has_state_cookie: Boolean(cookieState),
+      },
+      'square_oauth_callback_received',
+    );
+
     deleteCookie(c, 'rb_calendar_provider_state', { path: '/' });
     deleteCookie(c, 'rb_calendar_provider_name', { path: '/' });
     deleteCookie(c, 'rb_calendar_provider_shop', { path: '/' });
 
-    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
     if (!provider || provider !== cookieProvider || cookieShopId !== (sessionResult.shopId ?? '')) {
       return c.redirect(
         buildCalendarSettingsRedirect({
@@ -3853,7 +3947,7 @@ Submitted at: ${new Date().toISOString()}`,
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
-    const appBaseUrl = getAppBaseUrl(c.req.header('host') ?? null);
+    const appBaseUrl = getAppBaseUrl(c.req);
     const session = await deps.billingProvider.createCheckoutSession({
       shop,
       plan: parsed.data.plan,

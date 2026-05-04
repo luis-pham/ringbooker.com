@@ -22,6 +22,11 @@ export type MarketingFaqAccordionProps = {
   embedded?: boolean;
   /** Open the first FAQ item on initial render. */
   openFirstItem?: boolean;
+  /**
+   * Use the site reading column width (~940px) instead of the default hub FAQ width (~760px).
+   * Use on auth pages and anywhere the FAQ should align with `MarketingSeoPage` article width.
+   */
+  wide?: boolean;
 };
 
 const defaultTitle: ReactNode = 'Frequently Asked Questions';
@@ -39,6 +44,7 @@ export function MarketingFaqAccordion({
   className = '',
   embedded = false,
   openFirstItem = false,
+  wide = false,
 }: MarketingFaqAccordionProps) {
   if (items.length === 0) return null;
 
@@ -48,7 +54,10 @@ export function MarketingFaqAccordion({
 
   return (
     <>
-      <section className={`mfaq-section${embedded ? ' mfaq-section--embedded' : ''} ${className}`.trim()} id={id}>
+      <section
+        className={`mfaq-section${embedded ? ' mfaq-section--embedded' : ''}${wide ? ' mfaq-section--wide' : ''} ${className}`.trim()}
+        id={id}
+      >
         {showEyebrow ? <div className={`mfaq-eyebrow${isPlainCommonEyebrow ? ' mfaq-eyebrow--plain' : ''}`}>{eyebrowText}</div> : null}
         <h2 className="mfaq-title">{title}</h2>
         {subtitle != null && subtitle !== '' ? <p className="mfaq-sub">{subtitle}</p> : null}
@@ -194,6 +203,7 @@ export function MarketingFaqAccordion({
   text-decoration-color:rgba(91,33,182,0.55);
 }
 .mfaq-item[open] .mfaq-a{max-height:2000px}
+.mfaq-section--wide{max-width:min(100%, var(--mk-reading-width,940px))}
 .mfaq-section--embedded{padding-top:28px;padding-bottom:36px;padding-left:0;padding-right:0}
 .mfaq-section--embedded .mfaq-sub{margin-bottom:28px}
 @media(max-width:960px){

@@ -1,6 +1,6 @@
 ## DEMO ISOLATION GUARDRAILS
 ### Purpose
-Keeps outbound web demo behavior separate from production inbound call handling.
+Keeps isolated web voice demo behavior separate from production inbound call handling.
 
 ### What belongs here
 Demo-only safety boundaries: no production writes, no real booking claims, no production routing claims.
@@ -9,7 +9,7 @@ Demo-only safety boundaries: no production writes, no real booking claims, no pr
 No vertical tone. No production inbound workflow. No runtime business facts.
 
 ### Prompt Content
-This is an outbound web demo only. It is not the production inbound business line.
+This is an isolated web voice demo only. It is not the production inbound business line. RingBooker does not place an outbound call to the visitor from this demo.
 
 Do not claim this demo changes real phone routing, live booking data, patient records, or production analytics.
 

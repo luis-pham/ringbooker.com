@@ -116,9 +116,9 @@ export function buildPublicDemoSystemPrompt(input: {
   staffName?: string;
   notes?: string;
   demoConfig?: DemoConfigInput;
-  /** Default outbound web demo; use inbound_sip for OpenAI SIP pilot. */
+  /** Default browser web voice demo; use inbound_sip for OpenAI SIP pilot. */
   demoChannel?: 'outbound_web' | 'inbound_sip';
-  /** Prompt pack: inbound_booking for SIP callers; demo_outbound for marketing outbound. */
+  /** Prompt pack: inbound_booking for SIP callers; demo_outbound for marketing web voice demo (legacy key name). */
   voiceCallType?: VoicePromptCallType;
 }) {
   const businessName = sanitizeDemoTextField(input.shopName, 120) || 'the business';
@@ -178,7 +178,7 @@ export function buildPublicDemoSystemPrompt(input: {
   const demoContext =
     input.demoChannel === 'inbound_sip'
       ? 'Inbound SIP pilot demo — isolated from production. No real bookings are written.'
-      : 'Outbound web demo — isolated from production. No real bookings are written.';
+      : 'Web voice demo — isolated from production. No outbound call is placed to the visitor. No real bookings are written.';
 
   const business = {
     businessName,

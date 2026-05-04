@@ -28,9 +28,9 @@ describe('voice prompt composer', () => {
     });
 
     assert.match(demoPrompt, /DEMO ISOLATION GUARDRAILS/);
-    assert.match(demoPrompt, /CALL-TYPE PROMPT PACK: Outbound Demo Web Call/);
+    assert.match(demoPrompt, /CALL-TYPE PROMPT PACK: Web Voice Demo Call/);
     assert.doesNotMatch(productionPrompt, /DEMO ISOLATION GUARDRAILS/);
-    assert.doesNotMatch(productionPrompt, /CALL-TYPE PROMPT PACK: Outbound Demo Web Call/);
+    assert.doesNotMatch(productionPrompt, /CALL-TYPE PROMPT PACK: Web Voice Demo Call/);
   });
 
   it('keeps vertical behavior specific to the selected vertical', () => {

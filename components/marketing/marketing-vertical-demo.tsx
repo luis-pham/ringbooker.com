@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import Script from 'next/script';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Room, RoomEvent } from 'livekit-client';
 
-import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -17,7 +17,6 @@ type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed'
 
 type DemoBusinessConfig = {
   businessName: string;
-  phoneNumber: string;
   city: string;
   primaryHours: string;
   secondaryHours: string;
@@ -30,6 +29,8 @@ type DemoApiResponse = {
   ok: boolean;
   requestId?: string;
   previewToken?: string;
+  liveKitUrl?: string;
+  liveKitToken?: string;
   error?: string;
   message?: string;
 };
@@ -42,25 +43,26 @@ type DemoStatusResponse = {
 };
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
-const sipPilotUi = process.env.NEXT_PUBLIC_OPENAI_SIP_DEMO_UI === 'true';
-const sipPilotNumber = process.env.NEXT_PUBLIC_OPENAI_SIP_DEMO_NUMBER?.trim() ?? '';
+
+const VERTICAL_DEMO_PHONE_E164 = '+16265013960';
+const VERTICAL_DEMO_PHONE_TEL = 'tel:+16265013960';
 
 const VERTICAL_DEMO_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     q: 'Does this demo use my real business phone line?',
-    a: 'No. The demo places a one-time outbound call to the number you enter so you can hear the experience. It does not change forwarding or settings on your live business line.',
+    a: 'No. The browser demo runs in this page with your microphone — it does not change forwarding or settings on your live business line. If you call the optional demo phone number, that uses a fixed sample profile for this vertical.',
   },
   {
-    q: 'How long does a demo call take?',
-    a: 'Most demos take about two to three minutes. You can try natural booking, reschedule, or pricing-style questions during the call.',
+    q: 'How long does a demo take?',
+    a: 'Most demos take about two to three minutes. You can try natural booking, reschedule, or pricing-style questions during the session.',
   },
   {
     q: 'Is the demo free?',
     a: 'Yes. Live web demos are free and intended to help you evaluate tone, pacing, and call handling before you start a trial.',
   },
   {
-    q: 'What if the call does not connect?',
-    a: 'Check your number format, try again, and confirm your phone can receive the outbound call. If it still fails, use the contact page and we can help troubleshoot.',
+    q: 'What if the browser demo does not connect?',
+    a: 'Allow microphone access, check your network, and try again. You can also call the demo line listed on this page. If it still fails, use the contact page and we can help troubleshoot.',
   },
   {
     q: 'Will RingBooker work with my current number later?',
@@ -135,13 +137,6 @@ const styles: string[] = [
     .vd-page-header{padding:34px 40px 26px}
   }
 
-  /* phone field — hero */
-  .vd-phone-label{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:800;color:#111827;margin-bottom:7px}
-  .vd-phone-label .demo-cta-phone{flex-shrink:0}
-  .vd-phone-input{width:100%;border:2px solid color-mix(in srgb,var(--va) 40%,#E5E7EB);border-radius:16px;padding:14px 16px;font-size:17px;font-weight:700;color:#111827;background:#fff;outline:none;transition:border-color .18s,box-shadow .18s;box-shadow:0 2px 8px color-mix(in srgb,var(--va) 10%,transparent);-webkit-appearance:none;margin-bottom:14px}
-  .vd-phone-input:focus{border-color:var(--va);box-shadow:0 0 0 4px color-mix(in srgb,var(--va) 14%,transparent)}
-  .vd-phone-input::placeholder{color:#C4C9D4}
-
   /* fields */
   .vd-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
   .vd-field-compact{margin:0}
@@ -189,6 +184,18 @@ const styles: string[] = [
   .vd-cta:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
   .vd-cta:disabled{opacity:.55;cursor:not-allowed}
   .vd-cta-note{font-size:12px;color:#9CA3AF;text-align:center;margin-top:8px;line-height:1.5}
+  .vd-phone-demo-secondary{margin-top:22px;padding:16px;border-radius:18px;border:1px solid #E5E7EB;background:#F9FAFB}
+  .vd-phone-demo-title{font-size:13px;font-weight:900;color:#111827;margin-bottom:6px}
+  .vd-phone-demo-text{font-size:13px;color:#64748B;line-height:1.55;margin:0 0 10px}
+  .vd-phone-demo-num-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:10px}
+  .vd-phone-demo-num{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--va)}
+  .vd-phone-demo-copy{border:1px solid #E5E7EB;background:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;color:#374151;cursor:pointer}
+  .vd-phone-demo-copy:hover{border-color:var(--va);color:var(--va)}
+  .vd-phone-demo-tel{display:none}
+  .vd-phone-demo-note{font-size:11px;color:#9CA3AF;line-height:1.45;margin:10px 0 0}
+  @media(max-width:799px){
+    .vd-phone-demo-tel{display:inline-flex;align-items:center;justify-content:center;width:100%;border-radius:999px;border:2px solid color-mix(in srgb,var(--va) 45%,#E5E7EB);background:#fff;color:var(--va);padding:12px;font-size:14px;font-weight:900;text-decoration:none;margin-top:4px}
+  }
   .vd-sip-panel{margin-top:18px;padding:16px;border-radius:18px;border:1px dashed color-mix(in srgb,var(--va) 35%,#E5E7EB);background:color-mix(in srgb,var(--va) 4%,#fff)}
   .vd-sip-head{font-size:13px;font-weight:900;color:#111827;margin-bottom:6px}
   .vd-sip-copy{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--va);margin:6px 0 10px;word-break:break-all}
@@ -283,14 +290,6 @@ const styles: string[] = [
 function cloneServices(services: DemoServiceCategory[]): DemoServiceCategory[] {
   return services.map((c) => ({ ...c, items: c.items.map((i) => ({ ...i })) }));
 }
-function normalizePhone(value: string): string {
-  const t = value.trim();
-  if (t.startsWith('+')) return t;
-  const d = t.replace(/\D/g, '');
-  if (d.length === 10) return `+1${d}`;
-  if (d.length === 11 && d.startsWith('1')) return `+${d}`;
-  return t;
-}
 function ensureSessionId(): string {
   if (typeof window === 'undefined') return 'demo_session_server';
   const key = 'rb_demo_session_id';
@@ -304,11 +303,11 @@ function splitStaff(value: string): string[] {
   return value.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 8);
 }
 function stageLabel(stage: DemoStage): string {
-  if (stage === 'queued') return 'Preparing…';
-  if (stage === 'dialing') return 'Calling now';
-  if (stage === 'live') return 'Connected';
-  if (stage === 'completed') return 'Demo complete';
-  if (stage === 'failed') return 'Try again';
+  if (stage === 'queued') return 'Connecting';
+  if (stage === 'dialing') return 'Connecting';
+  if (stage === 'live') return 'Live';
+  if (stage === 'completed') return 'Ended';
+  if (stage === 'failed') return 'Error';
   return 'Ready';
 }
 
@@ -318,7 +317,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: config.defaultBusinessName,
-    phoneNumber: '',
     city: config.defaultCity,
     primaryHours: config.hours.primary,
     secondaryHours: config.hours.secondary,
@@ -333,15 +331,15 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   const [errors, setErrors] = useState<string[]>([]);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [demoLineCopied, setDemoLineCopied] = useState(false);
   const [showAllPrompts, setShowAllPrompts] = useState(false);
-  const [sipPrepMessage, setSipPrepMessage] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [turnstileReady, setTurnstileReady] = useState(!turnstileSiteKey);
   const pollTimerRef = useRef<number | null>(null);
   const turnstileRef = useRef<HTMLDivElement | null>(null);
   const turnstileRenderedRef = useRef(false);
   const turnstileWidgetIdRef = useRef<string | null>(null);
-  const phoneRef = useRef<HTMLInputElement | null>(null);
+  const roomRef = useRef<Room | null>(null);
 
   const activeCategory = useMemo(
     () => business.services.find((c) => c.id === selectedCategory) ?? business.services[0],
@@ -352,7 +350,16 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   const hiddenCount = Math.max(0, config.tryAsking.length - 4);
   const isSubmitting = stage === 'queued' || stage === 'dialing' || stage === 'live';
   const isActive = stage !== 'idle';
-  const activeStep = stage === 'idle' ? 0 : stage === 'queued' ? 1 : stage === 'dialing' ? 2 : stage === 'live' ? 3 : 4;
+  const activeStep =
+    stage === 'idle' || stage === 'failed'
+      ? 0
+      : stage === 'queued' || stage === 'dialing'
+        ? 1
+        : stage === 'live'
+          ? 2
+          : stage === 'completed'
+            ? 3
+            : 0;
 
   useEffect(() => () => { if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current); }, []);
 
@@ -390,7 +397,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   function validate(): string[] {
     const errs: string[] = [];
     if (!business.businessName.trim()) errs.push('Business name is required.');
-    if (business.phoneNumber.trim().length < 7) errs.push('Enter the phone number we should call for the demo.');
     if (turnstileSiteKey && !captchaToken) errs.push('Please complete the verification below.');
     return errs;
   }
@@ -404,11 +410,17 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
         return;
       }
       setStage(body.stage);
-      if (body.stage === 'queued') setStatusText('Preparing your demo call — this takes a few seconds.');
-      if (body.stage === 'dialing') setStatusText('Calling your number now. Pick up and try a prompt.');
-      if (body.stage === 'live') setStatusText('You\'re connected — say anything naturally or use a prompt below.');
-      if (body.stage === 'completed') { setStatusText('Done! Here\'s what the follow-up SMS would look like.'); return; }
-      if (body.stage === 'failed') { setStatusText('Call didn\'t go through. Check the number and try again.'); return; }
+      if (body.stage === 'queued') setStatusText('Connecting your browser session to the demo room…');
+      if (body.stage === 'dialing') setStatusText('Connecting your browser session to the demo room…');
+      if (body.stage === 'live') setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+      if (body.stage === 'completed') {
+        setStatusText('Session ended. Here\'s what a follow-up SMS could look like.');
+        return;
+      }
+      if (body.stage === 'failed') {
+        setStatusText('The demo session could not complete. You can try again or call the demo line.');
+        return;
+      }
       pollTimerRef.current = window.setTimeout(() => void pollStatus(p), 2200);
     } catch {
       setRequestError('Network error while checking demo status.');
@@ -421,63 +433,33 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     setCaptchaToken(null);
   }
 
-  async function saveSipPilotContext() {
-    const errs = validate();
-    setErrors(errs);
-    setRequestError(null);
-    setSipPrepMessage(null);
-    if (errs.length > 0) return;
-    setSipPrepMessage('Saving…');
-    const payload = {
-      shopName: business.businessName,
-      phoneNumber: normalizePhone(business.phoneNumber),
-      businessType: config.businessType,
-      notes: business.notes || undefined,
-      captchaToken: turnstileSiteKey ? captchaToken : 'dev-turnstile-bypass',
-      sessionId: ensureSessionId(),
-      website: '',
-      demoConfig: {
-        city: business.city || config.defaultCity,
-        primaryHours: business.primaryHours,
-        secondaryHours: business.secondaryHours,
-        staffNames: splitStaff(business.staff),
-        services: business.services.flatMap((c) =>
-          c.items.map((item) => ({ category: c.label, name: item.name, price: item.price, duration: item.duration, enabled: item.enabled })),
-        ),
-      },
-      demoVertical: config.slug,
-      demoMode: 'quick',
-      demoSource: 'vertical_demo_page',
-    };
+  async function copyDemoPhoneNumber() {
     try {
-      const res = await fetch('/api/backend/public/demo/sip-prep', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const body = (await res.json()) as { ok?: boolean; error?: string };
-      if (!body.ok) {
-        setSipPrepMessage(null);
-        setRequestError(apiUserVisibleMessage(body, 'Unable to save call-in pilot context.'));
-        return;
-      }
-      setSipPrepMessage(`Saved. Call ${sipPilotNumber} from the phone number you entered above so the pilot can match your context.`);
+      await navigator.clipboard.writeText(VERTICAL_DEMO_PHONE_E164);
+      setDemoLineCopied(true);
+      window.setTimeout(() => setDemoLineCopied(false), 2000);
     } catch {
-      setSipPrepMessage(null);
-      setRequestError('Network error while saving call-in pilot context.');
+      /* ignore */
     }
   }
 
-  async function startDemo() {
+  async function startWebDemo() {
     const errs = validate();
     setErrors(errs);
     setRequestError(null);
     if (errs.length > 0) return;
+
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setErrors(['Microphone access is required for the browser demo. Please allow audio and try again.']);
+      return;
+    }
+
     setStage('queued');
-    setStatusText('Submitting demo request…');
+    setStatusText('Starting browser demo…');
     const payload = {
       shopName: business.businessName,
-      phoneNumber: normalizePhone(business.phoneNumber),
       businessType: config.businessType,
       notes: business.notes || undefined,
       captchaToken: turnstileSiteKey ? captchaToken : 'dev-turnstile-bypass',
@@ -497,16 +479,35 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       demoSource: 'vertical_demo_page',
     };
     try {
-      const res = await fetch('/api/backend/public/demo/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const res = await fetch('/api/backend/public/demo/web-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const body = (await res.json()) as DemoApiResponse;
       if (!body.ok || !body.requestId || !body.previewToken) {
-        resetTurnstile(); setStage('failed'); setRequestError(apiUserVisibleMessage(body, 'Unable to start demo call.'));
+        resetTurnstile();
+        setStage('failed');
+        setRequestError(apiUserVisibleMessage(body, 'Unable to start browser demo.'));
         return;
       }
-      setStatusText('Request sent — calling your number now.');
+      const liveKitUrl = body.liveKitUrl;
+      const liveKitToken = body.liveKitToken;
+      if (typeof liveKitUrl === 'string' && typeof liveKitToken === 'string' && liveKitUrl && liveKitToken) {
+        const room = new Room();
+        roomRef.current = room;
+        room.on(RoomEvent.Disconnected, () => {
+          roomRef.current = null;
+        });
+        await room.connect(liveKitUrl, liveKitToken);
+        await room.localParticipant.setMicrophoneEnabled(true);
+      }
+      setStatusText('Joining demo room…');
       await pollStatus({ requestId: body.requestId, previewToken: body.previewToken });
     } catch {
-      resetTurnstile(); setStage('failed'); setRequestError('Network error. Please try again.');
+      resetTurnstile();
+      if (roomRef.current) {
+        roomRef.current.disconnect();
+        roomRef.current = null;
+      }
+      setStage('failed');
+      setRequestError('Network error. Please try again.');
     }
   }
 
@@ -517,8 +518,13 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   function resetDemo() {
     if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current);
     pollTimerRef.current = null;
-    setStage('idle'); setRequestError(null); setStatusText('');
-    window.setTimeout(() => phoneRef.current?.focus(), 100);
+    if (roomRef.current) {
+      roomRef.current.disconnect();
+      roomRef.current = null;
+    }
+    setStage('idle');
+    setRequestError(null);
+    setStatusText('');
   }
 
   const verticalLabel = config.businessType.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -564,29 +570,11 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
               {/* ── FORM ── */}
               {!isActive ? (
                 <div className="vd-form-card">
-                  {/* Phone — primary hero field */}
-                  <label className="vd-phone-label" htmlFor="vd-phone">
-                    <DemoCtaPhoneIcon width={16} height={16} />
-                    Your phone number — we call you
-                  </label>
-                  <input
-                    ref={phoneRef}
-                    id="vd-phone"
-                    className="vd-phone-input"
-                    inputMode="tel"
-                    placeholder="+1 (714) 555-0199"
-                    value={business.phoneNumber}
-                    onChange={(e) => setBusiness((c) => ({ ...c, phoneNumber: e.target.value }))}
-                    autoComplete="tel"
-                  />
-
-                  {/* Business name */}
-                  <div className="vd-field">
-                    <label htmlFor="vd-biz">Business name (for this demo)</label>
+                  <div className="vd-field" style={{ marginBottom: 14 }}>
+                    <label htmlFor="vd-biz">Business name for this demo</label>
                     <input id="vd-biz" value={business.businessName} onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))} />
                   </div>
 
-                  {/* Advanced toggle */}
                   <button type="button" className="vd-adv-toggle" onClick={() => setShowAdvanced((v) => !v)}>
                     <span className={`vd-adv-chevron ${showAdvanced ? 'open' : ''}`}>▼</span>
                     Customize hours, staff &amp; services
@@ -655,24 +643,27 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   ) : null}
 
                   {/* CTA */}
-                  <button type="button" className="vd-cta" onClick={() => void startDemo()} disabled={isSubmitting}>
-                    {isSubmitting ? 'Starting…' : 'Call me now →'}
+                  <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
+                    {isSubmitting ? 'Starting…' : 'Start web demo'}
                   </button>
-                  <p className="vd-cta-note">Outbound web demo only · Your real phone system is never changed</p>
-                  {sipPilotUi && sipPilotNumber ? (
-                    <div className="vd-sip-panel">
-                      <div className="vd-sip-head">Pilot: inbound call</div>
-                      <div className="vd-sip-copy">{sipPilotNumber}</div>
-                      <p className="vd-sip-hint">
-                        Optional second path for staging: save your salon context, then dial this number from the same mobile
-                        number you entered above. Your pilot inbound line must reach RingBooker so we can load the context you saved here.
-                      </p>
-                      <button type="button" className="vd-sip-secondary" disabled={isSubmitting} onClick={() => void saveSipPilotContext()}>
-                        Save context for call-in pilot
+                  <p className="vd-cta-note">
+                    Talk to RingBooker in your browser using this demo setup. No phone number required.
+                  </p>
+
+                  <div className="vd-phone-demo-secondary">
+                    <div className="vd-phone-demo-title">Prefer to call?</div>
+                    <p className="vd-phone-demo-text">Call the demo line and speak with the AI receptionist.</p>
+                    <div className="vd-phone-demo-num-row">
+                      <span className="vd-phone-demo-num">+1 626 501 3960</span>
+                      <button type="button" className="vd-phone-demo-copy" onClick={() => void copyDemoPhoneNumber()}>
+                        {demoLineCopied ? 'Copied' : 'Copy number'}
                       </button>
-                      {sipPrepMessage ? <p className="vd-cta-note" style={{ marginTop: 10 }}>{sipPrepMessage}</p> : null}
                     </div>
-                  ) : null}
+                    <a className="vd-phone-demo-tel" href={VERTICAL_DEMO_PHONE_TEL}>
+                      Call demo number
+                    </a>
+                    <p className="vd-phone-demo-note">The phone demo uses a sample profile for this vertical.</p>
+                  </div>
                 </div>
               ) : (
                 /* ── STATUS VIEW ── */
@@ -683,15 +674,14 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   </div>
 
                   <h2 className="vd-status-h">
-                    {stage === 'queued' ? 'Preparing your call…' :
-                     stage === 'dialing' ? 'Calling your number now' :
-                     stage === 'live' ? 'You\'re connected!' :
+                    {stage === 'queued' || stage === 'dialing' ? 'Connecting…' :
+                     stage === 'live' ? 'You\'re live in the browser' :
                      stage === 'completed' ? 'Demo complete' : 'Something went wrong'}
                   </h2>
                   <p className="vd-status-body">{statusText}</p>
 
                   <div className="vd-steps">
-                    {['Ready', 'Queued', 'Calling', 'Live', 'Done'].map((label, i) => (
+                    {['Ready', 'Connecting', 'Live', 'Ended'].map((label, i) => (
                       <div key={label} className={`vd-step ${activeStep >= i ? 'on' : ''}`}>{label}</div>
                     ))}
                   </div>
@@ -724,7 +714,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                         <div className="vd-sms-bubble">{config.smsPreview}</div>
                       </div>
                       <div className="vd-complete-cta">
-                        <Link href="/user/signup" className="vd-btn-primary">Start Free 14-Day Trial →</Link>
+                        <Link href="/pricing" className="vd-btn-primary">Start Free 14-Day Trial →</Link>
                         <button type="button" className="vd-btn-ghost" onClick={resetDemo}>Try another scenario</button>
                       </div>
                     </>
@@ -763,21 +753,21 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                 <div className="vd-phone-subtitle">{stage === 'live' ? 'Active Call' : stage === 'completed' ? 'Call Summary' : 'Demo Preview'}</div>
                 <div className="vd-phone-wave"><span /><span /><span /><span /><span /></div>
                 <div className="vd-states">
-                  <div className={`vd-state ${stage === 'dialing' || (stage === 'live' && activeStep === 3) ? 'ai-answer' : ''}`}>
+                  <div className={`vd-state ${stage === 'live' ? 'ai-answer' : ''}`}>
                     <span className="vd-state-dot" />
-                    <span className="vd-state-text">AI Answering</span>
+                    <span className="vd-state-text">AI listening</span>
                   </div>
-                  <div className={`vd-state ${stage === 'live' ? 'ai-answer vd-state-user-live' : ''}`}>
+                  <div className={`vd-state ${stage === 'live' ? 'vd-state-user-live' : ''}`}>
                     <span className="vd-state-dot" />
-                    <span className="vd-state-text">User Speaking</span>
+                    <span className="vd-state-text">User speaking</span>
+                  </div>
+                  <div className={`vd-state ${stage === 'live' ? 'ai-answer' : ''}`}>
+                    <span className="vd-state-dot" />
+                    <span className="vd-state-text">AI responding</span>
                   </div>
                   <div className="vd-state">
                     <span className="vd-state-dot" />
-                    <span className="vd-state-text">AI Listening</span>
-                  </div>
-                  <div className="vd-state">
-                    <span className="vd-state-dot" />
-                    <span className="vd-state-text">AI Responding</span>
+                    <span className="vd-state-text">{stage === 'completed' ? 'Ended' : stage === 'failed' ? 'Error' : 'Ready'}</span>
                   </div>
                 </div>
               </div>

@@ -166,7 +166,7 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
             {state.type === 'visitor' ? (
               <>
                 <Link
-                  href="/user/signup"
+                  href="/pricing"
                   className="mk-drawer-btn-cta"
                   onClick={() => setOpen(false)}
                 >

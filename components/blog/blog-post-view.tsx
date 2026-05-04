@@ -233,7 +233,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
               Try a Live Demo
             </Link>
             <Link
-              href="/user/signup"
+              href="/pricing"
               className="mt-2.5 block rounded-[10px] border border-white/35 bg-white/10 px-3 py-2 text-center text-[11px] font-semibold text-white/95 transition hover:bg-white/15"
             >
               Start 14-Day Free Trial →

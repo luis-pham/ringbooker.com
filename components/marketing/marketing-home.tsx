@@ -1256,7 +1256,7 @@ export function MarketingHomeTemplate() {
                   <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                 </svg>
               </a>
-              <a href="/user/signup" className="btn-outline btn-hero-trial">
+              <a href="/#pricing" className="btn-outline btn-hero-trial">
                 Start 14-Day Free Trial
               </a>
 	            </div>
@@ -1709,7 +1709,7 @@ export function MarketingHomeTemplate() {
                   <li>Basic call summaries</li>
                   <li>Vietnamese onboarding support for nail salons</li>
                 </ul>
-                <a className="plan-btn pb-outline" href="/user/signup">Start Free Trial →</a>
+                <a className="plan-btn pb-outline" href="/user/signup?plan=starter">Start Free Trial →</a>
               </div>
               <div className="plan star home-carousel-slide">
                 <div className="plan-badge">⭐ Most Popular</div>
@@ -1724,7 +1724,7 @@ export function MarketingHomeTemplate() {
                   <li>Call recovery insights</li>
                   <li>Priority support</li>
                 </ul>
-                <a className="plan-btn pb-dark" href="/user/signup">Start Free Trial →</a>
+                <a className="plan-btn pb-dark" href="/user/signup?plan=professional">Start Free Trial →</a>
               </div>
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Custom</div>
@@ -1765,7 +1765,7 @@ export function MarketingHomeTemplate() {
                     <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                   </svg>
                 </a>
-                <a href="#pricing" className="btn-ghost-w">
+                <a href="/#pricing" className="btn-ghost-w">
                   Start 14-Day Free Trial
                 </a>
               </div>

@@ -539,7 +539,7 @@ function FinalCta({
             Try a Live Demo Call
           </a>
           <Link
-            href="/user/signup"
+            href="/pricing"
             className="inline-flex items-center justify-center rounded-full border border-white/35 bg-white/10 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:bg-white/20"
           >
             Start Free 14-Day Trial
@@ -575,7 +575,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={theme.trialCtaClass}>
+            <Link href="/pricing" className={theme.trialCtaClass}>
               Start Free 14-Day Trial
             </Link>
             <Link href="/industries/nail-salon/vi" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
@@ -781,7 +781,7 @@ export async function MarketingNailSalonVietnameseTemplate() {
               Hoạt động cùng Square Appointments và các phần mềm quản lý tiệm nail khác — không cần thay đổi quy trình hiện tại.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/user/signup" className={theme.demoCtaClass}>
+              <Link href="/pricing" className={theme.demoCtaClass}>
                 Thử miễn phí →
               </Link>
               <a href="/demo/nail-salon" className={theme.trialCtaClass}>
@@ -952,7 +952,7 @@ export async function MarketingNailSalonVietnameseTemplate() {
             </p>
             <div className="relative mt-8 flex flex-wrap justify-center gap-3">
               <Link
-                href="/user/signup"
+                href="/pricing"
                 className={`inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-[14px] font-bold shadow-[var(--mk-shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${theme.finalCtaPrimaryBtnText}`}
               >
                 Thử miễn phí →
@@ -999,7 +999,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={theme.trialCtaClass}>
+            <Link href="/pricing" className={theme.trialCtaClass}>
               Start Free Trial
             </Link>
           </div>
@@ -1124,7 +1124,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={theme.trialCtaClass}>
+            <Link href="/pricing" className={theme.trialCtaClass}>
               Start Free Trial
             </Link>
           </div>
@@ -1269,7 +1269,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={theme.trialCtaClass}>
+            <Link href="/pricing" className={theme.trialCtaClass}>
               Start Free Trial
             </Link>
           </div>
@@ -1416,7 +1416,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
             </a>
-            <Link href="/user/signup" className={theme.trialCtaClass}>
+            <Link href="/pricing" className={theme.trialCtaClass}>
               Start Free Trial
             </Link>
           </div>

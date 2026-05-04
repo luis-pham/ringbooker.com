@@ -43,7 +43,7 @@ const DEMO_HUB: Record<
 const DEMO_HUB_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     q: 'What is a RingBooker live web demo?',
-    a: 'It is a short outbound call to your phone using sample salon or clinic context so you can hear booking-style flows, tone, and pacing before you change anything on your live line.',
+    a: 'It is a short browser session with your microphone using the business details you enter (or defaults) plus sample salon or clinic context—so you can hear booking-style flows, tone, and pacing before you change anything on your live line. You can also call the demo line to hear a fixed sample profile for that vertical.',
   },
   {
     q: 'Does the demo change my business phone setup?',
@@ -208,7 +208,7 @@ export function MarketingDemoVerticalIndexTemplate() {
               <p className="demo-hub-eyebrow">Live demo hub</p>
               <h1>Hear how RingBooker handles real booking calls.</h1>
               <p className="demo-hub-lead">
-                Choose a live web demo for your business type. Each call uses sample salon or clinic context—booking,
+                Choose a live web demo for your business type. Each vertical uses sample salon or clinic context—booking,
                 reschedules, pricing, and after-hours scenarios—so you can judge tone and pacing in a few minutes.
               </p>
               <div className="demo-hub-trust">
@@ -266,13 +266,13 @@ export function MarketingDemoVerticalIndexTemplate() {
                 </div>
                 <div className="demo-hub-step">
                   <div className="demo-hub-step-num">2</div>
-                  <h3>Enter your number</h3>
-                  <p>We place a one-time outbound call to the number you provide—so you hear the experience on your own phone.</p>
+                  <h3>Customize &amp; start in your browser</h3>
+                  <p>Add your business name and optional hours, staff, and services — then start the web demo with your microphone. No phone number is required.</p>
                 </div>
                 <div className="demo-hub-step">
                   <div className="demo-hub-step-num">3</div>
-                  <h3>Answer and ask naturally</h3>
-                  <p>Try bookings, reschedules, pricing, or after-hours questions. There is no setup on your live business line.</p>
+                  <h3>Talk or call the demo line</h3>
+                  <p>Speak naturally in the browser session, or call +1&nbsp;626&nbsp;501&nbsp;3960 to hear the vertical sample profile. Nothing changes on your live business line.</p>
                 </div>
               </div>
             </div>

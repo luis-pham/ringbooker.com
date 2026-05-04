@@ -215,7 +215,7 @@ const plans = [
     price: '$79',
     note: 'Best when you want core after-hours, overflow, and missed-call recovery live quickly.',
     cta: 'Start free trial',
-    href: '/user/signup',
+    href: '/user/signup?plan=starter',
     featured: false,
     benefits: [
       ['🏪', 'Works with your current business number'],
@@ -236,7 +236,7 @@ const plans = [
     price: '$149',
     note: 'Best for multi-provider teams with higher call volume and repeat clients.',
     cta: 'Start free trial',
-    href: '/user/signup',
+    href: '/user/signup?plan=professional',
     featured: true,
     benefits: [
       ['✅', 'Everything in Starter'],
@@ -466,7 +466,7 @@ export function MarketingPricingTemplate() {
                     <DemoCtaPhoneIcon width={18} height={18} />
                     Try a live demo call
                   </a>
-                  <a className="btn-trial-soft" href="/user/signup">Start free trial →</a>
+                  <a className="btn-trial-soft" href="/pricing">Start free trial →</a>
                 </div>
               </div>
             </div>

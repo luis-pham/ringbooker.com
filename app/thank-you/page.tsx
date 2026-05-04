@@ -82,7 +82,7 @@ export default function ThankYouPage() {
                 </div>
                 <h2 className="thank-you-card-title">Start free trial</h2>
                 <p className="thank-you-card-desc">Set up in 15 minutes. No number change required.</p>
-                <Link href="/user/signup" className="thank-you-card-link">
+                <Link href="/pricing" className="thank-you-card-link">
                   Try free →
                 </Link>
               </div>

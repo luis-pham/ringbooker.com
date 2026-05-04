@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 
-import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
-
 const VERTICALS = [
   { icon: '💅', label: 'Nail Salon', sub: 'Booking, pricing, bilingual', href: '/demo/nail-salon', className: 'dpm-card-nail-salon' },
   { icon: '✂️', label: 'Hair Salon', sub: 'Stylist match, color, reschedule', href: '/demo/hair-salon', className: 'dpm-card-hair-salon' },
@@ -64,12 +62,9 @@ export function DemoPickerModal({ initialOpen = false }: { initialOpen?: boolean
           <svg viewBox="0 0 14 14" width="12" height="12"><path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
         </button>
         <div className="dpm-head">
-          <div className="dpm-eyebrow">
-            <DemoCtaPhoneIcon width={14} height={14} />
-            Live demo call
-          </div>
+          <div className="dpm-eyebrow">Live web demo</div>
           <h2 className="dpm-title">Which type of business would you like to hear?</h2>
-          <p className="dpm-sub">We call the number you enter with a real AI voice — pick your industry below.</p>
+          <p className="dpm-sub">Open a vertical page, customize the sample business, and start the browser demo with your microphone — or call the demo line from that page.</p>
         </div>
         <div className="dpm-grid">
           {VERTICALS.map((v) => (
@@ -87,7 +82,7 @@ export function DemoPickerModal({ initialOpen = false }: { initialOpen?: boolean
             </a>
           ))}
         </div>
-        <p className="dpm-note">Outbound demo only · Your real phone system is never changed</p>
+        <p className="dpm-note">Browser demo · Optional demo phone line · Your real phone system is never changed</p>
       </div>
     </div>
   );

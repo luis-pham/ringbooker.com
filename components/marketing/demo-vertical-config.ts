@@ -49,7 +49,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     accent: '#7C3AED',
     title: 'Hear How RingBooker Answers Nail Salon Calls',
     subtitle:
-      'Try a live demo call — booking, pricing, reschedule, and after-hours — with sample nail studio context.',
+      'Try a live web demo — booking, pricing, reschedule, and after-hours — with sample nail studio context.',
     defaultBusinessName: 'ABC Nails Studio',
     defaultCity: 'Garden Grove, CA',
     hours: { primary: 'Mon-Sat 9am-7pm', secondary: 'Sun 10am-5pm' },
@@ -59,9 +59,9 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     quickScenario: 'Quick nail salon demo with bilingual booking, pricing, and reschedule flow.',
     persona: 'Upbeat, quick, warm nail salon phone assistant.',
     tone: 'Friendly, direct, bilingual when the caller uses Vietnamese.',
-    safetyNote: 'Demo only. It calls the number you enter and never changes your real salon line.',
+    safetyNote: 'Demo only. Browser session with microphone — it never changes your real salon line.',
     demoVsReal:
-      'This demo is outbound and web-only. Production RingBooker is inbound, works on your current number, and is configured separately from this demo.',
+      'This preview uses the salon details you enter in the form. Production RingBooker is inbound on your current number and is configured separately from this demo.',
     tryAsking: [
       'I want to book a gel manicure.',
       'Do you have walk-in availability today?',
@@ -107,7 +107,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     accent: '#B45309',
     title: 'Hear How RingBooker Answers Hair Salon Calls',
     subtitle:
-      'Try a live demo call — stylist preference, color consults, and rebooking — with sample salon context.',
+      'Try a live web demo — stylist preference, color consults, and rebooking — with sample salon context.',
     defaultBusinessName: 'Willow Hair Lounge',
     defaultCity: 'Austin, TX',
     hours: { primary: 'Tue-Sat 9am-6pm', secondary: 'Sun-Mon closed' },
@@ -119,7 +119,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     tone: 'Professional but relaxed; understands stylist preference and consultation needs.',
     safetyNote: 'Demo only. It does not touch your salon booking system or your live phone routing.',
     demoVsReal:
-      'This page sends a one-time outbound demo call. The real RingBooker product answers inbound overflow and after-hours calls on your current number.',
+      'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker answers inbound overflow and after-hours calls on your current number.',
     tryAsking: [
       'Can I book a cut with Mia?',
       'What is the price range for balayage?',
@@ -163,7 +163,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     accent: '#0D9488',
     title: 'Hear How RingBooker Answers Day Spa Calls',
     subtitle:
-      'Try a live demo call — massage bookings, packages, and schedule changes — with calm spa pacing.',
+      'Try a live web demo — massage bookings, packages, and schedule changes — with calm spa pacing.',
     defaultBusinessName: 'Serene Day Spa',
     defaultCity: 'Scottsdale, AZ',
     hours: { primary: 'Mon-Sat 10am-7pm', secondary: 'Sun 10am-4pm' },
@@ -175,7 +175,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     tone: 'Relaxed, premium, reassuring, never rushed.',
     safetyNote: 'Demo only. It will not change your spa schedule or route real guest calls.',
     demoVsReal:
-      'The demo is an outbound web call. Production RingBooker answers inbound missed, overflow, and after-hours calls on your existing number.',
+      'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker answers inbound missed, overflow, and after-hours calls on your existing number.',
     tryAsking: [
       'Can I book a couples massage?',
       'Do you offer 90-minute massage options?',
@@ -218,7 +218,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     accent: '#4F46E5',
     title: 'Hear How RingBooker Answers Med Spa Calls',
     subtitle:
-      'Try a live demo call — consult requests, pricing boundaries, and provider handoff — with med spa tone.',
+      'Try a live web demo — consult requests, pricing boundaries, and provider handoff — with med spa tone.',
     defaultBusinessName: 'Astra Med Spa',
     defaultCity: 'Newport Beach, CA',
     hours: { primary: 'Mon-Fri 9am-6pm', secondary: 'Sat 10am-3pm' },
@@ -230,7 +230,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     tone: 'Credible, careful, consultation-first, never pushy.',
     safetyNote: 'Demo only. It does not provide medical advice, alter patient records, or touch your real routing.',
     demoVsReal:
-      'This web demo is outbound and isolated. Production RingBooker handles inbound call recovery on your current number with your approved guardrails.',
+      'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker handles inbound call recovery on your current number with your approved guardrails.',
     tryAsking: [
       'Can you tell me Botox pricing?',
       'What does a consultation involve?',
@@ -274,7 +274,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     accent: '#A21CAF',
     title: 'Hear How RingBooker Answers Beauty Clinic Calls',
     subtitle:
-      'Try a live demo call — appointment intent, session follow-ups, and careful handoff — with clinic context.',
+      'Try a live web demo — appointment intent, session follow-ups, and careful handoff — with clinic context.',
     defaultBusinessName: 'Northline Beauty Clinic',
     defaultCity: 'Seattle, WA',
     hours: { primary: 'Mon-Fri 8:30am-5:30pm', secondary: 'Sat by appointment' },
@@ -286,7 +286,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     tone: 'Clear, respectful, restrained, patient-oriented.',
     safetyNote: 'Demo only. It does not access patient records, collect sensitive history, or change live clinic routing.',
     demoVsReal:
-      'This page runs an isolated outbound demo. Production RingBooker is configured separately to answer inbound calls on your existing clinic number.',
+      'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker is configured separately to answer inbound calls on your existing clinic number.',
     tryAsking: [
       'What are the options for acne scar treatment?',
       'How many sessions are usually needed?',

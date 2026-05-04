@@ -54,7 +54,7 @@ RingBooker offers a free 14-day trial with no credit card required. Paid plans a
 
 ## Live Demo
 
-RingBooker offers an interactive outbound demo: a user enters their phone number and business type, and RingBooker calls them within seconds so they can hear the AI voice agent live. No app download or account required for the demo.
+RingBooker offers browser web voice demos: visitors open an industry-specific demo page, optionally customize sample business context (name, hours, staff, services), allow the microphone, and speak with the AI receptionist in real time. No app download or account is required. You can also call the public demo line to hear a fixed sample profile for that vertical.
 
 Demo entry: https://ringbooker.com/demo
 

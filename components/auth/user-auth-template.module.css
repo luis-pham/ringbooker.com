@@ -84,6 +84,15 @@
   padding: 0 20px 10px;
 }
 
+/* Full-width column below the auth card (FAQ, etc.) — matches marketing reading width, not the narrow card. */
+.authWideBelow {
+  width: 100%;
+  max-width: min(100%, var(--mk-reading-width, 940px));
+  margin: 0 auto;
+  padding: 0 0 8px;
+  box-sizing: border-box;
+}
+
 .card {
   width: min(100%, 440px);
   background: rgba(255, 255, 255, 0.92);

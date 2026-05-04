@@ -240,6 +240,8 @@ export const RATE_LIMIT_POLICIES = {
     blockMs: 10 * 60_000,
   },
   public_demo_request: { name: 'public_demo_request', limit: 5, windowMs: 15 * 60_000, blockMs: 60 * 60_000 },
+  /** Browser LiveKit web demo (no outbound call to visitor phone). */
+  public_demo_web_session: { name: 'public_demo_web_session', limit: 5, windowMs: 15 * 60_000, blockMs: 60 * 60_000 },
   public_demo_request_session: {
     name: 'public_demo_request_session',
     limit: 3,

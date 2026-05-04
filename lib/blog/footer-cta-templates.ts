@@ -32,7 +32,7 @@ export type BlogFooterButtonDefinition = {
 };
 
 export const BLOG_FOOTER_BUTTONS: readonly BlogFooterButtonDefinition[] = [
-  { id: 'start_free_trial', label: 'Start Free Trial', variant: 'solid', suggestedHref: '/user/signup' },
+  { id: 'start_free_trial', label: 'Start Free Trial', variant: 'solid', suggestedHref: '/pricing' },
   { id: 'try_live_demo', label: 'Try a Live Demo', variant: 'gradient', suggestedHref: '/demo' },
   { id: 'see_how_it_works', label: 'See How It Works', variant: 'soft', suggestedHref: '/how-it-works' },
   {

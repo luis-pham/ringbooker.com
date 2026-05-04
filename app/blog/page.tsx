@@ -395,7 +395,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
                 Try a Live Demo
               </Link>
               <Link
-                href="/user/signup"
+                href="/pricing"
                 className="inline-flex items-center justify-center rounded-full border border-white/35 bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
               >
                 Start 14-Day Free Trial →
