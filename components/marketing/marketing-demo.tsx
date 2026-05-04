@@ -144,7 +144,7 @@ export function MarketingDemoTemplate() {
               </p>
               <div className="hero-actions">
                 <Link href="/demo" className="btn-dark">
-                  Start web demo →
+                  Start Demo Call →
                 </Link>
                 <Link href="/demo/nail-salon" className="btn-outline">
                   Nail salon demo

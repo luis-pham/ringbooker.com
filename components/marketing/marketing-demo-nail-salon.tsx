@@ -49,11 +49,11 @@ export function MarketingNailSalonDemoTemplate() {
             </p>
             <div className="nsd-card">
               <p>
-                <strong style={{ color: '#111827' }}>Start web demo</strong> — opens the full nail salon vertical demo with services, hours, and staff you can customize.
+                <strong style={{ color: '#111827' }}>Start Demo Call</strong> — opens the full nail salon vertical demo with services, hours, and staff you can customize.
               </p>
               <div className="nsd-actions">
                 <Link href="/demo/nail-salon" className="nsd-btn nsd-btn-primary">
-                  Start web demo →
+                  Start Demo Call →
                 </Link>
                 <Link href="/demo" className="nsd-btn nsd-btn-ghost">
                   Browse all industry demos

@@ -317,6 +317,31 @@ function stageLabel(stage: DemoStage): string {
   return 'Ready';
 }
 
+function microphoneErrorMessage(error: unknown): string {
+  if (typeof window !== 'undefined' && !window.isSecureContext) {
+    return 'Microphone access requires HTTPS or localhost. Please open the web demo on a secure URL, or call the demo number instead.';
+  }
+
+  const name =
+    error instanceof DOMException
+      ? error.name
+      : typeof error === 'object' && error !== null && 'name' in error
+        ? String((error as { name?: unknown }).name ?? '')
+        : '';
+
+  if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') {
+    return 'Microphone access is blocked for this site. Please allow microphone access in your browser site settings, then try again.';
+  }
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    return 'No microphone was found. Please connect a microphone or call the demo number instead.';
+  }
+  if (name === 'NotReadableError' || name === 'TrackStartError') {
+    return 'Your microphone is busy or unavailable. Please close other apps using it, then try again.';
+  }
+
+  return 'Microphone access is needed to start the web demo. Please allow microphone access and try again.';
+}
+
 
 export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVerticalSlug }) {
   const config = DEMO_VERTICALS[vertical];
@@ -546,6 +571,11 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     setRequestError(null);
     if (errs.length > 0) return;
 
+    if (!window.isSecureContext) {
+      setErrors([microphoneErrorMessage(null)]);
+      return;
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
       setErrors([
         'Your browser does not support microphone access for the web demo. Please try Chrome or Safari, or call the demo number instead.',
@@ -554,9 +584,10 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
     }
 
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setErrors(['Microphone access is needed to start the web demo. Please allow microphone access and try again.']);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+    } catch (error) {
+      setErrors([microphoneErrorMessage(error)]);
       return;
     }
 
@@ -757,7 +788,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
 
                   {/* CTA */}
                   <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
-                    {isSubmitting ? 'Starting…' : 'Start web demo'}
+                    {isSubmitting ? 'Starting…' : 'Start Demo Call'}
                   </button>
                   <p className="vd-cta-note">
                     Talk to RingBooker in your browser using this demo setup. No phone number required.
