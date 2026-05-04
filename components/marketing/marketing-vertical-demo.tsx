@@ -829,7 +829,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
               content: [
                 {
                   type: 'input_text',
-                  text: 'I just connected to the web voice demo. Please greet me first before I say anything.',
+                  text: 'I just connected. Please greet me first like a receptionist before I say anything.',
                 },
               ],
             },
@@ -840,7 +840,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
             type: 'response.create',
             response: {
               instructions:
-                'Speak first now. Say one short, natural receptionist greeting, welcome the caller to the demo, then stop and listen. Do not wait for the caller to speak.',
+                'Speak first now. Say one short, natural receptionist greeting using the configured business name and opening style, then stop and listen. Do not say "welcome to the demo" or mention the demo in the greeting. Do not wait for the caller to speak.',
             },
           }),
         );
