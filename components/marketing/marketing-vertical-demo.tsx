@@ -930,6 +930,7 @@ export function MarketingVerticalDemoTemplate({
             JSON.stringify({
               type: 'session.update',
               session: {
+                type: 'realtime',
                 audio: {
                   input: {
                     turn_detection: td,
