@@ -839,7 +839,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
           JSON.stringify({
             type: 'response.create',
             response: {
-              modalities: ['audio', 'text'],
               instructions:
                 'Speak first now. Say one short, natural receptionist greeting, welcome the caller to the demo, then stop and listen. Do not wait for the caller to speak.',
             },
