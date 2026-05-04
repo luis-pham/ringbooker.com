@@ -274,7 +274,10 @@ export function MarketingDemoVerticalIndexTemplate() {
                 <div className="demo-hub-step">
                   <div className="demo-hub-step-num">3</div>
                   <h3>Talk or call the demo line</h3>
-                  <p>Speak naturally in the browser session, or call +1&nbsp;626&nbsp;501&nbsp;3960 to hear the vertical sample profile. Nothing changes on your live business line.</p>
+                  <p>
+                    Speak naturally in the browser session, or open a vertical demo page for its dedicated demo line.
+                    Nothing changes on your live business line.
+                  </p>
                 </div>
               </div>
             </div>

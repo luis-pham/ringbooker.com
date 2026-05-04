@@ -5,6 +5,13 @@ export const metadata = {
   robots: { index: false, follow: true },
 };
 
+const DEFAULT_DEMO_PHONE_BEAUTY_CLINIC = '+12702031876';
+
 export default function BeautyClinicDemoPage() {
-  return <MarketingVerticalDemoTemplate vertical="beauty-clinic" />;
+  return (
+    <MarketingVerticalDemoTemplate
+      vertical="beauty-clinic"
+      demoPhoneE164={process.env.DEMO_PHONE_BEAUTY_CLINIC ?? DEFAULT_DEMO_PHONE_BEAUTY_CLINIC}
+    />
+  );
 }

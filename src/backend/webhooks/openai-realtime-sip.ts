@@ -11,6 +11,7 @@ import {
 import { getEnv } from '@/src/backend/config/env';
 import { getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 import type { Shop, ShopVertical } from '@/src/backend/domain/types';
+import { buildMergedOpenAiSipDemoDidMap } from '@/src/backend/demo/demo-vertical-phone-map';
 import { buildPublicDemoSystemPrompt, type DemoConfigInput } from '@/src/backend/demo/public-demo-system-prompt';
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
@@ -40,8 +41,7 @@ import {
   extractSipHeader,
   parseE164FromSipValue,
   parseOpenAiProjectUserFromSipTo,
-  parseOpenAiSipDidMapJson,
-  resolveOpenAiSipDidContext,
+  resolveOpenAiSipDemoDidFromHeaders,
   type OpenAiSipDidContext,
 } from '@/src/backend/webhooks/openai-sip-did';
 import { startOpenAiRealtimeSipSideband } from '@/src/backend/webhooks/openai-realtime-sip-sideband';
@@ -247,11 +247,20 @@ export async function handleOpenAiRealtimeSipWebhook(
 
   const sipTo = extractSipHeader(data.sip_headers, 'To');
   const sipFrom = extractSipHeader(data.sip_headers, 'From');
-  const didMap = parseOpenAiSipDidMapJson(env.OPENAI_SIP_DEMO_DID_MAP_JSON);
+  const didMap = buildMergedOpenAiSipDemoDidMap({
+    OPENAI_SIP_DEMO_DID_MAP_JSON: env.OPENAI_SIP_DEMO_DID_MAP_JSON,
+    DEMO_PHONE_NAIL_SALON: env.DEMO_PHONE_NAIL_SALON,
+    DEMO_PHONE_HAIR_SALON: env.DEMO_PHONE_HAIR_SALON,
+    DEMO_PHONE_DAY_SPA: env.DEMO_PHONE_DAY_SPA,
+    DEMO_PHONE_MED_SPA: env.DEMO_PHONE_MED_SPA,
+    DEMO_PHONE_BEAUTY_CLINIC: env.DEMO_PHONE_BEAUTY_CLINIC,
+    DEMO_PHONE_FALLBACK_VERTICAL: env.DEMO_PHONE_FALLBACK_VERTICAL,
+  });
   /** TeXML pilots often set `OPENAI_SIP_URI` but omit `OPENAI_REALTIME_PROJECT_ID` — derive proj id from URI. */
   const openAiProjectIdForDid =
     env.OPENAI_REALTIME_PROJECT_ID?.trim() || parseOpenAiProjectUserFromSipTo(env.OPENAI_SIP_URI ?? null) || null;
-  const didCtx = resolveOpenAiSipDidContext({
+  const didCtx = resolveOpenAiSipDemoDidFromHeaders({
+    sipHeaders: data.sip_headers,
     map: didMap,
     sipToValue: sipTo,
     openAiRealtimeProjectId: openAiProjectIdForDid,

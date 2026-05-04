@@ -172,7 +172,7 @@ export function MarketingDemoTemplate() {
                     </Link>
                   </div>
                   <p className="helper">
-                    Prefer phone only? Call <strong>+1 626 501 3960</strong> — sample profile per vertical; not tied to the web form context.
+                    Prefer phone only? Open a vertical demo page — each vertical lists its own demo line and sample profile.
                   </p>
                 </div>
                 <div className="preview-card">

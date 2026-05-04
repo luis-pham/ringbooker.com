@@ -58,8 +58,32 @@ type DemoStatusResponse = {
 
 const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
 
-const VERTICAL_DEMO_PHONE_E164 = '+16265013960';
-const VERTICAL_DEMO_PHONE_TEL = 'tel:+16265013960';
+/** Legacy shared demo line when per-vertical `DEMO_PHONE_*` env is unset (server passes prop from env). */
+const LEGACY_VERTICAL_DEMO_PHONE_E164 = '+16265013960';
+
+function normalizeDemoPhoneE164(raw?: string | null): string {
+  const t = raw?.trim();
+  if (!t) return LEGACY_VERTICAL_DEMO_PHONE_E164;
+  const compact = t.replace(/[^\d+]/g, '');
+  if (compact.startsWith('+') && compact.length >= 8) return compact;
+  const d = t.replace(/\D/g, '');
+  if (d.length === 10) return `+1${d}`;
+  if (d.length === 11 && d.startsWith('1')) return `+${d}`;
+  return LEGACY_VERTICAL_DEMO_PHONE_E164;
+}
+
+function formatE164ForDisplay(e164: string): string {
+  const d = e164.replace(/\D/g, '');
+  if (d.length === 11 && d.startsWith('1')) {
+    const n = d.slice(1);
+    return `+1 ${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}`;
+  }
+  if (d.length === 10) {
+    return `+1 ${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+  }
+  return e164;
+}
+
 const DEMO_STATUS_POLL_INTERVAL_MS = 2200;
 const DEMO_STATUS_MAX_POLL_ATTEMPTS = 30;
 const DEMO_STATUS_TIMEOUT_MESSAGE = 'The web demo is taking longer than expected. Please try again, or call the demo number instead.';
@@ -383,9 +407,19 @@ function microphoneErrorMessage(error: unknown): string {
 }
 
 
-export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVerticalSlug }) {
+export function MarketingVerticalDemoTemplate({
+  vertical,
+  demoPhoneE164,
+}: {
+  vertical: DemoVerticalSlug;
+  /** E.164 from server `DEMO_PHONE_*` env; falls back to legacy shared line when unset. */
+  demoPhoneE164?: string | null;
+}) {
   const config = DEMO_VERTICALS[vertical];
   const otherDemoVerticals = useMemo((): DemoVerticalConfig[] => [], []);
+  const resolvedDemoPhoneE164 = useMemo(() => normalizeDemoPhoneE164(demoPhoneE164), [demoPhoneE164]);
+  const verticalDemoPhoneTel = useMemo(() => `tel:${resolvedDemoPhoneE164}`, [resolvedDemoPhoneE164]);
+  const verticalDemoPhoneDisplay = useMemo(() => formatE164ForDisplay(resolvedDemoPhoneE164), [resolvedDemoPhoneE164]);
 
   const [business, setBusiness] = useState<DemoBusinessConfig>({
     businessName: config.defaultBusinessName,
@@ -600,7 +634,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
 
   async function copyDemoPhoneNumber() {
     try {
-      await navigator.clipboard.writeText(VERTICAL_DEMO_PHONE_E164);
+      await navigator.clipboard.writeText(resolvedDemoPhoneE164);
       setDemoLineCopied(true);
       window.setTimeout(() => setDemoLineCopied(false), 2000);
     } catch {
@@ -1159,15 +1193,15 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                     <div className="vd-phone-demo-title">Prefer to call?</div>
                     <p className="vd-phone-demo-text">Call the demo line and speak with the AI receptionist.</p>
                     <div className="vd-phone-demo-num-row">
-                      <span className="vd-phone-demo-num">+1 626 501 3960</span>
+                      <span className="vd-phone-demo-num">{verticalDemoPhoneDisplay}</span>
                       <button type="button" className="vd-phone-demo-copy" onClick={() => void copyDemoPhoneNumber()}>
                         {demoLineCopied ? 'Copied' : 'Copy number'}
                       </button>
                     </div>
-                    <a className="vd-phone-demo-tel" href={VERTICAL_DEMO_PHONE_TEL}>
+                    <a className="vd-phone-demo-tel" href={verticalDemoPhoneTel}>
                       Call demo number
                     </a>
-                    <p className="vd-phone-demo-note">The phone demo uses a sample profile for this vertical.</p>
+                    <p className="vd-phone-demo-note">{config.phoneDemoProfileCopy}</p>
                   </div>
                 </div>
               ) : (

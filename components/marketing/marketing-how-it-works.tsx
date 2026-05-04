@@ -116,6 +116,7 @@ a{text-decoration:none;color:inherit}
   letter-spacing:-.2px;
   margin-bottom:9px;
 }
+.hiw-grid-3.hiw-flow .hiw-card h3{text-align:center}
 .hiw-card p{font-size:var(--mk-body-md);color:var(--mk-text-desc,#64748B);line-height:1.72}
 .hiw-list{list-style:none;display:grid;gap:10px;margin-top:16px}
 .hiw-list li{display:flex;gap:10px;font-size:var(--mk-body);color:#374151;line-height:1.55}

@@ -125,6 +125,29 @@ function createValidatedEnv() {
         }),
       /** JSON array: `[{ "did": "+1…", "vertical": "nail-salon", "defaultShopName": "…" }]` */
       OPENAI_SIP_DEMO_DID_MAP_JSON: z.string().optional(),
+      /** Inbound E.164 for vertical-specific SIP demo (merged into demo DID map; JSON overrides on duplicate DID). */
+      DEMO_PHONE_NAIL_SALON: z.preprocess(
+        (v) => (v === undefined || v === null || String(v).trim() === '' ? undefined : String(v).trim()),
+        z.string().min(1).optional(),
+      ),
+      DEMO_PHONE_HAIR_SALON: z.preprocess(
+        (v) => (v === undefined || v === null || String(v).trim() === '' ? undefined : String(v).trim()),
+        z.string().min(1).optional(),
+      ),
+      DEMO_PHONE_DAY_SPA: z.preprocess(
+        (v) => (v === undefined || v === null || String(v).trim() === '' ? undefined : String(v).trim()),
+        z.string().min(1).optional(),
+      ),
+      DEMO_PHONE_MED_SPA: z.preprocess(
+        (v) => (v === undefined || v === null || String(v).trim() === '' ? undefined : String(v).trim()),
+        z.string().min(1).optional(),
+      ),
+      DEMO_PHONE_BEAUTY_CLINIC: z.preprocess(
+        (v) => (v === undefined || v === null || String(v).trim() === '' ? undefined : String(v).trim()),
+        z.string().min(1).optional(),
+      ),
+      /** When a tool maps an unknown called number to a vertical (default nail-salon). */
+      DEMO_PHONE_FALLBACK_VERTICAL: z.enum(['nail-salon', 'hair-salon', 'day-spa', 'med-spa', 'beauty-clinic']).optional(),
       OPENAI_REALTIME_PROJECT_ID: z.string().min(1).optional(),
       /** Telnyx TeXML: full OpenAI SIP URI for Dial/Sip (see /telnyx/texml/inbound). */
       OPENAI_SIP_URI: z.string().min(1).optional(),

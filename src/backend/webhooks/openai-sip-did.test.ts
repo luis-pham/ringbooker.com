@@ -5,6 +5,7 @@ import {
   collectOpenAiSipDidCandidates,
   parseOpenAiProjectUserFromSipTo,
   parseOpenAiSipDidMapJson,
+  resolveOpenAiSipDemoDidFromHeaders,
   resolveOpenAiSipDidContext,
 } from '@/src/backend/webhooks/openai-sip-did';
 
@@ -63,4 +64,25 @@ test('resolveOpenAiSipDidContext TeXML match when project id only comes from OPE
   });
   assert.ok(ctx);
   assert.equal(ctx?.vertical, 'day-spa');
+});
+
+test('resolveOpenAiSipDemoDidFromHeaders prefers X-Telnyx-Called-Number over TeXML OpenAI To', () => {
+  const map = parseOpenAiSipDidMapJson(
+    JSON.stringify([
+      { did: '+11111111111', vertical: 'nail-salon', defaultShopName: 'A' },
+      { did: '+12222222222', vertical: 'med-spa', defaultShopName: 'B' },
+    ]),
+  );
+  const ctx = resolveOpenAiSipDemoDidFromHeaders({
+    sipHeaders: [
+      { name: 'To', value: '<sip:proj_texml_test@sip.api.openai.com;transport=tls>;tag=a' },
+      { name: 'X-Telnyx-Called-Number', value: 'sip:+12222222222@telnyx.com' },
+    ],
+    map,
+    sipToValue: '<sip:proj_texml_test@sip.api.openai.com;transport=tls>;tag=a',
+    openAiRealtimeProjectId: 'proj_texml_test',
+  });
+  assert.ok(ctx);
+  assert.equal(ctx?.vertical, 'med-spa');
+  assert.equal(ctx?.defaultShopName, 'B');
 });

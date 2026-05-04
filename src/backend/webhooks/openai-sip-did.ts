@@ -134,3 +134,28 @@ export function resolveOpenAiSipDidContext(params: {
 
   return null;
 }
+
+/**
+ * Resolves inbound demo DID using the same header candidates as production shop routing.
+ * When Telnyx bridges PSTN → OpenAI SIP, `To` is often `sip:proj_…@sip.api.openai.com`; the PSTN
+ * destination may appear on `X-Telnyx-Called-Number`, `P-Asserted-Identity`, or `Diversion`.
+ */
+export function resolveOpenAiSipDemoDidFromHeaders(params: {
+  sipHeaders: Array<{ name: string; value: string }> | undefined;
+  map: Map<string, OpenAiSipDidContext>;
+  sipToValue: string | null;
+  openAiRealtimeProjectId?: string | null;
+}): OpenAiSipDidContext | null {
+  for (const raw of collectOpenAiSipDidCandidates(params.sipHeaders)) {
+    const e164 = parseE164FromSipValue(raw) ?? normalizeE164FromSipUri(raw);
+    if (e164) {
+      const byPhone = params.map.get(e164);
+      if (byPhone) return byPhone;
+    }
+  }
+  return resolveOpenAiSipDidContext({
+    map: params.map,
+    sipToValue: params.sipToValue,
+    openAiRealtimeProjectId: params.openAiRealtimeProjectId,
+  });
+}

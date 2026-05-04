@@ -33,6 +33,8 @@ export type DemoVerticalConfig = {
   tone: string;
   safetyNote: string;
   demoVsReal: string;
+  /** Short line under the phone demo CTA (vertical-specific sample profile). */
+  phoneDemoProfileCopy: string;
   tryAsking: string[];
   quickStartPrompts: string[];
   serviceCategories: DemoServiceCategory[];
@@ -61,6 +63,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     safetyNote: 'Demo only. Browser session with microphone — it never changes your real salon line.',
     demoVsReal:
       'This preview uses the salon details you enter in the form. Production RingBooker is inbound on your current number and is configured separately from this demo.',
+    phoneDemoProfileCopy: 'The phone demo uses a sample nail salon profile.',
     tryAsking: [
       'I want to book a gel manicure.',
       'Do you have walk-in availability today?',
@@ -118,6 +121,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     safetyNote: 'Demo only. It does not touch your salon booking system or your live phone routing.',
     demoVsReal:
       'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker answers inbound overflow and after-hours calls on your current number.',
+    phoneDemoProfileCopy: 'The phone demo uses a sample hair salon profile.',
     tryAsking: [
       'Can I book a cut with Mia?',
       'What is the price range for balayage?',
@@ -173,6 +177,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     safetyNote: 'Demo only. It will not change your spa schedule or route real guest calls.',
     demoVsReal:
       'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker answers inbound missed, overflow, and after-hours calls on your existing number.',
+    phoneDemoProfileCopy: 'The phone demo uses a sample day spa profile.',
     tryAsking: [
       'Can I book a couples massage?',
       'Do you offer 90-minute massage options?',
@@ -227,6 +232,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     safetyNote: 'Demo only. It does not provide medical advice, alter patient records, or touch your real routing.',
     demoVsReal:
       'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker handles inbound call recovery on your current number with your approved guardrails.',
+    phoneDemoProfileCopy: 'The phone demo uses a sample med spa profile.',
     tryAsking: [
       'Can you tell me Botox pricing?',
       'What does a consultation involve?',
@@ -282,6 +288,7 @@ export const DEMO_VERTICALS: Record<DemoVerticalSlug, DemoVerticalConfig> = {
     safetyNote: 'Demo only. It does not access patient records, collect sensitive history, or change live clinic routing.',
     demoVsReal:
       'The optional phone demo uses a fixed sample profile for this vertical. Production RingBooker is configured separately to answer inbound calls on your existing clinic number.',
+    phoneDemoProfileCopy: 'The phone demo uses a sample beauty clinic profile.',
     tryAsking: [
       'What are the options for acne scar treatment?',
       'How many sessions are usually needed?',
