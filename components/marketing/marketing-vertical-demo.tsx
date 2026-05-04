@@ -121,7 +121,8 @@ const verticalDemoFaqJsonLd = buildFaqPageJsonLd(VERTICAL_DEMO_FAQ_ITEMS);
 const styles: string[] = [
   String.raw`
   /* ─── base ─────────────────────────────────────────────── */
-  .vd-faq-outer{background:linear-gradient(180deg,#fafafa 0%,#fff 100%);border-top:1px solid #E5E7EB;padding:8px 0 28px}
+  .vd-faq-outer{max-width:1120px;margin:0 auto;padding:8px 20px 48px;background:transparent;border-top:none}
+  @media(min-width:800px){.vd-faq-outer{padding:12px 40px 64px}}
   .vd-page{padding-top:80px;background:linear-gradient(160deg,color-mix(in srgb,var(--va) 7%,#fff) 0%,#fff 55%);min-height:100dvh}
   .vd-theme-nail-salon{--va:#7C3AED}
   .vd-theme-hair-salon{--va:#B45309}
@@ -1380,16 +1381,16 @@ export function MarketingVerticalDemoTemplate({
             </div>
 
           </div>
-        </div>
 
-        <div className="vd-faq-outer">
-          <MarketingFaqAccordion
-            items={VERTICAL_DEMO_FAQ_ITEMS}
-            eyebrow="Common Questions"
-            title="About this live demo"
-            subtitle={null}
-            embedded
-          />
+          <div className="vd-faq-outer">
+            <MarketingFaqAccordion
+              items={VERTICAL_DEMO_FAQ_ITEMS}
+              eyebrow="Common Questions"
+              title="About this live demo"
+              subtitle={null}
+              embedded
+            />
+          </div>
         </div>
 
         <MarketingFooter />
