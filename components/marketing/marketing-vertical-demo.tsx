@@ -760,13 +760,13 @@ export function MarketingVerticalDemoTemplate({
     }
   }
 
-  async function startDirectOpenAiDemo() {
+  async function startDirectOpenAiDemo(preauthorizedStream?: MediaStream) {
     cleanupDirectRealtime();
     directPeerFailureMutedRef.current = false;
     clearPollTimer();
     setStatusText('Requesting microphone…');
 
-    const stream = await requestDemoMicrophone({ keepAlive: true });
+    const stream = preauthorizedStream ?? await requestDemoMicrophone({ keepAlive: true });
     if (!stream) {
       setStage('idle');
       setStatusText('');
@@ -933,13 +933,15 @@ export function MarketingVerticalDemoTemplate({
     }
   }
 
-  async function startLiveKitWebDemo() {
+  async function startLiveKitWebDemo(options?: { microphonePreflightOk?: boolean }) {
     setStatusText('Requesting microphone…');
-    const stream = await requestDemoMicrophone({ keepAlive: false });
-    if (!stream) {
-      setStage('idle');
-      setStatusText('');
-      return;
+    if (!options?.microphonePreflightOk) {
+      const stream = await requestDemoMicrophone({ keepAlive: false });
+      if (!stream) {
+        setStage('idle');
+        setStatusText('');
+        return;
+      }
     }
 
     clearPollTimer();
@@ -1004,15 +1006,22 @@ export function MarketingVerticalDemoTemplate({
     if (errs.length > 0) return;
     if (demoStartLockRef.current) return;
     demoStartLockRef.current = true;
-    flushSync(() => {
-      setStage('queued');
-      setStatusText(
-        demoWebCallMode === 'direct_openai' ? 'Requesting microphone…' : 'Starting browser demo…',
-      );
-    });
     try {
-      if (demoWebCallMode === 'direct_openai') await startDirectOpenAiDemo();
-      else await startLiveKitWebDemo();
+      // Request mic while the Start button click is still the active user gesture.
+      // Some browsers are flaky on first permission prompt if we unmount the form first.
+      setStatusText('Requesting microphone…');
+      const preflightStream = await requestDemoMicrophone({ keepAlive: demoWebCallMode === 'direct_openai' });
+      if (!preflightStream) return;
+
+      flushSync(() => {
+        setStage('queued');
+        setStatusText(
+          demoWebCallMode === 'direct_openai' ? 'Requesting microphone…' : 'Starting browser demo…',
+        );
+      });
+
+      if (demoWebCallMode === 'direct_openai') await startDirectOpenAiDemo(preflightStream);
+      else await startLiveKitWebDemo({ microphonePreflightOk: true });
     } finally {
       demoStartLockRef.current = false;
     }
