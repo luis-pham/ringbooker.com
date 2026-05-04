@@ -9,6 +9,37 @@ import {
 } from './index';
 
 describe('voice prompt composer', () => {
+  it('preserves runtime welcome when prompt is compacted for length', () => {
+    const services = Array.from({ length: 28 }).map((_, i) => ({
+      category: 'Manicure',
+      name: `${'S'.repeat(90)}${i}`,
+      price: 99,
+      duration: '30 min',
+    }));
+    const welcome = 'UNIQUE_WELCOME_TOKEN Hi, it is Mai at Luna Nail Bar.';
+    const prompt = composeVoicePrompt({
+      vertical: 'nail-salon',
+      callType: 'demo_outbound',
+      mode: 'demo',
+      business: {
+        businessName: 'Luna Nail Bar',
+        businessType: 'nail salon',
+        welcomeMessage: welcome,
+        hours: 'H'.repeat(700),
+        location: 'L'.repeat(120),
+        demoContext: 'D'.repeat(900),
+        callerContext: 'C'.repeat(900),
+        customInstructions: 'I'.repeat(900),
+        services,
+      },
+    });
+
+    assert.ok(prompt.length <= 18_000 + 5, 'prompt should respect max length budget');
+    assert.match(prompt, /UNIQUE_WELCOME_TOKEN/);
+    assert.match(prompt, /WELCOME MESSAGE:/);
+    assert.match(prompt, /Prompt compacted to fit latency\/context budget/);
+  });
+
   it('keeps demo behavior isolated from production prompts', () => {
     const demoPrompt = composeVoicePrompt({
       vertical: 'nail-salon',
