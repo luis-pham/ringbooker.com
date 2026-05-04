@@ -56,9 +56,9 @@ html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:var(--mk-font-body);line-height:var(--mk-leading-body)}
 a{text-decoration:none;color:inherit}
 .pricing-page{background:#fff}
-/* Hero + plan cards: one continuous wash (no hard break vs gray section below) */
-.pricing-hero-plans{padding:112px 48px 88px;background:radial-gradient(ellipse 100% 65% at 50% -8%,#EDE9FE 0%,#FDF4FF 38%,#fff 72%,#fafbfc 100%)}
-.pricing-plans-inner{margin-top:48px;padding-top:8px}
+/* Hero + plans: vertical rhythm matches how-it-works hero (72px bottom) then section (86px top) before first label */
+.pricing-hero-plans{padding:112px 48px 72px;background:radial-gradient(ellipse 100% 65% at 50% -8%,#EDE9FE 0%,#FDF4FF 38%,#fff 72%,#fafbfc 100%)}
+.pricing-plans-inner{margin-top:0;padding-top:86px}
 .container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 .hero-copy{max-width:980px;margin:0 auto;text-align:center}
 .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
@@ -157,7 +157,7 @@ a{text-decoration:none;color:inherit}
 .cta-box .btn-trial-soft:hover{border-color:rgba(255,255,255,.45);color:#fff}
 .pricing-trial-note{max-width:760px;margin:28px auto 0;padding:16px 20px;border-radius:var(--r-lg);background:rgba(245,243,255,.65);border:1px solid rgba(196,181,253,.45);font-size:14px;line-height:1.65;color:#475569;text-align:center}
 .compare-section{margin-top:0}
-.pricing-detail-lower .pricing-faq-frame{margin-top:56px}
+.pricing-faq-cta .cta-box{margin-top:48px}
 .compare-wrap{margin:0 -8px;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .compare-table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:#fff;box-shadow:var(--shadow);font-size:14px}
 .compare-table th,.compare-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -169,22 +169,8 @@ a{text-decoration:none;color:inherit}
 .compare-yes{text-align:center;font-weight:700;color:var(--green)}
 .compare-dash{text-align:center;color:var(--text-light);font-weight:600}
 .compare-val{font-size:14px;line-height:1.45}
-.pricing-faq-frame{
-  max-width:var(--mk-narrow-width,760px);
-  margin:0 auto;
-  border:1px solid var(--border);
-  border-radius:var(--r-lg);
-  overflow:hidden;
-  background:#fff;
-  box-shadow:var(--shadow);
-}
-.pricing-faq-frame .mfaq-section--embedded{padding-left:24px;padding-right:24px;padding-bottom:28px}
-.pricing-faq-frame .mfaq-list{border:none;border-radius:0}
-.pricing-cta-lower{padding:64px 48px 88px;background:#fff}
-.pricing-cta-lower .cta-box{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 @media(max-width:960px){
-  .pricing-hero-plans,.section,.pricing-cta-lower{padding-left:22px;padding-right:22px}
-  .pricing-faq-frame{margin-left:0;margin-right:0;max-width:100%}
+  .pricing-hero-plans,.section{padding-left:22px;padding-right:22px}
   .trust-row,.plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.cta-box{grid-template-columns:1fr}
   /* Clear fixed .mk-nav (68px + 1px border) + breathing room — matches topic hub mobile rhythm */
   .pricing-hero-plans{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:64px}
@@ -199,7 +185,7 @@ a{text-decoration:none;color:inherit}
   .cta-actions{justify-content:flex-start}
 }
 @media(max-width:640px){
-  .pricing-plans-inner{margin-top:36px}
+  .pricing-plans-inner{padding-top:56px}
   .hero-actions{flex-direction:column;align-items:stretch}
   .btn-demo-live,.btn-trial-soft,.btn-dark,.btn-outline{width:100%}
   .section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
@@ -445,7 +431,7 @@ export function MarketingPricingTemplate() {
             </div>
           </section>
 
-          <section className="section gray pricing-detail-lower">
+          <section className="section gray pricing-compare-lower">
             <div className="container">
               <div className="compare-section">
                 <div className="sec-label">Compare plans</div>
@@ -485,20 +471,16 @@ export function MarketingPricingTemplate() {
                   </table>
                 </div>
               </div>
-
-              <div className="pricing-faq-frame">
-                <MarketingFaqAccordion
-                  embedded
-                  items={PRICING_FAQ_ITEMS}
-                  title="Pricing questions, answered plainly."
-                  subtitle={null}
-                />
-              </div>
             </div>
           </section>
 
-          <section className="section pricing-cta-lower">
+          <section className="section pricing-faq-cta">
             <div className="container">
+              <MarketingFaqAccordion
+                items={PRICING_FAQ_ITEMS}
+                title="Pricing questions, answered plainly."
+                subtitle={null}
+              />
               <div className="cta-box">
                 <div>
                   <h2>Stop letting booking calls leak after hours or during busy windows.</h2>

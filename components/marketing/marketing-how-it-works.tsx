@@ -184,19 +184,8 @@ a{text-decoration:none;color:inherit}
 .hiw-call-step span{width:30px;height:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;border:none;box-shadow:none}
 .hiw-call-step strong{display:block;margin-bottom:3px}
 .hiw-call-step p{font-size:14px;color:var(--text-gray);line-height:1.6}
-.hiw-faq-frame{
-  max-width:var(--mk-narrow-width,760px);
-  margin:0 auto;
-  border:1px solid var(--border);
-  border-radius:var(--r-lg);
-  overflow:hidden;
-  background:#fff;
-  box-shadow:var(--shadow);
-}
-.hiw-faq-frame .mfaq-section--embedded{padding-left:24px;padding-right:24px;padding-bottom:28px}
-.hiw-faq-frame .mfaq-list{border:none;border-radius:0}
-.hiw-cta-standalone{padding:64px 48px 88px;background:#fff}
-.hiw-cta-standalone .hiw-cta-box{max-width:1100px;margin:0 auto}
+.hiw-trust-caller-stack .hiw-caller-after-trust{margin-top:56px}
+.hiw-faq-cta-lower .hiw-cta-box{margin-top:48px}
 .hiw-cta-box{max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#7C3AED 0%,#A855F7 100%);color:#fff;border-radius:32px;padding:42px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;box-shadow:0 20px 56px rgba(124,58,237,.2),0 8px 24px rgba(17,24,39,.08)}
 .hiw-cta-box h2{font-size:clamp(28px,3.6vw,42px);font-weight:700;line-height:1.12;letter-spacing:-1.2px;margin-bottom:10px}
 .hiw-cta-box p{color:rgba(255,255,255,.82);font-size:16px;line-height:1.7;max-width:650px}
@@ -205,8 +194,7 @@ a{text-decoration:none;color:inherit}
 .legacy-marketing > footer,
 .legacy-marketing > .topbar{display:none !important}
 @media(max-width:960px){
-  .hiw-hero,.hiw-section,.hiw-cta-standalone{padding-left:22px;padding-right:22px}
-  .hiw-faq-frame{margin-left:0;margin-right:0;max-width:100%}
+  .hiw-hero,.hiw-section{padding-left:22px;padding-right:22px}
   .hiw-hero-grid,.hiw-grid-2,.hiw-grid-3,.hiw-handle-grid,.hiw-no-replace,.hiw-experience,.hiw-cta-box{grid-template-columns:1fr}
   .hiw-hero{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:52px}
   .hiw-summary{padding:22px}
@@ -216,7 +204,7 @@ a{text-decoration:none;color:inherit}
 @media(max-width:640px){
   .hiw-hero{padding-bottom:46px}
   .hiw-hero h1{font-size:clamp(30px,8vw,40px)}
-  .hiw-actions,.hiw-cta-standalone .hiw-actions{flex-direction:column;align-items:stretch}
+  .hiw-actions,.hiw-faq-cta-lower .hiw-actions{flex-direction:column;align-items:stretch}
   .hiw-btn-dark,.hiw-btn-outline{width:100%}
   .hiw-section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
   .hiw-sub{margin-bottom:32px}
@@ -418,7 +406,7 @@ export function MarketingHowItWorksTemplate() {
             </div>
           </section>
 
-          <section className="hiw-section gray">
+          <section className="hiw-section gray hiw-trust-caller-stack">
             <div className="hiw-container">
               <div className="hiw-label hiw-label-trust">Trust boundary</div>
               <div className="hiw-no-replace">
@@ -434,40 +422,32 @@ export function MarketingHowItWorksTemplate() {
                 </div>
               </div>
             </div>
-          </section>
-
-          <section className="hiw-section">
-            <div className="hiw-container">
-              <div className="hiw-label hiw-label-experience">Caller experience</div>
-            </div>
-            <div className="hiw-container hiw-experience">
-              <div className="hiw-call-card">
-                <h3>No dead-end voicemail when a booking call matters.</h3>
-                <p>Callers get a natural answer, a clear next step, and a text confirmation or callback path when needed. The goal is not to pretend to be human. The goal is to keep the booking conversation alive.</p>
+            <div className="hiw-caller-after-trust">
+              <div className="hiw-container">
+                <div className="hiw-label hiw-label-experience">Caller experience</div>
               </div>
-              <div className="hiw-call-steps">
-                <div className="hiw-call-step"><span>🗣</span><div><strong>Answers naturally and quickly</strong><p>RingBooker keeps the call moving without long silence or generic phone-tree friction.</p></div></div>
-                <div className="hiw-call-step"><span>💬</span><div><strong>Confirms by text</strong><p>Important outcomes can be followed by SMS so callers know what happened next.</p></div></div>
-                <div className="hiw-call-step"><span>🤝</span><div><strong>Hands off gracefully</strong><p>If the caller needs a real person, RingBooker collects context and creates a cleaner callback path.</p></div></div>
-              </div>
-            </div>
-          </section>
-
-          <section className="hiw-section gray">
-            <div className="hiw-container">
-              <div className="hiw-faq-frame">
-                <MarketingFaqAccordion
-                  items={HOW_IT_WORKS_FAQS}
-                  embedded
-                  title="Common setup questions."
-                  subtitle="Short answers for owners and managers comparing call recovery options — current number, no forced booking migration, and what happens on real salon and clinic calls."
-                />
+              <div className="hiw-container hiw-experience">
+                <div className="hiw-call-card">
+                  <h3>No dead-end voicemail when a booking call matters.</h3>
+                  <p>Callers get a natural answer, a clear next step, and a text confirmation or callback path when needed. The goal is not to pretend to be human. The goal is to keep the booking conversation alive.</p>
+                </div>
+                <div className="hiw-call-steps">
+                  <div className="hiw-call-step"><span>🗣</span><div><strong>Answers naturally and quickly</strong><p>RingBooker keeps the call moving without long silence or generic phone-tree friction.</p></div></div>
+                  <div className="hiw-call-step"><span>💬</span><div><strong>Confirms by text</strong><p>Important outcomes can be followed by SMS so callers know what happened next.</p></div></div>
+                  <div className="hiw-call-step"><span>🤝</span><div><strong>Hands off gracefully</strong><p>If the caller needs a real person, RingBooker collects context and creates a cleaner callback path.</p></div></div>
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="hiw-section hiw-cta-standalone">
+          <section className="hiw-section hiw-faq-cta-lower">
             <div className="hiw-container">
+              <MarketingFaqAccordion
+                items={HOW_IT_WORKS_FAQS}
+                embedded
+                title="Common setup questions."
+                subtitle="Short answers for owners and managers comparing call recovery options — current number, no forced booking migration, and what happens on real salon and clinic calls."
+              />
               <div className="hiw-cta-box">
                 <div>
                   <h2>See the revenue recovery flow on a real call.</h2>
