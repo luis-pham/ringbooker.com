@@ -294,8 +294,6 @@ const scripts: string[] = [
     mountContactTurnstile();
   };
 
-  window.addEventListener('rb-contact-turnstile-ready', bootInitialTurnstile);
-
   if (${JSON.stringify(turnstileSiteKey)}) {
     let hintTimer = window.setTimeout(() => {
       if (captchaMount && captchaMount.dataset.rendered !== 'true' && hintEl && !hintEl.textContent) {
@@ -329,15 +327,7 @@ export function MarketingContactTemplate() {
       <>
         <MarketingChromeStyles />
         {turnstileSiteKey ? (
-          <Script
-            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-            strategy="afterInteractive"
-            onLoad={() => {
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('rb-contact-turnstile-ready'));
-              }
-            }}
-          />
+          <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" />
         ) : null}
         <MarketingHeader active="contact" />
         <main className="contact-page">
