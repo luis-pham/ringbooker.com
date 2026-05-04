@@ -205,23 +205,38 @@ button,input,select,textarea{font:inherit}
 .field textarea{height:auto;min-height:80px;resize:vertical;padding:10px 12px}
 .field select{appearance:none;padding-right:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%236b7280' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:16px}
 
-.billing-banner{
-  display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:18px;align-items:center;
-  background:linear-gradient(135deg,#111827,#2b3445);color:#fff
+.main.billing-page{padding:22px 30px 28px}
+.billing-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.billing-status-card{
+  background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-soft);
+  padding:22px;min-width:0;min-height:100%;display:flex;flex-direction:column;gap:6px;
 }
-.billing-banner p{color:rgba(255,255,255,.72)}
-.pricing-mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.price-mini{border:1px solid var(--border);border-radius:20px;padding:18px;background:#fff}
-.price-mini.featured{border-color:var(--purple);box-shadow:0 0 0 4px rgba(139,92,246,.08)}
-.price-mini h4{margin:0 0 4px}
-.price-mini .amt{font-size:32px;font-weight:800;letter-spacing:-1px;margin:10px 0 12px}
-.price-mini ul{margin:0;padding-left:18px;color:var(--text-gray);font-size:12.5px;line-height:1.7}
-
-.footer-inline{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:18px;color:var(--text-light);font-size:12px}
+.billing-status-card .bst-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light)}
+.billing-status-card .bst-value{font-size:17px;font-weight:780;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
+.billing-status-card .bst-meta{font-size:12px;color:var(--text-gray);line-height:1.45;margin-top:auto}
+.billing-alert-strip{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:14px 18px;border-radius:18px;border:1px solid #fde68a;background:#fffbeb;color:#92400e;font-size:13px;line-height:1.5;margin-bottom:16px
+}
+.billing-alert-strip p{margin:0;flex:1;min-width:200px}
+.tag.gray{background:#f3f4f6;color:#4b5563}
+.pricing-mini{align-items:stretch}
+.price-mini{display:flex;flex-direction:column;min-height:100%;padding:20px 18px;border-radius:20px;border:1px solid var(--border);background:#fff}
+.price-mini.featured{border-color:var(--purple);box-shadow:0 0 0 3px rgba(139,92,246,.08)}
+.price-mini .price-mini-body{flex:1}
+.price-mini .price-mini-cta{margin-top:auto;padding-top:14px}
+.price-mini .amt{font-size:28px;margin:8px 0 10px}
+.price-mini ul{font-size:12.5px}
+.billing-history-compact .panel-head{margin-bottom:10px}
+.billing-history-compact .table th,.billing-history-compact .table td{padding:10px 0;font-size:13px}
+.plan-includes-list{margin:0;padding-left:18px;color:var(--text-gray);font-size:13px;line-height:1.65}
+.plan-includes-foot{font-size:12px;color:var(--text-light);margin-top:14px;line-height:1.5}
+.footer-inline{margin-top:14px}
 
 @media (max-width:1200px){
   .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .kpi-row,.call-grid,.billing-banner,.pricing-mini{grid-template-columns:1fr}
+  .kpi-row,.call-grid,.pricing-mini{grid-template-columns:1fr}
+  .billing-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .app-shell{grid-template-columns:96px minmax(0,1fr)}
   .sidebar{padding:18px 12px}
   .sidebar-inner{min-height:calc(100vh - 36px)}
@@ -231,7 +246,7 @@ button,input,select,textarea{font:inherit}
 }
 @media (max-width:860px){
   .main{padding:18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
-  .grid-2,.grid-3,.grid-4,.form-grid{grid-template-columns:1fr}
+  .billing-status-grid{grid-template-columns:1fr}
   .topbar{align-items:flex-start;flex-direction:column}
   .page-title h1{font-size:28px}
   .app-shell{grid-template-columns:1fr}

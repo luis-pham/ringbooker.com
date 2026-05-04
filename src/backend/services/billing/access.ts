@@ -1,5 +1,5 @@
 import { getPlanCatalogEntry } from '@/src/backend/domain/plan-catalog';
-import type { BillingSubscription, Shop } from '@/src/backend/domain/types';
+import type { BillingSubscription, Shop, ShopAccessState } from '@/src/backend/domain/types';
 import type {
   BillingSubscriptionsRepository,
   ShopAccessStatesRepository,
@@ -35,7 +35,8 @@ export type ShopBillingAccess = {
   testCallLimit: number;
 };
 
-function isTrialStillValid(subscription: BillingSubscription, now: Date): boolean {
+/** Same rule as billing access trial gate (exported for admin status + tests). */
+export function isBillingTrialStillValid(subscription: BillingSubscription, now: Date): boolean {
   if (subscription.status !== 'trialing') return false;
   if (!subscription.trialEndsAt) return false;
   return new Date(subscription.trialEndsAt).getTime() > now.getTime();
@@ -51,48 +52,45 @@ function testCallLimitForPlan(plan: Shop['plan']): number {
   return plan === 'professional' ? 5 : 3;
 }
 
-export async function getShopBillingAccess(
-  deps: {
-    shopsRepository: ShopsRepository;
-    billingSubscriptionsRepository: BillingSubscriptionsRepository;
-    shopAccessStatesRepository: ShopAccessStatesRepository;
-    testCallAttemptsRepository?: TestCallAttemptsRepository;
-  },
-  params: { shopId: string; onboardingComplete?: boolean; now?: Date },
-): Promise<ShopBillingAccess> {
+const inactiveAccess = (): ShopBillingAccess => ({
+  canReceiveLiveCalls: false,
+  canGoLive: false,
+  canTestCall: false,
+  blockReason: 'account_inactive',
+  subscriptionStatus: null,
+  paymentMethodStatus: 'none',
+  trialEndsAt: null,
+  trialDaysRemaining: null,
+  liveCallsEnabled: false,
+  amountCents: null,
+  interval: null,
+  currency: 'USD',
+  testCallsUsed: 0,
+  testCallLimit: 0,
+});
+
+/**
+ * Pure billing/access snapshot from already-loaded shop, subscription, and access state.
+ * Keeps rules aligned with {@link getShopBillingAccess} without extra repository reads.
+ */
+export function computeShopBillingAccessSnapshot(params: {
+  shop: Shop;
+  subscription: BillingSubscription | null;
+  accessState: ShopAccessState | null;
+  testCallsUsed: number;
+  onboardingComplete?: boolean;
+  now?: Date;
+}): ShopBillingAccess {
   const now = params.now ?? new Date();
-  const shop = await deps.shopsRepository.findById(params.shopId);
-  if (!shop || !shop.active) {
-    return {
-      canReceiveLiveCalls: false,
-      canGoLive: false,
-      canTestCall: false,
-      blockReason: 'account_inactive',
-      subscriptionStatus: null,
-      paymentMethodStatus: 'none',
-      trialEndsAt: null,
-      trialDaysRemaining: null,
-      liveCallsEnabled: false,
-      amountCents: null,
-      interval: null,
-      currency: 'USD',
-      testCallsUsed: 0,
-      testCallLimit: 0,
-    };
+  const shop = params.shop;
+  if (!shop.active) {
+    return inactiveAccess();
   }
 
-  const [subscription, accessState] = await Promise.all([
-    deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id),
-    deps.shopAccessStatesRepository.findByShopId(shop.id),
-  ]);
   const testCallLimit = testCallLimitForPlan(shop.plan);
-  const testCallsUsed = deps.testCallAttemptsRepository
-    ? await deps.testCallAttemptsRepository.countRecentByShopId({
-        shopId: shop.id,
-        type: 'outbound_call_me',
-        since: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-      })
-    : 0;
+  const testCallsUsed = params.testCallsUsed;
+  const accessState = params.accessState;
+  const subscription = params.subscription;
 
   if (!subscription) {
     return {
@@ -114,8 +112,9 @@ export async function getShopBillingAccess(
   }
 
   const paymentMethodStatus = subscription.paymentMethodStatus ?? 'none';
-  const activeLike = subscription.status === 'active' || isTrialStillValid(subscription, now);
-  const expiredTrial = subscription.status === 'trial_expired' || (subscription.status === 'trialing' && !isTrialStillValid(subscription, now));
+  const activeLike = subscription.status === 'active' || isBillingTrialStillValid(subscription, now);
+  const expiredTrial =
+    subscription.status === 'trial_expired' || (subscription.status === 'trialing' && !isBillingTrialStillValid(subscription, now));
   const underTestLimit = testCallsUsed < testCallLimit;
   const canTestCall = activeLike && underTestLimit;
   const onboardingComplete = params.onboardingComplete ?? true;
@@ -154,4 +153,41 @@ export async function getShopBillingAccess(
     testCallsUsed,
     testCallLimit,
   };
+}
+
+export async function getShopBillingAccess(
+  deps: {
+    shopsRepository: ShopsRepository;
+    billingSubscriptionsRepository: BillingSubscriptionsRepository;
+    shopAccessStatesRepository: ShopAccessStatesRepository;
+    testCallAttemptsRepository?: TestCallAttemptsRepository;
+  },
+  params: { shopId: string; onboardingComplete?: boolean; now?: Date },
+): Promise<ShopBillingAccess> {
+  const now = params.now ?? new Date();
+  const shop = await deps.shopsRepository.findById(params.shopId);
+  if (!shop || !shop.active) {
+    return inactiveAccess();
+  }
+
+  const [subscription, accessState] = await Promise.all([
+    deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id),
+    deps.shopAccessStatesRepository.findByShopId(shop.id),
+  ]);
+  const testCallsUsed = deps.testCallAttemptsRepository
+    ? await deps.testCallAttemptsRepository.countRecentByShopId({
+        shopId: shop.id,
+        type: 'outbound_call_me',
+        since: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+      })
+    : 0;
+
+  return computeShopBillingAccessSnapshot({
+    shop,
+    subscription,
+    accessState,
+    testCallsUsed,
+    onboardingComplete: params.onboardingComplete,
+    now,
+  });
 }

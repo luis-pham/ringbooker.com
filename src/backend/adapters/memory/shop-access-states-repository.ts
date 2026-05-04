@@ -10,6 +10,17 @@ export class InMemoryShopAccessStatesRepository implements ShopAccessStatesRepos
     return [...this.records.values()].find((record) => record.shopId === shopId) ?? null;
   }
 
+  async findByShopIds(shopIds: string[]): Promise<Map<string, ShopAccessState | null>> {
+    const map = new Map<string, ShopAccessState | null>();
+    for (const id of shopIds) map.set(id, null);
+    for (const record of this.records.values()) {
+      if (shopIds.includes(record.shopId)) {
+        map.set(record.shopId, record);
+      }
+    }
+    return map;
+  }
+
   async upsert(params: {
     shopId: string;
     liveCallsEnabled?: boolean;

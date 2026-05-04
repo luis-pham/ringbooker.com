@@ -86,6 +86,32 @@ export class SupabaseBillingSubscriptionsRepository implements BillingSubscripti
     return data ? toBillingSubscription(data) : null;
   }
 
+  async findCurrentByShopIds(shopIds: string[]): Promise<Map<string, BillingSubscription | null>> {
+    const result = new Map<string, BillingSubscription | null>();
+    for (const id of shopIds) result.set(id, null);
+    if (shopIds.length === 0) return result;
+
+    const { data, error } = await this.supabase
+      .from('billing_subscriptions')
+      .select('*')
+      .in('shop_id', shopIds)
+      .order('updated_at', { ascending: false })
+      .returns<BillingSubscriptionsRow[]>();
+    if (error) {
+      throw new Error(`billing_subscriptions_find_current_by_shop_ids_failed:${error.message}`);
+    }
+    const rows = data ?? [];
+    const rowsSorted = [...rows].sort((a, b) =>
+      String(b.updated_at ?? '').localeCompare(String(a.updated_at ?? '')),
+    );
+    for (const row of rowsSorted) {
+      const sub = toBillingSubscription(row);
+      if (result.get(sub.shopId) !== null) continue;
+      result.set(sub.shopId, sub);
+    }
+    return result;
+  }
+
   async findById(id: string): Promise<BillingSubscription | null> {
     const { data, error } = await this.supabase
       .from('billing_subscriptions')

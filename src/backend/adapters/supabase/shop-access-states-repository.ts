@@ -42,6 +42,23 @@ export class SupabaseShopAccessStatesRepository implements ShopAccessStatesRepos
     return data ? toShopAccessState(data) : null;
   }
 
+  async findByShopIds(shopIds: string[]): Promise<Map<string, ShopAccessState | null>> {
+    const result = new Map<string, ShopAccessState | null>();
+    for (const id of shopIds) result.set(id, null);
+    if (shopIds.length === 0) return result;
+    const { data, error } = await this.supabase
+      .from('shop_access_states')
+      .select('*')
+      .in('shop_id', shopIds)
+      .returns<ShopAccessStateRow[]>();
+    if (error) throw new Error(`shop_access_states_find_by_shop_ids_failed:${error.message}`);
+    for (const row of data ?? []) {
+      const state = toShopAccessState(row);
+      result.set(state.shopId, state);
+    }
+    return result;
+  }
+
   async upsert(params: {
     shopId: string;
     liveCallsEnabled?: boolean;

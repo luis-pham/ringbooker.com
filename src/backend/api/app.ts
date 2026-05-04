@@ -28,13 +28,16 @@ import {
   getShopPlanCapabilities,
   type ShopSettingCapability,
 } from '@/src/backend/domain/shop-plan-capabilities';
+import { isShopOnboardingComplete } from '@/src/backend/domain/shop-onboarding';
 import type {
   BillingProvider,
+  BillingSubscription,
   BillingSubscriptionStatus,
   BlogPostStatus,
   ContactRequestStatus,
   JobType,
   Shop,
+  ShopAccessState,
 } from '@/src/backend/domain/types';
 import type {
   BlogPostsRepository,
@@ -59,6 +62,7 @@ import type {
 } from '@/src/backend/ports/repositories';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import { createNoCardTrialForShop } from '@/src/backend/services/billing/no-card-trial';
+import { buildAdminShopStatus } from '@/src/backend/services/admin/admin-shop-status';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import { formatPlanPrice, getPlanCatalogEntry, isSelfServeTrialPlan } from '@/src/backend/domain/plan-catalog';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -1213,15 +1217,6 @@ async function verifyGoogleIdToken(idToken: string): Promise<{
     name: body.name,
     aud: body.aud,
   };
-}
-
-function isShopOnboardingComplete(shop: Shop): boolean {
-  const hasVertical = typeof shop.vertical === 'string' && shop.vertical.trim().length > 0;
-  const hasOwnerName = typeof shop.user_name === 'string' && shop.user_name.trim().length > 0;
-  const hasOwnerPhone = typeof shop.user_phone === 'string' && shop.user_phone.trim().length > 0;
-  const hasTimezone = typeof shop.timezone === 'string' && shop.timezone.trim().length > 0;
-  const hasHours = !!shop.hours && Object.keys(shop.hours).length > 0;
-  return hasVertical && hasOwnerName && hasOwnerPhone && hasTimezone && hasHours;
 }
 
 /** Where to send the user after a successful user login or signup (email or Google). */
@@ -5020,6 +5015,25 @@ Submitted at: ${new Date().toISOString()}`,
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
     const shops = await deps.shopsRepository.list({ limit: 300 });
+    const shopIds = shops.map((shop) => shop.id);
+    const sinceTestCalls = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [subsByShop, accessByShop, testCountsByShop] = await Promise.all([
+      deps.billingSubscriptionsRepository
+        ? deps.billingSubscriptionsRepository.findCurrentByShopIds(shopIds)
+        : Promise.resolve(new Map<string, BillingSubscription | null>()),
+      deps.shopAccessStatesRepository
+        ? deps.shopAccessStatesRepository.findByShopIds(shopIds)
+        : Promise.resolve(new Map<string, ShopAccessState | null>()),
+      deps.testCallAttemptsRepository
+        ? deps.testCallAttemptsRepository.countRecentByShopIds({
+            shopIds,
+            since: sinceTestCalls,
+            type: 'outbound_call_me',
+          })
+        : Promise.resolve(new Map<string, number>()),
+    ]);
+
     const calls = deps.callLogsRepository ? await deps.callLogsRepository.listRecent({ limit: 500 }) : [];
     const callsByShop = new Map<
       string,
@@ -5043,10 +5057,16 @@ Submitted at: ${new Date().toISOString()}`,
       shops: shops.map((shop) => ({
         ...shop,
         totalCalls: callsByShop.get(shop.id)?.totalCalls ?? 0,
-      latestCallAt: callsByShop.get(shop.id)?.latestCallAt,
-      latestCallOutcome: callsByShop.get(shop.id)?.latestOutcome,
-    })),
-  });
+        latestCallAt: callsByShop.get(shop.id)?.latestCallAt,
+        latestCallOutcome: callsByShop.get(shop.id)?.latestOutcome,
+        adminStatus: buildAdminShopStatus({
+          shop,
+          subscription: subsByShop.get(shop.id) ?? null,
+          accessState: accessByShop.get(shop.id) ?? null,
+          testCallsUsed: testCountsByShop.get(shop.id) ?? 0,
+        }),
+      })),
+    });
   });
 
   app.get(path('/admin/billing'), async (c) => {
@@ -5248,9 +5268,30 @@ Submitted at: ${new Date().toISOString()}`,
     const shop = await deps.shopsRepository.findById(shopId);
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
+    const sinceTestCalls = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [subscription, accessState, testCallsUsed] = await Promise.all([
+      deps.billingSubscriptionsRepository
+        ? deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id)
+        : Promise.resolve(null),
+      deps.shopAccessStatesRepository ? deps.shopAccessStatesRepository.findByShopId(shop.id) : Promise.resolve(null),
+      deps.testCallAttemptsRepository
+        ? deps.testCallAttemptsRepository.countRecentByShopId({
+            shopId: shop.id,
+            type: 'outbound_call_me',
+            since: sinceTestCalls,
+          })
+        : Promise.resolve(0),
+    ]);
+
     return c.json({
       ok: true,
       shop,
+      adminStatus: buildAdminShopStatus({
+        shop,
+        subscription,
+        accessState,
+        testCallsUsed,
+      }),
     });
   });
 

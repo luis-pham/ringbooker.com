@@ -6,6 +6,20 @@ import { AdminLayout } from '@/components/admin/admin-layout';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { adminSidebarAddonStyles } from '@/components/admin/admin-sidebar-styles';
 import { adminShopsScripts, adminShopsStyles } from '@/components/admin/admin-shops';
+import {
+  adminAccountBadgeClass,
+  adminLiveAnsweringLabel,
+  adminLiveBadgeClass,
+  adminOnboardingBadgeClass,
+  adminOnboardingLabel,
+  adminPaymentBadgeClass,
+  adminPaymentMethodLabel,
+  adminPhoneSetupLabel,
+  adminShopsListSummaryLine,
+  adminSubscriptionBadgeClass,
+  adminSubscriptionLabel,
+} from '@/lib/admin-shop-status-ui';
+import type { AdminShopStatus } from '@/src/backend/services/admin/admin-shop-status';
 
 type Shop = {
   id: string;
@@ -17,6 +31,7 @@ type Shop = {
   totalCalls?: number;
   latestCallAt?: string;
   latestCallOutcome?: string;
+  adminStatus?: AdminShopStatus;
 };
 
 function formatDateTime(value?: string) {
@@ -201,7 +216,32 @@ export function AdminShopsLive() {
                             <h4 style={{ margin: 0 }}>
                               <a href={`/admin/shops/${shop.id}`}>{shop.name}</a>
                             </h4>
-                            <p>{shop.phone_number} · User {shop.user_phone}</p>
+                            <p style={{ margin: '4px 0 0' }}>{shop.phone_number} · User {shop.user_phone}</p>
+                            {shop.adminStatus ? (
+                              <>
+                                <p className="admin-shop-meta-line">{adminShopsListSummaryLine(shop.adminStatus)}</p>
+                                {shop.adminStatus.phoneSetupStatus !== 'unknown' ? (
+                                  <p className="admin-shop-forward-line">{adminPhoneSetupLabel(shop.adminStatus)}</p>
+                                ) : null}
+                                <div className="admin-shop-chip-row">
+                                  <span className={adminAccountBadgeClass(shop.adminStatus)}>
+                                    {shop.adminStatus.accountStatus === 'active' ? 'Account active' : 'Account inactive'}
+                                  </span>
+                                  <span className={adminSubscriptionBadgeClass(shop.adminStatus)}>
+                                    {adminSubscriptionLabel(shop.adminStatus)}
+                                  </span>
+                                  <span className={adminPaymentBadgeClass(shop.adminStatus)}>
+                                    {adminPaymentMethodLabel(shop.adminStatus)}
+                                  </span>
+                                  <span className={adminLiveBadgeClass(shop.adminStatus)}>
+                                    {adminLiveAnsweringLabel(shop.adminStatus)}
+                                  </span>
+                                  <span className={adminOnboardingBadgeClass(shop.adminStatus)}>
+                                    {adminOnboardingLabel(shop.adminStatus)}
+                                  </span>
+                                </div>
+                              </>
+                            ) : null}
                           </div>
                         </div>
                       </td>

@@ -94,6 +94,38 @@ export class SupabaseTestCallAttemptsRepository implements TestCallAttemptsRepos
     return count ?? 0;
   }
 
+  async countRecentByShopIds(params: {
+    shopIds: string[];
+    since: Date;
+    type?: TestCallAttempt['type'];
+  }): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+    for (const id of params.shopIds) counts.set(id, 0);
+    if (params.shopIds.length === 0) return counts;
+    const sinceIso = params.since.toISOString();
+    const pageSize = 1000;
+    let offset = 0;
+    for (;;) {
+      let query = this.supabase
+        .from('test_call_attempts')
+        .select('shop_id')
+        .in('shop_id', params.shopIds)
+        .gte('created_at', sinceIso)
+        .range(offset, offset + pageSize - 1);
+      if (params.type) query = query.eq('type', params.type);
+      const { data, error } = await query.returns<{ shop_id: string }[]>();
+      if (error) throw new Error(`test_call_attempts_count_by_shop_ids_failed:${error.message}`);
+      const rows = data ?? [];
+      for (const row of rows) {
+        const sid = row.shop_id;
+        counts.set(sid, (counts.get(sid) ?? 0) + 1);
+      }
+      if (rows.length < pageSize) break;
+      offset += pageSize;
+    }
+    return counts;
+  }
+
   async updateStatus(
     id: string,
     params: {

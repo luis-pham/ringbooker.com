@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { userBillingScripts, userBillingStyles } from '@/components/user/user-billing';
@@ -64,29 +64,42 @@ type UserBillingResponse = {
   error?: string;
 };
 
+type BillingSubscriptionRow = NonNullable<NonNullable<UserBillingResponse['billing']>['subscription']>;
+
 const PLAN_CATALOG: Array<{
   plan: ShopPlan;
-  priceLabel: string;
-  description: string;
+  priceLine: string;
   features: string[];
 }> = [
   {
     plan: 'starter',
-    priceLabel: '$79',
-    description: 'Core phone booking for smaller salons.',
-    features: ['AI answers calls 24/7', 'Booking + confirmations', '1 number included or forwarding', 'Basic call logs'],
+    priceLine: '$79/mo',
+    features: [
+      'AI answers calls 24/7',
+      'Booking + confirmations',
+      '1 number included',
+      'Basic call logs',
+    ],
   },
   {
     plan: 'professional',
-    priceLabel: '$149',
-    description: 'Best fit for active salons that need reminders and memory.',
-    features: ['Everything in Starter', 'Reminder SMS', 'Customer memory', 'Bilingual user summaries'],
+    priceLine: '$149/mo',
+    features: [
+      'Everything in Starter',
+      'Reminder SMS',
+      'Customer memory',
+      'Bilingual summaries',
+    ],
   },
   {
     plan: 'enterprise',
-    priceLabel: 'Custom',
-    description: 'Multi-location rollout with deeper integrations.',
-    features: ['Multi-location setup', 'Custom integrations', 'Higher call volume', 'Concierge onboarding'],
+    priceLine: 'Custom',
+    features: [
+      'Multi-location setup',
+      'Custom integrations',
+      'Higher call volume',
+      'Concierge onboarding',
+    ],
   },
 ];
 
@@ -105,6 +118,93 @@ function formatDate(value?: string | null) {
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function planDisplayName(plan: ShopPlan) {
+  return plan[0].toUpperCase() + plan.slice(1);
+}
+
+function subscriptionStatusTone(status: BillingSubscriptionStatus | undefined, hasSubscription: boolean): 'green' | 'purple' | 'orange' | 'red' | 'gray' {
+  if (!hasSubscription) return 'gray';
+  switch (status) {
+    case 'active':
+      return 'green';
+    case 'trialing':
+      return 'purple';
+    case 'past_due':
+      return 'red';
+    case 'canceled':
+    case 'paused':
+    case 'incomplete':
+      return 'orange';
+    default:
+      return 'orange';
+  }
+}
+
+function subscriptionCardValue(subscription: BillingSubscriptionRow | null) {
+  if (!subscription) return 'No active subscription';
+  switch (subscription.status) {
+    case 'active':
+      return 'Active';
+    case 'trialing':
+      return 'Trial';
+    case 'past_due':
+      return 'Past due';
+    case 'canceled':
+      return 'Canceled';
+    case 'paused':
+      return 'Paused';
+    case 'incomplete':
+      return 'Payment incomplete';
+    case 'unknown':
+    default:
+      return 'Not available';
+  }
+}
+
+function subscriptionCardMeta(
+  subscription: BillingSubscriptionRow | null,
+  trialDaysRemaining: number | null | undefined,
+) {
+  if (!subscription) return 'Start a subscription to unlock invoices and renewals.';
+  if (subscription.status === 'trialing' && typeof trialDaysRemaining === 'number') {
+    return `${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in trial`;
+  }
+  if (subscription.status === 'trialing') return 'Trial in progress';
+  if (subscription.currentPeriodEnd) return `Renews around ${formatDate(subscription.currentPeriodEnd)}`;
+  return subscription.trialEndsAt ? `Trial ends ${formatDate(subscription.trialEndsAt)}` : 'Subscription details update after billing.';
+}
+
+function paymentCardValue(pm: 'none' | 'pending' | 'valid' | 'failed' | 'unknown' | undefined) {
+  switch (pm) {
+    case 'valid':
+      return 'On file';
+    case 'pending':
+      return 'Pending';
+    case 'failed':
+      return 'Needs attention';
+    case 'none':
+    default:
+      return 'Not added';
+  }
+}
+
+function paymentCardMeta(pm: 'none' | 'pending' | 'valid' | 'failed' | 'unknown' | undefined) {
+  if (pm === 'valid') return 'Ready for renewals and go-live checks';
+  return 'Required before live answering';
+}
+
+function liveAnsweringValue(enabled: boolean | undefined) {
+  if (enabled === true) return 'Enabled';
+  if (enabled === false) return 'Disabled';
+  return 'Not available';
+}
+
+function liveAnsweringMeta(enabled: boolean | undefined, hasPayment: boolean | undefined) {
+  if (enabled === true) return 'RingBooker can answer real callers';
+  if (!hasPayment) return 'Add payment method to go live';
+  return 'Turn on go-live when you are ready';
 }
 
 function getStatusTone(status: BillingSubscriptionStatus | undefined) {
@@ -181,7 +281,9 @@ export function UserBillingLive() {
   const subscription = data?.billing?.subscription ?? null;
   const currentPlan = subscription?.plan ?? data?.shop?.plan ?? 'starter';
   const paymentMethodStatus = data?.billing?.paymentMethodStatus ?? subscription?.paymentMethodStatus ?? 'none';
-  const trialNoChargeUntilEndVerified = data?.billing?.trialNoChargeUntilEndVerified === true;
+  const hasPaymentMethod = data?.billing?.hasPaymentMethod === true;
+  const liveEnabled = data?.billing?.liveCallsEnabled;
+  const catalog = useMemo(() => PLAN_CATALOG.find((p) => p.plan === currentPlan) ?? PLAN_CATALOG[0], [currentPlan]);
 
   const billingHistory = useMemo(() => {
     if (!subscription) return [];
@@ -189,7 +291,7 @@ export function UserBillingLive() {
     const periodEnd = subscription.currentPeriodEnd ?? subscription.trialEndsAt ?? null;
     rows.push({
       date: formatDate(periodEnd),
-      description: `${subscription.plan[0].toUpperCase()}${subscription.plan.slice(1)} plan`,
+      description: `${planDisplayName(subscription.plan)} plan`,
       amount: subscription.amount > 0 ? formatMoney(subscription.amount, subscription.currency) : '$0',
       status: getStatusLabel(subscription.status),
       tone: getStatusTone(subscription.status),
@@ -205,6 +307,16 @@ export function UserBillingLive() {
     }
     return rows;
   }, [subscription]);
+
+  const currentPlanMeta = useMemo(() => {
+    if (currentPlan === 'enterprise') return 'Custom pricing';
+    if (subscription && subscription.amount > 0) {
+      return `${formatMoney(subscription.amount, subscription.currency)}/${subscription.interval === 'year' ? 'yr' : 'mo'}`;
+    }
+    return catalog.priceLine;
+  }, [currentPlan, subscription, catalog.priceLine]);
+
+  const showPaymentAlert = !hasPaymentMethod || !subscription;
 
   async function openCheckout(plan: ShopPlan) {
     setCheckoutPlan(plan);
@@ -233,182 +345,233 @@ export function UserBillingLive() {
     }
   }
 
+  const subTagClass = `tag ${subscriptionStatusTone(subscription?.status, Boolean(subscription))}`;
+
   return (
     <UserLayout styles={userBillingStyles} scripts={userBillingScripts} scriptPrefix="user-billing-live">
       <>
-      <div className="app-shell user-app-shell">
-        <UserPortalSidebar
-          active="billing"
-          workspaceOverride={{
-            shopName: data?.shop?.name ?? workspace.shopName,
-            plan: data?.shop?.plan ?? workspace.plan,
-            active: data?.shop?.active ?? workspace.active,
-          }}
-        />
-        <main className="main">
-          <UserPortalTopbar
-            title="Billing, plan, and growth options."
-            subtitle="Manage your RingBooker subscription using normalized billing data backed by the active provider."
+        <div className="app-shell user-app-shell">
+          <UserPortalSidebar
+            active="billing"
+            workspaceOverride={{
+              shopName: data?.shop?.name ?? workspace.shopName,
+              plan: data?.shop?.plan ?? workspace.plan,
+              active: data?.shop?.active ?? workspace.active,
+            }}
           />
+          <main className="main billing-page">
+            <UserPortalTopbar
+              title="Billing"
+              subtitle="Manage your plan, payment method, and subscription."
+            />
 
-          {loading ? (
-            <section className="card">
-              <p className="sub">Loading billing details...</p>
-            </section>
-          ) : !data?.ok ? (
-            <section className="card">
-              <h3>Unable to load billing</h3>
-              <p className="sub">{data?.error ?? 'unknown_error'}</p>
-            </section>
-          ) : (
-            <>
-              <section className="card billing-banner">
-                <div>
-                  <span className={`tag ${getStatusTone(subscription?.status)}`}>
-                    {subscription ? `${currentPlan} plan` : 'No active subscription'}
-                  </span>
-                  <h3 style={{ fontSize: 30, marginTop: 14, marginBottom: 8, letterSpacing: '-1px' }}>
-                    {data.billing?.canReceiveLiveCalls
-                      ? 'RingBooker is live and ready to answer real callers.'
-                      : data.billing?.hasPaymentMethod
-                        ? trialNoChargeUntilEndVerified
-                          ? "You're ready to go live. You won't be charged until your trial ends."
-                          : "You're ready to go live. Your payment method is on file for after-trial continuation."
-                        : 'No card is needed for setup and test calls. Add a payment method before live answering.'}
-                  </h3>
-                  <p>
-                    Provider: <strong>{data.billing?.provider.toUpperCase()}</strong>
-                    {data.billing?.customer?.providerCustomerId ? ` · Customer ID ${data.billing.customer.providerCustomerId}` : ''}
-                  </p>
-                </div>
-                <div>
-                  <div className="metric" style={{ fontSize: 44 }}>
-                    {data.billing?.formattedPrice ?? (subscription ? formatMoney(subscription.amount, subscription.currency) : '$0')}
-                    <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: 0 }}>
-                      {subscription ? ` / ${subscription.interval}` : ''}
-                    </span>
-                  </div>
-                  <div className="metric-sub" style={{ color: 'rgba(255,255,255,.72)', marginTop: 6 }}>
-                    {subscription?.trialEndsAt
-                      ? `Trial ends: ${formatDate(subscription.trialEndsAt)}${typeof data.billing?.trialDaysRemaining === 'number' ? ` · ${data.billing.trialDaysRemaining} day(s) left` : ''}`
-                      : `Next renewal: ${formatDate(subscription?.currentPeriodEnd)}`}
-                  </div>
-                  <div className="metric-sub" style={{ color: 'rgba(255,255,255,.72)', marginTop: 6 }}>
-                    Payment method: <strong>{paymentMethodStatus}</strong> · Live answering:{' '}
-                    <strong>{data.billing?.liveCallsEnabled ? 'enabled' : 'disabled'}</strong>
-                  </div>
-                  <div style={{ marginTop: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <span className={`tag ${getStatusTone(subscription?.status)}`}>{getStatusLabel(subscription?.status)}</span>
-                    {data.billing?.canGoLive ? <span className="tag green">Ready to go live</span> : null}
-                    {data.billing?.blockReason ? <span className="tag orange">{data.billing.blockReason}</span> : null}
-                  </div>
-                </div>
+            {loading ? (
+              <section className="card">
+                <p className="sub">Loading billing details…</p>
               </section>
+            ) : !data?.ok ? (
+              <section className="card">
+                <h3>Unable to load billing</h3>
+                <p className="sub">{data?.error ?? 'unknown_error'}</p>
+              </section>
+            ) : (
+              <>
+                <section className="billing-status-grid" aria-label="Billing summary">
+                  <div className="billing-status-card">
+                    <div className="bst-label">Current plan</div>
+                    <div className="bst-value">{planDisplayName(currentPlan)}</div>
+                    <div className="bst-meta">{currentPlanMeta}</div>
+                  </div>
+                  <div className="billing-status-card">
+                    <div className="bst-label">Subscription</div>
+                    <div className="bst-value">
+                      <span className={subTagClass}>{subscriptionCardValue(subscription)}</span>
+                    </div>
+                    <div className="bst-meta">{subscriptionCardMeta(subscription, data.billing?.trialDaysRemaining)}</div>
+                  </div>
+                  <div className="billing-status-card">
+                    <div className="bst-label">Payment method</div>
+                    <div className="bst-value">{paymentCardValue(paymentMethodStatus)}</div>
+                    <div className="bst-meta">{paymentCardMeta(paymentMethodStatus)}</div>
+                  </div>
+                  <div className="billing-status-card">
+                    <div className="bst-label">Live answering</div>
+                    <div className="bst-value">{liveAnsweringValue(liveEnabled)}</div>
+                    <div className="bst-meta">{liveAnsweringMeta(liveEnabled, hasPaymentMethod)}</div>
+                  </div>
+                </section>
 
-              <section className="pricing-mini" style={{ marginTop: 18 }}>
-                {PLAN_CATALOG.map((plan) => {
-                  const isCurrent = currentPlan === plan.plan;
-                  const isBusy = checkoutPlan === plan.plan;
-                  return (
-                    <div className={`price-mini${isCurrent ? ' featured' : ''}`} key={plan.plan}>
-                      {isCurrent ? <span className="tag purple">Current plan</span> : null}
-                      <h4 style={{ marginTop: isCurrent ? 10 : 0 }}>
-                        {plan.plan[0].toUpperCase()}
-                        {plan.plan.slice(1)}
-                      </h4>
-                      <div className="amt">{plan.priceLabel}</div>
-                      <p className="sub" style={{ marginBottom: 12 }}>{plan.description}</p>
-                      <ul>
-                        {plan.features.map((feature) => (
-                          <li key={feature}>{feature}</li>
-                        ))}
-                      </ul>
-                      <div style={{ marginTop: 16 }}>
+                {showPaymentAlert ? (
+                  <div className="billing-alert-strip" role="status">
+                    <p>Add a payment method before turning on live answering.</p>
+                    {subscription ? (
+                      <button
+                        type="button"
+                        className="btn purple"
+                        disabled={checkoutPlan !== null}
+                        onClick={() => void openCheckout(currentPlan)}
+                      >
+                        {checkoutPlan ? 'Starting…' : 'Add payment method'}
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <section className="pricing-mini" style={{ marginBottom: 16 }}>
+                  {PLAN_CATALOG.map((plan) => {
+                    const isCurrent = currentPlan === plan.plan;
+                    const isBusy = checkoutPlan === plan.plan;
+                    const isEnterprise = plan.plan === 'enterprise';
+
+                    let cta: ReactNode;
+                    if (isEnterprise) {
+                      cta = (
+                        <a className="btn" href="/contact">
+                          Contact us
+                        </a>
+                      );
+                    } else if (isCurrent) {
+                      if (!hasPaymentMethod) {
+                        cta = (
+                          <button
+                            type="button"
+                            className="btn purple"
+                            disabled={isBusy}
+                            onClick={() => void openCheckout(plan.plan)}
+                          >
+                            {isBusy ? 'Starting…' : 'Add payment method'}
+                          </button>
+                        );
+                      } else {
+                        cta = (
+                          <span className="btn" style={{ opacity: 0.85, cursor: 'default' }} aria-current="true">
+                            Current plan
+                          </span>
+                        );
+                      }
+                    } else if (plan.plan === 'professional' && currentPlan === 'starter') {
+                      cta = (
                         <button
                           type="button"
-                          className={`btn${isCurrent ? '' : ' purple'}`}
-                          onClick={() => void openCheckout(plan.plan)}
+                          className="btn purple"
                           disabled={isBusy}
+                          onClick={() => void openCheckout('professional')}
                         >
-                          {isBusy ? 'Starting checkout...' : isCurrent ? 'Add payment method' : 'Choose this plan'}
+                          {isBusy ? 'Starting…' : 'Upgrade to Professional'}
                         </button>
-                        <p className="sub" style={{ marginTop: 8 }}>
-                          {trialNoChargeUntilEndVerified
-                            ? "You won't be charged until your trial ends."
-                            : 'Add a payment method to continue after your trial.'}
-                        </p>
+                      );
+                    } else {
+                      cta = (
+                        <button
+                          type="button"
+                          className="btn purple"
+                          disabled={isBusy}
+                          onClick={() => void openCheckout(plan.plan)}
+                        >
+                          {isBusy ? 'Starting…' : `Choose ${planDisplayName(plan.plan)}`}
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <div className={`price-mini${isCurrent ? ' featured' : ''}`} key={plan.plan}>
+                        <div className="price-mini-body">
+                          {isCurrent ? (
+                            <span className="tag purple" style={{ marginBottom: 8, display: 'inline-flex' }}>
+                              Current plan
+                            </span>
+                          ) : null}
+                          <h4 style={{ margin: 0 }}>{planDisplayName(plan.plan)}</h4>
+                          <div className="amt">{plan.priceLine}</div>
+                          <ul>
+                            {plan.features.map((feature) => (
+                              <li key={feature}>{feature}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="price-mini-cta">{cta}</div>
+                      </div>
+                    );
+                  })}
+                </section>
+
+                {billingHistory.length > 0 ? (
+                  <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
+                    <div className="panel-head">
+                      <div>
+                        <h3>Billing history</h3>
+                        <p className="sub">Recent subscription activity and renewal timing.</p>
                       </div>
                     </div>
-                  );
-                })}
-              </section>
-
-              <section className="grid grid-2" style={{ marginTop: 18 }}>
-                <div className="card">
-                  <div className="panel-head">
-                    <div>
-                      <h3>Billing history</h3>
-                      <p className="sub">Latest normalized subscription state and upcoming period dates.</p>
-                    </div>
-                  </div>
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Description</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {billingHistory.length > 0 ? (
-                        billingHistory.map((row) => (
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Description</th>
+                          <th>Amount</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {billingHistory.map((row) => (
                           <tr key={`${row.date}-${row.description}`}>
                             <td>{row.date}</td>
                             <td>{row.description}</td>
                             <td>{row.amount}</td>
-                            <td><span className={`tag ${row.tone}`}>{row.status}</span></td>
+                            <td>
+                              <span className={`tag ${row.tone}`}>{row.status}</span>
+                            </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={4}>No billing events available yet. Start checkout to create the first subscription period.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="card soft">
+                        ))}
+                      </tbody>
+                    </table>
+                  </section>
+                ) : (
+                  <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
+                    <div className="panel-head">
+                      <div>
+                        <h3>Billing history</h3>
+                      </div>
+                    </div>
+                    <p className="sub" style={{ marginBottom: 0 }}>
+                      No invoices yet. Your invoices and subscription events will appear here after your first billing
+                      period.
+                    </p>
+                  </section>
+                )}
+
+                <section className="card soft">
                   <div className="panel-head">
                     <div>
-                      <h3>What your plan covers</h3>
-                      <p className="sub">Real subscription scope for the current backend implementation.</p>
+                      <h3>Current plan includes</h3>
+                      <p className="sub">What you get with RingBooker on your current plan tier.</p>
                     </div>
                   </div>
-                  <div className="list">
-                    <div className="list-item"><div className="item-main"><div className="avatar">☎</div><div><h4>Phone agent subscription</h4><p>Monthly billing attached to business <strong>{data.shop?.name}</strong></p></div></div></div>
-                    <div className="list-item"><div className="item-main"><div className="avatar">API</div><div><h4>Provider-neutral billing model</h4><p>Internal records track provider, customer, and subscription IDs separately from the business profile</p></div></div></div>
-                    <div className="list-item"><div className="item-main"><div className="avatar">SMS</div><div><h4>Operational messaging stays in-app</h4><p>Billing state can change providers later without breaking booking, reminder, or callback workflows</p></div></div></div>
-                  </div>
-                </div>
-              </section>
-
-              {checkoutError ? (
-                <section className="card" style={{ marginTop: 18 }}>
-                  <h3>Checkout could not start</h3>
-                  <p className="sub">{checkoutError}</p>
+                  <ul className="plan-includes-list">
+                    <li>AI phone answering</li>
+                    <li>Booking request capture</li>
+                    <li>Missed-call follow-up</li>
+                    <li>Call summaries</li>
+                    <li>SMS workflows where enabled for your plan</li>
+                  </ul>
+                  <p className="plan-includes-foot">Billing is managed securely through Paddle.</p>
                 </section>
-              ) : null}
-            </>
-          )}
 
-          <div className="footer-inline">
-            <span>RingBooker user portal · live billing data</span>
-            <span>Provider abstraction · normalized subscriptions</span>
-          </div>
-        </main>
-      </div>
-      <UserPortalMobileTabbar active="billing" />
+                {checkoutError ? (
+                  <section className="card" style={{ marginTop: 16 }}>
+                    <h3>Checkout could not start</h3>
+                    <p className="sub">{checkoutError}</p>
+                  </section>
+                ) : null}
+              </>
+            )}
+
+            <div className="footer-inline">
+              <span>RingBooker · {data?.shop?.name ?? 'Your business'}</span>
+            </div>
+          </main>
+        </div>
+        <UserPortalMobileTabbar active="billing" />
       </>
     </UserLayout>
   );

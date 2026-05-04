@@ -13,6 +13,16 @@ import {
   IconShop,
   IconSliders,
 } from '@/components/admin/admin-sidebar-icons';
+import {
+  adminBlockReasonLabel,
+  adminLiveAnsweringLabel,
+  adminOnboardingLabel,
+  adminPaymentMethodLabel,
+  adminPhoneSetupLabel,
+  adminSubscriptionLabel,
+  adminTrialCardLabel,
+} from '@/lib/admin-shop-status-ui';
+import type { AdminShopStatus } from '@/src/backend/services/admin/admin-shop-status';
 import { adminShopDetailScripts, adminShopDetailStyles } from '@/components/admin/admin-shop-detail';
 
 type ServiceItem = {
@@ -66,6 +76,7 @@ type CallsPagination = {
 type LoadShopResponse = {
   ok: boolean;
   shop?: ShopDetail;
+  adminStatus?: AdminShopStatus;
   error?: string;
 };
 
@@ -117,6 +128,13 @@ type AnalyticsResponse = {
   error?: string;
 };
 
+function formatShortDateTime(value?: string | null) {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return parsed.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 type ShopTab = 'info' | 'ai' | 'billing' | 'calls' | 'analytics';
 
 function utcTodayIso(): string {
@@ -154,6 +172,7 @@ export function AdminShopDetailLive() {
   const shopId = params?.id;
   const [tab, setTab] = useState<ShopTab>('info');
   const [shop, setShop] = useState<ShopDetail | null>(null);
+  const [adminStatus, setAdminStatus] = useState<AdminShopStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -183,21 +202,23 @@ export function AdminShopDetailLive() {
 
   const loadShop = useCallback(async () => {
     if (!shopId) return;
-    void fetch(`/api/backend/admin/shops/${shopId}`)
-      .then(async (response) => (await response.json()) as LoadShopResponse)
-      .then((body) => {
-        if (!body.ok || !body.shop) {
-          setError(body.error ?? 'unable_to_load');
-          setShop(null);
-          return;
-        }
-        setError(null);
-        setShop(body.shop);
-      })
-      .catch(() => {
-        setError('network_error');
+    try {
+      const response = await fetch(`/api/backend/admin/shops/${shopId}`);
+      const body = (await response.json()) as LoadShopResponse;
+      if (!body.ok || !body.shop) {
+        setError(body.error ?? 'unable_to_load');
         setShop(null);
-      });
+        setAdminStatus(null);
+        return;
+      }
+      setError(null);
+      setShop(body.shop);
+      setAdminStatus(body.adminStatus ?? null);
+    } catch {
+      setError('network_error');
+      setShop(null);
+      setAdminStatus(null);
+    }
   }, [shopId]);
 
   useEffect(() => {
@@ -225,6 +246,7 @@ export function AdminShopDetailLive() {
       setRecentCalls([]);
       setCallsPagination(null);
       setAnalytics(null);
+      setAdminStatus(null);
     }
   }, [shopId]);
 
@@ -357,11 +379,11 @@ export function AdminShopDetailLive() {
         }),
       });
       const body = (await response.json()) as LoadShopResponse;
-      if (!response.ok || !body.ok || !body.shop) {
+      if (!response.ok || !body.ok) {
         setError(body.error ?? 'save_failed');
         return;
       }
-      setShop(body.shop);
+      await loadShop();
       setNotice('Business profile and policy saved.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'network_error');
@@ -393,11 +415,11 @@ export function AdminShopDetailLive() {
         }),
       });
       const body = (await response.json()) as LoadShopResponse;
-      if (!response.ok || !body.ok || !body.shop) {
+      if (!response.ok || !body.ok) {
         setError(body.error ?? 'save_failed');
         return;
       }
-      setShop(body.shop);
+      await loadShop();
       setNotice('AI and automation config saved.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'network_error');
@@ -423,11 +445,11 @@ export function AdminShopDetailLive() {
         }),
       });
       const body = (await response.json()) as LoadShopResponse;
-      if (!response.ok || !body.ok || !body.shop) {
+      if (!response.ok || !body.ok) {
         setError(body.error ?? 'save_failed');
         return;
       }
-      setShop(body.shop);
+      await loadShop();
       setNotice('Billing status updated.');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'network_error');
@@ -481,6 +503,74 @@ export function AdminShopDetailLive() {
             </div>
           ) : (
             <>
+              {adminStatus ? (
+                <section className="card admin-status-overview">
+                  <div className="panel-head">
+                    <div>
+                      <h3>Status overview</h3>
+                      <p className="sub">Billing, live answering, onboarding, and phone setup at a glance.</p>
+                    </div>
+                  </div>
+                  <dl className="admin-status-dl">
+                    <div className="admin-status-row">
+                      <dt>Account</dt>
+                      <dd>{adminStatus.accountStatus === 'active' ? 'Active' : 'Inactive'}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Plan</dt>
+                      <dd>{shop.plan}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Trial</dt>
+                      <dd>{adminTrialCardLabel(adminStatus)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Trial started</dt>
+                      <dd>{formatShortDateTime(adminStatus.trialStartedAt)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Trial ends</dt>
+                      <dd>{formatShortDateTime(adminStatus.trialEndsAt)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Subscription</dt>
+                      <dd>{adminSubscriptionLabel(adminStatus)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Payment method</dt>
+                      <dd>{adminPaymentMethodLabel(adminStatus)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Live answering</dt>
+                      <dd>{adminLiveAnsweringLabel(adminStatus)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Can go live</dt>
+                      <dd>{adminStatus.canGoLive ? 'Yes' : 'No'}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Block reason</dt>
+                      <dd>{adminBlockReasonLabel(adminStatus)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Onboarding</dt>
+                      <dd>{adminOnboardingLabel(adminStatus)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Phone setup</dt>
+                      <dd>{adminPhoneSetupLabel(adminStatus)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Business number</dt>
+                      <dd>{adminStatus.businessPhone ?? '—'}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>RingBooker / Telnyx number</dt>
+                      <dd>{adminStatus.telnyxNumber ?? '—'}</dd>
+                    </div>
+                  </dl>
+                </section>
+              ) : null}
               <div className="shop-tab-bar" role="tablist" aria-label="Business sections">
                 <button
                   type="button"

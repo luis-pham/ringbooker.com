@@ -442,6 +442,8 @@ export interface BillingCustomersRepository {
 
 export interface BillingSubscriptionsRepository {
   findCurrentByShopId(shopId: string, provider?: BillingProvider): Promise<BillingSubscription | null>;
+  /** Latest subscription per shop by `updated_at` (same rule as {@link findCurrentByShopId} without provider filter). */
+  findCurrentByShopIds(shopIds: string[]): Promise<Map<string, BillingSubscription | null>>;
   findById(id: string): Promise<BillingSubscription | null>;
   findByProviderSubscriptionId(
     provider: BillingProvider,
@@ -506,6 +508,7 @@ export interface BillingSubscriptionsRepository {
 
 export interface ShopAccessStatesRepository {
   findByShopId(shopId: string): Promise<ShopAccessState | null>;
+  findByShopIds(shopIds: string[]): Promise<Map<string, ShopAccessState | null>>;
   upsert(params: {
     shopId: string;
     liveCallsEnabled?: boolean;
@@ -533,6 +536,7 @@ export interface TestCallAttemptsRepository {
     metadata?: Record<string, unknown> | null;
   }): Promise<TestCallAttempt>;
   countRecentByShopId(params: { shopId: string; since: Date; type?: TestCallAttemptType }): Promise<number>;
+  countRecentByShopIds(params: { shopIds: string[]; since: Date; type?: TestCallAttemptType }): Promise<Map<string, number>>;
   updateStatus(
     id: string,
     params: {

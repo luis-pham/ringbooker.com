@@ -42,7 +42,7 @@ export function UserPortalSidebar({ active, workspaceOverride }: UserPortalSideb
         <div className="workspace">
           <h3>{shopName}</h3>
           <p>
-            AI Receptionist is {isActive ? 'active' : 'paused'}. [{toPlanLabel(plan)} plan].
+            {isActive ? 'AI setup active' : 'Account paused'} · {toPlanLabel(plan)} plan
           </p>
         </div>
         <UserPortalNav active={active} />

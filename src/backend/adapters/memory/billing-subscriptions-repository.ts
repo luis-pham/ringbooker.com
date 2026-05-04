@@ -52,6 +52,18 @@ export class InMemoryBillingSubscriptionsRepository implements BillingSubscripti
     return sortByUpdatedAtDescending(matches)[0] ?? null;
   }
 
+  async findCurrentByShopIds(shopIds: string[]): Promise<Map<string, BillingSubscription | null>> {
+    const result = new Map<string, BillingSubscription | null>();
+    for (const id of shopIds) {
+      result.set(id, null);
+    }
+    for (const id of shopIds) {
+      const current = await this.findCurrentByShopId(id);
+      result.set(id, current);
+    }
+    return result;
+  }
+
   async findById(id: string): Promise<BillingSubscription | null> {
     return this.records.get(id) ?? null;
   }
