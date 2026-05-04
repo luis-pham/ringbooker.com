@@ -816,32 +816,36 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       const dc = pc.createDataChannel('oai-events');
       directDataChannelRef.current = dc;
       let initialGreetingRequested = false;
+      let realtimeSessionReady = false;
       const requestInitialGreeting = () => {
-        if (initialGreetingRequested || dc.readyState !== 'open') return;
-        initialGreetingRequested = true;
+        if (initialGreetingRequested || !realtimeSessionReady || dc.readyState !== 'open') return;
         setStatusText('The receptionist is greeting you…');
+        dc.send(
+          JSON.stringify({
+            type: 'conversation.item.create',
+            item: {
+              type: 'message',
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: 'I just connected to the web voice demo. Please greet me first before I say anything.',
+                },
+              ],
+            },
+          }),
+        );
         dc.send(
           JSON.stringify({
             type: 'response.create',
             response: {
               modalities: ['audio', 'text'],
               instructions:
-                'The caller has just connected to the live web demo. Speak first now. Say one short, natural receptionist greeting, welcome them to the demo, then stop and listen. Do not wait for the caller to speak.',
-              input: [
-                {
-                  type: 'message',
-                  role: 'user',
-                  content: [
-                    {
-                      type: 'input_text',
-                      text: 'I just connected to the web voice demo. Please greet me first before I say anything.',
-                    },
-                  ],
-                },
-              ],
+                'Speak first now. Say one short, natural receptionist greeting, welcome the caller to the demo, then stop and listen. Do not wait for the caller to speak.',
             },
           }),
         );
+        initialGreetingRequested = true;
       };
       dc.addEventListener('open', () => {
         window.setTimeout(requestInitialGreeting, 250);
@@ -849,7 +853,10 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
       dc.addEventListener('message', (event) => {
         try {
           const data = JSON.parse(String(event.data)) as { error?: { message?: string }; type?: string };
-          if (data.type === 'session.created') requestInitialGreeting();
+          if (data.type === 'session.created' || data.type === 'session.updated') {
+            realtimeSessionReady = true;
+            requestInitialGreeting();
+          }
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
           if (data.type === 'response.done') {
             setStatusText('You\'re connected — speak naturally or tap a prompt below.');
@@ -1174,7 +1181,7 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
 
                   <h2 className="vd-status-h">
                     {stage === 'queued' || stage === 'dialing' ? 'Connecting…' :
-                     stage === 'live' ? 'You\'re live in the browser' :
+                     stage === 'live' ? 'Your AI receptionist demo is ready' :
                      stage === 'completed' ? 'Demo complete' : 'Something went wrong'}
                   </h2>
                   <p className="vd-status-body">{statusText}</p>
