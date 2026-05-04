@@ -56,8 +56,9 @@ html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:var(--mk-font-body);line-height:var(--mk-leading-body)}
 a{text-decoration:none;color:inherit}
 .pricing-page{background:#fff}
-/* Desktop: align hero top rhythm with marketing-demo (84px under fixed .mk-nav ~69px) */
-.hero-page{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 74%)}
+/* Hero + plan cards: one continuous wash (no hard break vs gray section below) */
+.pricing-hero-plans{padding:112px 48px 88px;background:radial-gradient(ellipse 100% 65% at 50% -8%,#EDE9FE 0%,#FDF4FF 38%,#fff 72%,#fafbfc 100%)}
+.pricing-plans-inner{margin-top:48px;padding-top:8px}
 .container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 .hero-copy{max-width:980px;margin:0 auto;text-align:center}
 .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
@@ -155,7 +156,8 @@ a{text-decoration:none;color:inherit}
 .cta-box .btn-trial-soft{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.28);color:#fff}
 .cta-box .btn-trial-soft:hover{border-color:rgba(255,255,255,.45);color:#fff}
 .pricing-trial-note{max-width:760px;margin:28px auto 0;padding:16px 20px;border-radius:var(--r-lg);background:rgba(245,243,255,.65);border:1px solid rgba(196,181,253,.45);font-size:14px;line-height:1.65;color:#475569;text-align:center}
-.compare-section{margin-top:48px}
+.compare-section{margin-top:0}
+.pricing-detail-lower .pricing-faq-frame{margin-top:56px}
 .compare-wrap{margin:0 -8px;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .compare-table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:#fff;box-shadow:var(--shadow);font-size:14px}
 .compare-table th,.compare-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
@@ -167,18 +169,25 @@ a{text-decoration:none;color:inherit}
 .compare-yes{text-align:center;font-weight:700;color:var(--green)}
 .compare-dash{text-align:center;color:var(--text-light);font-weight:600}
 .compare-val{font-size:14px;line-height:1.45}
-.compare-cta{margin-top:36px;text-align:center}
-.compare-cta p{font-size:15px;color:var(--text-gray);margin-bottom:18px;line-height:1.6}
-.compare-cta-row{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
-.compare-cta-row a{padding:12px 20px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid var(--border);color:var(--text-dark);background:#fff;transition:all .2s}
-.compare-cta-row a:hover{border-color:rgba(139,92,246,.45);color:var(--purple-dark);background:rgba(245,243,255,.4)}
-.compare-cta-row a.primary{background:var(--text-dark);color:#fff;border-color:var(--text-dark)}
-.compare-cta-row a.primary:hover{background:#1f2937;border-color:#1f2937;color:#fff}
+.pricing-faq-frame{
+  max-width:var(--mk-narrow-width,760px);
+  margin:0 auto;
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  overflow:hidden;
+  background:#fff;
+  box-shadow:var(--shadow);
+}
+.pricing-faq-frame .mfaq-section--embedded{padding-left:24px;padding-right:24px;padding-bottom:28px}
+.pricing-faq-frame .mfaq-list{border:none;border-radius:0}
+.pricing-cta-lower{padding:64px 48px 88px;background:#fff}
+.pricing-cta-lower .cta-box{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 @media(max-width:960px){
-  .hero-page,.section{padding-left:22px;padding-right:22px}
+  .pricing-hero-plans,.section,.pricing-cta-lower{padding-left:22px;padding-right:22px}
+  .pricing-faq-frame{margin-left:0;margin-right:0;max-width:100%}
   .trust-row,.plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.cta-box{grid-template-columns:1fr}
   /* Clear fixed .mk-nav (68px + 1px border) + breathing room — matches topic hub mobile rhythm */
-  .hero-page{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:52px}
+  .pricing-hero-plans{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:64px}
   .hero-copy{text-align:left}
   .hero-copy h1{font-size:40px}
   .hero-copy p{margin-left:0;margin-right:0}
@@ -190,6 +199,7 @@ a{text-decoration:none;color:inherit}
   .cta-actions{justify-content:flex-start}
 }
 @media(max-width:640px){
+  .pricing-plans-inner{margin-top:36px}
   .hero-actions{flex-direction:column;align-items:stretch}
   .btn-demo-live,.btn-trial-soft,.btn-dark,.btn-outline{width:100%}
   .section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
@@ -376,7 +386,7 @@ export function MarketingPricingTemplate() {
         <MarketingChromeStyles />
         <MarketingHeader active="pricing" />
         <main className="pricing-page">
-          <section className="hero-page">
+          <section className="pricing-hero-plans">
             <div className="container">
               <div className="hero-copy">
                 <nav aria-label="Breadcrumb" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.35, color: 'var(--mk-text-soft,#94a3b8)', textAlign: 'left' }}>
@@ -396,45 +406,47 @@ export function MarketingPricingTemplate() {
                   <div className="trust-pill"><span>📋</span> Summaries &amp; callback capture</div>
                 </div>
               </div>
+
+              <div className="pricing-plans-inner">
+                <div className="sec-label">Plans</div>
+                <h2 className="sec-title">Choose the right level of call recovery.</h2>
+                <p className="sec-sub">
+                  Starter covers after-hours, overflow, and missed-call recovery. Professional adds follow-up, caller context, and owner transfer where configured. Custom is for multi-location teams, higher volume, and custom routing.
+                </p>
+                <div className="pt-toggle">
+                  <button className="pt-btn on" id="pricing-tog-m" type="button">Monthly</button>
+                  <button className="pt-btn" id="pricing-tog-a" type="button">Annual</button>
+                  <span className="pt-save">Save 20%</span>
+                </div>
+
+                <div className="plan-grid">
+                  {plans.map((plan) => (
+                    <div className={`plan ${plan.featured ? 'star' : ''}`} key={plan.name}>
+                      {plan.featured ? <div className="plan-badge">Most popular</div> : null}
+                      <div className="plan-name">{plan.name}</div>
+                      <div className="plan-desc">{plan.description}</div>
+                      <div className={`plan-price ${plan.priceId ? '' : 'plan-price-custom'}`} id={plan.priceId}>{plan.price} {plan.priceId ? <span>/ month</span> : <span>/ contact us</span>}</div>
+                      <div className="plan-div" />
+                      <ul className="plan-feats">
+                        {plan.benefits.map((benefit) => (
+                          <li key={benefit}>{benefit}</li>
+                        ))}
+                      </ul>
+                      <a className={`plan-btn ${plan.featured ? 'pb-dark' : 'pb-outline'}`} href={plan.href}>{plan.cta}</a>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="pricing-trial-note">
+                  <strong>14-day free trial.</strong> No card needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
+                  {trialNoChargeCopyVerified ? <> You won&apos;t be charged until your trial ends.</> : null}
+                </p>
+              </div>
             </div>
           </section>
 
-          <section className="section gray">
+          <section className="section gray pricing-detail-lower">
             <div className="container">
-              <div className="sec-label">Plans</div>
-              <h2 className="sec-title">Choose the right level of call recovery.</h2>
-              <p className="sec-sub">
-                Starter covers after-hours, overflow, and missed-call recovery. Professional adds follow-up, caller context, and owner transfer where configured. Custom is for multi-location teams, higher volume, and custom routing.
-              </p>
-              <div className="pt-toggle">
-                <button className="pt-btn on" id="pricing-tog-m" type="button">Monthly</button>
-                <button className="pt-btn" id="pricing-tog-a" type="button">Annual</button>
-                <span className="pt-save">Save 20%</span>
-              </div>
-
-              <div className="plan-grid">
-                {plans.map((plan) => (
-                  <div className={`plan ${plan.featured ? 'star' : ''}`} key={plan.name}>
-                    {plan.featured ? <div className="plan-badge">Most popular</div> : null}
-                    <div className="plan-name">{plan.name}</div>
-                    <div className="plan-desc">{plan.description}</div>
-                    <div className={`plan-price ${plan.priceId ? '' : 'plan-price-custom'}`} id={plan.priceId}>{plan.price} {plan.priceId ? <span>/ month</span> : <span>/ contact us</span>}</div>
-                    <div className="plan-div" />
-                    <ul className="plan-feats">
-                      {plan.benefits.map((benefit) => (
-                        <li key={benefit}>{benefit}</li>
-                      ))}
-                    </ul>
-                    <a className={`plan-btn ${plan.featured ? 'pb-dark' : 'pb-outline'}`} href={plan.href}>{plan.cta}</a>
-                  </div>
-                ))}
-              </div>
-
-              <p className="pricing-trial-note">
-                <strong>14-day free trial.</strong> No card needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
-                {trialNoChargeCopyVerified ? <> You won&apos;t be charged until your trial ends.</> : null}
-              </p>
-
               <div className="compare-section">
                 <div className="sec-label">Compare plans</div>
                 <h2 className="sec-title" style={{ maxWidth: '36ch' }}>
@@ -472,39 +484,20 @@ export function MarketingPricingTemplate() {
                     </tbody>
                   </table>
                 </div>
-                <div className="compare-cta">
-                  <p>Start with the plan that fits your call flow. You can change plans later.</p>
-                  <div className="compare-cta-row">
-                    <a href="/user/signup?plan=starter">Start Starter trial</a>
-                    <a className="primary" href="/user/signup?plan=professional">
-                      Start Professional trial
-                    </a>
-                    <a href="/contact">Talk to us</a>
-                  </div>
-                </div>
+              </div>
+
+              <div className="pricing-faq-frame">
+                <MarketingFaqAccordion
+                  embedded
+                  items={PRICING_FAQ_ITEMS}
+                  title="Pricing questions, answered plainly."
+                  subtitle={null}
+                />
               </div>
             </div>
           </section>
 
-          <section className="section">
-            <div className="container">
-              <div className="sec-label">Number setup</div>
-              <h2 className="sec-title">Current number first. Dedicated line if you prefer.</h2>
-              <p className="sec-sub" style={{ maxWidth: '720px', marginBottom: 0 }}>
-                Most businesses forward missed, busy, or after-hours calls to RingBooker while customers keep calling the number they already know. A dedicated RingBooker line is optional.
-              </p>
-            </div>
-          </section>
-
-          <section className="section gray">
-            <MarketingFaqAccordion
-              items={PRICING_FAQ_ITEMS}
-              title="Pricing questions, answered plainly."
-              subtitle={null}
-            />
-          </section>
-
-          <section className="section">
+          <section className="section pricing-cta-lower">
             <div className="container">
               <div className="cta-box">
                 <div>
