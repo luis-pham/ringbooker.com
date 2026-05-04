@@ -3,13 +3,13 @@ import Link from 'next/link';
 
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import type { DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
-
-/** Hub `/demo`: only these industry cards (hair / day / med / beauty hub cards removed). */
-const DEMO_HUB_CARD_SLUGS: DemoVerticalSlug[] = ['nail-salon'];
 import type { MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
+
+/** Hub `/demo`: only these industry cards (hair / day / med / beauty hub cards removed). */
+const DEMO_HUB_CARD_SLUGS: DemoVerticalSlug[] = ['nail-salon'];
 
 /** Hub-only copy: titles, one line, scenario chips (preview, not full prompt lists). */
 const DEMO_HUB: Record<
