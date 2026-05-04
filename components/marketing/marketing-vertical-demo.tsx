@@ -241,9 +241,6 @@ const styles: string[] = [
   @keyframes vdPulse{0%,100%{opacity:1}50%{opacity:.35}}
   .vd-status-h{font-size:22px;font-weight:900;letter-spacing:-.5px;color:#111827;margin:0 0 6px}
   .vd-status-body{font-size:14px;line-height:1.6;color:#6B7280;margin:0 0 18px}
-  .vd-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:20px}
-  .vd-step{border:1px solid #E5E7EB;border-radius:12px;padding:8px 6px;text-align:center;font-size:11px;font-weight:800;color:#9CA3AF}
-  .vd-step.on{border-color:var(--va);background:color-mix(in srgb,var(--va) 10%,#fff);color:#111827}
   .vd-wave{height:30px;display:flex;justify-content:center;align-items:center;gap:3px;margin-bottom:14px}
   .vd-wave span{display:block;width:3px;border-radius:4px;background:#10B981;animation:vdWave 1.65s ease-in-out infinite}
   .vd-wave span:nth-child(1){height:8px}.vd-wave span:nth-child(2){height:20px;animation-delay:.12s}.vd-wave span:nth-child(3){height:28px;animation-delay:.24s}.vd-wave span:nth-child(4){height:16px;animation-delay:.36s}.vd-wave span:nth-child(5){height:24px;animation-delay:.48s}
@@ -328,6 +325,7 @@ const styles: string[] = [
       padding:8px 40px 72px;
     }
     .vd-right{display:flex;flex-direction:column;gap:0;position:sticky;top:96px;align-items:center}
+    .vd-wave{display:none}
   }
   @media(min-width:1200px){
     .vd-wrap{max-width:1120px;grid-template-columns:1fr 340px;gap:64px;padding:8px 48px 80px}
@@ -437,17 +435,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
   const hiddenCount = Math.max(0, config.tryAsking.length - 4);
   const isSubmitting = stage === 'queued' || stage === 'dialing' || stage === 'live';
   const isActive = stage !== 'idle';
-  const activeStep =
-    stage === 'idle' || stage === 'failed'
-      ? 0
-      : stage === 'queued' || stage === 'dialing'
-        ? 1
-        : stage === 'live'
-          ? 2
-          : stage === 'completed'
-            ? 3
-            : 0;
-
   useEffect(() => () => {
     clearPollTimer();
     cleanupDirectRealtime();
@@ -1192,12 +1179,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   </h2>
                   <p className="vd-status-body">{statusText}</p>
 
-                  <div className="vd-steps">
-                    {['Ready', 'Connecting', 'Live', 'Ended'].map((label, i) => (
-                      <div key={label} className={`vd-step ${activeStep >= i ? 'on' : ''}`}>{label}</div>
-                    ))}
-                  </div>
-
                   {stage === 'live' ? (
                     <>
                       <div className="vd-wave"><span /><span /><span /><span /><span /></div>
@@ -1256,7 +1237,6 @@ export function MarketingVerticalDemoTemplate({ vertical }: { vertical: DemoVert
                   ))}
                 </div>
               ) : null}
-              <p className="vd-disclaimer">{config.demoVsReal}</p>
             </div>
 
             {/* ══ RIGHT COLUMN (desktop only) ══════════════════════ */}
