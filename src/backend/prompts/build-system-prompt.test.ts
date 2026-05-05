@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import type { Customer, Shop } from '@/src/backend/domain/types';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 
-function createShop(plan: Shop['plan']): Shop {
+function createShop(plan: Shop['plan'], languages?: string[]): Shop {
   return {
     id: 'shop-prompt-test',
     name: 'Prompt Test Salon',
@@ -21,6 +21,7 @@ function createShop(plan: Shop['plan']): Shop {
     send_missed_call_followup_sms: true,
     plan,
     active: true,
+    ...(languages ? { languages } : {}),
   };
 }
 
@@ -58,4 +59,76 @@ test('Professional prompt injects returning caller context', () => {
   assert.match(prompt, /RETURNING CUSTOMER/);
   assert.match(prompt, /Jamie Returning/);
   assert.match(prompt, /Sarah/);
+});
+
+test('Starter with languages does not receive bilingual workflow or LANGUAGE OPTIONS runtime line', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('starter', ['en', 'vi']),
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /LANGUAGE DIRECTIVE:.*STARTER PLAN/s);
+  assert.doesNotMatch(prompt, /\nLANGUAGE OPTIONS:/);
+  assert.doesNotMatch(prompt, /BILINGUAL WORKFLOW/);
+});
+
+test('Professional with configured languages receives bilingual workflow and LANGUAGE OPTIONS', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('professional', ['en', 'vi']),
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /\nLANGUAGE OPTIONS: English, Vietnamese/);
+  assert.match(prompt, /LANGUAGE DIRECTIVE:.*BILINGUAL WORKFLOW/s);
+});
+
+test('Enterprise with configured languages receives enterprise multilingual routing hook', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('enterprise', ['en', 'vi']),
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /\nLANGUAGE OPTIONS: English, Vietnamese/);
+  assert.match(prompt, /CUSTOM MULTILINGUAL ROUTING \(ENTERPRISE\)/);
+});
+
+test('Professional English-only shop does not enable bilingual workflow block', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('professional', ['en']),
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.doesNotMatch(prompt, /BILINGUAL WORKFLOW/);
+  assert.doesNotMatch(prompt, /\nLANGUAGE OPTIONS:/);
+  assert.match(prompt, /LANGUAGE DIRECTIVE:.*LANGUAGE POLICY \(PAID PLAN\)/s);
+});
+
+test('Starter nail salon production prompt removes vertical Vietnamese workflow and core auto-switch', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('starter', ['en', 'vi']),
+    customer: null,
+    mode: 'inbound',
+    vertical: 'nail-salon',
+  });
+
+  assert.doesNotMatch(prompt, /respond naturally in Vietnamese/i);
+  assert.doesNotMatch(prompt, /bilingual English\/Vietnamese/i);
+  assert.match(prompt, /LANGUAGE POLICY \(STARTER PLAN\)/);
+  assert.doesNotMatch(prompt, /Detect and match the caller[\u2019']s language automatically/);
+});
+
+test('Professional nail salon with en/vi keeps bilingual vertical and runtime bilingual workflow', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('professional', ['en', 'vi']),
+    customer: null,
+    mode: 'inbound',
+    vertical: 'nail-salon',
+  });
+
+  assert.match(prompt, /respond naturally in Vietnamese/i);
+  assert.match(prompt, /BILINGUAL WORKFLOW/);
 });

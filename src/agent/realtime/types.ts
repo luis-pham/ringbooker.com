@@ -2,6 +2,8 @@ export type RealtimeTransportProvider = 'mock' | 'livekit';
 export type RealtimeVoiceProvider = 'none' | 'gemini_live' | 'openai_realtime';
 export type RealtimeRuntimeMode = 'mock' | 'livekit_realtime';
 
+import type { ShopPlan } from '@/src/backend/domain/types';
+
 export interface RealtimeDispatchPayload {
   transport: {
     provider: RealtimeTransportProvider;
@@ -19,6 +21,8 @@ export interface RealtimeDispatchPayload {
     shopId: string;
     callerPhone: string;
     destinationPhone: string;
+    /** When set, gates LiveKit/OpenAI transcription defaults (e.g. Vietnamese) on Starter. */
+    shopPlan?: ShopPlan;
   };
   toolPolicy?: {
     allowedTools?: string[];
@@ -45,6 +49,7 @@ export interface StartInboundRealtimeParams {
   destinationPhone: string;
   callerPhone: string;
   systemPrompt: string;
+  shopPlan?: ShopPlan;
 }
 
 export interface StartInboundRealtimeResult {

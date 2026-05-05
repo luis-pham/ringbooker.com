@@ -1,3 +1,5 @@
+import type { ShopPlan } from '@/src/backend/domain/types';
+
 export type VoicePromptVertical = 'nail-salon' | 'hair-salon' | 'day-spa' | 'med-spa' | 'beauty-clinic';
 
 export type VoicePromptCallType =
@@ -36,6 +38,8 @@ export type RuntimeBusinessConfig = {
   welcomeMessage?: string | null;
   customInstructions?: string | null;
   languageOptions?: string[];
+  /** Production-only; Starter plan uses English-only policy + setup metadata */
+  productionLanguageDirective?: string | null;
   callerContext?: string | null;
   demoContext?: string | null;
 };
@@ -45,6 +49,9 @@ export type VoicePromptInput = {
   callType: VoicePromptCallType;
   mode: VoicePromptMode;
   business: RuntimeBusinessConfig;
+  /** Production shop plan: core + vertical language strips for Starter / paid English-only */
+  shopPlan?: ShopPlan;
+  shopLanguages?: string[];
 };
 
 export type PromptPack = {

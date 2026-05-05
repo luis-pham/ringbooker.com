@@ -224,6 +224,7 @@ export class InboundAgentSession {
       destinationPhone: this.shop.phone_number,
       callerPhone: this.callerPhone,
       systemPrompt: this.systemPrompt,
+      shopPlan: this.shop.plan,
     });
   }
 }

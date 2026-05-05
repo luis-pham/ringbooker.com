@@ -5,8 +5,13 @@ import {
   UNIVERSAL_GUARDRAIL_PROMPT,
   VERTICAL_PROMPT_PACKS,
 } from './generated-prompt-packs';
+import {
+  filterCoreVoicePromptForProductionPlan,
+  filterVerticalPackForProductionPlan,
+} from './production-plan-prompt-filter';
 import { renderRuntimeBusinessConfig } from './runtime-config';
 import type { VoicePromptInput } from './types';
+import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
 
 const MAX_PROMPT_CHARS = 18000;
 
@@ -18,12 +23,39 @@ const COMPACTED_MARKER = '\n\n[Prompt compacted to fit latency/context budget]';
 export function composeVoicePrompt(input: VoicePromptInput): string {
   const verticalPack = VERTICAL_PROMPT_PACKS[input.vertical];
   const callTypePack = CALL_TYPE_PROMPT_PACKS[input.callType];
-  const runtimeText = renderRuntimeBusinessConfig(input.business);
+
+  let coreText = CORE_VOICE_PROMPT;
+  let verticalText = verticalPack.content;
+  let businessForRuntime = input.business;
+
+  if (input.mode === 'production') {
+    const planForFilter = input.shopPlan ?? 'starter';
+    if (!input.shopPlan) {
+      console.warn('[composeVoicePrompt] voice_prompt_production_missing_shop_plan');
+      const safeLang = buildProductionLanguageRuntimeFields('starter', input.shopLanguages);
+      const { languageOptions: _omitLang, productionLanguageDirective: _omitDirective, ...businessRest } =
+        input.business;
+      businessForRuntime = {
+        ...businessRest,
+        productionLanguageDirective: safeLang.productionLanguageDirective,
+      };
+    }
+
+    coreText = filterCoreVoicePromptForProductionPlan(coreText, planForFilter, input.mode);
+    verticalText = filterVerticalPackForProductionPlan(verticalText, {
+      plan: planForFilter,
+      mode: input.mode,
+      languages: input.shopLanguages,
+    });
+  }
+
+  const runtimeText = renderRuntimeBusinessConfig(businessForRuntime);
+
   const prefixSections = [
-    CORE_VOICE_PROMPT,
+    coreText,
     UNIVERSAL_GUARDRAIL_PROMPT,
     input.mode === 'demo' ? DEMO_GUARDRAIL_PROMPT : null,
-    verticalPack.content,
+    verticalText,
     callTypePack.content,
   ];
   const prefix = prefixSections.filter(Boolean).join('\n\n---\n\n').trim();

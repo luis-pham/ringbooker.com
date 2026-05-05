@@ -1,5 +1,6 @@
 import type { Customer, Shop } from '@/src/backend/domain/types';
 import { canUseReturningCallerContext } from '@/src/backend/domain/shop-plan-capabilities';
+import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
 import {
   composeVoicePrompt,
   inferVerticalFromBusinessConfig,
@@ -54,6 +55,7 @@ function mapPromptModeToCallType(mode: PromptMode): VoicePromptCallType {
 
 function buildProductionBusinessConfig(shop: Shop, customer: Customer | null): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
+  const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
   return {
     businessName: shop.name,
     businessType: 'service business',
@@ -74,6 +76,8 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null): R
       voiceStyle: shop.ai_voice,
       shopCustomInstructions: shop.ai_custom_instructions ? compactLine(shop.ai_custom_instructions, 700) : null,
     }),
+    ...(languageFields.languageOptions?.length ? { languageOptions: languageFields.languageOptions } : {}),
+    productionLanguageDirective: languageFields.productionLanguageDirective,
     callerContext: buildCustomerSection(promptCustomer),
   };
 }
@@ -90,5 +94,7 @@ export function buildSystemPrompt(input: {
     callType: mapPromptModeToCallType(input.mode),
     mode: 'production',
     business,
+    shopPlan: input.shop.plan,
+    shopLanguages: input.shop.languages,
   });
 }

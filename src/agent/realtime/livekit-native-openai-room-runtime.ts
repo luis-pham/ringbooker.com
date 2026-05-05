@@ -2,6 +2,14 @@ import { voice as agentVoice, initializeLogger, llm as agentLlm } from '@livekit
 import { AudioFrame, Room, RoomEvent, TrackKind } from '@livekit/rtc-node';
 
 import type { RealtimeDispatchInput } from '@/src/agent/realtime/dispatch-handler';
+import type { RealtimeSessionMetadata } from '@/src/agent/realtime/types';
+import {
+  isDemoRealtimeMetadata,
+  resolveShopPlanFromDispatchMetadata,
+  shouldDefaultTranscriptionToVietnamese,
+  shouldUseVietnameseFallbackGreeting,
+  transcriptionPolicyFromDispatchInput,
+} from '@/src/agent/realtime/livekit-language-policy';
 import {
   compactRealtimeSystemInstruction,
   getOpenAiVietnameseBookingTranscriptionPrompt,
@@ -10,7 +18,7 @@ import {
   renderFallbackGreeting,
   renderRealtimeGreetingInstructions,
 } from '@/src/agent/prompts';
-import { withLogContext } from '@/src/backend/observability/logger';
+import { logger, withLogContext } from '@/src/backend/observability/logger';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
 
 function toWebsocketUrl(url: string): string {
@@ -95,9 +103,17 @@ function applyOutputGain(frame: AudioFrame, gain: number): AudioFrame {
 }
 
 function shouldDefaultToVietnamese(input: RealtimeDispatchInput): boolean {
-  const callerPhone = input.callerPhone.trim();
-  const destinationPhone = input.destinationPhone.trim();
-  return callerPhone.startsWith('+84') || destinationPhone.startsWith('+84');
+  return shouldDefaultTranscriptionToVietnamese(
+    transcriptionPolicyFromDispatchInput(input, () => {
+      logger.warn(
+        {
+          requestId: input.requestId,
+          roomName: input.roomName,
+        },
+        'shop_plan_missing_for_language_policy',
+      );
+    }),
+  );
 }
 
 function resolveOpenAIInputAudioTranscription(
@@ -177,11 +193,31 @@ function resolveGreetingText(input: RealtimeDispatchInput): string {
   const explicit = process.env.AGENT_OPENAI_INITIAL_GREETING_TEXT?.trim();
   if (explicit) return explicit;
 
-  const language = process.env.AGENT_OPENAI_GREETING_LANGUAGE?.trim().toLowerCase();
-  const shouldUseVietnamese =
-    language === 'vi' ||
-    language === 'vietnamese' ||
-    (!language && shouldDefaultToVietnamese(input));
+  const metadata = input.realtime.metadata as Partial<RealtimeSessionMetadata> | undefined;
+  const shopPlan = resolveShopPlanFromDispatchMetadata(metadata);
+  const demoIsolated = isDemoRealtimeMetadata(metadata);
+  const greetingLangRaw = process.env.AGENT_OPENAI_GREETING_LANGUAGE;
+  const languageNormalized = greetingLangRaw?.trim().toLowerCase();
+  const envRequestsVi = languageNormalized === 'vi' || languageNormalized === 'vietnamese';
+  const starterOrUnknownProduction = shopPlan === 'starter' || (shopPlan === undefined && !demoIsolated);
+
+  if (starterOrUnknownProduction && envRequestsVi) {
+    logger.warn(
+      { requestId: input.requestId, roomName: input.roomName },
+      'greeting_language_env_ignored_starter_or_missing_plan',
+    );
+  }
+
+  const transcriptionDefaultsVietnamese = shouldDefaultTranscriptionToVietnamese(
+    transcriptionPolicyFromDispatchInput(input),
+  );
+
+  const shouldUseVietnamese = shouldUseVietnameseFallbackGreeting({
+    shopPlan,
+    demoIsolated,
+    greetingLanguageEnv: greetingLangRaw,
+    transcriptionDefaultsVietnamese,
+  });
   const shopName = extractShopNameFromSystemPrompt(input.systemPrompt);
 
   if (shouldUseVietnamese) {

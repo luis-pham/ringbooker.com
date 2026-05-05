@@ -40,6 +40,41 @@ describe('voice prompt composer', () => {
     assert.match(prompt, /Prompt compacted to fit latency\/context budget/);
   });
 
+  it('production without shopPlan fails safe: strips bilingual vertical and overrides risky runtime language fields', () => {
+    const prompt = composeVoicePrompt({
+      vertical: 'nail-salon',
+      callType: 'inbound_booking',
+      mode: 'production',
+      shopLanguages: ['en', 'vi'],
+      business: {
+        businessName: 'Leak Test Nails',
+        businessType: 'nail salon',
+        languageOptions: ['English', 'Vietnamese'],
+        productionLanguageDirective: 'BILINGUAL WORKFLOW: You may respond in any language.',
+      },
+    });
+
+    assert.doesNotMatch(prompt, /\nLANGUAGE OPTIONS:/);
+    assert.doesNotMatch(prompt, /BILINGUAL WORKFLOW/);
+    assert.doesNotMatch(prompt, /respond naturally in Vietnamese/i);
+    assert.match(prompt, /LANGUAGE POLICY \(STARTER PLAN\)/);
+    assert.doesNotMatch(prompt, /Detect and match the caller[\u2019']s language automatically/);
+  });
+
+  it('demo without shopPlan leaves nail bilingual vertical wording intact', () => {
+    const prompt = composeVoicePrompt({
+      vertical: 'nail-salon',
+      callType: 'demo_outbound',
+      mode: 'demo',
+      business: {
+        businessName: 'Demo Nails',
+        businessType: 'nail salon',
+      },
+    });
+
+    assert.match(prompt, /If the caller speaks Vietnamese/i);
+  });
+
   it('keeps demo behavior isolated from production prompts', () => {
     const demoPrompt = composeVoicePrompt({
       vertical: 'nail-salon',

@@ -93,6 +93,7 @@ export function canUseReturningCallerContext(plan: ShopPlan): boolean {
   return PLAN_ORDER[plan] >= PLAN_ORDER.professional;
 }
 
+/** Gates bilingual workflow text in production voice prompts (`production-language-policy.ts`). */
 export function canUseBilingualWorkflow(plan: ShopPlan): boolean {
   return PLAN_ORDER[plan] >= PLAN_ORDER.professional;
 }

@@ -23,7 +23,8 @@ export const RUNTIME_CONFIG_TEMPLATE = [
   '- CANCELLATION POLICY: approved policy wording.',
   '- BOOKING URL: optional booking link.',
   '- WELCOME MESSAGE: exact opening message if configured.',
-  '- LANGUAGE OPTIONS: languages the assistant can use for this call.',
+  '- LANGUAGE OPTIONS: when present, caller-facing languages enabled for bilingual workflow on paid plans.',
+  '- LANGUAGE DIRECTIVE: production policy (Starter English-only, bilingual workflow rules, enterprise routing hints).',
   '- CALLER CONTEXT: returning customer or caller-specific details.',
   '- DEMO CONTEXT: demo-only scenario and safety framing.',
   '- CUSTOM INSTRUCTIONS: business-approved prompt overrides that do not violate guardrails.',
@@ -80,6 +81,9 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
     config.bookingUrl ? `BOOKING URL: ${config.bookingUrl}` : null,
     config.welcomeMessage ? `WELCOME MESSAGE: ${compactPromptLine(config.welcomeMessage, 260)}` : null,
     config.languageOptions?.length ? `LANGUAGE OPTIONS: ${config.languageOptions.join(', ')}` : null,
+    config.productionLanguageDirective
+      ? `LANGUAGE DIRECTIVE: ${compactPromptLine(config.productionLanguageDirective, 1200)}`
+      : null,
     config.callerContext ? `CALLER CONTEXT: ${compactPromptLine(config.callerContext, 900)}` : null,
     config.demoContext ? `DEMO CONTEXT: ${compactPromptLine(config.demoContext, 900)}` : null,
     config.customInstructions ? `CUSTOM INSTRUCTIONS: ${compactPromptLine(config.customInstructions, 900)}` : null,
