@@ -517,8 +517,16 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page--trust .hero.hero--landing .hero-blob-1{background:#DDD6FE}
 .html-hub-page--trust .hero.hero--landing .hero-blob-2{background:#F9A8D4}
 .html-hub-page--trust .hero.hero--landing h1.hero-h .hl{
-  background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);
-  color:#fff;
+  display:inline;
+  background:none;
+  color:var(--purple);
+  border-radius:0;
+  padding:0;
+  margin:0;
+  box-shadow:none;
+  vertical-align:baseline;
+  line-height:inherit;
+  font-weight:inherit;
 }
 .html-hub-page--trust .hero.hero--landing .btn-hero-live{
   background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);

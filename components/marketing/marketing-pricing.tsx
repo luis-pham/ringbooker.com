@@ -160,14 +160,15 @@ a{text-decoration:none;color:inherit}
 .pricing-faq-cta .cta-box{margin-top:48px}
 .pricing-faq-cta .mfaq-section{padding-top:0}
 .compare-wrap{margin:0 -8px;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-/* Compare plans — panel shell like how-it-works Setup paths (mk tokens, no heavy double border/shadow) */
-.pricing-compare-panel{border-radius:var(--r-lg);border:1px solid var(--mk-border-soft,var(--border));background:#fff;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04));overflow:hidden}
+/* Compare plans — same shell as trust hub “How it works in practice” (.principles): 1px frame, radius-lg, no card shadow; row dividers only */
+.pricing-compare-panel{border-radius:var(--r-lg);border:1px solid var(--border);background:#fff;box-shadow:none;overflow:hidden}
 .compare-table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;border:none;border-radius:0;background:#fff;box-shadow:none;font-size:14px}
-.compare-table th,.compare-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+.compare-table th,.compare-table td{padding:22px 26px;border-bottom:1px solid var(--border);vertical-align:middle}
 .compare-table tr:last-child td{border-bottom:none}
-.compare-table thead th{background:linear-gradient(180deg,#faf9ff 0%,#fff 100%);font-weight:700;color:var(--text-dark);text-align:left}
+.compare-table thead th{background:#fff;font-weight:700;color:var(--text-dark);text-align:left}
 .compare-table thead th:not(:first-child){text-align:center}
 .compare-table td:first-child{font-weight:500;color:#334155;text-align:left}
+.compare-table tbody tr:not(.compare-group):hover td{background:var(--bg-gray)}
 .compare-table .compare-group td{background:var(--bg-gray);font-weight:700;color:#5B21B6;font-size:13px;letter-spacing:.02em;text-transform:uppercase}
 .compare-yes{text-align:center;font-weight:700;color:var(--green)}
 .compare-dash{text-align:center;color:var(--text-light);font-weight:600}

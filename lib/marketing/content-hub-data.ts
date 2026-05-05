@@ -1067,7 +1067,7 @@ export const trustHub: ContentHubPageConfig = {
     null,
     'A Reliable AI Receptionist Built Around ',
     createElement('br'),
-    createElement('span', { className: 'hl' }, 'Trust for Beauty Businesses'),
+    createElement('span', { className: 'hl' }, 'trust for beauty businesses'),
   ),
   intro:
     "Trust isn't a feature — it's a requirement. 55% of salon clients and 71% of med spa clients are comfortable with AI phone handling when it's accurate and honest. Here's exactly what RingBooker does, what it doesn't, and how to start with confidence.",
