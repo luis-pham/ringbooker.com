@@ -1375,7 +1375,7 @@ async function buildAdminDemoCallsListResult(
   },
   parsed: z.infer<typeof adminDemoCallsListQuerySchema>,
   providerFilter?: { providerEquals?: string; providerNotEquals?: string },
-): Promise<{ ok: false; status: number; error: string } | { ok: true; json: Record<string, unknown> }> {
+): Promise<{ ok: false; status: 400; error: string } | { ok: true; json: Record<string, unknown> }> {
   const env = getEnv();
   const now = new Date();
   const endDay = parsed.dateTo ?? now.toISOString().slice(0, 10);
