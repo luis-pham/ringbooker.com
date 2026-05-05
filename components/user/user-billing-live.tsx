@@ -461,7 +461,7 @@ export function UserBillingLive() {
                 ) : null}
 
                 {data?.billing && !liveEnabled && hasPaymentMethod && !forwardingNumber ? (
-                  <section className="card" style={{ marginBottom: 16 }}>
+                  <section className="card" style={{ marginBottom: 16 }} id="go-live-forwarding">
                     <h3 style={{ marginTop: 0 }}>Set up call forwarding</h3>
                     <p className="sub">
                       RingBooker will create a forwarding number used only behind the scenes. Your customers will keep calling your current business number.

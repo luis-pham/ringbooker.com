@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { applyVerticalLanguageSelection, validateOnboardingStep1 } from '@/components/user/user-onboarding-live';
+import {
+  applyVerticalLanguageSelection,
+  validateOnboardingFindBusiness,
+  validateOnboardingProfileReview,
+  validateOnboardingStep1,
+} from '@/components/user/user-onboarding-live';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
@@ -51,12 +56,24 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
   return cookie;
 }
 
-test('Step 1 validation requires business name, vertical, and phone', () => {
+test('Deprecated step 1 validation still requires business name plus manual find-business rules', () => {
   assert.deepEqual(validateOnboardingStep1({ businessName: '', vertical: '', businessPhone: '' }), [
     'Business name is required.',
     'Business type is required.',
     'Business phone number is required.',
   ]);
+});
+
+test('Find-business validation requires vertical, phone, and URL for import mode', () => {
+  assert.deepEqual(
+    validateOnboardingFindBusiness({ vertical: '', businessPhone: '', websiteUrl: '', mode: 'import' }),
+    ['Business type is required.', 'Business phone number is required.', 'Add your website or Google Business Profile URL to import details.'],
+  );
+  assert.deepEqual(validateOnboardingFindBusiness({ vertical: 'nail_salon', businessPhone: '+15551234567', websiteUrl: '', mode: 'manual' }), []);
+});
+
+test('Profile review validation requires business name', () => {
+  assert.deepEqual(validateOnboardingProfileReview({ businessName: '' }), ['Business name is required.']);
 });
 
 test('Vietnamese auto-selected for nail salon', () => {

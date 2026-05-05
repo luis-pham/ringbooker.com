@@ -92,6 +92,8 @@ export function UserDashboardLive() {
   const [forwardingTestLoading, setForwardingTestLoading] = useState(false);
   const [enableLiveLoading, setEnableLiveLoading] = useState(false);
   const [goLiveActionMessage, setGoLiveActionMessage] = useState<string | null>(null);
+  const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
+  const [testCallLoading, setTestCallLoading] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     const response = await fetch('/api/backend/user/dashboard');
@@ -186,7 +188,7 @@ export function UserDashboardLive() {
         } else if (body?.error === 'payment_method_required') {
           setGoLiveActionMessage(body.message ?? 'Add a valid payment method on the Billing page first.');
         } else {
-          setGoLiveActionMessage(body?.message ?? 'Forwarding test could not start. Try again from onboarding.');
+          setGoLiveActionMessage(body?.message ?? 'Forwarding test could not start. Try again from your dashboard.');
         }
         return;
       }
@@ -198,6 +200,29 @@ export function UserDashboardLive() {
       setGoLiveActionMessage('Network error. Please try again.');
     } finally {
       setForwardingTestLoading(false);
+    }
+  }
+
+  async function requestDashboardTestCall() {
+    setTestCallStatus(null);
+    setTestCallLoading(true);
+    try {
+      const response = await fetch('/api/backend/user/test-calls/call-me', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
+      if (response.ok && body?.ok) {
+        setTestCallStatus('Test call started. Please answer your phone.');
+        return;
+      }
+      setTestCallStatus(body?.message ?? body?.error ?? 'Could not start a test call.');
+    } catch {
+      setTestCallStatus('Network error. Please try again.');
+    } finally {
+      setTestCallLoading(false);
     }
   }
 
@@ -236,7 +261,7 @@ export function UserDashboardLive() {
         );
       case 'set_up_call_forwarding':
         return (
-          <a className="btn purple" href="/user/onboarding#call-forwarding-section">
+          <a className="btn purple" href="/user/billing#go-live-forwarding">
             Set up call forwarding
           </a>
         );
@@ -315,7 +340,8 @@ export function UserDashboardLive() {
                   <div>
                     <h3>RingBooker is set up, but not live yet.</h3>
                     <p className="sub">
-                      Your customers keep calling your current business number. Live answering stays off until you finish billing,
+                      You can review test calls and summaries. Add a payment method when you&apos;re ready for RingBooker to answer real
+                      callers on your business number. Your customers keep calling your current business number until you complete billing,
                       forwarding, and verification below.
                     </p>
                     {goLiveActionMessage ? (
@@ -323,13 +349,18 @@ export function UserDashboardLive() {
                         {goLiveActionMessage}
                       </p>
                     ) : null}
+                    {testCallStatus ? (
+                      <p className="sub" style={{ marginTop: 8 }}>
+                        {testCallStatus}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
                   {renderGoLivePrimaryControl()}
-                  <a className="btn" href="/user/onboarding#setup-test-calls">
-                    Run another test call
-                  </a>
+                  <button type="button" className="btn" disabled={testCallLoading} onClick={() => void requestDashboardTestCall()}>
+                    {testCallLoading ? 'Calling…' : 'Run another test call'}
+                  </button>
                 </div>
               </section>
             ) : null}
