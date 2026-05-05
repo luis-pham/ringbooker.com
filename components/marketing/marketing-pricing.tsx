@@ -222,7 +222,7 @@ const scripts: string[] = [
 ];
 
 export const templateTitle =
-  'RingBooker | Pricing — AI Receptionist for Salons & Spas';
+  'Pricing — AI Receptionist for Salons & Spas | RingBooker';
 
 const plans = [
   {

@@ -213,7 +213,7 @@ const sections: SeoSection[] = [
 ];
 
 export const metadata = buildMetadata({
-  title: 'After-Hours Call Answering for Salons | Missed Booking Protection | RingBooker',
+  title: 'After-Hours Call Answering for Salons | RingBooker',
   description:
     'Callers after closing are often ready to book — voicemail trains them to move on. RingBooker answers on your current number, captures intent, and follows up by SMS.',
   path: '/missed-booking-protection/after-hours-calls',

@@ -4,7 +4,7 @@ import { MarketingNailSalonVietnameseTemplate } from '@/components/marketing/mar
 import { buildMetadata } from '@/lib/site';
 
 const PAGE_PATH = '/industries/nail-salon/vi';
-const PAGE_TITLE = 'Lễ Tân AI Cho Tiệm Nail | Đọc Website Tự Động | Tích Hợp Square & Vagaro | RingBooker';
+const PAGE_TITLE = 'Lễ Tân AI Cho Tiệm Nail | Square & Vagaro | RingBooker';
 const PAGE_DESCRIPTION = 'RingBooker là lễ tân AI cho tiệm nail — đọc website tự động, tích hợp Square và Vagaro, trả lời tiếng Việt. Setup 15 phút.';
 const pageMetadata = buildMetadata({ title: PAGE_TITLE, description: PAGE_DESCRIPTION, path: PAGE_PATH });
 

@@ -11,7 +11,7 @@ const missedBookingProtectionDescription =
   'Recover and protect revenue lost to missed calls: after-hours and peak-hour coverage so beauty businesses capture booking intent before callers book elsewhere.';
 
 export const metadata = buildMetadata({
-  title: 'Missed Booking Protection for Salons & Spas — AI Receptionist Coverage | RingBooker',
+  title: 'Missed Booking Protection for Salons & Spas | RingBooker',
   description: missedBookingProtectionDescription,
   path: '/missed-booking-protection',
 });

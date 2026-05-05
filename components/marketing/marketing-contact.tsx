@@ -315,7 +315,7 @@ const scripts: string[] = [
 `,
 ];
 
-export const templateTitle = 'Book a RingBooker Demo | See How to Recover Missed Bookings and Revenue';
+export const templateTitle = 'Book a Demo — Recover Missed Bookings | RingBooker';
 
 export function MarketingContactTemplate() {
   return (

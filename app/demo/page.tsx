@@ -3,8 +3,7 @@ import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
   title: 'Live Demo Hub | RingBooker',
-  description:
-    'Try short, web-only demo calls for nail salons, hair salons, day spas, med spas, and beauty clinics. Hear booking and reschedule flows—no change to your business number.',
+  description: 'Hear How RingBooker Answers Salon Calls | Live Demo',
   path: '/demo',
 });
 

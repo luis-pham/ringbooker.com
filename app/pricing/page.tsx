@@ -2,7 +2,7 @@ import { MarketingPricingTemplate } from '@/components/marketing/marketing-prici
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'RingBooker | Pricing — AI Receptionist for Salons & Spas',
+  title: 'Pricing — AI Receptionist for Salons & Spas | RingBooker',
   description:
     'See RingBooker pricing — from $79/month for after-hours answering, overflow coverage, and missed-call recovery for salons, spas, and med spas.',
   path: '/pricing',

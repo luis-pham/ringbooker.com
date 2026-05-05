@@ -8,7 +8,7 @@ import { compareHub } from '@/lib/marketing/content-hub-data';
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'RingBooker | Compare — Voicemail, Hiring & Answering Services',
+  title: 'Compare — Voicemail, Hiring & Answering Services | RingBooker',
   description:
     'For nail salons, spas, and clinics, compare RingBooker with voicemail, answering services, extra front-desk hiring, and generic AI to see what fits after-hours coverage, overflow, and missed booking protection.',
   path: '/compare',

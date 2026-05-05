@@ -10,7 +10,7 @@ const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
 
 export const metadata: Metadata = {
   title: {
-    default: 'RingBooker | AI Phone Answering for Beauty Businesses',
+    default: 'AI Phone Answering for Beauty Businesses | RingBooker',
     template: '%s | RingBooker',
   },
   description: siteConfig.description,
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   applicationName: siteConfig.name,
   category: 'business software',
   openGraph: {
-    title: 'RingBooker | AI Phone Answering for Beauty Businesses',
+    title: 'AI Phone Answering for Beauty Businesses | RingBooker',
     description: siteConfig.description,
     url: siteConfig.url,
     siteName: siteConfig.name,
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RingBooker | AI Phone Answering for Beauty Businesses',
+    title: 'AI Phone Answering for Beauty Businesses | RingBooker',
     description: siteConfig.description,
     images: [defaultSiteOgImage],
   },

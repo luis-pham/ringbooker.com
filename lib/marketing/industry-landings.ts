@@ -24,7 +24,7 @@ export function marketingSegmentToVertical(segment: string): MarketingVerticalKe
 
 const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; description: string }> = {
   'nail-salon': {
-    title: 'AI Receptionist & Phone Answering for Nail Salons | English & Vietnamese Call Coverage | RingBooker',
+    title: 'AI Receptionist for Nail Salons | English & Vietnamese | RingBooker',
     description:
       'RingBooker is an AI receptionist and answering service for nail salons — English and Vietnamese calls, walk-in availability, pricing questions, and after-hours bookings on your current number.',
   },
@@ -34,17 +34,17 @@ const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; descrip
       'RingBooker is an AI receptionist and answering service for hair salons — preferred stylist requests, color inquiries, and reschedule calls. 77% of clients prefer calling to reschedule. Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel.',
   },
   spa: {
-    title: 'AI Receptionist for Day Spas | Couples Bookings, After Hours & Package Calls | RingBooker',
+    title: 'AI Receptionist for Day Spas | RingBooker',
     description:
       'RingBooker is an AI receptionist and answering service for day spas — couples massage inquiries, package questions, and after-hours calls. Answer every call on your current number.',
   },
   'med-spa': {
-    title: 'AI Receptionist for Med Spas | Botox, Filler & Consultation Call Coverage | RingBooker',
+    title: 'AI Receptionist for Med Spas | Botox & Filler Calls | RingBooker',
     description:
       'RingBooker is an AI receptionist and answering service for med spas — Botox, filler, and consultation calls after hours and during treatments. 3 missed calls/day costs $130,000+ annually.',
   },
   'beauty-clinic': {
-    title: 'AI Receptionist for Beauty Clinics | Wax Studio, Lash Studio & Aesthetic Clinic Coverage | RingBooker',
+    title: 'AI Receptionist for Beauty Clinics & Wax Studios | RingBooker',
     description:
       'RingBooker is an AI receptionist and answering service for beauty clinics — wax studios, lash studios, and aesthetic clinics. 1 in 3 salon calls goes unanswered during service hours. Covered on your current number.',
   },

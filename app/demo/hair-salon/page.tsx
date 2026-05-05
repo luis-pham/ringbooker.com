@@ -2,9 +2,8 @@ import { MarketingVerticalDemoTemplate } from '@/components/marketing/marketing-
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Call Demo for Hair Salons',
-  description:
-    'Hear how RingBooker handles preferred stylist requests, color inquiries, and reschedule calls for hair salons. Try the live demo now.',
+  title: 'AI Call Demo for Hair Salons | RingBooker',
+  description: 'Hear How RingBooker Answers Hair Salon Calls | Demo',
   path: '/demo/hair-salon',
 });
 

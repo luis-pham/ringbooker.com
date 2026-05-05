@@ -2,7 +2,7 @@ import { MarketingContactTemplate } from '@/components/marketing/marketing-conta
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'Book a RingBooker Demo | See How to Recover Missed Bookings and Revenue',
+  title: 'Book a Demo — Recover Missed Bookings | RingBooker',
   description:
     'Book a RingBooker demo to see how after-hours answering, peak-hour overflow coverage, and missed-call recovery can protect revenue for your salon, spa, or clinic.',
   path: '/contact',

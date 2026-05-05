@@ -2,9 +2,8 @@ import { MarketingVerticalDemoTemplate } from '@/components/marketing/marketing-
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'AI Call Demo for Day Spas',
-  description:
-    'Hear how RingBooker answers couples massage and package inquiries for day spas. Try the live demo — no setup required.',
+  title: 'AI Call Demo for Day Spas | RingBooker',
+  description: 'Hear How RingBooker Answers Day Spa Calls | Demo',
   path: '/demo/day-spa',
 });
 

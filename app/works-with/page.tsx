@@ -11,7 +11,7 @@ const worksWithDescription =
   'RingBooker is an AI receptionist that works alongside Square Appointments, Vagaro, Booksy, and Mindbody — no booking migration, no workflow reset.';
 
 export const metadata = buildMetadata({
-  title: 'AI Receptionist That Works With Square Appointments and Your Booking Tools | RingBooker',
+  title: 'Works With Square, Vagaro & More | RingBooker',
   description: worksWithDescription,
   path: '/works-with',
 });

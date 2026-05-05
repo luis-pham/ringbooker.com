@@ -2,7 +2,7 @@ import { MarketingHowItWorksTemplate } from '@/components/marketing/marketing-ho
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'RingBooker | How It Works — Keep Your Number, Cover Missed Calls',
+  title: 'How RingBooker Works | Keep Number, Cover Missed Calls | RingBooker',
   description:
     'See how RingBooker answers after-hours calls, covers peak-hour overflow, texts missed callers back, and helps salons recover revenue without changing their phone number or booking system.',
   path: '/how-it-works',

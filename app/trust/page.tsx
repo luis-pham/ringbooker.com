@@ -11,7 +11,7 @@ const trustDescription =
   'RingBooker is an AI receptionist for beauty businesses built around transparency, reliable call handling, and human fallback control — not AI hype.';
 
 export const metadata = buildMetadata({
-  title: 'Honest AI Receptionist for Beauty Businesses — Trust & Reliability | RingBooker',
+  title: 'Trust & Reliability — AI Receptionist | RingBooker',
   description: trustDescription,
   path: '/trust',
 });
