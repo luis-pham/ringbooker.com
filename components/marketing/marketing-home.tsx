@@ -597,7 +597,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 /* ─── PRICING ─── */
 .pricing{padding:88px 48px 72px;background:var(--bg-gray)}
 .pricing-inner{max-width:1100px;margin:0 auto}
-.home-pricing-trial-note{max-width:760px;margin:0 auto 28px;padding:14px 18px;border-radius:var(--r-lg);background:rgba(245,243,255,.65);border:1px solid rgba(196,181,253,.45);font-size:13px;line-height:1.65;color:#475569;text-align:center}
+.home-pricing-trial-note{max-width:760px;margin:28px auto 0;padding:14px 18px;border-radius:var(--r-lg);background:rgba(245,243,255,.65);border:1px solid rgba(196,181,253,.45);font-size:13px;line-height:1.65;color:#475569;text-align:center}
 .price-toggle{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:40px}
 .pt-btn{padding:10px 22px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
 .pt-btn.on{background:var(--purple);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
@@ -1679,10 +1679,6 @@ export function MarketingHomeTemplate() {
               <button className="pt-btn" id="tog-a" type="button">Annual</button>
               <span className="save-tag">SAVE 20%</span>
             </div>
-            <p className="home-pricing-trial-note reveal">
-              <strong>14-day free trial.</strong> No card needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
-              {homeTrialNoChargeVerified ? <> You won&apos;t be charged until your trial ends.</> : null}
-            </p>
             <div className="home-carousel" id="pricingCarousel">
             <div className="price-grid home-carousel-track reveal">
               <div className="plan home-carousel-slide">
@@ -1742,6 +1738,10 @@ export function MarketingHomeTemplate() {
                 <button type="button" id="pricingNext" className="home-carousel-nav-btn" aria-label="Next pricing plan">›</button>
               </div>
             </div>
+            <p className="home-pricing-trial-note reveal">
+              <strong>14-day free trial.</strong> No card needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
+              {homeTrialNoChargeVerified ? <> You won&apos;t be charged until your trial ends.</> : null}
+            </p>
           </div>
         </section>
         <MarketingFaqAccordion items={HOME_FAQS} />
