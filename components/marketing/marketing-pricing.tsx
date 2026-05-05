@@ -161,7 +161,7 @@ a{text-decoration:none;color:inherit}
 .pricing-faq-cta .mfaq-section{padding-top:0}
 .compare-wrap{margin:0 -8px;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 /* Compare plans — same shell as trust hub “How it works in practice” (.principles): 1px frame, radius-lg, no card shadow; row dividers only */
-.pricing-compare-panel{border-radius:var(--r-lg);border:1px solid var(--border);background:#fff;box-shadow:none;overflow:hidden}
+.pricing-compare-panel{border-radius:var(--r-lg);border:1px solid var(--border);background:#fff;box-shadow:none}
 .compare-table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;border:none;border-radius:0;background:#fff;box-shadow:none;font-size:14px}
 .compare-table th,.compare-table td{padding:22px 26px;border-bottom:1px solid var(--border);vertical-align:middle}
 .compare-table tr:last-child td{border-bottom:none}
