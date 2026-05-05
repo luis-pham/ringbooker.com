@@ -115,6 +115,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
       id,
       name: params.name,
       vertical: null,
+      vertical_detail: null,
       brand_slug: params.brand_slug ?? null,
       phone_number: params.phone_number,
       user_phone: params.user_phone,
@@ -159,6 +160,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'name'
         | 'phone_number'
         | 'vertical'
+        | 'vertical_detail'
         | 'user_name'
         | 'user_phone'
         | 'backup_phone'

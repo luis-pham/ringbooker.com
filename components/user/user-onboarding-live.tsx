@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
@@ -8,6 +8,13 @@ import { UserLayout } from '@/components/user/user-layout';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
 type Vertical = 'nail_salon' | 'hair_salon' | 'day_spa' | 'med_spa' | 'beauty_clinic';
+export type BeautySubtype =
+  | 'beauty_clinic'
+  | 'aesthetic_clinic'
+  | 'wax_studio'
+  | 'lash_studio'
+  | 'brow_studio'
+  | 'other_beauty';
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type WizardStep = 1 | 2 | 3 | 4;
 type ServiceItem = { name: string; duration_min: number; price: number };
@@ -37,6 +44,7 @@ type OnboardingStatusResponse = {
     website_url?: string;
     booking_url?: string;
     address?: string | null;
+    vertical_detail?: string | null;
     current_onboarding_step?: number | null;
     setup_method?: 'forward' | 'new_number' | null;
     forwarding_type?: string | null;
@@ -47,14 +55,6 @@ type OnboardingStatusResponse = {
   };
   error?: string;
 };
-
-const VERTICAL_OPTIONS: Array<{ id: Vertical; emoji: string; label: string }> = [
-  { id: 'nail_salon', emoji: '💅', label: 'Nail Salon' },
-  { id: 'hair_salon', emoji: '✂️', label: 'Hair Salon' },
-  { id: 'day_spa', emoji: '🧖', label: 'Day Spa' },
-  { id: 'med_spa', emoji: '💉', label: 'Med Spa' },
-  { id: 'beauty_clinic', emoji: '✨', label: 'Beauty Clinic / Wax / Lash Studio' },
-];
 
 const DAYS = [
   ['mon', 'Mon'],
@@ -84,26 +84,128 @@ const TIME_OPTIONS = [
   '21:00',
 ];
 
-const STEP_LABELS = ['Find business', 'Review profile', 'Services', 'Test AI'] as const;
+const STEP_LABELS = ['Find', 'Profile', 'Services', 'Test'] as const;
 
-const BOOKING_SOFTWARE_OPTIONS = [
-  { id: 'square', label: 'Square' },
-  { id: 'vagaro', label: 'Vagaro' },
-  { id: 'fresha', label: 'Fresha' },
-  { id: 'glossgenius', label: 'GlossGenius' },
-  { id: 'boulevard', label: 'Boulevard' },
-  { id: 'mindbody', label: 'Mindbody' },
-  { id: 'booksy', label: 'Booksy' },
-  { id: 'other', label: 'Other' },
-  { id: 'not_sure', label: 'Not sure' },
-] as const;
+/** When true, onboarding helper copy assumes website extraction is live (set NEXT_PUBLIC_WEBSITE_IMPORT_ACTIVE=true). */
+const WEBSITE_IMPORT_EXTRACTION_ACTIVE = process.env.NEXT_PUBLIC_WEBSITE_IMPORT_ACTIVE === 'true';
 
-const SERVICE_PRESETS: Record<Vertical, string[]> = {
+type Step1View = 'quick' | 'manual_vertical' | 'manual_beauty_subtype';
+type VerticalConfidence = 'high' | 'low' | 'none';
+
+const MANUAL_PRIMARY_VERTICAL: Array<{ id: Vertical | 'beauty_umbrella'; emoji: string; label: string }> = [
+  { id: 'nail_salon', emoji: '💅', label: 'Nail Salon' },
+  { id: 'hair_salon', emoji: '✂️', label: 'Hair Salon' },
+  { id: 'day_spa', emoji: '🧖', label: 'Day Spa' },
+  { id: 'med_spa', emoji: '💉', label: 'Med Spa' },
+  { id: 'beauty_umbrella', emoji: '✨', label: 'Beauty Clinic / Aesthetic / Wax / Lash' },
+];
+
+const BEAUTY_SUBTYPE_OPTIONS: Array<{ id: BeautySubtype; label: string }> = [
+  { id: 'beauty_clinic', label: 'Beauty clinic' },
+  { id: 'aesthetic_clinic', label: 'Aesthetic clinic' },
+  { id: 'wax_studio', label: 'Wax studio' },
+  { id: 'lash_studio', label: 'Lash studio' },
+  { id: 'brow_studio', label: 'Brow studio' },
+  { id: 'other_beauty', label: 'Other beauty service' },
+];
+
+const VERTICAL_LABELS: Record<Vertical, string> = {
+  nail_salon: 'Nail Salon',
+  hair_salon: 'Hair Salon',
+  day_spa: 'Day Spa',
+  med_spa: 'Med Spa',
+  beauty_clinic: 'Beauty Clinic / Aesthetic / Wax / Lash',
+};
+
+const BEAUTY_SUBTYPE_LABELS: Record<BeautySubtype, string> = {
+  beauty_clinic: 'Beauty clinic',
+  aesthetic_clinic: 'Aesthetic clinic',
+  wax_studio: 'Wax studio',
+  lash_studio: 'Lash studio',
+  brow_studio: 'Brow studio',
+  other_beauty: 'Other beauty service',
+};
+
+const SERVICE_PRESETS: Record<Exclude<Vertical, 'beauty_clinic'>, string[]> = {
   nail_salon: ['Manicure', 'Pedicure', 'Gel polish', 'Acrylic full set', 'Dip powder', 'Nail art', 'Removal'],
   hair_salon: ['Haircut', 'Blowout', 'Color', 'Highlights', 'Balayage', 'Treatment'],
   day_spa: ['Facial', 'Massage', 'Waxing', 'Body treatment'],
-  med_spa: ['Facial', 'Massage', 'Waxing', 'Body treatment'],
-  beauty_clinic: ['Facial', 'Massage', 'Waxing', 'Body treatment'],
+  med_spa: [
+    'Consultation',
+    'Botox consultation',
+    'Filler consultation',
+    'Laser hair removal consultation',
+    'Microneedling consultation',
+    'Chemical peel consultation',
+    'Treatment follow-up',
+  ],
+};
+
+const BEAUTY_SERVICE_PRESETS: Record<BeautySubtype, string[]> = {
+  beauty_clinic: [
+    'Facial consultation',
+    'Custom facial',
+    'Acne treatment',
+    'Chemical peel',
+    'Microneedling',
+    'Skin consultation',
+    'LED light therapy',
+    'Post-treatment follow-up',
+  ],
+  aesthetic_clinic: [
+    'Aesthetic consultation',
+    'Botox consultation',
+    'Filler consultation',
+    'Laser hair removal consultation',
+    'Skin rejuvenation consultation',
+    'Microneedling consultation',
+    'Chemical peel consultation',
+    'Treatment follow-up',
+    'New patient inquiry',
+  ],
+  wax_studio: [
+    'Eyebrow wax',
+    'Lip wax',
+    'Chin wax',
+    'Underarm wax',
+    'Arm wax',
+    'Leg wax',
+    'Bikini wax',
+    'Brazilian wax',
+    'Back wax',
+    'Waxing consultation',
+  ],
+  lash_studio: [
+    'Classic lash extensions',
+    'Hybrid lash extensions',
+    'Volume lash extensions',
+    'Mega volume lashes',
+    'Lash fill',
+    'Lash removal',
+    'Lash lift',
+    'Lash tint',
+    'Patch test request',
+    'Aftercare question',
+  ],
+  brow_studio: [
+    'Brow shaping',
+    'Brow wax',
+    'Brow tint',
+    'Brow lamination',
+    'Henna brows',
+    'Brow consultation',
+    'Lash and brow package',
+    'Touch-up appointment',
+  ],
+  other_beauty: [
+    'Consultation',
+    'New appointment request',
+    'Follow-up appointment',
+    'Reschedule appointment',
+    'Cancellation request',
+    'Pricing question',
+    'Service not listed',
+  ],
 };
 
 const COUNTRY_TIMEZONES = [
@@ -165,30 +267,18 @@ const COUNTRY_TIMEZONES = [
   ] },
 ] as const;
 
-/** @deprecated Use validateOnboardingFindBusiness — step 1 no longer collects business name. */
+/** @deprecated Legacy helper — profile step validates business name; step 1 quick path only requires phone. */
 export function validateOnboardingStep1(input: { businessName: string; vertical: string; businessPhone: string }): string[] {
-  const next = validateOnboardingFindBusiness({
-    vertical: input.vertical,
-    businessPhone: input.businessPhone,
-    websiteUrl: '',
-    mode: 'manual',
-  });
-  if (!input.businessName.trim()) return ['Business name is required.', ...next];
-  return next;
+  const errors: string[] = [];
+  if (!input.businessName.trim()) errors.push('Business name is required.');
+  if (!input.businessPhone.trim()) errors.push('Business phone number is required.');
+  return errors;
 }
 
-export function validateOnboardingFindBusiness(input: {
-  vertical: string;
-  businessPhone: string;
-  websiteUrl: string;
-  mode: 'import' | 'manual';
-}): string[] {
+/** Step 1 quick path (website/GBP optional): business phone required; business type inferred or chosen later. */
+export function validateOnboardingStep1Quick(input: { businessPhone: string }): string[] {
   const errors: string[] = [];
-  if (!input.vertical.trim()) errors.push('Business type is required.');
   if (!input.businessPhone.trim()) errors.push('Business phone number is required.');
-  if (input.mode === 'import' && !input.websiteUrl.trim()) {
-    errors.push('Add your website or Google Business Profile URL to import details.');
-  }
   return errors;
 }
 
@@ -236,6 +326,97 @@ function isHttpsWebsiteUrl(raw: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Lightweight URL heuristic until automated extraction ships; user confirms or picks on Profile. */
+function inferBusinessFromUrl(raw: string): {
+  vertical: Vertical | '';
+  beautySubtype: BeautySubtype | '';
+  confidence: VerticalConfidence;
+} {
+  const empty = { vertical: '' as const, beautySubtype: '' as const, confidence: 'none' as const };
+  const t = raw.trim();
+  if (!t) return empty;
+  let combined = '';
+  try {
+    const u = new URL(normalizeWebsiteUrl(t));
+    const host = u.hostname.replace(/^www\./i, '').toLowerCase();
+    combined = `${host} ${u.pathname} ${u.search}`.toLowerCase();
+  } catch {
+    return empty;
+  }
+
+  const has = (...patterns: RegExp[]) => patterns.some((p) => p.test(combined));
+
+  if (
+    has(/\bmed(ical)?[\s_-]?spa\b/, /\bmedspa\b/) ||
+    (has(/\bbotox\b/, /\bfiller\b/, /\binjectables?\b/) &&
+      has(/\bdr[\._]?\b/, /\bmd\b/, /\bphysician\b/, /\bmedical\b/, /\bdoctor\b/))
+  ) {
+    return { vertical: 'med_spa', beautySubtype: '', confidence: 'high' };
+  }
+
+  if (
+    has(/\bnailsalon\b/, /\bnail-bar\b/, /\bnailbar\b/, /\bnail[\s-]?spa\b/) ||
+    ((has(/\bmani\b/, /\bpedi\b/, /\bnails\b/) || (has(/\bnail\b/) && has(/\bsalon\b/, /\bspa\b/))) && !has(/\bhair\b/, /\bbarber\b/))
+  ) {
+    const strong = has(/\bnailsalon\b/, /\bnailbar\b/, /\bnail-bar\b/);
+    return { vertical: 'nail_salon', beautySubtype: '', confidence: strong ? 'high' : 'low' };
+  }
+
+  if (
+    has(/\bbarber\b/, /\bhairsalon\b/, /\bhair[\s-]?salon\b/, /\bstylist\b/, /\bbalayage\b/, /\bhighlights\b/) &&
+    !has(/\bnail\b/, /\bmed(ical)?[\s_-]?spa\b/, /\bmedspa\b/)
+  ) {
+    return { vertical: 'hair_salon', beautySubtype: '', confidence: has(/\bhairsalon\b/, /\bhair[\s-]?salon\b/) ? 'high' : 'low' };
+  }
+
+  if (
+    (has(/\bday[\s_-]?spa\b/) || (has(/\bspa\b/, /\bmassage\b/) && !has(/\bnail\b/, /\bhair[\s-]?salon\b/, /\bbarber\b/))) &&
+    !has(/\bmed(ical)?[\s_-]?spa\b/, /\bmedspa\b/)
+  ) {
+    return { vertical: 'day_spa', beautySubtype: '', confidence: 'low' };
+  }
+
+  if (has(/\blash\b/, /\beyelash\b/, /\bextensions\b/) && has(/\blash\b/, /\besthetic\b/, /\bbeauty\b/, /\bstudio\b/) && !has(/\bbrow\b/, /\bwax\b/)) {
+    return { vertical: 'beauty_clinic', beautySubtype: 'lash_studio', confidence: 'low' };
+  }
+  if (has(/\blash\b/, /\beyelash\b/) && !has(/\bbrow\b/, /\bwax\b/)) {
+    return { vertical: 'beauty_clinic', beautySubtype: 'lash_studio', confidence: 'low' };
+  }
+  if ((has(/\bbrow\b/) || has(/\bmicroblading\b/)) && !has(/\bwax\b/, /\blash\b/, /\beyelash\b/)) {
+    return { vertical: 'beauty_clinic', beautySubtype: 'brow_studio', confidence: 'low' };
+  }
+  if (has(/\bwax\b/, /\bwaxing\b/, /\bbrazilian\b/, /\bbikini\b/) && has(/\bstudio\b/, /\bwax\b/, /\bsalon\b/)) {
+    return { vertical: 'beauty_clinic', beautySubtype: 'wax_studio', confidence: 'low' };
+  }
+  if (has(/\baesthetic\b/, /\bjuvederm\b/) && !has(/\bmed(ical)?[\s_-]?spa\b/, /\bmedspa\b/)) {
+    return { vertical: 'beauty_clinic', beautySubtype: 'aesthetic_clinic', confidence: 'low' };
+  }
+  if ((has(/\bskin\b/, /\bfacial\b/, /\bacne\b/) && has(/\bclinic\b/)) || has(/\bdermatology\b/)) {
+    return { vertical: 'beauty_clinic', beautySubtype: 'beauty_clinic', confidence: 'low' };
+  }
+
+  if (has(/\bbeauty\b/, /\besthetic\b/, /\blash\b/, /\bwax\b/, /\bbrow\b/)) {
+    return { vertical: 'beauty_clinic', beautySubtype: 'other_beauty', confidence: 'low' };
+  }
+
+  return empty;
+}
+
+function getPresetServiceNames(vertical: Vertical | '', beautySubtype: BeautySubtype | ''): string[] {
+  if (!vertical) return [];
+  if (vertical === 'beauty_clinic') {
+    if (beautySubtype && BEAUTY_SERVICE_PRESETS[beautySubtype]) return BEAUTY_SERVICE_PRESETS[beautySubtype];
+    return BEAUTY_SERVICE_PRESETS.other_beauty;
+  }
+  return SERVICE_PRESETS[vertical];
+}
+
+function parseBeautySubtype(raw: string | null | undefined): BeautySubtype | '' {
+  const v = (raw ?? '').trim();
+  const allowed: BeautySubtype[] = ['beauty_clinic', 'aesthetic_clinic', 'wax_studio', 'lash_studio', 'brow_studio', 'other_beauty'];
+  return allowed.includes(v as BeautySubtype) ? (v as BeautySubtype) : '';
 }
 
 function verticalToWebDemoPath(v: Vertical | ''): string {
@@ -369,7 +550,13 @@ export function UserOnboardingLive() {
   const [servicesFound, setServicesFound] = useState(0);
   const [services, setServices] = useState<ServiceItem[]>([{ name: '', duration_min: 60, price: 0 }]);
   const [importSource, setImportSource] = useState<ImportSource>('none');
-  const [bookingSoftwareChoice, setBookingSoftwareChoice] = useState<string>('');
+  const [step1View, setStep1View] = useState<Step1View>('quick');
+  const [manualPrimaryPick, setManualPrimaryPick] = useState<Vertical | 'beauty_umbrella' | ''>('');
+  const [beautySubtype, setBeautySubtype] = useState<BeautySubtype | ''>('');
+  const [verticalConfidence, setVerticalConfidence] = useState<VerticalConfidence>('none');
+  const [profileTypeEditOpen, setProfileTypeEditOpen] = useState(false);
+  const [profilePickPrimary, setProfilePickPrimary] = useState<Vertical | 'beauty_umbrella' | ''>('');
+  const [profilePickSubtype, setProfilePickSubtype] = useState<BeautySubtype | ''>('');
   const [accordionOpen, setAccordionOpen] = useState<Record<string, boolean>>({
     profile: true,
     hours: false,
@@ -377,6 +564,25 @@ export function UserOnboardingLive() {
   });
   const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
   const [step4Phase, setStep4Phase] = useState<'try' | 'done'>('try');
+  const prevStepRef = useRef<WizardStep>(1);
+
+  useEffect(() => {
+    const enteredProfile = currentStep === 2 && prevStepRef.current !== 2;
+    if (enteredProfile) {
+      if (vertical === 'beauty_clinic' && beautySubtype) {
+        setProfilePickPrimary('beauty_umbrella');
+        setProfilePickSubtype(beautySubtype);
+      } else if (vertical) {
+        setProfilePickPrimary(vertical);
+        setProfilePickSubtype('');
+      } else {
+        setProfilePickPrimary('');
+        setProfilePickSubtype('');
+      }
+      setProfileTypeEditOpen(verticalConfidence !== 'high');
+    }
+    prevStepRef.current = currentStep;
+  }, [currentStep, vertical, beautySubtype, verticalConfidence]);
 
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -415,6 +621,9 @@ export function UserOnboardingLive() {
     setBusinessName(body.shop.name ?? '');
     setAddress(typeof body.shop.address === 'string' ? body.shop.address : '');
     setVertical(body.shop.vertical ?? '');
+    const subtype = parseBeautySubtype(body.shop.vertical_detail);
+    setBeautySubtype(body.shop.vertical === 'beauty_clinic' ? subtype : '');
+    setVerticalConfidence(body.shop.vertical ? 'high' : 'none');
     const rawPhone = (body.shop.phone_number ?? body.shop.user_phone ?? '').trim();
     const syntheticSignupPhone = isSignupSyntheticPlaceholderPhone(rawPhone);
     setBusinessPhone(syntheticSignupPhone ? '' : rawPhone);
@@ -427,10 +636,16 @@ export function UserOnboardingLive() {
     const savedSite = body.shop.website_url ?? '';
     setWebsiteUrl(savedSite);
     setWebsiteImportAttempted(Boolean(savedSite.trim()));
+    if (savedSite.trim() && isProbablyGoogleBusinessUrl(savedSite)) setImportSource('google_business');
+    else if (savedSite.trim()) setImportSource('website');
+    else setImportSource('none');
     setServices(body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: 60, price: 0 }]);
     setCurrentStep(normalizeStep(body.shop.current_onboarding_step));
     setShopPlan(body.shop.plan ?? 'starter');
-    setImportSource(savedSite.trim() ? 'website' : 'none');
+    if (normalizeStep(body.shop.current_onboarding_step) === 1) {
+      setStep1View('quick');
+      setManualPrimaryPick('');
+    }
     if (!silent) setLoading(false);
   }
 
@@ -451,100 +666,205 @@ export function UserOnboardingLive() {
     return true;
   }
 
-  async function importBusinessDetails() {
-    const errors = validateOnboardingFindBusiness({
-      vertical,
-      businessPhone,
-      websiteUrl,
-      mode: 'import',
-    });
+  async function saveQuickContinue() {
+    const errors = validateOnboardingStep1Quick({ businessPhone });
     if (errors.length > 0) {
       setStatus(errors.join(' '));
       return;
     }
 
-    trackOnboarding('business_import_started', { mode: 'website_or_gbp' });
-
-    if (isProbablyGoogleBusinessUrl(websiteUrl)) {
-      trackOnboarding('business_import_failed', { reason: 'gbp_not_implemented' });
-      setStatus('Google Business Profile import is coming soon. Paste your website URL instead, or choose manual setup.');
-      return;
-    }
-
-    if (!isHttpsWebsiteUrl(websiteUrl)) {
-      setStatus('Use a secure website URL (https://) to save your site for import, or choose manual setup.');
-      trackOnboarding('business_import_failed', { reason: 'invalid_website_url' });
-      return;
-    }
-
-    const canonicalUrl = normalizeWebsiteUrl(websiteUrl);
-    setWebsiteLoading(true);
+    trackOnboarding('business_import_started', { mode: 'quick' });
     setStatus(null);
-    const response = await fetch('/api/backend/user/read-website', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: canonicalUrl }),
-    });
-    const body = (await response.json().catch(() => null)) as {
-      ok?: boolean;
-      success?: boolean;
-      servicesFound?: number;
-      todo?: string;
-      error?: string;
-    } | null;
-    setWebsiteLoading(false);
 
-    if (!response.ok || !body?.ok) {
-      setWebsiteImportAttempted(true);
-      trackOnboarding('business_import_failed', { reason: body?.error ?? 'request_failed' });
-      setStatus("We couldn't save your website URL. Check the link or use manual setup.");
-      return;
+    const trimmed = websiteUrl.trim();
+    let inferred = inferBusinessFromUrl(trimmed);
+    let nextVertical = inferred.vertical;
+    let nextSubtype = inferred.beautySubtype;
+    let nextConfidence = inferred.confidence;
+
+    if (trimmed) {
+      if (!isHttpsWebsiteUrl(trimmed)) {
+        setStatus('Enter a valid https:// website URL or Google Maps link, leave blank, or use manual setup.');
+        return;
+      }
+      const canonicalUrl = normalizeWebsiteUrl(trimmed);
+      setWebsiteLoading(true);
+      try {
+        const response = await fetch('/api/backend/user/read-website', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: canonicalUrl }),
+        });
+        const body = (await response.json().catch(() => null)) as { ok?: boolean; servicesFound?: number } | null;
+        setWebsiteImportAttempted(true);
+        if (response.ok && body?.ok) {
+          setServicesFound(body.servicesFound ?? 0);
+          trackOnboarding('business_import_success', { servicesFound: body.servicesFound ?? 0 });
+        } else {
+          trackOnboarding('business_import_failed', { reason: 'read_website' });
+        }
+      } catch {
+        trackOnboarding('business_import_failed', { reason: 'network' });
+        setWebsiteImportAttempted(true);
+      }
+      setWebsiteLoading(false);
+      setWebsiteUrl(canonicalUrl);
+      setImportSource(isProbablyGoogleBusinessUrl(trimmed) ? 'google_business' : 'website');
+      inferred = inferBusinessFromUrl(canonicalUrl);
+      nextVertical = inferred.vertical;
+      nextSubtype = inferred.beautySubtype;
+      nextConfidence = inferred.confidence;
+    } else {
+      setImportSource('none');
+      setWebsiteImportAttempted(false);
+      nextVertical = '';
+      nextSubtype = '';
+      nextConfidence = 'none';
     }
 
-    setWebsiteImportAttempted(true);
-    setServicesFound(body.servicesFound ?? 0);
-    trackOnboarding('business_import_success', { servicesFound: body.servicesFound ?? 0, todo: body.todo ?? null });
-    setImportSource('website');
+    setVertical(nextVertical);
+    setBeautySubtype(nextVertical === 'beauty_clinic' ? nextSubtype : '');
+    setVerticalConfidence(nextConfidence);
 
-    const ok = await saveSettings({
-      website_url: canonicalUrl,
+    const patch: Record<string, unknown> = {
       phone_number: businessPhone,
       user_phone: businessPhone,
-      vertical,
       current_onboarding_step: 2,
-    });
+    };
+    if (trimmed) patch.website_url = normalizeWebsiteUrl(trimmed);
+    if (nextVertical) {
+      patch.vertical = nextVertical;
+      patch.vertical_detail = nextVertical === 'beauty_clinic' && nextSubtype ? nextSubtype : null;
+    }
+
+    const ok = await saveSettings(patch);
     if (ok) {
-      setWebsiteUrl(canonicalUrl);
       setCurrentStep(2);
+      setStep1View('quick');
+      setProfileTypeEditOpen(nextConfidence !== 'high');
+      setProfilePickPrimary('');
+      setProfilePickSubtype('');
     }
   }
 
-  async function enterManualSetup() {
-    const errors = validateOnboardingFindBusiness({
-      vertical,
-      businessPhone,
-      websiteUrl: '',
-      mode: 'manual',
-    });
+  function enterManualSetup() {
+    const errors = validateOnboardingStep1Quick({ businessPhone });
     if (errors.length > 0) {
       setStatus(errors.join(' '));
       return;
     }
-    trackOnboarding('business_import_started', { mode: 'manual' });
+    trackOnboarding('business_import_started', { mode: 'manual_wizard' });
     setImportSource('manual');
-    const ok = await saveSettings({
+    setVerticalConfidence('none');
+    setVertical('');
+    setBeautySubtype('');
+    setManualPrimaryPick('');
+    setStep1View('manual_vertical');
+    setStatus(null);
+  }
+
+  async function finalizeManualStep1AndGoProfile(v: Vertical, subtype: BeautySubtype | '') {
+    const patch: Record<string, unknown> = {
       phone_number: businessPhone,
       user_phone: businessPhone,
-      vertical,
+      vertical: v,
+      vertical_detail: v === 'beauty_clinic' && subtype ? subtype : null,
       current_onboarding_step: 2,
-    });
-    if (ok) setCurrentStep(2);
+    };
+
+    const trimmed = websiteUrl.trim();
+    if (trimmed && isHttpsWebsiteUrl(trimmed)) {
+      const canonicalUrl = normalizeWebsiteUrl(trimmed);
+      setWebsiteLoading(true);
+      try {
+        await fetch('/api/backend/user/read-website', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: canonicalUrl }),
+        });
+      } catch {
+        // ignore — settings PUT still persists URL
+      }
+      setWebsiteLoading(false);
+      setWebsiteImportAttempted(true);
+      patch.website_url = canonicalUrl;
+      setWebsiteUrl(canonicalUrl);
+      setImportSource(isProbablyGoogleBusinessUrl(trimmed) ? 'google_business' : 'website');
+    }
+
+    setVertical(v);
+    setBeautySubtype(v === 'beauty_clinic' ? subtype : '');
+    setVerticalConfidence('high');
+
+    const ok = await saveSettings(patch);
+    if (ok) {
+      setCurrentStep(2);
+      setStep1View('quick');
+      setManualPrimaryPick('');
+      setProfileTypeEditOpen(false);
+      setProfilePickPrimary('');
+      setProfilePickSubtype('');
+    }
+  }
+
+  async function continueManualVerticalSelection() {
+    if (!manualPrimaryPick) {
+      setStatus('Choose a business type.');
+      return;
+    }
+    if (manualPrimaryPick === 'beauty_umbrella') {
+      setStep1View('manual_beauty_subtype');
+      setBeautySubtype('');
+      setStatus(null);
+      return;
+    }
+    await finalizeManualStep1AndGoProfile(manualPrimaryPick, '');
+  }
+
+  async function continueManualBeautySubtypeSelection() {
+    if (!beautySubtype) {
+      setStatus('Choose the option that best describes your business.');
+      return;
+    }
+    await finalizeManualStep1AndGoProfile('beauty_clinic', beautySubtype);
+  }
+
+  function applyProfileBusinessType() {
+    if (!profilePickPrimary) {
+      setStatus('Choose a business type.');
+      return;
+    }
+    if (profilePickPrimary === 'beauty_umbrella') {
+      if (!profilePickSubtype) {
+        setStatus('Choose the option that best describes your business.');
+        return;
+      }
+      setVertical('beauty_clinic');
+      setBeautySubtype(profilePickSubtype);
+      setVerticalConfidence('high');
+      setProfileTypeEditOpen(false);
+      setStatus(null);
+      return;
+    }
+    setVertical(profilePickPrimary);
+    setBeautySubtype('');
+    setVerticalConfidence('high');
+    setProfileTypeEditOpen(false);
+    setStatus(null);
   }
 
   async function continueProfileReview() {
     const errors = validateOnboardingProfileReview({ businessName });
     if (errors.length > 0) {
       setStatus(errors.join(' '));
+      return;
+    }
+    if (!vertical || verticalConfidence !== 'high') {
+      setStatus('Choose your business type so RingBooker can suggest the right services.');
+      return;
+    }
+    if (vertical === 'beauty_clinic' && !beautySubtype) {
+      setStatus('Choose your beauty specialty so we can tailor service suggestions.');
       return;
     }
     trackOnboarding('onboarding_profile_reviewed');
@@ -554,6 +874,8 @@ export function UserOnboardingLive() {
       user_name: businessName,
       phone_number: businessPhone,
       user_phone: businessPhone,
+      vertical,
+      vertical_detail: vertical === 'beauty_clinic' && beautySubtype ? beautySubtype : null,
       hours: wizardHoursToApi(hours),
       timezone,
       languages: applyVerticalLanguageSelection(vertical, languages),
@@ -616,7 +938,7 @@ export function UserOnboardingLive() {
 
   function applyPresetServices() {
     if (!vertical) return;
-    const preset = SERVICE_PRESETS[vertical];
+    const preset = getPresetServiceNames(vertical, beautySubtype);
     const existing = new Set(services.map((s) => s.name.trim().toLowerCase()).filter(Boolean));
     const toAdd = preset
       .filter((name) => !existing.has(name.toLowerCase()))
@@ -634,7 +956,21 @@ export function UserOnboardingLive() {
   }
 
   async function handleBack() {
-    if (currentStep <= 1) return;
+    if (currentStep === 1) {
+      if (step1View === 'manual_beauty_subtype') {
+        setStep1View('manual_vertical');
+        setBeautySubtype('');
+        setStatus(null);
+        return;
+      }
+      if (step1View === 'manual_vertical') {
+        setStep1View('quick');
+        setManualPrimaryPick('');
+        setStatus(null);
+        return;
+      }
+      return;
+    }
     const next = (currentStep - 1) as WizardStep;
     setCurrentStep(next);
     void saveSettings({ current_onboarding_step: next });
@@ -651,8 +987,8 @@ export function UserOnboardingLive() {
 .onb-back-inline{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;background:#000;color:#fff;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0}.onb-back-inline:hover{background:#1a1a1a}.onb-back-inline.hidden{visibility:hidden}
 .onb-progress-divider{width:1px;height:24px;background:#e2e8f0;flex-shrink:0}
 .onb-progress-main{display:flex;justify-content:flex-end;flex:1;min-width:0}
-.onb-progress-pills{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.onb-progress-pill{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid #d9deea;border-radius:999px;padding:6px 14px;color:#64748b;background:#fff;font-size:13px;font-weight:800;white-space:nowrap;min-width:auto}
+.onb-progress-pills{display:flex;justify-content:flex-end;gap:8px;flex-wrap:nowrap;flex-shrink:0;min-width:0;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.onb-progress-pill{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid #d9deea;border-radius:999px;padding:6px 14px;color:#64748b;background:#fff;font-size:13px;font-weight:800;white-space:nowrap;flex-shrink:0;min-width:auto}
 .onb-progress-pill.done{background:transparent;border-color:#8b5cf6;color:#5b21b6}
 .onb-progress-pill.current{background:#6d28d9;border-color:#6d28d9;color:#fff;box-shadow:0 12px 28px rgba(109,40,217,.22)}
 .onb-progress-mark{width:auto;min-width:1em;height:auto;border-radius:0;display:inline-flex;align-items:center;justify-content:center;background:transparent!important;color:inherit;box-shadow:none!important;border:0;font-size:13px;line-height:1}
@@ -689,7 +1025,7 @@ export function UserOnboardingLive() {
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid{grid-template-columns:1fr}.test-grid{grid-template-columns:1fr}.manual-header,.service-row{grid-template-columns:minmax(0,1fr) 64px 64px}.onb-actions:not(.onb-actions-desktop){display:none}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress-pills{justify-content:flex-start}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid{grid-template-columns:1fr}.test-grid{grid-template-columns:1fr}.manual-header,.service-row{grid-template-columns:minmax(0,1fr) 64px 64px}.onb-actions:not(.onb-actions-desktop){display:none}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -711,8 +1047,6 @@ export function UserOnboardingLive() {
   }
 
   const webDemoHref = verticalToWebDemoPath(vertical);
-  const importBadgeWebsite = importSource === 'website' && websiteImportAttempted;
-
   function renderAccordionSection(id: string, title: string, body: ReactNode) {
     const open = accordionOpen[id] ?? false;
     return (
@@ -727,24 +1061,96 @@ export function UserOnboardingLive() {
   }
 
   function renderStep1() {
+    const urlHelper = WEBSITE_IMPORT_EXTRACTION_ACTIVE ? (
+      <p className="onb-help">RingBooker will look for your business details, hours, services, and booking link.</p>
+    ) : (
+      <p className="onb-help">
+        We&apos;ll save this link today. Automated website import is rolling out soon.
+      </p>
+    );
+
+    if (step1View === 'manual_vertical') {
+      return (
+        <div>
+          <h1 className="onb-title">What type of business are you?</h1>
+          <p className="onb-subtitle">This helps RingBooker suggest the right services and tone.</p>
+          <div className="onb-grid" style={{ marginTop: 24 }}>
+            {MANUAL_PRIMARY_VERTICAL.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`choice-card ${manualPrimaryPick === item.id ? 'active' : ''}`}
+                onClick={() => setManualPrimaryPick(item.id)}
+              >
+                <span className="emoji">{item.emoji}</span>
+                <h4>{item.label}</h4>
+              </button>
+            ))}
+          </div>
+          <div className="onb-actions onb-actions-desktop">
+            <span />
+            <button className="onb-btn-primary" type="button" onClick={() => void continueManualVerticalSelection()} disabled={saving || websiteLoading}>
+              Continue to Profile
+            </button>
+          </div>
+          <div className="onb-sticky-cta">
+            <button className="onb-btn-primary" type="button" onClick={() => void continueManualVerticalSelection()} disabled={saving || websiteLoading}>
+              Continue to Profile
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (step1View === 'manual_beauty_subtype') {
+      return (
+        <div>
+          <h1 className="onb-title">What best describes your business?</h1>
+          <p className="onb-subtitle">Pick the closest match — you can refine services in the next step.</p>
+          <div className="onb-stack" style={{ marginTop: 24 }}>
+            {BEAUTY_SUBTYPE_OPTIONS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`choice-card ${beautySubtype === item.id ? 'active' : ''}`}
+                style={{ minHeight: 72 }}
+                onClick={() => setBeautySubtype(item.id)}
+              >
+                <h4 style={{ margin: 0 }}>{item.label}</h4>
+              </button>
+            ))}
+          </div>
+          <div className="onb-actions onb-actions-desktop">
+            <span />
+            <button className="onb-btn-primary" type="button" onClick={() => void continueManualBeautySubtypeSelection()} disabled={saving || websiteLoading}>
+              Continue to Profile
+            </button>
+          </div>
+          <div className="onb-sticky-cta">
+            <button className="onb-btn-primary" type="button" onClick={() => void continueManualBeautySubtypeSelection()} disabled={saving || websiteLoading}>
+              Continue to Profile
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div>
-        <h1 className="onb-title">Let&apos;s set up your AI receptionist</h1>
+        <h1 className="onb-title">Let&apos;s find your business</h1>
         <p className="onb-subtitle">
-          Add your website or Google Business Profile. RingBooker will pre-fill your business details, hours, and services.
+          Add your website or Google Business Profile if you have one. RingBooker will use it to pre-fill your setup when available.
         </p>
         <div className="onb-stack" style={{ marginTop: 24 }}>
           <div className="onb-field">
-            <label>Website or Google Business Profile URL</label>
+            <label>Website or Google Business Profile URL (optional)</label>
             <input
               value={websiteUrl}
               onChange={(event) => setWebsiteUrl(event.target.value)}
               placeholder="https://yourbusiness.com or Google Maps link"
               inputMode="url"
             />
-            <p className="onb-help">
-              Website import saves your URL today; automated extraction is rolling out. Google Business Profile import is coming soon.
-            </p>
+            {urlHelper}
           </div>
           <div className="onb-field">
             <label>Business phone number</label>
@@ -760,48 +1166,23 @@ export function UserOnboardingLive() {
             <p className="onb-help">
               {businessPhoneNeedsRealEntry
                 ? 'Enter the main line your clients call. Signup did not include a verified business number yet.'
-                : 'This is the number clients call today — you are not changing it here.'}
+                : 'This is the number clients call today. You are not changing it here.'}
             </p>
-          </div>
-          <div className="onb-field">
-            <label>Business type</label>
-            <div className="onb-grid">
-              {VERTICAL_OPTIONS.map((item) => (
-                <button key={item.id} type="button" className={`choice-card ${vertical === item.id ? 'active' : ''}`} onClick={() => setVertical(item.id)}>
-                  <span className="emoji">{item.emoji}</span>
-                  <h4>{item.label}</h4>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="onb-field">
-            <label>
-              Do you use booking software? <span style={{ textTransform: 'none', fontWeight: 500, color: '#94a3b8' }}>(optional)</span>
-            </label>
-            <p className="onb-help">You can connect calendars later from the dashboard — nothing is required here.</p>
-            <select value={bookingSoftwareChoice} onChange={(event) => setBookingSoftwareChoice(event.target.value)}>
-              <option value="">Prefer not to say</option>
-              {BOOKING_SOFTWARE_OPTIONS.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
         <div className="onb-actions onb-actions-desktop">
-          <button className="onb-btn-secondary" type="button" onClick={() => void enterManualSetup()} disabled={saving || websiteLoading}>
+          <button className="onb-btn-secondary" type="button" onClick={() => enterManualSetup()} disabled={saving || websiteLoading}>
             I&apos;ll enter details manually
           </button>
-          <button className="onb-btn-primary" type="button" onClick={() => void importBusinessDetails()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Importing…' : 'Import business details'}
+          <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
+            {websiteLoading ? 'Saving…' : 'Save and continue'}
           </button>
         </div>
         <div className="onb-sticky-cta">
-          <button className="onb-btn-primary" type="button" onClick={() => void importBusinessDetails()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Importing…' : 'Import business details'}
+          <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
+            {websiteLoading ? 'Saving…' : 'Save and continue'}
           </button>
-          <button className="onb-btn-secondary" type="button" onClick={() => void enterManualSetup()} disabled={saving || websiteLoading}>
+          <button className="onb-btn-secondary" type="button" onClick={() => enterManualSetup()} disabled={saving || websiteLoading}>
             I&apos;ll enter details manually
           </button>
         </div>
@@ -813,37 +1194,43 @@ export function UserOnboardingLive() {
     const countryTimezones = COUNTRY_TIMEZONES.find((item) => item.country === selectedCountry);
     const selectedTimezoneMeta = countryTimezones?.timezones.find((zone) => zone.value === timezone) ?? countryTimezones?.timezones[0];
 
-    const verticalLabel = VERTICAL_OPTIONS.find((v) => v.id === vertical)?.label ?? 'Business';
+    const resolvedVerticalLabel =
+      vertical === 'beauty_clinic' && beautySubtype
+        ? `${VERTICAL_LABELS.beauty_clinic} · ${BEAUTY_SUBTYPE_LABELS[beautySubtype]}`
+        : vertical
+          ? VERTICAL_LABELS[vertical]
+          : '';
+
+    const showBusinessTypePicker = verticalConfidence !== 'high' || profileTypeEditOpen;
 
     return (
       <div>
         <h1 className="onb-title">Review your business profile</h1>
-        <p className="onb-subtitle">
-          Confirm how RingBooker should introduce your business. No card is needed for setup and test calls.
-        </p>
+        <p className="onb-subtitle">Please check this information before RingBooker uses it to answer callers.</p>
 
         {renderAccordionSection(
           'profile',
           'Business details',
           <div>
-            {importBadgeWebsite ? <p className="read-success" style={{ marginTop: 0 }}>Found on website — please confirm fields below.</p> : null}
+            {websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
+              <p className="onb-help" style={{ marginTop: 0 }}>
+                <span className="onb-source-badge">{importSource === 'google_business' ? 'Found on Google' : 'Found on website'}</span>{' '}
+                <span className="onb-source-badge" style={{ background: '#fff7ed', color: '#c2410c' }}>
+                  Needs review
+                </span>
+              </p>
+            ) : null}
             {importSource === 'manual' ? (
               <p className="onb-help" style={{ marginBottom: 14 }}>
-                No website? Start with a simple setup you can edit later.
+                No website link saved — you can add one later from the dashboard.
               </p>
             ) : null}
             <div className="onb-field">
-              <label>
-                Business name
-                {importBadgeWebsite ? <span className="onb-source-badge">Website</span> : null}
-              </label>
+              <label>Business name</label>
               <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Happy Nails & Spa" />
             </div>
             <div className="onb-field">
-              <label>
-                Business phone number
-                {importBadgeWebsite ? <span className="onb-source-badge">Website</span> : null}
-              </label>
+              <label>Business phone number</label>
               <input
                 type="tel"
                 value={businessPhone}
@@ -854,14 +1241,84 @@ export function UserOnboardingLive() {
               />
             </div>
             <div className="onb-field">
-              <label>Address {importBadgeWebsite ? <span className="onb-source-badge">Website</span> : <span style={{ fontWeight: 500 }}>(optional)</span>}</label>
-              <textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, city, region (if you want it mentioned on calls)" />
+              <label>Business type</label>
+              {showBusinessTypePicker ? (
+                <div>
+                  {verticalConfidence === 'high' && profileTypeEditOpen ? (
+                    <p className="onb-help" style={{ marginBottom: 12 }}>
+                      Update your business type below.
+                    </p>
+                  ) : (
+                    <p className="onb-help" style={{ marginBottom: 12 }}>
+                      We couldn&apos;t confidently detect your business type. Please choose one so RingBooker can suggest the right services.
+                    </p>
+                  )}
+                  <div className="onb-grid">
+                    {MANUAL_PRIMARY_VERTICAL.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`choice-card ${profilePickPrimary === item.id ? 'active' : ''}`}
+                        onClick={() => {
+                          setProfilePickPrimary(item.id);
+                          if (item.id !== 'beauty_umbrella') setProfilePickSubtype('');
+                        }}
+                      >
+                        <span className="emoji">{item.emoji}</span>
+                        <h4>{item.label}</h4>
+                      </button>
+                    ))}
+                  </div>
+                  {profilePickPrimary === 'beauty_umbrella' ? (
+                    <div className="onb-stack" style={{ marginTop: 16 }}>
+                      <p className="onb-section-title">What best describes your business?</p>
+                      {BEAUTY_SUBTYPE_OPTIONS.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`choice-card ${profilePickSubtype === item.id ? 'active' : ''}`}
+                          style={{ minHeight: 72 }}
+                          onClick={() => setProfilePickSubtype(item.id)}
+                        >
+                          <h4 style={{ margin: 0 }}>{item.label}</h4>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div style={{ marginTop: 16 }}>
+                    <button className="onb-btn-primary" type="button" onClick={() => applyProfileBusinessType()}>
+                      Apply business type
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="timezone-readonly" style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <span>
+                    <strong>Business type:</strong> {resolvedVerticalLabel || 'Not set'}
+                  </span>
+                  <button
+                    type="button"
+                    className="onb-help-link"
+                    style={{ padding: 0 }}
+                    onClick={() => {
+                      setProfileTypeEditOpen(true);
+                      if (vertical === 'beauty_clinic' && beautySubtype) {
+                        setProfilePickPrimary('beauty_umbrella');
+                        setProfilePickSubtype(beautySubtype);
+                      } else if (vertical) {
+                        setProfilePickPrimary(vertical);
+                        setProfilePickSubtype('');
+                      }
+                    }}
+                  >
+                    Change
+                  </button>
+                </div>
+              )}
             </div>
             <div className="onb-field">
-              <label>Business type</label>
-              <div className="timezone-readonly" style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', background: '#f9fafb' }}>
-                {verticalLabel}
-              </div>
+              <label>Address (optional)</label>
+              <textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, city, region (if you want it mentioned on calls)" />
             </div>
           </div>,
         )}
@@ -870,22 +1327,20 @@ export function UserOnboardingLive() {
           'hours',
           'Hours & timezone',
           <div>
-            {importSource === 'manual' ? (
-              <div>
-                <p className="onb-section-title">Quick presets</p>
-                <div className="preset-row">
-                  <button type="button" className="preset-chip" onClick={() => setHours(defaultHours())}>
-                    Standard salon hours
-                  </button>
-                  <button type="button" className="preset-chip" onClick={() => setHours((h) => presetWeekendClosed({ ...h }))}>
-                    Weekend closed
-                  </button>
-                  <button type="button" className="preset-chip" onClick={() => setHours(presetOpen7Days(defaultHours()))}>
-                    Open 7 days
-                  </button>
-                </div>
+            <div>
+              <p className="onb-section-title">Quick presets</p>
+              <div className="preset-row">
+                <button type="button" className="preset-chip" onClick={() => setHours(defaultHours())}>
+                  Standard salon hours
+                </button>
+                <button type="button" className="preset-chip" onClick={() => setHours((h) => presetWeekendClosed({ ...h }))}>
+                  Weekend closed
+                </button>
+                <button type="button" className="preset-chip" onClick={() => setHours(presetOpen7Days(defaultHours()))}>
+                  Open 7 days
+                </button>
               </div>
-            ) : null}
+            </div>
             <p className="hours-summary">{summarizeHours(hours)}</p>
             <button type="button" className="onb-help-link" style={{ marginBottom: 12 }} onClick={() => setHoursExpanded(!hoursExpanded)}>
               {hoursExpanded ? 'Hide day-by-day editor' : 'Edit hours by day'}
@@ -1014,6 +1469,9 @@ export function UserOnboardingLive() {
   }
 
   function renderStep3() {
+    const presetLabel =
+      vertical === 'beauty_clinic' && beautySubtype ? BEAUTY_SUBTYPE_LABELS[beautySubtype] : vertical ? VERTICAL_LABELS[vertical] : 'industry';
+
     return (
       <div>
         <h1 className="onb-title">Review your services</h1>
@@ -1022,14 +1480,21 @@ export function UserOnboardingLive() {
         </p>
         {servicesFound > 0 ? (
           <p className="read-success">Imported {servicesFound} services from your website — edit below.</p>
-        ) : websiteImportAttempted && importSource === 'website' ? (
+        ) : websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
           <p className="onb-help">
-            Automated service extraction isn&apos;t available yet. Use presets for your industry or add services manually.
+            {WEBSITE_IMPORT_EXTRACTION_ACTIVE
+              ? 'Review imported services below, or add your own.'
+              : 'Automated service extraction is rolling out. Use presets for your vertical or add services manually.'}
           </p>
         ) : null}
+        {(vertical === 'med_spa' || vertical === 'beauty_clinic') && (
+          <p className="onb-help" style={{ marginTop: 12 }}>
+            RingBooker can capture consultation requests and follow-up details. Your licensed team confirms treatment recommendations.
+          </p>
+        )}
         <div className="preset-row">
-          <button type="button" className="preset-chip" onClick={applyPresetServices} disabled={!vertical}>
-            Add {vertical ? VERTICAL_OPTIONS.find((v) => v.id === vertical)?.label ?? 'industry' : 'industry'} presets
+          <button type="button" className="preset-chip" onClick={applyPresetServices} disabled={!vertical || (vertical === 'beauty_clinic' && !beautySubtype)}>
+            Add {presetLabel} presets
           </button>
         </div>
         <div className="manual-header">
@@ -1093,10 +1558,7 @@ export function UserOnboardingLive() {
             <div className="test-grid">
               <div className="test-card">
                 <h3>Web voice test</h3>
-                <p>
-                  Talk to RingBooker in your browser using an industry demo tuned to businesses like yours. Your saved profile is used on phone
-                  calls after you go live.
-                </p>
+                <p>Talk to RingBooker in your browser using your business setup.</p>
                 <a
                   className="onb-btn-primary"
                   href={webDemoHref}
@@ -1112,7 +1574,7 @@ export function UserOnboardingLive() {
               </div>
               <div className="test-card">
                 <h3>Call me for a test</h3>
-                <p>RingBooker will call your saved business phone so you can hear how it sounds on a real call.</p>
+                <p>RingBooker will call your saved phone number so you can hear how it sounds on a real call.</p>
                 <button className="onb-btn-primary" style={{ marginTop: 'auto', alignSelf: 'flex-start' }} type="button" onClick={() => void requestTestCall()}>
                   Call me now
                 </button>
@@ -1136,8 +1598,8 @@ export function UserOnboardingLive() {
               Setup complete
             </h3>
             <p className="onb-subtitle" style={{ marginTop: 8 }}>
-              Open your dashboard to review calls and summaries. Add a payment method when you&apos;re ready for RingBooker to answer real callers on
-              your business number.
+              Open your dashboard to finish going live when you&apos;re ready. Add a payment method from billing — live answering stays off until you
+              complete the checklist there.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
               <button className="onb-btn-primary" type="button" onClick={completeSetup}>
@@ -1191,7 +1653,7 @@ export function UserOnboardingLive() {
       <main className="main">
         <section className="onb-shell">
           <div className={`onb-card ${currentStep === 4 ? 'wide' : ''}`}>
-            <Progress currentStep={currentStep} onBack={() => void handleBack()} />
+            <Progress currentStep={currentStep} step1View={step1View} onBack={() => void handleBack()} />
             {currentStep === 1 ? renderStep1() : null}
             {currentStep === 2 ? renderStep2() : null}
             {currentStep === 3 ? renderStep3() : null}
@@ -1204,15 +1666,24 @@ export function UserOnboardingLive() {
   );
 }
 
-function Progress({ currentStep, onBack }: { currentStep: WizardStep; onBack: () => void }) {
+function Progress({
+  currentStep,
+  step1View,
+  onBack,
+}: {
+  currentStep: WizardStep;
+  step1View: Step1View;
+  onBack: () => void;
+}) {
+  const hideBack = currentStep === 1 && step1View === 'quick';
   return (
     <div className="onb-progress">
       <button
-        className={`onb-back-inline ${currentStep === 1 ? 'hidden' : ''}`}
+        className={`onb-back-inline ${hideBack ? 'hidden' : ''}`}
         type="button"
         onClick={onBack}
-        aria-hidden={currentStep === 1}
-        tabIndex={currentStep === 1 ? -1 : 0}
+        aria-hidden={hideBack}
+        tabIndex={hideBack ? -1 : 0}
       >
         ← <span className="onb-back-text">Back</span>
       </button>

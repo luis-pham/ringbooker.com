@@ -387,6 +387,7 @@ export interface ShopsRepository {
         | 'name'
         | 'phone_number'
         | 'vertical'
+        | 'vertical_detail'
         | 'user_name'
         | 'user_phone'
         | 'backup_phone'

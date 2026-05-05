@@ -372,6 +372,7 @@ const userSettingsBaseSchema = z.object({
   name: z.string().min(1).optional(),
   phone_number: z.string().min(1).optional(),
   vertical: z.enum(['nail_salon', 'hair_salon', 'day_spa', 'med_spa', 'beauty_clinic']).optional(),
+  vertical_detail: z.string().min(1).max(120).nullable().optional(),
   user_name: z.string().min(1).optional(),
   user_phone: z.string().min(1).optional(),
   backup_phone: z.string().min(1).nullable().optional(),
@@ -634,6 +635,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   name: 'edit_business_profile',
   phone_number: 'edit_business_profile',
   vertical: 'edit_business_profile',
+  vertical_detail: 'edit_business_profile',
   user_name: 'edit_business_profile',
   user_phone: 'edit_business_profile',
   backup_phone: 'edit_business_profile',
@@ -671,6 +673,7 @@ function splitUserSettingsPatchByPlan(
         | 'name'
         | 'phone_number'
         | 'vertical'
+        | 'vertical_detail'
         | 'user_name'
       | 'user_phone'
       | 'backup_phone'
@@ -1057,7 +1060,6 @@ async function sendSignupWelcomeEmail(params: {
       shopName: params.shopName,
       trialEndsAt: params.trialEndsAt,
       appBaseUrl: params.appBaseUrl,
-      paddleTrialConfigVerified: process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true',
     });
     const html = await renderBaseEmailHtml(input);
     await params.emailService.sendEmail({
@@ -3824,6 +3826,7 @@ Submitted at: ${new Date().toISOString()}`,
         id: shop.id,
         name: shop.name,
         vertical: shop.vertical ?? null,
+        vertical_detail: shop.vertical_detail ?? null,
         phone_number: shop.phone_number,
         user_name: shop.user_name ?? '',
         user_phone: shop.user_phone ?? '',

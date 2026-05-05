@@ -70,6 +70,8 @@ export interface Shop {
   id: string;
   name: string;
   vertical?: ShopVertical | null;
+  /** Onboarding hint for beauty_clinic sub-vertical (lash studio, wax, etc.). */
+  vertical_detail?: string | null;
   brand_slug?: string | null;
   phone_number: string;
   user_phone: string;

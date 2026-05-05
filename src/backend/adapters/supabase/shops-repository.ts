@@ -7,6 +7,7 @@ type ShopsRow = {
   id: string;
   name: string;
   vertical: Shop['vertical'] | null;
+  vertical_detail: string | null;
   brand_slug: string | null;
   phone_number: string;
   user_phone: string;
@@ -78,6 +79,7 @@ function toShop(row: ShopsRow): Shop {
     id: row.id,
     name: row.name,
     vertical: row.vertical,
+    vertical_detail: row.vertical_detail,
     brand_slug: row.brand_slug,
     phone_number: row.phone_number,
     user_phone: row.user_phone,
@@ -128,6 +130,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -185,6 +188,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -242,6 +246,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -299,6 +304,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -367,6 +373,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -421,6 +428,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'name'
         | 'phone_number'
         | 'vertical'
+        | 'vertical_detail'
         | 'user_name'
         | 'user_phone'
         | 'backup_phone'
@@ -452,6 +460,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.name !== undefined) payload.name = patch.name;
     if (patch.phone_number !== undefined) payload.phone_number = patch.phone_number;
     if (patch.vertical !== undefined) payload.vertical = patch.vertical;
+    if (patch.vertical_detail !== undefined) payload.vertical_detail = patch.vertical_detail;
     if (patch.user_name !== undefined) payload.user_name = patch.user_name;
     if (patch.user_phone !== undefined) payload.user_phone = patch.user_phone;
     if (patch.backup_phone !== undefined) payload.backup_phone = patch.backup_phone;
@@ -490,6 +499,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -578,6 +588,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -666,6 +677,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -734,6 +746,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',
@@ -799,6 +812,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'id',
           'name',
           'vertical',
+          'vertical_detail',
           'brand_slug',
           'phone_number',
           'user_phone',

@@ -26,33 +26,27 @@ export function buildWelcomeSignupEmailPayload(params: {
   shopName: string;
   trialEndsAt?: string | null;
   appBaseUrl: string;
-  paddleTrialConfigVerified?: boolean;
 }): { input: BaseEmailInput; text: string } {
   const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
   const dashboardUrl = `${base}/user`;
   const onboardingUrl = `${base}/user/onboarding`;
-  const billingUrl = `${base}/user/billing`;
   const businessName = escapeHtmlText(params.shopName);
   const customerName = escapeHtmlText(displayNameFromEmail(params.email));
-  const trialPaymentCopy = paymentMethodTrialCopy(params.paddleTrialConfigVerified);
   const trialEndText = params.trialEndsAt
     ? new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(params.trialEndsAt))
     : '14 days from signup';
 
   const input: BaseEmailInput = {
     title: 'Welcome to RingBooker — your 14-day trial has started',
-    previewText: 'No card is needed for setup and test calls. Add a payment method before live answering.',
+    previewText: 'Complete onboarding to set up your AI receptionist — no card needed for setup and tests.',
     heroTitle: 'Your RingBooker trial has started',
     heroSubtitleHtml: `<p style="margin:0">Your account for <strong>${businessName}</strong> is ready. Your trial ends on <strong>${escapeHtmlText(trialEndText)}</strong>.</p>`,
     greetingHtml: `<p style="margin:0">Hi ${customerName},</p>`,
     bodyHtml: [
       `<p style="margin:0 0 12px 0">Welcome to RingBooker — your account for <strong>${businessName}</strong> is ready.</p>`,
-      `<p style="margin:0 0 12px 0">Your AI receptionist setup has been created. Next, review your business details, services, hours, and call handling preferences before RingBooker answers real callers.</p>`,
-      `<p style="margin:0 0 12px 0">${escapeHtmlText(trialPaymentCopy)}</p>`,
-      `<p style="margin:0">Most businesses can finish onboarding in a few minutes.</p>`,
+      `<p style="margin:0 0 12px 0">Your AI receptionist setup has been created. Next, review your business details, services, and hours so RingBooker can answer questions the way you want.</p>`,
+      `<p style="margin:0">No card is needed for setup and test calls. Most businesses can finish onboarding in a few minutes.</p>`,
     ].join(''),
-    secondaryBodyHtml:
-      `<p style="margin:0">After setup, you can test your AI receptionist, then add a payment method on the billing page when you are ready to go live.</p><p style="margin:12px 0 0 0"><a href="${billingUrl}">Add payment method</a></p>`,
     ctaLabel: 'Complete onboarding',
     ctaUrl: onboardingUrl,
     signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
@@ -65,12 +59,11 @@ export function buildWelcomeSignupEmailPayload(params: {
     `Welcome to RingBooker. Your account for "${params.shopName}" is ready.`,
     `Your 14-day trial ends on ${trialEndText}.`,
     '',
-    'Next step: complete your setup and start taking calls.',
+    'Next step: complete onboarding to finish your setup.',
     `Dashboard: ${dashboardUrl}`,
     `Onboarding: ${onboardingUrl}`,
     '',
-    trialPaymentCopy,
-    `Billing: ${billingUrl}`,
+    'No card is needed for setup and test calls.',
     '',
     'If you did not create a RingBooker account, you can safely ignore this email.',
     '',

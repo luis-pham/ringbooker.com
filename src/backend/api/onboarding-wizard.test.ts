@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
   applyVerticalLanguageSelection,
-  validateOnboardingFindBusiness,
   validateOnboardingProfileReview,
   validateOnboardingStep1,
+  validateOnboardingStep1Quick,
 } from '@/components/user/user-onboarding-live';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
@@ -56,20 +56,16 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
   return cookie;
 }
 
-test('Deprecated step 1 validation still requires business name plus manual find-business rules', () => {
+test('Legacy step 1 validation requires business name and phone (vertical optional)', () => {
   assert.deepEqual(validateOnboardingStep1({ businessName: '', vertical: '', businessPhone: '' }), [
     'Business name is required.',
-    'Business type is required.',
     'Business phone number is required.',
   ]);
 });
 
-test('Find-business validation requires vertical, phone, and URL for import mode', () => {
-  assert.deepEqual(
-    validateOnboardingFindBusiness({ vertical: '', businessPhone: '', websiteUrl: '', mode: 'import' }),
-    ['Business type is required.', 'Business phone number is required.', 'Add your website or Google Business Profile URL to import details.'],
-  );
-  assert.deepEqual(validateOnboardingFindBusiness({ vertical: 'nail_salon', businessPhone: '+15551234567', websiteUrl: '', mode: 'manual' }), []);
+test('Find step quick validation requires phone only', () => {
+  assert.deepEqual(validateOnboardingStep1Quick({ businessPhone: '' }), ['Business phone number is required.']);
+  assert.deepEqual(validateOnboardingStep1Quick({ businessPhone: '+15551234567' }), []);
 });
 
 test('Profile review validation requires business name', () => {

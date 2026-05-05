@@ -16,7 +16,6 @@ test('trial emails and go-live message do not promise no-charge when Paddle tria
     shopName: 'Test Salon',
     trialEndsAt: '2026-05-18T00:00:00.000Z',
     appBaseUrl,
-    paddleTrialConfigVerified: false,
   });
   const reminder = buildTrialReminderEmailPayload({
     email: 'owner@example.com',
@@ -28,19 +27,21 @@ test('trial emails and go-live message do not promise no-charge when Paddle tria
   });
   const goLiveMessage = buildGoLivePaymentRequiredMessage({ paddleTrialConfigVerified: false });
 
-  const combined = [
-    welcome.text,
-    welcome.input.previewText,
-    welcome.input.bodyHtml,
+  const welcomeCombined = [welcome.text, welcome.input.previewText, welcome.input.bodyHtml].join('\n');
+  assert.doesNotMatch(welcomeCombined, forbiddenNoChargePattern);
+  assert.doesNotMatch(welcomeCombined, /Add payment method/i);
+  assert.doesNotMatch(welcomeCombined, /\/user\/billing/i);
+
+  const policyCombined = [
     reminder.text,
     reminder.input.previewText,
     reminder.input.bodyHtml,
     goLiveMessage,
   ].join('\n');
 
-  assert.doesNotMatch(combined, forbiddenNoChargePattern);
+  assert.doesNotMatch(policyCombined, forbiddenNoChargePattern);
   assert.match(
-    combined,
+    policyCombined,
     /A payment method is required before RingBooker answers real callers on your business number/i,
   );
 });
@@ -51,7 +52,6 @@ test('trial emails and go-live message may promise no-charge when Paddle trial c
     shopName: 'Test Salon',
     trialEndsAt: '2026-05-18T00:00:00.000Z',
     appBaseUrl,
-    paddleTrialConfigVerified: true,
   });
   const reminder = buildTrialReminderEmailPayload({
     email: 'owner@example.com',
