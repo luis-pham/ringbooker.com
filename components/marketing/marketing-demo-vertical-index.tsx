@@ -103,7 +103,7 @@ const styles = [
     }
     *{box-sizing:border-box}
     .demo-hub{padding-top:68px;background:radial-gradient(ellipse 82% 58% at 50% -8%,#EDE9FE 0%,#FDF4FF 38%,#fff 78%)}
-    .demo-hub-inner{max-width:1120px;margin:0 auto;padding-left:22px;padding-right:22px}
+    .demo-hub-inner{max-width:1200px;margin:0 auto;padding-left:22px;padding-right:22px}
 
     /* HERO */
     .demo-hub-hero{padding:72px 0 28px;text-align:center}
@@ -121,12 +121,14 @@ const styles = [
     /* GRID */
     .demo-hub-picks{padding:36px 0 56px}
     .demo-hub-picks h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mk-text-desc,#64748B);text-align:center;margin:0 0 20px}
-    .demo-hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:0 auto;max-width:1120px}
+    /* Industry cards — same grid recipe as .html-hub-page .industry-grid (Explore by Industry) */
+    .demo-hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;width:100%}
     .demo-hub-card{
-      background:#fff;border:1px solid var(--demo-hub-border);border-radius:24px;
+      background:#fff;border:1px solid var(--demo-hub-border);border-radius:var(--radius-lg,24px);
       padding:22px 20px;text-decoration:none;color:inherit;
       display:block;transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background .2s ease;
       text-align:center;
+      box-shadow:var(--mk-shadow-soft,none);
     }
     .demo-hub-card:hover{
       transform:translateY(-2px);
@@ -139,8 +141,8 @@ const styles = [
       width:auto;height:auto;border-radius:0;display:flex;align-items:center;justify-content:center;
       margin:0 auto 12px;flex-shrink:0;background:transparent;border:0;
     }
-    .demo-hub-emoji-icon{font-size:32px;line-height:1}
-    .demo-hub-card h3{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em;color:var(--demo-hub-text);line-height:1.3}
+    .demo-hub-emoji-icon{font-size:30px;line-height:1}
+    .demo-hub-card h3{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--demo-hub-text);line-height:1.3}
     .demo-hub-card-line{margin:7px 0 0;font-size:12px;line-height:1.5;color:var(--demo-hub-muted)}
     .demo-hub-card-cta{
       margin-top:10px;display:inline-flex;align-items:center;justify-content:center;gap:5px;
@@ -178,6 +180,9 @@ const styles = [
 
     @media (max-width:1100px){
       .demo-hub-step-grid{grid-template-columns:1fr}
+    }
+    @media (max-width:768px){
+      .demo-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @media (max-width:640px){
       .demo-hub-hero{padding-top:56px}
