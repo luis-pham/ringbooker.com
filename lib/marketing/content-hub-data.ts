@@ -938,17 +938,17 @@ export const compareHub: ContentHubPageConfig = {
           body: 'Text-back re-engages silent callers — but it cannot complete a booking. Here is what happens in the gap between text-back and booked appointment.',
         },
         {
-          href: '/compare/ringbooker-vs-goodcall/',
+          href: '/compare/ringbooker-vs-goodcall-for-salons-2026',
           title: 'RingBooker vs. GoodCall',
           body: 'Real pricing data including GoodCall’s unique customer cap and number-porting limitation for beauty teams comparing long-term fit.',
         },
         {
-          href: '/compare/ringbooker-vs-bookingbee/',
+          href: '/compare/ringbooker-vs-agentzap-for-salons-2026',
           title: 'RingBooker vs. BookingBee',
           body: 'The two most directly comparable beauty-specific tools compared on pricing, Vietnamese support, and feature scope.',
         },
         {
-          href: '/compare/ringbooker-vs-agentzap/',
+          href: '/compare/ringbooker-vs-agentzap-for-salons-2026',
           title: 'RingBooker vs. AgentZap',
           body: 'First-year cost breakdown: $948 for RingBooker vs. $1,707 minimum for AgentZap, with coverage and workflow trade-offs.',
         },

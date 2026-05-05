@@ -58,7 +58,7 @@ a{text-decoration:none;color:inherit}
 .pricing-page{background:#fff}
 /* Hero + plans: vertical rhythm matches how-it-works hero (72px bottom) then section (86px top) before first label */
 .pricing-hero-plans{padding:112px 48px 72px;background:radial-gradient(ellipse 100% 65% at 50% -8%,#EDE9FE 0%,#FDF4FF 38%,#fff 72%,#fafbfc 100%)}
-.pricing-plans-inner{margin-top:0;padding-top:86px}
+.pricing-plans-inner{margin-top:0;padding-top:174px}
 .container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 .hero-copy{max-width:980px;margin:0 auto;text-align:center}
 .badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
@@ -158,6 +158,7 @@ a{text-decoration:none;color:inherit}
 .pricing-trial-note{max-width:760px;margin:28px auto 0;padding:16px 20px;border-radius:var(--r-lg);background:rgba(245,243,255,.65);border:1px solid rgba(196,181,253,.45);font-size:14px;line-height:1.65;color:#475569;text-align:center}
 .compare-section{margin-top:0}
 .pricing-faq-cta .cta-box{margin-top:48px}
+.pricing-faq-cta .mfaq-section{padding-top:0}
 .compare-wrap{margin:0 -8px;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .compare-table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:#fff;box-shadow:var(--shadow);font-size:14px}
 .compare-table th,.compare-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
