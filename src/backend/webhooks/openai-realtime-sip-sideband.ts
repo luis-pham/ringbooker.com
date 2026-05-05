@@ -15,6 +15,10 @@ export type OpenAiRealtimeSipSidebandParams =
       apiKey: string;
       /** When false, only connect briefly then close (smoke / reduced surface). */
       enableToolLoop: boolean;
+      /** Explicit first-turn instruction so SIP demo speaks before caller audio. */
+      initialResponseInstructions?: string | null;
+      /** When set, used for accepted-to-first-response timing. */
+      acceptedAtMs?: number;
     }
   | {
       variant: 'shop';
@@ -61,29 +65,31 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     }
   }
 
-  function trySendShopInitialResponse(): void {
-    if (params.variant !== 'shop') return;
+  function trySendInitialResponse(): void {
     const instructions = params.initialResponseInstructions?.trim();
-    if (!instructions || initialResponseSent) return;
-    if (sawUserSpeechBeforeInitial) {
+    if (initialResponseSent) return;
+    if (params.variant === 'shop' && sawUserSpeechBeforeInitial) {
       return;
     }
-    logger.info({ callId: params.callId }, 'openai_sip_initial_response_create_started');
+    logger.info(
+      { callId: params.callId, variant: params.variant, hasInstructions: Boolean(instructions) },
+      'openai_sip_initial_response_create_started',
+    );
     try {
       ws.send(
         JSON.stringify({
           type: 'response.create',
-          response: { instructions },
+          ...(instructions ? { response: { instructions } } : {}),
         }),
       );
       initialResponseSent = true;
-      logger.info({ callId: params.callId }, 'openai_sip_initial_response_create_sent');
+      logger.info({ callId: params.callId, variant: params.variant }, 'openai_sip_initial_response_create_sent');
       incrementMetric('initial_response_create_total', { outcome: 'sent' });
       if (typeof params.acceptedAtMs === 'number') {
         observeDurationMs('openai_accepted_to_initial_response_ms', Date.now() - params.acceptedAtMs, {});
       }
     } catch (err) {
-      logger.warn({ err, callId: params.callId }, 'openai_sip_initial_response_failed');
+      logger.warn({ err, callId: params.callId, variant: params.variant }, 'openai_sip_initial_response_failed');
       incrementMetric('initial_response_create_total', { outcome: 'failed' });
     }
   }
@@ -102,27 +108,18 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
         }
         return;
       }
-      try {
-        ws.send(JSON.stringify({ type: 'response.create' }));
-      } catch (err) {
-        logger.warn({ err, callId: params.callId }, 'openai_sip_sideband_initial_response_create_failed');
-      }
+      // Wait briefly after sideband open so the accepted SIP call has media/session state ready.
+      initialTimer = setTimeout(() => {
+        initialTimer = null;
+        trySendInitialResponse();
+      }, 500);
       return;
     }
 
-    const instructions = params.initialResponseInstructions?.trim();
-    if (instructions) {
-      initialTimer = setTimeout(() => {
-        initialTimer = null;
-        trySendShopInitialResponse();
-      }, 300);
-    } else {
-      try {
-        ws.send(JSON.stringify({ type: 'response.create' }));
-      } catch (err) {
-        logger.warn({ err, callId: params.callId }, 'openai_sip_sideband_initial_response_create_failed');
-      }
-    }
+    initialTimer = setTimeout(() => {
+      initialTimer = null;
+      trySendInitialResponse();
+    }, 300);
   });
 
   ws.on('message', (data) => {

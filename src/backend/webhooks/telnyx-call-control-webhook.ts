@@ -18,6 +18,7 @@ import type {
   ShopAccessStatesRepository,
   ShopsRepository,
   VoiceCallLegsRepository,
+  ForwardingTestSessionsRepository,
 } from '@/src/backend/ports/repositories';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { verifyTelnyxSignature } from '@/src/backend/security/telnyx-signature';
@@ -28,6 +29,7 @@ import {
   callControlAnswer,
   callControlBridgeCalls,
   callControlCreateCall,
+  callControlHangup,
   callControlReject,
   callControlSpeak,
 } from '@/src/backend/services/calls/call-control-client';
@@ -166,6 +168,7 @@ export async function handleTelnyxCallControlWebhook(
     shopsRepository?: ShopsRepository;
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
+    forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     missedCallsRepository?: MissedCallsRepository;
@@ -277,6 +280,7 @@ async function processCallInitiated(
     shopsRepository: ShopsRepository;
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
+    forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
@@ -366,6 +370,7 @@ async function processCallInitiated(
       shopsRepository: deps.shopsRepository,
       billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
       shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
     });
 
     const arch = inboundArchitectureLogFields();
@@ -476,7 +481,8 @@ async function processCallInitiated(
       result.shopId &&
       result.callControlId &&
       result.destinationPhone &&
-      deps.callLogsRepository
+      deps.callLogsRepository &&
+      !result.forwardingConnectivityTest
     ) {
       await deps.callLogsRepository.createOrUpdateInboundCall({
         provider: 'telnyx_call_control',
@@ -509,7 +515,7 @@ async function processCallInitiated(
             },
             'telnyx_call_control_answer_succeeded',
           );
-          if (deps.voiceCallLegsRepository && result.shopId && result.internalRequestId) {
+          if (deps.voiceCallLegsRepository && result.shopId && result.internalRequestId && !result.forwardingConnectivityTest) {
             try {
               await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
                 shopId: result.shopId,
@@ -637,6 +643,33 @@ async function processCallAnswered(
       await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
       incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
       return c.json({ ok: true, phase: 'owner_handoff_screening' }, 200);
+    }
+
+    if (decodedClient?.purpose === 'forwarding_connectivity_test' && callControlId) {
+      const dryRunFwd = isTelnyxCallControlDryRunEnv();
+      const fetchDepsFwd = { fetchImpl: deps.testingTelnyxFetch, apiKey: env.TELNYX_API_KEY };
+      if (!dryRunFwd) {
+        const speakResult = await callControlSpeak(
+          callControlId,
+          {
+            payload: 'RingBooker received your forwarded test call. You can hang up now.',
+            voice: 'Polly.Joanna',
+            language: 'en-US',
+          },
+          fetchDepsFwd,
+        );
+        if (!speakResult.ok) {
+          log.warn({ status: speakResult.status, body: speakResult.text }, 'telnyx_forwarding_test_speak_failed');
+        }
+        const hangResult = await callControlHangup(callControlId, {}, fetchDepsFwd);
+        if (!hangResult.ok) {
+          log.warn({ status: hangResult.status, body: hangResult.text }, 'telnyx_forwarding_test_hangup_failed');
+        }
+      }
+      await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+      incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+      log.info({ shopId: decodedClient.shopId, callControlId }, 'telnyx_call_control_forwarding_test_answered');
+      return c.json({ ok: true, phase: 'forwarding_connectivity_test' }, 200);
     }
 
     const dryRun = isTelnyxCallControlDryRunEnv();
@@ -1316,7 +1349,7 @@ async function processCallHangup(
             billingSubscriptionsRepository: subsRepo,
             shopAccessStatesRepository: accessStatesRepo,
           },
-          { shopId: shop.id, onboardingComplete: true },
+          { shopId: shop.id },
         );
         if (!access.canReceiveLiveCalls) {
           log.warn(

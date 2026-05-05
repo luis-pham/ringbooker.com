@@ -23,8 +23,13 @@ import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { maskPhone } from '@/src/backend/security/pii';
 import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
-import type { BillingSubscriptionsRepository, ShopAccessStatesRepository, ShopsRepository } from '@/src/backend/ports/repositories';
-import { resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
+import type {
+  BillingSubscriptionsRepository,
+  ForwardingTestSessionsRepository,
+  ShopAccessStatesRepository,
+  ShopsRepository,
+} from '@/src/backend/ports/repositories';
+import { resolveShopByInboundDidWithMeta } from '@/src/backend/services/calls/shop-resolver';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8"?>';
@@ -46,6 +51,11 @@ function buildTelnyxTexmlRejectXml(): string {
   return `${XML_DECL}\n<Response><Reject reason="rejected"/></Response>`;
 }
 
+function buildTelnyxTexmlForwardingTestAckXml(): string {
+  const msg = escapeXmlText('RingBooker received your forwarded test call. You can hang up now.');
+  return `${XML_DECL}\n<Response><Say voice="Polly.Joanna" language="en-US">${msg}</Say><Hangup/></Response>`;
+}
+
 function texmlXmlResponse(xml: string): Response {
   return new Response(xml, {
     status: 200,
@@ -63,6 +73,7 @@ export async function handleTelnyxTexmlOpenAiInbound(
     shopsRepository?: ShopsRepository;
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
+    forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   },
 ): Promise<Response> {
   const env = getEnv();
@@ -121,9 +132,11 @@ export async function handleTelnyxTexmlOpenAiInbound(
 
   let shopId: string | undefined;
   let billingBlockedReason: string | undefined;
+  let forwardingTestAckTexml = false;
   if (deps?.shopsRepository && form.To) {
     try {
-      const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, form.To);
+      const meta = await resolveShopByInboundDidWithMeta({ shopsRepository: deps.shopsRepository }, form.To);
+      const shop = meta.shop;
       shopId = shop?.id;
       if (shop && deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
         const access = await getShopBillingAccess(
@@ -132,9 +145,15 @@ export async function handleTelnyxTexmlOpenAiInbound(
             billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
             shopAccessStatesRepository: deps.shopAccessStatesRepository,
           },
-          { shopId: shop.id, onboardingComplete: true },
+          { shopId: shop.id },
         );
-        if (!access.canReceiveLiveCalls) billingBlockedReason = access.blockReason;
+        if (!access.canReceiveLiveCalls) {
+          if (meta.matchedBy === 'telnyx_number' && access.blockReason === 'forwarding_verification_required') {
+            forwardingTestAckTexml = true;
+          } else {
+            billingBlockedReason = access.blockReason;
+          }
+        }
       }
     } catch {
       shopId = undefined;
@@ -150,9 +169,15 @@ export async function handleTelnyxTexmlOpenAiInbound(
       rb_call_id: rbCallId,
       shop_id: shopId,
       billing_blocked_reason: billingBlockedReason,
+      forwarding_test_ack_texml: forwardingTestAckTexml,
     },
     'telnyx_texml_openai_sip_dial_selected',
   );
+
+  if (forwardingTestAckTexml) {
+    incrementMetric('texml_openai_inbound_total', { outcome: 'forwarding_test_ack' });
+    return texmlXmlResponse(buildTelnyxTexmlForwardingTestAckXml());
+  }
 
   if (billingBlockedReason) {
     incrementMetric('texml_openai_inbound_total', { outcome: 'billing_blocked' });

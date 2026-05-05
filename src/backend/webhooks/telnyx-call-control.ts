@@ -16,7 +16,12 @@ import { z } from 'zod';
 
 import type { VoicePromptVertical } from '@/src/agent/prompts';
 import type { Shop } from '@/src/backend/domain/types';
-import type { BillingSubscriptionsRepository, ShopAccessStatesRepository, ShopsRepository } from '@/src/backend/ports/repositories';
+import type {
+  BillingSubscriptionsRepository,
+  ForwardingTestSessionsRepository,
+  ShopAccessStatesRepository,
+  ShopsRepository,
+} from '@/src/backend/ports/repositories';
 import { getEnv } from '@/src/backend/config/env';
 import { resolveVerticalDemoInboundRoute } from '@/src/backend/demo/demo-vertical-phone-map';
 import {
@@ -31,6 +36,7 @@ import {
   resolveShopByInboundDidWithMeta,
   type ResolveShopByInboundDidResult,
 } from '@/src/backend/services/calls/shop-resolver';
+import { completeForwardingTestFromInboundCall } from '@/src/backend/services/go-live/forwarding-test-inbound';
 
 export const telnyxCallControlEnvelopeSchema = z.object({
   data: z.object({
@@ -94,6 +100,8 @@ export type TelnyxCallControlPhase1Result =
       /** `demo` = vertical demo DID (no shop plan gate). `shop` = production tenant. */
       routeKind?: 'demo' | 'shop';
       demoVertical?: VoicePromptVertical;
+      /** Inbound forwarding connectivity check — answered with a short prompt; does not bridge OpenAI. */
+      forwardingConnectivityTest?: boolean;
     };
 
 export type TelnyxCallControlPhase1HandledResult = Extract<TelnyxCallControlPhase1Result, { handled: true }>;
@@ -141,9 +149,10 @@ export type CallControlClientStatePayload = {
   handoffTransport?: 'telnyx_call_control' | string;
   /**
    * `owner_handoff_leg` — outbound owner screening leg (do not dial OpenAI SIP on `call.answered`).
+   * `forwarding_connectivity_test` — shop inbound during pending forwarding test; speak + hang up (no AI).
    * Inbound path leaves this unset.
    */
-  purpose?: 'owner_handoff_leg' | 'openai_sip_leg' | 'vertical_demo_inbound' | string;
+  purpose?: 'owner_handoff_leg' | 'openai_sip_leg' | 'vertical_demo_inbound' | 'forwarding_connectivity_test' | string;
   handoffId?: string;
   parentCallControlId?: string;
   ownerPhone?: string;
@@ -438,6 +447,7 @@ export async function evaluateTelnyxCallControlInboundInitiated(
     shopsRepository: ShopsRepository;
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
+    forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   },
 ): Promise<TelnyxCallControlPhase1Result> {
   if (!isIncomingCallPayload(payload)) {
@@ -567,6 +577,26 @@ export async function evaluateTelnyxCallControlInboundInitiated(
     };
   }
 
+  let completedForwardingTestThisEvent = false;
+  if (
+    meta.matchedBy === 'telnyx_number' &&
+    deps.forwardingTestSessionsRepository &&
+    deps.shopAccessStatesRepository &&
+    meta.inboundDid
+  ) {
+    const callSessionIdForTest = firstStringFromPayload(payload, ['call_session_id']);
+    completedForwardingTestThisEvent = await completeForwardingTestFromInboundCall({
+      forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
+      shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      shopId: shop.id,
+      inboundDidE164: meta.inboundDid,
+      inboundCallSessionId: callSessionIdForTest ?? null,
+      inboundCallControlId: callControlId,
+      callerPhone,
+      now: new Date(),
+    });
+  }
+
   if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
     const access = await getShopBillingAccess(
       {
@@ -574,9 +604,40 @@ export async function evaluateTelnyxCallControlInboundInitiated(
         billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
       },
-      { shopId: shop.id, onboardingComplete: true },
+      { shopId: shop.id },
     );
     if (!access.canReceiveLiveCalls) {
+      if (completedForwardingTestThisEvent) {
+        const internalRequestId = randomUUID();
+        const callSessionId = firstStringFromPayload(payload, ['call_session_id']);
+        const clientState = buildCallControlClientState({
+          shopId: shop.id,
+          requestId: internalRequestId,
+          callerPhone,
+          ts: new Date().toISOString(),
+          rbCallId: internalRequestId,
+          telnyxCallControlId: callControlId,
+          inboundDid: destinationPhoneShop,
+          telnyxCallSessionId: callSessionId ?? undefined,
+          purpose: 'forwarding_connectivity_test',
+          routeKind: 'shop',
+        });
+        const dryRunFwd = isTelnyxCallControlDryRunEnv();
+        return {
+          handled: true,
+          decision: dryRunFwd ? 'dry_run' : 'answer',
+          reason: 'forwarding_connectivity_test',
+          routeKind: 'shop',
+          shopId: shop.id,
+          clientState,
+          callControlId,
+          internalRequestId,
+          destinationPhone: destinationPhoneShop,
+          callerPhone,
+          resolver: resolverFromShop(shop, meta),
+          forwardingConnectivityTest: true,
+        };
+      }
       return {
         handled: true,
         decision: 'reject',

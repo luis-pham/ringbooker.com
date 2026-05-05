@@ -15,7 +15,11 @@ import {
   buildMergedOpenAiSipDemoDidMap,
   SIP_DEMO_DEFAULT_SHOP_BY_VERTICAL,
 } from '@/src/backend/demo/demo-vertical-phone-map';
-import { buildPublicDemoSystemPrompt, type DemoConfigInput } from '@/src/backend/demo/public-demo-system-prompt';
+import {
+  buildPublicDemoScriptedWelcomeLine,
+  buildPublicDemoSystemPrompt,
+  type DemoConfigInput,
+} from '@/src/backend/demo/public-demo-system-prompt';
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
@@ -372,7 +376,7 @@ export async function handleOpenAiRealtimeSipWebhook(
         billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
       },
-      { shopId: route.shop.id, onboardingComplete: true },
+      { shopId: route.shop.id },
     );
     if (!access.canReceiveLiveCalls) {
       if (apiKey) await rejectCall(603, access.blockReason);
@@ -423,6 +427,7 @@ export async function handleOpenAiRealtimeSipWebhook(
 
   let instructions: string;
   let demoVertical: VoicePromptVertical | undefined;
+  let demoInitialResponseInstructions: string | null = null;
 
   if (route.kind === 'demo') {
     let enrichment: SipDemoSessionEnrichment | null = null;
@@ -443,16 +448,19 @@ export async function handleOpenAiRealtimeSipWebhook(
       : demoCtx.businessType;
     demoVertical = asVoiceVertical(enrichment?.verticalSlug ?? demoCtx.vertical) ?? demoCtx.vertical;
 
-    instructions = buildPublicDemoSystemPrompt({
+    const demoPromptInput = {
       shopName,
       businessType,
       demoVertical,
       staffName: enrichment?.demoConfig?.staffNames?.[0],
       notes: enrichment?.notes ?? undefined,
       demoConfig: enrichment?.demoConfig ? sipDemoConfigToPromptInput(enrichment.demoConfig) : undefined,
-      demoChannel: 'inbound_sip',
-      voiceCallType: 'inbound_booking',
-    });
+      demoChannel: 'inbound_sip' as const,
+      voiceCallType: 'inbound_booking' as const,
+    };
+    instructions = buildPublicDemoSystemPrompt(demoPromptInput);
+    const scriptedWelcomeLine = buildPublicDemoScriptedWelcomeLine(demoPromptInput);
+    demoInitialResponseInstructions = `Speak first now. Say this opening line exactly once, naturally, then stop and listen for the caller: ${scriptedWelcomeLine}`;
   } else {
     demoVertical = voiceVerticalFromShopVertical(route.shop.vertical);
     instructions = buildSystemPrompt({
@@ -554,6 +562,8 @@ export async function handleOpenAiRealtimeSipWebhook(
           callId,
           apiKey: apiKey!,
           enableToolLoop: true,
+          acceptedAtMs,
+          initialResponseInstructions: demoInitialResponseInstructions,
         });
       } else if (shopToolsAndSideband && shopRoomContext && route.kind === 'shop') {
         const executorDeps: SipToolExecutorDeps = {
