@@ -33,3 +33,34 @@ test('/blog?cluster=missed-booking-protection&search=Booking -> noindex,follow c
   assert.equal(out.robots.follow, true);
   assert.equal(out.canonical, 'https://ringbooker.com/blog');
 });
+
+test('/blog?page=2 -> noindex,follow canonical /blog', () => {
+  const out = getBlogIndexSeoDirectives({ page: '2' });
+  assert.equal(out.robots.index, false);
+  assert.equal(out.robots.follow, true);
+  assert.equal(out.canonical, 'https://ringbooker.com/blog');
+});
+
+test('/blog?page=1 still indexable (redundant param)', () => {
+  const out = getBlogIndexSeoDirectives({ page: '1' });
+  assert.equal(out.robots.index, true);
+  assert.equal(out.robots.follow, true);
+});
+
+test('/blog?tag=some-slug -> noindex,follow', () => {
+  const out = getBlogIndexSeoDirectives({ tag: 'some-slug' });
+  assert.equal(out.robots.index, false);
+  assert.equal(out.robots.follow, true);
+});
+
+test('/blog?cluster=blog -> index (default cluster)', () => {
+  const out = getBlogIndexSeoDirectives({ cluster: 'blog' });
+  assert.equal(out.robots.index, true);
+  assert.equal(out.robots.follow, true);
+});
+
+test('/blog?cluster=trust -> noindex (non-default hub listing)', () => {
+  const out = getBlogIndexSeoDirectives({ cluster: 'trust' });
+  assert.equal(out.robots.index, false);
+  assert.equal(out.robots.follow, true);
+});

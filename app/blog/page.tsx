@@ -50,6 +50,7 @@ export async function generateMetadata({
     search?: string;
     page?: string;
     cluster?: string;
+    tag?: string;
   }>;
 }): Promise<Metadata> {
   const params = (await searchParams) ?? {};
@@ -87,6 +88,8 @@ interface BlogPageProps {
     page?: string;
     /** Topic cluster (`Post.pathPrefix`), e.g. `missed-booking-protection`. Default: `blog`. */
     cluster?: string;
+    /** Tag slug (`?tag=`) when filtering listings */
+    tag?: string;
   }>;
 }
 
@@ -104,18 +107,22 @@ function buildPageHref({
   category,
   search,
   cluster,
+  tag,
 }: {
   page: number;
   category?: string;
   search?: string;
   /** Omit or `blog` → default growth blog listing (clean URL). */
   cluster?: string;
+  tag?: string;
 }) {
   const params = new URLSearchParams();
   const c = cluster?.trim();
   if (c && c !== 'blog') params.set('cluster', c);
   if (category) params.set('category', category);
   if (search) params.set('search', search);
+  const tagSlug = typeof tag === 'string' ? tag.trim() : '';
+  if (tagSlug) params.set('tag', tagSlug);
   if (page > 1) params.set('page', String(page));
   const query = params.toString();
   return query.length > 0 ? `/blog?${query}` : '/blog';
@@ -185,12 +192,14 @@ function Pagination({
   category,
   search,
   cluster,
+  tag,
 }: {
   page: number;
   totalPages: number;
   category?: string;
   search?: string;
   cluster?: string;
+  tag?: string;
 }) {
   if (totalPages <= 1) return null;
 
@@ -203,8 +212,7 @@ function Pagination({
   return (
     <div className="mx-auto mb-24 flex max-w-6xl items-center justify-center gap-2 px-6 md:px-12">
       <Link
-        href={buildPageHref({ page: Math.max(1, page - 1), category, search, cluster })}
-        rel="nofollow"
+        href={buildPageHref({ page: Math.max(1, page - 1), category, search, cluster, tag })}
         aria-disabled={page <= 1}
         className={[
           'inline-flex h-10 items-center gap-1 rounded-xl border border-gray-200 px-4 text-sm font-semibold',
@@ -222,8 +230,7 @@ function Pagination({
       {start > 1 ? (
         <>
           <Link
-            href={buildPageHref({ page: 1, category, search, cluster })}
-            rel="nofollow"
+            href={buildPageHref({ page: 1, category, search, cluster, tag })}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 transition hover:border-brand-purple hover:bg-brand-purple hover:text-white"
           >
             1
@@ -235,8 +242,7 @@ function Pagination({
       {pages.map((p) => (
         <Link
           key={p}
-          href={buildPageHref({ page: p, category, search, cluster })}
-          rel="nofollow"
+          href={buildPageHref({ page: p, category, search, cluster, tag })}
           className={[
             'flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold',
             p === page
@@ -252,8 +258,7 @@ function Pagination({
         <>
           <span className="px-1 text-sm text-gray-400">…</span>
           <Link
-            href={buildPageHref({ page: totalPages, category, search, cluster })}
-            rel="nofollow"
+            href={buildPageHref({ page: totalPages, category, search, cluster, tag })}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 transition hover:border-brand-purple hover:bg-brand-purple hover:text-white"
           >
             {totalPages}
@@ -262,8 +267,7 @@ function Pagination({
       ) : null}
 
       <Link
-        href={buildPageHref({ page: Math.min(totalPages, page + 1), category, search, cluster })}
-        rel="nofollow"
+        href={buildPageHref({ page: Math.min(totalPages, page + 1), category, search, cluster, tag })}
         aria-disabled={page >= totalPages}
         className={[
           'inline-flex h-10 items-center gap-1 rounded-xl border border-gray-200 px-4 text-sm font-semibold',
@@ -287,6 +291,8 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const rawCluster = typeof params.cluster === 'string' ? params.cluster.trim() : '';
   const listPathPrefix = isBlogPathPrefix(rawCluster) ? rawCluster : 'blog';
   const clusterQuery = listPathPrefix === 'blog' ? undefined : listPathPrefix;
+  const tagSlug =
+    typeof params.tag === 'string' && params.tag.trim().length > 0 ? params.tag.trim() : undefined;
 
   const [{ posts, total, totalPages }, categories, featuredPost] = await Promise.all([
     getAllPosts({
@@ -294,6 +300,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
       pathPrefix: listPathPrefix,
       categorySlug: params.category,
       search: params.search,
+      tagSlug,
       page,
       perPage: 9,
     }),
@@ -366,6 +373,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           category={params.category}
           search={params.search}
           cluster={clusterQuery}
+          tag={tagSlug}
         />
 
         <MarketingFaqAccordion

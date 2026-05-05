@@ -5,24 +5,44 @@ export type BlogIndexQueryParams = {
   search?: string;
   page?: string;
   cluster?: string;
+  /** Tag slug when using `?tag=` on the listing */
+  tag?: string;
 };
 
-/** For `/blog`, any non-empty query string should be treated as filtered state. */
+function nonEmptyString(v: unknown): v is string {
+  return typeof v === 'string' && v.trim().length > 0;
+}
+
+/**
+ * `/blog` listing: index,follow only for the default view (page 1, cluster default, no filters).
+ * Search / category / tag / pagination / non-default cluster → noindex,follow (canonical still `/blog`).
+ */
+export function blogListingShouldNoindex(params: BlogIndexQueryParams): boolean {
+  const page = Number(params.page) > 0 ? Number(params.page) : 1;
+  const cluster = typeof params.cluster === 'string' ? params.cluster.trim() : '';
+  const clusterIsNonDefault = cluster.length > 0 && cluster !== 'blog';
+
+  return (
+    nonEmptyString(params.search) ||
+    nonEmptyString(params.category) ||
+    nonEmptyString(params.tag) ||
+    page > 1 ||
+    clusterIsNonDefault
+  );
+}
+
+/** @deprecated Prefer {@link blogListingShouldNoindex} — semantics aligned with robots rules (not “any query string”). */
 export function hasBlogIndexQueryParams(params: BlogIndexQueryParams): boolean {
-  const qs = new URLSearchParams();
-  if (typeof params.category === 'string' && params.category.trim().length > 0) qs.set('category', params.category);
-  if (typeof params.search === 'string' && params.search.trim().length > 0) qs.set('search', params.search);
-  if (typeof params.page === 'string' && params.page.trim().length > 0) qs.set('page', params.page);
-  if (typeof params.cluster === 'string' && params.cluster.trim().length > 0) qs.set('cluster', params.cluster);
-  return qs.toString().length > 0;
+  return blogListingShouldNoindex(params);
 }
 
 export function getBlogIndexSeoDirectives(params: BlogIndexQueryParams) {
-  const filtered = hasBlogIndexQueryParams(params);
+  const noindex = blogListingShouldNoindex(params);
+  const base = siteConfig.url.replace(/\/$/, '');
   return {
-    canonical: `${siteConfig.url}/blog`,
+    canonical: `${base}/blog`,
     robots: {
-      index: !filtered,
+      index: !noindex,
       follow: true,
     },
   } as const;
