@@ -1,4 +1,4 @@
-import { isShopOnboardingComplete } from '@/src/backend/domain/shop-onboarding';
+import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import type { BillingSubscription, Shop, ShopAccessState } from '@/src/backend/domain/types';
 import {
   computeShopBillingAccessSnapshot,
@@ -65,14 +65,11 @@ export function buildAdminShopStatus(params: {
   const shop = params.shop;
   const subscription = params.subscription;
   const accessState = params.accessState;
-  const onboardingComplete = isShopOnboardingComplete(shop);
-
   const billing = computeShopBillingAccessSnapshot({
     shop,
     subscription,
     accessState,
     testCallsUsed: params.testCallsUsed,
-    onboardingComplete,
     now,
   });
 
@@ -96,7 +93,7 @@ export function buildAdminShopStatus(params: {
     trialDaysLeft,
     subscriptionStatus: subscription?.status ?? null,
     paymentMethodStatus: billing.paymentMethodStatus ?? 'unknown',
-    onboardingStatus: onboardingComplete ? 'complete' : 'incomplete',
+    onboardingStatus: isShopSetupWizardComplete(shop) ? 'complete' : 'incomplete',
     onboardingStep: shop.current_onboarding_step ?? null,
     liveAnsweringStatus,
     liveAnsweringPausedReason: accessState?.liveCallsPausedReason ?? null,

@@ -16,6 +16,7 @@ import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-serv
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
+import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
 
 applyRequiredTestEnv({
   USER_AUTH_EMAIL: 'existing-user@ringbooker.local',
@@ -24,7 +25,11 @@ applyRequiredTestEnv({
 });
 
 class FakePhoneProvisioningService implements PhoneProvisioningService {
+  searchCalls = 0;
+  provisionCalls = 0;
+
   async searchAvailableNumbers() {
+    this.searchCalls += 1;
     return [
       {
         phoneNumber: '+17145556666',
@@ -42,6 +47,7 @@ class FakePhoneProvisioningService implements PhoneProvisioningService {
   }
 
   async provisionNumber(params: { phoneNumber: string; requestId: string }) {
+    this.provisionCalls += 1;
     return {
       phoneNumber: params.phoneNumber,
       providerNumberId: `test-${params.phoneNumber.replace(/\D/g, '')}`,
@@ -50,10 +56,8 @@ class FakePhoneProvisioningService implements PhoneProvisioningService {
   }
 }
 
-test('user signup supports phone search and creates authenticated session', async () => {
-  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
-  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
-  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+test('signup phone-search endpoint returns numbers (reserved for post-payment forwarding selection)', async () => {
+  const fakeProvisioning = new FakePhoneProvisioningService();
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     jobsRepository: new InMemoryJobsRepository(),
@@ -61,10 +65,10 @@ test('user signup supports phone search and creates authenticated session', asyn
     callbacksRepository: new InMemoryCallbacksRepository(),
     shopsRepository: new InMemoryShopsRepository(),
     telephonyService: new NoopTelephonyService(),
-    phoneProvisioningService: new FakePhoneProvisioningService(),
-    billingCustomersRepository,
-    billingSubscriptionsRepository,
-    shopAccessStatesRepository,
+    phoneProvisioningService: fakeProvisioning,
+    billingCustomersRepository: new InMemoryBillingCustomersRepository(),
+    billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
+    shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
     callLogsRepository: new InMemoryCallLogsRepository(),
     authUsersRepository: new InMemoryAuthUsersRepository(),
     realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
@@ -86,6 +90,31 @@ test('user signup supports phone search and creates authenticated session', asyn
   const searchBody = (await searchResponse.json()) as { ok: boolean; numbers: Array<{ phoneNumber: string }> };
   assert.equal(searchBody.ok, true);
   assert.equal(searchBody.numbers.length > 0, true);
+  assert.equal(fakeProvisioning.searchCalls, 1);
+  assert.equal(fakeProvisioning.provisionCalls, 0);
+});
+
+test('email signup does not call phone provisioning and stores business phone when provided', async () => {
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const fakeProvisioning = new FakePhoneProvisioningService();
+  const shopsRepository = new InMemoryShopsRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    phoneProvisioningService: fakeProvisioning,
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+  });
 
   const signupResponse = await app.request('/auth/user/signup', {
     method: 'POST',
@@ -98,7 +127,7 @@ test('user signup supports phone search and creates authenticated session', asyn
       userName: 'Kim Tran',
       userPhone: '+17145550009',
       timezone: 'America/Los_Angeles',
-      phoneNumber: '+17145556666',
+      phoneNumber: '+17145558888',
       email: 'new-user@ringbooker.local',
       password: 'new-user-password',
       remember: true,
@@ -116,6 +145,13 @@ test('user signup supports phone search and creates authenticated session', asyn
   assert.equal(signupBody.role, 'user');
   assert.ok(typeof signupBody.shopId === 'string' && signupBody.shopId.length > 10);
   assert.equal(signupBody.postAuthRedirect, '/user/onboarding');
+  assert.equal(fakeProvisioning.searchCalls, 0);
+  assert.equal(fakeProvisioning.provisionCalls, 0);
+
+  const shop = await shopsRepository.findById(signupBody.shopId);
+  assert.equal(shop?.phone_number, '+17145558888');
+  assert.equal(shop?.user_phone, '+17145550009');
+
   const trial = await billingSubscriptionsRepository.findCurrentByShopId(signupBody.shopId);
   assert.equal(trial?.status, 'trialing');
   assert.equal(trial?.plan, 'starter');
@@ -144,7 +180,49 @@ test('user signup supports phone search and creates authenticated session', asyn
   assert.equal(typeof meBody.session.shopId, 'string');
 });
 
+test('email signup uses placeholder shop phone when no business phone provided', async () => {
+  const fakeProvisioning = new FakePhoneProvisioningService();
+  const shopsRepository = new InMemoryShopsRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    phoneProvisioningService: fakeProvisioning,
+    billingCustomersRepository: new InMemoryBillingCustomersRepository(),
+    billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
+    shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+  });
+
+  const signupResponse = await app.request('/auth/user/signup', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
+    },
+    body: JSON.stringify({
+      email: 'placeholder-phone-user@ringbooker.local',
+      password: 'new-user-password',
+      remember: true,
+      plan: 'starter',
+    }),
+  });
+  assert.equal(signupResponse.status, 201);
+  const signupBody = (await signupResponse.json()) as { ok: boolean; shopId: string };
+  assert.equal(fakeProvisioning.searchCalls, 0);
+  assert.equal(fakeProvisioning.provisionCalls, 0);
+  const shop = await shopsRepository.findById(signupBody.shopId);
+  assert.ok(isSignupSyntheticPlaceholderPhone(shop?.phone_number ?? null));
+  assert.match(shop?.phone_number ?? '', /^\+1555010\d{4}$/);
+});
+
 test('user signup rejects duplicate email', async () => {
+  const fakeProvisioning = new FakePhoneProvisioningService();
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     jobsRepository: new InMemoryJobsRepository(),
@@ -152,7 +230,7 @@ test('user signup rejects duplicate email', async () => {
     callbacksRepository: new InMemoryCallbacksRepository(),
     shopsRepository: new InMemoryShopsRepository(),
     telephonyService: new NoopTelephonyService(),
-    phoneProvisioningService: new FakePhoneProvisioningService(),
+    phoneProvisioningService: fakeProvisioning,
     billingCustomersRepository: new InMemoryBillingCustomersRepository(),
     billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
     shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
@@ -185,11 +263,14 @@ test('user signup rejects duplicate email', async () => {
   assert.equal(body.ok, false);
   assert.equal(body.error, 'email_already_exists');
   assert.equal(body.message, 'Account already exists. Please log in to continue.');
+  assert.equal(fakeProvisioning.searchCalls, 0);
+  assert.equal(fakeProvisioning.provisionCalls, 0);
 });
 
 test('user signup professional creates no-card trial with professional amount', async () => {
   const billingCustomersRepository = new InMemoryBillingCustomersRepository();
   const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const fakeProvisioning = new FakePhoneProvisioningService();
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     jobsRepository: new InMemoryJobsRepository(),
@@ -197,7 +278,7 @@ test('user signup professional creates no-card trial with professional amount', 
     callbacksRepository: new InMemoryCallbacksRepository(),
     shopsRepository: new InMemoryShopsRepository(),
     telephonyService: new NoopTelephonyService(),
-    phoneProvisioningService: new FakePhoneProvisioningService(),
+    phoneProvisioningService: fakeProvisioning,
     billingCustomersRepository,
     billingSubscriptionsRepository,
     shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
@@ -228,6 +309,8 @@ test('user signup professional creates no-card trial with professional amount', 
   assert.equal(subscription?.amountCents, 14900);
   const customer = await billingCustomersRepository.findByShopId(body.shopId, 'paddle');
   assert.equal(customer?.email, 'professional-user@ringbooker.local');
+  assert.equal(fakeProvisioning.searchCalls, 0);
+  assert.equal(fakeProvisioning.provisionCalls, 0);
 });
 
 test('user signup rejects missing trial plan', async () => {

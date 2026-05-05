@@ -90,7 +90,7 @@ test('Step 1 save persists current_onboarding_step', async () => {
   assert.equal(shop?.current_onboarding_step, 2);
 });
 
-test('Completing required onboarding fields makes onboarding status complete without services', async () => {
+test('Completing required onboarding fields makes onboarding status complete with services and step 4', async () => {
   const { app } = createOnboardingTestApp();
   const cookie = await loginUser(app);
 
@@ -113,6 +113,7 @@ test('Completing required onboarding fields makes onboarding status complete wit
       hours: {
         mon: { open: '09:00', close: '19:00' },
       },
+      services: [{ name: 'Manicure', duration_min: 45, price: 35 }],
       current_onboarding_step: 4,
     }),
   });

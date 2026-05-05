@@ -29,7 +29,9 @@ import {
   getShopPlanCapabilities,
   type ShopSettingCapability,
 } from '@/src/backend/domain/shop-plan-capabilities';
-import { isShopOnboardingComplete } from '@/src/backend/domain/shop-onboarding';
+import { createSignupPlaceholderBusinessPhoneE164 } from '@/src/backend/domain/signup-placeholder-phone';
+import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
+import { startOrReuseForwardingTestSession } from '@/src/backend/services/go-live/start-forwarding-test-session';
 import type {
   BillingProvider,
   BillingSubscription,
@@ -61,13 +63,16 @@ import type {
   HandoffSessionsRepository,
   ShopAccessStatesRepository,
   TestCallAttemptsRepository,
+  ForwardingTestSessionsRepository,
   VoiceCallLegsRepository,
 } from '@/src/backend/ports/repositories';
 import type { WebDemoSessionStatus, WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import { createNoCardTrialForShop } from '@/src/backend/services/billing/no-card-trial';
 import { buildAdminShopStatus } from '@/src/backend/services/admin/admin-shop-status';
-import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { getShopBillingAccess, isBillingTrialStillValid, type BillingBlockReason, type ShopBillingAccess } from '@/src/backend/services/billing/access';
+import { resolveGoLiveDashboardPrimaryCta } from '@/src/backend/services/billing/go-live-dashboard';
+import { normalizeInboundE164 } from '@/src/backend/services/calls/shop-resolver';
 import { formatPlanPrice, getPlanCatalogEntry, isSelfServeTrialPlan } from '@/src/backend/domain/plan-catalog';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
@@ -344,6 +349,7 @@ const userSignupSchema = z.object({
   userName: z.string().min(1).max(120).optional(),
   userPhone: z.string().min(6).max(32).optional(),
   timezone: z.string().min(1).max(80).default('America/Los_Angeles'),
+  /** Shop's current business line (E.164). Never used for Telnyx purchase during signup. */
   phoneNumber: z.string().min(6).max(32).optional(),
   email: z.string().email(),
   password: z.string().min(8).max(128),
@@ -476,6 +482,21 @@ const userBillingCheckoutSchema = z.object({
 const readWebsiteSchema = z.object({
   url: z.string().url(),
 });
+
+/** Post-payment RingBooker forwarding number provisioning (see docs/onboarding_go_live_sprint.md). */
+const provisionForwardingNumberSchema = z.object({
+  confirmGoLiveIntent: z.literal(true),
+});
+
+const confirmForwardingSetupSchema = z.object({
+  confirmForwardingReady: z.literal(true),
+});
+
+function telnyxCountryCodeFromForwardingCountry(value: string | null | undefined): string {
+  const v = (value ?? 'us').trim().toLowerCase();
+  if (v === 'ca' || v === 'can') return 'CA';
+  return 'US';
+}
 
 const calendarProviderParamSchema = z.object({
   provider: z.enum(['square_appointments', 'google_calendar', 'vagaro', 'glossgenius', 'fresha', 'mindbody', 'booksy']),
@@ -1016,11 +1037,6 @@ function buildDefaultShopNameFromEmail(email: string): string {
   return `${cleaned.replace(/\b\w/g, (letter) => letter.toUpperCase())} Shop`;
 }
 
-function createTemporaryPhoneNumber(): string {
-  const digits = randomUUID().replace(/[^0-9]/g, '').padEnd(10, '0').slice(0, 10);
-  return `+1${digits}`;
-}
-
 function createOAuthFallbackPasswordHash(): string {
   return hashPassword(`${randomUUID()}${randomBytes(24).toString('hex')}`);
 }
@@ -1240,7 +1256,7 @@ function computeUserPostAuthRedirectPath(params: { shop: Shop | null; shopId: st
   if (!params.shopId || !params.shop) {
     return '/pricing?reason=plan_required';
   }
-  if (!isShopOnboardingComplete(params.shop)) {
+  if (!isShopSetupWizardComplete(params.shop)) {
     return '/user/onboarding';
   }
   return '/user';
@@ -1571,6 +1587,7 @@ export function createBackendApp(deps: {
   billingNotificationsRepository?: BillingNotificationsRepository;
   shopAccessStatesRepository?: ShopAccessStatesRepository;
   testCallAttemptsRepository?: TestCallAttemptsRepository;
+  forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   callbacksRepository?: CallbacksRepository;
   blogPostsRepository?: BlogPostsRepository;
   contactRequestsRepository?: ContactRequestsRepository;
@@ -1819,6 +1836,7 @@ export function createBackendApp(deps: {
         shopsRepository: deps.shopsRepository,
         billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
         callLogsRepository: deps.callLogsRepository,
         jobsRepository: deps.jobsRepository,
         missedCallsRepository: deps.missedCallsRepository,
@@ -1835,13 +1853,13 @@ export function createBackendApp(deps: {
       shopsRepository: deps.shopsRepository,
       billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
       shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
     }),
   );
   app.get(path('/telnyx/texml/inbound'), (c) =>
-    handleTelnyxTexmlOpenAiInbound(c, {
-      shopsRepository: deps.shopsRepository,
-      billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
-      shopAccessStatesRepository: deps.shopAccessStatesRepository,
+    c.text('', 405, {
+      Allow: 'POST',
+      'Cache-Control': 'no-store',
     }),
   );
 
@@ -2725,6 +2743,7 @@ Submitted at: ${new Date().toISOString()}`,
         destinationPhone: demoShop.phone_number,
         callerPhone: normalizedPhone,
         systemPrompt,
+        shopPlan: demoShop.plan,
       });
 
       if (requireLivekitRealtimeInProduction() && realtime.mode !== 'livekit_realtime') {
@@ -3009,6 +3028,11 @@ Submitted at: ${new Date().toISOString()}`,
   });
 
   app.post(path('/auth/user/signup/phone-search'), async (c) => {
+    /**
+     * Reserved for future **post-payment** RingBooker forwarding number selection / admin tooling.
+     * Not used by self-serve signup (`UserSignupForm` does not call this).
+     * P1: tie to POST /user/phone-numbers/provision-forwarding-number only after payment + intent.
+     */
     const body = await c.req.json().catch(() => null);
     const parsed = signupPhoneSearchSchema.safeParse(body);
     if (!parsed.success) {
@@ -3083,40 +3107,22 @@ Submitted at: ${new Date().toISOString()}`,
       );
     }
 
-    const requestId = randomUUID();
     const shopName = parsed.data.shopName?.trim() || buildDefaultShopNameFromEmail(normalizedEmail);
-    let assignedPhoneNumber = createTemporaryPhoneNumber();
-
-    if (parsed.data.phoneNumber && deps.phoneProvisioningService) {
-      const provisioned = await deps.phoneProvisioningService.provisionNumber({
-        phoneNumber: parsed.data.phoneNumber,
-        requestId,
-      });
-      assignedPhoneNumber = provisioned.phoneNumber;
-    } else if (deps.phoneProvisioningService) {
-      try {
-        const suggested = await deps.phoneProvisioningService.searchAvailableNumbers({
-          countryCode: 'US',
-          limit: 1,
-        });
-        const candidate = suggested[0]?.phoneNumber;
-        if (candidate) {
-          const provisioned = await deps.phoneProvisioningService.provisionNumber({
-            phoneNumber: candidate,
-            requestId,
-          });
-          assignedPhoneNumber = provisioned.phoneNumber;
-        }
-      } catch (error) {
-        logger.warn({ err: error, requestId }, 'signup_phone_auto_provision_fallback_to_temporary');
-      }
-    }
+    /* Business main line when provided — never Telnyx-provisioned during signup (P0 onboarding sprint). */
+    const businessLineRaw =
+      (parsed.data.phoneNumber?.trim() || '') || (parsed.data.userPhone?.trim() || '');
+    const assignedPhoneNumber =
+      businessLineRaw.length >= 6 ? businessLineRaw : createSignupPlaceholderBusinessPhoneE164();
+    const ownerPhone =
+      parsed.data.userPhone?.trim().length && parsed.data.userPhone.trim().length >= 6
+        ? parsed.data.userPhone.trim()
+        : assignedPhoneNumber;
 
     const createdShop = await deps.shopsRepository.create({
       name: shopName,
       brand_slug: parsed.data.brandSlug ?? toBrandSlug(shopName),
       phone_number: assignedPhoneNumber,
-      user_phone: parsed.data.userPhone ?? assignedPhoneNumber,
+      user_phone: ownerPhone,
       user_name: parsed.data.userName ?? null,
       timezone: parsed.data.timezone,
       plan: parsed.data.plan,
@@ -3189,7 +3195,7 @@ Submitted at: ${new Date().toISOString()}`,
         ok: true,
         role: 'user',
         shopId: createdShop.id,
-        onboardingRequired: !isShopOnboardingComplete(createdShop),
+        onboardingRequired: !isShopSetupWizardComplete(createdShop),
         postAuthRedirect,
         billing: {
           subscriptionStatus: trial.subscription.status,
@@ -3353,27 +3359,8 @@ Submitted at: ${new Date().toISOString()}`,
       if (!selectedPlan) {
         return c.redirect(`${appBaseUrl}/pricing?reason=plan_required`, 302);
       }
-      const requestId = randomUUID();
       const shopName = buildDefaultShopNameFromEmail(googleProfile.email);
-      let assignedPhoneNumber = createTemporaryPhoneNumber();
-      if (deps.phoneProvisioningService) {
-        try {
-          const suggested = await deps.phoneProvisioningService.searchAvailableNumbers({
-            countryCode: 'US',
-            limit: 1,
-          });
-          const candidate = suggested[0]?.phoneNumber;
-          if (candidate) {
-            const provisioned = await deps.phoneProvisioningService.provisionNumber({
-              phoneNumber: candidate,
-              requestId,
-            });
-            assignedPhoneNumber = provisioned.phoneNumber;
-          }
-        } catch (error) {
-          logger.warn({ err: error, requestId }, 'google_signup_phone_auto_provision_fallback_to_temporary');
-        }
-      }
+      const assignedPhoneNumber = createSignupPlaceholderBusinessPhoneE164();
       shop = await deps.shopsRepository.create({
         name: shopName,
         brand_slug: toBrandSlug(shopName),
@@ -3516,7 +3503,7 @@ Submitted at: ${new Date().toISOString()}`,
       ok: true,
       role: 'user',
       shopId: authUser.shopId ?? undefined,
-      onboardingRequired: shop ? !isShopOnboardingComplete(shop) : false,
+      onboardingRequired: shop ? !isShopSetupWizardComplete(shop) : false,
       postAuthRedirect,
     });
   });
@@ -3734,6 +3721,45 @@ Submitted at: ${new Date().toISOString()}`,
       deps.callLogsRepository.countByShop(shop.id, { outcome: 'missed' }),
     ]);
 
+    let goLive: {
+      liveCallsEnabled: boolean;
+      primaryCta: ReturnType<typeof resolveGoLiveDashboardPrimaryCta>;
+      forwardingSetupVerified: boolean;
+      hasForwardingNumber: boolean;
+      paymentMethodValid: boolean;
+      subscriptionActiveLike: boolean;
+    } | null = null;
+
+    if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
+      const access = await getShopBillingAccess(
+        {
+          shopsRepository: deps.shopsRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+          shopAccessStatesRepository: deps.shopAccessStatesRepository,
+          testCallAttemptsRepository: deps.testCallAttemptsRepository,
+        },
+        { shopId: shop.id },
+      );
+      const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+      const now = new Date();
+      goLive = {
+        liveCallsEnabled: access.liveCallsEnabled,
+        primaryCta: resolveGoLiveDashboardPrimaryCta({
+          liveCallsEnabled: access.liveCallsEnabled,
+          subscription,
+          paymentMethodStatus: access.paymentMethodStatus,
+          hasForwardingNumber: access.hasForwardingNumber,
+          forwardingSetupVerified: access.forwardingSetupVerified,
+          now,
+        }),
+        forwardingSetupVerified: access.forwardingSetupVerified,
+        hasForwardingNumber: access.hasForwardingNumber,
+        paymentMethodValid: access.paymentMethodStatus === 'valid',
+        subscriptionActiveLike:
+          subscription?.status === 'active' || (subscription ? isBillingTrialStillValid(subscription, now) : false),
+      };
+    }
+
     return c.json({
       ok: true,
       shop: {
@@ -3744,12 +3770,14 @@ Submitted at: ${new Date().toISOString()}`,
         plan: shop.plan,
         active: shop.active,
       },
-      onboardingRequired: !isShopOnboardingComplete(shop),
+      onboardingRequired: !isShopSetupWizardComplete(shop),
+      onboardingCompleted: isShopSetupWizardComplete(shop),
       metrics: {
         bookingCount,
         callCount,
         missedCalls,
       },
+      goLive,
     });
   });
 
@@ -3764,9 +3792,34 @@ Submitted at: ${new Date().toISOString()}`,
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    let paymentMethodStatus: ShopBillingAccess['paymentMethodStatus'] = 'none';
+    let liveCallsEnabled = false;
+    let forwardingSetupVerified = false;
+    if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
+      const access = await getShopBillingAccess(
+        {
+          shopsRepository: deps.shopsRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+          shopAccessStatesRepository: deps.shopAccessStatesRepository,
+          testCallAttemptsRepository: deps.testCallAttemptsRepository,
+        },
+        { shopId: shop.id },
+      );
+      paymentMethodStatus = access.paymentMethodStatus;
+      liveCallsEnabled = access.liveCallsEnabled;
+      forwardingSetupVerified = access.forwardingSetupVerified;
+    }
+
+    const onboardingCompleted = isShopSetupWizardComplete(shop);
+
     return c.json({
       ok: true,
-      onboardingRequired: !isShopOnboardingComplete(shop),
+      onboardingRequired: !onboardingCompleted,
+      onboardingCompleted,
+      liveCallsEnabled,
+      forwardingSetupVerified,
+      paymentMethodStatus,
       shop: {
         id: shop.id,
         name: shop.name,
@@ -3787,6 +3840,7 @@ Submitted at: ${new Date().toISOString()}`,
         forwarding_carrier: shop.forwarding_carrier ?? null,
         forwarding_country: shop.forwarding_country ?? 'us',
         telnyx_number: shop.telnyx_number ?? '',
+        plan: shop.plan,
       },
     });
   });
@@ -3819,15 +3873,142 @@ Submitted at: ${new Date().toISOString()}`,
     });
   });
 
-  app.post(path('/user/test-call-forwarding'), async (c) => {
+  app.post(path('/user/go-live/start-forwarding-test'), async (c) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_test_call_forwarding');
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_start_forwarding_test, 'user_start_forwarding_test');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
 
-    if (!deps.shopsRepository) {
+    if (
+      !deps.shopsRepository ||
+      !deps.billingSubscriptionsRepository ||
+      !deps.shopAccessStatesRepository ||
+      !deps.forwardingTestSessionsRepository
+    ) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const result = await startOrReuseForwardingTestSession({
+      deps: {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
+        testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      },
+      shop,
+    });
+
+    if (!result.ok) {
+      const body: Record<string, unknown> = {
+        ok: false,
+        error: result.error,
+        message: result.message,
+      };
+      if (result.billingUrl) body.billingUrl = result.billingUrl;
+      if (result.error === 'payment_method_required') {
+        body.message = buildGoLivePaymentRequiredMessage();
+      }
+      return c.json(body, result.httpStatus as 400);
+    }
+
+    return c.json({
+      ok: true,
+      status: result.status,
+      expiresAt: result.expiresAt,
+      instruction: result.instruction,
+      sessionId: result.sessionId,
+    });
+  });
+
+  app.get(path('/user/go-live/status'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_go_live_status');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+
+    if (!deps.shopsRepository || !deps.billingSubscriptionsRepository || !deps.shopAccessStatesRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const access = await getShopBillingAccess(
+      {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      },
+      { shopId: shop.id },
+    );
+
+    const accessState = await deps.shopAccessStatesRepository.findByShopId(shop.id);
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    const now = new Date();
+
+    let forwardingTestStatus: 'none' | 'pending' | 'passed' | 'expired' | 'failed' = 'none';
+    let forwardingTestExpiresAt: string | null = null;
+    if (deps.forwardingTestSessionsRepository) {
+      const latest = await deps.forwardingTestSessionsRepository.findLatestByShopId(shop.id);
+      if (latest) {
+        if (latest.status === 'pending') {
+          if (new Date(latest.expiresAt).getTime() > now.getTime()) {
+            forwardingTestStatus = 'pending';
+            forwardingTestExpiresAt = latest.expiresAt;
+          } else {
+            forwardingTestStatus = 'expired';
+            forwardingTestExpiresAt = latest.expiresAt;
+          }
+        } else {
+          forwardingTestStatus = latest.status;
+        }
+      }
+    }
+
+    const primaryCta = resolveGoLiveDashboardPrimaryCta({
+      liveCallsEnabled: access.liveCallsEnabled,
+      subscription,
+      paymentMethodStatus: access.paymentMethodStatus,
+      hasForwardingNumber: access.hasForwardingNumber,
+      forwardingSetupVerified: access.forwardingSetupVerified,
+      now,
+    });
+
+    return c.json({
+      ok: true,
+      paymentMethodStatus: access.paymentMethodStatus,
+      forwardingNumber: shop.telnyx_number?.trim() || null,
+      forwardingSetupVerified: access.forwardingSetupVerified,
+      forwardingSetupVerifiedAt: accessState?.forwardingSetupVerifiedAt ?? null,
+      forwardingSetupVerifiedVia: accessState?.forwardingSetupVerifiedVia ?? null,
+      forwardingTestStatus,
+      forwardingTestExpiresAt,
+      liveCallsEnabled: access.liveCallsEnabled,
+      primaryCta,
+    });
+  });
+
+  app.post(path('/user/test-call-forwarding'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_start_forwarding_test, 'user_test_call_forwarding');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+
+    if (
+      !deps.shopsRepository ||
+      !deps.billingSubscriptionsRepository ||
+      !deps.shopAccessStatesRepository ||
+      !deps.forwardingTestSessionsRepository
+    ) {
       return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
     }
 
@@ -3835,18 +4016,124 @@ Submitted at: ${new Date().toISOString()}`,
     const parsed = testCallForwardingSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
 
-    // TODO: implement real Telnyx outbound forwarding verification call.
-    // Stub behavior: app/dashboard-based carriers fail; dial-code carriers pass.
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    // Always use the authenticated user's shop. Never trust a shop id from the request body.
     const shopId = sessionResult.shopId ?? '';
     const shop = await deps.shopsRepository.findById(shopId);
-    const appBasedCarriers = ['googlevoice', 'ringcentral', 'openphone', 'other'];
-    const success = Boolean(shop?.forwarding_carrier && !appBasedCarriers.includes(shop.forwarding_carrier));
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const result = await startOrReuseForwardingTestSession({
+      deps: {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
+        testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      },
+      shop,
+    });
+
+    if (!result.ok) {
+      const resBody: Record<string, unknown> = {
+        ok: false,
+        error: result.error,
+        message: result.message,
+      };
+      if (result.billingUrl) resBody.billingUrl = result.billingUrl;
+      if (result.error === 'payment_method_required') {
+        resBody.message = buildGoLivePaymentRequiredMessage();
+      }
+      return c.json(resBody, result.httpStatus as 400);
+    }
+
     return c.json({
       ok: true,
-      success,
+      success: false,
+      status: result.status,
+      expiresAt: result.expiresAt,
+      instruction: result.instruction,
+      sessionId: result.sessionId,
+      message:
+        'Forwarding is not verified until RingBooker receives your forwarded call. Call your current business number from another phone.',
     });
+  });
+
+  app.post(path('/user/go-live/confirm-forwarding-setup'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_confirm_forwarding_setup, 'user_confirm_forwarding_setup');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopAccessStatesRepository || !deps.billingSubscriptionsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = confirmForwardingSetupSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload', message: 'confirmForwardingReady: true is required.' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const access = await getShopBillingAccess(
+      {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      },
+      { shopId: shop.id },
+    );
+    if (access.liveCallsEnabled) {
+      return c.json({ ok: true, forwardingSetupVerified: access.forwardingSetupVerified, liveCallsEnabled: true });
+    }
+    if (!access.setupWizardComplete) {
+      return c.json({ ok: false, error: 'onboarding_incomplete', message: 'Finish setup wizard first.' }, 409);
+    }
+    if (access.subscriptionStatus !== 'active' && access.subscriptionStatus !== 'trialing') {
+      return c.json({ ok: false, error: access.blockReason || 'subscription_inactive' }, 409);
+    }
+    if (access.blockReason === 'trial_expired' || access.subscriptionStatus === 'trialing' && access.trialDaysRemaining === 0) {
+      return c.json({ ok: false, error: 'trial_expired' }, 409);
+    }
+    if (access.paymentMethodStatus !== 'valid') {
+      return c.json(
+        {
+          ok: false,
+          error: 'payment_method_required',
+          message: buildGoLivePaymentRequiredMessage(),
+          billingUrl: '/user/billing',
+        },
+        402,
+      );
+    }
+    if (!shop.telnyx_number?.trim()) {
+      return c.json(
+        {
+          ok: false,
+          error: 'forwarding_number_required',
+          message: 'Provision your RingBooker forwarding number first.',
+        },
+        409,
+      );
+    }
+
+    await deps.shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      forwardingSetupVerifiedAt: new Date().toISOString(),
+      forwardingSetupVerifiedVia: 'manual_confirmation',
+    });
+    securityAudit({
+      action: 'forwarding_setup_manual_confirmed',
+      actorType: 'user',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { shopId: shop.id },
+    });
+
+    return c.json({ ok: true, forwardingSetupVerified: true });
   });
 
   // ── Nav state: minimal authenticated data for the marketing nav ──────────────
@@ -3868,6 +4155,7 @@ Submitted at: ${new Date().toISOString()}`,
     let paymentMethodStatus = 'none';
     let liveCallsEnabled = false;
     let canGoLive = false;
+    let forwardingSetupVerified = false;
     let billingBannerVariant = 'payment_required_go_live';
     if (deps.billingSubscriptionsRepository) {
       const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
@@ -3882,12 +4170,13 @@ Submitted at: ${new Date().toISOString()}`,
           shopAccessStatesRepository: deps.shopAccessStatesRepository,
           testCallAttemptsRepository: deps.testCallAttemptsRepository,
         },
-        { shopId: shop.id, onboardingComplete: isShopOnboardingComplete(shop) },
+        { shopId: shop.id },
       );
       trialDaysRemaining = access.trialDaysRemaining;
       paymentMethodStatus = access.paymentMethodStatus ?? 'none';
       liveCallsEnabled = access.liveCallsEnabled;
       canGoLive = access.canGoLive;
+      forwardingSetupVerified = access.forwardingSetupVerified;
       billingBannerVariant =
         subscriptionStatus === 'active'
           ? 'active'
@@ -3908,7 +4197,7 @@ Submitted at: ${new Date().toISOString()}`,
       shopName: shop.name,
       userName: shop.user_name ?? '',
       plan: shop.plan,
-      onboardingRequired: !isShopOnboardingComplete(shop),
+      onboardingRequired: !isShopSetupWizardComplete(shop),
       subscriptionStatus,
       billingStatus: subscriptionStatus,
       trialEndsAt,
@@ -3917,6 +4206,8 @@ Submitted at: ${new Date().toISOString()}`,
       liveCallsEnabled,
       canGoLive,
       billingBannerVariant,
+      hasForwardingNumber: Boolean(shop.telnyx_number?.trim()),
+      forwardingSetupVerified,
     });
   });
 
@@ -4757,7 +5048,7 @@ Submitted at: ${new Date().toISOString()}`,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         testCallAttemptsRepository: deps.testCallAttemptsRepository,
       },
-      { shopId: shop.id, onboardingComplete: isShopOnboardingComplete(shop) },
+      { shopId: shop.id },
     );
     const catalog = getPlanCatalogEntry(subscription?.plan ?? shop.plan);
     const amountCents = access.amountCents ?? catalog.amountCents ?? 0;
@@ -4797,6 +5088,7 @@ Submitted at: ${new Date().toISOString()}`,
         trialNoChargeUntilEndVerified: process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true',
         checkoutAvailable: Boolean(deps.billingProvider && isSelfServeTrialPlan(shop.plan)),
         manageBillingAvailable: false,
+        forwardingNumber: shop.telnyx_number?.trim() ? shop.telnyx_number.trim() : null,
       },
     });
   });
@@ -4887,10 +5179,334 @@ Submitted at: ${new Date().toISOString()}`,
     });
   });
 
+  /**
+   * P1.1 — Provision Telnyx DID into `shops.telnyx_number` only after valid payment + explicit go-live intent.
+   * Does not modify `shop.phone_number` (business line). Idempotent when `telnyx_number` already set.
+   */
+  app.post(path('/user/phone-numbers/provision-forwarding-number'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_provision_forwarding_number, 'user_provision_forwarding_number');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+
+    const body = await c.req.json().catch(() => null);
+    const parsedBody = provisionForwardingNumberSchema.safeParse(body);
+    if (!parsedBody.success) {
+      return c.json(
+        {
+          ok: false,
+          error: 'confirmation_required',
+          message: 'You must confirm go-live intent (confirmGoLiveIntent: true).',
+        },
+        400,
+      );
+    }
+
+    if (
+      !deps.shopsRepository ||
+      !deps.billingSubscriptionsRepository ||
+      !deps.shopAccessStatesRepository ||
+      !deps.phoneProvisioningService
+    ) {
+      return c.json({ ok: false, error: 'forwarding_provision_dependencies_unavailable' }, 503);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
+
+    if (!isShopSetupWizardComplete(shop)) {
+      return c.json({ ok: false, error: 'onboarding_incomplete', message: 'Finish setup wizard before provisioning a forwarding number.' }, 409);
+    }
+
+    const accessState = await deps.shopAccessStatesRepository.findByShopId(shop.id);
+    if (accessState?.liveCallsEnabled) {
+      return c.json({ ok: false, error: 'live_already_enabled' }, 409);
+    }
+
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    if (!subscription) {
+      return c.json({ ok: false, error: 'no_subscription' }, 409);
+    }
+
+    const now = new Date();
+    const subscriptionActive =
+      subscription.status === 'active' || isBillingTrialStillValid(subscription, now);
+    if (!subscriptionActive) {
+      const expired =
+        subscription.status === 'trial_expired' ||
+        (subscription.status === 'trialing' && !isBillingTrialStillValid(subscription, now));
+      return c.json(
+        {
+          ok: false,
+          error: expired ? 'trial_expired' : 'subscription_inactive',
+        },
+        409,
+      );
+    }
+
+    if (subscription.paymentMethodStatus !== 'valid') {
+      return c.json(
+        {
+          ok: false,
+          error: 'payment_method_required',
+          message: 'Add a valid payment method before provisioning a forwarding number.',
+          billingUrl: '/user/billing',
+        },
+        402,
+      );
+    }
+
+    const existingForwarding = shop.telnyx_number?.trim();
+    if (existingForwarding) {
+      return c.json({
+        ok: true,
+        forwardingNumber: existingForwarding,
+        status: 'existing',
+        nextStep: 'show_forwarding_instructions',
+      });
+    }
+
+    const lockStartedAt = new Date();
+    const lock = await deps.shopsRepository.tryBeginForwardingNumberProvisioning({
+      shopId: shop.id,
+      startedAt: lockStartedAt,
+      staleBefore: new Date(lockStartedAt.getTime() - 10 * 60 * 1000),
+    });
+    if (!lock.acquired) {
+      if (lock.reason === 'already_provisioned' && lock.shop?.telnyx_number?.trim()) {
+        return c.json({
+          ok: true,
+          forwardingNumber: lock.shop.telnyx_number.trim(),
+          status: 'existing',
+          nextStep: 'show_forwarding_instructions',
+        });
+      }
+      if (lock.reason === 'already_provisioning') {
+        return c.json(
+          {
+            ok: false,
+            error: 'forwarding_number_provisioning_in_progress',
+            message: 'A forwarding number is already being provisioned. Please wait a moment and refresh.',
+          },
+          409,
+        );
+      }
+      return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    }
+
+    const lockedShop = await deps.shopsRepository.findById(shop.id);
+    const forwardingAfterLock = lockedShop?.telnyx_number?.trim();
+    if (forwardingAfterLock) {
+      return c.json({
+        ok: true,
+        forwardingNumber: forwardingAfterLock,
+        status: 'existing',
+        nextStep: 'show_forwarding_instructions',
+      });
+    }
+
+    securityAudit({
+      action: 'forwarding_number_requested',
+      actorType: 'user',
+      actorId: sessionResult.email,
+      ip,
+      path: c.req.path,
+      details: { shopId: shop.id },
+    });
+
+    const countryCode = telnyxCountryCodeFromForwardingCountry(shop.forwarding_country);
+    let candidates;
+    try {
+      candidates = await deps.phoneProvisioningService.searchAvailableNumbers({
+        countryCode,
+        limit: 12,
+      });
+    } catch (error) {
+      await deps.shopsRepository.updateUserSettings(shop.id, {
+        forwarding_number_status: 'failed',
+        forwarding_number_provisioning_started_at: null,
+        forwarding_number_last_error: error instanceof Error ? error.message.slice(0, 500) : 'forwarding_number_search_failed',
+      });
+      securityAudit({
+        action: 'forwarding_number_failed',
+        actorType: 'user',
+        actorId: sessionResult.email,
+        ip,
+        path: c.req.path,
+        details: {
+          shopId: shop.id,
+          phase: 'search',
+          message: error instanceof Error ? error.message : 'unknown',
+        },
+      });
+      return c.json({ ok: false, error: 'forwarding_number_search_failed' }, 502);
+    }
+
+    if (!candidates.length) {
+      await deps.shopsRepository.updateUserSettings(shop.id, {
+        forwarding_number_status: 'failed',
+        forwarding_number_provisioning_started_at: null,
+        forwarding_number_last_error: 'no_numbers_available',
+      });
+      securityAudit({
+        action: 'forwarding_number_failed',
+        actorType: 'user',
+        actorId: sessionResult.email,
+        ip,
+        path: c.req.path,
+        details: { shopId: shop.id, phase: 'search', message: 'no_numbers_available' },
+      });
+      return c.json({ ok: false, error: 'forwarding_number_search_empty' }, 503);
+    }
+
+    const flowRequestId = randomUUID();
+    let lastErrorMessage = 'unknown';
+    for (const candidate of candidates.slice(0, 8)) {
+      try {
+        const order = await deps.phoneProvisioningService.provisionNumber({
+          phoneNumber: candidate.phoneNumber,
+          requestId: `${flowRequestId}:${candidate.phoneNumber}`,
+        });
+        let saved: Shop | null = null;
+        try {
+          saved = await deps.shopsRepository.updateUserSettings(shop.id, {
+            telnyx_number: order.phoneNumber,
+            forwarding_number_status: 'provisioned',
+            forwarding_number_provisioning_started_at: null,
+            forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
+            forwarding_number_last_error: null,
+          });
+        } catch (persistError) {
+          if (deps.phoneProvisioningService.releaseNumber) {
+            await deps.phoneProvisioningService
+              .releaseNumber({
+                phoneNumber: order.phoneNumber,
+                providerNumberId: order.providerNumberId,
+                orderId: order.orderId,
+                reason: 'shop_persist_failed',
+              })
+              .catch((releaseError) => {
+                logger.warn(
+                  {
+                    shopId: shop.id,
+                    providerNumberId: order.providerNumberId ?? null,
+                    orderId: order.orderId ?? null,
+                    err: releaseError,
+                  },
+                  'forwarding_number_compensation_release_failed',
+                );
+              });
+          }
+          securityAudit({
+            action: 'forwarding_number_failed',
+            actorType: 'user',
+            actorId: sessionResult.email,
+            ip,
+            path: c.req.path,
+            details: {
+              shopId: shop.id,
+              phase: 'persist',
+              providerNumberId: order.providerNumberId ?? null,
+              providerOrderId: order.orderId ?? null,
+              message: persistError instanceof Error ? persistError.message : 'unknown',
+            },
+          });
+          await deps.shopsRepository.updateUserSettings(shop.id, {
+            forwarding_number_status: 'failed',
+            forwarding_number_provisioning_started_at: null,
+            forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
+            forwarding_number_last_error: persistError instanceof Error ? persistError.message.slice(0, 500) : 'shop_persist_failed',
+          }).catch(() => undefined);
+          return c.json({ ok: false, error: 'forwarding_number_persist_failed' }, 502);
+        }
+        if (!saved) {
+          if (deps.phoneProvisioningService.releaseNumber) {
+            await deps.phoneProvisioningService
+              .releaseNumber({
+                phoneNumber: order.phoneNumber,
+                providerNumberId: order.providerNumberId,
+                orderId: order.orderId,
+                reason: 'shop_persist_failed',
+              })
+              .catch((releaseError) => {
+                logger.warn(
+                  {
+                    shopId: shop.id,
+                    providerNumberId: order.providerNumberId ?? null,
+                    orderId: order.orderId ?? null,
+                    err: releaseError,
+                  },
+                  'forwarding_number_compensation_release_failed',
+                );
+              });
+          }
+          securityAudit({
+            action: 'forwarding_number_failed',
+            actorType: 'user',
+            actorId: sessionResult.email,
+            ip,
+            path: c.req.path,
+            details: { shopId: shop.id, phase: 'persist', message: 'shop_not_found' },
+          });
+          return c.json({ ok: false, error: 'shop_not_found' }, 404);
+        }
+        securityAudit({
+          action: 'forwarding_number_provisioned',
+          actorType: 'user',
+          actorId: sessionResult.email,
+          ip,
+          path: c.req.path,
+          details: {
+            shopId: shop.id,
+            forwardingNumberLast4: order.phoneNumber.slice(-4),
+            providerNumberId: order.providerNumberId ?? null,
+          },
+        });
+        await deps.shopAccessStatesRepository.upsert({
+          shopId: shop.id,
+          forwardingSetupVerifiedAt: null,
+          forwardingSetupVerifiedVia: null,
+        });
+        return c.json({
+          ok: true,
+          forwardingNumber: order.phoneNumber,
+          status: 'provisioned',
+          nextStep: 'show_forwarding_instructions',
+        });
+      } catch (error) {
+        lastErrorMessage = error instanceof Error ? error.message : 'unknown';
+      }
+    }
+
+    await deps.shopsRepository.updateUserSettings(shop.id, {
+      forwarding_number_status: 'failed',
+      forwarding_number_provisioning_started_at: null,
+      forwarding_number_last_error: lastErrorMessage.slice(0, 500),
+    });
+
+    securityAudit({
+      action: 'forwarding_number_failed',
+      actorType: 'user',
+      actorId: sessionResult.email,
+      ip,
+      path: c.req.path,
+      details: { shopId: shop.id, phase: 'provision', message: lastErrorMessage },
+    });
+    return c.json({ ok: false, error: 'forwarding_number_provision_failed' }, 502);
+  });
+
+  /*
+   * P1 (onboarding/go-live sprint): require forwarding number provisioned + forwarding test passed
+   * (or explicit confirmation) before allowing live_calls_enabled. See docs/onboarding_go_live_sprint.md.
+   */
   app.post(path('/user/go-live/enable'), async (c) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_go_live_enable');
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_go_live_enable, 'user_go_live_enable');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
@@ -4906,18 +5522,25 @@ Submitted at: ${new Date().toISOString()}`,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         testCallAttemptsRepository: deps.testCallAttemptsRepository,
       },
-      { shopId: shop.id, onboardingComplete: isShopOnboardingComplete(shop) },
+      { shopId: shop.id },
     );
     if (!access.canGoLive) {
       const status = access.blockReason === 'payment_method_required' ? 402 : 409;
+      const messageByReason: Partial<Record<BillingBlockReason, string>> = {
+        payment_method_required: buildGoLivePaymentRequiredMessage(),
+        forwarding_number_required:
+          'Provision your RingBooker forwarding number before enabling live answering.',
+        forwarding_verification_required:
+          'Run a forwarding connectivity check or confirm setup before enabling live answering.',
+        onboarding_incomplete: 'Finish the setup wizard before enabling live answering.',
+      };
+      const message =
+        messageByReason[access.blockReason] ?? 'RingBooker cannot go live until your account is ready.';
       return c.json(
         {
           ok: false,
           error: access.blockReason === 'payment_method_required' ? 'payment_method_required' : access.blockReason,
-          message:
-            access.blockReason === 'payment_method_required'
-              ? buildGoLivePaymentRequiredMessage()
-              : 'RingBooker cannot go live until your account is ready.',
+          message,
           billingUrl: '/user/billing',
         },
         status,
@@ -4936,7 +5559,7 @@ Submitted at: ${new Date().toISOString()}`,
   app.post(path('/user/test-calls/call-me'), async (c) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_test_calls_call_me');
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_test_calls_call_me, 'user_test_calls_call_me');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
@@ -4950,7 +5573,7 @@ Submitted at: ${new Date().toISOString()}`,
       return c.json({ ok: false, error: 'test_call_dependencies_unavailable' }, 500);
     }
     const body = await c.req.json().catch(() => ({}));
-    const parsed = z.object({ phoneNumber: z.string().min(6).max(32).optional() }).safeParse(body);
+    const parsed = z.object({}).strict().safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
@@ -4961,12 +5584,34 @@ Submitted at: ${new Date().toISOString()}`,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         testCallAttemptsRepository: deps.testCallAttemptsRepository,
       },
-      { shopId: shop.id, onboardingComplete: isShopOnboardingComplete(shop) },
+      { shopId: shop.id },
     );
     if (!access.canTestCall) {
       return c.json({ ok: false, error: access.blockReason, message: 'Test calls are not available for this account state.' }, 409);
     }
-    const destination = parsed.data.phoneNumber ?? shop.user_phone;
+    const outboundCallerId =
+      getEnv().RINGBOOKER_OUTBOUND_CALLER_ID?.trim() || getEnv().TELNYX_OUTBOUND_CALLER_ID?.trim();
+    if (!outboundCallerId) {
+      return c.json(
+        {
+          ok: false,
+          error: 'outbound_caller_id_not_configured',
+          message: 'RingBooker outbound caller ID is not configured.',
+        },
+        503,
+      );
+    }
+    const destination = normalizeInboundE164(shop.user_phone);
+    if (!destination) {
+      return c.json(
+        {
+          ok: false,
+          error: 'phone_number_required',
+          message: 'A valid owner phone number is required before starting a call-me test.',
+        },
+        422,
+      );
+    }
     const attempt = await deps.testCallAttemptsRepository.create({
       shopId: shop.id,
       userId: null,
@@ -4980,7 +5625,7 @@ Submitted at: ${new Date().toISOString()}`,
       const result = await deps.telephonyService.createOutboundCall({
         shopId: shop.id,
         to: destination,
-        from: shop.phone_number,
+        from: outboundCallerId,
         purpose: 'callback',
         requestId,
         idempotencyKey: `test_call:${attempt.id}`,

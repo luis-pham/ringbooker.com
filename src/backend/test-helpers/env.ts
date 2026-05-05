@@ -35,6 +35,8 @@ const REQUIRED_TEST_ENV: Record<string, string> = {
   TRANSFER_TIMEOUT_MS: '3000',
   JOB_POLL_INTERVAL_MS: '500',
   JOB_LEASE_SECONDS: '30',
+  /** Required for POST /user/test-calls/call-me in integration tests (shared outbound CID). */
+  RINGBOOKER_OUTBOUND_CALLER_ID: '+15555550199',
 };
 
 export function applyRequiredTestEnv(overrides?: Record<string, string>) {

@@ -26,6 +26,7 @@ function shopBase(over: Partial<Shop> = {}): Shop {
     setup_method: 'forward',
     forwarding_type: 'no_answer',
     telnyx_number: '+15559999999',
+    current_onboarding_step: 4,
     ...over,
   };
 }
@@ -60,6 +61,8 @@ const accessOff: ShopAccessState = {
   liveCallsPausedReason: null,
   liveCallsPausedAt: null,
   lastAccessCheckAt: null,
+  forwardingSetupVerifiedAt: '2026-05-01T00:00:00.000Z',
+  forwardingSetupVerifiedVia: 'forwarding_test',
   createdAt: '2026-05-01T00:00:00.000Z',
   updatedAt: '2026-05-01T00:00:00.000Z',
 };
