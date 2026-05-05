@@ -1,3 +1,4 @@
+import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import { getPlanCatalogEntry } from '@/src/backend/domain/plan-catalog';
 import type { BillingSubscription, Shop, ShopAccessState } from '@/src/backend/domain/types';
 import type {
@@ -15,11 +16,14 @@ export type BillingBlockReason =
   | 'subscription_inactive'
   | 'live_not_enabled'
   | 'onboarding_incomplete'
+  | 'forwarding_number_required'
+  | 'forwarding_verification_required'
   | 'account_inactive'
   | 'test_call_limit_reached';
 
 export type ShopBillingAccess = {
   canReceiveLiveCalls: boolean;
+  /** All prerequisites met to enable live answering (flip `live_calls_enabled`). */
   canGoLive: boolean;
   canTestCall: boolean;
   blockReason: BillingBlockReason;
@@ -33,6 +37,9 @@ export type ShopBillingAccess = {
   currency: string;
   testCallsUsed: number;
   testCallLimit: number;
+  setupWizardComplete: boolean;
+  hasForwardingNumber: boolean;
+  forwardingSetupVerified: boolean;
 };
 
 /** Same rule as billing access trial gate (exported for admin status + tests). */
@@ -67,7 +74,48 @@ const inactiveAccess = (): ShopBillingAccess => ({
   currency: 'USD',
   testCallsUsed: 0,
   testCallLimit: 0,
+  setupWizardComplete: false,
+  hasForwardingNumber: false,
+  forwardingSetupVerified: false,
 });
+
+/**
+ * Prefer persisted `forwarding_setup_verified_at`. Optional env grandfather (see
+ * RB_FORWARDING_VERIFICATION_GRANDFATHER_GO_LIVE_BEFORE) covers legacy shops until SQL backfill runs.
+ */
+export function resolveForwardingSetupVerified(
+  shop: Shop,
+  accessState: ShopAccessState | null,
+  grandfatherGoLiveBeforeIso?: string | null,
+): boolean {
+  if (accessState?.forwardingSetupVerifiedAt?.trim()) return true;
+  const hasForwardingNumber = Boolean(shop.telnyx_number?.trim());
+  if (!hasForwardingNumber || !accessState?.liveCallsEnabled) return false;
+  const goLiveAt = accessState.goLiveAt?.trim();
+  if (!goLiveAt) return false;
+  const rawCutoff = grandfatherGoLiveBeforeIso?.trim();
+  if (!rawCutoff) return false;
+  const cutoffMs = Date.parse(rawCutoff);
+  const glMs = Date.parse(goLiveAt);
+  if (Number.isNaN(cutoffMs) || Number.isNaN(glMs)) return false;
+  return glMs < cutoffMs;
+}
+
+function billingExtrasFromShopAndAccess(
+  shop: Shop,
+  accessState: ShopAccessState | null,
+  grandfatherGoLiveBeforeIso?: string | null,
+): {
+  setupWizardComplete: boolean;
+  hasForwardingNumber: boolean;
+  forwardingSetupVerified: boolean;
+} {
+  return {
+    setupWizardComplete: isShopSetupWizardComplete(shop),
+    hasForwardingNumber: Boolean(shop.telnyx_number?.trim()),
+    forwardingSetupVerified: resolveForwardingSetupVerified(shop, accessState, grandfatherGoLiveBeforeIso),
+  };
+}
 
 /**
  * Pure billing/access snapshot from already-loaded shop, subscription, and access state.
@@ -78,8 +126,12 @@ export function computeShopBillingAccessSnapshot(params: {
   subscription: BillingSubscription | null;
   accessState: ShopAccessState | null;
   testCallsUsed: number;
+  /** @deprecated use setupWizardComplete */
   onboardingComplete?: boolean;
+  setupWizardComplete?: boolean;
   now?: Date;
+  /** ISO instant; unset disables grandfather (normal path). */
+  legacyForwardingVerificationGrandfatherGoLiveBefore?: string | null;
 }): ShopBillingAccess {
   const now = params.now ?? new Date();
   const shop = params.shop;
@@ -91,6 +143,9 @@ export function computeShopBillingAccessSnapshot(params: {
   const testCallsUsed = params.testCallsUsed;
   const accessState = params.accessState;
   const subscription = params.subscription;
+  const grandfatherIso = params.legacyForwardingVerificationGrandfatherGoLiveBefore ?? undefined;
+
+  const extrasDefault = billingExtrasFromShopAndAccess(shop, accessState, grandfatherIso);
 
   if (!subscription) {
     return {
@@ -108,6 +163,9 @@ export function computeShopBillingAccessSnapshot(params: {
       currency: getPlanCatalogEntry(shop.plan).currency,
       testCallsUsed,
       testCallLimit,
+      setupWizardComplete: extrasDefault.setupWizardComplete,
+      hasForwardingNumber: extrasDefault.hasForwardingNumber,
+      forwardingSetupVerified: extrasDefault.forwardingSetupVerified,
     };
   }
 
@@ -117,25 +175,44 @@ export function computeShopBillingAccessSnapshot(params: {
     subscription.status === 'trial_expired' || (subscription.status === 'trialing' && !isBillingTrialStillValid(subscription, now));
   const underTestLimit = testCallsUsed < testCallLimit;
   const canTestCall = activeLike && underTestLimit;
-  const onboardingComplete = params.onboardingComplete ?? true;
-  const canGoLive = activeLike && paymentMethodStatus === 'valid' && onboardingComplete;
+
+  const setupWizardComplete =
+    params.setupWizardComplete ??
+    params.onboardingComplete ??
+    isShopSetupWizardComplete(shop);
+
+  const hasForwardingNumber = extrasDefault.hasForwardingNumber;
+  const forwardingSetupVerified = extrasDefault.forwardingSetupVerified;
+
+  const liveAnsweringPrerequisitesMet =
+    activeLike &&
+    paymentMethodStatus === 'valid' &&
+    setupWizardComplete &&
+    hasForwardingNumber &&
+    forwardingSetupVerified;
+
+  const canGoLive = liveAnsweringPrerequisitesMet;
   const liveCallsEnabled = accessState?.liveCallsEnabled ?? false;
   const canReceiveLiveCalls = canGoLive && liveCallsEnabled;
-  const blockReason: BillingBlockReason = canReceiveLiveCalls
-    ? 'none'
-    : !activeLike
-      ? expiredTrial
-        ? 'trial_expired'
-        : 'subscription_inactive'
-      : paymentMethodStatus !== 'valid'
-        ? 'payment_method_required'
-        : !onboardingComplete
-          ? 'onboarding_incomplete'
-          : !liveCallsEnabled
-            ? 'live_not_enabled'
-            : !underTestLimit
-              ? 'test_call_limit_reached'
-              : 'none';
+
+  let blockReason: BillingBlockReason;
+  if (canReceiveLiveCalls) {
+    blockReason = 'none';
+  } else if (!activeLike) {
+    blockReason = expiredTrial ? 'trial_expired' : 'subscription_inactive';
+  } else if (paymentMethodStatus !== 'valid') {
+    blockReason = 'payment_method_required';
+  } else if (!setupWizardComplete) {
+    blockReason = 'onboarding_incomplete';
+  } else if (!hasForwardingNumber) {
+    blockReason = 'forwarding_number_required';
+  } else if (!forwardingSetupVerified) {
+    blockReason = 'forwarding_verification_required';
+  } else if (!liveCallsEnabled) {
+    blockReason = 'live_not_enabled';
+  } else {
+    blockReason = 'none';
+  }
 
   return {
     canReceiveLiveCalls,
@@ -152,6 +229,9 @@ export function computeShopBillingAccessSnapshot(params: {
     currency: subscription.currency,
     testCallsUsed,
     testCallLimit,
+    setupWizardComplete,
+    hasForwardingNumber,
+    forwardingSetupVerified,
   };
 }
 
@@ -162,7 +242,14 @@ export async function getShopBillingAccess(
     shopAccessStatesRepository: ShopAccessStatesRepository;
     testCallAttemptsRepository?: TestCallAttemptsRepository;
   },
-  params: { shopId: string; onboardingComplete?: boolean; now?: Date },
+  params: {
+    shopId: string;
+    /** Override wizard snapshot (tests); defaults from shop row. */
+    setupWizardComplete?: boolean;
+    /** @deprecated use setupWizardComplete */
+    onboardingComplete?: boolean;
+    now?: Date;
+  },
 ): Promise<ShopBillingAccess> {
   const now = params.now ?? new Date();
   const shop = await deps.shopsRepository.findById(params.shopId);
@@ -182,12 +269,18 @@ export async function getShopBillingAccess(
       })
     : 0;
 
+  /** Prefer SQL backfill; optional bridge (validated in env.ts). Raw `process.env` keeps unit tests free of full `getEnv()`. */
+  const grandfatherIso =
+    process.env.RB_FORWARDING_VERIFICATION_GRANDFATHER_GO_LIVE_BEFORE?.trim() || undefined;
+
   return computeShopBillingAccessSnapshot({
     shop,
     subscription,
     accessState,
     testCallsUsed,
+    setupWizardComplete: params.setupWizardComplete,
     onboardingComplete: params.onboardingComplete,
     now,
+    legacyForwardingVerificationGrandfatherGoLiveBefore: grandfatherIso,
   });
 }

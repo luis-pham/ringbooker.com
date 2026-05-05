@@ -85,6 +85,30 @@ function createValidatedEnv() {
       TELNYX_PROVISIONING_TIMEOUT_MS: optionalPositiveIntEnv,
       /** POST /v2/calls (outbound Calls API), not Call Control actions. */
       TELNYX_OUTBOUND_CALL_TIMEOUT_MS: optionalPositiveIntEnv,
+      /**
+       * Optional ISO-8601 instant for emergency grandfather only (prefer SQL backfill:
+       * scripts/backfill-forwarding-verification-legacy-live.sql).
+       * Shops with live_calls_enabled, null forwarding_setup_verified_at, non-empty telnyx_number,
+       * and go_live_at strictly before this instant are treated as forwarding-verified for live-call gates.
+       */
+      RB_FORWARDING_VERIFICATION_GRANDFATHER_GO_LIVE_BEFORE: z.preprocess(
+        (v) => (v === undefined || v === null || String(v).trim() === '' ? undefined : String(v).trim()),
+        z.string().min(4).optional(),
+      ),
+
+      /**
+       * E.164 caller ID for outbound **test** calls (`POST /user/test-calls/call-me`).
+       * Prefer this over TELNYX_OUTBOUND_CALLER_ID when both are set.
+       */
+      RINGBOOKER_OUTBOUND_CALLER_ID: z.preprocess(
+        (v) => (v === undefined || v === null || String(v).trim() === '' ? undefined : String(v).trim()),
+        z.string().min(4).optional(),
+      ),
+      /** Alias for RINGBOOKER_OUTBOUND_CALLER_ID (call-me trial outbound `from`). */
+      TELNYX_OUTBOUND_CALLER_ID: z.preprocess(
+        (v) => (v === undefined || v === null || String(v).trim() === '' ? undefined : String(v).trim()),
+        z.string().min(4).optional(),
+      ),
 
       GOOGLE_AI_API_KEY: z.string().min(1),
       GOOGLE_SERVICE_ACCOUNT_EMAIL: z.string().email().optional(),
