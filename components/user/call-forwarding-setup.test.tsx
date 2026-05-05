@@ -6,24 +6,18 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { CallForwardingSetup, getGeneratedDialCode, getInitialSetupState } from './call-forwarding-setup';
 import { findCarrier } from '@/lib/call-forwarding/carrier-data';
 
-test('initial state is choose_method', () => {
+test('initial state opens forwarding setup (no alternate number path)', () => {
   const html = renderToStaticMarkup(<CallForwardingSetup ringbookerNumber="+13083020242" />);
-  assert.equal(getInitialSetupState(), 'choose_method');
-  assert.match(html, /Forward my existing business number/);
-  assert.match(html, /Use a new RingBooker number/);
-  assert.match(html, /disabled=""/);
+  assert.equal(getInitialSetupState(), 'forward_setup');
+  assert.match(html, /Forward from your current business line/);
+  assert.match(html, /RingBooker forwarding number/);
+  assert.doesNotMatch(html, /Use a new RingBooker number/);
+  assert.doesNotMatch(html, /Share this number with clients/);
 });
 
-test('initialMethod forward renders forward_setup', () => {
+test('forward_setup shows carrier selection', () => {
   const html = renderToStaticMarkup(<CallForwardingSetup ringbookerNumber="+13083020242" initialMethod="forward" />);
-  assert.match(html, /Forward your existing number/);
   assert.match(html, /Select your carrier/);
-});
-
-test('initialMethod new_number renders new_number_info with number', () => {
-  const html = renderToStaticMarkup(<CallForwardingSetup ringbookerNumber="+13083020242" initialMethod="new_number" />);
-  assert.match(html, /Your new RingBooker number/);
-  assert.match(html, /\+13083020242/);
 });
 
 test('dial code generated correctly', () => {
@@ -55,7 +49,14 @@ test('unavailable type is disabled for Nextiva all forwarding', () => {
   assert.match(html, /cf-type-row[^"]*disabled/);
 });
 
-test('initial state helper supports completion method routing', () => {
+test('suppressForwardingTestCta hides optional test button', () => {
+  const html = renderToStaticMarkup(
+    <CallForwardingSetup ringbookerNumber="+13083020242" initialMethod="forward" suppressForwardingTestCta />,
+  );
+  assert.doesNotMatch(html, /Optional check — try connectivity test/);
+});
+
+test('initial state helper always returns forward_setup', () => {
   assert.equal(getInitialSetupState('forward'), 'forward_setup');
-  assert.equal(getInitialSetupState('new_number'), 'new_number_info');
+  assert.equal(getInitialSetupState('new_number'), 'forward_setup');
 });

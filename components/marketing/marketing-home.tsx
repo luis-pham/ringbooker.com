@@ -1709,7 +1709,7 @@ export function MarketingHomeTemplate() {
                   <li>Returning caller notes and preferences</li>
                   <li>Preferred stylist or provider context</li>
                   <li>Owner call transfer with caller context</li>
-                  <li>Language settings noted for setup</li>
+                  <li>Bilingual workflows where configured</li>
                   <li>Call recovery insights</li>
                   <li>Advanced call insights</li>
                   <li>Priority support</li>
@@ -1724,6 +1724,7 @@ export function MarketingHomeTemplate() {
                 <ul className="plan-feats">
                   <li>Multi-location setup</li>
                   <li>Custom call flows, routing, and escalation rules</li>
+                  <li>Custom multilingual routing and workflows</li>
                   <li>Custom integration planning</li>
                   <li>Higher call volume planning</li>
                   <li>Concierge onboarding</li>

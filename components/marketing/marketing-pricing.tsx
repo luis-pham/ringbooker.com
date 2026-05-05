@@ -6,30 +6,50 @@ import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
+const trialNoChargeCopyVerified = process.env.NEXT_PUBLIC_PADDLE_TRIAL_CONFIG_VERIFIED === 'true';
+
 const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     q: 'Do I need a credit card to start?',
-    a: 'No. Start a 14-day trial, complete setup, and run test calls without a card. Add a payment method before RingBooker answers real callers on your business number.',
+    a:
+      'No. You can start a 14-day trial, complete setup, and run test calls without a card. A payment method is required before RingBooker answers real callers on your business number.' +
+      (trialNoChargeCopyVerified ? ' You won\'t be charged until your trial ends.' : ''),
   },
   {
     q: 'Do I need a new number?',
-    a: 'No. Current-number setup is the primary path. A dedicated RingBooker line is optional where supported.',
+    a: 'No. RingBooker is designed to work with your current business number. You can set up and test first, then add a payment method before live answering is enabled. A dedicated RingBooker number may be available as an optional setup path, but most businesses can keep the number customers already know.',
   },
   {
     q: 'Do I need to change booking software?',
-    a: 'No. RingBooker works alongside your booking tools and captures call context for routine scheduling requests.',
+    a: 'No. RingBooker works alongside your current booking setup. It can capture booking requests, reschedules, cancellations, and caller details so your team can confirm them in the tools you already use. Direct booking integrations may depend on your booking software and plan.',
   },
   {
     q: 'Which plan is right for me?',
-    a: 'Starter for after-hours, overflow, and missed-call recovery. Professional when you need reminder SMS, returning caller context, provider preferences, and owner transfer. Custom for multi-location, higher volume, or custom routing and integrations.',
+    a: (
+      <>
+        <p>
+          Starter is best if you need RingBooker to answer missed, busy, overflow, and after-hours calls, capture booking requests, and send call summaries with next steps.
+        </p>
+        <p>
+          Professional is best if you also need stronger follow-up, returning caller context, provider preferences, bilingual workflows where configured, and owner call transfer.
+        </p>
+        <p>
+          Custom is best for multi-location businesses, higher call volume, custom routing, escalation rules, or integration planning.
+        </p>
+      </>
+    ),
   },
   {
     q: 'What happens when a caller needs a real person?',
-    a: 'RingBooker captures the request and sends your team a clear summary. Starter emphasizes callback capture; Professional and Custom can also transfer to the owner when configured.',
+    a: 'On Starter, RingBooker captures the callback request and sends your team a clear summary with next steps. On Professional and Custom plans, RingBooker can also transfer the call to the owner when configured, including caller context so the owner knows why the caller needs help.',
   },
   {
     q: 'Does RingBooker replace my booking software or staff?',
-    a: 'No. RingBooker is a phone answering and call recovery layer. It does not replace your booking software, your team’s judgment, or human follow-up for special cases.',
+    a: 'No. RingBooker is designed to support your team, not replace it. It answers calls your team misses, captures booking intent, handles common requests, and sends summaries so your staff can confirm details in your existing booking workflow.',
+  },
+  {
+    q: 'What does “Bilingual workflows where configured” mean?',
+    a: 'On Professional and Custom plans, RingBooker can be configured to handle callers in more than one language, such as English and Vietnamese. It can collect booking details in the caller’s language and provide your team with a clear summary for follow-up.',
   },
 ];
 
@@ -159,9 +179,10 @@ a{text-decoration:none;color:inherit}
 .compare-section{margin-top:0}
 .pricing-faq-cta .cta-box{margin-top:48px}
 .pricing-faq-cta .mfaq-section{padding-top:0}
-.compare-wrap{margin:0 -8px;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-/* Compare plans — same shell as trust hub “How it works in practice” (.principles): 1px frame, radius-lg, no card shadow; row dividers only */
-.pricing-compare-panel{border-radius:var(--r-lg);border:1px solid var(--border);background:#fff;box-shadow:none}
+.compare-wrap{margin:0 -8px;padding:0 8px}
+/* Frame clips rounded corners; inner scroll keeps horizontal swipe on mobile (overflow:hidden on frame alone kills outer scroll). */
+.pricing-compare-frame{border-radius:var(--r-lg);border:1px solid var(--border);background:#fff;box-shadow:none;overflow:hidden}
+.pricing-compare-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .compare-table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0;border:none;border-radius:0;background:#fff;box-shadow:none;font-size:14px}
 .compare-table th,.compare-table td{padding:22px 26px;border-bottom:1px solid var(--border);vertical-align:middle}
 .compare-table tr:last-child td{border-bottom:none}
@@ -267,7 +288,7 @@ const plans = [
       'Returning caller notes and preferences',
       'Preferred stylist or provider context',
       'Owner call transfer with caller context',
-      'Language preferences captured during setup',
+      'Bilingual workflows where configured',
       'Advanced call recovery insights',
       'Priority support',
     ],
@@ -286,6 +307,7 @@ const plans = [
     benefits: [
       'Multi-location setup',
       'Custom call flows, routing, and escalation rules',
+      'Custom multilingual routing and workflows',
       'Custom integration planning',
       'Higher call volume planning',
       'Concierge onboarding',
@@ -323,7 +345,7 @@ const PRICING_COMPARE_GROUPS: CompareGroup[] = [
     title: 'Handoff and routing',
     rows: [
       { feature: 'Owner call transfer', starter: '—', pro: 'Yes', custom: 'Yes' },
-      { feature: 'Language preferences', starter: '—', pro: 'Yes', custom: 'Custom' },
+      { feature: 'Bilingual / multilingual workflows', starter: '—', pro: 'Configured languages', custom: 'Custom routing + workflows' },
       { feature: 'Custom routing and escalation', starter: '—', pro: '—', custom: 'Yes' },
       { feature: 'Multi-location setup', starter: '—', pro: '—', custom: 'Yes' },
     ],
@@ -338,8 +360,6 @@ const PRICING_COMPARE_GROUPS: CompareGroup[] = [
     ],
   },
 ];
-
-const trialNoChargeCopyVerified = process.env.NEXT_PUBLIC_PADDLE_TRIAL_CONFIG_VERIFIED === 'true';
 
 function ComparePlanCell({ value }: { value: string }) {
   if (value === 'Yes') {
@@ -446,8 +466,9 @@ export function MarketingPricingTemplate() {
                   See what is included in Starter, Professional, and Custom.
                 </p>
                 <div className="compare-wrap">
-                  <div className="pricing-compare-panel">
-                    <table className="compare-table">
+                  <div className="pricing-compare-frame">
+                    <div className="pricing-compare-scroll">
+                      <table className="compare-table">
                     <thead>
                       <tr>
                         <th scope="col">Feature</th>
@@ -474,6 +495,7 @@ export function MarketingPricingTemplate() {
                       ))}
                     </tbody>
                     </table>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -91,7 +91,7 @@ export function adminPhoneSetupLabel(s: AdminShopStatus): string {
   if (mode === 'forward') {
     return ft ? `Forwarding · ${ft}` : 'Forwarding';
   }
-  if (mode === 'new_number') return 'New RingBooker number';
+  if (mode === 'new_number') return 'Legacy non-forwarding setup';
   return 'Phone setup unknown';
 }
 

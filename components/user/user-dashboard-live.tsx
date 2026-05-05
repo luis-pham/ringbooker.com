@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
@@ -8,6 +8,12 @@ import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tab
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
+
+type GoLiveDashboardPrimaryCta =
+  | 'add_payment_method'
+  | 'set_up_call_forwarding'
+  | 'test_forwarding_setup'
+  | 'enable_live_answering';
 
 type UserDashboardResponse = {
   ok: boolean;
@@ -25,6 +31,15 @@ type UserDashboardResponse = {
     active: boolean;
   };
   onboardingRequired?: boolean;
+  onboardingCompleted?: boolean;
+  goLive?: {
+    liveCallsEnabled: boolean;
+    primaryCta: GoLiveDashboardPrimaryCta | null;
+    forwardingSetupVerified: boolean;
+    hasForwardingNumber: boolean;
+    paymentMethodValid: boolean;
+    subscriptionActiveLike: boolean;
+  } | null;
   error?: string;
 };
 
@@ -74,16 +89,36 @@ export function UserDashboardLive() {
   const [data, setData] = useState<UserDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
+  const [forwardingTestLoading, setForwardingTestLoading] = useState(false);
+  const [enableLiveLoading, setEnableLiveLoading] = useState(false);
+  const [goLiveActionMessage, setGoLiveActionMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    void fetch('/api/backend/user/dashboard')
-      .then(async (response) => (await response.json()) as UserDashboardResponse)
-      .then((body) => setData(body))
-      .finally(() => setLoading(false));
+  const loadDashboard = useCallback(async () => {
+    const response = await fetch('/api/backend/user/dashboard');
+    const body = (await response.json()) as UserDashboardResponse;
+    setData(body);
   }, []);
 
   useEffect(() => {
+    let active = true;
+    void loadDashboard()
+      .catch(() => {
+        if (active) setData({ ok: false, error: 'network_error' });
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [loadDashboard]);
+
+  useEffect(() => {
     if (!data?.ok || !data.shop || data.onboardingRequired) return;
+    if (!data.goLive?.liveCallsEnabled) {
+      setShowWelcomeBanner(false);
+      return;
+    }
     const startedKey = `ringbooker_welcome_started_${data.shop.id}`;
     const dismissedKey = `ringbooker_welcome_dismissed_${data.shop.id}`;
     try {
@@ -101,6 +136,8 @@ export function UserDashboardLive() {
     const raw = data?.shop?.plan ?? 'starter';
     return raw.charAt(0).toUpperCase() + raw.slice(1);
   }, [data?.shop?.plan]);
+
+  const liveAnsweringOn = data?.goLive?.liveCallsEnabled === true;
 
   useEffect(() => {
     if (!data?.ok || !data.shop) return;
@@ -127,97 +164,308 @@ export function UserDashboardLive() {
     setShowWelcomeBanner(false);
   }
 
+  async function runForwardingConnectivityCheck() {
+    setGoLiveActionMessage(null);
+    setForwardingTestLoading(true);
+    try {
+      const response = await fetch('/api/backend/user/go-live/start-forwarding-test', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        instruction?: string;
+      } | null;
+      if (!response.ok || !body?.ok) {
+        if (body?.error === 'forwarding_number_required') {
+          setGoLiveActionMessage(body.message ?? 'Provision your RingBooker forwarding number first.');
+        } else if (body?.error === 'payment_method_required') {
+          setGoLiveActionMessage(body.message ?? 'Add a valid payment method on the Billing page first.');
+        } else {
+          setGoLiveActionMessage(body?.message ?? 'Forwarding test could not start. Try again from onboarding.');
+        }
+        return;
+      }
+      setGoLiveActionMessage(
+        `${body.instruction ?? 'Call your current business number from another phone and let it forward to RingBooker.'} This page updates when RingBooker receives the forwarded call.`,
+      );
+      await loadDashboard();
+    } catch {
+      setGoLiveActionMessage('Network error. Please try again.');
+    } finally {
+      setForwardingTestLoading(false);
+    }
+  }
+
+  async function enableLiveAnswering() {
+    setGoLiveActionMessage(null);
+    setEnableLiveLoading(true);
+    try {
+      const response = await fetch('/api/backend/user/go-live/enable', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; message?: string; error?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setGoLiveActionMessage(body?.message ?? 'Could not enable live answering yet.');
+        return;
+      }
+      await loadDashboard();
+    } catch {
+      setGoLiveActionMessage('Network error. Please try again.');
+    } finally {
+      setEnableLiveLoading(false);
+    }
+  }
+
+  function renderGoLivePrimaryControl() {
+    const cta = data?.goLive?.primaryCta;
+    if (!cta) return null;
+    switch (cta) {
+      case 'add_payment_method':
+        return (
+          <a className="btn purple" href="/user/billing">
+            Add payment method to go live
+          </a>
+        );
+      case 'set_up_call_forwarding':
+        return (
+          <a className="btn purple" href="/user/onboarding#call-forwarding-section">
+            Set up call forwarding
+          </a>
+        );
+      case 'test_forwarding_setup':
+        return (
+          <button
+            type="button"
+            className="btn purple"
+            disabled={forwardingTestLoading}
+            onClick={() => void runForwardingConnectivityCheck()}
+          >
+            {forwardingTestLoading ? 'Starting forwarding test…' : 'Test forwarding setup'}
+          </button>
+        );
+      case 'enable_live_answering':
+        return (
+          <button
+            type="button"
+            className="btn purple"
+            disabled={enableLiveLoading}
+            onClick={() => void enableLiveAnswering()}
+          >
+            {enableLiveLoading ? 'Enabling…' : 'Enable live answering'}
+          </button>
+        );
+      default:
+        return null;
+    }
+  }
+
+  const showGoLiveBanner =
+    data?.ok &&
+    !data.onboardingRequired &&
+    data.goLive &&
+    data.goLive.primaryCta !== null &&
+    !data.goLive.liveCallsEnabled;
+
   return (
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
       <>
-      <div className="app-shell user-app-shell">
-        <UserPortalSidebar
-          active="overview"
-          workspaceOverride={{ shopName, plan: data?.shop?.plan ?? 'starter', active: data?.shop?.active ?? true }}
-        />
-        <main className="main">
-          {loading ? (
-            <section className="card" style={{ marginBottom: 18 }}>
-              <p className="sub">Loading dashboard...</p>
-            </section>
-          ) : !data?.ok ? (
-            <section className="card" style={{ marginBottom: 18 }}>
-              <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>
-            </section>
-          ) : null}
-          <UserPortalTopbar
-            title={shopName}
-            subtitle="Track calls, bookings, and reminders."
-            actions={<div className="overview-top-actions">
-              <a className="btn" href="/user/settings">Edit business info</a>
-              <a className="btn purple" href="/user/bookings">View bookings</a>
-              <button type="button" className="btn" onClick={signOut}>Sign out</button>
-            </div>}
+        <div className="app-shell user-app-shell">
+          <UserPortalSidebar
+            active="overview"
+            workspaceOverride={{ shopName, plan: data?.shop?.plan ?? 'starter', active: data?.shop?.active ?? true }}
           />
-          {showWelcomeBanner ? (
-            <section className="card" style={{ marginBottom: 18, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
-              <div className="panel-head">
-                <div>
-                  <h3>🎉 Setup complete! RingBooker is ready to answer your missed calls.</h3>
-                  <p className="sub">You can keep refining services, integrations, and call forwarding anytime.</p>
+          <main className="main">
+            {loading ? (
+              <section className="card" style={{ marginBottom: 18 }}>
+                <p className="sub">Loading dashboard...</p>
+              </section>
+            ) : !data?.ok ? (
+              <section className="card" style={{ marginBottom: 18 }}>
+                <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>
+              </section>
+            ) : null}
+            <UserPortalTopbar
+              title={shopName}
+              subtitle="Track calls, bookings, and reminders."
+              actions={
+                <div className="overview-top-actions">
+                  <a className="btn" href="/user/settings">
+                    Edit business info
+                  </a>
+                  <a className="btn purple" href="/user/bookings">
+                    View bookings
+                  </a>
+                  <button type="button" className="btn" onClick={signOut}>
+                    Sign out
+                  </button>
                 </div>
-                <button className="btn" type="button" onClick={dismissWelcomeBanner}>Dismiss ×</button>
+              }
+            />
+            {showGoLiveBanner ? (
+              <section className="card" style={{ marginBottom: 18, borderColor: '#c7d2fe', background: '#eef2ff' }}>
+                <div className="panel-head">
+                  <div>
+                    <h3>RingBooker is set up, but not live yet.</h3>
+                    <p className="sub">
+                      Your customers keep calling your current business number. Live answering stays off until you finish billing,
+                      forwarding, and verification below.
+                    </p>
+                    {goLiveActionMessage ? (
+                      <p className="sub" style={{ color: '#b45309', marginTop: 8 }}>
+                        {goLiveActionMessage}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
+                  {renderGoLivePrimaryControl()}
+                  <a className="btn" href="/user/onboarding#setup-test-calls">
+                    Run another test call
+                  </a>
+                </div>
+              </section>
+            ) : null}
+            {showWelcomeBanner && liveAnsweringOn ? (
+              <section className="card" style={{ marginBottom: 18, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+                <div className="panel-head">
+                  <div>
+                    <h3>🎉 Live answering is on</h3>
+                    <p className="sub">
+                      RingBooker can pick up forwarded calls on your current business number. You can keep refining services and rules
+                      anytime.
+                    </p>
+                  </div>
+                  <button className="btn" type="button" onClick={dismissWelcomeBanner}>
+                    Dismiss ×
+                  </button>
+                </div>
+              </section>
+            ) : null}
+            <section className="grid grid-4">
+              <div className="stat-card">
+                <div className="stat-top">
+                  <div className="stat-icon">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" />
+                    </svg>
+                  </div>
+                  <span className={`tag ${liveAnsweringOn ? 'green' : 'orange'}`}>
+                    {liveAnsweringOn ? 'Live answering' : 'Not live'}
+                  </span>
+                </div>
+                <div className="stat-value">{data?.metrics?.callCount ?? 0}</div>
+                <div className="stat-meta">Total calls logged for this business</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-top">
+                  <div className="stat-icon">
+                    <svg viewBox="0 0 24 24">
+                      <rect x={3} y={5} width={18} height={16} rx={2} />
+                      <path d="M16 3v4M8 3v4M3 10h18" />
+                    </svg>
+                  </div>
+                  <span className="tag purple">Booked</span>
+                </div>
+                <div className="stat-value">{data?.metrics?.bookingCount ?? 0}</div>
+                <div className="stat-meta">Total bookings in your current business</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-top">
+                  <div className="stat-icon">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 6h16v12H4z" />
+                      <path d="M4 8l8 6 8-6" />
+                    </svg>
+                  </div>
+                  <span className="tag orange">Needs follow-up</span>
+                </div>
+                <div className="stat-value">{data?.metrics?.missedCalls ?? 0}</div>
+                <div className="stat-meta">Total missed calls (outcome = missed)</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-top">
+                  <div className="stat-icon">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 19h16" />
+                      <path d="M7 15l3-3 3 2 4-5" />
+                    </svg>
+                  </div>
+                  <span className="tag green">{data?.shop?.active ? 'Active' : 'Paused'}</span>
+                </div>
+                <div className="stat-value">{planLabel}</div>
+                <div className="stat-meta">{data?.shop?.timezone ?? 'Timezone unavailable'}</div>
               </div>
             </section>
-          ) : null}
-          <section className="grid grid-4">
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">Live</span></div><div className="stat-value">{data?.metrics?.callCount ?? 0}</div><div className="stat-meta">Total calls logged for this business</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">Booked</span></div><div className="stat-value">{data?.metrics?.bookingCount ?? 0}</div><div className="stat-meta">Total bookings in your current business</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z" /><path d="M4 8l8 6 8-6" /></svg></div><span className="tag orange">Needs follow-up</span></div><div className="stat-value">{data?.metrics?.missedCalls ?? 0}</div><div className="stat-meta">Total missed calls (outcome = missed)</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M7 15l3-3 3 2 4-5" /></svg></div><span className="tag green">{data?.shop?.active ? 'Active' : 'Paused'}</span></div><div className="stat-value">{planLabel}</div><div className="stat-meta">{data?.shop?.timezone ?? 'Timezone unavailable'}</div></div>
-          </section>
-          <section className="call-grid" style={{ marginTop: 18 }}>
-            <div className="card soft">
-              <div className="panel-head"><div><h3>Quick actions</h3><p className="sub">Jump straight into the business controls that matter most.</p></div><span className="badge-right">User portal</span></div>
-              <div className="list">
-                <div className="list-item">
-                  <div className="item-main">
-                    <div className="avatar quick-avatar--bookings" aria-hidden title="Bookings">
-                      <IconQuickBookings />
-                    </div>
-                    <div>
-                      <h4>Open bookings</h4>
-                      <p>Review upcoming appointments and confirmations.</p>
-                    </div>
+            <section className="call-grid" style={{ marginTop: 18 }}>
+              <div className="card soft">
+                <div className="panel-head">
+                  <div>
+                    <h3>Quick actions</h3>
+                    <p className="sub">Jump straight into the business controls that matter most.</p>
                   </div>
-                  <a className="btn" href="/user/bookings">Go</a>
+                  <span className="badge-right">User portal</span>
                 </div>
-                <div className="list-item">
-                  <div className="item-main">
-                    <div className="avatar quick-avatar--calls" aria-hidden title="Calls">
-                      <IconQuickCalls />
+                <div className="list">
+                  <div className="list-item">
+                    <div className="item-main">
+                      <div className="avatar quick-avatar--bookings" aria-hidden title="Bookings">
+                        <IconQuickBookings />
+                      </div>
+                      <div>
+                        <h4>Open bookings</h4>
+                        <p>Review upcoming appointments and confirmations.</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4>Review call logs</h4>
-                      <p>Inspect calls, transcripts, and missed-call recovery.</p>
-                    </div>
+                    <a className="btn" href="/user/bookings">
+                      Go
+                    </a>
                   </div>
-                  <a className="btn" href="/user/calls">Go</a>
-                </div>
-                <div className="list-item">
-                  <div className="item-main">
-                    <div className="avatar quick-avatar--settings" aria-hidden title="Settings">
-                      <IconQuickSettings />
+                  <div className="list-item">
+                    <div className="item-main">
+                      <div className="avatar quick-avatar--calls" aria-hidden title="Calls">
+                        <IconQuickCalls />
+                      </div>
+                      <div>
+                        <h4>Review call logs</h4>
+                        <p>Inspect calls, transcripts, and missed-call recovery.</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4>Update business settings</h4>
-                      <p>Hours, services, AI greeting, and transfer rules.</p>
-                    </div>
+                    <a className="btn" href="/user/calls">
+                      Go
+                    </a>
                   </div>
-                  <a className="btn" href="/user/settings">Go</a>
+                  <div className="list-item">
+                    <div className="item-main">
+                      <div className="avatar quick-avatar--settings" aria-hidden title="Settings">
+                        <IconQuickSettings />
+                      </div>
+                      <div>
+                        <h4>Update business settings</h4>
+                        <p>Hours, services, AI greeting, and transfer rules.</p>
+                      </div>
+                    </div>
+                    <a className="btn" href="/user/settings">
+                      Go
+                    </a>
+                  </div>
                 </div>
               </div>
+            </section>
+            <div className="footer-inline">
+              <span>RingBooker business panel</span>
+              <span>Live data + restored shared styling</span>
             </div>
-          </section>
-          <div className="footer-inline"><span>RingBooker business panel</span><span>Live data + restored shared styling</span></div>
-        </main>
-      </div>
-      <UserPortalMobileTabbar active="overview" />
+          </main>
+        </div>
+        <UserPortalMobileTabbar active="overview" />
       </>
     </UserLayout>
   );

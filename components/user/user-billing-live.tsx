@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+
+import { CallForwardingSetup } from '@/components/user/call-forwarding-setup';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { userBillingScripts, userBillingStyles } from '@/components/user/user-billing';
@@ -60,6 +62,7 @@ type UserBillingResponse = {
     trialNoChargeUntilEndVerified?: boolean;
     checkoutAvailable?: boolean;
     manageBillingAvailable?: boolean;
+    forwardingNumber?: string | null;
   };
   error?: string;
 };
@@ -249,21 +252,25 @@ export function UserBillingLive() {
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [provisionForwardingLoading, setProvisionForwardingLoading] = useState(false);
+  const [provisionForwardingError, setProvisionForwardingError] = useState<string | null>(null);
+
+  const refreshBilling = useCallback(async () => {
+    const response = await fetch('/api/backend/user/billing');
+    const body = (await response.json()) as UserBillingResponse;
+    setData(body);
+    if (body.ok && body.shop) {
+      setWorkspace({
+        shopName: body.shop.name,
+        plan: body.shop.plan,
+        active: body.shop.active,
+      });
+    }
+  }, [setWorkspace]);
 
   useEffect(() => {
     let active = true;
-    void fetch('/api/backend/user/billing')
-      .then(async (response) => (await response.json()) as UserBillingResponse)
-      .then((body) => {
-        if (active) setData(body);
-        if (active && body.ok && body.shop) {
-          setWorkspace({
-            shopName: body.shop.name,
-            plan: body.shop.plan,
-            active: body.shop.active,
-          });
-        }
-      })
+    void refreshBilling()
       .catch(() => {
         if (active) {
           setData({ ok: false, error: 'network_error' });
@@ -276,7 +283,7 @@ export function UserBillingLive() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshBilling]);
 
   const subscription = data?.billing?.subscription ?? null;
   const currentPlan = subscription?.plan ?? data?.shop?.plan ?? 'starter';
@@ -317,6 +324,38 @@ export function UserBillingLive() {
   }, [currentPlan, subscription, catalog.priceLine]);
 
   const showPaymentAlert = !hasPaymentMethod || !subscription;
+  const forwardingNumber = data?.billing?.forwardingNumber?.trim() ?? '';
+
+  async function provisionForwardingFromBilling() {
+    setProvisionForwardingLoading(true);
+    setProvisionForwardingError(null);
+    try {
+      const response = await fetch('/api/backend/user/phone-numbers/provision-forwarding-number', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmGoLiveIntent: true }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        forwardingNumber?: string;
+        error?: string;
+      } | null;
+      if (!response.ok || !body?.ok) {
+        if (body?.error === 'payment_method_required') {
+          setProvisionForwardingError('Add a payment method before provisioning a forwarding number.');
+        } else if (body?.error === 'confirmation_required') {
+          setProvisionForwardingError('Confirmation failed. Please try again.');
+        } else {
+          setProvisionForwardingError(body?.error ?? 'Could not create forwarding number.');
+        }
+        return;
+      }
+      await refreshBilling();
+    } finally {
+      setProvisionForwardingLoading(false);
+    }
+  }
 
   async function openCheckout(plan: ShopPlan) {
     setCheckoutPlan(plan);
@@ -326,6 +365,7 @@ export function UserBillingLive() {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
+          origin: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
         },
         body: JSON.stringify({ plan }),
       });
@@ -401,9 +441,12 @@ export function UserBillingLive() {
                   </div>
                 </section>
 
-                {showPaymentAlert ? (
-                  <div className="billing-alert-strip" role="status">
-                    <p>Add a payment method before turning on live answering.</p>
+                {data?.billing && !liveEnabled && showPaymentAlert ? (
+                  <section className="card" style={{ marginBottom: 16 }}>
+                    <h3 style={{ marginTop: 0 }}>Add a payment method to go live</h3>
+                    <p className="sub">
+                      No card is needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
+                    </p>
                     {subscription ? (
                       <button
                         type="button"
@@ -414,7 +457,76 @@ export function UserBillingLive() {
                         {checkoutPlan ? 'Starting…' : 'Add payment method'}
                       </button>
                     ) : null}
-                  </div>
+                  </section>
+                ) : null}
+
+                {data?.billing && !liveEnabled && hasPaymentMethod && !forwardingNumber ? (
+                  <section className="card" style={{ marginBottom: 16 }}>
+                    <h3 style={{ marginTop: 0 }}>Set up call forwarding</h3>
+                    <p className="sub">
+                      RingBooker will create a forwarding number used only behind the scenes. Your customers will keep calling your current business number.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn purple"
+                      disabled={provisionForwardingLoading}
+                      onClick={() => void provisionForwardingFromBilling()}
+                    >
+                      {provisionForwardingLoading ? 'Setting up your forwarding number...' : 'Set up call forwarding'}
+                    </button>
+                    {provisionForwardingError ? (
+                      <p className="sub" style={{ color: '#b45309', marginTop: 12 }}>
+                        {provisionForwardingError}{' '}
+                        <a href="/user/billing">Review billing</a>
+                      </p>
+                    ) : null}
+                  </section>
+                ) : null}
+
+                {data?.billing && !liveEnabled && hasPaymentMethod && forwardingNumber ? (
+                  <section className="card" style={{ marginBottom: 16 }}>
+                    <h3 style={{ marginTop: 0 }}>Your RingBooker forwarding number is ready</h3>
+                    <p className="sub">
+                      Forward missed, busy, overflow, or after-hours calls from your current business number to this RingBooker forwarding number.
+                    </p>
+                    <div
+                      style={{
+                        border: '1px solid #bfdbfe',
+                        background: '#eff6ff',
+                        borderRadius: 12,
+                        padding: 12,
+                        marginTop: 10,
+                        fontSize: 14,
+                        color: '#1e3a5f',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Your customers keep calling your current business number. This forwarding number is used only behind the scenes.
+                    </div>
+                    <p className="sub" style={{ marginTop: 14 }}>
+                      <strong>RingBooker forwarding number:</strong>{' '}
+                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{forwardingNumber}</span>
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, alignItems: 'center' }}>
+                      <button type="button" className="btn" disabled title="Forwarding verification is coming next. Live answering stays off.">
+                        I&apos;ve set up forwarding
+                      </button>
+                      <a href="/contact" style={{ fontWeight: 600 }}>
+                        Need help? Contact support
+                      </a>
+                    </div>
+                    <p className="sub" style={{ marginTop: 8, marginBottom: 16 }}>
+                      We&apos;ll verify forwarding in a later step — RingBooker won&apos;t enable live answering yet.
+                    </p>
+                    <CallForwardingSetup
+                      ringbookerNumber={forwardingNumber}
+                      callForwardingPageUrl="/current-number/call-forwarding"
+                      initialMethod="forward"
+                      suppressForwardingTestCta
+                      onComplete={() => {}}
+                      onSkip={() => {}}
+                    />
+                  </section>
                 ) : null}
 
                 <section className="pricing-mini" style={{ marginBottom: 16 }}>

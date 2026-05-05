@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 
 import { CallForwardingSetup } from '@/components/user/call-forwarding-setup';
 import type { ForwardingType } from '@/lib/call-forwarding/carrier-data';
+import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
 import { UserLayout } from '@/components/user/user-layout';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
 type Vertical = 'nail_salon' | 'hair_salon' | 'day_spa' | 'med_spa' | 'beauty_clinic';
+type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type WizardStep = 1 | 2 | 3 | 4;
 type ServiceItem = { name: string; duration_min: number; price: number };
 type ApiHours = Record<string, { closed: true } | { open: string; close: string }>;
@@ -17,6 +19,10 @@ type WizardHours = Record<string, { open: boolean; from: string; to: string }>;
 type OnboardingStatusResponse = {
   ok: boolean;
   onboardingRequired?: boolean;
+  onboardingCompleted?: boolean;
+  liveCallsEnabled?: boolean;
+  forwardingSetupVerified?: boolean;
+  paymentMethodStatus?: 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
   shop?: {
     id: string;
     name: string;
@@ -37,6 +43,7 @@ type OnboardingStatusResponse = {
     forwarding_carrier?: string | null;
     forwarding_country?: string | null;
     telnyx_number?: string | null;
+    plan?: ShopPlan;
   };
   error?: string;
 };
@@ -241,10 +248,12 @@ export function UserOnboardingLive() {
   const [businessName, setBusinessName] = useState('');
   const [vertical, setVertical] = useState<Vertical | ''>('');
   const [businessPhone, setBusinessPhone] = useState('');
+  const [businessPhoneNeedsRealEntry, setBusinessPhoneNeedsRealEntry] = useState(false);
   const [hours, setHours] = useState<WizardHours>(() => defaultHours());
   const [selectedCountry, setSelectedCountry] = useState('');
   const [timezone, setTimezone] = useState('America/Los_Angeles');
   const [languages, setLanguages] = useState<string[]>(['en']);
+  const [shopPlan, setShopPlan] = useState<ShopPlan>('starter');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [websiteLoading, setWebsiteLoading] = useState(false);
   const [websiteReadSuccess, setWebsiteReadSuccess] = useState(false);
@@ -262,6 +271,19 @@ export function UserOnboardingLive() {
   const [forwardingCarrier, setForwardingCarrier] = useState<string | undefined>();
   const [forwardingCountry, setForwardingCountry] = useState('us');
   const [telnyxNumber, setTelnyxNumber] = useState('');
+  const [paymentMethodStatus, setPaymentMethodStatus] = useState<'none' | 'pending' | 'valid' | 'failed' | 'unknown'>('none');
+  const [forwardingSetupVerified, setForwardingSetupVerified] = useState(false);
+  const [forwardingVerifiedVia, setForwardingVerifiedVia] = useState<string | null>(null);
+  const [liveCallsEnabled, setLiveCallsEnabled] = useState(false);
+  const [provisionForwardingLoading, setProvisionForwardingLoading] = useState(false);
+  const [provisionForwardingError, setProvisionForwardingError] = useState<string | null>(null);
+  const [forwardingTestLoading, setForwardingTestLoading] = useState(false);
+  const [forwardingTestStatus, setForwardingTestStatus] = useState<'none' | 'pending' | 'passed' | 'expired' | 'failed'>('none');
+  const [forwardingTestExpiresAt, setForwardingTestExpiresAt] = useState<string | null>(null);
+  const [forwardingTestInstruction, setForwardingTestInstruction] = useState<string | null>(null);
+  const [confirmForwardingLoading, setConfirmForwardingLoading] = useState(false);
+  const [enableLiveLoading, setEnableLiveLoading] = useState(false);
+  const [goLiveSectionNotice, setGoLiveSectionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -282,23 +304,23 @@ export function UserOnboardingLive() {
     }
   }, [vertical]);
 
-  async function loadOnboarding() {
-    setLoading(true);
+  async function loadOnboarding(options?: { silent?: boolean }) {
+    const silent = options?.silent === true;
+    if (!silent) setLoading(true);
     const response = await fetch('/api/backend/user/onboarding-status');
     const body = (await response.json().catch(() => null)) as OnboardingStatusResponse | null;
     if (!body?.ok || !body.shop) {
       setStatus(body?.error ?? 'Unable to load onboarding.');
-      setLoading(false);
-      return;
-    }
-    if (!body.onboardingRequired) {
-      router.replace('/user');
+      if (!silent) setLoading(false);
       return;
     }
     setShopId(body.shop.id);
     setBusinessName(body.shop.name ?? '');
     setVertical(body.shop.vertical ?? '');
-    setBusinessPhone(body.shop.phone_number ?? body.shop.user_phone ?? '');
+    const rawPhone = (body.shop.phone_number ?? body.shop.user_phone ?? '').trim();
+    const syntheticSignupPhone = isSignupSyntheticPlaceholderPhone(rawPhone);
+    setBusinessPhone(syntheticSignupPhone ? '' : rawPhone);
+    setBusinessPhoneNeedsRealEntry(syntheticSignupPhone);
     const savedTimezone = body.shop.timezone || 'America/Los_Angeles';
     setTimezone(savedTimezone);
     setSelectedCountry(findCountryForTimezone(savedTimezone)?.country ?? 'United States');
@@ -312,9 +334,38 @@ export function UserOnboardingLive() {
     setForwardingCarrier(body.shop.forwarding_carrier ?? undefined);
     setForwardingCountry(body.shop.forwarding_country ?? 'us');
     setTelnyxNumber(body.shop.telnyx_number ?? '');
-    setLoading(false);
+    setShopPlan(body.shop.plan ?? 'starter');
+    setPaymentMethodStatus(body.paymentMethodStatus ?? 'none');
+    setForwardingSetupVerified(body.forwardingSetupVerified === true);
+    setLiveCallsEnabled(body.liveCallsEnabled === true);
+    if (!silent) setLoading(false);
     void loadProviders();
+    void refreshGoLiveStatus();
   }
+
+  async function refreshGoLiveStatus() {
+    const response = await fetch('/api/backend/user/go-live/status', { credentials: 'include' });
+    const body = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      forwardingSetupVerified?: boolean;
+      forwardingSetupVerifiedVia?: string | null;
+      forwardingTestStatus?: 'none' | 'pending' | 'passed' | 'expired' | 'failed';
+      forwardingTestExpiresAt?: string | null;
+    } | null;
+    if (!body?.ok) return;
+    setForwardingSetupVerified(body.forwardingSetupVerified === true);
+    setForwardingVerifiedVia(body.forwardingSetupVerifiedVia ?? null);
+    if (body.forwardingTestStatus) setForwardingTestStatus(body.forwardingTestStatus);
+    setForwardingTestExpiresAt(body.forwardingTestExpiresAt ?? null);
+  }
+
+  useEffect(() => {
+    if (currentStep !== 4) return;
+    if (paymentMethodStatus !== 'valid' || !telnyxNumber.trim() || liveCallsEnabled) return;
+    void refreshGoLiveStatus();
+    const id = window.setInterval(() => void refreshGoLiveStatus(), 4000);
+    return () => window.clearInterval(id);
+  }, [currentStep, paymentMethodStatus, telnyxNumber, liveCallsEnabled]);
 
   async function loadProviders() {
     const response = await fetch('/api/backend/user/calendar/providers');
@@ -396,10 +447,28 @@ export function UserOnboardingLive() {
   }
 
   async function continueStep3() {
-    const patch: Record<string, unknown> = { current_onboarding_step: 4 };
-    if (websiteUrl.trim()) patch.website_url = websiteUrl.trim();
     const nextServices = cleanServices(services);
-    if (nextServices.length > 0) patch.services = nextServices;
+    if (nextServices.length === 0) {
+      setStatus('Add at least one service so RingBooker can answer pricing questions.');
+      return;
+    }
+    const patch: Record<string, unknown> = { current_onboarding_step: 4, services: nextServices };
+    if (websiteUrl.trim()) patch.website_url = websiteUrl.trim();
+    const ok = await saveSettings(patch);
+    if (ok) setCurrentStep(4);
+  }
+
+  async function skipStep3ToGoLiveStep() {
+    const nextServices = cleanServices(services);
+    const fallback =
+      nextServices.length > 0
+        ? nextServices
+        : [{ name: 'General appointment', duration_min: 60, price: 0 }];
+    const patch: Record<string, unknown> = {
+      current_onboarding_step: 4,
+      services: fallback,
+    };
+    if (websiteUrl.trim()) patch.website_url = websiteUrl.trim();
     const ok = await saveSettings(patch);
     if (ok) setCurrentStep(4);
   }
@@ -568,8 +637,20 @@ export function UserOnboardingLive() {
           </div>
           <div className="onb-field">
             <label>Your business phone number</label>
-            <input type="tel" value={businessPhone} onChange={(event) => setBusinessPhone(event.target.value)} placeholder="(555) 123-4567" />
-            <p className="onb-help">This is the number your clients call to book appointments</p>
+            <input
+              type="tel"
+              value={businessPhone}
+              onChange={(event) => {
+                setBusinessPhone(event.target.value);
+                setBusinessPhoneNeedsRealEntry(false);
+              }}
+              placeholder="(555) 123-4567"
+            />
+            <p className="onb-help">
+              {businessPhoneNeedsRealEntry
+                ? 'Enter the main line your clients call. Signup did not include a verified business number yet.'
+                : 'This is the number your clients call to book appointments'}
+            </p>
           </div>
         </div>
         <div className="onb-field" style={{ marginTop: 24 }}>
@@ -646,7 +727,20 @@ export function UserOnboardingLive() {
           </section>
           <section>
             <div className="onb-field">
-              <label>Languages noted for setup</label>
+              <label>
+                {shopPlan === 'starter'
+                  ? 'Languages noted for setup'
+                  : shopPlan === 'professional'
+                    ? 'Languages for bilingual workflows'
+                    : 'Languages & multilingual routing'}
+              </label>
+              <p className="onb-subtitle" style={{ marginTop: 6, marginBottom: 10 }}>
+                {shopPlan === 'starter'
+                  ? 'Stored for your team and onboarding notes. Starter does not enable a bilingual call workflow from these selections—live dialogue stays in English.'
+                  : shopPlan === 'professional'
+                    ? 'Beyond English, RingBooker can respond in the languages you enable here during live calls. Keep team summaries and SMS in English unless custom instructions say otherwise.'
+                    : 'Works with configured languages; custom implementations may add multilingual routing rules in your agreed playbook when provisioned.'}
+              </p>
               <div className="lang-list">
                 <label className="lang-pill locked"><input type="checkbox" checked disabled /> EN ✓ <span className="required-badge">Required</span></label>
                 <label className={`lang-pill ${languages.includes('vi') ? 'selected' : ''}`}>
@@ -698,14 +792,135 @@ export function UserOnboardingLive() {
           </div>
         </div>
         <div className="onb-actions step3-actions">
-          <button className="onb-help onb-help-link" type="button" onClick={() => setCurrentStep(4)}>Skip for now →</button>
+          <button className="onb-help onb-help-link" type="button" onClick={() => void skipStep3ToGoLiveStep()}>Skip for now →</button>
           <button className="onb-btn-primary" type="button" onClick={continueStep3} disabled={saving}>{saving ? 'Saving...' : 'Continue →'}</button>
         </div>
       </div>
     );
   }
 
+  async function provisionForwardingNumberFromOnboarding() {
+    setProvisionForwardingLoading(true);
+    setProvisionForwardingError(null);
+    try {
+      const response = await fetch('/api/backend/user/phone-numbers/provision-forwarding-number', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmGoLiveIntent: true }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        forwardingNumber?: string;
+        error?: string;
+      } | null;
+      if (!response.ok || !body?.ok) {
+        if (body?.error === 'payment_method_required') {
+          setProvisionForwardingError('Add a payment method on the Billing page first.');
+        } else if (body?.error === 'confirmation_required') {
+          setProvisionForwardingError('Something went wrong confirming go-live intent. Please try again.');
+        } else {
+          setProvisionForwardingError(body?.error ?? 'Could not create forwarding number.');
+        }
+        return;
+      }
+      if (body.forwardingNumber) setTelnyxNumber(body.forwardingNumber);
+      await loadOnboarding({ silent: true });
+    } finally {
+      setProvisionForwardingLoading(false);
+    }
+  }
+
+  async function runForwardingTestFromOnboarding() {
+    setGoLiveSectionNotice(null);
+    setForwardingTestLoading(true);
+    try {
+      const response = await fetch('/api/backend/user/go-live/start-forwarding-test', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+        instruction?: string;
+        expiresAt?: string;
+      } | null;
+      if (!response.ok || !body?.ok) {
+        setGoLiveSectionNotice(
+          body?.error === 'forwarding_number_required'
+            ? body.message ?? 'Provision your RingBooker forwarding number first.'
+            : body?.error === 'payment_method_required'
+              ? body.message ?? 'Add a valid payment method on the Billing page first.'
+              : body?.message ?? 'Forwarding test could not start. Try again.',
+        );
+        return;
+      }
+      setForwardingTestInstruction(body.instruction ?? null);
+      setForwardingTestExpiresAt(body.expiresAt ?? null);
+      setForwardingTestStatus('pending');
+      void refreshGoLiveStatus();
+    } catch {
+      setGoLiveSectionNotice('Network error. Please try again.');
+    } finally {
+      setForwardingTestLoading(false);
+    }
+  }
+
+  async function confirmForwardingFromOnboarding() {
+    setGoLiveSectionNotice(null);
+    setConfirmForwardingLoading(true);
+    try {
+      const response = await fetch('/api/backend/user/go-live/confirm-forwarding-setup', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmForwardingReady: true }),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setGoLiveSectionNotice(body?.message ?? 'Could not save your confirmation.');
+        return;
+      }
+      await loadOnboarding({ silent: true });
+    } catch {
+      setGoLiveSectionNotice('Network error. Please try again.');
+    } finally {
+      setConfirmForwardingLoading(false);
+    }
+  }
+
+  async function enableLiveFromOnboarding() {
+    setGoLiveSectionNotice(null);
+    setEnableLiveLoading(true);
+    try {
+      const response = await fetch('/api/backend/user/go-live/enable', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; message?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setGoLiveSectionNotice(body?.message ?? 'Could not enable live answering yet.');
+        return;
+      }
+      await loadOnboarding({ silent: true });
+    } catch {
+      setGoLiveSectionNotice('Network error. Please try again.');
+    } finally {
+      setEnableLiveLoading(false);
+    }
+  }
+
   function renderStep4() {
+    const fwdMinutesLeft =
+      forwardingTestExpiresAt && forwardingTestStatus === 'pending'
+        ? Math.max(0, Math.ceil((new Date(forwardingTestExpiresAt).getTime() - Date.now()) / 60000))
+        : null;
+
     return (
       <div>
         <h1 className="onb-title">You&apos;re almost ready!</h1>
@@ -732,35 +947,221 @@ export function UserOnboardingLive() {
         {selectedProvider ? renderPlatformPanel(selectedProvider) : null}
         <button className="onb-help onb-help-link" type="button" onClick={() => document.getElementById('call-forwarding-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Skip — I'll connect my booking software later →</button>
         <div className="section-divider">then</div>
-        <div className="no-platform-box" style={{ textAlign: 'left' }}>
+        <div className="no-platform-box" style={{ textAlign: 'left' }} id="setup-test-calls">
           <p className="onb-section-title">Test your AI receptionist</p>
           <p className="onb-subtitle">We&apos;ll call your phone so you can hear RingBooker answer using your business setup. No credit card required.</p>
           <button className="onb-btn-primary" type="button" onClick={requestTestCall}>Call me now</button>
           {testCallStatus ? <p className="onb-subtitle" style={{ marginTop: 8 }}>{testCallStatus}</p> : null}
         </div>
         <div id="call-forwarding-section">
-          <p className="onb-section-title">Call handling <span className="onb-optional-badge">Optional</span></p>
-          <p className="onb-subtitle">A payment method is required before RingBooker answers real callers. Add a payment method to continue after your trial.</p>
-          <p className="onb-subtitle"><a href="/user/billing">Add payment method before go-live</a></p>
-          <CallForwardingSetup
-            ringbookerNumber={telnyxNumber || businessPhone || ''}
-            callForwardingPageUrl="/current-number/call-forwarding"
-            initialMethod={setupMethod}
-            initialCarrier={forwardingCarrier}
-            initialCountry={forwardingCountry}
-            initialForwardingType={forwardingType}
-            onComplete={(method) => {
-              setForwardingConfirmed(true);
-              setSetupMethod(method);
-              fetch('/api/backend/user/settings', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ setup_method: method }),
-              }).catch(console.error);
-            }}
-            onSkip={() => {}}
-          />
-          {forwardingConfirmed ? <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#16a34a', marginTop: 8 }}><span>✓</span><span>Call handling configured</span></div> : null}
+          <p className="onb-section-title">Go live: call forwarding</p>
+          <p className="onb-subtitle">
+            Try the call test above first — no payment needed. When you&apos;re ready for real callers on your business line, add a payment method and set up your RingBooker forwarding number below.
+          </p>
+
+          {goLiveSectionNotice ? (
+            <div className="onb-status" style={{ marginTop: 12 }}>
+              {goLiveSectionNotice}
+            </div>
+          ) : null}
+
+          {paymentMethodStatus !== 'valid' ? (
+            <div className="no-platform-box" style={{ textAlign: 'left' }}>
+              <h3 className="onb-card-title" style={{ marginTop: 0 }}>
+                Add payment method to go live
+              </h3>
+              <p className="onb-subtitle">
+                No card is needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
+              </p>
+              <a className="onb-btn-primary" href="/user/billing" style={{ display: 'inline-flex', marginTop: 8 }}>
+                Add payment method
+              </a>
+            </div>
+          ) : null}
+
+          {paymentMethodStatus === 'valid' && !telnyxNumber.trim() ? (
+            <div className="no-platform-box" style={{ textAlign: 'left' }}>
+              <h3 className="onb-card-title" style={{ marginTop: 0 }}>Set up call forwarding</h3>
+              <p className="onb-subtitle">
+                RingBooker will create a forwarding number used only behind the scenes. Your customers will keep calling your current business number.
+              </p>
+              <button
+                type="button"
+                className="onb-btn-primary"
+                disabled={provisionForwardingLoading}
+                onClick={() => void provisionForwardingNumberFromOnboarding()}
+              >
+                {provisionForwardingLoading ? 'Setting up your forwarding number...' : 'Set up call forwarding'}
+              </button>
+              {provisionForwardingError ? (
+                <p className="onb-subtitle" style={{ color: '#b45309', marginTop: 10 }}>
+                  {provisionForwardingError}{' '}
+                  {provisionForwardingError.includes('Billing') ? (
+                    <a href="/user/billing">Open Billing</a>
+                  ) : null}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {paymentMethodStatus === 'valid' && telnyxNumber.trim() ? (
+            <div className="no-platform-box" style={{ textAlign: 'left' }}>
+              <h3 className="onb-card-title" style={{ marginTop: 0 }}>Your RingBooker forwarding number is ready</h3>
+              <p className="onb-subtitle">
+                Forward missed, busy, overflow, or after-hours calls from your current business number to this RingBooker forwarding number.
+              </p>
+              <div
+                style={{
+                  border: '1px solid #bfdbfe',
+                  background: '#eff6ff',
+                  borderRadius: 12,
+                  padding: 12,
+                  marginTop: 10,
+                  fontSize: 14,
+                  color: '#1e3a5f',
+                  lineHeight: 1.5,
+                }}
+              >
+                Your customers keep calling your current business number. This RingBooker forwarding number is used only behind the scenes.
+              </div>
+              <p className="onb-subtitle" style={{ marginTop: 14 }}>
+                <strong>RingBooker forwarding number:</strong>{' '}
+                <span style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{telnyxNumber.trim()}</span>
+              </p>
+
+              {liveCallsEnabled ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    border: '1px solid #86efac',
+                    background: '#f0fdf4',
+                    borderRadius: 12,
+                    padding: 14,
+                    fontSize: 14,
+                    color: '#14532d',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <strong>Live answering is on.</strong> RingBooker can answer calls that reach this RingBooker forwarding number. Your
+                  customers still dial your current business number.
+                </div>
+              ) : null}
+
+              {!liveCallsEnabled && forwardingSetupVerified ? (
+                <div style={{ marginTop: 14 }}>
+                  {forwardingVerifiedVia === 'inbound_test_call' ? (
+                    <div
+                      className="onb-status"
+                      style={{
+                        marginBottom: 12,
+                        border: '1px solid #86efac',
+                        background: '#f0fdf4',
+                        borderRadius: 12,
+                        padding: 12,
+                        fontSize: 14,
+                        color: '#14532d',
+                      }}
+                    >
+                      Forwarding test successful. RingBooker received your forwarded call.
+                    </div>
+                  ) : null}
+                  <p className="onb-subtitle" style={{ marginTop: 0 }}>
+                    Forwarding setup is confirmed. When you&apos;re ready, enable live answering so RingBooker picks up forwarded calls.
+                    Live answering stays off until you turn it on.
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className="onb-btn-primary"
+                      disabled={enableLiveLoading}
+                      onClick={() => void enableLiveFromOnboarding()}
+                    >
+                      {enableLiveLoading ? 'Enabling…' : 'Enable live answering'}
+                    </button>
+                    <a className="onb-help onb-help-link" href="/contact">
+                      Need help? Contact support
+                    </a>
+                  </div>
+                </div>
+              ) : null}
+
+              {!liveCallsEnabled && !forwardingSetupVerified ? (
+                <div style={{ marginTop: 14 }}>
+                  <p className="onb-subtitle" style={{ marginTop: 0 }}>
+                    Call your current business number from another phone and let your carrier forward that call to your RingBooker forwarding
+                    number. RingBooker listens for that forwarded call to verify connectivity — live answering stays off until you enable it.
+                  </p>
+                  {forwardingTestInstruction || forwardingTestStatus === 'pending' ? (
+                    <p className="onb-help" style={{ marginTop: 8 }}>
+                      {forwardingTestInstruction ??
+                        'Call your current business number from another phone and let it forward to RingBooker.'}
+                      {forwardingTestStatus === 'pending' && fwdMinutesLeft !== null ? (
+                        <span> Listening window: about {fwdMinutesLeft} minute{fwdMinutesLeft === 1 ? '' : 's'} left.</span>
+                      ) : null}
+                    </p>
+                  ) : null}
+                  {forwardingTestStatus === 'expired' ? (
+                    <p className="onb-status" style={{ marginTop: 8 }}>
+                      Your forwarding test window expired. Start a new test below.
+                    </p>
+                  ) : null}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      className="onb-btn-primary"
+                      disabled={forwardingTestLoading}
+                      onClick={() => void runForwardingTestFromOnboarding()}
+                    >
+                      {forwardingTestLoading ? 'Starting test…' : 'Test forwarding setup'}
+                    </button>
+                    <button
+                      type="button"
+                      className="onb-btn-secondary"
+                      disabled={confirmForwardingLoading}
+                      onClick={() => void confirmForwardingFromOnboarding()}
+                    >
+                      {confirmForwardingLoading ? 'Saving…' : "I've set up forwarding manually"}
+                    </button>
+                    <a className="onb-help onb-help-link" href="/contact">
+                      Need help? Contact support
+                    </a>
+                  </div>
+                  <p className="onb-help" style={{ marginTop: 10 }}>
+                    Can&apos;t test right now? Use &quot;I&apos;ve set up forwarding manually&quot; only if you&apos;re confident forwarding is correct —
+                    RingBooker still won&apos;t answer live calls until you enable live answering.
+                  </p>
+                </div>
+              ) : null}
+
+              <div style={{ marginTop: 18 }}>
+                <CallForwardingSetup
+                  ringbookerNumber={telnyxNumber.trim()}
+                  callForwardingPageUrl="/current-number/call-forwarding"
+                  initialMethod="forward"
+                  initialCarrier={forwardingCarrier}
+                  initialCountry={forwardingCountry}
+                  initialForwardingType={forwardingType}
+                  suppressForwardingTestCta
+                  onComplete={(method) => {
+                    setForwardingConfirmed(true);
+                    setSetupMethod(method);
+                    fetch('/api/backend/user/settings', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ setup_method: method }),
+                    }).catch(console.error);
+                  }}
+                  onSkip={() => {}}
+                />
+              </div>
+            </div>
+          ) : null}
+          {forwardingConfirmed ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#16a34a', marginTop: 8 }}>
+              <span>✓</span>
+              <span>Carrier forwarding steps reviewed</span>
+            </div>
+          ) : null}
         </div>
         <div className="onb-actions">
           <button className="onb-help onb-help-link" type="button" onClick={completeSetup}>I'll finish this later →</button>

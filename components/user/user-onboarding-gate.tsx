@@ -18,6 +18,11 @@ function isPublicUserAuthPath(pathname: string): boolean {
   );
 }
 
+/** Lets users add a payment method during onboarding without getting bounced back. */
+function isAllowedDuringIncompleteSetup(pathname: string): boolean {
+  return pathname === '/user/billing' || pathname.startsWith('/user/billing/');
+}
+
 export function UserOnboardingGate() {
   const pathname = usePathname();
   const router = useRouter();
@@ -39,12 +44,9 @@ export function UserOnboardingGate() {
         if (canceled || !body?.ok) return;
         const onboardingRequired = body.onboardingRequired === true;
         const isOnboardingPage = pathname === '/user/onboarding';
-        if (onboardingRequired && !isOnboardingPage) {
+        if (onboardingRequired && !isOnboardingPage && !isAllowedDuringIncompleteSetup(pathname)) {
           router.replace('/user/onboarding');
           return;
-        }
-        if (!onboardingRequired && isOnboardingPage) {
-          router.replace('/user');
         }
       })
       .catch(() => undefined);
