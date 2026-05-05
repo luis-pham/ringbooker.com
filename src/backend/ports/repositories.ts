@@ -15,6 +15,7 @@ import type {
   JobStatus,
   JobType,
   Shop,
+  ForwardingTestSession,
   ShopAccessState,
   TestCallAttempt,
   TestCallAttemptStatus,
@@ -404,9 +405,18 @@ export interface ShopsRepository {
         | 'forwarding_carrier'
         | 'forwarding_country'
         | 'telnyx_number'
+        | 'forwarding_number_status'
+        | 'forwarding_number_provisioning_started_at'
+        | 'forwarding_number_provider_order_id'
+        | 'forwarding_number_last_error'
       >
     >,
   ): Promise<Shop | null>;
+  tryBeginForwardingNumberProvisioning(params: {
+    shopId: string;
+    startedAt: Date;
+    staleBefore: Date;
+  }): Promise<{ acquired: boolean; shop: Shop | null; reason?: 'already_provisioned' | 'already_provisioning' | 'shop_not_found' }>;
   updateDynamicConfig(
     shopId: string,
     patch: Partial<
@@ -525,7 +535,31 @@ export interface ShopAccessStatesRepository {
     liveCallsPausedReason?: string | null;
     liveCallsPausedAt?: string | null;
     lastAccessCheckAt?: string | null;
+    forwardingSetupVerifiedAt?: string | null;
+    forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
   }): Promise<ShopAccessState>;
+}
+
+export interface ForwardingTestSessionsRepository {
+  findPendingUnexpiredByShopId(params: { shopId: string; now: Date }): Promise<ForwardingTestSession | null>;
+  createSession(params: {
+    shopId: string;
+    forwardingNumber: string;
+    expectedBusinessPhone?: string | null;
+    startedAt: Date;
+    expiresAt: Date;
+    metadata?: Record<string, unknown>;
+  }): Promise<ForwardingTestSession>;
+  /** Returns true when a row transitioned from pending (unexpired) to passed. */
+  markPassedIfEligible(params: {
+    shopId: string;
+    forwardingNumberE164: string;
+    inboundCallSessionId: string | null;
+    inboundCallControlId: string | null;
+    callerPhone: string | null;
+    now: Date;
+  }): Promise<boolean>;
+  findLatestByShopId(shopId: string): Promise<ForwardingTestSession | null>;
 }
 
 export interface TestCallAttemptsRepository {

@@ -90,6 +90,10 @@ export interface Shop {
   forwarding_carrier?: string | null;
   forwarding_country?: string | null;
   telnyx_number?: string | null;
+  forwarding_number_status?: 'none' | 'provisioning' | 'provisioned' | 'failed' | null;
+  forwarding_number_provisioning_started_at?: string | null;
+  forwarding_number_provider_order_id?: string | null;
+  forwarding_number_last_error?: string | null;
   ai_voice?: string | null;
   ai_welcome_message?: string | null;
   ai_custom_instructions?: string | null;
@@ -224,6 +228,33 @@ export interface BillingSubscription {
   updatedAt?: string;
 }
 
+export type ForwardingSetupVerifiedVia =
+  | 'inbound_test_call'
+  | 'manual_confirmation'
+  | 'forwarding_test'
+  | 'user_confirmed'
+  /** DB backfill for shops already live before P1.3 forwarding verification columns existed (see scripts/backfill-forwarding-verification-legacy-live.sql). */
+  | 'legacy_live';
+
+export type ForwardingTestSessionStatus = 'pending' | 'passed' | 'expired' | 'failed';
+
+export interface ForwardingTestSession {
+  id: string;
+  shopId: string;
+  status: ForwardingTestSessionStatus;
+  forwardingNumber: string;
+  expectedBusinessPhone: string | null;
+  startedAt: string;
+  expiresAt: string;
+  passedAt: string | null;
+  inboundCallSessionId: string | null;
+  inboundCallControlId: string | null;
+  callerPhone: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ShopAccessState {
   id: string;
   shopId: string;
@@ -232,6 +263,8 @@ export interface ShopAccessState {
   liveCallsPausedReason?: string | null;
   liveCallsPausedAt?: string | null;
   lastAccessCheckAt?: string | null;
+  forwardingSetupVerifiedAt?: string | null;
+  forwardingSetupVerifiedVia?: ForwardingSetupVerifiedVia | null;
   createdAt?: string;
   updatedAt?: string;
 }
