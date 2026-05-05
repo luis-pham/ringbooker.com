@@ -209,6 +209,36 @@ export const RATE_LIMIT_POLICIES = {
   auth_reset_password: { name: 'auth_reset_password', limit: 8, windowMs: 30 * 60_000, blockMs: 30 * 60_000 },
   auth_session_read: { name: 'auth_session_read', limit: 120, windowMs: 60_000 },
   user_api: { name: 'user_api', limit: 180, windowMs: 60_000 },
+  user_provision_forwarding_number: {
+    name: 'user_provision_forwarding_number',
+    limit: 3,
+    windowMs: 60 * 60_000,
+    blockMs: 60 * 60_000,
+  },
+  user_test_calls_call_me: {
+    name: 'user_test_calls_call_me',
+    limit: 3,
+    windowMs: 15 * 60_000,
+    blockMs: 15 * 60_000,
+  },
+  user_start_forwarding_test: {
+    name: 'user_start_forwarding_test',
+    limit: 5,
+    windowMs: 15 * 60_000,
+    blockMs: 15 * 60_000,
+  },
+  user_confirm_forwarding_setup: {
+    name: 'user_confirm_forwarding_setup',
+    limit: 5,
+    windowMs: 15 * 60_000,
+    blockMs: 15 * 60_000,
+  },
+  user_go_live_enable: {
+    name: 'user_go_live_enable',
+    limit: 10,
+    windowMs: 60 * 60_000,
+    blockMs: 60 * 60_000,
+  },
   admin_api: { name: 'admin_api', limit: 180, windowMs: 60_000 },
   /** Expensive time-series aggregation; tighter than generic admin_api to reduce DB abuse */
   admin_chart_query: { name: 'admin_chart_query', limit: 72, windowMs: 60_000, blockMs: 5 * 60_000 },

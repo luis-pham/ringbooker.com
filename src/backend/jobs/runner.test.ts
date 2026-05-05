@@ -11,7 +11,12 @@ import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memor
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { InMemoryTestCallAttemptsRepository } from '@/src/backend/adapters/memory/test-call-attempts-repository';
 import type { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
+import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { createJobHandlers } from '@/src/backend/jobs/runner';
+import { JobExecutionError } from '@/src/backend/jobs/worker';
+import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
+
+applyRequiredTestEnv();
 
 function createRuntime() {
   const sentSms: unknown[] = [];
@@ -114,4 +119,108 @@ test('runner skips missed-call follow-up SMS when billing access is blocked', as
   });
 
   assert.equal(sentSms.length, 0);
+});
+
+test('callback_outbound_call uses shared outbound caller id (not shop.phone_number)', async () => {
+  const outboundCalls: Array<{ from?: string; to?: string }> = [];
+  const { runtime } = createRuntime();
+  Object.assign(runtime, {
+    telephonyService: {
+      createOutboundCall: async (params: { from: string; to: string }) => {
+        outboundCalls.push(params);
+        return { providerCallId: undefined as undefined };
+      },
+    },
+  });
+
+  const shop = await runtime.shopsRepository.create({
+    name: 'Callback Shop',
+    phone_number: '+17145559999',
+    user_phone: '+17145559998',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+    active: true,
+  });
+
+  const callback = await runtime.callbacksRepository.create({
+    shopId: shop.id,
+    customerPhone: '+15551234567',
+    customerName: 'Alex',
+    reason: 'Test callback',
+  });
+
+  const handlers = createJobHandlers(runtime);
+  await handlers.callback_outbound_call!({
+    jobId: 'job-callback-outbound',
+    shopId: shop.id,
+    payload: { callbackId: callback.id },
+    attemptCount: 1,
+  });
+
+  assert.equal(outboundCalls.length, 1);
+  assert.equal(outboundCalls[0]?.to, '+15551234567');
+  assert.equal(outboundCalls[0]?.from, process.env.RINGBOOKER_OUTBOUND_CALLER_ID);
+  assert.notEqual(outboundCalls[0]?.from, shop.phone_number);
+
+  const updated = await runtime.callbacksRepository.findById(callback.id);
+  assert.equal(updated?.status, 'completed');
+});
+
+test('callback_outbound_call skips telephony when outbound caller id is not configured', async () => {
+  const outboundCalls: unknown[] = [];
+  const prevRing = process.env.RINGBOOKER_OUTBOUND_CALLER_ID;
+  const prevTelnyx = process.env.TELNYX_OUTBOUND_CALLER_ID;
+  delete process.env.RINGBOOKER_OUTBOUND_CALLER_ID;
+  delete process.env.TELNYX_OUTBOUND_CALLER_ID;
+  resetEnvCacheForTests();
+
+  try {
+    const { runtime } = createRuntime();
+    Object.assign(runtime, {
+      telephonyService: {
+        createOutboundCall: async (params: unknown) => {
+          outboundCalls.push(params);
+          return { providerCallId: undefined as undefined };
+        },
+      },
+    });
+
+    const shop = await runtime.shopsRepository.create({
+      name: 'No CID Shop',
+      phone_number: '+17145558888',
+      user_phone: '+17145558887',
+      timezone: 'America/Los_Angeles',
+      plan: 'professional',
+      active: true,
+    });
+
+    const callback = await runtime.callbacksRepository.create({
+      shopId: shop.id,
+      customerPhone: '+15559876543',
+      reason: 'Test',
+    });
+
+    const handlers = createJobHandlers(runtime);
+    await assert.rejects(
+      () =>
+        handlers.callback_outbound_call!({
+          jobId: 'job-no-cid',
+          shopId: shop.id,
+          payload: { callbackId: callback.id },
+          attemptCount: 1,
+        }),
+      (err: unknown) => err instanceof JobExecutionError && err.message === 'outbound_caller_id_not_configured',
+    );
+
+    assert.equal(outboundCalls.length, 0);
+    const updated = await runtime.callbacksRepository.findById(callback.id);
+    assert.equal(updated?.status, 'failed');
+  } finally {
+    if (prevRing !== undefined) process.env.RINGBOOKER_OUTBOUND_CALLER_ID = prevRing;
+    else delete process.env.RINGBOOKER_OUTBOUND_CALLER_ID;
+    if (prevTelnyx !== undefined) process.env.TELNYX_OUTBOUND_CALLER_ID = prevTelnyx;
+    else delete process.env.TELNYX_OUTBOUND_CALLER_ID;
+    resetEnvCacheForTests();
+    applyRequiredTestEnv();
+  }
 });

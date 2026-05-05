@@ -1,5 +1,6 @@
 import { dispatchRealtimeSession, RealtimeDispatchError } from '@/src/agent/realtime/dispatch-session';
 import { getBackendRuntime } from '@/src/backend/bootstrap/runtime';
+import { getEnv } from '@/src/backend/config/env';
 import type { JobType, Shop } from '@/src/backend/domain/types';
 import { canUseReminderSms, canUseReviewRequestSms } from '@/src/backend/domain/shop-plan-capabilities';
 import { JobExecutionError, JobWorker } from '@/src/backend/jobs/worker';
@@ -16,6 +17,14 @@ import { SMS_MISSED_CALL, SMS_REMINDER_24H, SMS_REMINDER_2H } from '@/src/backen
 type WorkerControls = {
   stop: () => void;
 };
+
+function resolveRingbookerSystemOutboundCallerId(): string | null {
+  const env = getEnv();
+  const primary = env.RINGBOOKER_OUTBOUND_CALLER_ID?.trim();
+  if (primary) return primary;
+  const fallback = env.TELNYX_OUTBOUND_CALLER_ID?.trim();
+  return fallback || null;
+}
 
 export function startJobsWorker(): WorkerControls {
   const runtime = getBackendRuntime();
@@ -182,6 +191,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       destinationPhone: params.shop.phone_number,
       callerPhone: params.customerPhone,
       systemPrompt,
+      shopPlan: params.shop.plan,
     });
 
     await runtime.jobsRepository.enqueue({
@@ -528,7 +538,6 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       }
       const access = await getShopBillingAccess(runtime, {
         shopId: shop.id,
-        onboardingComplete: true,
       });
       if (!access.canReceiveLiveCalls) {
         logger.warn(
@@ -684,6 +693,16 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           throw new JobExecutionError('callback_max_attempts_exceeded', { retryable: false });
         }
 
+        const systemFrom = resolveRingbookerSystemOutboundCallerId();
+        if (!systemFrom) {
+          logger.warn(
+            { shopId: shop.id, jobId: params.jobId, callbackId: callback.id },
+            'outbound_caller_id_not_configured',
+          );
+          await runtime.callbacksRepository.markFailed(callback.id);
+          throw new JobExecutionError('outbound_caller_id_not_configured', { retryable: false });
+        }
+
         await runtime.callbacksRepository.markAttempt(callback.id, {});
         try {
           const realtime = await prepareRealtimeCallbackCall({
@@ -696,7 +715,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           await runtime.telephonyService.createOutboundCall({
             shopId: shop.id,
             to: callback.customerPhone,
-            from: shop.phone_number,
+            from: systemFrom,
             purpose: 'callback',
             requestId: realtime.requestId,
             idempotencyKey: `job:${params.jobId}:callback-call:${nextAttemptNumber}`,
@@ -728,6 +747,12 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         throw new JobExecutionError('shop_not_found', { retryable: false });
       }
 
+      const systemFrom = resolveRingbookerSystemOutboundCallerId();
+      if (!systemFrom) {
+        logger.warn({ shopId: shop.id, jobId: params.jobId }, 'outbound_caller_id_not_configured');
+        throw new JobExecutionError('outbound_caller_id_not_configured', { retryable: false });
+      }
+
       const realtime = await prepareRealtimeCallbackCall({
         shop,
         customerPhone: payload.data.customerPhone,
@@ -739,7 +764,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       await runtime.telephonyService.createOutboundCall({
         shopId: shop.id,
         to: payload.data.customerPhone,
-        from: shop.phone_number,
+        from: systemFrom,
         purpose: 'callback',
         requestId: realtime.requestId,
         idempotencyKey: `job:${params.jobId}:callback-call:direct`,

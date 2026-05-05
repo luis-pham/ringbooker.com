@@ -40,7 +40,11 @@ export type SecurityAuditEvent = {
     | 'public_contact_honeypot_triggered'
     | 'public_contact_captcha_failed'
     | 'public_contact_requested'
-    | 'csrf_blocked';
+    | 'csrf_blocked'
+    | 'forwarding_number_requested'
+    | 'forwarding_number_provisioned'
+    | 'forwarding_number_failed'
+    | 'forwarding_setup_manual_confirmed';
   actorType: 'user' | 'admin' | 'public' | 'provider' | 'internal';
   actorId?: string;
   ip?: string;
