@@ -45,6 +45,7 @@ const defaultValues: PostFormData = {
   slug: '',
   excerpt: '',
   metaDescription: '',
+  seoTitle: '',
   content: '',
   status: 'DRAFT',
   categoryIds: [],
@@ -254,6 +255,20 @@ export function BlogPostForm(props: BlogPostFormProps) {
               Leave blank to use the excerpt (and body fallbacks) for meta tags and structured data — same as before.
             </p>
             <FormError message={form.formState.errors.metaDescription?.message} />
+          </label>
+
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="text-sm font-semibold text-slate-700">SEO title (optional)</span>
+            <input
+              {...form.register('seoTitle')}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none ring-brand-purple/30 transition focus:ring"
+              placeholder="Shorter headline for Google / browser tab — overrides Title above for meta only"
+            />
+            <p className="text-xs text-slate-500">
+              Leave blank to use <strong>Title</strong>. When set, the page &lt;title&gt; uses this text plus the hub suffix (
+              <span className="font-mono text-[11px]">… | RingBooker Blog</span>, Compare, etc.).
+            </p>
+            <FormError message={form.formState.errors.seoTitle?.message} />
           </label>
         </section>
 

@@ -16,6 +16,8 @@ model Post {
   excerpt        String
   /// Optional search / social meta description (plain text). When empty, excerpt + body fallbacks apply.
   metaDescription String?   @db.Text
+  /// Optional headline for `<title>` / Open Graph title; same suffix as `title` (… | RingBooker Blog). When null/empty, `title` is used.
+  seoTitle       String?   @db.Text @map("seo_title")
   content        String     @db.Text
   /// Public URL path (e.g. /uploads/blog/...) or absolute https URL for list/detail hero
   coverImageUrl  String?

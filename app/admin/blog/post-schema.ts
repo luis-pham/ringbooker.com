@@ -36,6 +36,8 @@ export const postSchema = z
   excerpt: z.string().min(1).max(500),
   /** Optional; used for meta / OG / JSON-LD when non-empty. Plain text, max ~2 tweets. */
   metaDescription: z.string().max(320),
+  /** Optional; replaces post title in `<title>` / OG headline before the automatic suffix (… | RingBooker Blog). Plain text. */
+  seoTitle: z.string().max(200),
   content: z.string().min(1),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']),
   categoryIds: z.array(z.string()).min(1),

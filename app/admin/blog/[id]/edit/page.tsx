@@ -45,6 +45,7 @@ export default async function AdminBlogEditPage({ params }: PageProps) {
     slug: post.slug,
     excerpt: post.excerpt,
     metaDescription: post.metaDescription ?? '',
+    seoTitle: post.seoTitle ?? '',
     content: post.content,
     status: post.status,
     categoryIds: post.categories.map((item) => item.categoryId),

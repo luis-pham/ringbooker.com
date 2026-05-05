@@ -55,7 +55,8 @@ export async function buildBlogPostMetadata(pathPrefix: string, slug: string): P
 
   const description = buildPostSeoDescription(post);
 
-  const documentTitle = normalizeSeoTitle(`${post.title} | ${titleSuffixForPostPathPrefix(post.pathPrefix)}`);
+  const headline = post.seoTitle?.trim() || post.title;
+  const documentTitle = normalizeSeoTitle(`${headline} | ${titleSuffixForPostPathPrefix(post.pathPrefix)}`);
 
   return {
     metadataBase: new URL(siteConfig.url),
