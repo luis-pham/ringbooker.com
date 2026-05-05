@@ -78,6 +78,8 @@ const nextConfig: NextConfig = {
       { source: '/spa', destination: '/industries/spa', permanent: true },
       { source: '/med-spa', destination: '/industries/med-spa', permanent: true },
       { source: '/beauty-clinic', destination: '/industries/beauty-clinic', permanent: true },
+      // Demo / prompts use `day-spa`, but the public industry hub is `/industries/spa` (see MARKETING_INDUSTRY_URL_SEGMENTS).
+      { source: '/industries/day-spa', destination: '/industries/spa', permanent: true },
     ];
   },
   images: {
