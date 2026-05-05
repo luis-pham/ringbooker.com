@@ -22,4 +22,11 @@ export interface PhoneProvisioningService {
     providerNumberId?: string;
     orderId?: string;
   }>;
+
+  releaseNumber?(params: {
+    phoneNumber: string;
+    providerNumberId?: string;
+    orderId?: string;
+    reason: string;
+  }): Promise<void>;
 }

@@ -38,6 +38,10 @@ const defaultShop: Shop = {
   forwarding_carrier: null,
   forwarding_country: 'us',
   telnyx_number: null,
+  forwarding_number_status: 'none',
+  forwarding_number_provisioning_started_at: null,
+  forwarding_number_provider_order_id: null,
+  forwarding_number_last_error: null,
   ai_voice: 'Aoede',
   ai_welcome_message: 'Thanks for calling RingBooker Demo Salon. How can I help you today?',
   ai_custom_instructions: 'Prioritize manicure and pedicure bookings and keep answers concise.',
@@ -130,6 +134,10 @@ export class InMemoryShopsRepository implements ShopsRepository {
       forwarding_carrier: null,
       forwarding_country: 'us',
       telnyx_number: null,
+      forwarding_number_status: 'none',
+      forwarding_number_provisioning_started_at: null,
+      forwarding_number_provider_order_id: null,
+      forwarding_number_last_error: null,
       allow_transfers: enableProfessionalDefaults,
       allow_callbacks: true,
       send_reminder_sms: enableProfessionalDefaults,
@@ -169,6 +177,10 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'forwarding_carrier'
         | 'forwarding_country'
         | 'telnyx_number'
+        | 'forwarding_number_status'
+        | 'forwarding_number_provisioning_started_at'
+        | 'forwarding_number_provider_order_id'
+        | 'forwarding_number_last_error'
       >
     >,
   ): Promise<Shop | null> {
@@ -180,6 +192,42 @@ export class InMemoryShopsRepository implements ShopsRepository {
     };
     this.shops.set(shopId, updated);
     return updated;
+  }
+
+  async tryBeginForwardingNumberProvisioning(params: {
+    shopId: string;
+    startedAt: Date;
+    staleBefore: Date;
+  }): Promise<{
+    acquired: boolean;
+    shop: Shop | null;
+    reason?: 'already_provisioned' | 'already_provisioning' | 'shop_not_found';
+  }> {
+    const current = this.shops.get(params.shopId);
+    if (!current) return { acquired: false, shop: null, reason: 'shop_not_found' };
+    if (current.telnyx_number?.trim()) {
+      return { acquired: false, shop: current, reason: 'already_provisioned' };
+    }
+
+    const status = current.forwarding_number_status ?? 'none';
+    const startedAt = current.forwarding_number_provisioning_started_at
+      ? new Date(current.forwarding_number_provisioning_started_at)
+      : null;
+    const stale = startedAt ? startedAt.getTime() < params.staleBefore.getTime() : false;
+    const canAcquire = status === 'none' || status === 'failed' || stale;
+    if (!canAcquire) {
+      return { acquired: false, shop: current, reason: 'already_provisioning' };
+    }
+
+    const updated: Shop = {
+      ...current,
+      forwarding_number_status: 'provisioning',
+      forwarding_number_provisioning_started_at: params.startedAt.toISOString(),
+      forwarding_number_provider_order_id: null,
+      forwarding_number_last_error: null,
+    };
+    this.shops.set(params.shopId, updated);
+    return { acquired: true, shop: updated };
   }
 
   async updateDynamicConfig(

@@ -11,11 +11,26 @@ type ShopAccessStateRow = {
   live_calls_paused_reason: string | null;
   live_calls_paused_at: string | null;
   last_access_check_at: string | null;
+  forwarding_setup_verified_at: string | null;
+  forwarding_setup_verified_via: string | null;
   created_at: string;
   updated_at: string;
 };
 
+function forwardingViaFromRow(via: string | null): ShopAccessState['forwardingSetupVerifiedVia'] {
+  if (
+    via === 'forwarding_test' ||
+    via === 'user_confirmed' ||
+    via === 'inbound_test_call' ||
+    via === 'manual_confirmation'
+  ) {
+    return via;
+  }
+  return null;
+}
+
 function toShopAccessState(row: ShopAccessStateRow): ShopAccessState {
+  const via = row.forwarding_setup_verified_via;
   return {
     id: row.id,
     shopId: row.shop_id,
@@ -24,6 +39,8 @@ function toShopAccessState(row: ShopAccessStateRow): ShopAccessState {
     liveCallsPausedReason: row.live_calls_paused_reason,
     liveCallsPausedAt: row.live_calls_paused_at,
     lastAccessCheckAt: row.last_access_check_at,
+    forwardingSetupVerifiedAt: row.forwarding_setup_verified_at,
+    forwardingSetupVerifiedVia: forwardingViaFromRow(via),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -66,6 +83,8 @@ export class SupabaseShopAccessStatesRepository implements ShopAccessStatesRepos
     liveCallsPausedReason?: string | null;
     liveCallsPausedAt?: string | null;
     lastAccessCheckAt?: string | null;
+    forwardingSetupVerifiedAt?: string | null;
+    forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
   }): Promise<ShopAccessState> {
     const existing = await this.findByShopId(params.shopId);
     const { data, error } = await this.supabase
@@ -78,6 +97,14 @@ export class SupabaseShopAccessStatesRepository implements ShopAccessStatesRepos
           live_calls_paused_reason: params.liveCallsPausedReason ?? existing?.liveCallsPausedReason ?? null,
           live_calls_paused_at: params.liveCallsPausedAt ?? existing?.liveCallsPausedAt ?? null,
           last_access_check_at: params.lastAccessCheckAt ?? existing?.lastAccessCheckAt ?? null,
+          forwarding_setup_verified_at:
+            params.forwardingSetupVerifiedAt !== undefined
+              ? params.forwardingSetupVerifiedAt
+              : (existing?.forwardingSetupVerifiedAt ?? null),
+          forwarding_setup_verified_via:
+            params.forwardingSetupVerifiedVia !== undefined
+              ? params.forwardingSetupVerifiedVia
+              : (existing?.forwardingSetupVerifiedVia ?? null),
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'shop_id' },

@@ -20,6 +20,7 @@ import { InMemoryContactRequestsRepository } from '@/src/backend/adapters/memory
 import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
 import { InMemoryWebDemoSessionsRepository } from '@/src/backend/adapters/memory/web-demo-sessions-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
+import { InMemoryForwardingTestSessionsRepository } from '@/src/backend/adapters/memory/forwarding-test-sessions-repository';
 import { InMemoryTestCallAttemptsRepository } from '@/src/backend/adapters/memory/test-call-attempts-repository';
 import { NoopEmailService } from '@/src/backend/adapters/noop/email-service';
 import { NoopPhoneProvisioningService } from '@/src/backend/adapters/noop/phone-provisioning-service';
@@ -43,6 +44,7 @@ import { SupabaseContactRequestsRepository } from '@/src/backend/adapters/supaba
 import { SupabaseDemoSessionsRepository } from '@/src/backend/adapters/supabase/demo-sessions-repository';
 import { SupabaseWebDemoSessionsRepository } from '@/src/backend/adapters/supabase/web-demo-sessions-repository';
 import { SupabaseShopAccessStatesRepository } from '@/src/backend/adapters/supabase/shop-access-states-repository';
+import { SupabaseForwardingTestSessionsRepository } from '@/src/backend/adapters/supabase/forwarding-test-sessions-repository';
 import { SupabaseTestCallAttemptsRepository } from '@/src/backend/adapters/supabase/test-call-attempts-repository';
 import { TelnyxPhoneProvisioningService } from '@/src/backend/adapters/telnyx/phone-provisioning-service';
 import { TelnyxSmsService } from '@/src/backend/adapters/telnyx/sms-service';
@@ -155,6 +157,7 @@ export function createBackendRuntime() {
             billingNotificationsRepository: new SupabaseBillingNotificationsRepository(supabase),
             shopAccessStatesRepository: new SupabaseShopAccessStatesRepository(supabase),
             testCallAttemptsRepository: new SupabaseTestCallAttemptsRepository(supabase),
+            forwardingTestSessionsRepository: new SupabaseForwardingTestSessionsRepository(supabase),
             jobsRepository: new SupabaseJobsRepository(supabase),
             bookingsRepository: new SupabaseBookingsRepository(supabase),
             callbacksRepository: new SupabaseCallbacksRepository(supabase),
@@ -178,6 +181,7 @@ export function createBackendRuntime() {
           billingNotificationsRepository: new InMemoryBillingNotificationsRepository(),
           shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
           testCallAttemptsRepository: new InMemoryTestCallAttemptsRepository(),
+          forwardingTestSessionsRepository: new InMemoryForwardingTestSessionsRepository(),
           jobsRepository: new InMemoryJobsRepository(),
           bookingsRepository: new InMemoryBookingsRepository(),
           callbacksRepository: new InMemoryCallbacksRepository(),
@@ -270,6 +274,7 @@ export function createBackendRuntime() {
     billingNotificationsRepository: repositories.billingNotificationsRepository,
     shopAccessStatesRepository: repositories.shopAccessStatesRepository,
     testCallAttemptsRepository: repositories.testCallAttemptsRepository,
+    forwardingTestSessionsRepository: repositories.forwardingTestSessionsRepository,
     callbacksRepository: repositories.callbacksRepository,
     shopsRepository: repositories.shopsRepository,
     telephonyService: services.telephonyService,
@@ -310,6 +315,7 @@ export function createBackendRuntime() {
     billingNotificationsRepository: repositories.billingNotificationsRepository,
     shopAccessStatesRepository: repositories.shopAccessStatesRepository,
     testCallAttemptsRepository: repositories.testCallAttemptsRepository,
+    forwardingTestSessionsRepository: repositories.forwardingTestSessionsRepository,
     jobsRepository: repositories.jobsRepository,
     bookingsRepository: repositories.bookingsRepository,
     callbacksRepository: repositories.callbacksRepository,

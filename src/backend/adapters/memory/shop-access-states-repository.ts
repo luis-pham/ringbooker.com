@@ -28,6 +28,8 @@ export class InMemoryShopAccessStatesRepository implements ShopAccessStatesRepos
     liveCallsPausedReason?: string | null;
     liveCallsPausedAt?: string | null;
     lastAccessCheckAt?: string | null;
+    forwardingSetupVerifiedAt?: string | null;
+    forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
   }): Promise<ShopAccessState> {
     const existing = await this.findByShopId(params.shopId);
     const now = new Date().toISOString();
@@ -39,6 +41,14 @@ export class InMemoryShopAccessStatesRepository implements ShopAccessStatesRepos
       liveCallsPausedReason: params.liveCallsPausedReason ?? existing?.liveCallsPausedReason ?? null,
       liveCallsPausedAt: params.liveCallsPausedAt ?? existing?.liveCallsPausedAt ?? null,
       lastAccessCheckAt: params.lastAccessCheckAt ?? existing?.lastAccessCheckAt ?? null,
+      forwardingSetupVerifiedAt:
+        params.forwardingSetupVerifiedAt !== undefined
+          ? params.forwardingSetupVerifiedAt
+          : (existing?.forwardingSetupVerifiedAt ?? null),
+      forwardingSetupVerifiedVia:
+        params.forwardingSetupVerifiedVia !== undefined
+          ? params.forwardingSetupVerifiedVia
+          : (existing?.forwardingSetupVerifiedVia ?? null),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

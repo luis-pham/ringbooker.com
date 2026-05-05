@@ -27,6 +27,10 @@ type ShopsRow = {
   forwarding_carrier: string | null;
   forwarding_country: string | null;
   telnyx_number: string | null;
+  forwarding_number_status: Shop['forwarding_number_status'] | null;
+  forwarding_number_provisioning_started_at: string | null;
+  forwarding_number_provider_order_id: string | null;
+  forwarding_number_last_error: string | null;
   ai_voice: string | null;
   ai_welcome_message: string | null;
   ai_custom_instructions: string | null;
@@ -94,6 +98,10 @@ function toShop(row: ShopsRow): Shop {
     forwarding_carrier: row.forwarding_carrier,
     forwarding_country: row.forwarding_country ?? 'us',
     telnyx_number: row.telnyx_number,
+    forwarding_number_status: row.forwarding_number_status ?? 'none',
+    forwarding_number_provisioning_started_at: row.forwarding_number_provisioning_started_at,
+    forwarding_number_provider_order_id: row.forwarding_number_provider_order_id,
+    forwarding_number_last_error: row.forwarding_number_last_error,
     ai_voice: row.ai_voice ?? 'Aoede',
     ai_welcome_message: row.ai_welcome_message,
     ai_custom_instructions: row.ai_custom_instructions,
@@ -140,6 +148,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_carrier',
           'forwarding_country',
           'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -193,6 +205,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_carrier',
           'forwarding_country',
           'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -246,6 +262,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_carrier',
           'forwarding_country',
           'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -367,6 +387,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_carrier',
           'forwarding_country',
           'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -415,6 +439,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'forwarding_carrier'
         | 'forwarding_country'
         | 'telnyx_number'
+        | 'forwarding_number_status'
+        | 'forwarding_number_provisioning_started_at'
+        | 'forwarding_number_provider_order_id'
+        | 'forwarding_number_last_error'
       >
     >,
   ): Promise<Shop | null> {
@@ -442,6 +470,16 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.forwarding_carrier !== undefined) payload.forwarding_carrier = patch.forwarding_carrier;
     if (patch.forwarding_country !== undefined) payload.forwarding_country = patch.forwarding_country;
     if (patch.telnyx_number !== undefined) payload.telnyx_number = patch.telnyx_number;
+    if (patch.forwarding_number_status !== undefined) payload.forwarding_number_status = patch.forwarding_number_status;
+    if (patch.forwarding_number_provisioning_started_at !== undefined) {
+      payload.forwarding_number_provisioning_started_at = patch.forwarding_number_provisioning_started_at;
+    }
+    if (patch.forwarding_number_provider_order_id !== undefined) {
+      payload.forwarding_number_provider_order_id = patch.forwarding_number_provider_order_id;
+    }
+    if (patch.forwarding_number_last_error !== undefined) {
+      payload.forwarding_number_last_error = patch.forwarding_number_last_error;
+    }
 
     const { data, error } = await this.supabase
       .from('shops')
@@ -472,6 +510,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_carrier',
           'forwarding_country',
           'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -493,6 +535,96 @@ export class SupabaseShopsRepository implements ShopsRepository {
     }
 
     return data ? toShop(data) : null;
+  }
+
+  async tryBeginForwardingNumberProvisioning(params: {
+    shopId: string;
+    startedAt: Date;
+    staleBefore: Date;
+  }): Promise<{
+    acquired: boolean;
+    shop: Shop | null;
+    reason?: 'already_provisioned' | 'already_provisioning' | 'shop_not_found';
+  }> {
+    const existing = await this.findById(params.shopId);
+    if (!existing) return { acquired: false, shop: null, reason: 'shop_not_found' };
+    if (existing.telnyx_number?.trim()) {
+      return { acquired: false, shop: existing, reason: 'already_provisioned' };
+    }
+
+    const startedIso = params.startedAt.toISOString();
+    const staleIso = params.staleBefore.toISOString();
+    const { data, error } = await this.supabase
+      .from('shops')
+      .update({
+        forwarding_number_status: 'provisioning',
+        forwarding_number_provisioning_started_at: startedIso,
+        forwarding_number_provider_order_id: null,
+        forwarding_number_last_error: null,
+        updated_at: startedIso,
+      })
+      .eq('id', params.shopId)
+      .is('telnyx_number', null)
+      .or(
+        [
+          'forwarding_number_status.is.null',
+          'forwarding_number_status.eq.none',
+          'forwarding_number_status.eq.failed',
+          `forwarding_number_provisioning_started_at.lt.${staleIso}`,
+        ].join(','),
+      )
+      .select(
+        [
+          'id',
+          'name',
+          'vertical',
+          'brand_slug',
+          'phone_number',
+          'user_phone',
+          'backup_phone',
+          'user_name',
+          'address',
+          'timezone',
+          'services',
+          'hours',
+          'cancel_policy',
+          'promotions',
+          'booking_url',
+          'website_url',
+          'languages',
+          'current_onboarding_step',
+          'setup_method',
+          'forwarding_type',
+          'forwarding_carrier',
+          'forwarding_country',
+          'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
+          'ai_voice',
+          'ai_welcome_message',
+          'ai_custom_instructions',
+          'allow_transfers',
+          'allow_callbacks',
+          'send_reminder_sms',
+          'send_review_request_sms',
+          'send_missed_call_followup_sms',
+          'plan',
+          'active',
+          'google_cal_id',
+          'google_cal_credentials_encrypted',
+        ].join(','),
+      )
+      .maybeSingle<ShopsRow>();
+
+    if (error) throw new Error(`shops_begin_forwarding_number_provisioning_failed:${error.message}`);
+    if (data) return { acquired: true, shop: toShop(data) };
+
+    const latest = await this.findById(params.shopId);
+    if (!latest) return { acquired: false, shop: null, reason: 'shop_not_found' };
+    if (latest.telnyx_number?.trim()) return { acquired: false, shop: latest, reason: 'already_provisioned' };
+    return { acquired: false, shop: latest, reason: 'already_provisioning' };
   }
 
   async updateDynamicConfig(
@@ -554,6 +686,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_carrier',
           'forwarding_country',
           'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -618,6 +754,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_carrier',
           'forwarding_country',
           'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -679,6 +819,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_carrier',
           'forwarding_country',
           'telnyx_number',
+          'forwarding_number_status',
+          'forwarding_number_provisioning_started_at',
+          'forwarding_number_provider_order_id',
+          'forwarding_number_last_error',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
