@@ -1,9 +1,12 @@
 import { MarketingVerticalDemoTemplate } from '@/components/marketing/marketing-vertical-demo';
+import { buildMetadata } from '@/lib/site';
 
-export const metadata = {
+export const metadata = buildMetadata({
   title: 'AI Call Demo for Beauty Clinics',
-  robots: { index: false, follow: true },
-};
+  description:
+    'Hear how RingBooker covers wax studio, lash studio, and aesthetic clinic calls. Try the live demo now.',
+  path: '/demo/beauty-clinic',
+});
 
 const DEFAULT_DEMO_PHONE_BEAUTY_CLINIC = '+12702031876';
 

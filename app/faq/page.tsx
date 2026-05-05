@@ -63,7 +63,7 @@ const faqs = [
 ];
 
 export const metadata = buildMetadata({
-  title: 'Salon AI Phone Answering FAQ | Current Number, Missed Calls, After-Hours & Revenue Recovery',
+  title: 'RingBooker | FAQ — AI Receptionist for Salons & Spas',
   description:
     'Answers to common questions about using RingBooker with your current number, covering after-hours calls, peak-hour overflow, missed-call recovery, and salon revenue protection.',
   path: '/faq',

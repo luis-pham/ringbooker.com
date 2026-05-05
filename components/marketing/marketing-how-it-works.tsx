@@ -268,7 +268,7 @@ const scripts: string[] = [
 ];
 
 export const templateTitle =
-  'How RingBooker Works on Your Current Number | Recover After-Hours and Missed Call Revenue';
+  'RingBooker | How It Works — Keep Your Number, Cover Missed Calls';
 
 export function MarketingHowItWorksTemplate() {
   return (

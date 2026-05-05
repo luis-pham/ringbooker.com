@@ -1,9 +1,12 @@
 import { MarketingVerticalDemoTemplate } from '@/components/marketing/marketing-vertical-demo';
+import { buildMetadata } from '@/lib/site';
 
-export const metadata = {
+export const metadata = buildMetadata({
   title: 'AI Call Demo for Day Spas',
-  robots: { index: false, follow: true },
-};
+  description:
+    'Hear how RingBooker answers couples massage and package inquiries for day spas. Try the live demo — no setup required.',
+  path: '/demo/day-spa',
+});
 
 const DEFAULT_DEMO_PHONE_DAY_SPA = '+16282025809';
 

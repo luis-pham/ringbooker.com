@@ -991,8 +991,9 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
           </h1>
           <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
             RingBooker is the AI receptionist for hair salons — covering preferred stylist requests, color slot inquiries,
-            and reschedule calls on your current number. 37% of hair salon calls are missed, 77% of clients still prefer
-            calling over the app. Revenue-bearing calls don&apos;t have to disappear into voicemail.
+            and reschedule calls on your current number. 37% of hair salon calls are missed; 77% of clients prefer calling to
+            reschedule — Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel.
+            Revenue-bearing calls don&apos;t have to disappear into voicemail.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
@@ -1432,9 +1433,9 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
         accent="text-fuchsia-600"
         stats={[
           {
-            value: '35–40%',
-            label: 'of clinic calls missed during service hours',
-            sub: 'Estheticians, lash techs, and wax specialists cannot answer while with clients. Those callers rarely wait.',
+            value: '1 in 3',
+            label: 'clinic calls go unanswered while staff are with clients',
+            sub: 'Estheticians, lash techs, and wax specialists cannot answer mid-service. Those callers rarely call back. Zenoti',
           },
           {
             value: '46%',

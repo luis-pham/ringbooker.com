@@ -222,7 +222,7 @@ const scripts: string[] = [
 ];
 
 export const templateTitle =
-  'Salon Call Recovery Pricing | After-Hours, Peak-Hour & Missed-Call Revenue Protection';
+  'RingBooker | Pricing — AI Receptionist for Salons & Spas';
 
 const plans = [
   {
