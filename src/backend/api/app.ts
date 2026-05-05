@@ -22,6 +22,7 @@ import {
   releaseDirectDemoActiveSlot,
 } from '@/src/backend/demo/public-demo-realtime-guard';
 import { effectiveDemoClientCountry, resolveDemoClientCountryForPersistence } from '@/src/backend/lib/demo-client-country';
+import { parseDemoUserAgentHints } from '@/src/backend/lib/demo-user-agent-hints';
 import {
   CAPABILITY_MIN_PLAN,
   CAPABILITY_LABELS,
@@ -48,6 +49,8 @@ import type {
   CallbacksRepository,
   CallLogsRepository,
   DemoAdminCallListRow,
+  DemoCallStatus,
+  DemoSessionStatus,
   JobsRepository,
   MissedCallsRepository,
   ProviderEventsRepository,
@@ -60,6 +63,7 @@ import type {
   TestCallAttemptsRepository,
   VoiceCallLegsRepository,
 } from '@/src/backend/ports/repositories';
+import type { WebDemoSessionStatus, WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import { createNoCardTrialForShop } from '@/src/backend/services/billing/no-card-trial';
 import { buildAdminShopStatus } from '@/src/backend/services/admin/admin-shop-status';
@@ -532,6 +536,18 @@ const adminDemoCallsListQuerySchema = z.object({
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   page: z.coerce.number().int().min(1).max(10_000).optional(),
+});
+
+const webDemoAdminStatusSchema = z.enum(['started', 'connected', 'completed', 'failed', 'timed_out', 'rate_limited']);
+
+const adminWebDemosListQuerySchema = z.object({
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).optional(),
+  vertical: z.preprocess((v) => (v === '' || v == null ? undefined : String(v)), z.string().max(120).optional()),
+  status: webDemoAdminStatusSchema.optional(),
+  country: z.preprocess((v) => (v === '' || v == null ? undefined : String(v)), z.string().max(8).optional()),
+  search: z.preprocess((v) => (v === '' || v == null ? undefined : String(v)), z.string().max(200).optional()),
 });
 
 const adminCallsListQuerySchema = z.object({
@@ -1350,6 +1366,186 @@ const ADMIN_CALL_LIST_PAGE_SIZE = 20;
 const ADMIN_CALL_CHART_SAMPLE = 8000;
 const ADMIN_DEMO_LIST_PAGE_SIZE = 20;
 const ADMIN_DEMO_CHART_SAMPLE = 8000;
+const ADMIN_WEB_DEMO_MERGE_CAP = 2500;
+
+async function buildAdminDemoCallsListResult(
+  deps: {
+    demoSessionsRepository: DemoSessionsRepository;
+    callLogsRepository: CallLogsRepository;
+  },
+  parsed: z.infer<typeof adminDemoCallsListQuerySchema>,
+  providerFilter?: { providerEquals?: string; providerNotEquals?: string },
+): Promise<{ ok: false; status: number; error: string } | { ok: true; json: Record<string, unknown> }> {
+  const env = getEnv();
+  const now = new Date();
+  const endDay = parsed.dateTo ?? now.toISOString().slice(0, 10);
+  let startDay = parsed.dateFrom ?? null;
+  if (!startDay) {
+    const from = new Date(now);
+    from.setUTCDate(from.getUTCDate() - 30);
+    startDay = from.toISOString().slice(0, 10);
+  }
+  const createdAfter = new Date(`${startDay}T00:00:00.000Z`);
+  const createdBefore = new Date(`${endDay}T23:59:59.999Z`);
+  if (createdAfter.getTime() > createdBefore.getTime()) {
+    return { ok: false, status: 400, error: 'invalid_date_range' };
+  }
+
+  const page = parsed.page ?? 1;
+  const pageSize = ADMIN_DEMO_LIST_PAGE_SIZE;
+  const offset = (page - 1) * pageSize;
+
+  const rangeArgs = { createdAfter, createdBefore };
+  const filterArgs = providerFilter ?? {};
+  const [total, pageRows, chartRows] = await Promise.all([
+    deps.demoSessionsRepository.countAdminDemoCallRuns({ ...rangeArgs, ...filterArgs }),
+    deps.demoSessionsRepository.listAdminDemoCallRuns({
+      ...rangeArgs,
+      ...filterArgs,
+      limit: pageSize,
+      offset,
+    }),
+    deps.demoSessionsRepository.listAdminDemoCallRuns({
+      ...rangeArgs,
+      ...filterArgs,
+      limit: ADMIN_DEMO_CHART_SAMPLE,
+      offset: 0,
+    }),
+  ]);
+
+  const requestIdsPage = pageRows.map((r) => r.requestId);
+  const requestIdsChart = chartRows.map((r) => r.requestId);
+  const transcriptMeta = await deps.callLogsRepository.listTranscriptMetaByShopAndRequestIds({
+    shopId: env.PUBLIC_DEMO_SHOP_ID,
+    requestIds: [...new Set([...requestIdsPage, ...requestIdsChart])],
+  });
+
+  const enrich = (row: (typeof pageRows)[0]) => {
+    const meta = transcriptMeta.get(row.requestId);
+    return {
+      ...row,
+      clientCountry: effectiveDemoClientCountry(row.clientCountry, row.callbackPhone),
+      demoDurationSeconds: demoCallDurationSeconds(row),
+      transcriptStatus: meta?.transcriptStatus,
+      hasTranscriptText: meta?.hasTranscriptText ?? false,
+    };
+  };
+
+  const calls = pageRows.map(enrich);
+
+  const chartEnriched = chartRows.map(enrich);
+  const chartDailyMap = new Map<string, { count: number; demoSeconds: number }>();
+  for (const row of chartEnriched) {
+    const day = row.runCreatedAt.slice(0, 10);
+    const sec = row.demoDurationSeconds ?? 0;
+    const prev = chartDailyMap.get(day) ?? { count: 0, demoSeconds: 0 };
+    prev.count += 1;
+    prev.demoSeconds += sec;
+    chartDailyMap.set(day, prev);
+  }
+  const chartDaily = [...chartDailyMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, v]) => ({ day, count: v.count, demoSeconds: v.demoSeconds }));
+
+  const summary = {
+    total,
+    completed: chartEnriched.filter((r) => r.runStatus === 'completed').length,
+    missed: chartEnriched.filter((r) => r.runStatus === 'missed' || r.outcome === 'missed').length,
+    withTranscript: chartEnriched.filter((r) => r.hasTranscriptText).length,
+    summarySampleSize: chartEnriched.length,
+    summaryTruncated: total > ADMIN_DEMO_CHART_SAMPLE,
+  };
+
+  return {
+    ok: true,
+    json: {
+      ok: true,
+      calls,
+      chartDaily,
+      summary,
+      pagination: { page, pageSize, total },
+      filter: {
+        dateFrom: startDay,
+        dateTo: endDay,
+      },
+    },
+  };
+}
+
+function liveKitDemoRunToWebAdminStatus(
+  runStatus: DemoCallStatus,
+  sessionStatus: DemoSessionStatus,
+): WebDemoSessionStatus {
+  if (runStatus === 'live' || sessionStatus === 'live') return 'connected';
+  if (runStatus === 'completed') return 'completed';
+  if (runStatus === 'failed' || runStatus === 'missed') return 'failed';
+  return 'started';
+}
+
+function parseAdminUuidParam(raw: string | undefined): string | null {
+  const t = raw?.trim() ?? '';
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)
+  ) {
+    return null;
+  }
+  return t.toLowerCase();
+}
+
+function formatWebDemoTranscriptForAdmin(transcript: unknown): string | null {
+  if (transcript == null) return null;
+  if (typeof transcript === 'string') {
+    const s = transcript.trim();
+    return s.length ? s : null;
+  }
+  if (!Array.isArray(transcript)) {
+    try {
+      return JSON.stringify(transcript, null, 2);
+    } catch {
+      return null;
+    }
+  }
+  const lines: string[] = [];
+  for (const item of transcript) {
+    if (!item || typeof item !== 'object') continue;
+    const role = typeof (item as { role?: unknown }).role === 'string' ? (item as { role: string }).role : 'unknown';
+    const content =
+      typeof (item as { content?: unknown }).content === 'string'
+        ? (item as { content: string }).content
+        : typeof (item as { text?: unknown }).text === 'string'
+          ? (item as { text: string }).text
+          : null;
+    if (content?.trim()) lines.push(`${role}: ${content.trim()}`);
+  }
+  return lines.length ? lines.join('\n\n') : null;
+}
+
+function unifiedWebDemoRowMatchesFilters(
+  row: {
+    verticalSlug: string;
+    adminStatus: WebDemoSessionStatus;
+    country: string | null;
+    businessName: string | null;
+    publicSessionId: string;
+    livekitRequestId: string | null;
+  },
+  filters: {
+    vertical?: string;
+    status?: WebDemoSessionStatus;
+    country?: string;
+    search?: string;
+  },
+): boolean {
+  if (filters.vertical && row.verticalSlug !== filters.vertical) return false;
+  if (filters.status && row.adminStatus !== filters.status) return false;
+  if (filters.country && (row.country ?? '').toUpperCase() !== filters.country.trim().toUpperCase()) return false;
+  if (filters.search) {
+    const q = filters.search.trim().toLowerCase();
+    const hay = [row.businessName, row.publicSessionId, row.livekitRequestId].filter(Boolean).join(' ').toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+  return true;
+}
 
 const adminDashboardChartPeriodSchema = z.enum(['today', 'week', 'month', 'year']);
 const adminDashboardChartMetricSchema = z.enum(['demo-calls', 'leads', 'shops', 'calls']);
@@ -1379,6 +1575,7 @@ export function createBackendApp(deps: {
   blogPostsRepository?: BlogPostsRepository;
   contactRequestsRepository?: ContactRequestsRepository;
   demoSessionsRepository?: DemoSessionsRepository;
+  webDemoSessionsRepository?: WebDemoSessionsRepository;
   shopsRepository?: ShopsRepository;
   telephonyService?: TelephonyService;
   phoneProvisioningService?: PhoneProvisioningService;
@@ -2088,18 +2285,76 @@ Submitted at: ${new Date().toISOString()}`,
     const demoVertical = parsed.data.demoVertical ?? parsed.data.businessType.toLowerCase().replace(/\s+/g, '-');
 
     return runDirectDemoSerialized(ip, async () => {
+      const persistCountry = resolveDemoClientCountryForPersistence(
+        normalizeCfIpCountry(c.req.header('CF-IPCountry')),
+        PUBLIC_DEMO_WEB_SESSION_CALLBACK_PHONE_E164,
+      );
+      const uaHints = parseDemoUserAgentHints(c.req.header('user-agent'));
+
       const limits = await consumePublicDemoRealtimeLimits(ip, parsed.data.sessionId);
       if (!limits.ok) {
+        if (deps.webDemoSessionsRepository) {
+          try {
+            await deps.webDemoSessionsRepository.insertRateLimited({
+              publicSessionId: parsed.data.sessionId,
+              verticalSlug: demoVertical,
+              businessName: parsed.data.shopName,
+              ipAddress: ip,
+              country: persistCountry,
+              userAgent: c.req.header('user-agent') ?? null,
+              browser: uaHints.browser,
+              deviceType: uaHints.deviceType,
+              errorCode: limits.code,
+            });
+          } catch (error) {
+            logger.warn({ err: error }, 'web_demo_session_rate_limit_persist_failed');
+          }
+        }
         return jsonPublicDemoRealtimeBlocked(c, limits.code, { vertical: demoVertical });
       }
 
       const requestId = `demo-direct-${randomUUID()}`;
       const ttlMs = directDemoActiveTtlMs();
       if (!tryOccupyDirectDemoActiveSlot(ip, requestId, ttlMs)) {
+        if (deps.webDemoSessionsRepository) {
+          try {
+            await deps.webDemoSessionsRepository.insertRateLimited({
+              publicSessionId: parsed.data.sessionId,
+              verticalSlug: demoVertical,
+              businessName: parsed.data.shopName,
+              ipAddress: ip,
+              country: persistCountry,
+              userAgent: c.req.header('user-agent') ?? null,
+              browser: uaHints.browser,
+              deviceType: uaHints.deviceType,
+              errorCode: 'demo_concurrent_session_limit',
+            });
+          } catch (error) {
+            logger.warn({ err: error }, 'web_demo_session_concurrent_limit_persist_failed');
+          }
+        }
         return jsonPublicDemoRealtimeBlocked(c, 'demo_concurrent_session_limit', {
           requestId,
           vertical: demoVertical,
         });
+      }
+
+      if (deps.webDemoSessionsRepository) {
+        try {
+          await deps.webDemoSessionsRepository.insertStarted({
+            publicSessionId: parsed.data.sessionId,
+            requestId,
+            verticalSlug: demoVertical,
+            businessName: parsed.data.shopName,
+            ipAddress: ip,
+            country: persistCountry,
+            userAgent: c.req.header('user-agent') ?? null,
+            browser: uaHints.browser,
+            deviceType: uaHints.deviceType,
+          });
+        } catch (error) {
+          logger.warn({ err: error, requestId }, 'web_demo_session_started_persist_failed');
+        }
       }
 
       const demoMode = parsed.data.demoMode ?? 'quick';
@@ -2213,6 +2468,14 @@ Submitted at: ${new Date().toISOString()}`,
           },
         });
 
+        if (deps.webDemoSessionsRepository) {
+          try {
+            await deps.webDemoSessionsRepository.markConnectedByRequestId(requestId);
+          } catch (error) {
+            logger.warn({ err: error, requestId }, 'web_demo_session_mark_connected_failed');
+          }
+        }
+
         return c.json({
           ok: true,
           requestId,
@@ -2228,6 +2491,16 @@ Submitted at: ${new Date().toISOString()}`,
       } catch (error) {
         clearDirectDemoActiveSlot(ip, requestId);
         const code = error instanceof Error && error.message === 'openai_config_missing' ? 'openai_config_missing' : 'realtime_session_failed';
+        if (deps.webDemoSessionsRepository) {
+          try {
+            await deps.webDemoSessionsRepository.markFailedByRequestId(requestId, {
+              errorCode: code,
+              errorMessage: error instanceof Error ? error.message : String(error),
+            });
+          } catch (persistErr) {
+            logger.warn({ err: persistErr, requestId }, 'web_demo_session_mark_failed_persist_failed');
+          }
+        }
         logger.error(
           {
             err: error,
@@ -2264,7 +2537,12 @@ Submitted at: ${new Date().toISOString()}`,
     if (originDenied) return originDenied;
 
     const body = await c.req.json().catch(() => null);
-    const releaseParsed = z.object({ requestId: z.string().min(1).max(200) }).safeParse(body);
+    const releaseParsed = z
+      .object({
+        requestId: z.string().min(1).max(200),
+        endReason: z.enum(['completed', 'timeout']).optional(),
+      })
+      .safeParse(body);
     if (!releaseParsed.success) {
       return c.json(
         {
@@ -2291,6 +2569,18 @@ Submitted at: ${new Date().toISOString()}`,
         404,
       );
     }
+
+    const rid = releaseParsed.data.requestId;
+    if (deps.webDemoSessionsRepository && rid.startsWith('demo-direct-')) {
+      try {
+        await deps.webDemoSessionsRepository.finalizeByRequestId(rid, {
+          endReason: releaseParsed.data.endReason === 'timeout' ? 'timeout' : 'completed',
+        });
+      } catch (error) {
+        logger.warn({ err: error, requestId: rid }, 'web_demo_session_finalize_failed');
+      }
+    }
+
     return c.json({ ok: true });
   });
 
@@ -5503,6 +5793,60 @@ Submitted at: ${new Date().toISOString()}`,
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_query' }, 400);
     }
+    const result = await buildAdminDemoCallsListResult(
+      { demoSessionsRepository: deps.demoSessionsRepository, callLogsRepository: deps.callLogsRepository },
+      parsed.data,
+    );
+    if (!result.ok) return c.json({ ok: false, error: result.error }, result.status);
+    return c.json(result.json);
+  });
+
+  app.get(path('/admin/demos/phone'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_demos_phone');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.demoSessionsRepository || !deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const parsed = adminDemoCallsListQuerySchema.safeParse({
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+      page: c.req.query('page'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+    const result = await buildAdminDemoCallsListResult(
+      { demoSessionsRepository: deps.demoSessionsRepository, callLogsRepository: deps.callLogsRepository },
+      parsed.data,
+      { providerNotEquals: 'marketing_demo_web' },
+    );
+    if (!result.ok) return c.json({ ok: false, error: result.error }, result.status);
+    return c.json(result.json);
+  });
+
+  app.get(path('/admin/demos/web'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_demos_web');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.demoSessionsRepository || !deps.webDemoSessionsRepository || !deps.callLogsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const parsed = adminWebDemosListQuerySchema.safeParse({
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+      page: c.req.query('page'),
+      vertical: c.req.query('vertical'),
+      status: c.req.query('status'),
+      country: c.req.query('country'),
+      search: c.req.query('search'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query' }, 400);
+    }
+
     const env = getEnv();
     const now = new Date();
     const endDay = parsed.data.dateTo ?? now.toISOString().slice(0, 10);
@@ -5520,76 +5864,224 @@ Submitted at: ${new Date().toISOString()}`,
 
     const page = parsed.data.page ?? 1;
     const pageSize = ADMIN_DEMO_LIST_PAGE_SIZE;
-    const offset = (page - 1) * pageSize;
 
-    const rangeArgs = { createdAfter, createdBefore };
-    const [total, pageRows, chartRows] = await Promise.all([
-      deps.demoSessionsRepository.countAdminDemoCallRuns(rangeArgs),
+    const verticalFilter = parsed.data.vertical?.trim() || undefined;
+    const statusFilter = parsed.data.status;
+    const countryFilter = parsed.data.country?.trim() || undefined;
+    const searchFilter = parsed.data.search?.trim() || undefined;
+
+    const [livekitRows, directRows] = await Promise.all([
       deps.demoSessionsRepository.listAdminDemoCallRuns({
-        ...rangeArgs,
-        limit: pageSize,
-        offset,
+        createdAfter,
+        createdBefore,
+        providerEquals: 'marketing_demo_web',
+        limit: ADMIN_WEB_DEMO_MERGE_CAP,
+        offset: 0,
       }),
-      deps.demoSessionsRepository.listAdminDemoCallRuns({
-        ...rangeArgs,
-        limit: ADMIN_DEMO_CHART_SAMPLE,
+      deps.webDemoSessionsRepository.listForAdmin({
+        startedAfter: createdAfter,
+        startedBefore: createdBefore,
+        verticalSlug: verticalFilter,
+        status: statusFilter,
+        country: countryFilter,
+        search: searchFilter,
+        limit: ADMIN_WEB_DEMO_MERGE_CAP,
         offset: 0,
       }),
     ]);
 
-    const requestIdsPage = pageRows.map((r) => r.requestId);
-    const requestIdsChart = chartRows.map((r) => r.requestId);
+    const truncatedMerge =
+      livekitRows.length >= ADMIN_WEB_DEMO_MERGE_CAP || directRows.length >= ADMIN_WEB_DEMO_MERGE_CAP;
+
     const transcriptMeta = await deps.callLogsRepository.listTranscriptMetaByShopAndRequestIds({
       shopId: env.PUBLIC_DEMO_SHOP_ID,
-      requestIds: [...new Set([...requestIdsPage, ...requestIdsChart])],
+      requestIds: livekitRows.map((r) => r.requestId),
     });
 
-    const enrich = (row: (typeof pageRows)[0]) => {
-      const meta = transcriptMeta.get(row.requestId);
-      return {
-        ...row,
-        clientCountry: effectiveDemoClientCountry(row.clientCountry, row.callbackPhone),
-        demoDurationSeconds: demoCallDurationSeconds(row),
-        transcriptStatus: meta?.transcriptStatus,
-        hasTranscriptText: meta?.hasTranscriptText ?? false,
+    type UnifiedWebDemoRow = {
+      sortAt: string;
+      kind: 'livekit_web' | 'direct_realtime';
+      livekitRequestId: string | null;
+      webDemoRowId: string | null;
+      publicSessionId: string;
+      ip: string | null;
+      country: string | null;
+      durationSeconds: number | null;
+      businessName: string | null;
+      verticalSlug: string;
+      adminStatus: WebDemoSessionStatus;
+      browser: string | null;
+      deviceType: string | null;
+      userAgent: string | null;
+      transcriptAvailable: boolean;
+    };
+
+    const unified: UnifiedWebDemoRow[] = [];
+
+    for (const row of livekitRows) {
+      const adminStatus = liveKitDemoRunToWebAdminStatus(row.runStatus, row.sessionStatus);
+      const enriched = {
+        verticalSlug: row.verticalSlug,
+        adminStatus,
+        country: effectiveDemoClientCountry(row.clientCountry, row.callbackPhone),
+        businessName: row.businessName,
+        publicSessionId: row.publicSessionId,
+        livekitRequestId: row.requestId,
       };
-    };
-
-    const calls = pageRows.map(enrich);
-
-    const chartEnriched = chartRows.map(enrich);
-    const chartDailyMap = new Map<string, { count: number; demoSeconds: number }>();
-    for (const row of chartEnriched) {
-      const day = row.runCreatedAt.slice(0, 10);
-      const sec = row.demoDurationSeconds ?? 0;
-      const prev = chartDailyMap.get(day) ?? { count: 0, demoSeconds: 0 };
-      prev.count += 1;
-      prev.demoSeconds += sec;
-      chartDailyMap.set(day, prev);
+      if (
+        !unifiedWebDemoRowMatchesFilters(enriched, {
+          vertical: verticalFilter,
+          status: statusFilter,
+          country: countryFilter,
+          search: searchFilter,
+        })
+      ) {
+        continue;
+      }
+      const meta = transcriptMeta.get(row.requestId);
+      unified.push({
+        sortAt: row.runCreatedAt,
+        kind: 'livekit_web',
+        livekitRequestId: row.requestId,
+        webDemoRowId: null,
+        publicSessionId: row.publicSessionId,
+        ip: row.clientIp,
+        country: enriched.country,
+        durationSeconds: demoCallDurationSeconds(row),
+        businessName: row.businessName,
+        verticalSlug: row.verticalSlug,
+        adminStatus,
+        browser: null,
+        deviceType: null,
+        userAgent: null,
+        transcriptAvailable: meta?.hasTranscriptText ?? false,
+      });
     }
-    const chartDaily = [...chartDailyMap.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([day, v]) => ({ day, count: v.count, demoSeconds: v.demoSeconds }));
 
-    const summary = {
-      total,
-      completed: chartEnriched.filter((r) => r.runStatus === 'completed').length,
-      missed: chartEnriched.filter((r) => r.runStatus === 'missed' || r.outcome === 'missed').length,
-      withTranscript: chartEnriched.filter((r) => r.hasTranscriptText).length,
-      summarySampleSize: chartEnriched.length,
-      summaryTruncated: total > ADMIN_DEMO_CHART_SAMPLE,
-    };
+    for (const row of directRows) {
+      const transcriptAvailable = row.transcript != null && formatWebDemoTranscriptForAdmin(row.transcript) != null;
+      unified.push({
+        sortAt: row.startedAt,
+        kind: 'direct_realtime',
+        livekitRequestId: row.requestId,
+        webDemoRowId: row.id,
+        publicSessionId: row.publicSessionId,
+        ip: row.ipAddress,
+        country: row.country,
+        durationSeconds: row.durationSeconds,
+        businessName: row.businessName,
+        verticalSlug: row.verticalSlug ?? '—',
+        adminStatus: row.status,
+        browser: row.browser,
+        deviceType: row.deviceType,
+        userAgent: row.userAgent,
+        transcriptAvailable,
+      });
+    }
+
+    unified.sort((a, b) => b.sortAt.localeCompare(a.sortAt));
+    const total = unified.length;
+    const offset = (page - 1) * pageSize;
+    const pageRows = unified.slice(offset, offset + pageSize);
 
     return c.json({
       ok: true,
-      calls,
-      chartDaily,
-      summary,
+      sessions: pageRows.map((r) => ({
+        kind: r.kind,
+        startedAt: r.sortAt,
+        sessionId: r.publicSessionId,
+        requestId: r.livekitRequestId,
+        webDemoRowId: r.webDemoRowId,
+        ip: r.ip,
+        country: r.country,
+        durationSeconds: r.durationSeconds,
+        businessName: r.businessName,
+        verticalSlug: r.verticalSlug,
+        status: r.adminStatus,
+        browser: r.browser,
+        deviceType: r.deviceType,
+        userAgent: r.userAgent,
+        transcriptAvailable: r.transcriptAvailable,
+      })),
       pagination: { page, pageSize, total },
       filter: {
         dateFrom: startDay,
         dateTo: endDay,
+        vertical: verticalFilter ?? null,
+        status: statusFilter ?? null,
+        country: countryFilter ?? null,
+        search: searchFilter ?? null,
       },
+      truncatedMerge,
+    });
+  });
+
+  app.get(path('/admin/demos/web/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_demos_web_detail');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.webDemoSessionsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const id = parseAdminUuidParam(c.req.param('id'));
+    if (!id) return c.json({ ok: false, error: 'invalid_id' }, 400);
+    const row = await deps.webDemoSessionsRepository.findById(id);
+    if (!row) return c.json({ ok: false, error: 'not_found' }, 404);
+    return c.json({
+      ok: true,
+      session: {
+        id: row.id,
+        sessionId: row.publicSessionId,
+        requestId: row.requestId,
+        verticalSlug: row.verticalSlug,
+        businessName: row.businessName,
+        demoSource: row.demoSource,
+        status: row.status,
+        ip: row.ipAddress,
+        country: row.country,
+        browser: row.browser,
+        deviceType: row.deviceType,
+        userAgent: row.userAgent,
+        startedAt: row.startedAt,
+        connectedAt: row.connectedAt,
+        endedAt: row.endedAt,
+        durationSeconds: row.durationSeconds,
+        summary: row.summary,
+        errorCode: row.errorCode,
+        errorMessage: row.errorMessage,
+        hasTranscript: row.transcript != null && formatWebDemoTranscriptForAdmin(row.transcript) != null,
+      },
+    });
+  });
+
+  app.get(path('/admin/demos/web/:id/transcript'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_demo_transcript_read, 'admin_demos_web_transcript');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.webDemoSessionsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const id = parseAdminUuidParam(c.req.param('id'));
+    if (!id) return c.json({ ok: false, error: 'invalid_id' }, 400);
+    const row = await deps.webDemoSessionsRepository.findById(id);
+    if (!row) return c.json({ ok: false, error: 'not_found' }, 404);
+    securityAudit({
+      action: 'admin_web_demo_transcript_viewed',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { webDemoSessionId: id },
+    });
+    const transcriptText = formatWebDemoTranscriptForAdmin(row.transcript);
+    return c.json({
+      ok: true,
+      sessionId: row.publicSessionId,
+      requestId: row.requestId,
+      status: row.status,
+      transcriptText,
     });
   });
 

@@ -304,12 +304,24 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
     return data?.length ?? 0;
   }
 
-  async countAdminDemoCallRuns(params: { createdAfter: Date; createdBefore: Date }): Promise<number> {
-    const { count, error } = await this.supabase
+  async countAdminDemoCallRuns(params: {
+    createdAfter: Date;
+    createdBefore: Date;
+    providerEquals?: string;
+    providerNotEquals?: string;
+  }): Promise<number> {
+    let q = this.supabase
       .from('demo_call_runs')
       .select('request_id', { count: 'exact', head: true })
       .gte('created_at', params.createdAfter.toISOString())
       .lte('created_at', params.createdBefore.toISOString());
+    if (params.providerEquals) {
+      q = q.eq('provider', params.providerEquals);
+    }
+    if (params.providerNotEquals) {
+      q = q.neq('provider', params.providerNotEquals);
+    }
+    const { count, error } = await q;
     if (error) throw new Error(`demo_call_runs_count_admin_failed:${error.message}`);
     return count ?? 0;
   }
@@ -319,6 +331,8 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
     createdBefore: Date;
     limit?: number;
     offset?: number;
+    providerEquals?: string;
+    providerNotEquals?: string;
   }): Promise<DemoAdminCallListRow[]> {
     const limit = Math.min(Math.max(params.limit ?? 20, 1), 10_000);
     const offset = params.offset && params.offset > 0 ? params.offset : 0;
@@ -348,15 +362,20 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
       demo_sessions: SessionRow;
     };
 
-    const { data: runs, error } = await this.supabase
+    let rq = this.supabase
       .from('demo_call_runs')
       .select(
         'request_id,demo_session_id,provider,provider_call_id,room_name,status,started_at,connected_at,ended_at,outcome,created_at,demo_sessions!inner(id,public_session_id,vertical_slug,demo_mode,source,status,callback_phone,client_ip,client_country)',
       )
       .gte('created_at', params.createdAfter.toISOString())
-      .lte('created_at', params.createdBefore.toISOString())
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .lte('created_at', params.createdBefore.toISOString());
+    if (params.providerEquals) {
+      rq = rq.eq('provider', params.providerEquals);
+    }
+    if (params.providerNotEquals) {
+      rq = rq.neq('provider', params.providerNotEquals);
+    }
+    const { data: runs, error } = await rq.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
     if (error) throw new Error(`demo_call_runs_list_admin_failed:${error.message}`);
 

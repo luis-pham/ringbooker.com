@@ -18,6 +18,7 @@ import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-
 import { InMemoryBlogPostsRepository } from '@/src/backend/adapters/memory/blog-posts-repository';
 import { InMemoryContactRequestsRepository } from '@/src/backend/adapters/memory/contact-requests-repository';
 import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
+import { InMemoryWebDemoSessionsRepository } from '@/src/backend/adapters/memory/web-demo-sessions-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryTestCallAttemptsRepository } from '@/src/backend/adapters/memory/test-call-attempts-repository';
 import { NoopEmailService } from '@/src/backend/adapters/noop/email-service';
@@ -40,6 +41,7 @@ import { SupabaseAuthUsersRepository } from '@/src/backend/adapters/supabase/aut
 import { SupabaseBlogPostsRepository } from '@/src/backend/adapters/supabase/blog-posts-repository';
 import { SupabaseContactRequestsRepository } from '@/src/backend/adapters/supabase/contact-requests-repository';
 import { SupabaseDemoSessionsRepository } from '@/src/backend/adapters/supabase/demo-sessions-repository';
+import { SupabaseWebDemoSessionsRepository } from '@/src/backend/adapters/supabase/web-demo-sessions-repository';
 import { SupabaseShopAccessStatesRepository } from '@/src/backend/adapters/supabase/shop-access-states-repository';
 import { SupabaseTestCallAttemptsRepository } from '@/src/backend/adapters/supabase/test-call-attempts-repository';
 import { TelnyxPhoneProvisioningService } from '@/src/backend/adapters/telnyx/phone-provisioning-service';
@@ -163,6 +165,7 @@ export function createBackendRuntime() {
             blogPostsRepository: new SupabaseBlogPostsRepository(supabase),
             contactRequestsRepository: new SupabaseContactRequestsRepository(supabase),
             demoSessionsRepository: new SupabaseDemoSessionsRepository(supabase),
+            webDemoSessionsRepository: new SupabaseWebDemoSessionsRepository(supabase),
             handoffSessionsRepository: new SupabaseHandoffSessionsRepository(supabase),
             voiceCallLegsRepository: new SupabaseVoiceCallLegsRepository(supabase),
           };
@@ -185,6 +188,7 @@ export function createBackendRuntime() {
           blogPostsRepository: new InMemoryBlogPostsRepository(),
           contactRequestsRepository: new InMemoryContactRequestsRepository(),
           demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+          webDemoSessionsRepository: new InMemoryWebDemoSessionsRepository(),
           handoffSessionsRepository: new InMemoryHandoffSessionsRepository(),
           voiceCallLegsRepository: new InMemoryVoiceCallLegsRepository(),
         };
@@ -280,6 +284,7 @@ export function createBackendRuntime() {
     blogPostsRepository: repositories.blogPostsRepository,
     contactRequestsRepository: repositories.contactRequestsRepository,
     demoSessionsRepository: repositories.demoSessionsRepository,
+    webDemoSessionsRepository: repositories.webDemoSessionsRepository,
     billingProvider,
     basePath: '/api/backend',
     runtimeInfo: {
@@ -317,6 +322,7 @@ export function createBackendRuntime() {
     blogPostsRepository: repositories.blogPostsRepository,
     contactRequestsRepository: repositories.contactRequestsRepository,
     demoSessionsRepository: repositories.demoSessionsRepository,
+    webDemoSessionsRepository: repositories.webDemoSessionsRepository,
     smsService: services.smsService,
     telephonyService: services.telephonyService,
     phoneProvisioningService: services.phoneProvisioningService,

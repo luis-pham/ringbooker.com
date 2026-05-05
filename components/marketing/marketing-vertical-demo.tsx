@@ -740,7 +740,10 @@ export function MarketingVerticalDemoTemplate({
     }
   }
 
-  function releaseDirectRealtimeSlotFireAndForget(requestId: string) {
+  function releaseDirectRealtimeSlotFireAndForget(
+    requestId: string,
+    endReason: 'completed' | 'timeout' = 'completed',
+  ) {
     void fetch('/api/backend/public/demo/realtime-session/release', {
       method: 'POST',
       headers: {
@@ -749,7 +752,7 @@ export function MarketingVerticalDemoTemplate({
           ? { Origin: window.location.origin }
           : {}),
       },
-      body: JSON.stringify({ requestId }),
+      body: JSON.stringify({ requestId, endReason }),
     }).catch(() => {
       /* ignore */
     });
@@ -761,7 +764,7 @@ export function MarketingVerticalDemoTemplate({
     clearDirectMaxDurationTimer();
     directMaxDurationTimerRef.current = window.setTimeout(() => {
       directPeerFailureMutedRef.current = true;
-      cleanupDirectRealtime();
+      cleanupDirectRealtime({ endReason: 'timeout' });
       resetTurnstile();
       setStage('failed');
       setStatusText(DIRECT_REALTIME_DEMO_DURATION_MESSAGE);
@@ -769,14 +772,14 @@ export function MarketingVerticalDemoTemplate({
     }, DIRECT_OPENAI_MAX_SESSION_MS);
   }
 
-  function cleanupDirectRealtime() {
+  function cleanupDirectRealtime(opts?: { endReason?: 'completed' | 'timeout' }) {
     clearDirectMaxDurationTimer();
     clearDirectConnectTimer();
     const releaseRequestId = directRealtimeRequestIdRef.current;
     directRealtimeRequestIdRef.current = null;
     directDurationTimerStartedRef.current = false;
     if (releaseRequestId) {
-      releaseDirectRealtimeSlotFireAndForget(releaseRequestId);
+      releaseDirectRealtimeSlotFireAndForget(releaseRequestId, opts?.endReason ?? 'completed');
     }
     directDataChannelRef.current?.close();
     directDataChannelRef.current = null;

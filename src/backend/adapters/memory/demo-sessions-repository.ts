@@ -248,11 +248,18 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
     };
   }
 
-  async countAdminDemoCallRuns(params: { createdAfter: Date; createdBefore: Date }): Promise<number> {
+  async countAdminDemoCallRuns(params: {
+    createdAfter: Date;
+    createdBefore: Date;
+    providerEquals?: string;
+    providerNotEquals?: string;
+  }): Promise<number> {
     let n = 0;
     for (const call of this.callRunsByRequestId.values()) {
       const created = call.createdAt;
       if (created < params.createdAfter || created > params.createdBefore) continue;
+      if (params.providerEquals && call.provider !== params.providerEquals) continue;
+      if (params.providerNotEquals && call.provider === params.providerNotEquals) continue;
       if (!this.sessionsById.get(call.demoSessionId)) continue;
       n += 1;
     }
@@ -264,6 +271,8 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
     createdBefore: Date;
     limit?: number;
     offset?: number;
+    providerEquals?: string;
+    providerNotEquals?: string;
   }): Promise<DemoAdminCallListRow[]> {
     const limit = Math.min(Math.max(params.limit ?? 20, 1), 10_000);
     const offset = params.offset && params.offset > 0 ? params.offset : 0;
@@ -271,6 +280,8 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
     for (const call of this.callRunsByRequestId.values()) {
       const created = call.createdAt;
       if (created < params.createdAfter || created > params.createdBefore) continue;
+      if (params.providerEquals && call.provider !== params.providerEquals) continue;
+      if (params.providerNotEquals && call.provider === params.providerNotEquals) continue;
       const session = this.sessionsById.get(call.demoSessionId);
       if (!session) continue;
       const cfg = this.businessConfigsBySessionId.get(session.id);

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
@@ -276,13 +278,8 @@ export const templateTitle =
   'How RingBooker Works | Keep Number, Cover Missed Calls | RingBooker';
 
 export function MarketingHowItWorksTemplate() {
-  return (
-    <MarketingLayout
-      styles={styles}
-      scripts={scripts}
-      scriptPrefix="marketing-how-it-works"
-    >
-      <>
+  const layoutChildren: ReactNode = (
+    <>
         <MarketingChromeStyles />
         <MarketingHeader active="how-it-works" />
         <script
@@ -472,7 +469,15 @@ export function MarketingHowItWorksTemplate() {
         </main>
         <MarketingFooter />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(howItWorksBreadcrumbJsonLd) }} />
-      </>
-    </MarketingLayout>
+    </>
+  );
+
+  return (
+    <MarketingLayout
+      styles={styles}
+      scripts={scripts}
+      scriptPrefix="marketing-how-it-works"
+      children={layoutChildren}
+    />
   );
 }

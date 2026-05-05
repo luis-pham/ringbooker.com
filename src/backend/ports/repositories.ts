@@ -170,8 +170,17 @@ export interface DemoSessionsRepository {
     createdBefore: Date;
     limit?: number;
     offset?: number;
+    /** When set, only runs whose `provider` column equals this value (e.g. `marketing_demo_web`). */
+    providerEquals?: string;
+    /** When set, excludes runs whose `provider` column equals this value. */
+    providerNotEquals?: string;
   }): Promise<DemoAdminCallListRow[]>;
-  countAdminDemoCallRuns(params: { createdAfter: Date; createdBefore: Date }): Promise<number>;
+  countAdminDemoCallRuns(params: {
+    createdAfter: Date;
+    createdBefore: Date;
+    providerEquals?: string;
+    providerNotEquals?: string;
+  }): Promise<number>;
 }
 
 

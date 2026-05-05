@@ -21,6 +21,7 @@ export type SecurityAuditEvent = {
     | 'admin_user_updated'
     | 'admin_user_password_set'
     | 'admin_demo_transcript_viewed'
+    | 'admin_web_demo_transcript_viewed'
     | 'admin_contact_request_status_updated'
     | 'admin_shop_settings_updated'
     | 'admin_shop_dynamic_config_updated'
