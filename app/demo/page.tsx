@@ -3,7 +3,7 @@ import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
   title: 'Live Demo Hub | RingBooker',
-  description: 'Hear How RingBooker Answers Salon Calls | Live Demo',
+  description: 'Try live web demos for nail salon, hair salon, spa, med spa, and beauty clinic.',
   path: '/demo',
 });
 

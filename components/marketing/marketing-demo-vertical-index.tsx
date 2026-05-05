@@ -8,8 +8,8 @@ import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-acco
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
-/** Hub `/demo`: only these industry cards (hair / day / med / beauty hub cards removed). */
-const DEMO_HUB_CARD_SLUGS: DemoVerticalSlug[] = ['nail-salon'];
+/** Hub `/demo`: industry cards linking to each vertical live web demo. */
+const DEMO_HUB_CARD_SLUGS: DemoVerticalSlug[] = ['nail-salon', 'hair-salon', 'day-spa', 'med-spa', 'beauty-clinic'];
 
 /** Hub-only copy: titles, one line, scenario chips (preview, not full prompt lists). */
 const DEMO_HUB: Record<
@@ -58,7 +58,7 @@ const DEMO_HUB_FAQ_ITEMS: MarketingFaqItem[] = [
   },
   {
     q: 'What is included on this demo hub?',
-    a: 'This hub features the nail salon live web demo with sample services and scenarios. Production RingBooker can be configured for additional business types separately.',
+    a: 'This hub links to live web demos for nail salon, hair salon, day spa, med spa, and beauty clinic—each with sample services and scenarios. Production RingBooker is configured for your real business separately.',
   },
   {
     q: 'What should I do after the demo?',
@@ -121,7 +121,7 @@ const styles = [
     /* GRID */
     .demo-hub-picks{padding:36px 0 56px}
     .demo-hub-picks h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mk-text-desc,#64748B);text-align:center;margin:0 0 20px}
-    .demo-hub-grid{display:grid;grid-template-columns:minmax(0,min(420px,100%));justify-content:center;gap:16px;margin:0 auto;max-width:min(420px,100%)}
+    .demo-hub-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin:0 auto;max-width:1120px}
     .demo-hub-card{
       background:#fff;border:1px solid var(--demo-hub-border);border-radius:24px;
       padding:22px 20px;text-decoration:none;color:inherit;
@@ -210,8 +210,8 @@ export function MarketingDemoVerticalIndexTemplate() {
               <p className="demo-hub-eyebrow">Live demo hub</p>
               <h1>Hear how RingBooker handles real booking calls.</h1>
               <p className="demo-hub-lead">
-                Open the nail salon live web demo with sample studio context—booking, reschedules, pricing, and
-                after-hours scenarios—so you can judge tone and pacing in a few minutes.
+                Pick your industry and open a live web demo with sample studio context—booking, reschedules, pricing, and
+                realistic caller scenarios—so you can judge tone and pacing in a few minutes.
               </p>
               <div className="demo-hub-trust">
                 <TrustChip>
@@ -264,7 +264,7 @@ export function MarketingDemoVerticalIndexTemplate() {
                 <div className="demo-hub-step">
                   <div className="demo-hub-step-num">1</div>
                   <h3>Open the demo</h3>
-                  <p>Start the nail salon preview with tailored scripts and sample services.</p>
+                  <p>Choose your vertical and open the preview with tailored scripts and sample services.</p>
                 </div>
                 <div className="demo-hub-step">
                   <div className="demo-hub-step-num">2</div>
