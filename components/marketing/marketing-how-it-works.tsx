@@ -105,6 +105,11 @@ a{text-decoration:none;color:inherit}
 .hiw-card:hover{transform:translateY(-2px);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));border-color:rgba(196,181,253,.55)}
 .hiw-card.recommended{border-color:#c4b5fd;background:linear-gradient(180deg,#fbfaff 0%,#fff 82%);box-shadow:0 0 0 4px rgba(139,92,246,.06),var(--shadow)}
 .hiw-card.recommended:hover{border-color:#a78bfa;box-shadow:0 20px 48px -8px rgba(124,58,237,.2),0 0 0 4px rgba(139,92,246,.08)}
+/* Setup paths — match shared marketing panels (hiw-summary): softer border + mk shadow tokens */
+.hiw-setup-grid .hiw-card{border:1px solid var(--mk-border-soft,var(--border));box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04))}
+.hiw-setup-grid .hiw-card:hover{border-color:var(--mk-border-strong,#d6dde6);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05))}
+.hiw-setup-grid .hiw-card.recommended{border:1px solid rgba(196,181,253,.35);background:linear-gradient(180deg,#fbfaff 0%,#fff 82%);box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04))}
+.hiw-setup-grid .hiw-card.recommended:hover{border-color:var(--mk-border-brand,rgba(139,92,246,.28));box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05))}
 .hiw-card-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
 .hiw-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:700}
 .hiw-pill.optional{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}
@@ -327,7 +332,7 @@ export function MarketingHowItWorksTemplate() {
               <div className="hiw-label">Setup paths</div>
               <h2 className="hiw-title">Choose how RingBooker starts.</h2>
               <p className="hiw-sub">Current number is the primary path. A new dedicated line is optional for businesses that want a separate number for campaigns, overflow, or testing.</p>
-              <div className="hiw-grid-2">
+              <div className="hiw-grid-2 hiw-setup-grid">
                 <article className="hiw-card recommended">
                   <div className="hiw-card-top">
                     <div className="hiw-icon">📞</div>
