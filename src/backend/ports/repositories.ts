@@ -538,6 +538,9 @@ export interface ShopAccessStatesRepository {
     lastAccessCheckAt?: string | null;
     forwardingSetupVerifiedAt?: string | null;
     forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
+    commercialGoLiveApprovedAt?: string | null;
+    commercialGoLiveApprovedBy?: string | null;
+    commercialGoLiveApprovalNote?: string | null;
   }): Promise<ShopAccessState>;
 }
 

@@ -65,6 +65,8 @@ type FixtureOpts = {
   paymentMethodStatus: 'none' | 'valid';
   telnyxPreset?: string | null;
   liveCallsEnabled?: boolean;
+  plan?: 'starter' | 'professional' | 'enterprise';
+  commercialApproved?: boolean;
 };
 
 async function createFixture(opts: FixtureOpts) {
@@ -78,7 +80,7 @@ async function createFixture(opts: FixtureOpts) {
     phone_number: '+17145551111',
     user_phone: '+17145552222',
     timezone: 'America/Los_Angeles',
-    plan: 'professional',
+    plan: opts.plan ?? 'professional',
     active: true,
   });
   await shopsRepository.updateUserSettings(shop.id, {
@@ -96,8 +98,8 @@ async function createFixture(opts: FixtureOpts) {
   await billingSubscriptionsRepository.upsert({
     shopId: shop.id,
     provider: 'internal',
-    plan: 'professional',
-    status: 'trialing',
+    plan: opts.plan ?? 'professional',
+    status: opts.plan === 'enterprise' ? 'active' : 'trialing',
     interval: 'month',
     currency: 'USD',
     amount: 149,
@@ -105,8 +107,14 @@ async function createFixture(opts: FixtureOpts) {
     paymentMethodStatus: opts.paymentMethodStatus,
   });
 
-  if (opts.liveCallsEnabled) {
-    await shopAccessStatesRepository.upsert({ shopId: shop.id, liveCallsEnabled: true });
+  if (opts.liveCallsEnabled || opts.commercialApproved) {
+    await shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      liveCallsEnabled: opts.liveCallsEnabled ?? false,
+      commercialGoLiveApprovedAt: opts.commercialApproved ? new Date().toISOString() : undefined,
+      commercialGoLiveApprovedBy: opts.commercialApproved ? 'admin@example.com' : undefined,
+      commercialGoLiveApprovalNote: opts.commercialApproved ? 'Approved for rollout.' : undefined,
+    });
   }
 
   const email = `fwd-${shop.id.slice(-8)}@ringbooker.local`;
@@ -169,6 +177,40 @@ test('provision forwarding returns 400 confirmation_required without explicit in
   assert.equal(res.status, 400);
   const body = (await res.json()) as { ok: boolean; error?: string };
   assert.equal(body.error, 'confirmation_required');
+});
+
+
+test('enterprise cannot provision forwarding number without commercial approval', async () => {
+  const { app, fakeProvisioning, cookie } = await createFixture({
+    paymentMethodStatus: 'valid',
+    plan: 'enterprise',
+  });
+  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({ confirmGoLiveIntent: true }),
+  });
+  assert.equal(res.status, 403);
+  const body = (await res.json()) as { error?: string };
+  assert.equal(body.error, 'commercial_approval_required');
+  assert.equal(fakeProvisioning.provisionCalls, 0);
+});
+
+test('enterprise with commercial approval can provision forwarding number', async () => {
+  const { app, fakeProvisioning, cookie } = await createFixture({
+    paymentMethodStatus: 'valid',
+    plan: 'enterprise',
+    commercialApproved: true,
+  });
+  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({ confirmGoLiveIntent: true }),
+  });
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { forwardingNumber?: string };
+  assert.equal(body.forwardingNumber, '+17145559901');
+  assert.equal(fakeProvisioning.provisionCalls, 1);
 });
 
 test('provision forwarding with valid payment calls provisionNumber once and preserves shop.phone_number', async () => {

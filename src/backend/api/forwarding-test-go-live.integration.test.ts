@@ -49,6 +49,8 @@ type Fx = {
   liveCallsEnabled?: boolean;
   onboardingComplete?: boolean;
   trialEndsAt?: string;
+  plan?: 'starter' | 'professional' | 'enterprise';
+  commercialApproved?: boolean;
 };
 
 async function createFixture(opts: Fx) {
@@ -62,7 +64,7 @@ async function createFixture(opts: Fx) {
     phone_number: '+17145551111',
     user_phone: '+17145552222',
     timezone: 'America/Los_Angeles',
-    plan: 'professional',
+    plan: opts.plan ?? 'professional',
     active: true,
   });
   await shopsRepository.updateUserSettings(shop.id, {
@@ -78,8 +80,8 @@ async function createFixture(opts: Fx) {
   await billingSubscriptionsRepository.upsert({
     shopId: shop.id,
     provider: 'internal',
-    plan: 'professional',
-    status: 'trialing',
+    plan: opts.plan ?? 'professional',
+    status: opts.plan === 'enterprise' ? 'active' : 'trialing',
     interval: 'month',
     currency: 'USD',
     amount: 149,
@@ -87,8 +89,14 @@ async function createFixture(opts: Fx) {
     paymentMethodStatus: opts.paymentMethodStatus,
   });
 
-  if (opts.liveCallsEnabled) {
-    await shopAccessStatesRepository.upsert({ shopId: shop.id, liveCallsEnabled: true });
+  if (opts.liveCallsEnabled || opts.commercialApproved) {
+    await shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      liveCallsEnabled: opts.liveCallsEnabled ?? false,
+      commercialGoLiveApprovedAt: opts.commercialApproved ? new Date().toISOString() : undefined,
+      commercialGoLiveApprovedBy: opts.commercialApproved ? 'admin@example.com' : undefined,
+      commercialGoLiveApprovalNote: opts.commercialApproved ? 'Approved for rollout.' : undefined,
+    });
   }
 
   const email = `fwd-${shop.id.slice(-8)}@ringbooker.local`;
@@ -148,6 +156,23 @@ test('POST /user/go-live/start-forwarding-test returns 409 without telnyx_number
   assert.equal(res.status, 409);
   const body = (await res.json()) as { error?: string };
   assert.equal(body.error, 'forwarding_number_required');
+});
+
+
+test('enterprise without commercial approval cannot start forwarding test', async () => {
+  const { app, cookie } = await createFixture({
+    paymentMethodStatus: 'valid',
+    telnyxNumber: '+17145559999',
+    plan: 'enterprise',
+  });
+  const res = await app.request('/user/go-live/start-forwarding-test', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({}),
+  });
+  assert.equal(res.status, 403);
+  const body = (await res.json()) as { error?: string };
+  assert.equal(body.error, 'commercial_approval_required');
 });
 
 test('POST /user/go-live/start-forwarding-test creates pending session', async () => {
@@ -452,4 +477,42 @@ test('POST /user/go-live/enable succeeds after manual_confirmation', async () =>
   assert.equal(res.status, 200);
   const body = (await res.json()) as { ok?: boolean };
   assert.equal(body.ok, true);
+});
+
+
+test('enterprise without commercial approval cannot confirm forwarding setup', async () => {
+  const { app, cookie } = await createFixture({
+    paymentMethodStatus: 'valid',
+    telnyxNumber: '+17145559999',
+    plan: 'enterprise',
+  });
+  const res = await app.request('/user/go-live/confirm-forwarding-setup', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({ confirmForwardingReady: true }),
+  });
+  assert.equal(res.status, 403);
+  const body = (await res.json()) as { error?: string };
+  assert.equal(body.error, 'commercial_approval_required');
+});
+
+test('enterprise without commercial approval cannot enable live answering', async () => {
+  const { app, shopAccessStatesRepository, shop, cookie } = await createFixture({
+    paymentMethodStatus: 'valid',
+    telnyxNumber: '+17145559999',
+    plan: 'enterprise',
+  });
+  await shopAccessStatesRepository.upsert({
+    shopId: shop.id,
+    forwardingSetupVerifiedAt: new Date().toISOString(),
+    forwardingSetupVerifiedVia: 'forwarding_test',
+  });
+  const res = await app.request('/user/go-live/enable', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({}),
+  });
+  assert.equal(res.status, 403);
+  const body = (await res.json()) as { error?: string };
+  assert.equal(body.error, 'commercial_approval_required');
 });

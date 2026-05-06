@@ -30,6 +30,9 @@ export class InMemoryShopAccessStatesRepository implements ShopAccessStatesRepos
     lastAccessCheckAt?: string | null;
     forwardingSetupVerifiedAt?: string | null;
     forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
+    commercialGoLiveApprovedAt?: string | null;
+    commercialGoLiveApprovedBy?: string | null;
+    commercialGoLiveApprovalNote?: string | null;
   }): Promise<ShopAccessState> {
     const existing = await this.findByShopId(params.shopId);
     const now = new Date().toISOString();
@@ -49,6 +52,18 @@ export class InMemoryShopAccessStatesRepository implements ShopAccessStatesRepos
         params.forwardingSetupVerifiedVia !== undefined
           ? params.forwardingSetupVerifiedVia
           : (existing?.forwardingSetupVerifiedVia ?? null),
+      commercialGoLiveApprovedAt:
+        params.commercialGoLiveApprovedAt !== undefined
+          ? params.commercialGoLiveApprovedAt
+          : (existing?.commercialGoLiveApprovedAt ?? null),
+      commercialGoLiveApprovedBy:
+        params.commercialGoLiveApprovedBy !== undefined
+          ? params.commercialGoLiveApprovedBy
+          : (existing?.commercialGoLiveApprovedBy ?? null),
+      commercialGoLiveApprovalNote:
+        params.commercialGoLiveApprovalNote !== undefined
+          ? params.commercialGoLiveApprovalNote
+          : (existing?.commercialGoLiveApprovalNote ?? null),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };

@@ -8,6 +8,7 @@ import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-l
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
+import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
@@ -25,6 +26,7 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
     bookingsRepository: new InMemoryBookingsRepository(),
     callbacksRepository: new InMemoryCallbacksRepository(),
     shopsRepository: new InMemoryShopsRepository(),
+    shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
     telephonyService: new NoopTelephonyService(),
     callLogsRepository: new InMemoryCallLogsRepository(),
     authUsersRepository: new InMemoryAuthUsersRepository(),
@@ -81,6 +83,26 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
   const updatePlanBody = (await updatePlanResponse.json()) as { ok: boolean; shop: { plan: string } };
   assert.equal(updatePlanBody.ok, true);
   assert.equal(updatePlanBody.shop.plan, 'professional');
+
+  const approveCommercialResponse = await app.request(`/admin/shops/${createdShopId}/approve-commercial-go-live`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
+      cookie: cookieHeader!,
+    },
+    body: JSON.stringify({ note: 'Contract signed and implementation approved.' }),
+  });
+  assert.equal(approveCommercialResponse.status, 200);
+  const approveCommercialBody = (await approveCommercialResponse.json()) as {
+    ok: boolean;
+    alreadyApproved: boolean;
+    accessState: { commercialGoLiveApprovedAt?: string | null; commercialGoLiveApprovedBy?: string | null };
+  };
+  assert.equal(approveCommercialBody.ok, true);
+  assert.equal(approveCommercialBody.alreadyApproved, false);
+  assert.ok(approveCommercialBody.accessState.commercialGoLiveApprovedAt);
+  assert.equal(approveCommercialBody.accessState.commercialGoLiveApprovedBy, 'admin@ringbooker.local');
 
   const updateSettingsResponse = await app.request(`/admin/shops/${createdShopId}/settings`, {
     method: 'PUT',

@@ -53,6 +53,15 @@ export async function startOrReuseForwardingTestSession(params: {
     { shopId: shop.id },
   );
 
+  if (access.blockReason === 'commercial_approval_required') {
+    return {
+      ok: false,
+      httpStatus: 403,
+      error: 'commercial_approval_required',
+      message: 'Your Custom setup must be approved by the RingBooker team before live answering can be enabled.',
+    };
+  }
+
   if (access.liveCallsEnabled) {
     return {
       ok: false,

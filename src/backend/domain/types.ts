@@ -267,6 +267,9 @@ export interface ShopAccessState {
   lastAccessCheckAt?: string | null;
   forwardingSetupVerifiedAt?: string | null;
   forwardingSetupVerifiedVia?: ForwardingSetupVerifiedVia | null;
+  commercialGoLiveApprovedAt?: string | null;
+  commercialGoLiveApprovedBy?: string | null;
+  commercialGoLiveApprovalNote?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
