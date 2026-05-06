@@ -147,6 +147,11 @@ function createValidatedEnv() {
           const t = String(s).trim().toLowerCase();
           return t === 'true' || t === '1' || t === 'yes' || t === 'on';
         }),
+      /**
+       * After sideband WebSocket connects, wait this many ms before sending the first `response.create`.
+       * Lower = faster first greeting; 0 is allowed. Telnyx→OpenAI bridge latency dominates perceived pickup time.
+       */
+      OPENAI_SIP_SIDEBAND_GREETING_DELAY_MS: z.coerce.number().int().min(0).max(5000).optional(),
       /** JSON array: `[{ "did": "+1…", "vertical": "nail-salon", "defaultShopName": "…" }]` */
       OPENAI_SIP_DEMO_DID_MAP_JSON: z.string().optional(),
       /** Inbound E.164 for vertical-specific SIP demo (merged into demo DID map; JSON overrides on duplicate DID). */

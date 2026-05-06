@@ -1,8 +1,10 @@
 import WebSocket from 'ws';
 
 import { getSipShopToolNameSet } from '@/src/agent/sip/sip-tool-definitions';
+import { getEnv } from '@/src/backend/config/env';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { logger } from '@/src/backend/observability/logger';
+import { buildDirectWebDemoClientSecretAudioInput } from '@/src/backend/webhooks/openai-sip-accept-payload';
 
 function compactToolOutput(output: string): string {
   return output.length > 8000 ? `${output.slice(0, 8000)}…` : output;
@@ -36,6 +38,10 @@ export type OpenAiRealtimeSipSidebandParams =
  * OpenAI Realtime SIP does not speak until a client sends `response.create` on this socket
  * (see Realtime SIP guide — WebSocket monitor section).
  * Demo: handles `demo_noop` only. Shop: runs shared booking tools via `executeBusinessTool`.
+ *
+ * SIP demo accept sets `audio.input.turn_detection.create_response: false` so VAD does not answer before the
+ * sideband `response.create` greeting; after that greeting finishes we must send `session.update` (same as
+ * browser direct demo) or user speech never triggers assistant turns.
  */
 export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSidebandParams): void {
   const timeoutMs = params.variant === 'shop' ? 25 * 60_000 : 45_000;
@@ -55,8 +61,12 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
   }, timeoutMs);
 
   let initialResponseSent = false;
+  let vadResumeAfterWelcomeSent = false;
   let sawUserSpeechBeforeInitial = false;
   let initialTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const needsDemoVadResumeAfterWelcome =
+    params.variant === 'demo' && params.enableToolLoop;
 
   function cancelInitialTimer(): void {
     if (initialTimer) {
@@ -94,6 +104,48 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     }
   }
 
+  function maybeResumeDemoVadAfterWelcome(fromEvent: string): void {
+    if (!needsDemoVadResumeAfterWelcome || !initialResponseSent || vadResumeAfterWelcomeSent) return;
+    if (ws.readyState !== WebSocket.OPEN) return;
+
+    const { turnDetectionAfterWelcome: td } = buildDirectWebDemoClientSecretAudioInput();
+    if (!td || typeof td !== 'object' || Array.isArray(td)) {
+      logger.info({ callId: params.callId, fromEvent }, 'openai_sip_demo_vad_resume_skipped_no_turn_detection');
+      return;
+    }
+    if (td.create_response !== true) {
+      logger.info(
+        { callId: params.callId, fromEvent, create_response: td.create_response },
+        'openai_sip_demo_vad_resume_skipped_create_response_off',
+      );
+      return;
+    }
+
+    vadResumeAfterWelcomeSent = true;
+    try {
+      ws.send(
+        JSON.stringify({
+          type: 'session.update',
+          session: {
+            type: 'realtime',
+            audio: {
+              input: {
+                turn_detection: td,
+              },
+            },
+          },
+        }),
+      );
+      logger.info(
+        { callId: params.callId, fromEvent, vadType: (td as { type?: string }).type },
+        'openai_sip_demo_vad_resume_sent',
+      );
+    } catch (err) {
+      vadResumeAfterWelcomeSent = false;
+      logger.warn({ err, callId: params.callId, fromEvent }, 'openai_sip_demo_vad_resume_send_failed');
+    }
+  }
+
   ws.on('open', () => {
     logger.info(
       { callId: params.callId, variant: params.variant },
@@ -108,18 +160,18 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
         }
         return;
       }
-      // Wait briefly after sideband open so the accepted SIP call has media/session state ready.
+      // Brief pause after WS open so SIP media/session can settle (see OPENAI_SIP_SIDEBAND_GREETING_DELAY_MS).
       initialTimer = setTimeout(() => {
         initialTimer = null;
         trySendInitialResponse();
-      }, 500);
+      }, greetingDelayMs);
       return;
     }
 
     initialTimer = setTimeout(() => {
       initialTimer = null;
       trySendInitialResponse();
-    }, 300);
+    }, greetingDelayMs);
   });
 
   ws.on('message', (data) => {
@@ -135,6 +187,13 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
       cancelInitialTimer();
       logger.info({ callId: params.callId }, 'openai_sip_initial_response_skipped_user_speaking');
       incrementMetric('initial_response_create_total', { outcome: 'skipped_speaking' });
+    }
+
+    if (
+      needsDemoVadResumeAfterWelcome &&
+      (evt.type === 'response.done' || evt.type === 'output_audio_buffer.stopped')
+    ) {
+      maybeResumeDemoVadAfterWelcome(evt.type ?? 'unknown');
     }
 
     if (evt.type !== 'response.function_call_arguments.done') return;
