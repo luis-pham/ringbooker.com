@@ -98,24 +98,30 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
       <section className="relative overflow-hidden bg-white px-4 pb-0 pt-[98px] md:px-6 md:pt-[110px]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-5%,#EDE9FE_0%,transparent_70%)]" />
         <div className="relative z-10 mx-auto max-w-6xl">
-          <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-2 text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]">
-            <Link href="/" className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] transition hover:text-violet-600">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-5 flex min-w-0 flex-wrap items-center gap-2 text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]"
+          >
+            <Link
+              href="/"
+              className="shrink-0 !font-normal text-[color:var(--mk-text-soft,#94a3b8)] transition hover:text-violet-600"
+            >
               Home
             </Link>
-            <span className="mx-1.5" aria-hidden>
+            <span className="mx-1.5 shrink-0" aria-hidden>
               ›
             </span>
             <Link
               href={clusterHubHref}
-              className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] transition hover:text-violet-600"
+              className="shrink-0 !font-normal text-[color:var(--mk-text-soft,#94a3b8)] transition hover:text-violet-600"
             >
               {hubLabel}
             </Link>
-            <span className="mx-1.5" aria-hidden>
+            <span className="mx-1.5 shrink-0" aria-hidden>
               ›
             </span>
             <span
-              className="line-clamp-2 max-w-[min(100%,28rem)] font-normal text-[color:var(--mk-text-soft,#94a3b8)]"
+              className="min-w-0 max-w-[min(100%,28rem)] flex-1 truncate !font-normal text-[color:var(--mk-text-soft,#94a3b8)]"
               aria-current="page"
             >
               {post.title}
