@@ -21,7 +21,9 @@ export type BillingBlockReason =
   | 'forwarding_verification_required'
   | 'account_inactive'
   | 'commercial_approval_required'
-  | 'test_call_limit_reached';
+  | 'test_call_limit_reached'
+  | 'usage_limit_reached'
+  | 'concurrency_limit_reached';
 
 export type ShopBillingAccess = {
   canReceiveLiveCalls: boolean;

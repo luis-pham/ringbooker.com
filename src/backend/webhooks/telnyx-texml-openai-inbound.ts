@@ -26,11 +26,15 @@ import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backen
 import type {
   BillingSubscriptionsRepository,
   ForwardingTestSessionsRepository,
+  CallLogsRepository,
+  CommercialAccountsRepository,
+  ShopActiveCallSessionsRepository,
   ShopAccessStatesRepository,
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
 import { resolveShopByInboundDidWithMeta } from '@/src/backend/services/calls/shop-resolver';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8"?>';
 
@@ -74,6 +78,9 @@ export async function handleTelnyxTexmlOpenAiInbound(
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
     forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
+    callLogsRepository?: CallLogsRepository;
+    commercialAccountsRepository?: CommercialAccountsRepository;
+    shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
   },
 ): Promise<Response> {
   const env = getEnv();
@@ -153,6 +160,16 @@ export async function handleTelnyxTexmlOpenAiInbound(
           } else {
             billingBlockedReason = access.blockReason;
           }
+        } else if (deps.callLogsRepository) {
+          const commercialAccount = deps.commercialAccountsRepository
+            ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null)
+            : null;
+          const usage = await getShopUsageForPeriod(
+            { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+            { shop, commercialAccount },
+          );
+          if (usage.overCapturedCallerLimit) billingBlockedReason = 'usage_limit_reached';
+          else if (usage.activeLiveCalls >= usage.maxConcurrentLiveCalls) billingBlockedReason = 'concurrency_limit_reached';
         }
       }
     } catch {

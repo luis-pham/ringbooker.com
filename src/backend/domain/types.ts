@@ -103,6 +103,9 @@ export interface CommercialAccount {
   setupFeeCents?: number | null;
   includedLocations?: number | null;
   includedMinutes?: number | null;
+  includedCapturedCallers?: number | null;
+  maxConcurrentLiveCalls?: number | null;
+  maxCallDurationSeconds?: number | null;
   overageRateCents?: number | null;
   billingMethod: 'manual_invoice' | 'paddle_custom' | 'wire' | 'ach' | 'other';
   contractSignedAt?: string | null;
@@ -119,6 +122,19 @@ export interface CommercialGoLiveApprovalEvent {
   actorEmail: string;
   note?: string | null;
   createdAt: string;
+}
+
+export interface ShopActiveCallSession {
+  id: string;
+  shopId: string;
+  callSessionId: string;
+  provider: string;
+  startedAt: string;
+  expiresAt: string;
+  releasedAt?: string | null;
+  status: 'active' | 'released' | 'expired';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Shop {

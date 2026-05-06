@@ -19,6 +19,8 @@ import type {
   ShopsRepository,
   VoiceCallLegsRepository,
   ForwardingTestSessionsRepository,
+  CommercialAccountsRepository,
+  ShopActiveCallSessionsRepository,
 } from '@/src/backend/ports/repositories';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { verifyTelnyxSignature } from '@/src/backend/security/telnyx-signature';
@@ -41,6 +43,7 @@ import {
   type HandoffOrchestratorDeps,
 } from '@/src/backend/services/calls/handoff-orchestrator';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 import { getTelnyxOpenAiSipLegTimeoutSecs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { resolveTelnyxOutboundCallsConnectionId } from '@/src/backend/adapters/telnyx/telnyx-outbound-connection-id';
 import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
@@ -169,6 +172,8 @@ export async function handleTelnyxCallControlWebhook(
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
     forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
+    commercialAccountsRepository?: CommercialAccountsRepository;
+    shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     missedCallsRepository?: MissedCallsRepository;
@@ -281,6 +286,8 @@ async function processCallInitiated(
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
     forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
+    commercialAccountsRepository?: CommercialAccountsRepository;
+    shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
@@ -498,7 +505,43 @@ async function processCallInitiated(
     if (!dryRun && result.handled && result.callControlId) {
       if (result.decision === 'answer' && result.clientState) {
         const answerBody: Record<string, unknown> = { client_state: result.clientState };
-        if (getEnv().TELNYX_ANSWER_MAX_DURATION_ENABLED) {
+        if (result.shopId && !result.forwardingConnectivityTest && deps.callLogsRepository && deps.shopsRepository) {
+          const shop = await deps.shopsRepository.findById(result.shopId).catch(() => null);
+          if (shop) {
+            const commercialAccount = deps.commercialAccountsRepository
+              ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null)
+              : null;
+            const usage = await getShopUsageForPeriod(
+              { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+              { shop, commercialAccount },
+            );
+            if (usage.overCapturedCallerLimit) {
+              const rr = await callControlReject(result.callControlId, buildTelnyxCallRejectPayload('CALL_REJECTED'), fetchDeps);
+              log.warn({ shopId: shop.id, status: rr.ok ? 'rejected' : rr.status }, 'telnyx_call_control_usage_limit_rejected');
+              await deps.callLogsRepository.setOutcomeByProviderCallId({ provider: 'telnyx_call_control', providerCallId: result.callControlId, outcome: 'error' }).catch(() => {});
+              return c.json({ ok: true, blocked: true, reason: 'usage_limit_reached' });
+            }
+            if (deps.shopActiveCallSessionsRepository) {
+              const now = new Date();
+              const acquired = await deps.shopActiveCallSessionsRepository.acquireSlot({
+                shopId: shop.id,
+                provider: 'telnyx_call_control',
+                callSessionId: result.callControlId,
+                limit: usage.maxConcurrentLiveCalls,
+                startedAt: now,
+                expiresAt: new Date(now.getTime() + usage.limits.maxCallDurationSeconds * 1000),
+              });
+              if (!acquired.acquired) {
+                const rr = await callControlReject(result.callControlId, buildTelnyxCallRejectPayload('USER_BUSY'), fetchDeps);
+                log.warn({ shopId: shop.id, status: rr.ok ? 'rejected' : rr.status }, 'telnyx_call_control_concurrency_limit_rejected');
+                await deps.callLogsRepository.setOutcomeByProviderCallId({ provider: 'telnyx_call_control', providerCallId: result.callControlId, outcome: 'error' }).catch(() => {});
+                return c.json({ ok: true, blocked: true, reason: 'concurrency_limit_reached' });
+              }
+            }
+            answerBody.max_duration_secs = usage.limits.maxCallDurationSeconds;
+          }
+        }
+        if (!answerBody.max_duration_secs && getEnv().TELNYX_ANSWER_MAX_DURATION_ENABLED) {
           answerBody.max_duration_secs = getEnv().TELNYX_INBOUND_MAX_DURATION_SECS;
         }
         const ar = await callControlAnswer(result.callControlId, answerBody, fetchDeps);
@@ -1233,6 +1276,7 @@ async function processCallHangup(
     shopsRepository: ShopsRepository;
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
+    shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     missedCallsRepository?: MissedCallsRepository;
@@ -1315,6 +1359,14 @@ async function processCallHangup(
 
     const answeredAt = firstStringFromPayload(payload, ['answered_at', 'answer_time', 'bridged_at']);
     const missed = isTelnyxMissedInboundCall(event.event_type, payload);
+
+    if (deps.shopActiveCallSessionsRepository && providerCallId) {
+      await deps.shopActiveCallSessionsRepository.releaseByCallSession({
+        provider: 'telnyx_call_control',
+        callSessionId: providerCallId,
+        releasedAt: new Date(),
+      }).catch((err: unknown) => log.warn({ err, providerCallId }, 'active_call_slot_release_failed'));
+    }
 
     if (deps.callLogsRepository && providerCallId) {
       await deps.callLogsRepository.markEndedByProviderCallId({

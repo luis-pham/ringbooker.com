@@ -24,6 +24,7 @@ import { InMemoryCommercialGoLiveApprovalEventsRepository } from '@/src/backend/
 import { InMemoryShopLocationsRepository } from '@/src/backend/adapters/memory/shop-locations-repository';
 import { InMemoryShopRoutingRulesRepository } from '@/src/backend/adapters/memory/shop-routing-rules-repository';
 import { InMemoryCommercialAccountsRepository } from '@/src/backend/adapters/memory/commercial-accounts-repository';
+import { InMemoryShopActiveCallSessionsRepository } from '@/src/backend/adapters/memory/shop-active-call-sessions-repository';
 import { InMemoryForwardingTestSessionsRepository } from '@/src/backend/adapters/memory/forwarding-test-sessions-repository';
 import { InMemoryTestCallAttemptsRepository } from '@/src/backend/adapters/memory/test-call-attempts-repository';
 import { NoopEmailService } from '@/src/backend/adapters/noop/email-service';
@@ -52,6 +53,7 @@ import { SupabaseCommercialGoLiveApprovalEventsRepository } from '@/src/backend/
 import { SupabaseShopLocationsRepository } from '@/src/backend/adapters/supabase/shop-locations-repository';
 import { SupabaseShopRoutingRulesRepository } from '@/src/backend/adapters/supabase/shop-routing-rules-repository';
 import { SupabaseCommercialAccountsRepository } from '@/src/backend/adapters/supabase/commercial-accounts-repository';
+import { SupabaseShopActiveCallSessionsRepository } from '@/src/backend/adapters/supabase/shop-active-call-sessions-repository';
 import { SupabaseForwardingTestSessionsRepository } from '@/src/backend/adapters/supabase/forwarding-test-sessions-repository';
 import { SupabaseTestCallAttemptsRepository } from '@/src/backend/adapters/supabase/test-call-attempts-repository';
 import { TelnyxPhoneProvisioningService } from '@/src/backend/adapters/telnyx/phone-provisioning-service';
@@ -168,6 +170,7 @@ export function createBackendRuntime() {
             shopLocationsRepository: new SupabaseShopLocationsRepository(supabase),
             shopRoutingRulesRepository: new SupabaseShopRoutingRulesRepository(supabase),
             commercialAccountsRepository: new SupabaseCommercialAccountsRepository(supabase),
+            shopActiveCallSessionsRepository: new SupabaseShopActiveCallSessionsRepository(supabase),
             testCallAttemptsRepository: new SupabaseTestCallAttemptsRepository(supabase),
             forwardingTestSessionsRepository: new SupabaseForwardingTestSessionsRepository(supabase),
             jobsRepository: new SupabaseJobsRepository(supabase),
@@ -196,6 +199,7 @@ export function createBackendRuntime() {
           shopLocationsRepository: new InMemoryShopLocationsRepository(),
           shopRoutingRulesRepository: new InMemoryShopRoutingRulesRepository(),
           commercialAccountsRepository: new InMemoryCommercialAccountsRepository(),
+          shopActiveCallSessionsRepository: new InMemoryShopActiveCallSessionsRepository(),
           testCallAttemptsRepository: new InMemoryTestCallAttemptsRepository(),
           forwardingTestSessionsRepository: new InMemoryForwardingTestSessionsRepository(),
           jobsRepository: new InMemoryJobsRepository(),

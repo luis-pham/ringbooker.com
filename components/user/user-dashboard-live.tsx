@@ -32,6 +32,17 @@ type UserDashboardResponse = {
   };
   onboardingRequired?: boolean;
   onboardingCompleted?: boolean;
+  usage?: {
+    capturedCallersUsed: number;
+    capturedCallersLimit: number | null;
+    capturedCallerUsagePercent: number | null;
+    voiceMinutesUsed: number;
+    voiceMinutesSoftLimit: number | null;
+    nearCapturedCallerLimit: boolean;
+    overCapturedCallerLimit: boolean;
+    activeLiveCalls: number;
+    maxConcurrentLiveCalls: number;
+  };
   goLive?: {
     liveCallsEnabled: boolean;
     primaryCta: GoLiveDashboardPrimaryCta | null;
@@ -456,6 +467,42 @@ export function UserDashboardLive() {
                 <div className="stat-meta">{data?.shop?.timezone ?? 'Timezone unavailable'}</div>
               </div>
             </section>
+            {data?.usage ? (
+              <section className="card" style={{ marginTop: 18, borderColor: data.usage.overCapturedCallerLimit ? '#fecaca' : data.usage.nearCapturedCallerLimit ? '#fde68a' : undefined }}>
+                <div className="panel-head">
+                  <div>
+                    <h3>Captured callers this month</h3>
+                    <p className="sub">
+                      {data.usage.capturedCallersLimit == null
+                        ? `${data.usage.capturedCallersUsed} captured callers · Custom allowance`
+                        : `${data.usage.capturedCallersUsed} / ${data.usage.capturedCallersLimit} captured callers`}
+                    </p>
+                  </div>
+                  <span className={`tag ${data.usage.overCapturedCallerLimit ? 'orange' : data.usage.nearCapturedCallerLimit ? 'orange' : 'green'}`}>
+                    {data.usage.capturedCallerUsagePercent == null ? 'Custom' : `${data.usage.capturedCallerUsagePercent}%`}
+                  </span>
+                </div>
+                <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden', marginTop: 12 }}>
+                  <div
+                    style={{
+                      width: `${Math.min(100, data.usage.capturedCallerUsagePercent ?? 0)}%`,
+                      height: '100%',
+                      background: data.usage.overCapturedCallerLimit ? '#dc2626' : data.usage.nearCapturedCallerLimit ? '#f59e0b' : '#7c3aed',
+                    }}
+                  />
+                </div>
+                {data.usage.nearCapturedCallerLimit || data.usage.overCapturedCallerLimit ? (
+                  <p className="sub" style={{ marginTop: 10, color: data.usage.overCapturedCallerLimit ? '#b91c1c' : '#92400e' }}>
+                    {data.usage.overCapturedCallerLimit
+                      ? 'You have reached your monthly captured caller limit. Upgrade for more call coverage.'
+                      : 'You are close to your monthly captured caller limit.'}
+                  </p>
+                ) : null}
+                <p className="sub" style={{ marginTop: 8 }}>
+                  Voice usage: {data.usage.voiceMinutesUsed} min{data.usage.voiceMinutesSoftLimit ? ` / ${data.usage.voiceMinutesSoftLimit} soft cap` : ''} · Active calls: {data.usage.activeLiveCalls}/{data.usage.maxConcurrentLiveCalls}
+                </p>
+              </section>
+            ) : null}
             <section className="call-grid" style={{ marginTop: 18 }}>
               <div className="card soft">
                 <div className="panel-head">

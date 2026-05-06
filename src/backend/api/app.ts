@@ -67,6 +67,7 @@ import type {
   ShopAccessStatesRepository,
   ShopLocationsRepository,
   ShopRoutingRulesRepository,
+  ShopActiveCallSessionsRepository,
   TestCallAttemptsRepository,
   ForwardingTestSessionsRepository,
   VoiceCallLegsRepository,
@@ -79,6 +80,7 @@ import { getShopBillingAccess, isBillingTrialStillValid, type BillingBlockReason
 import { resolveGoLiveDashboardPrimaryCta } from '@/src/backend/services/billing/go-live-dashboard';
 import { normalizeInboundE164 } from '@/src/backend/services/calls/shop-resolver';
 import { formatPlanPrice, getPlanCatalogEntry, isSelfServeTrialPlan } from '@/src/backend/domain/plan-catalog';
+import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
 import type { EmailService } from '@/src/backend/services/email/types';
@@ -548,6 +550,9 @@ const adminCommercialAccountSchema = z.object({
   setupFeeCents: z.coerce.number().int().min(0).nullable().optional(),
   includedLocations: z.coerce.number().int().min(0).nullable().optional(),
   includedMinutes: z.coerce.number().int().min(0).nullable().optional(),
+  includedCapturedCallers: z.coerce.number().int().min(0).nullable().optional(),
+  maxConcurrentLiveCalls: z.coerce.number().int().min(0).nullable().optional(),
+  maxCallDurationSeconds: z.coerce.number().int().min(0).nullable().optional(),
   overageRateCents: z.coerce.number().int().min(0).nullable().optional(),
   billingMethod: z.enum(['manual_invoice', 'paddle_custom', 'wire', 'ach', 'other']).default('manual_invoice'),
   contractSignedAt: z.string().datetime().nullable().optional(),
@@ -1693,6 +1698,7 @@ export function createBackendApp(deps: {
   shopLocationsRepository?: ShopLocationsRepository;
   shopRoutingRulesRepository?: ShopRoutingRulesRepository;
   commercialAccountsRepository?: CommercialAccountsRepository;
+  shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
   testCallAttemptsRepository?: TestCallAttemptsRepository;
   forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   callbacksRepository?: CallbacksRepository;
@@ -1945,6 +1951,8 @@ export function createBackendApp(deps: {
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
         forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
         callLogsRepository: deps.callLogsRepository,
+        commercialAccountsRepository: deps.commercialAccountsRepository,
+        shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
         jobsRepository: deps.jobsRepository,
         missedCallsRepository: deps.missedCallsRepository,
         handoffSessionsRepository: deps.handoffSessionsRepository,
@@ -1961,6 +1969,9 @@ export function createBackendApp(deps: {
       billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
       shopAccessStatesRepository: deps.shopAccessStatesRepository,
       forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
+      callLogsRepository: deps.callLogsRepository,
+      commercialAccountsRepository: deps.commercialAccountsRepository,
+      shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
     }),
   );
   app.get(path('/telnyx/texml/inbound'), (c) =>
@@ -2006,6 +2017,9 @@ export function createBackendApp(deps: {
         bookingsRepository: deps.bookingsRepository,
         callbacksRepository: deps.callbacksRepository,
         telephonyService: deps.telephonyService,
+        callLogsRepository: deps.callLogsRepository,
+        commercialAccountsRepository: deps.commercialAccountsRepository,
+        shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
         fetchImpl: deps.testingOpenAiFetch,
       });
     })(),
@@ -3833,11 +3847,19 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    const [bookingCount, callCount, missedCalls] = await Promise.all([
+    const [bookingCount, callCount, missedCalls, commercialAccount] = await Promise.all([
       deps.bookingsRepository.countByShop(shop.id),
       deps.callLogsRepository.countByShop(shop.id, {}),
       deps.callLogsRepository.countByShop(shop.id, { outcome: 'missed' }),
+      deps.commercialAccountsRepository ? deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : Promise.resolve(null),
     ]);
+    const usage = await getShopUsageForPeriod(
+      {
+        callLogsRepository: deps.callLogsRepository,
+        shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+      },
+      { shop, commercialAccount },
+    );
 
     let goLive: {
       liveCallsEnabled: boolean;
@@ -3902,6 +3924,7 @@ export function createBackendApp(deps: {
         callCount,
         missedCalls,
       },
+      usage,
       goLive,
     });
   });
@@ -4412,19 +4435,21 @@ export function createBackendApp(deps: {
 
     const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const repo = deps.callLogsRepository;
-    const [totalLast7Days, bookingsCount, followUpCount, missedCount] = await Promise.all([
+    const commercialAccount = deps.commercialAccountsRepository ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : null;
+    const [totalLast7Days, bookingsCount, followUpCount, missedCount, usage] = await Promise.all([
       repo.countByShop(shop.id, { startedAfter: last7Days }),
       repo.countByShop(shop.id, { summaryNextActions: ['booking_created', 'booking_link_sent'] }),
       repo.countByShop(shop.id, { summaryFollowUpRequired: true }),
       repo.countByShop(shop.id, { startedAfter: last7Days, outcome: 'missed' }),
+      getShopUsageForPeriod({ callLogsRepository: repo, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository }, { shop, commercialAccount }),
     ]);
-
     return c.json({
       ok: true,
       totalLast7Days,
       bookingsCount,
       followUpCount,
       missedCount,
+      usage,
     });
   });
 
@@ -5198,6 +5223,13 @@ export function createBackendApp(deps: {
     );
     const catalog = getPlanCatalogEntry(subscription?.plan ?? shop.plan);
     const amountCents = access.amountCents ?? catalog.amountCents ?? 0;
+    const commercialAccount = deps.commercialAccountsRepository ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : null;
+    const usage = deps.callLogsRepository
+      ? await getShopUsageForPeriod(
+          { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+          { shop, commercialAccount },
+        )
+      : null;
 
     return c.json({
       ok: true,
@@ -5237,6 +5269,7 @@ export function createBackendApp(deps: {
         checkoutAvailable: Boolean(deps.billingProvider && isSelfServeTrialPlan(shop.plan)),
         manageBillingAvailable: false,
         forwardingNumber: shop.telnyx_number?.trim() ? shop.telnyx_number.trim() : null,
+        usage,
       },
     });
   });
@@ -6387,6 +6420,12 @@ export function createBackendApp(deps: {
       deps.shopRoutingRulesRepository ? deps.shopRoutingRulesRepository.listByShopId(shop.id).catch(() => []) : Promise.resolve([]),
       deps.commercialAccountsRepository ? deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : Promise.resolve(null),
     ]);
+    const usage = deps.callLogsRepository
+      ? await getShopUsageForPeriod(
+          { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+          { shop, commercialAccount },
+        )
+      : null;
 
     return c.json({
       ok: true,
@@ -6395,6 +6434,7 @@ export function createBackendApp(deps: {
       shopLocations,
       shopRoutingRules,
       commercialAccount,
+      usage,
       adminStatus: buildAdminShopStatus({
         shop,
         subscription,

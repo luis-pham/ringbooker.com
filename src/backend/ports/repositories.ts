@@ -12,6 +12,7 @@ import type {
   BillingSubscriptionStatus,
   CommercialAccount,
   CommercialGoLiveApprovalEvent,
+  ShopActiveCallSession,
   ContactRequest,
   ContactRequestIntent,
   ContactRequestPlanInterest,
@@ -211,6 +212,10 @@ export type CallStructuredSummaryFields = {
   summaryPreferredTech?: string | null;
   summaryPreferredDatetime?: string | null;
   summaryFollowUpRequired?: boolean;
+  isCapturedCaller?: boolean;
+  capturedCallerReason?: string | null;
+  capturedAt?: string | null;
+  durationSecs?: number;
 };
 
 
@@ -224,6 +229,7 @@ export type CallLogsQueryParams = {
   summaryFollowUpRequired?: boolean;
   summaryUrgency?: CallSummaryUrgency;
   summaryNextActions?: CallSummaryNextAction[];
+  isCapturedCaller?: boolean;
 };
 
 export interface CallLogsRepository {
@@ -311,6 +317,14 @@ export interface CallLogsRepository {
     params?: CallLogsQueryParams,
   ): Promise<number>;
   countRecent(params?: CallLogsQueryParams): Promise<number>;
+  sumDurationSecsByShop(shopId: string, params?: CallLogsQueryParams): Promise<number>;
+  markCapturedCallerByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    isCapturedCaller: boolean;
+    reason?: string | null;
+    capturedAt?: Date | null;
+  }): Promise<void>;
   listRecent(params?: CallLogsQueryParams): Promise<
     Array<{
       provider: string;
@@ -583,6 +597,19 @@ export interface ShopRoutingRulesRepository {
 export interface CommercialAccountsRepository {
   findByShopId(shopId: string): Promise<CommercialAccount | null>;
   upsert(params: CommercialAccount): Promise<CommercialAccount>;
+}
+
+export interface ShopActiveCallSessionsRepository {
+  acquireSlot(params: {
+    shopId: string;
+    callSessionId: string;
+    provider: string;
+    limit: number;
+    startedAt: Date;
+    expiresAt: Date;
+  }): Promise<{ acquired: boolean; activeCount: number; reason?: 'limit_reached' | 'duplicate_active' }>;
+  releaseByCallSession(params: { provider: string; callSessionId: string; releasedAt?: Date }): Promise<void>;
+  countActiveByShop(params: { shopId: string; now: Date }): Promise<number>;
 }
 
 export interface CommercialGoLiveApprovalEventsRepository {

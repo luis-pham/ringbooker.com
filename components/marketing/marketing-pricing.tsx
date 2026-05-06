@@ -40,6 +40,10 @@ const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
     ),
   },
   {
+    q: 'What is a captured caller?',
+    a: 'A captured caller is a caller where RingBooker captures useful information for your business, such as their name, phone number, service request, preferred time, or callback request. Demo calls and test calls do not count.',
+  },
+  {
     q: 'What happens when a caller needs a real person?',
     a: 'On Starter, RingBooker captures the callback request and sends your team a clear summary with next steps. On Professional and Custom plans, RingBooker can also transfer the call to the owner when configured, including caller context so the owner knows why the caller needs help.',
   },
@@ -261,6 +265,7 @@ const plans = [
     href: '/user/signup?plan=starter',
     featured: false,
     benefits: [
+      'Up to 100 captured callers/month',
       'Works with your current business number',
       'After-hours and overflow call answering',
       'Booking request capture and confirmation',
@@ -283,6 +288,7 @@ const plans = [
     href: '/user/signup?plan=professional',
     featured: true,
     benefits: [
+      'Up to 300 captured callers/month',
       'Everything in Starter',
       'Reminder SMS and stronger follow-up',
       'Returning caller notes and preferences',
@@ -309,7 +315,7 @@ const plans = [
       'Custom call flows, routing, and escalation rules',
       'Custom multilingual routing and workflows',
       'Custom integration planning',
-      'Higher call volume planning',
+      'Custom captured caller volume',
       'Concierge onboarding',
       'Priority implementation support',
     ],

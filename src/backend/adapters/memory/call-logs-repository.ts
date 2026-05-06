@@ -1,5 +1,6 @@
 import type { CallLogsRepository, CallLogsQueryParams, CallStructuredSummaryFields, CallSummaryNextAction } from '@/src/backend/ports/repositories';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
+import { getCapturedCallerReason } from '@/src/backend/services/usage/captured-caller';
 
 type MemoryCallLog = {
   provider: string;
@@ -25,6 +26,10 @@ type MemoryCallLog = {
   summaryPreferredTech?: string | null;
   summaryPreferredDatetime?: string | null;
   summaryFollowUpRequired?: boolean;
+  isCapturedCaller?: boolean;
+  capturedCallerReason?: string | null;
+  capturedAt?: Date | null;
+  durationSecs?: number;
 };
 
 function callKey(provider: string, providerCallId: string): string {
@@ -50,6 +55,7 @@ function matchesCallAdminFilters(log: MemoryCallLog, params?: CallLogsQueryParam
   if (params?.summaryFollowUpRequired !== undefined && Boolean(log.summaryFollowUpRequired) !== params.summaryFollowUpRequired) return false;
   if (params?.summaryUrgency !== undefined && log.summaryUrgency !== params.summaryUrgency) return false;
   if (params?.summaryNextActions?.length && !params.summaryNextActions.includes(log.summaryNextAction as CallSummaryNextAction)) return false;
+  if (params?.isCapturedCaller !== undefined && Boolean(log.isCapturedCaller) !== params.isCapturedCaller) return false;
   return true;
 }
 
@@ -92,6 +98,10 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       summaryPreferredTech: existing?.summaryPreferredTech,
       summaryPreferredDatetime: existing?.summaryPreferredDatetime,
       summaryFollowUpRequired: existing?.summaryFollowUpRequired,
+      isCapturedCaller: existing?.isCapturedCaller ?? false,
+      capturedCallerReason: existing?.capturedCallerReason ?? null,
+      capturedAt: existing?.capturedAt ?? null,
+      durationSecs: existing?.durationSecs ?? 0,
     });
   }
 
@@ -184,6 +194,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       endedAt: params.endedAt,
       outcome: params.outcome ?? existing.outcome,
       humanAnswered: params.humanAnswered ?? existing.humanAnswered,
+      durationSecs: existing.startedAt ? Math.max(0, Math.round((params.endedAt.getTime() - existing.startedAt.getTime()) / 1000)) : 0,
     });
     if (existing.startedAt) {
       const durationMs = params.endedAt.getTime() - existing.startedAt.getTime();
@@ -300,12 +311,40 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
   }
 
 
+  async sumDurationSecsByShop(shopId: string, params?: CallLogsQueryParams): Promise<number> {
+    return [...this.logsByCall.values()]
+      .filter((log) => log.shopId === shopId && matchesCallAdminFilters(log, params))
+      .reduce((sum, log) => sum + (log.durationSecs ?? 0), 0);
+  }
+
+  async markCapturedCallerByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    isCapturedCaller: boolean;
+    reason?: string | null;
+    capturedAt?: Date | null;
+  }): Promise<void> {
+    const key = callKey(params.provider, params.providerCallId);
+    const existing = this.logsByCall.get(key);
+    if (!existing) return;
+    this.logsByCall.set(key, {
+      ...existing,
+      isCapturedCaller: params.isCapturedCaller,
+      capturedCallerReason: params.reason ?? null,
+      capturedAt: params.isCapturedCaller ? (params.capturedAt ?? new Date()) : null,
+    });
+  }
+
   async updateStructuredSummary(shopId: string, requestId: string, fields: CallStructuredSummaryFields): Promise<void> {
     for (const [key, log] of this.logsByCall.entries()) {
       if (log.shopId === shopId && log.requestId === requestId) {
+        const next = { ...log, ...fields };
+        const reason = getCapturedCallerReason(next);
         this.logsByCall.set(key, {
-          ...log,
-          ...fields,
+          ...next,
+          isCapturedCaller: Boolean(reason),
+          capturedCallerReason: reason,
+          capturedAt: reason ? new Date() : null,
         });
       }
     }

@@ -108,6 +108,9 @@ type CommercialAccount = {
   setupFeeCents?: number | null;
   includedLocations?: number | null;
   includedMinutes?: number | null;
+  includedCapturedCallers?: number | null;
+  maxConcurrentLiveCalls?: number | null;
+  maxCallDurationSeconds?: number | null;
   overageRateCents?: number | null;
   billingMethod: 'manual_invoice' | 'paddle_custom' | 'wire' | 'ach' | 'other';
   contractSignedAt?: string | null;
@@ -658,6 +661,9 @@ export function AdminShopDetailLive() {
           setupFeeCents: nullableNumber('setupFeeCents'),
           includedLocations: nullableNumber('includedLocations'),
           includedMinutes: nullableNumber('includedMinutes'),
+          includedCapturedCallers: nullableNumber('includedCapturedCallers'),
+          maxConcurrentLiveCalls: nullableNumber('maxConcurrentLiveCalls'),
+          maxCallDurationSeconds: nullableNumber('maxCallDurationSeconds'),
           overageRateCents: nullableNumber('overageRateCents'),
           billingMethod: String(formData.get('billingMethod') ?? 'manual_invoice'),
           contractSignedAt: String(formData.get('contractSignedAt') ?? '') || null,
@@ -1367,6 +1373,9 @@ export function AdminShopDetailLive() {
                       <div className="field"><label>Setup fee cents</label><input name="setupFeeCents" type="number" defaultValue={commercialAccount?.setupFeeCents ?? ''} /></div>
                       <div className="field"><label>Included locations</label><input name="includedLocations" type="number" defaultValue={commercialAccount?.includedLocations ?? ''} /></div>
                       <div className="field"><label>Included minutes</label><input name="includedMinutes" type="number" defaultValue={commercialAccount?.includedMinutes ?? ''} /></div>
+                      <div className="field"><label>Included captured callers</label><input name="includedCapturedCallers" type="number" defaultValue={commercialAccount?.includedCapturedCallers ?? ''} /></div>
+                      <div className="field"><label>Max concurrent live calls</label><input name="maxConcurrentLiveCalls" type="number" defaultValue={commercialAccount?.maxConcurrentLiveCalls ?? ''} /></div>
+                      <div className="field"><label>Max call duration seconds</label><input name="maxCallDurationSeconds" type="number" defaultValue={commercialAccount?.maxCallDurationSeconds ?? ''} /></div>
                       <div className="field"><label>Overage rate cents</label><input name="overageRateCents" type="number" defaultValue={commercialAccount?.overageRateCents ?? ''} /></div>
                       <div className="field"><label>Contract signed at</label><input name="contractSignedAt" placeholder="2026-05-06T00:00:00.000Z" defaultValue={commercialAccount?.contractSignedAt ?? ''} /></div>
                       <div className="field"><label>Approved at</label><input name="approvedAt" placeholder="2026-05-06T00:00:00.000Z" defaultValue={commercialAccount?.approvedAt ?? ''} /></div>

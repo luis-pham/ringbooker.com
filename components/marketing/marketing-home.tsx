@@ -1687,6 +1687,7 @@ export function MarketingHomeTemplate() {
                 <div className="plan-price" id="ps">$79<span>/month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
+                  <li>Up to 100 captured callers/month</li>
                   <li>Works with your current business number</li>
                   <li>After-hours and overflow call answering</li>
                   <li>Booking request capture and confirmation</li>
@@ -1704,6 +1705,7 @@ export function MarketingHomeTemplate() {
                 <div className="plan-price" id="pp">$149<span>/month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
+                  <li>Up to 300 captured callers/month</li>
                   <li>Everything in Starter</li>
                   <li>Reminder SMS and stronger follow-up</li>
                   <li>Returning caller notes and preferences</li>
@@ -1726,7 +1728,7 @@ export function MarketingHomeTemplate() {
                   <li>Custom call flows, routing, and escalation rules</li>
                   <li>Custom multilingual routing and workflows</li>
                   <li>Custom integration planning</li>
-                  <li>Higher call volume planning</li>
+                  <li>Custom captured caller volume</li>
                   <li>Concierge onboarding</li>
                   <li>Priority implementation support</li>
                 </ul>

@@ -6,7 +6,8 @@ import type { CommercialAccountsRepository } from '@/src/backend/ports/repositor
 
 type Row = {
   shop_id: string; contract_status: CommercialAccount['contractStatus']; monthly_minimum_cents: number | null;
-  setup_fee_cents: number | null; included_locations: number | null; included_minutes: number | null;
+  setup_fee_cents: number | null; included_locations: number | null; included_minutes: number | null; included_captured_callers: number | null;
+  max_concurrent_live_calls: number | null; max_call_duration_seconds: number | null;
   overage_rate_cents: number | null; billing_method: CommercialAccount['billingMethod']; contract_signed_at: string | null;
   approved_at: string | null; notes: string | null; created_at: string; updated_at: string;
 };
@@ -19,6 +20,9 @@ function toAccount(row: Row): CommercialAccount {
     setupFeeCents: row.setup_fee_cents,
     includedLocations: row.included_locations,
     includedMinutes: row.included_minutes,
+    includedCapturedCallers: row.included_captured_callers,
+    maxConcurrentLiveCalls: row.max_concurrent_live_calls,
+    maxCallDurationSeconds: row.max_call_duration_seconds,
     overageRateCents: row.overage_rate_cents,
     billingMethod: row.billing_method,
     contractSignedAt: row.contract_signed_at,
@@ -49,6 +53,9 @@ export class SupabaseCommercialAccountsRepository implements CommercialAccountsR
         setup_fee_cents: params.setupFeeCents ?? null,
         included_locations: params.includedLocations ?? null,
         included_minutes: params.includedMinutes ?? null,
+        included_captured_callers: params.includedCapturedCallers ?? null,
+        max_concurrent_live_calls: params.maxConcurrentLiveCalls ?? null,
+        max_call_duration_seconds: params.maxCallDurationSeconds ?? null,
         overage_rate_cents: params.overageRateCents ?? null,
         billing_method: params.billingMethod,
         contract_signed_at: params.contractSignedAt ?? null,

@@ -26,11 +26,14 @@ import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import type {
   BillingSubscriptionsRepository,
   BookingsRepository,
+  CallLogsRepository,
+  CommercialAccountsRepository,
   CallbacksRepository,
   DemoSessionsRepository,
   JobsRepository,
   ProviderEventsRepository,
   ShopAccessStatesRepository,
+  ShopActiveCallSessionsRepository,
   ShopRoutingRulesRepository,
   ShopsRepository,
   SipDemoSessionEnrichment,
@@ -45,6 +48,7 @@ import {
 } from '@/src/backend/security/rate-limit';
 import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
@@ -179,6 +183,9 @@ export async function handleOpenAiRealtimeSipWebhook(
     bookingsRepository?: BookingsRepository;
     callbacksRepository?: CallbacksRepository;
     telephonyService?: TelephonyService;
+    callLogsRepository?: CallLogsRepository;
+    commercialAccountsRepository?: CommercialAccountsRepository;
+    shopActiveCallSessionsRepository?: ShopActiveCallSessionsRepository;
     fetchImpl?: typeof fetch;
   },
 ): Promise<Response> {
@@ -389,6 +396,48 @@ export async function handleOpenAiRealtimeSipWebhook(
         payload: { callId, shopId: route.shop.id, outcome: 'billing_blocked', reason: access.blockReason },
       });
       return c.json({ ok: true, blocked: true, reason: access.blockReason });
+    }
+
+    if (deps.callLogsRepository) {
+      const commercialAccount = deps.commercialAccountsRepository
+        ? await deps.commercialAccountsRepository.findByShopId(route.shop.id).catch(() => null)
+        : null;
+      const usage = await getShopUsageForPeriod(
+        { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
+        { shop: route.shop, commercialAccount },
+      );
+      if (usage.overCapturedCallerLimit) {
+        if (apiKey) await rejectCall(603, 'usage_limit_reached');
+        await deps.providerEventsRepository.markProcessed({
+          provider: 'openai',
+          providerEventId: webhookId,
+          eventType: 'realtime.call.incoming',
+          payload: { callId, shopId: route.shop.id, outcome: 'usage_blocked', reason: 'usage_limit_reached' },
+        });
+        return c.json({ ok: true, blocked: true, reason: 'usage_limit_reached' });
+      }
+      const callControlAlreadyOwnsSlot = Boolean(ccDecoded?.shopId === route.shop.id && ccDecoded.telnyxCallControlId);
+      if (deps.shopActiveCallSessionsRepository && !callControlAlreadyOwnsSlot) {
+        const now = new Date();
+        const acquired = await deps.shopActiveCallSessionsRepository.acquireSlot({
+          shopId: route.shop.id,
+          provider: 'openai_sip',
+          callSessionId: callId,
+          limit: usage.maxConcurrentLiveCalls,
+          startedAt: now,
+          expiresAt: new Date(now.getTime() + usage.limits.maxCallDurationSeconds * 1000),
+        });
+        if (!acquired.acquired) {
+          if (apiKey) await rejectCall(486, 'concurrency_limit_reached');
+          await deps.providerEventsRepository.markProcessed({
+            provider: 'openai',
+            providerEventId: webhookId,
+            eventType: 'realtime.call.incoming',
+            payload: { callId, shopId: route.shop.id, outcome: 'concurrency_blocked' },
+          });
+          return c.json({ ok: true, blocked: true, reason: 'concurrency_limit_reached' });
+        }
+      }
     }
   }
 

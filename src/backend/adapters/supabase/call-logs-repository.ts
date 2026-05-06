@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { CallLogsRepository, CallLogsQueryParams, CallStructuredSummaryFields } from '@/src/backend/ports/repositories';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
+import { getCapturedCallerReason } from '@/src/backend/services/usage/captured-caller';
 
 
 function applyCallLogFilters<T extends { gte: (column: string, value: string) => T; lte: (column: string, value: string) => T; eq: (column: string, value: unknown) => T; in: (column: string, values: unknown[]) => T }>(
@@ -16,6 +17,7 @@ function applyCallLogFilters<T extends { gte: (column: string, value: string) =>
   if (params?.summaryFollowUpRequired !== undefined) q = q.eq('summary_follow_up_required', params.summaryFollowUpRequired);
   if (params?.summaryUrgency) q = q.eq('summary_urgency', params.summaryUrgency);
   if (params?.summaryNextActions?.length) q = q.in('summary_next_action', params.summaryNextActions);
+  if (params?.isCapturedCaller !== undefined) q = q.eq('is_captured_caller', params.isCapturedCaller);
   return q;
 }
 
@@ -164,7 +166,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
   }): Promise<void> {
     const { data: currentRow, error: currentError } = await this.supabase
       .from('call_logs')
-      .select('started_at,outcome')
+      .select('started_at,outcome,provider,caller_phone,transcript_text,demo_live_state,summary_service_request,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required')
       .eq('provider', params.provider)
       .eq('provider_call_id', params.providerCallId)
       .maybeSingle<{ started_at: string | null; outcome: string | null }>();
@@ -176,6 +178,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       .from('call_logs')
       .update({
         ended_at: params.endedAt.toISOString(),
+        duration_secs: currentRow?.started_at ? Math.max(0, Math.round((params.endedAt.getTime() - new Date(currentRow.started_at).getTime()) / 1000)) : 0,
         outcome: params.outcome,
         human_answered: params.humanAnswered,
       })
@@ -261,7 +264,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     let q = this.supabase
       .from('call_logs')
       .select(
-        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
+        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,is_captured_caller,captured_caller_reason,captured_at,duration_secs,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
       )
       .eq('shop_id', shopId);
     q = applyCallLogFilters(q, params);
@@ -295,6 +298,10 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       summaryPreferredTech: (row.summary_preferred_tech as string | null) ?? null,
       summaryPreferredDatetime: (row.summary_preferred_datetime as string | null) ?? null,
       summaryFollowUpRequired: Boolean(row.summary_follow_up_required),
+      isCapturedCaller: Boolean(row.is_captured_caller),
+      capturedCallerReason: (row.captured_caller_reason as string | null) ?? null,
+      capturedAt: (row.captured_at as string | null) ?? null,
+      durationSecs: Number(row.duration_secs ?? 0),
     }));
   }
 
@@ -322,7 +329,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     let q = this.supabase
       .from('call_logs')
       .select(
-        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
+        'provider,provider_call_id,shop_id,caller_phone,destination_phone,request_id,room_name,started_at,ended_at,agent_joined,human_answered,transcript_status,transcript_text,demo_live_state,outcome,is_captured_caller,captured_caller_reason,captured_at,duration_secs,summary_service_request,summary_urgency,summary_next_action,summary_caller_question,summary_caller_name,summary_preferred_tech,summary_preferred_datetime,summary_follow_up_required',
       );
     q = applyCallLogFilters(q, params);
     const { data, error } = await q.order('started_at', { ascending: false }).range(offset, offset + limit - 1);
@@ -355,9 +362,43 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       summaryPreferredTech: (row.summary_preferred_tech as string | null) ?? null,
       summaryPreferredDatetime: (row.summary_preferred_datetime as string | null) ?? null,
       summaryFollowUpRequired: Boolean(row.summary_follow_up_required),
+      isCapturedCaller: Boolean(row.is_captured_caller),
+      capturedCallerReason: (row.captured_caller_reason as string | null) ?? null,
+      capturedAt: (row.captured_at as string | null) ?? null,
+      durationSecs: Number(row.duration_secs ?? 0),
     }));
   }
 
+
+  async sumDurationSecsByShop(shopId: string, params?: CallLogsQueryParams): Promise<number> {
+    let q = this.supabase
+      .from('call_logs')
+      .select('duration_secs')
+      .eq('shop_id', shopId);
+    q = applyCallLogFilters(q, params);
+    const { data, error } = await q;
+    if (error) throw new Error(`call_logs_sum_duration_failed:${error.message}`);
+    return (data ?? []).reduce((sum, row) => sum + Number((row as { duration_secs?: number | null }).duration_secs ?? 0), 0);
+  }
+
+  async markCapturedCallerByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    isCapturedCaller: boolean;
+    reason?: string | null;
+    capturedAt?: Date | null;
+  }): Promise<void> {
+    const { error } = await this.supabase
+      .from('call_logs')
+      .update({
+        is_captured_caller: params.isCapturedCaller,
+        captured_caller_reason: params.reason ?? null,
+        captured_at: params.isCapturedCaller ? (params.capturedAt ?? new Date()).toISOString() : null,
+      })
+      .eq('provider', params.provider)
+      .eq('provider_call_id', params.providerCallId);
+    if (error) throw new Error(`call_logs_mark_captured_failed:${error.message}`);
+  }
 
   async updateStructuredSummary(shopId: string, requestId: string, fields: CallStructuredSummaryFields): Promise<void> {
     const patch: Record<string, unknown> = {};
@@ -371,6 +412,36 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     if ('summaryFollowUpRequired' in fields) patch.summary_follow_up_required = fields.summaryFollowUpRequired ?? false;
 
     if (Object.keys(patch).length === 0) return;
+
+    const { data: current } = await this.supabase
+      .from('call_logs')
+      .select('provider,caller_phone,transcript_text,demo_live_state,outcome')
+      .eq('shop_id', shopId)
+      .eq('request_id', requestId)
+      .maybeSingle<{
+        provider: string | null;
+        caller_phone: string | null;
+        transcript_text: string | null;
+        demo_live_state: string | null;
+        outcome: string | null;
+      }>();
+    const reason = getCapturedCallerReason({
+      provider: current?.provider,
+      callerPhone: current?.caller_phone,
+      transcriptText: current?.transcript_text,
+      demoLiveState: current?.demo_live_state,
+      outcome: current?.outcome,
+      summaryServiceRequest: fields.summaryServiceRequest,
+      summaryNextAction: fields.summaryNextAction,
+      summaryCallerQuestion: fields.summaryCallerQuestion,
+      summaryCallerName: fields.summaryCallerName,
+      summaryPreferredTech: fields.summaryPreferredTech,
+      summaryPreferredDatetime: fields.summaryPreferredDatetime,
+      summaryFollowUpRequired: fields.summaryFollowUpRequired,
+    });
+    patch.is_captured_caller = Boolean(reason);
+    patch.captured_caller_reason = reason;
+    patch.captured_at = reason ? new Date().toISOString() : null;
 
     const { error } = await this.supabase
       .from('call_logs')
