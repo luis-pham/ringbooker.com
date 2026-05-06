@@ -44,6 +44,7 @@ export type OpenAiRealtimeSipSidebandParams =
  * browser direct demo) or user speech never triggers assistant turns.
  */
 export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSidebandParams): void {
+  const greetingDelayMs = getEnv().OPENAI_SIP_SIDEBAND_GREETING_DELAY_MS ?? 100;
   const timeoutMs = params.variant === 'shop' ? 25 * 60_000 : 45_000;
   const url = `wss://api.openai.com/v1/realtime?call_id=${encodeURIComponent(params.callId)}`;
   const ws = new WebSocket(url, {
