@@ -32,6 +32,8 @@ import {
   callControlBridgeCalls,
   callControlCreateCall,
   callControlHangup,
+  callControlPlaybackStart,
+  callControlPlaybackStop,
   callControlReject,
   callControlSpeak,
 } from '@/src/backend/services/calls/call-control-client';
@@ -752,6 +754,13 @@ async function processCallAnswered(
           bridgeReason = 'openai_bridge_idempotent_skip';
           clearSilentCallerRiskWatch(parentCallControlId);
         } else {
+          const ringbackUrlForStop = env.TELNYX_RINGBACK_AUDIO_URL?.trim();
+          if (ringbackUrlForStop) {
+            await callControlPlaybackStop(parentCallControlId, fetchDeps).catch((err) => {
+              log.warn({ err, parentCallControlId }, 'ringback_playback_stop_failed');
+            });
+          }
+
           log.info(
             {
               rbCallId: decodedClient.rbCallId ?? decodedClient.requestId,
@@ -869,6 +878,13 @@ async function processCallAnswered(
             log,
             answeredAtMs: parentAnsweredReceivedAt,
           });
+
+          const ringbackUrl = env.TELNYX_RINGBACK_AUDIO_URL?.trim();
+          if (ringbackUrl) {
+            callControlPlaybackStart(callControlId, ringbackUrl, 'infinity', fetchDeps).catch((err) => {
+              log.warn({ err, rbCallId, callControlId }, 'ringback_playback_start_failed');
+            });
+          }
 
           if (deps.voiceCallLegsRepository) {
             try {

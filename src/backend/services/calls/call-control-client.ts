@@ -259,6 +259,24 @@ export async function callControlBridgeCalls(
   return postCallControlAction(callControlId, 'bridge', { call_control_id: otherLegCallControlId }, deps);
 }
 
+/** @see https://developers.telnyx.com/api/call-control/playback-start */
+export async function callControlPlaybackStart(
+  callControlId: string,
+  audioUrl: string,
+  loop: 'infinity' | number = 'infinity',
+  deps?: CallControlClientDeps,
+): Promise<CallControlHttpResult> {
+  return postCallControlAction(callControlId, 'playback_start', { audio_url: audioUrl, loop }, deps);
+}
+
+/** @see https://developers.telnyx.com/api/call-control/playback-stop */
+export async function callControlPlaybackStop(
+  callControlId: string,
+  deps?: CallControlClientDeps,
+): Promise<CallControlHttpResult> {
+  return postCallControlAction(callControlId, 'playback_stop', {}, deps);
+}
+
 export type TelnyxCallControlCommandJson = {
   data?: {
     result?: string;

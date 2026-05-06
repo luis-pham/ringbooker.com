@@ -68,6 +68,8 @@ function createValidatedEnv() {
         .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
       /** Connection / Call Control Application ID for outbound `POST /v2/calls` (required in production when create_and_bridge + bridge OpenAI SIP). */
       TELNYX_CALL_CONTROL_CONNECTION_ID: z.string().min(1).optional(),
+      /** Audio URL played on caller leg while waiting for OpenAI SIP leg to bridge. Omit to disable ringback. */
+      TELNYX_RINGBACK_AUDIO_URL: z.string().url().optional(),
       /** Outbound OpenAI SIP leg ring/answer timeout for `POST /v2/calls` (`timeout_secs`). Default 15 in code when unset. */
       TELNYX_OPENAI_SIP_LEG_TIMEOUT_SECS: z.coerce.number().int().min(5).max(120).optional(),
       /** When true, include `max_duration_secs` on inbound `answer` (Telnyx may reject unknown fields — keep off until verified). */
