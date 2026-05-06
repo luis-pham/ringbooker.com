@@ -32,6 +32,14 @@ type TelnyxNumberOrderResponse = {
   };
 };
 
+type TelnyxNumberReleaseResponse = {
+  data?: {
+    id?: string;
+    phone_number?: string;
+    status?: string;
+  };
+};
+
 function toQueryString(params: Record<string, string | number | undefined>): string {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -136,5 +144,64 @@ export class TelnyxPhoneProvisioningService implements PhoneProvisioningService 
       providerNumberId: ordered?.id,
       orderId: parsed.data?.id,
     };
+  }
+
+  async releaseNumber(params: {
+    phoneNumber: string;
+    providerNumberId?: string;
+    orderId?: string;
+    reason: string;
+  }): Promise<void> {
+    const log = withLogContext({
+      provider: 'telnyx',
+      requestId: params.orderId,
+    });
+
+    try {
+      if (params.providerNumberId) {
+        const result = await telnyxHttpJson({
+          method: 'DELETE',
+          path: `phone_numbers/${encodeURIComponent(params.providerNumberId)}`,
+          timeoutMs: getTelnyxProvisioningOrderTimeoutMs(),
+          operation: 'phone_numbers.delete',
+          apiKey: this.apiKey,
+          correlation: {
+            requestId: params.orderId,
+            purpose: 'forwarding_number_compensation_release',
+          },
+        });
+        const parsed = result.parsedJson as TelnyxNumberReleaseResponse | null;
+        log.info(
+          {
+            httpStatus: result.status,
+            releasedPhoneNumber: parsed?.data?.phone_number ?? params.phoneNumber,
+            releaseStatus: parsed?.data?.status ?? null,
+          },
+          'telnyx_phone_number_released',
+        );
+        return;
+      }
+
+      await telnyxHttpJson({
+        method: 'POST',
+        path: 'phone_numbers/jobs/delete_phone_numbers',
+        body: {
+          phone_numbers: [params.phoneNumber],
+        },
+        timeoutMs: getTelnyxProvisioningOrderTimeoutMs(),
+        operation: 'phone_numbers.jobs.delete_phone_numbers',
+        apiKey: this.apiKey,
+        correlation: {
+          requestId: params.orderId,
+          purpose: 'forwarding_number_compensation_release',
+        },
+      });
+      log.info({ releasedPhoneNumberLast4: params.phoneNumber.slice(-4) }, 'telnyx_phone_number_release_job_created');
+    } catch (err: unknown) {
+      const status =
+        err && typeof err === 'object' && 'status' in err ? (err as { status?: number }).status : undefined;
+      log.error({ status, err }, 'telnyx_phone_number_release_failed');
+      throw new Error(`telnyx_phone_number_release_failed:${status ?? 'unknown'}`);
+    }
   }
 }

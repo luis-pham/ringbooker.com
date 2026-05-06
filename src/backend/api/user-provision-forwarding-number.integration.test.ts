@@ -33,6 +33,13 @@ test.beforeEach(() => {
 class TrackingPhoneProvisioning implements PhoneProvisioningService {
   searchCalls = 0;
   provisionCalls = 0;
+  releaseCalls = 0;
+  released: Array<{
+    phoneNumber: string;
+    providerNumberId?: string;
+    orderId?: string;
+    reason: string;
+  }> = [];
   onProvisionStarted?: () => void;
   provisionGate?: Promise<void>;
 
@@ -54,6 +61,30 @@ class TrackingPhoneProvisioning implements PhoneProvisioningService {
       orderId: `ord-${params.requestId}`,
     };
   }
+
+  async releaseNumber(params: {
+    phoneNumber: string;
+    providerNumberId?: string;
+    orderId?: string;
+    reason: string;
+  }) {
+    this.releaseCalls += 1;
+    this.released.push(params);
+  }
+}
+
+class PersistFailingShopsRepository extends InMemoryShopsRepository {
+  failTelnyxPersist = false;
+
+  override async updateUserSettings(
+    shopId: string,
+    patch: Parameters<InMemoryShopsRepository['updateUserSettings']>[1],
+  ) {
+    if (this.failTelnyxPersist && patch.telnyx_number) {
+      throw new Error('simulated_shop_persist_failed');
+    }
+    return super.updateUserSettings(shopId, patch);
+  }
 }
 
 async function sessionCookieForShop(shopId: string, email: string): Promise<string> {
@@ -67,10 +98,12 @@ type FixtureOpts = {
   liveCallsEnabled?: boolean;
   plan?: 'starter' | 'professional' | 'enterprise';
   commercialApproved?: boolean;
+  failTelnyxPersist?: boolean;
 };
 
 async function createFixture(opts: FixtureOpts) {
-  const shopsRepository = new InMemoryShopsRepository();
+  const shopsRepository = new PersistFailingShopsRepository();
+  shopsRepository.failTelnyxPersist = opts.failTelnyxPersist ?? false;
   const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
   const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
   const fakeProvisioning = new TrackingPhoneProvisioning();
@@ -312,4 +345,31 @@ test('concurrent provision forwarding requests call provisionNumber once', async
   assert.equal(fakeProvisioning.provisionCalls, 1);
   assert.equal(r1.status, 200);
   assert.equal(r2.status, 409);
+});
+
+test('provision forwarding releases Telnyx number when shop persist fails', async () => {
+  const { app, shopsRepository, fakeProvisioning, shop, cookie } = await createFixture({
+    paymentMethodStatus: 'valid',
+    failTelnyxPersist: true,
+  });
+
+  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({ confirmGoLiveIntent: true }),
+  });
+
+  assert.equal(res.status, 502);
+  const body = (await res.json()) as { error?: string };
+  assert.equal(body.error, 'forwarding_number_persist_failed');
+  assert.equal(fakeProvisioning.provisionCalls, 1);
+  assert.equal(fakeProvisioning.releaseCalls, 1);
+  assert.equal(fakeProvisioning.released[0]?.phoneNumber, '+17145559901');
+  assert.equal(fakeProvisioning.released[0]?.providerNumberId, 'pid-17145559901');
+  assert.equal(fakeProvisioning.released[0]?.reason, 'shop_persist_failed');
+
+  const updated = await shopsRepository.findById(shop.id);
+  assert.equal(updated?.telnyx_number ?? null, null);
+  assert.equal(updated?.forwarding_number_status, 'failed');
+  assert.equal(updated?.forwarding_number_provider_order_id?.startsWith('ord-'), true);
 });

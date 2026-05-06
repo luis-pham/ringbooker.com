@@ -38,4 +38,18 @@ export class NoopPhoneProvisioningService implements PhoneProvisioningService {
       orderId: `noop-order-${Date.now()}`,
     };
   }
+
+  async releaseNumber(params: {
+    phoneNumber: string;
+    providerNumberId?: string;
+    orderId?: string;
+    reason: string;
+  }) {
+    console.log('[NoopPhoneProvisioning] releaseNumber:', {
+      phoneNumber: params.phoneNumber,
+      providerNumberId: params.providerNumberId,
+      orderId: params.orderId,
+      reason: params.reason,
+    });
+  }
 }

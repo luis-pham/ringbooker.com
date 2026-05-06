@@ -52,7 +52,7 @@ function isAbortError(e: unknown): boolean {
  * Does not log API keys, Authorization header, or request bodies (may contain PII/SIP URIs).
  */
 export async function telnyxHttpJson(params: {
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'DELETE';
   /** Relative to `/v2/` — no leading slash (e.g. `messages`, `calls`, `calls/cc/actions/answer`). */
   path: string;
   body?: Record<string, unknown>;

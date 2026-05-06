@@ -261,10 +261,20 @@ Launch decision:
 - Acceptable for launch if treated as a connectivity proof plus explicit UI copy.
 - If stricter proof is required, implementation needs carrier/Telnyx metadata that proves the call arrived through carrier forwarding, or a second manual attestation step.
 
-## F. Release Number Follow-Up
+## F. Release Number / Orphan Cleanup Follow-Up
 
-Open TODO:
-- Implement `PhoneProvisioningService.releaseNumber()` in the Telnyx adapter if Telnyx supports releasing/canceling number orders or numbers.
+Implemented:
+- `PhoneProvisioningService.releaseNumber()` exists for Telnyx provisioning compensation.
+- Telnyx adapter releases by `providerNumberId` with `DELETE /phone_numbers/{id}` when available.
+- If no provider number id is available, it creates a Telnyx bulk delete job with `POST /phone_numbers/jobs/delete_phone_numbers`.
+- Provisioning flow calls `releaseNumber()` when Telnyx ordering succeeds but persisting `shops.telnyx_number` fails.
+
+Remaining operational TODO:
+- Add a scheduled orphan cleanup report/job for shops where:
+  - `forwarding_number_status = 'failed'`
+  - `forwarding_number_provider_order_id IS NOT NULL`
+  - `telnyx_number IS NULL`
+- The first version should report candidates only. Do not auto-release without operator review because provider order ids may refer to already-compensated releases.
 - Add orphan provisioning cleanup/reconciliation job:
   - Find shops with `forwarding_number_status='failed'`.
   - Find rows with `forwarding_number_provider_order_id IS NOT NULL` but `telnyx_number IS NULL`.
