@@ -191,3 +191,40 @@ test('canGoLive false shows blockReason payment when trialing no card', () => {
   assert.equal(s.canGoLive, false);
   assert.equal(s.blockReason, 'payment_method_required');
 });
+
+test('go-live checklist and timeline summarize Enterprise operational readiness', () => {
+  const access: ShopAccessState = {
+    ...accessOff,
+    liveCallsEnabled: true,
+    goLiveAt: '2026-05-04T00:00:00.000Z',
+    forwardingSetupVerifiedAt: '2026-05-03T00:00:00.000Z',
+    forwardingSetupVerifiedVia: 'manual_confirmation',
+    commercialGoLiveApprovedAt: '2026-05-02T00:00:00.000Z',
+    commercialGoLiveApprovedBy: 'admin@ringbooker.local',
+    commercialGoLiveApprovalNote: 'Approved contract and implementation plan.',
+  };
+  const s = buildAdminShopStatus({
+    shop: shopBase({ plan: 'enterprise' }),
+    subscription: subBase({
+      plan: 'enterprise',
+      status: 'active',
+      paymentMethodStatus: 'valid',
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T12:00:00.000Z',
+      trialStartedAt: null,
+      trialEndsAt: null,
+    }),
+    accessState: access,
+    testCallsUsed: 0,
+    now: new Date('2026-05-10T12:00:00.000Z'),
+  });
+
+  assert.equal(s.goLiveChecklist.find((item) => item.id === 'commercial_approval')?.status, 'complete');
+  assert.equal(s.goLiveChecklist.find((item) => item.id === 'payment_method')?.status, 'complete');
+  assert.equal(s.goLiveChecklist.find((item) => item.id === 'forwarding_verification')?.completedAt, '2026-05-03T00:00:00.000Z');
+  assert.equal(s.goLiveChecklist.find((item) => item.id === 'live_answering')?.status, 'complete');
+  assert.deepEqual(
+    s.goLiveTimeline.map((event) => event.id),
+    ['subscription_created', 'payment_valid', 'commercial_approved', 'forwarding_verified', 'live_enabled'],
+  );
+});

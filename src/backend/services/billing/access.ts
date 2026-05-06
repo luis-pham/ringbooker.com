@@ -1,3 +1,4 @@
+import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import { getPlanCatalogEntry } from '@/src/backend/domain/plan-catalog';
 import type { BillingSubscription, Shop, ShopAccessState } from '@/src/backend/domain/types';
@@ -19,6 +20,7 @@ export type BillingBlockReason =
   | 'forwarding_number_required'
   | 'forwarding_verification_required'
   | 'account_inactive'
+  | 'commercial_approval_required'
   | 'test_call_limit_reached';
 
 export type ShopBillingAccess = {
@@ -40,6 +42,7 @@ export type ShopBillingAccess = {
   setupWizardComplete: boolean;
   hasForwardingNumber: boolean;
   forwardingSetupVerified: boolean;
+  commercialGoLiveApproved: boolean;
 };
 
 /** Same rule as billing access trial gate (exported for admin status + tests). */
@@ -77,6 +80,7 @@ const inactiveAccess = (): ShopBillingAccess => ({
   setupWizardComplete: false,
   hasForwardingNumber: false,
   forwardingSetupVerified: false,
+  commercialGoLiveApproved: false,
 });
 
 /**
@@ -109,11 +113,13 @@ function billingExtrasFromShopAndAccess(
   setupWizardComplete: boolean;
   hasForwardingNumber: boolean;
   forwardingSetupVerified: boolean;
+  commercialGoLiveApproved: boolean;
 } {
   return {
     setupWizardComplete: isShopSetupWizardComplete(shop),
     hasForwardingNumber: Boolean(shop.telnyx_number?.trim()),
     forwardingSetupVerified: resolveForwardingSetupVerified(shop, accessState, grandfatherGoLiveBeforeIso),
+    commercialGoLiveApproved: !isCommercialGoLiveApprovalRequired({ plan: shop.plan, accessState }),
   };
 }
 
@@ -147,6 +153,29 @@ export function computeShopBillingAccessSnapshot(params: {
 
   const extrasDefault = billingExtrasFromShopAndAccess(shop, accessState, grandfatherIso);
 
+  if (!extrasDefault.commercialGoLiveApproved) {
+    return {
+      canReceiveLiveCalls: false,
+      canGoLive: false,
+      canTestCall: false,
+      blockReason: 'commercial_approval_required',
+      subscriptionStatus: subscription?.status ?? null,
+      paymentMethodStatus: subscription?.paymentMethodStatus ?? 'none',
+      trialEndsAt: subscription?.trialEndsAt ?? null,
+      trialDaysRemaining: daysRemaining(subscription?.trialEndsAt, now),
+      liveCallsEnabled: accessState?.liveCallsEnabled ?? false,
+      amountCents: getPlanCatalogEntry(shop.plan).amountCents,
+      interval: getPlanCatalogEntry(shop.plan).interval,
+      currency: getPlanCatalogEntry(shop.plan).currency,
+      testCallsUsed,
+      testCallLimit,
+      setupWizardComplete: extrasDefault.setupWizardComplete,
+      hasForwardingNumber: extrasDefault.hasForwardingNumber,
+      forwardingSetupVerified: extrasDefault.forwardingSetupVerified,
+      commercialGoLiveApproved: false,
+    };
+  }
+
   if (!subscription) {
     return {
       canReceiveLiveCalls: false,
@@ -166,6 +195,7 @@ export function computeShopBillingAccessSnapshot(params: {
       setupWizardComplete: extrasDefault.setupWizardComplete,
       hasForwardingNumber: extrasDefault.hasForwardingNumber,
       forwardingSetupVerified: extrasDefault.forwardingSetupVerified,
+      commercialGoLiveApproved: extrasDefault.commercialGoLiveApproved,
     };
   }
 
@@ -232,6 +262,7 @@ export function computeShopBillingAccessSnapshot(params: {
     setupWizardComplete,
     hasForwardingNumber,
     forwardingSetupVerified,
+    commercialGoLiveApproved: extrasDefault.commercialGoLiveApproved,
   };
 }
 

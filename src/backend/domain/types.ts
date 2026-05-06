@@ -66,6 +66,15 @@ export interface ServiceItem {
   price: number;
 }
 
+export interface CommercialGoLiveApprovalEvent {
+  id: string;
+  shopId: string;
+  eventType: 'approved';
+  actorEmail: string;
+  note?: string | null;
+  createdAt: string;
+}
+
 export interface Shop {
   id: string;
   name: string;
@@ -267,6 +276,9 @@ export interface ShopAccessState {
   lastAccessCheckAt?: string | null;
   forwardingSetupVerifiedAt?: string | null;
   forwardingSetupVerifiedVia?: ForwardingSetupVerifiedVia | null;
+  commercialGoLiveApprovedAt?: string | null;
+  commercialGoLiveApprovedBy?: string | null;
+  commercialGoLiveApprovalNote?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

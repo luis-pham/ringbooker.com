@@ -58,6 +58,8 @@ type UserBillingResponse = {
     canGoLive?: boolean;
     canReceiveLiveCalls?: boolean;
     blockReason?: string;
+    commercialGoLiveApproved?: boolean;
+    commercialApprovalRequired?: boolean;
     requiresPaymentMethodBeforeGoLive?: boolean;
     trialNoChargeUntilEndVerified?: boolean;
     checkoutAvailable?: boolean;
@@ -323,7 +325,9 @@ export function UserBillingLive() {
     return catalog.priceLine;
   }, [currentPlan, subscription, catalog.priceLine]);
 
-  const showPaymentAlert = !hasPaymentMethod || !subscription;
+  const enterpriseApprovalPending = currentPlan === 'enterprise' && data?.billing?.commercialApprovalRequired === true;
+  const isEnterprisePlan = currentPlan === 'enterprise';
+  const showPaymentAlert = !isEnterprisePlan && (!hasPaymentMethod || !subscription);
   const forwardingNumber = data?.billing?.forwardingNumber?.trim() ?? '';
 
   async function provisionForwardingFromBilling() {
@@ -441,6 +445,19 @@ export function UserBillingLive() {
                   </div>
                 </section>
 
+                {enterpriseApprovalPending ? (
+                  <section className="card" style={{ marginBottom: 16, borderColor: '#ddd6fe', background: '#faf5ff' }}>
+                    <h3 style={{ marginTop: 0 }}>Custom billing is managed by the RingBooker team</h3>
+                    <p className="sub">
+                      Your Custom setup is being prepared through sales and implementation. We will confirm contract, invoice, routing, and go-live details before live answering is enabled.
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+                      <a className="btn purple" href="/contact?topic=sales">Contact sales</a>
+                      <a className="btn" href="/contact?topic=implementation">Contact implementation support</a>
+                    </div>
+                  </section>
+                ) : null}
+
                 {data?.billing && !liveEnabled && showPaymentAlert ? (
                   <section className="card" style={{ marginBottom: 16 }}>
                     <h3 style={{ marginTop: 0 }}>Add a payment method to go live</h3>
@@ -460,7 +477,7 @@ export function UserBillingLive() {
                   </section>
                 ) : null}
 
-                {data?.billing && !liveEnabled && hasPaymentMethod && !forwardingNumber ? (
+                {data?.billing && !liveEnabled && hasPaymentMethod && !forwardingNumber && !enterpriseApprovalPending ? (
                   <section className="card" style={{ marginBottom: 16 }} id="go-live-forwarding">
                     <h3 style={{ marginTop: 0 }}>Set up call forwarding</h3>
                     <p className="sub">
@@ -483,7 +500,7 @@ export function UserBillingLive() {
                   </section>
                 ) : null}
 
-                {data?.billing && !liveEnabled && hasPaymentMethod && forwardingNumber ? (
+                {data?.billing && !liveEnabled && hasPaymentMethod && forwardingNumber && !enterpriseApprovalPending ? (
                   <section className="card" style={{ marginBottom: 16 }}>
                     <h3 style={{ marginTop: 0 }}>Your RingBooker forwarding number is ready</h3>
                     <p className="sub">

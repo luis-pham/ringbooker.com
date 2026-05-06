@@ -13,6 +13,9 @@ type ShopAccessStateRow = {
   last_access_check_at: string | null;
   forwarding_setup_verified_at: string | null;
   forwarding_setup_verified_via: string | null;
+  commercial_go_live_approved_at: string | null;
+  commercial_go_live_approved_by: string | null;
+  commercial_go_live_approval_note: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -22,7 +25,8 @@ function forwardingViaFromRow(via: string | null): ShopAccessState['forwardingSe
     via === 'forwarding_test' ||
     via === 'user_confirmed' ||
     via === 'inbound_test_call' ||
-    via === 'manual_confirmation'
+    via === 'manual_confirmation' ||
+    via === 'legacy_live'
   ) {
     return via;
   }
@@ -41,6 +45,9 @@ function toShopAccessState(row: ShopAccessStateRow): ShopAccessState {
     lastAccessCheckAt: row.last_access_check_at,
     forwardingSetupVerifiedAt: row.forwarding_setup_verified_at,
     forwardingSetupVerifiedVia: forwardingViaFromRow(via),
+    commercialGoLiveApprovedAt: row.commercial_go_live_approved_at,
+    commercialGoLiveApprovedBy: row.commercial_go_live_approved_by,
+    commercialGoLiveApprovalNote: row.commercial_go_live_approval_note,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -85,6 +92,9 @@ export class SupabaseShopAccessStatesRepository implements ShopAccessStatesRepos
     lastAccessCheckAt?: string | null;
     forwardingSetupVerifiedAt?: string | null;
     forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
+    commercialGoLiveApprovedAt?: string | null;
+    commercialGoLiveApprovedBy?: string | null;
+    commercialGoLiveApprovalNote?: string | null;
   }): Promise<ShopAccessState> {
     const existing = await this.findByShopId(params.shopId);
     const { data, error } = await this.supabase
@@ -105,6 +115,18 @@ export class SupabaseShopAccessStatesRepository implements ShopAccessStatesRepos
             params.forwardingSetupVerifiedVia !== undefined
               ? params.forwardingSetupVerifiedVia
               : (existing?.forwardingSetupVerifiedVia ?? null),
+          commercial_go_live_approved_at:
+            params.commercialGoLiveApprovedAt !== undefined
+              ? params.commercialGoLiveApprovedAt
+              : (existing?.commercialGoLiveApprovedAt ?? null),
+          commercial_go_live_approved_by:
+            params.commercialGoLiveApprovedBy !== undefined
+              ? params.commercialGoLiveApprovedBy
+              : (existing?.commercialGoLiveApprovedBy ?? null),
+          commercial_go_live_approval_note:
+            params.commercialGoLiveApprovalNote !== undefined
+              ? params.commercialGoLiveApprovalNote
+              : (existing?.commercialGoLiveApprovalNote ?? null),
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'shop_id' },

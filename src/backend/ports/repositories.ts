@@ -10,6 +10,7 @@ import type {
   BillingNotificationChannel,
   BillingNotificationType,
   BillingSubscriptionStatus,
+  CommercialGoLiveApprovalEvent,
   ContactRequest,
   ContactRequestStatus,
   JobStatus,
@@ -538,7 +539,21 @@ export interface ShopAccessStatesRepository {
     lastAccessCheckAt?: string | null;
     forwardingSetupVerifiedAt?: string | null;
     forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
+    commercialGoLiveApprovedAt?: string | null;
+    commercialGoLiveApprovedBy?: string | null;
+    commercialGoLiveApprovalNote?: string | null;
   }): Promise<ShopAccessState>;
+}
+
+export interface CommercialGoLiveApprovalEventsRepository {
+  create(params: {
+    shopId: string;
+    eventType: CommercialGoLiveApprovalEvent['eventType'];
+    actorEmail: string;
+    note?: string | null;
+    createdAt?: string;
+  }): Promise<CommercialGoLiveApprovalEvent>;
+  listByShopId(shopId: string, limit?: number): Promise<CommercialGoLiveApprovalEvent[]>;
 }
 
 export interface ForwardingTestSessionsRepository {

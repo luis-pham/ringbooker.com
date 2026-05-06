@@ -20,6 +20,7 @@ import { InMemoryContactRequestsRepository } from '@/src/backend/adapters/memory
 import { InMemoryDemoSessionsRepository } from '@/src/backend/adapters/memory/demo-sessions-repository';
 import { InMemoryWebDemoSessionsRepository } from '@/src/backend/adapters/memory/web-demo-sessions-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
+import { InMemoryCommercialGoLiveApprovalEventsRepository } from '@/src/backend/adapters/memory/commercial-go-live-approval-events-repository';
 import { InMemoryForwardingTestSessionsRepository } from '@/src/backend/adapters/memory/forwarding-test-sessions-repository';
 import { InMemoryTestCallAttemptsRepository } from '@/src/backend/adapters/memory/test-call-attempts-repository';
 import { NoopEmailService } from '@/src/backend/adapters/noop/email-service';
@@ -44,6 +45,7 @@ import { SupabaseContactRequestsRepository } from '@/src/backend/adapters/supaba
 import { SupabaseDemoSessionsRepository } from '@/src/backend/adapters/supabase/demo-sessions-repository';
 import { SupabaseWebDemoSessionsRepository } from '@/src/backend/adapters/supabase/web-demo-sessions-repository';
 import { SupabaseShopAccessStatesRepository } from '@/src/backend/adapters/supabase/shop-access-states-repository';
+import { SupabaseCommercialGoLiveApprovalEventsRepository } from '@/src/backend/adapters/supabase/commercial-go-live-approval-events-repository';
 import { SupabaseForwardingTestSessionsRepository } from '@/src/backend/adapters/supabase/forwarding-test-sessions-repository';
 import { SupabaseTestCallAttemptsRepository } from '@/src/backend/adapters/supabase/test-call-attempts-repository';
 import { TelnyxPhoneProvisioningService } from '@/src/backend/adapters/telnyx/phone-provisioning-service';
@@ -156,6 +158,7 @@ export function createBackendRuntime() {
             billingSubscriptionsRepository: new SupabaseBillingSubscriptionsRepository(supabase),
             billingNotificationsRepository: new SupabaseBillingNotificationsRepository(supabase),
             shopAccessStatesRepository: new SupabaseShopAccessStatesRepository(supabase),
+            commercialGoLiveApprovalEventsRepository: new SupabaseCommercialGoLiveApprovalEventsRepository(supabase),
             testCallAttemptsRepository: new SupabaseTestCallAttemptsRepository(supabase),
             forwardingTestSessionsRepository: new SupabaseForwardingTestSessionsRepository(supabase),
             jobsRepository: new SupabaseJobsRepository(supabase),
@@ -180,6 +183,7 @@ export function createBackendRuntime() {
           billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
           billingNotificationsRepository: new InMemoryBillingNotificationsRepository(),
           shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
+          commercialGoLiveApprovalEventsRepository: new InMemoryCommercialGoLiveApprovalEventsRepository(),
           testCallAttemptsRepository: new InMemoryTestCallAttemptsRepository(),
           forwardingTestSessionsRepository: new InMemoryForwardingTestSessionsRepository(),
           jobsRepository: new InMemoryJobsRepository(),
@@ -273,6 +277,7 @@ export function createBackendRuntime() {
     billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
     billingNotificationsRepository: repositories.billingNotificationsRepository,
     shopAccessStatesRepository: repositories.shopAccessStatesRepository,
+    commercialGoLiveApprovalEventsRepository: repositories.commercialGoLiveApprovalEventsRepository,
     testCallAttemptsRepository: repositories.testCallAttemptsRepository,
     forwardingTestSessionsRepository: repositories.forwardingTestSessionsRepository,
     callbacksRepository: repositories.callbacksRepository,

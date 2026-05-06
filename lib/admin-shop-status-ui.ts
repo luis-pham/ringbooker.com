@@ -78,6 +78,8 @@ export function adminBlockReasonLabel(s: AdminShopStatus): string {
       return 'Onboarding incomplete';
     case 'account_inactive':
       return 'Account inactive';
+    case 'commercial_approval_required':
+      return 'Commercial approval required';
     case 'test_call_limit_reached':
       return 'Test call limit reached';
     default:

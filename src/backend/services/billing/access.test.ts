@@ -397,3 +397,106 @@ test('live not enabled without forwarding verification cannot receive live calls
   assert.equal(access.canReceiveLiveCalls, false);
   assert.equal(access.blockReason, 'forwarding_verification_required');
 });
+
+
+
+test('enterprise without commercial approval cannot go live even with payment and forwarding ready', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+
+  let shop = await shopsRepository.create({
+    name: 'Enterprise Salon Group',
+    phone_number: '+15551110000',
+    user_phone: '+15551112222',
+    user_name: 'Owner',
+    timezone: 'America/New_York',
+    plan: 'enterprise',
+    active: true,
+  });
+  shop = (await shopsRepository.updateUserSettings(shop.id, {
+    vertical: 'nail_salon',
+    hours: { mon: { open: '09:00', close: '18:00' } },
+    services: [{ name: 'Cut', duration_min: 30, price: 40 }],
+    current_onboarding_step: 4,
+    telnyx_number: '+15559990001',
+  }))!;
+
+  await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'internal',
+    plan: 'enterprise',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 0,
+    amountCents: 0,
+    paymentMethodStatus: 'valid',
+  });
+  await shopAccessStatesRepository.upsert({
+    shopId: shop.id,
+    liveCallsEnabled: false,
+    forwardingSetupVerifiedAt: '2026-05-04T00:00:00Z',
+    forwardingSetupVerifiedVia: 'forwarding_test',
+  });
+
+  const access = await getShopBillingAccess(
+    { shopsRepository, billingSubscriptionsRepository, shopAccessStatesRepository },
+    { shopId: shop.id, now: new Date('2026-05-04T00:00:00Z') },
+  );
+  assert.equal(access.canGoLive, false);
+  assert.equal(access.canReceiveLiveCalls, false);
+  assert.equal(access.blockReason, 'commercial_approval_required');
+});
+
+test('enterprise with commercial approval can go live when normal prerequisites are met', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+
+  let shop = await shopsRepository.create({
+    name: 'Approved Enterprise Salon Group',
+    phone_number: '+15551110000',
+    user_phone: '+15551112222',
+    user_name: 'Owner',
+    timezone: 'America/New_York',
+    plan: 'enterprise',
+    active: true,
+  });
+  shop = (await shopsRepository.updateUserSettings(shop.id, {
+    vertical: 'nail_salon',
+    hours: { mon: { open: '09:00', close: '18:00' } },
+    services: [{ name: 'Cut', duration_min: 30, price: 40 }],
+    current_onboarding_step: 4,
+    telnyx_number: '+15559990001',
+  }))!;
+
+  await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'internal',
+    plan: 'enterprise',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 0,
+    amountCents: 0,
+    paymentMethodStatus: 'valid',
+  });
+  await shopAccessStatesRepository.upsert({
+    shopId: shop.id,
+    liveCallsEnabled: true,
+    forwardingSetupVerifiedAt: '2026-05-04T00:00:00Z',
+    forwardingSetupVerifiedVia: 'forwarding_test',
+    commercialGoLiveApprovedAt: '2026-05-03T00:00:00Z',
+    commercialGoLiveApprovedBy: 'admin@example.com',
+    commercialGoLiveApprovalNote: 'Contract signed.',
+  });
+
+  const access = await getShopBillingAccess(
+    { shopsRepository, billingSubscriptionsRepository, shopAccessStatesRepository },
+    { shopId: shop.id, now: new Date('2026-05-04T00:00:00Z') },
+  );
+  assert.equal(access.canGoLive, true);
+  assert.equal(access.canReceiveLiveCalls, true);
+  assert.equal(access.blockReason, 'none');
+});

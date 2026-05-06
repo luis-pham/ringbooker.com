@@ -77,7 +77,17 @@ type LoadShopResponse = {
   ok: boolean;
   shop?: ShopDetail;
   adminStatus?: AdminShopStatus;
+  commercialGoLiveApprovalEvents?: CommercialGoLiveApprovalEvent[];
   error?: string;
+};
+
+type CommercialGoLiveApprovalEvent = {
+  id: string;
+  shopId: string;
+  eventType: 'approved';
+  actorEmail: string;
+  note?: string | null;
+  createdAt: string;
 };
 
 type CallsListResponse = {
@@ -154,6 +164,20 @@ function formatDateTime(value?: string) {
   return parsed.toLocaleString();
 }
 
+function checklistStatusLabel(status: AdminShopStatus['goLiveChecklist'][number]['status']) {
+  if (status === 'complete') return 'Complete';
+  if (status === 'blocked') return 'Blocked';
+  if (status === 'not_required') return 'Not required';
+  return 'Pending';
+}
+
+function checklistStatusStyle(status: AdminShopStatus['goLiveChecklist'][number]['status']) {
+  if (status === 'complete') return { background: '#dcfce7', color: '#16a34a' };
+  if (status === 'blocked') return { background: '#fee2e2', color: '#dc2626' };
+  if (status === 'not_required') return { background: '#f1f5f9', color: '#475569' };
+  return { background: '#fef3c7', color: '#d97706' };
+}
+
 function prettyJson(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
@@ -173,10 +197,12 @@ export function AdminShopDetailLive() {
   const [tab, setTab] = useState<ShopTab>('info');
   const [shop, setShop] = useState<ShopDetail | null>(null);
   const [adminStatus, setAdminStatus] = useState<AdminShopStatus | null>(null);
+  const [commercialApprovalEvents, setCommercialApprovalEvents] = useState<CommercialGoLiveApprovalEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
+  const [approvingCommercial, setApprovingCommercial] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const [recentCalls, setRecentCalls] = useState<ShopCall[]>([]);
@@ -214,10 +240,12 @@ export function AdminShopDetailLive() {
       setError(null);
       setShop(body.shop);
       setAdminStatus(body.adminStatus ?? null);
+      setCommercialApprovalEvents(body.commercialGoLiveApprovalEvents ?? []);
     } catch {
       setError('network_error');
       setShop(null);
       setAdminStatus(null);
+      setCommercialApprovalEvents([]);
     }
   }, [shopId]);
 
@@ -247,6 +275,7 @@ export function AdminShopDetailLive() {
       setCallsPagination(null);
       setAnalytics(null);
       setAdminStatus(null);
+      setCommercialApprovalEvents([]);
     }
   }, [shopId]);
 
@@ -458,6 +487,33 @@ export function AdminShopDetailLive() {
     }
   }
 
+
+
+  async function onApproveCommercialGoLive() {
+    if (!shopId || !shop) return;
+    setApprovingCommercial(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/backend/admin/shops/${shopId}/approve-commercial-go-live`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ note: 'Approved from admin shop detail.' }),
+      });
+      const body = (await response.json()) as LoadShopResponse & { alreadyApproved?: boolean };
+      if (!response.ok || !body.ok) {
+        setError(body.error ?? 'commercial_approval_failed');
+        return;
+      }
+      await loadShop();
+      setNotice(body.alreadyApproved ? 'Commercial go-live was already approved.' : 'Commercial go-live approved.');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'network_error');
+    } finally {
+      setApprovingCommercial(false);
+    }
+  }
+
   async function signOut() {
     await fetch('/api/backend/auth/logout', { method: 'POST' });
     window.location.href = '/admin/login';
@@ -553,6 +609,16 @@ export function AdminShopDetailLive() {
                       <dd>{adminBlockReasonLabel(adminStatus)}</dd>
                     </div>
                     <div className="admin-status-row">
+                      <dt>Commercial approval</dt>
+                      <dd>
+                        {adminStatus.commercialGoLiveApproved ? 'Approved' : shop.plan === 'enterprise' ? 'Required' : 'Not required'}
+                      </dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Approved at</dt>
+                      <dd>{formatShortDateTime(adminStatus.commercialGoLiveApprovedAt)}</dd>
+                    </div>
+                    <div className="admin-status-row">
                       <dt>Onboarding</dt>
                       <dd>{adminOnboardingLabel(adminStatus)}</dd>
                     </div>
@@ -569,6 +635,86 @@ export function AdminShopDetailLive() {
                       <dd>{adminStatus.telnyxNumber ?? '—'}</dd>
                     </div>
                   </dl>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      gap: 12,
+                      marginTop: 18,
+                    }}
+                  >
+                    <section className="card soft" style={{ margin: 0, boxShadow: 'none' }}>
+                      <div className="panel-head" style={{ marginBottom: 12 }}>
+                        <div>
+                          <h3>Go-live checklist</h3>
+                          <p className="sub">Operational gates for Custom / Enterprise launch readiness.</p>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {adminStatus.goLiveChecklist.map((item) => {
+                          const badgeStyle = checklistStatusStyle(item.status);
+                          return (
+                            <div
+                              key={item.id}
+                              style={{
+                                border: '1px solid rgba(255,255,255,.08)',
+                                borderRadius: 12,
+                                padding: 12,
+                                background: 'rgba(255,255,255,.03)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                                <strong style={{ fontSize: 13 }}>{item.label}</strong>
+                                <span
+                                  style={{
+                                    ...badgeStyle,
+                                    borderRadius: 999,
+                                    padding: '2px 8px',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {checklistStatusLabel(item.status)}
+                                </span>
+                              </div>
+                              <p className="sub" style={{ margin: '6px 0 0' }}>
+                                {item.detail}
+                              </p>
+                              {item.completedAt ? (
+                                <p className="sub" style={{ margin: '6px 0 0', fontSize: 11 }}>
+                                  Completed: {formatShortDateTime(item.completedAt)}
+                                </p>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                    <section className="card soft" style={{ margin: 0, boxShadow: 'none' }}>
+                      <div className="panel-head" style={{ marginBottom: 12 }}>
+                        <div>
+                          <h3>Go-live timeline</h3>
+                          <p className="sub">Key operational events recorded for this shop.</p>
+                        </div>
+                      </div>
+                      {adminStatus.goLiveTimeline.length ? (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          {adminStatus.goLiveTimeline.map((event) => (
+                            <div key={`${event.id}-${event.occurredAt}`} style={{ display: 'grid', gap: 3 }}>
+                              <strong style={{ fontSize: 13 }}>{event.label}</strong>
+                              <span className="sub" style={{ fontSize: 11 }}>
+                                {formatShortDateTime(event.occurredAt)}
+                              </span>
+                              <span className="sub">{event.detail}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="sub">No go-live events recorded yet.</p>
+                      )}
+                    </section>
+                  </div>
                 </section>
               ) : null}
               <div className="shop-tab-bar" role="tablist" aria-label="Business sections">
@@ -845,7 +991,74 @@ export function AdminShopDetailLive() {
                 ) : null}
 
                 {tab === 'billing' ? (
-                  <form className="card" onSubmit={onSavePlan}>
+                  <>
+                    {shop.plan === 'enterprise' ? (
+                      <section className="card" style={{ marginBottom: 18, borderColor: adminStatus?.commercialGoLiveApproved ? '#bbf7d0' : '#fde68a' }}>
+                        <div className="panel-head">
+                          <div>
+                            <h3>Commercial go-live approval</h3>
+                            <p className="sub">
+                              Enterprise / Custom shops require manual commercial approval before forwarding number provisioning, forwarding tests, manual confirmation, or live answering.
+                            </p>
+                          </div>
+                        </div>
+                        <dl className="admin-status-dl">
+                          <div className="admin-status-row">
+                            <dt>Status</dt>
+                            <dd>{adminStatus?.commercialGoLiveApproved ? 'Approved' : 'Pending approval'}</dd>
+                          </div>
+                          <div className="admin-status-row">
+                            <dt>Approved by</dt>
+                            <dd>{adminStatus?.commercialGoLiveApprovedBy ?? '—'}</dd>
+                          </div>
+                          <div className="admin-status-row">
+                            <dt>Note</dt>
+                            <dd>{adminStatus?.commercialGoLiveApprovalNote ?? '—'}</dd>
+                          </div>
+                        </dl>
+                        {commercialApprovalEvents.length ? (
+                          <div style={{ marginTop: 18 }}>
+                            <h4 style={{ margin: '0 0 10px', fontSize: 14 }}>Approval history</h4>
+                            <div style={{ display: 'grid', gap: 10 }}>
+                              {commercialApprovalEvents.map((event) => (
+                                <div
+                                  key={event.id}
+                                  style={{
+                                    border: '1px solid rgba(255,255,255,.08)',
+                                    borderRadius: 12,
+                                    padding: 12,
+                                    background: 'rgba(255,255,255,.03)',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                                    <strong style={{ fontSize: 13 }}>Approved</strong>
+                                    <span className="sub" style={{ fontSize: 11 }}>
+                                      {formatShortDateTime(event.createdAt)}
+                                    </span>
+                                  </div>
+                                  <p className="sub" style={{ margin: '6px 0 0' }}>
+                                    By {event.actorEmail}
+                                  </p>
+                                  {event.note ? (
+                                    <p className="sub" style={{ margin: '6px 0 0' }}>
+                                      {event.note}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                        {!adminStatus?.commercialGoLiveApproved ? (
+                          <div className="top-actions" style={{ marginTop: 18, justifyContent: 'flex-start' }}>
+                            <button className="btn purple" type="button" disabled={approvingCommercial} onClick={() => void onApproveCommercialGoLive()}>
+                              {approvingCommercial ? 'Approving…' : 'Approve commercial go-live'}
+                            </button>
+                          </div>
+                        ) : null}
+                      </section>
+                    ) : null}
+                    <form className="card" onSubmit={onSavePlan}>
                     <div className="panel-head">
                       <div>
                         <h3>Billing and activation</h3>
@@ -875,6 +1088,7 @@ export function AdminShopDetailLive() {
                       </button>
                     </div>
                   </form>
+                  </>
                 ) : null}
 
                 {tab === 'calls' ? (

@@ -536,13 +536,14 @@ export const HTML_HUB_SCOPED_CSS = `
   box-shadow:0 12px 36px rgba(91,33,182,.38);
 }
 .html-hub-page--trust .hero.hero--landing .btn-outline:hover{border-color:var(--purple);color:var(--purple)}
-.html-hub-page--trust .section-label:not(.dark){
+/* Must beat .html-hub-page .section-label.green|blue|amber below (same specificity, source order). */
+.html-hub-page.html-hub-page--trust .section-label:not(.dark){
   color:var(--purple);
 }
-.html-hub-page--trust .section-label.green,
-.html-hub-page--trust .section-label.purple,
-.html-hub-page--trust .section-label.blue,
-.html-hub-page--trust .section-label.amber{
+.html-hub-page.html-hub-page--trust .section-label.green,
+.html-hub-page.html-hub-page--trust .section-label.purple,
+.html-hub-page.html-hub-page--trust .section-label.blue,
+.html-hub-page.html-hub-page--trust .section-label.amber{
   color:var(--purple);
 }
 

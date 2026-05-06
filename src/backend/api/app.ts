@@ -30,6 +30,7 @@ import {
   type ShopSettingCapability,
 } from '@/src/backend/domain/shop-plan-capabilities';
 import { createSignupPlaceholderBusinessPhoneE164 } from '@/src/backend/domain/signup-placeholder-phone';
+import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import { startOrReuseForwardingTestSession } from '@/src/backend/services/go-live/start-forwarding-test-session';
 import type {
@@ -48,6 +49,7 @@ import type {
   BillingNotificationsRepository,
   BillingCustomersRepository,
   BillingSubscriptionsRepository,
+  CommercialGoLiveApprovalEventsRepository,
   CallbacksRepository,
   CallLogsRepository,
   DemoAdminCallListRow,
@@ -454,6 +456,10 @@ const adminCreateShopSchema = z.object({
 const adminUpdatePlanSchema = z.object({
   plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
   active: z.boolean().optional(),
+});
+
+const adminCommercialGoLiveApprovalSchema = z.object({
+  note: z.string().trim().max(1000).optional(),
 });
 
 const adminInviteSchema = z.object({
@@ -1588,6 +1594,7 @@ export function createBackendApp(deps: {
   billingSubscriptionsRepository?: BillingSubscriptionsRepository;
   billingNotificationsRepository?: BillingNotificationsRepository;
   shopAccessStatesRepository?: ShopAccessStatesRepository;
+  commercialGoLiveApprovalEventsRepository?: CommercialGoLiveApprovalEventsRepository;
   testCallAttemptsRepository?: TestCallAttemptsRepository;
   forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   callbacksRepository?: CallbacksRepository;
@@ -3730,6 +3737,9 @@ Submitted at: ${new Date().toISOString()}`,
       hasForwardingNumber: boolean;
       paymentMethodValid: boolean;
       subscriptionActiveLike: boolean;
+      blockReason: BillingBlockReason;
+      commercialGoLiveApproved: boolean;
+      commercialApprovalRequired: boolean;
     } | null = null;
 
     if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
@@ -3744,9 +3754,10 @@ Submitted at: ${new Date().toISOString()}`,
       );
       const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
       const now = new Date();
+      const commercialApprovalRequired = access.blockReason === 'commercial_approval_required';
       goLive = {
         liveCallsEnabled: access.liveCallsEnabled,
-        primaryCta: resolveGoLiveDashboardPrimaryCta({
+        primaryCta: commercialApprovalRequired ? null : resolveGoLiveDashboardPrimaryCta({
           liveCallsEnabled: access.liveCallsEnabled,
           subscription,
           paymentMethodStatus: access.paymentMethodStatus,
@@ -3759,6 +3770,9 @@ Submitted at: ${new Date().toISOString()}`,
         paymentMethodValid: access.paymentMethodStatus === 'valid',
         subscriptionActiveLike:
           subscription?.status === 'active' || (subscription ? isBillingTrialStillValid(subscription, now) : false),
+        blockReason: access.blockReason,
+        commercialGoLiveApproved: access.commercialGoLiveApproved,
+        commercialApprovalRequired,
       };
     }
 
@@ -3995,7 +4009,10 @@ Submitted at: ${new Date().toISOString()}`,
       forwardingTestStatus,
       forwardingTestExpiresAt,
       liveCallsEnabled: access.liveCallsEnabled,
-      primaryCta,
+      primaryCta: access.blockReason === 'commercial_approval_required' ? null : primaryCta,
+      blockReason: access.blockReason,
+      commercialGoLiveApproved: access.commercialGoLiveApproved,
+      commercialApprovalRequired: access.blockReason === 'commercial_approval_required',
     });
   });
 
@@ -4089,6 +4106,16 @@ Submitted at: ${new Date().toISOString()}`,
       },
       { shopId: shop.id },
     );
+    if (access.blockReason === 'commercial_approval_required') {
+      return c.json(
+        {
+          ok: false,
+          error: 'commercial_approval_required',
+          message: 'Your Custom setup must be approved by the RingBooker team before live answering can be enabled.',
+        },
+        403,
+      );
+    }
     if (access.liveCallsEnabled) {
       return c.json({ ok: true, forwardingSetupVerified: access.forwardingSetupVerified, liveCallsEnabled: true });
     }
@@ -4160,6 +4187,8 @@ Submitted at: ${new Date().toISOString()}`,
     let liveCallsEnabled = false;
     let canGoLive = false;
     let forwardingSetupVerified = false;
+    let commercialGoLiveApproved = false;
+    let commercialApprovalRequired = false;
     let billingBannerVariant = 'payment_required_go_live';
     if (deps.billingSubscriptionsRepository) {
       const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
@@ -4181,6 +4210,8 @@ Submitted at: ${new Date().toISOString()}`,
       liveCallsEnabled = access.liveCallsEnabled;
       canGoLive = access.canGoLive;
       forwardingSetupVerified = access.forwardingSetupVerified;
+      commercialGoLiveApproved = access.commercialGoLiveApproved;
+      commercialApprovalRequired = access.blockReason === 'commercial_approval_required';
       billingBannerVariant =
         subscriptionStatus === 'active'
           ? 'active'
@@ -4212,6 +4243,8 @@ Submitted at: ${new Date().toISOString()}`,
       billingBannerVariant,
       hasForwardingNumber: Boolean(shop.telnyx_number?.trim()),
       forwardingSetupVerified,
+      commercialGoLiveApproved,
+      commercialApprovalRequired,
     });
   });
 
@@ -5088,6 +5121,8 @@ Submitted at: ${new Date().toISOString()}`,
         canGoLive: access.canGoLive,
         canReceiveLiveCalls: access.canReceiveLiveCalls,
         blockReason: access.blockReason,
+        commercialGoLiveApproved: access.commercialGoLiveApproved,
+        commercialApprovalRequired: access.blockReason === 'commercial_approval_required',
         requiresPaymentMethodBeforeGoLive: access.paymentMethodStatus !== 'valid',
         trialNoChargeUntilEndVerified: process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true',
         checkoutAvailable: Boolean(deps.billingProvider && isSelfServeTrialPlan(shop.plan)),
@@ -5227,6 +5262,16 @@ Submitted at: ${new Date().toISOString()}`,
     }
 
     const accessState = await deps.shopAccessStatesRepository.findByShopId(shop.id);
+    if (isCommercialGoLiveApprovalRequired({ plan: shop.plan, accessState })) {
+      return c.json(
+        {
+          ok: false,
+          error: 'commercial_approval_required',
+          message: 'Your Custom setup must be approved by the RingBooker team before live answering can be enabled.',
+        },
+        403,
+      );
+    }
     if (accessState?.liveCallsEnabled) {
       return c.json({ ok: false, error: 'live_already_enabled' }, 409);
     }
@@ -5529,9 +5574,11 @@ Submitted at: ${new Date().toISOString()}`,
       { shopId: shop.id },
     );
     if (!access.canGoLive) {
-      const status = access.blockReason === 'payment_method_required' ? 402 : 409;
+      const status = access.blockReason === 'payment_method_required' ? 402 : access.blockReason === 'commercial_approval_required' ? 403 : 409;
       const messageByReason: Partial<Record<BillingBlockReason, string>> = {
         payment_method_required: buildGoLivePaymentRequiredMessage(),
+        commercial_approval_required:
+          'Your Custom setup must be approved by the RingBooker team before live answering can be enabled.',
         forwarding_number_required:
           'Provision your RingBooker forwarding number before enabling live answering.',
         forwarding_verification_required:
@@ -6208,7 +6255,7 @@ Submitted at: ${new Date().toISOString()}`,
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
     const sinceTestCalls = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [subscription, accessState, testCallsUsed] = await Promise.all([
+    const [subscription, accessState, testCallsUsed, commercialGoLiveApprovalEvents] = await Promise.all([
       deps.billingSubscriptionsRepository
         ? deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id)
         : Promise.resolve(null),
@@ -6220,11 +6267,15 @@ Submitted at: ${new Date().toISOString()}`,
             since: sinceTestCalls,
           })
         : Promise.resolve(0),
+      deps.commercialGoLiveApprovalEventsRepository
+        ? deps.commercialGoLiveApprovalEventsRepository.listByShopId(shop.id, 20)
+        : Promise.resolve([]),
     ]);
 
     return c.json({
       ok: true,
       shop,
+      commercialGoLiveApprovalEvents,
       adminStatus: buildAdminShopStatus({
         shop,
         subscription,
@@ -6268,6 +6319,56 @@ Submitted at: ${new Date().toISOString()}`,
       },
     });
     return c.json({ ok: true, shop: updated });
+  });
+
+  app.post(path('/admin/shops/:id/approve-commercial-go-live'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_approve_commercial_go_live');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopAccessStatesRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const body = await c.req.json().catch(() => ({}));
+    const parsed = adminCommercialGoLiveApprovalSchema.safeParse(body ?? {});
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const shop = await deps.shopsRepository.findById(shopId);
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const existing = await deps.shopAccessStatesRepository.findByShopId(shop.id);
+    if (existing?.commercialGoLiveApprovedAt) {
+      return c.json({ ok: true, alreadyApproved: true, accessState: existing });
+    }
+
+    const approvedAt = new Date().toISOString();
+    const next = await deps.shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      commercialGoLiveApprovedAt: approvedAt,
+      commercialGoLiveApprovedBy: sessionResult.email,
+      commercialGoLiveApprovalNote: parsed.data.note?.trim() || null,
+    });
+    const approvalEvent = await deps.commercialGoLiveApprovalEventsRepository?.create({
+      shopId: shop.id,
+      eventType: 'approved',
+      actorEmail: sessionResult.email,
+      note: parsed.data.note?.trim() || null,
+      createdAt: approvedAt,
+    });
+    securityAudit({
+      action: 'commercial_go_live_approved',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: {
+        shopId: shop.id,
+      },
+    });
+    return c.json({ ok: true, alreadyApproved: false, accessState: next, approvalEvent: approvalEvent ?? null });
   });
 
   app.put(path('/admin/shops/:id/settings'), async (c) => {
