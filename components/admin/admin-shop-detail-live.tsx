@@ -177,6 +177,7 @@ export function AdminShopDetailLive() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
+  const [approvingCommercial, setApprovingCommercial] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
   const [recentCalls, setRecentCalls] = useState<ShopCall[]>([]);
@@ -458,6 +459,33 @@ export function AdminShopDetailLive() {
     }
   }
 
+
+
+  async function onApproveCommercialGoLive() {
+    if (!shopId || !shop) return;
+    setApprovingCommercial(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/backend/admin/shops/${shopId}/approve-commercial-go-live`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ note: 'Approved from admin shop detail.' }),
+      });
+      const body = (await response.json()) as LoadShopResponse & { alreadyApproved?: boolean };
+      if (!response.ok || !body.ok) {
+        setError(body.error ?? 'commercial_approval_failed');
+        return;
+      }
+      await loadShop();
+      setNotice(body.alreadyApproved ? 'Commercial go-live was already approved.' : 'Commercial go-live approved.');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'network_error');
+    } finally {
+      setApprovingCommercial(false);
+    }
+  }
+
   async function signOut() {
     await fetch('/api/backend/auth/logout', { method: 'POST' });
     window.location.href = '/admin/login';
@@ -551,6 +579,16 @@ export function AdminShopDetailLive() {
                     <div className="admin-status-row">
                       <dt>Block reason</dt>
                       <dd>{adminBlockReasonLabel(adminStatus)}</dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Commercial approval</dt>
+                      <dd>
+                        {adminStatus.commercialGoLiveApproved ? 'Approved' : shop.plan === 'enterprise' ? 'Required' : 'Not required'}
+                      </dd>
+                    </div>
+                    <div className="admin-status-row">
+                      <dt>Approved at</dt>
+                      <dd>{formatShortDateTime(adminStatus.commercialGoLiveApprovedAt)}</dd>
                     </div>
                     <div className="admin-status-row">
                       <dt>Onboarding</dt>
@@ -845,7 +883,41 @@ export function AdminShopDetailLive() {
                 ) : null}
 
                 {tab === 'billing' ? (
-                  <form className="card" onSubmit={onSavePlan}>
+                  <>
+                    {shop.plan === 'enterprise' ? (
+                      <section className="card" style={{ marginBottom: 18, borderColor: adminStatus?.commercialGoLiveApproved ? '#bbf7d0' : '#fde68a' }}>
+                        <div className="panel-head">
+                          <div>
+                            <h3>Commercial go-live approval</h3>
+                            <p className="sub">
+                              Enterprise / Custom shops require manual commercial approval before forwarding number provisioning, forwarding tests, manual confirmation, or live answering.
+                            </p>
+                          </div>
+                        </div>
+                        <dl className="admin-status-dl">
+                          <div className="admin-status-row">
+                            <dt>Status</dt>
+                            <dd>{adminStatus?.commercialGoLiveApproved ? 'Approved' : 'Pending approval'}</dd>
+                          </div>
+                          <div className="admin-status-row">
+                            <dt>Approved by</dt>
+                            <dd>{adminStatus?.commercialGoLiveApprovedBy ?? '—'}</dd>
+                          </div>
+                          <div className="admin-status-row">
+                            <dt>Note</dt>
+                            <dd>{adminStatus?.commercialGoLiveApprovalNote ?? '—'}</dd>
+                          </div>
+                        </dl>
+                        {!adminStatus?.commercialGoLiveApproved ? (
+                          <div className="top-actions" style={{ marginTop: 18, justifyContent: 'flex-start' }}>
+                            <button className="btn purple" type="button" disabled={approvingCommercial} onClick={() => void onApproveCommercialGoLive()}>
+                              {approvingCommercial ? 'Approving…' : 'Approve commercial go-live'}
+                            </button>
+                          </div>
+                        ) : null}
+                      </section>
+                    ) : null}
+                    <form className="card" onSubmit={onSavePlan}>
                     <div className="panel-head">
                       <div>
                         <h3>Billing and activation</h3>
@@ -875,6 +947,7 @@ export function AdminShopDetailLive() {
                       </button>
                     </div>
                   </form>
+                  </>
                 ) : null}
 
                 {tab === 'calls' ? (

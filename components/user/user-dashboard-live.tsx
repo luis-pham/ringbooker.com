@@ -39,6 +39,9 @@ type UserDashboardResponse = {
     hasForwardingNumber: boolean;
     paymentMethodValid: boolean;
     subscriptionActiveLike: boolean;
+    blockReason?: string;
+    commercialGoLiveApproved?: boolean;
+    commercialApprovalRequired?: boolean;
   } | null;
   error?: string;
 };
@@ -140,6 +143,7 @@ export function UserDashboardLive() {
   }, [data?.shop?.plan]);
 
   const liveAnsweringOn = data?.goLive?.liveCallsEnabled === true;
+  const enterpriseApprovalPending = data?.goLive?.commercialApprovalRequired === true;
 
   useEffect(() => {
     if (!data?.ok || !data.shop) return;
@@ -297,7 +301,8 @@ export function UserDashboardLive() {
     !data.onboardingRequired &&
     data.goLive &&
     data.goLive.primaryCta !== null &&
-    !data.goLive.liveCallsEnabled;
+    !data.goLive.liveCallsEnabled &&
+    !enterpriseApprovalPending;
 
   return (
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
@@ -334,6 +339,22 @@ export function UserDashboardLive() {
                 </div>
               }
             />
+            {enterpriseApprovalPending ? (
+              <section className="card" style={{ marginBottom: 18, borderColor: '#ddd6fe', background: '#faf5ff' }}>
+                <div className="panel-head">
+                  <div>
+                    <h3>Your Custom setup is being prepared</h3>
+                    <p className="sub">
+                      RingBooker is reviewing your locations, routing rules, and implementation plan. Our team will confirm your go-live timeline before live answering is enabled.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
+                  <a className="btn purple" href="/contact?topic=implementation">Contact implementation support</a>
+                  <a className="btn" href="/contact?topic=onboarding-call">Schedule onboarding call</a>
+                </div>
+              </section>
+            ) : null}
             {showGoLiveBanner ? (
               <section className="card" style={{ marginBottom: 18, borderColor: '#c7d2fe', background: '#eef2ff' }}>
                 <div className="panel-head">

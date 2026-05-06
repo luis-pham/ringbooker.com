@@ -29,6 +29,11 @@ export type AdminShopStatus = {
   blockReason: BillingBlockReason | null;
   canReceiveLiveCalls: boolean;
   canGoLive: boolean;
+  commercialGoLiveApproved: boolean;
+  commercialGoLiveApprovedAt: string | null;
+  commercialGoLiveApprovedBy: string | null;
+  commercialGoLiveApprovalNote: string | null;
+  commercialApprovalRequired: boolean;
 };
 
 function computeTrialStatus(
@@ -105,5 +110,10 @@ export function buildAdminShopStatus(params: {
     blockReason,
     canReceiveLiveCalls: billing.canReceiveLiveCalls,
     canGoLive: billing.canGoLive,
+    commercialGoLiveApproved: billing.commercialGoLiveApproved,
+    commercialGoLiveApprovedAt: accessState?.commercialGoLiveApprovedAt ?? null,
+    commercialGoLiveApprovedBy: accessState?.commercialGoLiveApprovedBy ?? null,
+    commercialGoLiveApprovalNote: accessState?.commercialGoLiveApprovalNote ?? null,
+    commercialApprovalRequired: billing.blockReason === 'commercial_approval_required',
   };
 }
