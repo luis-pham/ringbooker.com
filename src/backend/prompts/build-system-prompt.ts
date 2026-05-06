@@ -1,4 +1,4 @@
-import type { Customer, Shop } from '@/src/backend/domain/types';
+import type { Customer, Shop, ShopRoutingRule } from '@/src/backend/domain/types';
 import { canUseReturningCallerContext } from '@/src/backend/domain/shop-plan-capabilities';
 import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
 import {
@@ -53,7 +53,23 @@ function mapPromptModeToCallType(mode: PromptMode): VoicePromptCallType {
   return 'inbound_booking';
 }
 
-function buildProductionBusinessConfig(shop: Shop, customer: Customer | null): RuntimeBusinessConfig {
+
+function renderRoutingRules(rules?: ShopRoutingRule[]): string | null {
+  const active = (rules ?? []).filter((rule) => rule.active).sort((a, b) => a.priority - b.priority).slice(0, 12);
+  if (!active.length) return null;
+  return [
+    'CUSTOM ROUTING / ESCALATION RULES:',
+    ...active.map((rule) =>
+      compactLine(
+        `- priority ${rule.priority} ${rule.ruleType}: if ${JSON.stringify(rule.conditionJson)} then ${JSON.stringify(rule.actionJson)}`,
+        500,
+      ),
+    ),
+    'Follow these rules when they apply. For escalation actions, use configured human handoff/callback tools; do not claim a completed transfer unless the tool confirms it.',
+  ].join('\n');
+}
+
+function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, routingRules?: ShopRoutingRule[]): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
   return {
@@ -74,7 +90,7 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null): R
     welcomeMessage: shop.ai_welcome_message ? compactLine(shop.ai_welcome_message, 240) : null,
     customInstructions: renderProductionCustomInstructions({
       voiceStyle: shop.ai_voice,
-      shopCustomInstructions: shop.ai_custom_instructions ? compactLine(shop.ai_custom_instructions, 700) : null,
+      shopCustomInstructions: [shop.ai_custom_instructions ? compactLine(shop.ai_custom_instructions, 700) : null, renderRoutingRules(routingRules)].filter(Boolean).join('\n\n') || null,
     }),
     ...(languageFields.languageOptions?.length ? { languageOptions: languageFields.languageOptions } : {}),
     productionLanguageDirective: languageFields.productionLanguageDirective,
@@ -87,8 +103,9 @@ export function buildSystemPrompt(input: {
   customer: Customer | null;
   mode: PromptMode;
   vertical?: VoicePromptVertical;
+  routingRules?: ShopRoutingRule[];
 }): string {
-  const business = buildProductionBusinessConfig(input.shop, input.customer);
+  const business = buildProductionBusinessConfig(input.shop, input.customer, input.routingRules);
   return composeVoicePrompt({
     vertical: input.vertical ?? inferVerticalFromBusinessConfig(business),
     callType: mapPromptModeToCallType(input.mode),

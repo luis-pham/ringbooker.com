@@ -10,6 +10,9 @@ import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repos
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryCommercialGoLiveApprovalEventsRepository } from '@/src/backend/adapters/memory/commercial-go-live-approval-events-repository';
+import { InMemoryShopLocationsRepository } from '@/src/backend/adapters/memory/shop-locations-repository';
+import { InMemoryShopRoutingRulesRepository } from '@/src/backend/adapters/memory/shop-routing-rules-repository';
+import { InMemoryCommercialAccountsRepository } from '@/src/backend/adapters/memory/commercial-accounts-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
@@ -23,6 +26,9 @@ applyRequiredTestEnv({
 test('admin can create shop, update plan/settings, and invite admin', async () => {
   const app = createBackendApp({
     commercialGoLiveApprovalEventsRepository: new InMemoryCommercialGoLiveApprovalEventsRepository(),
+    shopLocationsRepository: new InMemoryShopLocationsRepository(),
+    shopRoutingRulesRepository: new InMemoryShopRoutingRulesRepository(),
+    commercialAccountsRepository: new InMemoryCommercialAccountsRepository(),
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     jobsRepository: new InMemoryJobsRepository(),
     bookingsRepository: new InMemoryBookingsRepository(),
@@ -125,6 +131,91 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
   assert.equal(shopDetailBody.ok, true);
   assert.equal(shopDetailBody.commercialGoLiveApprovalEvents?.length, 1);
   assert.equal(shopDetailBody.commercialGoLiveApprovalEvents?.[0]?.actorEmail, 'admin@ringbooker.local');
+
+  const createLocationResponse = await app.request(`/admin/shops/${createdShopId}/locations`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
+      cookie: cookieHeader!,
+    },
+    body: JSON.stringify({
+      name: 'Downtown',
+      timezone: 'America/Los_Angeles',
+      phoneNumber: '+17145550101',
+      businessHours: { mon: { open: '09:00', close: '17:00' } },
+      active: true,
+    }),
+  });
+  assert.equal(createLocationResponse.status, 200);
+  const createLocationBody = (await createLocationResponse.json()) as { ok: boolean; location: { id: string; name: string } };
+  assert.equal(createLocationBody.ok, true);
+  assert.equal(createLocationBody.location.name, 'Downtown');
+
+  const createRoutingRuleResponse = await app.request(`/admin/shops/${createdShopId}/routing-rules`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
+      cookie: cookieHeader!,
+    },
+    body: JSON.stringify({
+      locationId: createLocationBody.location.id,
+      ruleType: 'language_route',
+      conditionJson: { language: 'vi' },
+      actionJson: { action: 'callback_owner' },
+      priority: 10,
+      active: true,
+    }),
+  });
+  assert.equal(createRoutingRuleResponse.status, 200);
+  const createRoutingRuleBody = (await createRoutingRuleResponse.json()) as { ok: boolean; rule: { ruleType: string; priority: number } };
+  assert.equal(createRoutingRuleBody.ok, true);
+  assert.equal(createRoutingRuleBody.rule.ruleType, 'language_route');
+  assert.equal(createRoutingRuleBody.rule.priority, 10);
+
+  const commercialAccountResponse = await app.request(`/admin/shops/${createdShopId}/commercial-account`, {
+    method: 'PUT',
+    headers: {
+      'content-type': 'application/json',
+      'origin': 'http://localhost:3000',
+      cookie: cookieHeader!,
+    },
+    body: JSON.stringify({
+      contractStatus: 'active',
+      billingMethod: 'manual_invoice',
+      monthlyMinimumCents: 49900,
+      setupFeeCents: 100000,
+      includedLocations: 2,
+      includedMinutes: 1000,
+      overageRateCents: 20,
+      notes: 'Enterprise Basic.',
+    }),
+  });
+  assert.equal(commercialAccountResponse.status, 200);
+  const commercialAccountBody = (await commercialAccountResponse.json()) as { ok: boolean; commercialAccount: { contractStatus: string; monthlyMinimumCents: number } };
+  assert.equal(commercialAccountBody.ok, true);
+  assert.equal(commercialAccountBody.commercialAccount.contractStatus, 'active');
+  assert.equal(commercialAccountBody.commercialAccount.monthlyMinimumCents, 49900);
+
+  const enterpriseDetailResponse = await app.request(`/admin/shops/${createdShopId}`, {
+    method: 'GET',
+    headers: {
+      'origin': 'http://localhost:3000',
+      cookie: cookieHeader!,
+    },
+  });
+  assert.equal(enterpriseDetailResponse.status, 200);
+  const enterpriseDetailBody = (await enterpriseDetailResponse.json()) as {
+    ok: boolean;
+    shopLocations?: Array<{ name: string }>;
+    shopRoutingRules?: Array<{ ruleType: string }>;
+    commercialAccount?: { contractStatus: string } | null;
+  };
+  assert.equal(enterpriseDetailBody.ok, true);
+  assert.equal(enterpriseDetailBody.shopLocations?.[0]?.name, 'Downtown');
+  assert.equal(enterpriseDetailBody.shopRoutingRules?.[0]?.ruleType, 'language_route');
+  assert.equal(enterpriseDetailBody.commercialAccount?.contractStatus, 'active');
 
   const updateSettingsResponse = await app.request(`/admin/shops/${createdShopId}/settings`, {
     method: 'PUT',

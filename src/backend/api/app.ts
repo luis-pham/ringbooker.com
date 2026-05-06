@@ -49,6 +49,7 @@ import type {
   BillingNotificationsRepository,
   BillingCustomersRepository,
   BillingSubscriptionsRepository,
+  CommercialAccountsRepository,
   CommercialGoLiveApprovalEventsRepository,
   CallbacksRepository,
   CallLogsRepository,
@@ -64,6 +65,8 @@ import type {
   DemoSessionsRepository,
   HandoffSessionsRepository,
   ShopAccessStatesRepository,
+  ShopLocationsRepository,
+  ShopRoutingRulesRepository,
   TestCallAttemptsRepository,
   ForwardingTestSessionsRepository,
   VoiceCallLegsRepository,
@@ -300,6 +303,33 @@ async function createOpenAiRealtimeClientSecret(params: {
   };
 }
 
+
+const contactIntentValues = ['demo', 'enterprise', 'sales', 'support', 'general'] as const;
+const contactPlanInterestValues = ['starter', 'professional', 'enterprise', 'unknown'] as const;
+
+function normalizeEnumValue<T extends readonly string[]>(value: unknown, allowed: T, fallback: T[number]): T[number] {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return allowed.includes(normalized) ? normalized : fallback;
+}
+
+function nullableTrimmedString(max: number) {
+  return z.preprocess((value) => {
+    if (value === null || value === undefined) return null;
+    const normalized = String(value).trim();
+    return normalized.length > 0 ? normalized : null;
+  }, z.string().max(max).nullable());
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => {
+    if (ch === '&') return '&amp;';
+    if (ch === '<') return '&lt;';
+    if (ch === '>') return '&gt;';
+    if (ch === '"') return '&quot;';
+    return '&#39;';
+  });
+}
+
 const publicContactRequestSchema = z.object({
   fullName: z.string().min(1).max(120),
   businessName: z.string().min(1).max(120),
@@ -309,6 +339,35 @@ const publicContactRequestSchema = z.object({
   currentSetup: z.string().min(1).max(120),
   helpNeed: z.string().min(1).max(1000),
   bestTime: z.string().min(1).max(140),
+  intent: z.preprocess(
+    (value) => normalizeEnumValue(value, contactIntentValues, 'general'),
+    z.enum(contactIntentValues),
+  ),
+  source: z.preprocess((value) => {
+    const normalized = typeof value === 'string' ? value.trim() : '';
+    return normalized.length > 0 ? normalized : undefined;
+  }, z.string().max(120).optional()),
+  planInterest: z.preprocess(
+    (value) => normalizeEnumValue(value, contactPlanInterestValues, 'unknown'),
+    z.enum(contactPlanInterestValues),
+  ),
+  locationCount: z.coerce.number().int().min(1).max(500).nullable().optional(),
+  estimatedCallVolume: nullableTrimmedString(120).optional(),
+  bookingSoftware: nullableTrimmedString(160).optional(),
+  routingNeeds: nullableTrimmedString(3000).optional(),
+  goLiveTimeline: nullableTrimmedString(300).optional(),
+  numberOfLocations: z.coerce.number().int().min(1).max(500).nullable().optional(),
+  locationsText: nullableTrimmedString(3000).optional(),
+  mainContact: nullableTrimmedString(160).optional(),
+  currentPhoneProvider: nullableTrimmedString(160).optional(),
+  currentBookingSoftware: nullableTrimmedString(160).optional(),
+  currentCrm: nullableTrimmedString(160).optional(),
+  estimatedMonthlyCallVolume: nullableTrimmedString(120).optional(),
+  languagesNeeded: nullableTrimmedString(500).optional(),
+  routingRules: nullableTrimmedString(3000).optional(),
+  escalationRules: nullableTrimmedString(3000).optional(),
+  integrationRequirements: nullableTrimmedString(3000).optional(),
+  preferredGoLiveTimeline: nullableTrimmedString(300).optional(),
   captchaToken: z.string().min(1),
   sessionId: z.string().min(8).max(120),
   website: z.string().max(120).optional(),
@@ -462,6 +521,40 @@ const adminCommercialGoLiveApprovalSchema = z.object({
   note: z.string().trim().max(1000).optional(),
 });
 
+const jsonRecordSchema = z.record(z.string(), z.unknown());
+
+const adminShopLocationSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  address: z.string().trim().max(500).nullable().optional(),
+  timezone: z.string().trim().min(1).max(80).default('America/Los_Angeles'),
+  phoneNumber: z.string().trim().max(32).nullable().optional(),
+  telnyxNumber: z.string().trim().max(32).nullable().optional(),
+  businessHours: jsonRecordSchema.optional().default({}),
+  active: z.boolean().optional().default(true),
+});
+
+const adminShopRoutingRuleSchema = z.object({
+  locationId: z.string().uuid().nullable().optional(),
+  ruleType: z.string().trim().min(1).max(80),
+  conditionJson: jsonRecordSchema.optional().default({}),
+  actionJson: jsonRecordSchema.optional().default({}),
+  priority: z.coerce.number().int().min(0).max(10000).optional().default(100),
+  active: z.boolean().optional().default(true),
+});
+
+const adminCommercialAccountSchema = z.object({
+  contractStatus: z.enum(['draft', 'sent', 'signed', 'active', 'paused', 'terminated']).default('draft'),
+  monthlyMinimumCents: z.coerce.number().int().min(0).nullable().optional(),
+  setupFeeCents: z.coerce.number().int().min(0).nullable().optional(),
+  includedLocations: z.coerce.number().int().min(0).nullable().optional(),
+  includedMinutes: z.coerce.number().int().min(0).nullable().optional(),
+  overageRateCents: z.coerce.number().int().min(0).nullable().optional(),
+  billingMethod: z.enum(['manual_invoice', 'paddle_custom', 'wire', 'ach', 'other']).default('manual_invoice'),
+  contractSignedAt: z.string().datetime().nullable().optional(),
+  approvedAt: z.string().datetime().nullable().optional(),
+  notes: z.string().trim().max(2000).nullable().optional(),
+});
+
 const adminInviteSchema = z.object({
   email: z.string().email(),
   shopId: z.string().uuid().optional(),
@@ -553,10 +646,12 @@ const blogPostListQuerySchema = z.object({
 });
 
 const contactRequestStatusSchema = z.enum(['new', 'contacted', 'qualified', 'closed', 'spam']);
+const contactRequestIntentSchema = z.enum(contactIntentValues);
 
 const adminLeadsListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
   status: z.union([contactRequestStatusSchema, z.literal('all')]).optional(),
+  intent: z.union([contactRequestIntentSchema, z.literal('all')]).optional(),
   query: z.string().max(120).optional(),
 });
 
@@ -1595,6 +1690,9 @@ export function createBackendApp(deps: {
   billingNotificationsRepository?: BillingNotificationsRepository;
   shopAccessStatesRepository?: ShopAccessStatesRepository;
   commercialGoLiveApprovalEventsRepository?: CommercialGoLiveApprovalEventsRepository;
+  shopLocationsRepository?: ShopLocationsRepository;
+  shopRoutingRulesRepository?: ShopRoutingRulesRepository;
+  commercialAccountsRepository?: CommercialAccountsRepository;
   testCallAttemptsRepository?: TestCallAttemptsRepository;
   forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   callbacksRepository?: CallbacksRepository;
@@ -1903,6 +2001,7 @@ export function createBackendApp(deps: {
         shopsRepository: deps.shopsRepository,
         billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
         shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        shopRoutingRulesRepository: deps.shopRoutingRulesRepository,
         jobsRepository: deps.jobsRepository,
         bookingsRepository: deps.bookingsRepository,
         callbacksRepository: deps.callbacksRepository,
@@ -2043,6 +2142,12 @@ export function createBackendApp(deps: {
 
     const requestId = `contact-${randomUUID()}`;
     const receivedAt = new Date().toISOString();
+    const locationCount = parsed.data.locationCount ?? parsed.data.numberOfLocations ?? null;
+    const estimatedCallVolume = parsed.data.estimatedCallVolume ?? parsed.data.estimatedMonthlyCallVolume ?? null;
+    const bookingSoftware = parsed.data.bookingSoftware ?? parsed.data.currentBookingSoftware ?? null;
+    const routingNeeds = parsed.data.routingNeeds ?? parsed.data.routingRules ?? null;
+    const goLiveTimeline = parsed.data.goLiveTimeline ?? parsed.data.preferredGoLiveTimeline ?? null;
+    const sourceDetail = parsed.data.source ?? null;
 
     if (deps.contactRequestsRepository) {
       try {
@@ -2056,6 +2161,26 @@ export function createBackendApp(deps: {
           currentSetup: parsed.data.currentSetup,
           helpNeed: parsed.data.helpNeed,
           bestTime: parsed.data.bestTime,
+          intent: parsed.data.intent,
+          sourceDetail,
+          planInterest: parsed.data.planInterest,
+          locationCount,
+          estimatedCallVolume,
+          bookingSoftware,
+          routingNeeds,
+          goLiveTimeline,
+          numberOfLocations: parsed.data.numberOfLocations ?? null,
+          locationsText: parsed.data.locationsText ?? null,
+          mainContact: parsed.data.mainContact ?? null,
+          currentPhoneProvider: parsed.data.currentPhoneProvider ?? null,
+          currentBookingSoftware: parsed.data.currentBookingSoftware ?? null,
+          currentCrm: parsed.data.currentCrm ?? null,
+          estimatedMonthlyCallVolume: parsed.data.estimatedMonthlyCallVolume ?? null,
+          languagesNeeded: parsed.data.languagesNeeded ?? null,
+          routingRules: parsed.data.routingRules ?? null,
+          escalationRules: parsed.data.escalationRules ?? null,
+          integrationRequirements: parsed.data.integrationRequirements ?? null,
+          preferredGoLiveTimeline: parsed.data.preferredGoLiveTimeline ?? null,
           source: 'marketing_contact_form',
           ip,
         });
@@ -2078,10 +2203,19 @@ export function createBackendApp(deps: {
       );
     }
     if (deps.emailService && salesTo) {
-      const subject = `New Contact Request — ${parsed.data.businessName}`;
+      const leadName = parsed.data.businessName || normalizedEmail;
+      const subject =
+        parsed.data.intent === 'enterprise'
+          ? `[Enterprise inquiry] Custom setup request from ${leadName}`
+          : parsed.data.intent === 'demo'
+            ? `[Demo request] ${leadName}`
+            : `[Contact] ${leadName}`;
       const lines = [
         `Request ID: ${requestId}`,
         `Received At: ${receivedAt}`,
+        `Intent: ${parsed.data.intent}`,
+        sourceDetail ? `Source: ${sourceDetail}` : 'Source: —',
+        `Plan Interest: ${parsed.data.planInterest}`,
         `Name: ${parsed.data.fullName}`,
         `Business: ${parsed.data.businessName}`,
         `Email: ${normalizedEmail}`,
@@ -2089,10 +2223,21 @@ export function createBackendApp(deps: {
         `Business Type: ${parsed.data.businessType}`,
         `Current Setup: ${parsed.data.currentSetup}`,
         `Best Time: ${parsed.data.bestTime}`,
+        locationCount ? `Number of locations: ${locationCount}` : null,
+        estimatedCallVolume ? `Estimated Monthly Call Volume: ${estimatedCallVolume}` : null,
+        bookingSoftware ? `Booking Software: ${bookingSoftware}` : null,
+        routingNeeds ? `Routing Needs: ${routingNeeds}` : null,
+        goLiveTimeline ? `Preferred Go-live Timeline: ${goLiveTimeline}` : null,
+        parsed.data.locationsText ? `Locations: ${parsed.data.locationsText}` : null,
+        parsed.data.currentPhoneProvider ? `Phone Provider: ${parsed.data.currentPhoneProvider}` : null,
+        parsed.data.currentCrm ? `CRM: ${parsed.data.currentCrm}` : null,
+        parsed.data.languagesNeeded ? `Languages Needed: ${parsed.data.languagesNeeded}` : null,
+        parsed.data.escalationRules ? `Escalation Rules: ${parsed.data.escalationRules}` : null,
+        parsed.data.integrationRequirements ? `Integration Requirements: ${parsed.data.integrationRequirements}` : null,
         '',
         'Help Request:',
         parsed.data.helpNeed,
-      ];
+      ].filter((line): line is string => typeof line === 'string');
       try {
         await deps.emailService.sendEmail({
           to: salesTo,
@@ -2100,18 +2245,8 @@ export function createBackendApp(deps: {
           text: lines.join('\n'),
           html: `
             <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-              <h2 style="margin:0 0 12px">New Contact Request</h2>
-              <p style="margin:0 0 8px"><strong>Request ID:</strong> ${requestId}</p>
-              <p style="margin:0 0 8px"><strong>Received At:</strong> ${receivedAt}</p>
-              <p style="margin:0 0 8px"><strong>Name:</strong> ${parsed.data.fullName}</p>
-              <p style="margin:0 0 8px"><strong>Business:</strong> ${parsed.data.businessName}</p>
-              <p style="margin:0 0 8px"><strong>Email:</strong> ${normalizedEmail}</p>
-              <p style="margin:0 0 8px"><strong>Phone:</strong> ${normalizedPhone}</p>
-              <p style="margin:0 0 8px"><strong>Business Type:</strong> ${parsed.data.businessType}</p>
-              <p style="margin:0 0 8px"><strong>Current Setup:</strong> ${parsed.data.currentSetup}</p>
-              <p style="margin:0 0 8px"><strong>Best Time:</strong> ${parsed.data.bestTime}</p>
-              <p style="margin:12px 0 4px"><strong>Help Request:</strong></p>
-              <p style="margin:0;white-space:pre-wrap">${parsed.data.helpNeed}</p>
+              <h2 style="margin:0 0 12px">${escapeHtml(subject)}</h2>
+              <pre style="white-space:pre-wrap;font-family:Arial,sans-serif;margin:0">${escapeHtml(lines.join('\n'))}</pre>
             </div>
           `,
           category: 'contact_request',
@@ -2131,7 +2266,7 @@ export function createBackendApp(deps: {
       }
     }
 
-    if (deps.emailService) {
+    if (deps.emailService && parsed.data.intent === 'demo') {
       const firstName = parsed.data.fullName.trim().split(/\s+/).filter(Boolean)[0] ?? '';
       try {
         const { input, text } = buildDemoRequestCustomerEmailPayload({
@@ -2161,35 +2296,6 @@ export function createBackendApp(deps: {
           'public_contact_confirmation_email_failed',
         );
       }
-
-      try {
-        await deps.emailService.sendEmail({
-          from: emailDefaultFrom(),
-          to: salesTo,
-          subject: `New demo request: ${parsed.data.businessName || parsed.data.fullName}`,
-          text: `New demo request received:
-
-Name: ${parsed.data.fullName}
-Business: ${parsed.data.businessName || 'Not provided'}
-Email: ${normalizedEmail}
-Phone: ${normalizedPhone || 'Not provided'}
-Business type: ${parsed.data.businessType || 'Not provided'}
-Main need: ${parsed.data.helpNeed || 'Not provided'}
-
-Submitted at: ${new Date().toISOString()}`,
-          category: 'demo_request_internal',
-          idempotencyKey: `public_contact_internal:${requestId}`,
-          replyTo: normalizedEmail,
-        });
-      } catch (error) {
-        logger.error(
-          {
-            err: error,
-            requestId,
-          },
-          'public_contact_internal_notification_failed',
-        );
-      }
     }
 
     securityAudit({
@@ -2201,6 +2307,9 @@ Submitted at: ${new Date().toISOString()}`,
         requestId,
         businessType: parsed.data.businessType,
         currentSetup: parsed.data.currentSetup,
+        intent: parsed.data.intent,
+        source: sourceDetail,
+        planInterest: parsed.data.planInterest,
       },
     });
 
@@ -6261,7 +6370,7 @@ Submitted at: ${new Date().toISOString()}`,
           return [];
         })
       : Promise.resolve([]);
-    const [subscription, accessState, testCallsUsed, commercialGoLiveApprovalEvents] = await Promise.all([
+    const [subscription, accessState, testCallsUsed, commercialGoLiveApprovalEvents, shopLocations, shopRoutingRules, commercialAccount] = await Promise.all([
       deps.billingSubscriptionsRepository
         ? deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id)
         : Promise.resolve(null),
@@ -6274,12 +6383,18 @@ Submitted at: ${new Date().toISOString()}`,
           })
         : Promise.resolve(0),
       commercialGoLiveApprovalEventsPromise,
+      deps.shopLocationsRepository ? deps.shopLocationsRepository.listByShopId(shop.id).catch(() => []) : Promise.resolve([]),
+      deps.shopRoutingRulesRepository ? deps.shopRoutingRulesRepository.listByShopId(shop.id).catch(() => []) : Promise.resolve([]),
+      deps.commercialAccountsRepository ? deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : Promise.resolve(null),
     ]);
 
     return c.json({
       ok: true,
       shop,
       commercialGoLiveApprovalEvents,
+      shopLocations,
+      shopRoutingRules,
+      commercialAccount,
       adminStatus: buildAdminShopStatus({
         shop,
         subscription,
@@ -6380,6 +6495,97 @@ Submitted at: ${new Date().toISOString()}`,
       },
     });
     return c.json({ ok: true, alreadyApproved: false, accessState: next, approvalEvent: approvalEvent ?? null });
+  });
+
+
+  app.post(path('/admin/shops/:id/locations'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_location_post');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopLocationsRepository) return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const shop = await deps.shopsRepository.findById(shopId);
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const parsed = adminShopLocationSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const location = await deps.shopLocationsRepository.create({ shopId: shop.id, ...parsed.data });
+    return c.json({ ok: true, location });
+  });
+
+  app.put(path('/admin/shops/:id/locations/:locationId'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_location_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopLocationsRepository) return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
+    const locationId = parseAdminResourceUuid(c.req.param('locationId'));
+    if (!shopId || !locationId) return c.json({ ok: false, error: 'invalid_id' }, 400);
+    const parsed = adminShopLocationSchema.partial().safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const location = await deps.shopLocationsRepository.update(shopId, locationId, parsed.data as Parameters<NonNullable<typeof deps.shopLocationsRepository>['update']>[2]);
+    if (!location) return c.json({ ok: false, error: 'location_not_found' }, 404);
+    return c.json({ ok: true, location });
+  });
+
+  app.post(path('/admin/shops/:id/routing-rules'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_routing_rule_post');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopRoutingRulesRepository) return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const shop = await deps.shopsRepository.findById(shopId);
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const parsed = adminShopRoutingRuleSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const rule = await deps.shopRoutingRulesRepository.create({ shopId: shop.id, ...parsed.data });
+    return c.json({ ok: true, rule });
+  });
+
+  app.put(path('/admin/shops/:id/routing-rules/:ruleId'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_routing_rule_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopRoutingRulesRepository) return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
+    const ruleId = parseAdminResourceUuid(c.req.param('ruleId'));
+    if (!shopId || !ruleId) return c.json({ ok: false, error: 'invalid_id' }, 400);
+    const parsed = adminShopRoutingRuleSchema.partial().safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const rule = await deps.shopRoutingRulesRepository.update(shopId, ruleId, parsed.data);
+    if (!rule) return c.json({ ok: false, error: 'routing_rule_not_found' }, 404);
+    return c.json({ ok: true, rule });
+  });
+
+  app.put(path('/admin/shops/:id/commercial-account'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_commercial_account_put');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.commercialAccountsRepository) return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const shop = await deps.shopsRepository.findById(shopId);
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const parsed = adminCommercialAccountSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const account = await deps.commercialAccountsRepository.upsert({ shopId: shop.id, ...parsed.data });
+    return c.json({ ok: true, commercialAccount: account });
   });
 
   app.put(path('/admin/shops/:id/settings'), async (c) => {
@@ -6895,6 +7101,7 @@ Submitted at: ${new Date().toISOString()}`,
     const parsed = adminLeadsListQuerySchema.safeParse({
       limit: c.req.query('limit'),
       status: c.req.query('status'),
+      intent: c.req.query('intent'),
       query: c.req.query('query'),
     });
     if (!parsed.success) {
@@ -6904,6 +7111,7 @@ Submitted at: ${new Date().toISOString()}`,
     const leads = await deps.contactRequestsRepository.listForAdmin({
       limit: parsed.data.limit,
       status: parsed.data.status,
+      intent: parsed.data.intent,
       query: parsed.data.query,
     });
 
@@ -6917,6 +7125,7 @@ Submitted at: ${new Date().toISOString()}`,
       leads,
       filters: {
         status: parsed.data.status ?? 'all',
+        intent: parsed.data.intent ?? 'all',
         query: parsed.data.query ?? '',
       },
       metrics: {
@@ -7235,6 +7444,7 @@ Submitted at: ${new Date().toISOString()}`,
         bookingsRepository: deps.bookingsRepository,
         callbacksRepository: deps.callbacksRepository,
         telephonyService: deps.telephonyService,
+        shopRoutingRulesRepository: deps.shopRoutingRulesRepository,
         realtimeAgentRuntime: deps.realtimeAgentRuntime ?? {
           startInboundSession: async (params) => ({
             mode: 'mock',
@@ -7311,6 +7521,7 @@ Submitted at: ${new Date().toISOString()}`,
         bookingsRepository: deps.bookingsRepository,
         callbacksRepository: deps.callbacksRepository,
         telephonyService: deps.telephonyService,
+        shopRoutingRulesRepository: deps.shopRoutingRulesRepository,
         realtimeAgentRuntime: deps.realtimeAgentRuntime,
       },
       {

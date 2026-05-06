@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { ContactRequest, ContactRequestStatus } from '@/src/backend/domain/types';
+import type { ContactRequest, ContactRequestIntent, ContactRequestPlanInterest, ContactRequestStatus } from '@/src/backend/domain/types';
 import type { ContactRequestsRepository } from '@/src/backend/ports/repositories';
 
 function normalizeLimit(limit?: number, maxCap = 500): number {
@@ -26,6 +26,13 @@ function matchesQuery(record: ContactRequest, query?: string): boolean {
     record.helpNeed,
     record.bestTime,
     record.status,
+    record.intent,
+    record.sourceDetail ?? '',
+    record.planInterest,
+    record.estimatedCallVolume ?? '',
+    record.bookingSoftware ?? '',
+    record.routingNeeds ?? '',
+    record.goLiveTimeline ?? '',
   ]
     .join(' ')
     .toLowerCase()
@@ -49,6 +56,26 @@ export class InMemoryContactRequestsRepository implements ContactRequestsReposit
     currentSetup: string;
     helpNeed: string;
     bestTime: string;
+    intent?: ContactRequestIntent;
+    sourceDetail?: string | null;
+    planInterest?: ContactRequestPlanInterest;
+    locationCount?: number | null;
+    estimatedCallVolume?: string | null;
+    bookingSoftware?: string | null;
+    routingNeeds?: string | null;
+    goLiveTimeline?: string | null;
+    numberOfLocations?: number | null;
+    locationsText?: string | null;
+    mainContact?: string | null;
+    currentPhoneProvider?: string | null;
+    currentBookingSoftware?: string | null;
+    currentCrm?: string | null;
+    estimatedMonthlyCallVolume?: string | null;
+    languagesNeeded?: string | null;
+    routingRules?: string | null;
+    escalationRules?: string | null;
+    integrationRequirements?: string | null;
+    preferredGoLiveTimeline?: string | null;
     source?: string;
     ip?: string | null;
   }): Promise<ContactRequest> {
@@ -64,6 +91,26 @@ export class InMemoryContactRequestsRepository implements ContactRequestsReposit
       currentSetup: params.currentSetup,
       helpNeed: params.helpNeed,
       bestTime: params.bestTime,
+      intent: params.intent ?? 'general',
+      sourceDetail: params.sourceDetail ?? null,
+      planInterest: params.planInterest ?? 'unknown',
+      locationCount: params.locationCount ?? null,
+      estimatedCallVolume: params.estimatedCallVolume ?? null,
+      bookingSoftware: params.bookingSoftware ?? null,
+      routingNeeds: params.routingNeeds ?? null,
+      goLiveTimeline: params.goLiveTimeline ?? null,
+      numberOfLocations: params.numberOfLocations ?? null,
+      locationsText: params.locationsText ?? null,
+      mainContact: params.mainContact ?? null,
+      currentPhoneProvider: params.currentPhoneProvider ?? null,
+      currentBookingSoftware: params.currentBookingSoftware ?? null,
+      currentCrm: params.currentCrm ?? null,
+      estimatedMonthlyCallVolume: params.estimatedMonthlyCallVolume ?? null,
+      languagesNeeded: params.languagesNeeded ?? null,
+      routingRules: params.routingRules ?? null,
+      escalationRules: params.escalationRules ?? null,
+      integrationRequirements: params.integrationRequirements ?? null,
+      preferredGoLiveTimeline: params.preferredGoLiveTimeline ?? null,
       status: 'new',
       source: params.source ?? 'marketing_contact_form',
       ip: params.ip ?? null,
@@ -83,15 +130,18 @@ export class InMemoryContactRequestsRepository implements ContactRequestsReposit
     query?: string;
     createdAfter?: Date;
     createdBefore?: Date;
+    intent?: ContactRequestIntent | 'all';
   }): Promise<ContactRequest[]> {
     const hasRange = Boolean(params?.createdAfter && params?.createdBefore);
     const limit = normalizeLimit(params?.limit, hasRange ? 10_000 : 500);
     const status = params?.status ?? 'all';
+    const intent = params?.intent ?? 'all';
     const fromMs = params?.createdAfter?.getTime();
     const toMs = params?.createdBefore?.getTime();
     return sortByCreatedAtDesc(
       [...this.records.values()].filter((record) => {
         if (status !== 'all' && record.status !== status) return false;
+        if (intent !== 'all' && record.intent !== intent) return false;
         if (fromMs !== undefined && toMs !== undefined && record.createdAt) {
           const t = new Date(record.createdAt).getTime();
           if (Number.isNaN(t) || t < fromMs || t > toMs) return false;

@@ -142,7 +142,49 @@ const scripts: string[] = [
   const submitButton = document.getElementById('contactSubmitButton');
   const captchaMount = document.getElementById('contactTurnstileMount');
   const hintEl = document.getElementById('contactTurnstileHint');
+  const heroTitle = document.getElementById('contactHeroTitle');
+  const heroSubtitle = document.getElementById('contactHeroSubtitle');
+  const formTitle = document.getElementById('contactFormTitle');
+  const formChip = document.getElementById('contactFormChip');
+  const enterpriseFields = document.getElementById('enterpriseContactFields');
   if (!form || !helper || !submitButton) return;
+
+  const allowedIntents = new Set(['demo', 'enterprise', 'sales', 'support', 'general']);
+  const allowedPlans = new Set(['starter', 'professional', 'enterprise', 'unknown']);
+  const queryParams = new URLSearchParams(window.location.search);
+  const rawIntent = (queryParams.get('intent') || '').trim().toLowerCase();
+  const contactIntent = allowedIntents.has(rawIntent) ? rawIntent : 'general';
+  const rawPlan = (queryParams.get('plan') || '').trim().toLowerCase();
+  const planInterest = allowedPlans.has(rawPlan) ? rawPlan : (contactIntent === 'enterprise' ? 'enterprise' : 'unknown');
+  const contactSource = (queryParams.get('source') || '').trim().slice(0, 120);
+
+  const applyContactIntentCopy = () => {
+    if (contactIntent === 'enterprise') {
+      if (heroTitle) heroTitle.textContent = 'Talk to us about a Custom setup';
+      if (heroSubtitle) heroSubtitle.textContent = 'Tell us about your locations, call volume, and routing needs. We’ll help plan your RingBooker setup.';
+      if (formTitle) formTitle.textContent = 'Talk to us about a Custom setup';
+      if (formChip) formChip.textContent = 'Custom setup';
+      submitButton.textContent = 'Send Custom setup request';
+      if (enterpriseFields) enterpriseFields.style.display = 'contents';
+      return;
+    }
+    if (contactIntent === 'demo') {
+      if (heroTitle) heroTitle.textContent = 'See How RingBooker Recovers Missed Bookings';
+      if (heroSubtitle) heroSubtitle.textContent = 'Tell us how your calls work today—after-hours, overflow, reschedules, or consults—and we’ll show how RingBooker fits your workflow in about 15 minutes.';
+      if (formTitle) formTitle.textContent = 'Request a demo';
+      if (formChip) formChip.textContent = 'Low-pressure demo';
+      submitButton.textContent = 'Request demo';
+      if (enterpriseFields) enterpriseFields.style.display = 'none';
+      return;
+    }
+    if (heroTitle) heroTitle.textContent = 'Contact RingBooker';
+    if (heroSubtitle) heroSubtitle.textContent = 'Send us a note and we’ll route it to the right RingBooker team member.';
+    if (formTitle) formTitle.textContent = 'Contact RingBooker';
+    if (formChip) formChip.textContent = 'Contact';
+    submitButton.textContent = 'Send message';
+    if (enterpriseFields) enterpriseFields.style.display = 'none';
+  };
+  applyContactIntentCopy();
 
   const mountContactTurnstile = () => {
     if (!captchaMount) return;
@@ -225,6 +267,19 @@ const scripts: string[] = [
     const helpNeed = document.getElementById('contactHelpNeed')?.value?.trim() || 'No extra details provided.';
     const bestTime = document.getElementById('contactBestTime')?.value?.trim() ?? '';
     const website = document.getElementById('contactWebsite')?.value?.trim() ?? '';
+    const numberOfLocationsRaw = document.getElementById('contactNumberOfLocations')?.value?.trim() ?? '';
+    const numberOfLocations = numberOfLocationsRaw ? Number(numberOfLocationsRaw) : null;
+    const locationsText = document.getElementById('contactLocationsText')?.value?.trim() ?? '';
+    const mainContact = document.getElementById('contactMainContact')?.value?.trim() ?? '';
+    const currentPhoneProvider = document.getElementById('contactCurrentPhoneProvider')?.value?.trim() ?? '';
+    const currentBookingSoftware = document.getElementById('contactCurrentBookingSoftware')?.value?.trim() ?? '';
+    const currentCrm = document.getElementById('contactCurrentCrm')?.value?.trim() ?? '';
+    const estimatedMonthlyCallVolume = document.getElementById('contactEstimatedMonthlyCallVolume')?.value?.trim() ?? '';
+    const languagesNeeded = document.getElementById('contactLanguagesNeeded')?.value?.trim() ?? '';
+    const routingRules = document.getElementById('contactRoutingRules')?.value?.trim() ?? '';
+    const escalationRules = document.getElementById('contactEscalationRules')?.value?.trim() ?? '';
+    const integrationRequirements = document.getElementById('contactIntegrationRequirements')?.value?.trim() ?? '';
+    const preferredGoLiveTimeline = document.getElementById('contactPreferredGoLiveTimeline')?.value?.trim() ?? '';
 
     if (!fullName || !businessName || !email || !phoneNumber || !businessType || !currentSetup || !bestTime) {
       setHelper('Please complete the required fields.', 'error');
@@ -252,9 +307,29 @@ const scripts: string[] = [
           currentSetup,
           helpNeed,
           bestTime,
+          intent: contactIntent,
+          source: contactSource,
+          planInterest,
+          locationCount: numberOfLocations,
+          estimatedCallVolume: estimatedMonthlyCallVolume,
+          bookingSoftware: currentBookingSoftware,
+          routingNeeds: routingRules,
+          goLiveTimeline: preferredGoLiveTimeline,
           captchaToken,
           sessionId: ensureSessionId(),
           website,
+          numberOfLocations,
+          locationsText,
+          mainContact,
+          currentPhoneProvider,
+          currentBookingSoftware,
+          currentCrm,
+          estimatedMonthlyCallVolume,
+          languagesNeeded,
+          routingRules,
+          escalationRules,
+          integrationRequirements,
+          preferredGoLiveTimeline,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -340,9 +415,9 @@ export function MarketingContactTemplate() {
                     <span style={{ margin: '0 6px' }}>›</span>
                     <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>Contact</span>
                   </nav>
-                  <div className="badge">Book a demo</div>
-                  <h1>See How RingBooker Recovers Missed Bookings</h1>
-                  <p>Tell us how your calls work today—after-hours, overflow, reschedules, or consults—and we&apos;ll show how RingBooker fits your workflow in about 15 minutes.</p>
+                  <div className="badge">Contact RingBooker</div>
+                  <h1 id="contactHeroTitle">Contact RingBooker</h1>
+                  <p id="contactHeroSubtitle">Send us a note and we&apos;ll route it to the right RingBooker team member.</p>
                   <div className="trust-list">
                     <div className="trust-item"><div><strong>Keep your current number</strong><span>Forward the number clients already call.</span></div></div>
                     <div className="trust-item"><div><strong>No new booking software</strong><span>Works with your current workflow.</span></div></div>
@@ -353,9 +428,9 @@ export function MarketingContactTemplate() {
                 <div className="formshell" id="book-demo">
                   <div className="form-head">
                     <div>
-                      <h2>Request a demo</h2>
+                      <h2 id="contactFormTitle">Contact RingBooker</h2>
                     </div>
-                    <span className="form-chip">Low-pressure demo</span>
+                    <span className="form-chip" id="contactFormChip">Contact</span>
                   </div>
                   <form id="contactRequestForm">
                     <div className="form-grid">
@@ -387,6 +462,21 @@ export function MarketingContactTemplate() {
                         <label htmlFor="contactBestTime">Best time to reach you</label>
                         <input id="contactBestTime" placeholder="Weekdays after 3 PM PST" required />
                       </div>
+
+                      <div id="enterpriseContactFields" style={{ display: 'none', gridColumn: '1 / -1', gridTemplateColumns: 'inherit', gap: 'inherit' }}>
+                      <div className="field"><label htmlFor="contactNumberOfLocations">Number of locations <span className="helper">(Custom)</span></label><input id="contactNumberOfLocations" type="number" min="1" placeholder="3" /></div>
+                      <div className="field"><label htmlFor="contactEstimatedMonthlyCallVolume">Estimated monthly calls <span className="helper">(optional)</span></label><input id="contactEstimatedMonthlyCallVolume" placeholder="500-1,000 calls/month" /></div>
+                      <div className="field"><label htmlFor="contactCurrentPhoneProvider">Phone provider <span className="helper">(optional)</span></label><input id="contactCurrentPhoneProvider" placeholder="Verizon, Comcast, RingCentral..." /></div>
+                      <div className="field"><label htmlFor="contactCurrentBookingSoftware">Booking software <span className="helper">(optional)</span></label><input id="contactCurrentBookingSoftware" placeholder="Square, Vagaro, GlossGenius..." /></div>
+                      <div className="field"><label htmlFor="contactCurrentCrm">CRM <span className="helper">(optional)</span></label><input id="contactCurrentCrm" placeholder="HubSpot, Boulevard, none..." /></div>
+                      <div className="field"><label htmlFor="contactLanguagesNeeded">Languages needed <span className="helper">(optional)</span></label><input id="contactLanguagesNeeded" placeholder="English, Vietnamese, Spanish" /></div>
+                      <div className="field full"><label htmlFor="contactLocationsText">Locations list <span className="helper">(optional)</span></label><textarea id="contactLocationsText" placeholder="List locations, cities, or business lines." /></div>
+                      <div className="field full"><label htmlFor="contactRoutingRules">Routing rules <span className="helper">(optional)</span></label><textarea id="contactRoutingRules" placeholder="Example: Vietnamese callers to owner, Botox consults to coordinator, Location A calls use Location A hours." /></div>
+                      <div className="field full"><label htmlFor="contactEscalationRules">Escalation rules <span className="helper">(optional)</span></label><textarea id="contactEscalationRules" placeholder="Example: urgent complaint to manager, refunds to owner, medical questions to provider." /></div>
+                      <div className="field full"><label htmlFor="contactIntegrationRequirements">Integration requirements <span className="helper">(optional)</span></label><textarea id="contactIntegrationRequirements" placeholder="Calendar, booking software, CRM, reporting, or custom workflow needs." /></div>
+                      <div className="field"><label htmlFor="contactMainContact">Main contact <span className="helper">(optional)</span></label><input id="contactMainContact" placeholder="Operations lead or owner" /></div>
+                      <div className="field"><label htmlFor="contactPreferredGoLiveTimeline">Preferred go-live timeline <span className="helper">(optional)</span></label><input id="contactPreferredGoLiveTimeline" placeholder="Next 30 days, next quarter..." /></div>
+                      </div>
                       <div className="field full">
                         <label htmlFor="contactHelpNeed">Anything else? <span className="helper">(optional)</span></label>
                         <textarea
@@ -405,7 +495,7 @@ export function MarketingContactTemplate() {
                       </div>
                     </div>
                     <div className="contact-form-actions">
-                      <button id="contactSubmitButton" type="submit" className="btn-dark">Request demo</button>
+                      <button id="contactSubmitButton" type="submit" className="btn-dark">Send message</button>
                       <span className="helper" id="contactHelper">Protected by captcha and rate limits.</span>
                     </div>
                   </form>

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { ContactRequest, ContactRequestStatus } from '@/src/backend/domain/types';
+import type { ContactRequest, ContactRequestIntent, ContactRequestPlanInterest, ContactRequestStatus } from '@/src/backend/domain/types';
 import type { ContactRequestsRepository } from '@/src/backend/ports/repositories';
 
 type ContactRequestRow = {
@@ -14,6 +14,26 @@ type ContactRequestRow = {
   current_setup: string;
   help_need: string;
   best_time: string;
+  intent: ContactRequestIntent | null;
+  lead_source: string | null;
+  plan_interest: ContactRequestPlanInterest | null;
+  location_count: number | null;
+  estimated_call_volume: string | null;
+  booking_software: string | null;
+  routing_needs: string | null;
+  go_live_timeline: string | null;
+  number_of_locations: number | null;
+  locations_text: string | null;
+  main_contact: string | null;
+  current_phone_provider: string | null;
+  current_booking_software: string | null;
+  current_crm: string | null;
+  estimated_monthly_call_volume: string | null;
+  languages_needed: string | null;
+  routing_rules: string | null;
+  escalation_rules: string | null;
+  integration_requirements: string | null;
+  preferred_go_live_timeline: string | null;
   status: ContactRequestStatus;
   source: string;
   ip: string | null;
@@ -36,6 +56,26 @@ function toContactRequest(row: ContactRequestRow): ContactRequest {
     currentSetup: row.current_setup,
     helpNeed: row.help_need,
     bestTime: row.best_time,
+    intent: row.intent ?? 'general',
+    sourceDetail: row.lead_source,
+    planInterest: row.plan_interest ?? 'unknown',
+    locationCount: row.location_count,
+    estimatedCallVolume: row.estimated_call_volume,
+    bookingSoftware: row.booking_software,
+    routingNeeds: row.routing_needs,
+    goLiveTimeline: row.go_live_timeline,
+    numberOfLocations: row.number_of_locations,
+    locationsText: row.locations_text,
+    mainContact: row.main_contact,
+    currentPhoneProvider: row.current_phone_provider,
+    currentBookingSoftware: row.current_booking_software,
+    currentCrm: row.current_crm,
+    estimatedMonthlyCallVolume: row.estimated_monthly_call_volume,
+    languagesNeeded: row.languages_needed,
+    routingRules: row.routing_rules,
+    escalationRules: row.escalation_rules,
+    integrationRequirements: row.integration_requirements,
+    preferredGoLiveTimeline: row.preferred_go_live_timeline,
     status: row.status,
     source: row.source,
     ip: row.ip,
@@ -67,6 +107,12 @@ function applySearch<T extends { or: (filters: string) => T }>(query: T, search?
       `current_setup.ilike.%${escaped}%`,
       `help_need.ilike.%${escaped}%`,
       `best_time.ilike.%${escaped}%`,
+      `lead_source.ilike.%${escaped}%`,
+      `plan_interest.ilike.%${escaped}%`,
+      `estimated_call_volume.ilike.%${escaped}%`,
+      `booking_software.ilike.%${escaped}%`,
+      `routing_needs.ilike.%${escaped}%`,
+      `go_live_timeline.ilike.%${escaped}%`,
     ].join(','),
   );
 }
@@ -84,6 +130,26 @@ export class SupabaseContactRequestsRepository implements ContactRequestsReposit
     currentSetup: string;
     helpNeed: string;
     bestTime: string;
+    intent?: ContactRequestIntent;
+    sourceDetail?: string | null;
+    planInterest?: ContactRequestPlanInterest;
+    locationCount?: number | null;
+    estimatedCallVolume?: string | null;
+    bookingSoftware?: string | null;
+    routingNeeds?: string | null;
+    goLiveTimeline?: string | null;
+    numberOfLocations?: number | null;
+    locationsText?: string | null;
+    mainContact?: string | null;
+    currentPhoneProvider?: string | null;
+    currentBookingSoftware?: string | null;
+    currentCrm?: string | null;
+    estimatedMonthlyCallVolume?: string | null;
+    languagesNeeded?: string | null;
+    routingRules?: string | null;
+    escalationRules?: string | null;
+    integrationRequirements?: string | null;
+    preferredGoLiveTimeline?: string | null;
     source?: string;
     ip?: string | null;
   }): Promise<ContactRequest> {
@@ -99,6 +165,26 @@ export class SupabaseContactRequestsRepository implements ContactRequestsReposit
         current_setup: params.currentSetup,
         help_need: params.helpNeed,
         best_time: params.bestTime,
+        intent: params.intent ?? 'general',
+        lead_source: params.sourceDetail ?? null,
+        plan_interest: params.planInterest ?? 'unknown',
+        location_count: params.locationCount ?? null,
+        estimated_call_volume: params.estimatedCallVolume ?? null,
+        booking_software: params.bookingSoftware ?? null,
+        routing_needs: params.routingNeeds ?? null,
+        go_live_timeline: params.goLiveTimeline ?? null,
+        number_of_locations: params.numberOfLocations ?? null,
+        locations_text: params.locationsText ?? null,
+        main_contact: params.mainContact ?? null,
+        current_phone_provider: params.currentPhoneProvider ?? null,
+        current_booking_software: params.currentBookingSoftware ?? null,
+        current_crm: params.currentCrm ?? null,
+        estimated_monthly_call_volume: params.estimatedMonthlyCallVolume ?? null,
+        languages_needed: params.languagesNeeded ?? null,
+        routing_rules: params.routingRules ?? null,
+        escalation_rules: params.escalationRules ?? null,
+        integration_requirements: params.integrationRequirements ?? null,
+        preferred_go_live_timeline: params.preferredGoLiveTimeline ?? null,
         status: 'new',
         source: params.source ?? 'marketing_contact_form',
         ip: params.ip ?? null,
@@ -118,13 +204,18 @@ export class SupabaseContactRequestsRepository implements ContactRequestsReposit
     query?: string;
     createdAfter?: Date;
     createdBefore?: Date;
+    intent?: ContactRequestIntent | 'all';
   }): Promise<ContactRequest[]> {
     const hasRange = Boolean(params?.createdAfter && params?.createdBefore);
     const limit = normalizeLimit(params?.limit, hasRange ? 10_000 : 500);
     const status = params?.status ?? 'all';
+    const intent = params?.intent ?? 'all';
     let query = this.supabase.from('contact_requests').select('*').order('created_at', { ascending: false }).limit(limit);
     if (status !== 'all') {
       query = query.eq('status', status);
+    }
+    if (intent !== 'all') {
+      query = query.eq('intent', intent);
     }
     if (params?.createdAfter) {
       query = query.gte('created_at', params.createdAfter.toISOString());

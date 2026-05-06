@@ -302,7 +302,7 @@ const plans = [
     price: 'Let’s talk',
     note: 'Best when you need implementation planning before rollout.',
     cta: 'Talk to us',
-    href: '/contact',
+    href: '/contact?intent=enterprise&source=pricing_custom',
     featured: false,
     benefits: [
       'Multi-location setup',

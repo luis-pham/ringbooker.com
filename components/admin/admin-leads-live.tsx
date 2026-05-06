@@ -8,6 +8,7 @@ import { adminSidebarAddonStyles } from '@/components/admin/admin-sidebar-styles
 import { adminShopsScripts, adminShopsStyles } from '@/components/admin/admin-shops';
 
 type LeadStatus = 'new' | 'contacted' | 'qualified' | 'closed' | 'spam';
+type LeadIntent = 'demo' | 'enterprise' | 'sales' | 'support' | 'general';
 
 type LeadRecord = {
   id: string;
@@ -20,6 +21,19 @@ type LeadRecord = {
   currentSetup: string;
   helpNeed: string;
   bestTime: string;
+  intent: LeadIntent;
+  sourceDetail?: string | null;
+  planInterest?: 'starter' | 'professional' | 'enterprise' | 'unknown';
+  locationCount?: number | null;
+  estimatedCallVolume?: string | null;
+  bookingSoftware?: string | null;
+  routingNeeds?: string | null;
+  goLiveTimeline?: string | null;
+  numberOfLocations?: number | null;
+  estimatedMonthlyCallVolume?: string | null;
+  currentBookingSoftware?: string | null;
+  routingRules?: string | null;
+  preferredGoLiveTimeline?: string | null;
   status: LeadStatus;
   source: string;
   notes?: string | null;
@@ -48,6 +62,16 @@ type LeadStatusPatchResponse = {
   error?: string;
 };
 
+
+const INTENT_OPTIONS: Array<{ value: LeadIntent | 'all'; label: string }> = [
+  { value: 'all', label: 'All intents' },
+  { value: 'enterprise', label: 'Enterprise / Custom' },
+  { value: 'demo', label: 'Demo' },
+  { value: 'sales', label: 'Sales' },
+  { value: 'support', label: 'Support' },
+  { value: 'general', label: 'General' },
+];
+
 const STATUS_OPTIONS: Array<{ value: LeadStatus | 'all'; label: string }> = [
   { value: 'all', label: 'All statuses' },
   { value: 'new', label: 'New' },
@@ -72,6 +96,22 @@ function statusTagClass(status: LeadStatus) {
   return 'tag orange';
 }
 
+function intentTagClass(intent: LeadIntent) {
+  if (intent === 'enterprise') return 'tag orange';
+  if (intent === 'demo') return 'tag blue';
+  if (intent === 'support') return 'tag red';
+  if (intent === 'sales') return 'tag purple';
+  return 'tag';
+}
+
+function intentLabel(intent?: LeadIntent) {
+  if (intent === 'enterprise') return 'Enterprise';
+  if (intent === 'demo') return 'Demo';
+  if (intent === 'sales') return 'Sales';
+  if (intent === 'support') return 'Support';
+  return 'General';
+}
+
 function statusLabel(status: LeadStatus) {
   if (status === 'new') return 'New';
   if (status === 'contacted') return 'Contacted';
@@ -83,6 +123,7 @@ function statusLabel(status: LeadStatus) {
 export function AdminLeadsLive() {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
+  const [intentFilter, setIntentFilter] = useState<LeadIntent | 'all'>('all');
   const [query, setQuery] = useState('');
   const [draftQuery, setDraftQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -96,6 +137,7 @@ export function AdminLeadsLive() {
       const params = new URLSearchParams();
       params.set('limit', '300');
       if (statusFilter !== 'all') params.set('status', statusFilter);
+      if (intentFilter !== 'all') params.set('intent', intentFilter);
       if (query.trim()) params.set('query', query.trim());
       const response = await fetch(`/api/backend/admin/leads?${params.toString()}`);
       const body = (await response.json()) as LeadsResponse;
@@ -113,7 +155,7 @@ export function AdminLeadsLive() {
 
   useEffect(() => {
     void reload();
-  }, [statusFilter, query]);
+  }, [statusFilter, intentFilter, query]);
 
   async function updateStatus(lead: LeadRecord, status: LeadStatus) {
     setUpdatingLeadId(lead.id);
@@ -273,6 +315,16 @@ export function AdminLeadsLive() {
                 </select>
               </div>
               <div className="field">
+                <label>Intent</label>
+                <select value={intentFilter} onChange={(e) => setIntentFilter(e.target.value as LeadIntent | 'all')}>
+                  {INTENT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
                 <label>Search</label>
                 <input
                   value={draftQuery}
@@ -291,6 +343,7 @@ export function AdminLeadsLive() {
                   type="button"
                   onClick={() => {
                     setStatusFilter('all');
+                    setIntentFilter('all');
                     setDraftQuery('');
                     setQuery('');
                   }}
@@ -352,9 +405,27 @@ export function AdminLeadsLive() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ maxWidth: 320 }}>
-                        <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
-                          {lead.helpNeed}
+                      <td style={{ maxWidth: 360 }}>
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span className={intentTagClass(lead.intent)}>{intentLabel(lead.intent)}</span>
+                            {lead.planInterest && lead.planInterest !== 'unknown' ? <span className="tag purple">{lead.planInterest}</span> : null}
+                            {lead.sourceDetail ? <span className="tag">{lead.sourceDetail}</span> : null}
+                          </div>
+                          {lead.intent === 'enterprise' ? (
+                            <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
+                              {[
+                                lead.locationCount || lead.numberOfLocations ? `Locations: ${lead.locationCount ?? lead.numberOfLocations}` : null,
+                                lead.estimatedCallVolume || lead.estimatedMonthlyCallVolume ? `Calls: ${lead.estimatedCallVolume ?? lead.estimatedMonthlyCallVolume}` : null,
+                                lead.bookingSoftware || lead.currentBookingSoftware ? `Booking software: ${lead.bookingSoftware ?? lead.currentBookingSoftware}` : null,
+                                lead.goLiveTimeline || lead.preferredGoLiveTimeline ? `Timeline: ${lead.goLiveTimeline ?? lead.preferredGoLiveTimeline}` : null,
+                                lead.routingNeeds || lead.routingRules ? `Routing: ${lead.routingNeeds ?? lead.routingRules}` : null,
+                              ].filter(Boolean).join('\n')}
+                            </div>
+                          ) : null}
+                          <div className="note" style={{ whiteSpace: 'pre-wrap' }}>
+                            {lead.helpNeed}
+                          </div>
                         </div>
                       </td>
                       <td>

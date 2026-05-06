@@ -73,11 +73,56 @@ type CallsPagination = {
   total: number;
 };
 
+
+type ShopLocation = {
+  id: string;
+  shopId: string;
+  name: string;
+  address?: string | null;
+  timezone: string;
+  phoneNumber?: string | null;
+  telnyxNumber?: string | null;
+  businessHours: Record<string, unknown>;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type ShopRoutingRule = {
+  id: string;
+  shopId: string;
+  locationId?: string | null;
+  ruleType: string;
+  conditionJson: Record<string, unknown>;
+  actionJson: Record<string, unknown>;
+  priority: number;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type CommercialAccount = {
+  shopId: string;
+  contractStatus: 'draft' | 'sent' | 'signed' | 'active' | 'paused' | 'terminated';
+  monthlyMinimumCents?: number | null;
+  setupFeeCents?: number | null;
+  includedLocations?: number | null;
+  includedMinutes?: number | null;
+  overageRateCents?: number | null;
+  billingMethod: 'manual_invoice' | 'paddle_custom' | 'wire' | 'ach' | 'other';
+  contractSignedAt?: string | null;
+  approvedAt?: string | null;
+  notes?: string | null;
+};
+
 type LoadShopResponse = {
   ok: boolean;
   shop?: ShopDetail;
   adminStatus?: AdminShopStatus;
   commercialGoLiveApprovalEvents?: CommercialGoLiveApprovalEvent[];
+  shopLocations?: ShopLocation[];
+  shopRoutingRules?: ShopRoutingRule[];
+  commercialAccount?: CommercialAccount | null;
   error?: string;
 };
 
@@ -145,7 +190,7 @@ function formatShortDateTime(value?: string | null) {
   return parsed.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-type ShopTab = 'overview' | 'info' | 'ai' | 'billing' | 'calls' | 'analytics';
+type ShopTab = 'overview' | 'info' | 'ai' | 'billing' | 'locations' | 'routing' | 'commercial' | 'calls' | 'analytics';
 
 function utcTodayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -198,6 +243,9 @@ export function AdminShopDetailLive() {
   const [shop, setShop] = useState<ShopDetail | null>(null);
   const [adminStatus, setAdminStatus] = useState<AdminShopStatus | null>(null);
   const [commercialApprovalEvents, setCommercialApprovalEvents] = useState<CommercialGoLiveApprovalEvent[]>([]);
+  const [shopLocations, setShopLocations] = useState<ShopLocation[]>([]);
+  const [shopRoutingRules, setShopRoutingRules] = useState<ShopRoutingRule[]>([]);
+  const [commercialAccount, setCommercialAccount] = useState<CommercialAccount | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -241,11 +289,17 @@ export function AdminShopDetailLive() {
       setShop(body.shop);
       setAdminStatus(body.adminStatus ?? null);
       setCommercialApprovalEvents(body.commercialGoLiveApprovalEvents ?? []);
+      setShopLocations(body.shopLocations ?? []);
+      setShopRoutingRules(body.shopRoutingRules ?? []);
+      setCommercialAccount(body.commercialAccount ?? null);
     } catch {
       setError('network_error');
       setShop(null);
       setAdminStatus(null);
       setCommercialApprovalEvents([]);
+      setShopLocations([]);
+      setShopRoutingRules([]);
+      setCommercialAccount(null);
     }
   }, [shopId]);
 
@@ -276,6 +330,9 @@ export function AdminShopDetailLive() {
       setAnalytics(null);
       setAdminStatus(null);
       setCommercialApprovalEvents([]);
+      setShopLocations([]);
+      setShopRoutingRules([]);
+      setCommercialAccount(null);
     }
   }, [shopId]);
 
@@ -514,6 +571,112 @@ export function AdminShopDetailLive() {
     }
   }
 
+
+
+  async function onCreateLocation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!shopId) return;
+    const formData = new FormData(event.currentTarget);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/backend/admin/shops/${shopId}/locations`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: String(formData.get('name') ?? ''),
+          address: String(formData.get('address') ?? '') || null,
+          timezone: String(formData.get('timezone') ?? shop?.timezone ?? 'America/Los_Angeles'),
+          phoneNumber: String(formData.get('phoneNumber') ?? '') || null,
+          telnyxNumber: String(formData.get('telnyxNumber') ?? '') || null,
+          businessHours: parseJsonField(formData.get('businessHours'), {}),
+          active: formData.get('active') === 'on',
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.ok) {
+        setError(body.error ?? 'location_save_failed');
+        return;
+      }
+      event.currentTarget.reset();
+      await loadShop();
+      setNotice('Location saved.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'network_error');
+    }
+  }
+
+  async function onCreateRoutingRule(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!shopId) return;
+    const formData = new FormData(event.currentTarget);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/backend/admin/shops/${shopId}/routing-rules`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          locationId: String(formData.get('locationId') ?? '') || null,
+          ruleType: String(formData.get('ruleType') ?? ''),
+          conditionJson: parseJsonField(formData.get('conditionJson'), {}),
+          actionJson: parseJsonField(formData.get('actionJson'), {}),
+          priority: Number(formData.get('priority') ?? 100),
+          active: formData.get('active') === 'on',
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.ok) {
+        setError(body.error ?? 'routing_rule_save_failed');
+        return;
+      }
+      event.currentTarget.reset();
+      await loadShop();
+      setNotice('Routing rule saved.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'network_error');
+    }
+  }
+
+  async function onSaveCommercialAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!shopId) return;
+    const formData = new FormData(event.currentTarget);
+    const nullableNumber = (key: string) => {
+      const raw = String(formData.get(key) ?? '').trim();
+      return raw ? Number(raw) : null;
+    };
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/backend/admin/shops/${shopId}/commercial-account`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contractStatus: String(formData.get('contractStatus') ?? 'draft'),
+          monthlyMinimumCents: nullableNumber('monthlyMinimumCents'),
+          setupFeeCents: nullableNumber('setupFeeCents'),
+          includedLocations: nullableNumber('includedLocations'),
+          includedMinutes: nullableNumber('includedMinutes'),
+          overageRateCents: nullableNumber('overageRateCents'),
+          billingMethod: String(formData.get('billingMethod') ?? 'manual_invoice'),
+          contractSignedAt: String(formData.get('contractSignedAt') ?? '') || null,
+          approvedAt: String(formData.get('approvedAt') ?? '') || null,
+          notes: String(formData.get('notes') ?? '') || null,
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || !body.ok) {
+        setError(body.error ?? 'commercial_account_save_failed');
+        return;
+      }
+      await loadShop();
+      setNotice('Commercial account saved.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'network_error');
+    }
+  }
+
   async function signOut() {
     await fetch('/api/backend/auth/logout', { method: 'POST' });
     window.location.href = '/admin/login';
@@ -607,6 +770,42 @@ export function AdminShopDetailLive() {
                     <IconBilling />
                   </TabIcon>
                   Business billing
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'locations'}
+                  className={`shop-tab${tab === 'locations' ? ' active' : ''}`}
+                  onClick={() => setTab('locations')}
+                >
+                  <TabIcon>
+                    <IconShop />
+                  </TabIcon>
+                  Locations
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'routing'}
+                  className={`shop-tab${tab === 'routing' ? ' active' : ''}`}
+                  onClick={() => setTab('routing')}
+                >
+                  <TabIcon>
+                    <IconSliders />
+                  </TabIcon>
+                  Routing rules
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'commercial'}
+                  className={`shop-tab${tab === 'commercial' ? ' active' : ''}`}
+                  onClick={() => setTab('commercial')}
+                >
+                  <TabIcon>
+                    <IconBilling />
+                  </TabIcon>
+                  Commercial account
                 </button>
                 <button
                   type="button"
@@ -1106,6 +1305,75 @@ export function AdminShopDetailLive() {
                     </div>
                   </form>
                   </>
+                ) : null}
+
+
+                {tab === 'locations' ? (
+                  <section className="card">
+                    <div className="panel-head"><div><h3>Locations</h3><p className="sub">Enterprise location records for staged go-live, location-specific phone setup, and future routing.</p></div></div>
+                    <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+                      {shopLocations.length ? shopLocations.map((location) => (
+                        <div key={location.id} className="card soft" style={{ margin: 0, boxShadow: 'none' }}>
+                          <strong>{location.name}</strong>
+                          <p className="sub">{location.address || 'No address'} · {location.timezone} · {location.active ? 'Active' : 'Inactive'}</p>
+                          <p className="sub">Phone: {location.phoneNumber || '—'} · Forwarding: {location.telnyxNumber || '—'}</p>
+                        </div>
+                      )) : <p className="sub">No locations configured yet.</p>}
+                    </div>
+                    <form className="form-grid" onSubmit={onCreateLocation}>
+                      <div className="field"><label>Name</label><input name="name" required placeholder="Downtown location" /></div>
+                      <div className="field"><label>Timezone</label><input name="timezone" defaultValue={shop.timezone} /></div>
+                      <div className="field"><label>Business phone</label><input name="phoneNumber" placeholder="+1..." /></div>
+                      <div className="field"><label>Forwarding number</label><input name="telnyxNumber" placeholder="+1..." /></div>
+                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input name="address" /></div>
+                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Business hours JSON</label><textarea name="businessHours" defaultValue="{}" /></div>
+                      <label className="checkbox"><input name="active" type="checkbox" defaultChecked /> Active</label>
+                      <div className="top-actions" style={{ gridColumn: '1 / -1', justifyContent: 'flex-start' }}><button className="btn purple" type="submit">Add location</button></div>
+                    </form>
+                  </section>
+                ) : null}
+
+                {tab === 'routing' ? (
+                  <section className="card">
+                    <div className="panel-head"><div><h3>Routing rules</h3><p className="sub">Active rules are available to runtime prompts for custom routing and escalation behavior.</p></div></div>
+                    <div style={{ display: 'grid', gap: 10, marginBottom: 18 }}>
+                      {shopRoutingRules.length ? shopRoutingRules.map((rule) => (
+                        <div key={rule.id} className="card soft" style={{ margin: 0, boxShadow: 'none' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}><strong>{rule.ruleType}</strong><span className={`tag ${rule.active ? 'green' : 'orange'}`}>{rule.active ? 'Active' : 'Inactive'} · priority {rule.priority}</span></div>
+                          <p className="sub">Condition: {JSON.stringify(rule.conditionJson)}</p>
+                          <p className="sub">Action: {JSON.stringify(rule.actionJson)}</p>
+                        </div>
+                      )) : <p className="sub">No routing rules configured yet.</p>}
+                    </div>
+                    <form className="form-grid" onSubmit={onCreateRoutingRule}>
+                      <div className="field"><label>Rule type</label><input name="ruleType" required placeholder="language_route, complaint_escalation" /></div>
+                      <div className="field"><label>Priority</label><input name="priority" type="number" defaultValue="100" /></div>
+                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Location</label><select name="locationId"><option value="">No specific location</option>{shopLocations.map((location) => <option key={location.id} value={location.id}>{location.name}</option>)}</select></div>
+                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Condition JSON</label><textarea name="conditionJson" defaultValue={'{"language":"vi"}'} /></div>
+                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Action JSON</label><textarea name="actionJson" defaultValue={'{"action":"escalate_to_owner"}'} /></div>
+                      <label className="checkbox"><input name="active" type="checkbox" defaultChecked /> Active</label>
+                      <div className="top-actions" style={{ gridColumn: '1 / -1', justifyContent: 'flex-start' }}><button className="btn purple" type="submit">Add routing rule</button></div>
+                    </form>
+                  </section>
+                ) : null}
+
+                {tab === 'commercial' ? (
+                  <form className="card" onSubmit={onSaveCommercialAccount}>
+                    <div className="panel-head"><div><h3>Commercial account</h3><p className="sub">Internal Enterprise contract, invoice, included usage, and commercial terms.</p></div></div>
+                    <div className="form-grid">
+                      <div className="field"><label>Contract status</label><select name="contractStatus" defaultValue={commercialAccount?.contractStatus ?? 'draft'}>{['draft','sent','signed','active','paused','terminated'].map((v) => <option key={v} value={v}>{v}</option>)}</select></div>
+                      <div className="field"><label>Billing method</label><select name="billingMethod" defaultValue={commercialAccount?.billingMethod ?? 'manual_invoice'}>{['manual_invoice','paddle_custom','wire','ach','other'].map((v) => <option key={v} value={v}>{v}</option>)}</select></div>
+                      <div className="field"><label>Monthly minimum cents</label><input name="monthlyMinimumCents" type="number" defaultValue={commercialAccount?.monthlyMinimumCents ?? ''} /></div>
+                      <div className="field"><label>Setup fee cents</label><input name="setupFeeCents" type="number" defaultValue={commercialAccount?.setupFeeCents ?? ''} /></div>
+                      <div className="field"><label>Included locations</label><input name="includedLocations" type="number" defaultValue={commercialAccount?.includedLocations ?? ''} /></div>
+                      <div className="field"><label>Included minutes</label><input name="includedMinutes" type="number" defaultValue={commercialAccount?.includedMinutes ?? ''} /></div>
+                      <div className="field"><label>Overage rate cents</label><input name="overageRateCents" type="number" defaultValue={commercialAccount?.overageRateCents ?? ''} /></div>
+                      <div className="field"><label>Contract signed at</label><input name="contractSignedAt" placeholder="2026-05-06T00:00:00.000Z" defaultValue={commercialAccount?.contractSignedAt ?? ''} /></div>
+                      <div className="field"><label>Approved at</label><input name="approvedAt" placeholder="2026-05-06T00:00:00.000Z" defaultValue={commercialAccount?.approvedAt ?? ''} /></div>
+                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Notes</label><textarea name="notes" defaultValue={commercialAccount?.notes ?? ''} /></div>
+                    </div>
+                    <div className="top-actions" style={{ marginTop: 18, justifyContent: 'flex-start' }}><button className="btn purple" type="submit">Save commercial account</button></div>
+                  </form>
                 ) : null}
 
                 {tab === 'calls' ? (

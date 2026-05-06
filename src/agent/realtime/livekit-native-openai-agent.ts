@@ -76,6 +76,7 @@ const agent = defineAgent({
         bookingsRepository: runtime.bookingsRepository,
         callbacksRepository: runtime.callbacksRepository,
         telephonyService: runtime.telephonyService,
+        shopRoutingRulesRepository: runtime.shopRoutingRulesRepository,
         realtimeAgentRuntime: runtime.realtimeAgentRuntime,
       },
       {

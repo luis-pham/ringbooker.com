@@ -29,6 +29,8 @@ export type CallOutcome =
 
 export type CallbackStatus = 'queued' | 'dialing' | 'connected' | 'completed' | 'failed' | 'cancelled';
 export type ContactRequestStatus = 'new' | 'contacted' | 'qualified' | 'closed' | 'spam';
+export type ContactRequestIntent = 'demo' | 'enterprise' | 'sales' | 'support' | 'general';
+export type ContactRequestPlanInterest = 'starter' | 'professional' | 'enterprise' | 'unknown';
 
 export type JobStatus = 'queued' | 'running' | 'leased' | 'completed' | 'failed' | 'dead_letter' | 'cancelled';
 
@@ -64,6 +66,50 @@ export interface ServiceItem {
   name: string;
   duration_min: number;
   price: number;
+}
+
+
+export interface ShopLocation {
+  id: string;
+  shopId: string;
+  name: string;
+  address?: string | null;
+  timezone: string;
+  phoneNumber?: string | null;
+  telnyxNumber?: string | null;
+  businessHours: BusinessHours;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShopRoutingRule {
+  id: string;
+  shopId: string;
+  locationId?: string | null;
+  ruleType: string;
+  conditionJson: Record<string, unknown>;
+  actionJson: Record<string, unknown>;
+  priority: number;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CommercialAccount {
+  shopId: string;
+  contractStatus: 'draft' | 'sent' | 'signed' | 'active' | 'paused' | 'terminated';
+  monthlyMinimumCents?: number | null;
+  setupFeeCents?: number | null;
+  includedLocations?: number | null;
+  includedMinutes?: number | null;
+  overageRateCents?: number | null;
+  billingMethod: 'manual_invoice' | 'paddle_custom' | 'wire' | 'ach' | 'other';
+  contractSignedAt?: string | null;
+  approvedAt?: string | null;
+  notes?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CommercialGoLiveApprovalEvent {
@@ -361,6 +407,26 @@ export interface ContactRequest {
   currentSetup: string;
   helpNeed: string;
   bestTime: string;
+  intent: ContactRequestIntent;
+  sourceDetail?: string | null;
+  planInterest: ContactRequestPlanInterest;
+  locationCount?: number | null;
+  estimatedCallVolume?: string | null;
+  bookingSoftware?: string | null;
+  routingNeeds?: string | null;
+  goLiveTimeline?: string | null;
+  numberOfLocations?: number | null;
+  locationsText?: string | null;
+  mainContact?: string | null;
+  currentPhoneProvider?: string | null;
+  currentBookingSoftware?: string | null;
+  currentCrm?: string | null;
+  estimatedMonthlyCallVolume?: string | null;
+  languagesNeeded?: string | null;
+  routingRules?: string | null;
+  escalationRules?: string | null;
+  integrationRequirements?: string | null;
+  preferredGoLiveTimeline?: string | null;
   status: ContactRequestStatus;
   source: string;
   ip?: string | null;

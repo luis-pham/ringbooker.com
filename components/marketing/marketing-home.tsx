@@ -1730,7 +1730,7 @@ export function MarketingHomeTemplate() {
                   <li>Concierge onboarding</li>
                   <li>Priority implementation support</li>
                 </ul>
-                <a className="plan-btn pb-outline" href="/contact">Talk to us →</a>
+                <a className="plan-btn pb-outline" href="/contact?intent=enterprise&source=homepage_custom">Talk to us →</a>
               </div>
             </div>
               <div className="home-carousel-controls" aria-label="Pricing carousel controls">

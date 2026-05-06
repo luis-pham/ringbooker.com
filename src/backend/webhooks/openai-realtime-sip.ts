@@ -31,6 +31,7 @@ import type {
   JobsRepository,
   ProviderEventsRepository,
   ShopAccessStatesRepository,
+  ShopRoutingRulesRepository,
   ShopsRepository,
   SipDemoSessionEnrichment,
 } from '@/src/backend/ports/repositories';
@@ -173,6 +174,7 @@ export async function handleOpenAiRealtimeSipWebhook(
     shopsRepository?: ShopsRepository;
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
+    shopRoutingRulesRepository?: ShopRoutingRulesRepository;
     jobsRepository?: JobsRepository;
     bookingsRepository?: BookingsRepository;
     callbacksRepository?: CallbacksRepository;
@@ -463,11 +465,18 @@ export async function handleOpenAiRealtimeSipWebhook(
     demoInitialResponseInstructions = `Speak first now. Say this opening line exactly once, naturally, then stop and listen for the caller: ${scriptedWelcomeLine}`;
   } else {
     demoVertical = voiceVerticalFromShopVertical(route.shop.vertical);
+    const routingRules = deps.shopRoutingRulesRepository
+      ? await deps.shopRoutingRulesRepository.listByShopId(route.shop.id, { activeOnly: true }).catch((error) => {
+          logger.warn({ err: error, shopId: route.shop.id }, 'openai_sip_routing_rules_lookup_failed');
+          return [];
+        })
+      : [];
     instructions = buildSystemPrompt({
       shop: route.shop,
       customer: null,
       mode: 'inbound',
       vertical: demoVertical,
+      routingRules,
     });
   }
 

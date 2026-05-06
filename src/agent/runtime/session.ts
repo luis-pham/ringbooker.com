@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { DateTime } from 'luxon';
 
 import type { RealtimeAgentRuntime, StartInboundRealtimeResult } from '@/src/agent/realtime/types';
-import type { Customer, Shop, ToolError } from '@/src/backend/domain/types';
-import type { BookingsRepository, CallbacksRepository, JobsRepository, ShopsRepository } from '@/src/backend/ports/repositories';
+import type { Customer, Shop, ShopRoutingRule, ToolError } from '@/src/backend/domain/types';
+import type { BookingsRepository, CallbacksRepository, JobsRepository, ShopRoutingRulesRepository, ShopsRepository } from '@/src/backend/ports/repositories';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import { getCalendarProvider, type CalendarProvider } from '@/src/backend/services/calendar/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -23,6 +23,7 @@ export type InboundAgentSessionDeps = {
   callbacksRepository: CallbacksRepository;
   telephonyService: TelephonyService;
   realtimeAgentRuntime: RealtimeAgentRuntime;
+  shopRoutingRulesRepository?: ShopRoutingRulesRepository;
 };
 
 export type InboundAgentSessionInput = {
@@ -65,6 +66,7 @@ export class InboundAgentSession {
       shop: Shop;
       callerPhone: string;
       customer: Customer | null;
+      routingRules?: ShopRoutingRule[];
     },
   ) {
     this.requestId = params.requestId;
@@ -84,6 +86,7 @@ export class InboundAgentSession {
       shop: params.shop,
       customer: params.customer,
       mode: 'inbound',
+      routingRules: params.routingRules,
     });
   }
 
@@ -318,11 +321,16 @@ export async function createInboundAgentSession(
   const shop = await deps.shopsRepository.findByDestinationPhone(input.destinationPhone);
   if (!shop) return null;
 
+  const routingRules = deps.shopRoutingRulesRepository
+    ? await deps.shopRoutingRulesRepository.listByShopId(shop.id, { activeOnly: true }).catch(() => [])
+    : [];
+
   return new InboundAgentSession(deps, {
     requestId: input.requestId ?? randomUUID(),
     roomName: input.roomName ?? `rb-call-${randomUUID().slice(0, 8)}`,
     shop,
     callerPhone: input.callerPhone,
     customer: input.customer ?? null,
+    routingRules,
   });
 }

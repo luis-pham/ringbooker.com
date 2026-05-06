@@ -10,12 +10,17 @@ import type {
   BillingNotificationChannel,
   BillingNotificationType,
   BillingSubscriptionStatus,
+  CommercialAccount,
   CommercialGoLiveApprovalEvent,
   ContactRequest,
+  ContactRequestIntent,
+  ContactRequestPlanInterest,
   ContactRequestStatus,
   JobStatus,
   JobType,
   Shop,
+  ShopLocation,
+  ShopRoutingRule,
   ForwardingTestSession,
   ShopAccessState,
   TestCallAttempt,
@@ -545,6 +550,41 @@ export interface ShopAccessStatesRepository {
   }): Promise<ShopAccessState>;
 }
 
+
+export interface ShopLocationsRepository {
+  listByShopId(shopId: string): Promise<ShopLocation[]>;
+  create(params: {
+    shopId: string;
+    name: string;
+    address?: string | null;
+    timezone: string;
+    phoneNumber?: string | null;
+    telnyxNumber?: string | null;
+    businessHours?: Record<string, unknown>;
+    active?: boolean;
+  }): Promise<ShopLocation>;
+  update(shopId: string, locationId: string, patch: Partial<Omit<ShopLocation, 'id' | 'shopId' | 'createdAt' | 'updatedAt'>>): Promise<ShopLocation | null>;
+}
+
+export interface ShopRoutingRulesRepository {
+  listByShopId(shopId: string, params?: { activeOnly?: boolean }): Promise<ShopRoutingRule[]>;
+  create(params: {
+    shopId: string;
+    locationId?: string | null;
+    ruleType: string;
+    conditionJson: Record<string, unknown>;
+    actionJson: Record<string, unknown>;
+    priority?: number;
+    active?: boolean;
+  }): Promise<ShopRoutingRule>;
+  update(shopId: string, ruleId: string, patch: Partial<Omit<ShopRoutingRule, 'id' | 'shopId' | 'createdAt' | 'updatedAt'>>): Promise<ShopRoutingRule | null>;
+}
+
+export interface CommercialAccountsRepository {
+  findByShopId(shopId: string): Promise<CommercialAccount | null>;
+  upsert(params: CommercialAccount): Promise<CommercialAccount>;
+}
+
 export interface CommercialGoLiveApprovalEventsRepository {
   create(params: {
     shopId: string;
@@ -822,6 +862,26 @@ export interface ContactRequestsRepository {
     currentSetup: string;
     helpNeed: string;
     bestTime: string;
+    intent?: ContactRequestIntent;
+    sourceDetail?: string | null;
+    planInterest?: ContactRequestPlanInterest;
+    locationCount?: number | null;
+    estimatedCallVolume?: string | null;
+    bookingSoftware?: string | null;
+    routingNeeds?: string | null;
+    goLiveTimeline?: string | null;
+    numberOfLocations?: number | null;
+    locationsText?: string | null;
+    mainContact?: string | null;
+    currentPhoneProvider?: string | null;
+    currentBookingSoftware?: string | null;
+    currentCrm?: string | null;
+    estimatedMonthlyCallVolume?: string | null;
+    languagesNeeded?: string | null;
+    routingRules?: string | null;
+    escalationRules?: string | null;
+    integrationRequirements?: string | null;
+    preferredGoLiveTimeline?: string | null;
     source?: string;
     ip?: string | null;
   }): Promise<ContactRequest>;
@@ -831,6 +891,7 @@ export interface ContactRequestsRepository {
     query?: string;
     createdAfter?: Date;
     createdBefore?: Date;
+    intent?: ContactRequestIntent | 'all';
   }): Promise<ContactRequest[]>;
   updateStatus(
     id: string,
