@@ -154,6 +154,20 @@ function formatDateTime(value?: string) {
   return parsed.toLocaleString();
 }
 
+function checklistStatusLabel(status: AdminShopStatus['goLiveChecklist'][number]['status']) {
+  if (status === 'complete') return 'Complete';
+  if (status === 'blocked') return 'Blocked';
+  if (status === 'not_required') return 'Not required';
+  return 'Pending';
+}
+
+function checklistStatusStyle(status: AdminShopStatus['goLiveChecklist'][number]['status']) {
+  if (status === 'complete') return { background: '#dcfce7', color: '#16a34a' };
+  if (status === 'blocked') return { background: '#fee2e2', color: '#dc2626' };
+  if (status === 'not_required') return { background: '#f1f5f9', color: '#475569' };
+  return { background: '#fef3c7', color: '#d97706' };
+}
+
 function prettyJson(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
@@ -607,6 +621,86 @@ export function AdminShopDetailLive() {
                       <dd>{adminStatus.telnyxNumber ?? '—'}</dd>
                     </div>
                   </dl>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                      gap: 12,
+                      marginTop: 18,
+                    }}
+                  >
+                    <section className="card soft" style={{ margin: 0, boxShadow: 'none' }}>
+                      <div className="panel-head" style={{ marginBottom: 12 }}>
+                        <div>
+                          <h3>Go-live checklist</h3>
+                          <p className="sub">Operational gates for Custom / Enterprise launch readiness.</p>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {adminStatus.goLiveChecklist.map((item) => {
+                          const badgeStyle = checklistStatusStyle(item.status);
+                          return (
+                            <div
+                              key={item.id}
+                              style={{
+                                border: '1px solid rgba(255,255,255,.08)',
+                                borderRadius: 12,
+                                padding: 12,
+                                background: 'rgba(255,255,255,.03)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                                <strong style={{ fontSize: 13 }}>{item.label}</strong>
+                                <span
+                                  style={{
+                                    ...badgeStyle,
+                                    borderRadius: 999,
+                                    padding: '2px 8px',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {checklistStatusLabel(item.status)}
+                                </span>
+                              </div>
+                              <p className="sub" style={{ margin: '6px 0 0' }}>
+                                {item.detail}
+                              </p>
+                              {item.completedAt ? (
+                                <p className="sub" style={{ margin: '6px 0 0', fontSize: 11 }}>
+                                  Completed: {formatShortDateTime(item.completedAt)}
+                                </p>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                    <section className="card soft" style={{ margin: 0, boxShadow: 'none' }}>
+                      <div className="panel-head" style={{ marginBottom: 12 }}>
+                        <div>
+                          <h3>Go-live timeline</h3>
+                          <p className="sub">Key operational events recorded for this shop.</p>
+                        </div>
+                      </div>
+                      {adminStatus.goLiveTimeline.length ? (
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          {adminStatus.goLiveTimeline.map((event) => (
+                            <div key={`${event.id}-${event.occurredAt}`} style={{ display: 'grid', gap: 3 }}>
+                              <strong style={{ fontSize: 13 }}>{event.label}</strong>
+                              <span className="sub" style={{ fontSize: 11 }}>
+                                {formatShortDateTime(event.occurredAt)}
+                              </span>
+                              <span className="sub">{event.detail}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="sub">No go-live events recorded yet.</p>
+                      )}
+                    </section>
+                  </div>
                 </section>
               ) : null}
               <div className="shop-tab-bar" role="tablist" aria-label="Business sections">
