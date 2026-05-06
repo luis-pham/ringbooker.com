@@ -270,11 +270,13 @@ Implemented:
 - Provisioning flow calls `releaseNumber()` when Telnyx ordering succeeds but persisting `shops.telnyx_number` fails.
 
 Remaining operational TODO:
-- Add a scheduled orphan cleanup report/job for shops where:
+- Run `scripts/report-forwarding-number-orphans.sql` weekly during the first production rollout.
+- The script is report-only and flags shops where:
   - `forwarding_number_status = 'failed'`
   - `forwarding_number_provider_order_id IS NOT NULL`
   - `telnyx_number IS NULL`
-- The first version should report candidates only. Do not auto-release without operator review because provider order ids may refer to already-compensated releases.
+- Do not auto-release without operator review because provider order ids may refer to already-compensated releases.
+- A future scheduled job can email this report to ops once real-world volume justifies automation.
 - Add orphan provisioning cleanup/reconciliation job:
   - Find shops with `forwarding_number_status='failed'`.
   - Find rows with `forwarding_number_provider_order_id IS NOT NULL` but `telnyx_number IS NULL`.
