@@ -95,7 +95,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
       <MarketingChromeStyles />
       <MarketingHeader />
 
-      <section className="relative overflow-hidden bg-white px-6 pb-0 pt-[98px] md:px-12 md:pt-[110px]">
+      <section className="relative overflow-hidden bg-white px-4 pb-0 pt-[98px] md:px-6 md:pt-[110px]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_-5%,#EDE9FE_0%,transparent_70%)]" />
         <div className="relative z-10 mx-auto max-w-6xl">
           <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-2 text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]">
@@ -179,7 +179,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
       </section>
 
       {stats.length > 0 ? (
-        <div className="mx-auto max-w-6xl px-6 pt-9 md:px-12">
+        <div className="mx-auto max-w-6xl px-4 pt-9 md:px-6">
           <div className="relative flex h-[360px] items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#1a0533] via-[#2d1b69] to-[#4c1d95]">
             {cover ? (
               <>
@@ -204,10 +204,10 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
         </div>
       ) : null}
 
-      <div className="mx-auto flex max-w-6xl flex-col gap-12 px-6 pb-20 pt-10 md:px-12 md:pt-12 lg:grid lg:grid-cols-[1fr_380px] lg:grid-rows-[auto_auto_auto] lg:items-start lg:gap-14">
+      <div className="mx-auto flex max-w-6xl flex-col gap-12 pb-20 pt-10 md:pt-12 lg:grid lg:grid-cols-[1fr_380px] lg:grid-rows-[auto_auto_auto] lg:items-start lg:gap-14">
         <article className="article-body min-w-0 font-serif text-[17.5px] leading-[1.82] text-gray-700 lg:col-start-1 lg:row-start-1 lg:self-start">
           <div
-            className="rb-blog-md prose prose-lg prose-gray max-w-none font-serif text-gray-700 prose-headings:font-sans prose-headings:font-extrabold prose-headings:tracking-tight prose-headings:text-gray-900 prose-h1:text-[clamp(26px,3vw,34px)] prose-h1:leading-tight prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-[clamp(22px,2.5vw,28px)] prose-h2:leading-snug prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h4:mt-6 prose-h4:mb-2 prose-p:mb-5 prose-ul:my-4 prose-ol:my-4 prose-li:my-1 prose-blockquote:border-l-4 prose-blockquote:border-brand-purple prose-blockquote:bg-violet-50/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-a:font-medium prose-a:text-brand-purple prose-a:underline prose-a:decoration-violet-300 prose-a:underline-offset-2 hover:prose-a:decoration-brand-purple prose-strong:text-gray-900 prose-code:rounded-md prose-code:bg-violet-100/90 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.9em] prose-code:font-medium prose-code:text-violet-900 prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:shadow-lg prose-th:border prose-th:border-gray-200 prose-th:bg-gray-50 prose-td:border prose-td:border-gray-200 prose-img:rounded-xl prose-hr:border-gray-200"
+            className="rb-blog-md prose prose-lg prose-gray max-w-none font-serif text-gray-700 prose-headings:font-sans prose-headings:font-extrabold prose-headings:tracking-tight prose-headings:text-gray-900 prose-h1:text-[clamp(26px,3vw,34px)] prose-h1:leading-tight prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-[clamp(22px,2.5vw,28px)] prose-h2:leading-snug prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h4:mt-6 prose-h4:mb-2 prose-p:mb-5 prose-ul:my-4 prose-ol:my-4 prose-li:my-1 prose-blockquote:border-l-4 prose-blockquote:border-brand-purple prose-blockquote:bg-violet-50/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-a:font-medium prose-a:text-brand-purple prose-a:no-underline prose-a:transition-colors hover:prose-a:text-violet-800 prose-strong:text-gray-900 prose-code:rounded-md prose-code:bg-violet-100/90 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.9em] prose-code:font-medium prose-code:text-violet-900 prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:shadow-lg prose-th:border prose-th:border-gray-200 prose-th:bg-gray-50 prose-td:border prose-td:border-gray-200 prose-img:rounded-xl prose-hr:border-gray-200"
             dangerouslySetInnerHTML={{ __html: safeArticleHtml }}
           />
         </article>
@@ -238,24 +238,6 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
               Start 14-Day Free Trial →
             </Link>
           </div>
-
-          {relatedPosts.length > 0 ? (
-            <div className="rounded-[var(--mk-radius-panel)] border border-[color:var(--mk-border-soft)] bg-[color:var(--mk-bg-soft)] p-5">
-              <h4 className="mb-3 font-sans text-[12px] font-semibold uppercase tracking-[0.08em] text-gray-900">Related Articles</h4>
-              <div className="space-y-0">
-                {relatedPosts.map((related) => (
-                  <Link
-                    key={related.id}
-                    href={relatedHref(related)}
-                    className="block border-b border-gray-200 py-2.5 last:border-b-0 hover:opacity-75"
-                  >
-                    <span className="block font-sans text-[12.5px] font-semibold leading-5 text-gray-900">{related.title}</span>
-                    <span className="mt-0.5 block font-sans text-[11.5px] text-gray-400">{related.readTimeMin} min read</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </aside>
 
         <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-2">
@@ -284,7 +266,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
       </div>
 
       {relatedPosts.length > 0 ? (
-        <section className="mx-auto max-w-6xl px-6 pb-20 pt-4 md:px-12">
+        <section className="mx-auto max-w-6xl px-4 pb-20 pt-4 md:px-6">
           <h2 className="mb-6 font-sans text-[22px] font-extrabold tracking-tight text-gray-900">Keep Reading</h2>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
             {relatedPosts.map((related) => (

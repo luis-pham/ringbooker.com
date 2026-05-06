@@ -2,7 +2,7 @@ import { marked } from 'marked';
 import type { RendererThis, Tokens } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 
-import { slugifyTocAnchor } from '@/lib/extractToc';
+import { plainTextFromMarkdownHeading, slugifyTocAnchor } from '@/lib/extractToc';
 import { siteConfig } from '@/lib/site';
 
 marked.use({
@@ -10,7 +10,7 @@ marked.use({
   breaks: true,
   renderer: {
     heading(this: RendererThis, { tokens, depth, text }: Tokens.Heading) {
-      const id = slugifyTocAnchor(text.trim());
+      const id = slugifyTocAnchor(plainTextFromMarkdownHeading(text.trim()));
       const inner = this.parser.parseInline(tokens);
       return `<h${depth} id="${id}">${inner}</h${depth}>\n`;
     },
