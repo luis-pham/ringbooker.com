@@ -2,7 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS commercial_go_live_approval_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  shop_id TEXT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
   event_type TEXT NOT NULL CHECK (event_type IN ('approved')),
   actor_email TEXT NOT NULL,
   note TEXT,

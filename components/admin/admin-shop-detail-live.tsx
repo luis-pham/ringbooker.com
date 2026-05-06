@@ -145,7 +145,7 @@ function formatShortDateTime(value?: string | null) {
   return parsed.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-type ShopTab = 'info' | 'ai' | 'billing' | 'calls' | 'analytics';
+type ShopTab = 'overview' | 'info' | 'ai' | 'billing' | 'calls' | 'analytics';
 
 function utcTodayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -194,7 +194,7 @@ function TabIcon({ children }: { children: ReactNode }) {
 export function AdminShopDetailLive() {
   const params = useParams<{ id: string }>();
   const shopId = params?.id;
-  const [tab, setTab] = useState<ShopTab>('info');
+  const [tab, setTab] = useState<ShopTab>('overview');
   const [shop, setShop] = useState<ShopDetail | null>(null);
   const [adminStatus, setAdminStatus] = useState<AdminShopStatus | null>(null);
   const [commercialApprovalEvents, setCommercialApprovalEvents] = useState<CommercialGoLiveApprovalEvent[]>([]);
@@ -257,7 +257,7 @@ export function AdminShopDetailLive() {
     const changed = prevShopIdRef.current !== shopId;
     prevShopIdRef.current = shopId;
     if (changed) {
-      setTab('info');
+      setTab('overview');
       setCallsPage(1);
       setActiveCall(null);
       setCallDetailOpen(false);
@@ -559,7 +559,83 @@ export function AdminShopDetailLive() {
             </div>
           ) : (
             <>
-              {adminStatus ? (
+              <div className="shop-tab-bar" role="tablist" aria-label="Business sections">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'overview'}
+                  className={`shop-tab${tab === 'overview' ? ' active' : ''}`}
+                  onClick={() => setTab('overview')}
+                >
+                  <TabIcon>
+                    <IconOverview />
+                  </TabIcon>
+                  Business overview
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'info'}
+                  className={`shop-tab${tab === 'info' ? ' active' : ''}`}
+                  onClick={() => setTab('info')}
+                >
+                  <TabIcon>
+                    <IconShop />
+                  </TabIcon>
+                  Business info
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'ai'}
+                  className={`shop-tab${tab === 'ai' ? ' active' : ''}`}
+                  onClick={() => setTab('ai')}
+                >
+                  <TabIcon>
+                    <IconSliders />
+                  </TabIcon>
+                  Business AI config
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'billing'}
+                  className={`shop-tab${tab === 'billing' ? ' active' : ''}`}
+                  onClick={() => setTab('billing')}
+                >
+                  <TabIcon>
+                    <IconBilling />
+                  </TabIcon>
+                  Business billing
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'calls'}
+                  className={`shop-tab${tab === 'calls' ? ' active' : ''}`}
+                  onClick={() => setTab('calls')}
+                >
+                  <TabIcon>
+                    <IconPhone />
+                  </TabIcon>
+                  Business calls
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'analytics'}
+                  className={`shop-tab${tab === 'analytics' ? ' active' : ''}`}
+                  onClick={() => setTab('analytics')}
+                >
+                  <TabIcon>
+                    <IconOverview />
+                  </TabIcon>
+                  Business analytics
+                </button>
+              </div>
+
+              <div className="shop-tab-panels">
+                {tab === 'overview' && adminStatus ? (
                 <section className="card admin-status-overview">
                   <div className="panel-head">
                     <div>
@@ -717,70 +793,7 @@ export function AdminShopDetailLive() {
                   </div>
                 </section>
               ) : null}
-              <div className="shop-tab-bar" role="tablist" aria-label="Business sections">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'info'}
-                  className={`shop-tab${tab === 'info' ? ' active' : ''}`}
-                  onClick={() => setTab('info')}
-                >
-                  <TabIcon>
-                    <IconShop />
-                  </TabIcon>
-                  Business info
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'ai'}
-                  className={`shop-tab${tab === 'ai' ? ' active' : ''}`}
-                  onClick={() => setTab('ai')}
-                >
-                  <TabIcon>
-                    <IconSliders />
-                  </TabIcon>
-                  Business AI config
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'billing'}
-                  className={`shop-tab${tab === 'billing' ? ' active' : ''}`}
-                  onClick={() => setTab('billing')}
-                >
-                  <TabIcon>
-                    <IconBilling />
-                  </TabIcon>
-                  Business billing
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'calls'}
-                  className={`shop-tab${tab === 'calls' ? ' active' : ''}`}
-                  onClick={() => setTab('calls')}
-                >
-                  <TabIcon>
-                    <IconPhone />
-                  </TabIcon>
-                  Business calls
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === 'analytics'}
-                  className={`shop-tab${tab === 'analytics' ? ' active' : ''}`}
-                  onClick={() => setTab('analytics')}
-                >
-                  <TabIcon>
-                    <IconOverview />
-                  </TabIcon>
-                  Business analytics
-                </button>
-              </div>
 
-              <div className="shop-tab-panels">
                 {tab === 'info' ? (
                   <>
                     <section className="grid grid-3" style={{ marginBottom: 18 }}>

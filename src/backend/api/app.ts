@@ -6255,6 +6255,12 @@ Submitted at: ${new Date().toISOString()}`,
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
     const sinceTestCalls = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const commercialGoLiveApprovalEventsPromise = deps.commercialGoLiveApprovalEventsRepository
+      ? deps.commercialGoLiveApprovalEventsRepository.listByShopId(shop.id, 20).catch((error) => {
+          console.warn('[admin_shop_detail] commercial approval history unavailable:', error);
+          return [];
+        })
+      : Promise.resolve([]);
     const [subscription, accessState, testCallsUsed, commercialGoLiveApprovalEvents] = await Promise.all([
       deps.billingSubscriptionsRepository
         ? deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id)
@@ -6267,9 +6273,7 @@ Submitted at: ${new Date().toISOString()}`,
             since: sinceTestCalls,
           })
         : Promise.resolve(0),
-      deps.commercialGoLiveApprovalEventsRepository
-        ? deps.commercialGoLiveApprovalEventsRepository.listByShopId(shop.id, 20)
-        : Promise.resolve([]),
+      commercialGoLiveApprovalEventsPromise,
     ]);
 
     return c.json({
@@ -6351,13 +6355,20 @@ Submitted at: ${new Date().toISOString()}`,
       commercialGoLiveApprovedBy: sessionResult.email,
       commercialGoLiveApprovalNote: parsed.data.note?.trim() || null,
     });
-    const approvalEvent = await deps.commercialGoLiveApprovalEventsRepository?.create({
-      shopId: shop.id,
-      eventType: 'approved',
-      actorEmail: sessionResult.email,
-      note: parsed.data.note?.trim() || null,
-      createdAt: approvedAt,
-    });
+    const approvalEvent = deps.commercialGoLiveApprovalEventsRepository
+      ? await deps.commercialGoLiveApprovalEventsRepository
+          .create({
+            shopId: shop.id,
+            eventType: 'approved',
+            actorEmail: sessionResult.email,
+            note: parsed.data.note?.trim() || null,
+            createdAt: approvedAt,
+          })
+          .catch((error) => {
+            console.warn('[admin_shop_approve_commercial_go_live] approval history unavailable:', error);
+            return null;
+          })
+      : null;
     securityAudit({
       action: 'commercial_go_live_approved',
       actorType: 'admin',
