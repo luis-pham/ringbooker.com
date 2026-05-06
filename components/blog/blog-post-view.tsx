@@ -240,11 +240,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
           </div>
         </aside>
 
-        <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-2">
-          {footerCtas.length > 0 ? <PostFooterCtas rows={footerCtas} /> : <BlogPostDefaultPageCta />}
-        </div>
-
-        <div className="min-w-0 w-full max-w-full font-serif text-gray-700 lg:col-start-1 lg:row-start-3 lg:col-end-2 lg:justify-self-stretch">
+        <div className="min-w-0 w-full max-w-full font-serif text-gray-700 lg:col-start-1 lg:row-start-2 lg:col-end-2 lg:justify-self-stretch">
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-gray-200 pt-8 font-sans">
             <div className="flex flex-wrap gap-2">
               {post.tags.map((entry) => (
@@ -262,6 +258,10 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
               <ShareButtons />
             </div>
           </div>
+        </div>
+
+        <div className="min-w-0 lg:col-span-2 lg:col-start-1 lg:row-start-3">
+          {footerCtas.length > 0 ? <PostFooterCtas rows={footerCtas} /> : <BlogPostDefaultPageCta />}
         </div>
       </div>
 
