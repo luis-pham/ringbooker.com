@@ -10,25 +10,32 @@ export function TableOfContents({ toc }: { toc: TocItem[] }) {
   const visibleToc = useMemo(() => toc.filter((item) => item.level <= 3), [toc]);
 
   useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+
     const headings = visibleToc
       .map((item) => document.getElementById(item.id))
       .filter((node): node is HTMLElement => Boolean(node));
     if (headings.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]?.target?.id) {
-          setActive(visible[0].target.id);
-          return;
-        }
-        const current = headings.filter((h) => h.getBoundingClientRect().top <= 130).slice(-1)[0];
-        if (current?.id) setActive(current.id);
-      },
-      { rootMargin: '-90px 0px -55% 0px', threshold: [0.1, 0.3, 0.6] },
-    );
+    let observer: IntersectionObserver;
+    try {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          if (visible[0]?.target?.id) {
+            setActive(visible[0].target.id);
+            return;
+          }
+          const current = headings.filter((h) => h.getBoundingClientRect().top <= 130).slice(-1)[0];
+          if (current?.id) setActive(current.id);
+        },
+        { rootMargin: '-90px 0px -55% 0px', threshold: [0.1, 0.3, 0.6] },
+      );
+    } catch {
+      return;
+    }
 
     headings.forEach((h) => observer.observe(h));
     return () => observer.disconnect();

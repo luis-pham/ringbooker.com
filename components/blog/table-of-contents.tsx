@@ -15,32 +15,39 @@ export function TableOfContents({ items }: TableOfContentsProps) {
   const [activeId, setActiveId] = useState(items[0]?.id ?? '');
 
   useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return;
+
     const headings = items
       .map((item) => document.getElementById(item.id))
       .filter((item): item is HTMLElement => Boolean(item));
     if (headings.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]?.target?.id) {
-          setActiveId(visible[0].target.id);
-          return;
-        }
+    let observer: IntersectionObserver;
+    try {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const visible = entries
+            .filter((entry) => entry.isIntersecting)
+            .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          if (visible[0]?.target?.id) {
+            setActiveId(visible[0].target.id);
+            return;
+          }
 
-        const current = headings
-          .filter((heading) => heading.getBoundingClientRect().top <= 140)
-          .slice(-1)[0];
-        if (current?.id) setActiveId(current.id);
-      },
-      {
-        root: null,
-        rootMargin: '-90px 0px -55% 0px',
-        threshold: [0.1, 0.3, 0.6, 1],
-      },
-    );
+          const current = headings
+            .filter((heading) => heading.getBoundingClientRect().top <= 140)
+            .slice(-1)[0];
+          if (current?.id) setActiveId(current.id);
+        },
+        {
+          root: null,
+          rootMargin: '-90px 0px -55% 0px',
+          threshold: [0.1, 0.3, 0.6, 1],
+        },
+      );
+    } catch {
+      return;
+    }
 
     headings.forEach((heading) => observer.observe(heading));
     return () => observer.disconnect();

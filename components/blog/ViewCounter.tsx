@@ -19,6 +19,22 @@ export function ViewCounter({
     const s = encodeURIComponent(slug);
     const key = `blog:viewed:${pathPrefix}:${slug}`;
 
+    const hasSessionFlag = (): boolean => {
+      try {
+        return Boolean(sessionStorage.getItem(key));
+      } catch {
+        return false;
+      }
+    };
+
+    const setSessionFlag = (): void => {
+      try {
+        sessionStorage.setItem(key, '1');
+      } catch {
+        // Storage disabled / quota / sandbox — still allow view fetch
+      }
+    };
+
     const run = async () => {
       try {
         const getRes = await fetch(`/api/blog/views/${p}/${s}`, { cache: 'no-store' });
@@ -31,10 +47,10 @@ export function ViewCounter({
       }
 
       try {
-        if (sessionStorage.getItem(key)) return;
+        if (hasSessionFlag()) return;
         const postRes = await fetch(`/api/blog/views/${p}/${s}`, { method: 'POST' });
         if (postRes.ok) {
-          sessionStorage.setItem(key, '1');
+          setSessionFlag();
           if (mounted) setViews((prev) => prev + 1);
         }
       } catch {
