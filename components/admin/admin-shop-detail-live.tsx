@@ -992,8 +992,7 @@ export function AdminShopDetailLive() {
 
                 {tab === 'billing' ? (
                   <>
-                    {shop.plan === 'enterprise' ? (
-                      <section className="card" style={{ marginBottom: 18, borderColor: adminStatus?.commercialGoLiveApproved ? '#bbf7d0' : '#fde68a' }}>
+                    <section className="card" style={{ marginBottom: 18, borderColor: adminStatus?.commercialGoLiveApproved ? '#bbf7d0' : '#fde68a' }}>
                         <div className="panel-head">
                           <div>
                             <h3>Commercial go-live approval</h3>
@@ -1005,7 +1004,13 @@ export function AdminShopDetailLive() {
                         <dl className="admin-status-dl">
                           <div className="admin-status-row">
                             <dt>Status</dt>
-                            <dd>{adminStatus?.commercialGoLiveApproved ? 'Approved' : 'Pending approval'}</dd>
+                            <dd>
+                              {shop.plan === 'enterprise'
+                                ? adminStatus?.commercialGoLiveApproved
+                                  ? 'Approved'
+                                  : 'Pending approval'
+                                : 'Not required for this plan'}
+                            </dd>
                           </div>
                           <div className="admin-status-row">
                             <dt>Approved by</dt>
@@ -1049,7 +1054,7 @@ export function AdminShopDetailLive() {
                             </div>
                           </div>
                         ) : null}
-                        {!adminStatus?.commercialGoLiveApproved ? (
+                        {shop.plan === 'enterprise' && !adminStatus?.commercialGoLiveApproved ? (
                           <div className="top-actions" style={{ marginTop: 18, justifyContent: 'flex-start' }}>
                             <button className="btn purple" type="button" disabled={approvingCommercial} onClick={() => void onApproveCommercialGoLive()}>
                               {approvingCommercial ? 'Approving…' : 'Approve commercial go-live'}
@@ -1057,7 +1062,6 @@ export function AdminShopDetailLive() {
                           </div>
                         ) : null}
                       </section>
-                    ) : null}
                     <form className="card" onSubmit={onSavePlan}>
                     <div className="panel-head">
                       <div>
