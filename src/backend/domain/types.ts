@@ -66,6 +66,15 @@ export interface ServiceItem {
   price: number;
 }
 
+export interface CommercialGoLiveApprovalEvent {
+  id: string;
+  shopId: string;
+  eventType: 'approved';
+  actorEmail: string;
+  note?: string | null;
+  createdAt: string;
+}
+
 export interface Shop {
   id: string;
   name: string;

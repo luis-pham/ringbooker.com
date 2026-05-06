@@ -77,7 +77,17 @@ type LoadShopResponse = {
   ok: boolean;
   shop?: ShopDetail;
   adminStatus?: AdminShopStatus;
+  commercialGoLiveApprovalEvents?: CommercialGoLiveApprovalEvent[];
   error?: string;
+};
+
+type CommercialGoLiveApprovalEvent = {
+  id: string;
+  shopId: string;
+  eventType: 'approved';
+  actorEmail: string;
+  note?: string | null;
+  createdAt: string;
 };
 
 type CallsListResponse = {
@@ -187,6 +197,7 @@ export function AdminShopDetailLive() {
   const [tab, setTab] = useState<ShopTab>('info');
   const [shop, setShop] = useState<ShopDetail | null>(null);
   const [adminStatus, setAdminStatus] = useState<AdminShopStatus | null>(null);
+  const [commercialApprovalEvents, setCommercialApprovalEvents] = useState<CommercialGoLiveApprovalEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -229,10 +240,12 @@ export function AdminShopDetailLive() {
       setError(null);
       setShop(body.shop);
       setAdminStatus(body.adminStatus ?? null);
+      setCommercialApprovalEvents(body.commercialGoLiveApprovalEvents ?? []);
     } catch {
       setError('network_error');
       setShop(null);
       setAdminStatus(null);
+      setCommercialApprovalEvents([]);
     }
   }, [shopId]);
 
@@ -262,6 +275,7 @@ export function AdminShopDetailLive() {
       setCallsPagination(null);
       setAnalytics(null);
       setAdminStatus(null);
+      setCommercialApprovalEvents([]);
     }
   }, [shopId]);
 
@@ -1002,6 +1016,39 @@ export function AdminShopDetailLive() {
                             <dd>{adminStatus?.commercialGoLiveApprovalNote ?? '—'}</dd>
                           </div>
                         </dl>
+                        {commercialApprovalEvents.length ? (
+                          <div style={{ marginTop: 18 }}>
+                            <h4 style={{ margin: '0 0 10px', fontSize: 14 }}>Approval history</h4>
+                            <div style={{ display: 'grid', gap: 10 }}>
+                              {commercialApprovalEvents.map((event) => (
+                                <div
+                                  key={event.id}
+                                  style={{
+                                    border: '1px solid rgba(255,255,255,.08)',
+                                    borderRadius: 12,
+                                    padding: 12,
+                                    background: 'rgba(255,255,255,.03)',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                                    <strong style={{ fontSize: 13 }}>Approved</strong>
+                                    <span className="sub" style={{ fontSize: 11 }}>
+                                      {formatShortDateTime(event.createdAt)}
+                                    </span>
+                                  </div>
+                                  <p className="sub" style={{ margin: '6px 0 0' }}>
+                                    By {event.actorEmail}
+                                  </p>
+                                  {event.note ? (
+                                    <p className="sub" style={{ margin: '6px 0 0' }}>
+                                      {event.note}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
                         {!adminStatus?.commercialGoLiveApproved ? (
                           <div className="top-actions" style={{ marginTop: 18, justifyContent: 'flex-start' }}>
                             <button className="btn purple" type="button" disabled={approvingCommercial} onClick={() => void onApproveCommercialGoLive()}>

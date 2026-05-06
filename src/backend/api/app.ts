@@ -49,6 +49,7 @@ import type {
   BillingNotificationsRepository,
   BillingCustomersRepository,
   BillingSubscriptionsRepository,
+  CommercialGoLiveApprovalEventsRepository,
   CallbacksRepository,
   CallLogsRepository,
   DemoAdminCallListRow,
@@ -1593,6 +1594,7 @@ export function createBackendApp(deps: {
   billingSubscriptionsRepository?: BillingSubscriptionsRepository;
   billingNotificationsRepository?: BillingNotificationsRepository;
   shopAccessStatesRepository?: ShopAccessStatesRepository;
+  commercialGoLiveApprovalEventsRepository?: CommercialGoLiveApprovalEventsRepository;
   testCallAttemptsRepository?: TestCallAttemptsRepository;
   forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
   callbacksRepository?: CallbacksRepository;
@@ -6253,7 +6255,7 @@ Submitted at: ${new Date().toISOString()}`,
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
     const sinceTestCalls = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const [subscription, accessState, testCallsUsed] = await Promise.all([
+    const [subscription, accessState, testCallsUsed, commercialGoLiveApprovalEvents] = await Promise.all([
       deps.billingSubscriptionsRepository
         ? deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id)
         : Promise.resolve(null),
@@ -6265,11 +6267,15 @@ Submitted at: ${new Date().toISOString()}`,
             since: sinceTestCalls,
           })
         : Promise.resolve(0),
+      deps.commercialGoLiveApprovalEventsRepository
+        ? deps.commercialGoLiveApprovalEventsRepository.listByShopId(shop.id, 20)
+        : Promise.resolve([]),
     ]);
 
     return c.json({
       ok: true,
       shop,
+      commercialGoLiveApprovalEvents,
       adminStatus: buildAdminShopStatus({
         shop,
         subscription,
@@ -6345,6 +6351,13 @@ Submitted at: ${new Date().toISOString()}`,
       commercialGoLiveApprovedBy: sessionResult.email,
       commercialGoLiveApprovalNote: parsed.data.note?.trim() || null,
     });
+    const approvalEvent = await deps.commercialGoLiveApprovalEventsRepository?.create({
+      shopId: shop.id,
+      eventType: 'approved',
+      actorEmail: sessionResult.email,
+      note: parsed.data.note?.trim() || null,
+      createdAt: approvedAt,
+    });
     securityAudit({
       action: 'commercial_go_live_approved',
       actorType: 'admin',
@@ -6355,7 +6368,7 @@ Submitted at: ${new Date().toISOString()}`,
         shopId: shop.id,
       },
     });
-    return c.json({ ok: true, alreadyApproved: false, accessState: next });
+    return c.json({ ok: true, alreadyApproved: false, accessState: next, approvalEvent: approvalEvent ?? null });
   });
 
   app.put(path('/admin/shops/:id/settings'), async (c) => {
