@@ -55,7 +55,7 @@ export function TableOfContents({ items }: TableOfContentsProps) {
             <a
               href={`#${item.id}`}
               className={[
-                'flex items-center gap-1.5 text-[13px] font-medium transition',
+                'flex items-center gap-1.5 text-[13px] font-normal transition',
                 active ? 'text-brand-purple' : 'text-gray-500 hover:text-brand-purple',
               ].join(' ')}
             >

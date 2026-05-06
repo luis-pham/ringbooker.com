@@ -150,7 +150,7 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
             return (
               <div className="text-center" key={`${num}-${label}-${index}`}>
                 <div className="text-2xl font-extrabold leading-none text-gray-900 sm:text-3xl">{num}</div>
-                <div className="mt-1 text-[11px] font-medium text-gray-400">{label}</div>
+                <div className="mt-1 text-[11px] font-normal text-gray-400">{label}</div>
               </div>
             );
           })}
