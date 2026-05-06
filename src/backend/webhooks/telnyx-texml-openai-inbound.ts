@@ -32,9 +32,10 @@ import type {
   ShopAccessStatesRepository,
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
-import { resolveShopByInboundDidWithMeta } from '@/src/backend/services/calls/shop-resolver';
+import { resolveShopByInboundDidWithMeta, normalizeInboundE164 } from '@/src/backend/services/calls/shop-resolver';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
+import { resolveVerticalDemoInboundRoute } from '@/src/backend/demo/demo-vertical-phone-map';
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8"?>';
 
@@ -137,10 +138,14 @@ export async function handleTelnyxTexmlOpenAiInbound(
   const sipHost =
     sipUriConfigured.includes('@') ? (sipUriConfigured.split('@')[1]?.split(';')[0] ?? 'unknown') : 'unknown';
 
+  const isDemoNumber = Boolean(
+    form.To && resolveVerticalDemoInboundRoute(normalizeInboundE164(form.To), env),
+  );
+
   let shopId: string | undefined;
   let billingBlockedReason: string | undefined;
   let forwardingTestAckTexml = false;
-  if (deps?.shopsRepository && form.To) {
+  if (!isDemoNumber && deps?.shopsRepository && form.To) {
     try {
       const meta = await resolveShopByInboundDidWithMeta({ shopsRepository: deps.shopsRepository }, form.To);
       const shop = meta.shop;
