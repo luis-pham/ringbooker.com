@@ -5,6 +5,11 @@ const WWW_HOST = 'www.ringbooker.com';
 const APEX_HOST = 'ringbooker.com';
 
 const nextConfig: NextConfig = {
+  /**
+   * `ws` must not be webpack-bundled: bundled build breaks frame masking (`b.mask is not a function`)
+   * when OpenAI Realtime SIP sideband calls `WebSocket#send` from route handlers.
+   */
+  serverExternalPackages: ['ws'],
   async redirects() {
     return [
       // --- Host canonicalization (production) ---
