@@ -604,9 +604,9 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .pt-btn:not(.on){background:transparent;color:var(--text-desc)}
 .save-tag{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ecfdf5,#d1fae5);color:#047857;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 12px;border-radius:var(--r-pill);border:1px solid rgba(16,185,129,.4);box-shadow:0 2px 10px rgba(16,185,129,.14)}
 .price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
-.plan{background:#fff;border-radius:var(--r-lg);padding:24px 20px;border:1px solid var(--border);position:relative;display:flex;flex-direction:column;height:100%;transition:transform .2s,box-shadow .2s,border-color .2s;box-shadow:var(--home-shadow-soft)}
-.plan:hover{transform:translateY(-2px);box-shadow:var(--home-shadow-hover);border-color:rgba(196,181,253,.55)}
-.plan.star{background:linear-gradient(180deg,#faf9ff 0%,#fff 85%);border-color:rgba(167,139,250,.55);box-shadow:var(--home-shadow-soft),0 0 0 1px rgba(139,92,246,.06)}
+.plan{background:#fff;border-radius:var(--r-lg);padding:24px 20px;border:1px solid var(--border);position:relative;display:flex;flex-direction:column;height:100%;transition:transform .2s,box-shadow .2s,border-color .2s;box-shadow:0 10px 24px -18px rgba(17,24,39,.16)}
+.plan:hover{transform:translateY(-1px);box-shadow:0 14px 30px -20px rgba(17,24,39,.18);border-color:rgba(196,181,253,.55)}
+.plan.star{background:linear-gradient(180deg,#faf9ff 0%,#fff 85%);border-color:rgba(167,139,250,.55);box-shadow:0 10px 24px -18px rgba(124,58,237,.2),0 0 0 1px rgba(139,92,246,.06)}
 .plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;font-size:var(--mk-badge);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;padding:5px 16px;border-radius:var(--r-pill);white-space:nowrap;box-shadow:0 4px 12px rgba(124,58,237,.2)}
 .plan-name{font-size:var(--mk-card-title);font-weight:600;margin-bottom:5px;color:var(--text-dark)}
 .plan-desc{font-size:var(--mk-caption);color:var(--text-desc);margin-bottom:16px;line-height:1.55;font-weight:400}
@@ -949,6 +949,9 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .hero{min-height:auto;padding-top:96px;padding-bottom:36px}
   .hero-visual{height:420px;margin-top:34px}
   .phone-frame{width:216px;height:432px;box-shadow:0 26px 48px rgba(0,0,0,.2)}
+  .pricing .plan{box-shadow:0 1px 2px rgba(17,24,39,.04)}
+  .pricing .plan:hover{transform:none;box-shadow:0 1px 2px rgba(17,24,39,.04)}
+  .pricing .plan.star,.pricing .plan.star:hover{box-shadow:0 0 0 1px rgba(139,92,246,.08)}
   h1.hero-h{font-size:clamp(26px,7.2vw,40px);letter-spacing:-1.5px;line-height:1.18}
   h1.hero-h .hl{padding:0.1em 0.42em;margin:0.06em 0.08em;letter-spacing:-0.02em}
   .hero-sub{margin-bottom:26px}
