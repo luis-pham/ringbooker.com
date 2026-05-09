@@ -181,9 +181,9 @@ export function UserAccountLive() {
       ...userSettingsStyles,
       String.raw`
 .rb-account-page{margin-top:0}
-/* Centered shell — compact card; extra top padding aligns with other portal pages */
+/* Centered shell — widened on desktop; compact on mobile */
 .rb-account-shell{
-  width:100%;max-width:520px;margin:0 auto;padding:22px 0 36px;box-sizing:border-box;
+  width:100%;max-width:680px;margin:0 auto;padding:22px 0 36px;box-sizing:border-box;
 }
 .rb-account-frame{
   background:var(--surface-card);border:1px solid var(--border);border-radius:16px;
@@ -200,6 +200,13 @@ export function UserAccountLive() {
 .rb-account-panel{padding:22px 22px 24px}
 .rb-account-panel-title{
   margin:0 0 18px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
+}
+@media(min-width:861px){
+  .rb-account-shell{max-width:760px;padding:26px 0 40px}
+  .rb-account-frame-head{padding:22px 28px 18px}
+  .rb-account-frame-head h2{font-size:19px}
+  .rb-account-subtabs.business-subtabs{padding:14px 28px 16px}
+  .rb-account-panel{padding:26px 28px 30px}
 }
 @media(max-width:860px){
   .rb-account-shell{padding:18px 0 30px;max-width:100%}

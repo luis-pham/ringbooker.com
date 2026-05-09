@@ -12,7 +12,9 @@ test('phone setup state requires payment before forwarding number creation', () 
   });
 
   assert.equal(state, 'payment_method_required');
-  assert.match(getPhoneSetupCopy(state).explanation, /generate your RingBooker forwarding number/);
+  const copy = getPhoneSetupCopy(state);
+  assert.equal(copy.primaryLabel, 'Start 14-day trial');
+  assert.match(copy.explanation, /start your 14-day live answering trial/i);
 });
 
 test('phone setup state advances from number creation to verification to enable live', () => {
@@ -51,7 +53,7 @@ test('phone setup state advances from number creation to verification to enable 
   );
 });
 
-test('phone setup shows payment verification pending after Paddle returns before valid webhook state', () => {
+test('phone setup shows payment verification pending after checkout returns before valid billing state', () => {
   const state = resolvePhoneSetupState({
     subscriptionStatus: 'trialing',
     paymentMethodStatus: 'unknown',
@@ -63,7 +65,7 @@ test('phone setup shows payment verification pending after Paddle returns before
   });
 
   assert.equal(state, 'payment_verification_pending');
-  assert.match(getPhoneSetupCopy(state).explanation, /billing has not been verified by webhook/i);
+  assert.match(getPhoneSetupCopy(state).explanation, /waiting for billing to confirm your trial/i);
 });
 
 test('billing issues take precedence over live flag', () => {
@@ -78,4 +80,5 @@ test('billing issues take precedence over live flag', () => {
     }),
     'billing_issue',
   );
+  assert.match(getPhoneSetupCopy('billing_issue').explanation, /will not answer forwarded live calls/i);
 });

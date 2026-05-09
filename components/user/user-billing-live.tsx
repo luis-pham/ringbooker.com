@@ -68,6 +68,11 @@ type UserBillingResponse = {
     checkoutDisabledReason?: string | null;
     availableBillingIntervals?: Array<'monthly' | 'annual'>;
     manageBillingAvailable?: boolean;
+    manageBillingDisabledReason?: string | null;
+    canViewInvoicesViaPortal?: boolean;
+    canUpdatePaymentMethodViaPortal?: boolean;
+    canCancelViaPortal?: boolean;
+    billingHistoryLabel?: string;
     forwardingNumber?: string | null;
     usage?: {
       capturedCallersUsed: number;
@@ -212,7 +217,7 @@ function paymentCardValue(pm: 'none' | 'pending' | 'valid' | 'failed' | 'unknown
 
 function paymentCardMeta(pm: 'none' | 'pending' | 'valid' | 'failed' | 'unknown' | undefined) {
   if (pm === 'valid') return 'Ready for renewals and go-live checks';
-  return 'Required before live answering';
+  return 'Required before live answering trial';
 }
 
 function liveAnsweringValue(enabled: boolean | undefined) {
@@ -223,7 +228,7 @@ function liveAnsweringValue(enabled: boolean | undefined) {
 
 function liveAnsweringMeta(enabled: boolean | undefined, hasPayment: boolean | undefined) {
   if (enabled === true) return 'RingBooker can answer real callers';
-  if (!hasPayment) return 'Add payment method to go live';
+  if (!hasPayment) return 'Start trial before live answering';
   return 'Turn on go-live when you are ready';
 }
 
@@ -293,54 +298,60 @@ function billingUiCopy(state: BillingUiState) {
   switch (state) {
     case 'billing_not_configured':
       return {
-        title: 'Add a payment method to go live',
-        body: 'You can continue setup and test calls without a card. Start secure Paddle checkout when you are ready for RingBooker to answer real callers.',
+        title: 'Start your 14-day trial',
+        body: 'Your AI receptionist is ready for setup and test calls. To let RingBooker answer real calls on your business number, start your 14-day trial and complete phone forwarding.',
       };
     case 'setup_allowed_no_payment':
       return {
-        title: 'Setup and test calls are available',
-        body: 'No card is needed for setup or test calls. Add a payment method only when you are ready for RingBooker to answer real callers.',
+        title: 'Start your 14-day trial',
+        body: 'Your AI receptionist is ready for setup and test calls. To let RingBooker answer real calls on your business number, start your 14-day trial and complete phone forwarding.',
       };
     case 'payment_method_required':
       return {
-        title: 'Add a payment method to go live',
-        body: 'No card is needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.',
+        title: 'Start your 14-day trial',
+        body: 'Your AI receptionist is ready for setup and test calls. To let RingBooker answer real calls on your business number, start your 14-day trial and complete phone forwarding.',
       };
     case 'checkout_pending':
       return {
-        title: 'Starting secure checkout',
-        body: 'Paddle will collect your payment method. Live answering will remain off until the webhook-confirmed billing state is valid.',
+        title: 'Payment setup pending',
+        body: 'We are waiting for billing to confirm your trial. This usually updates within a minute.',
       };
     case 'trialing_valid':
       return {
-        title: 'Payment method added',
-        body: 'Your trial is active and billing is ready. Finish forwarding verification before enabling live answering.',
+        title: 'Billing is active',
+        body: 'Update your payment method, view invoices, or manage your subscription.',
       };
     case 'active':
       return {
-        title: 'Subscription active',
-        body: 'Billing is valid. Live answering still depends on forwarding verification and the go-live switch.',
+        title: 'Billing is active',
+        body: 'Update your payment method, view invoices, or manage your subscription.',
       };
     case 'past_due':
       return {
-        title: 'Billing issue blocks live answering',
-        body: 'Your subscription is past due. Update billing before RingBooker can answer real callers.',
+        title: 'Billing issue',
+        body: 'Update your payment method to restore live answering.',
       };
     case 'paused':
       return {
-        title: 'Subscription paused',
-        body: 'Live answering is blocked while the subscription is paused.',
+        title: 'Live answering is paused',
+        body: 'Your billing status needs attention. RingBooker will not answer forwarded live calls until billing is resolved.',
       };
     case 'canceled':
       return {
         title: 'Subscription canceled',
-        body: 'Live answering is blocked. Reactivate billing before going live again.',
+        body: 'Live answering is paused. Restart billing when you are ready to go live again.',
       };
   }
 }
 
+function liveTrialDueTodayCopy(trialNoChargeUntilEndVerified?: boolean): string {
+  return trialNoChargeUntilEndVerified
+    ? "Due today: $0. You won't be charged until your 14-day trial ends. Final total may include applicable taxes based on your location."
+    : 'Due today: $0. Final total may include applicable taxes based on your location.';
+}
+
 type BillingSectionTab = 'overview' | 'plans' | 'history';
-type CheckoutNotice = 'success' | 'cancelled' | null;
+type BillingNotice = 'checkout_success' | 'checkout_cancelled' | 'manage_returned' | null;
 
 function checkoutUnavailableCopy(reason?: string | null): string {
   if (reason === 'billing_checkout_disabled') {
@@ -354,8 +365,9 @@ export function UserBillingLive() {
   const [data, setData] = useState<UserBillingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
+  const [managingBilling, setManagingBilling] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [checkoutNotice, setCheckoutNotice] = useState<CheckoutNotice>(null);
+  const [billingNotice, setBillingNotice] = useState<BillingNotice>(null);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [billingTab, setBillingTab] = useState<BillingSectionTab>('overview');
 
@@ -406,10 +418,13 @@ export function UserBillingLive() {
       window.location.replace(`${window.location.origin}/user/go-live#go-live-forwarding`);
     }
     const checkout = new URLSearchParams(window.location.search).get('checkout');
+    const billing = new URLSearchParams(window.location.search).get('billing');
     if (checkout === 'success') {
-      setCheckoutNotice('success');
+      setBillingNotice('checkout_success');
     } else if (checkout === 'cancelled' || checkout === 'canceled') {
-      setCheckoutNotice('cancelled');
+      setBillingNotice('checkout_cancelled');
+    } else if (billing === 'manage_returned') {
+      setBillingNotice('manage_returned');
     }
   }, []);
 
@@ -456,6 +471,7 @@ export function UserBillingLive() {
   const billing = data?.billing ?? null;
   const usage = billing?.usage ?? null;
   const checkoutAvailable = data?.billing?.checkoutAvailable === true;
+  const manageBillingAvailable = data?.billing?.manageBillingAvailable === true;
   const availableBillingIntervals = data?.billing?.availableBillingIntervals ?? ['monthly'];
   const canChooseAnnual = checkoutAvailable && availableBillingIntervals.includes('annual');
   const effectiveBillingInterval =
@@ -543,6 +559,36 @@ export function UserBillingLive() {
     }
   }
 
+  async function openManageBilling() {
+    if (!manageBillingAvailable) {
+      setCheckoutError('Billing management is not available right now. Contact support or try again later.');
+      return;
+    }
+    setManagingBilling(true);
+    setCheckoutError(null);
+    try {
+      const response = await fetch('/api/backend/user/billing/manage', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json()) as {
+        ok: boolean;
+        manageUrl?: string;
+        error?: string;
+        message?: string;
+      };
+      if (!response.ok || !body.ok || !body.manageUrl) {
+        throw new Error(body.message ?? body.error ?? 'Billing management could not open.');
+      }
+      window.location.href = body.manageUrl;
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'billing_management_failed');
+    } finally {
+      setManagingBilling(false);
+    }
+  }
+
   const subTagClass = `tag ${subscriptionStatusTone(subscription?.status, Boolean(subscription))}`;
 
   return (
@@ -553,7 +599,7 @@ export function UserBillingLive() {
           <main className="main">
             <UserPortalTopbar
               title="Billing"
-              subtitle="Summary above; tabs for account usage, plans, and billing history. Forwarding is under Go live."
+              subtitle="View usage, plans, and billing activity. Set up forwarding under Go Live."
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />
@@ -589,19 +635,19 @@ export function UserBillingLive() {
                   </div>
                 </section>
 
-                {checkoutNotice === 'success' ? (
+                {billingNotice === 'checkout_success' ? (
                   <section className="billing-alert-strip" style={{ borderColor: '#bbf7d0', background: '#f0fdf4', color: '#166534' }}>
                     <p>
-                      <strong>Payment method submitted.</strong> Paddle is confirming your billing status. Live answering stays off until billing is verified and forwarding setup is complete.
+                      <strong>Payment setup pending.</strong> We are waiting for billing to confirm your trial. Live answering stays off until billing and phone forwarding are complete.
                     </p>
                     <a className="btn purple" href="/user/go-live#go-live-forwarding">
                       Continue go-live setup
                     </a>
                   </section>
-                ) : checkoutNotice === 'cancelled' ? (
+                ) : billingNotice === 'checkout_cancelled' ? (
                   <section className="billing-alert-strip">
                     <p>
-                      <strong>Checkout was cancelled.</strong> No payment method was added. Setup and test calls still work; add a payment method when you are ready to go live.
+                      <strong>Checkout was cancelled.</strong> Your live answering trial was not started. Setup and test calls still work.
                     </p>
                     {checkoutAvailable ? (
                       <button type="button" className="btn user-save" disabled={checkoutPlan !== null} onClick={() => void openCheckout(currentPlan)}>
@@ -609,21 +655,27 @@ export function UserBillingLive() {
                       </button>
                     ) : null}
                   </section>
+                ) : billingNotice === 'manage_returned' ? (
+                  <section className="billing-alert-strip" style={{ borderColor: '#bfdbfe', background: '#eff6ff', color: '#1e40af' }}>
+                    <p>
+                      <strong>Billing management closed.</strong> Changes made in billing management may take a minute to appear here.
+                    </p>
+                    <button type="button" className="btn" onClick={() => void refreshBilling()}>
+                      Refresh status
+                    </button>
+                  </section>
                 ) : null}
 
                 {showAddPaymentStrip ? (
                   <section className="billing-alert-strip">
                     <div style={{ flex: '1 1 auto', minWidth: 0 }}>
                       <p style={{ margin: 0 }}>
-                        <strong>Add a payment method to go live.</strong> Setup and test calls still work without a card.
-                        Live answering on your business number starts only after billing, forwarding, and verification are
-                        complete.
+                        <strong>Start your 14-day trial.</strong> Add a payment method to start your 14-day live answering trial.
+                        RingBooker will not answer real calls on your business number until billing and phone forwarding are set up.
                       </p>
-                      {billing?.trialNoChargeUntilEndVerified ? (
-                        <div className="sub" style={{ marginTop: 10 }}>
-                          Paddle is configured to collect your payment method now and charge after the trial ends.
-                        </div>
-                      ) : null}
+                      <div className="sub" style={{ marginTop: 10 }}>
+                        {liveTrialDueTodayCopy(billing?.trialNoChargeUntilEndVerified)}
+                      </div>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
                       {checkoutAvailable && availableBillingIntervals.length > 1 ? (
@@ -652,7 +704,7 @@ export function UserBillingLive() {
                           disabled={checkoutPlan !== null}
                           onClick={() => void openCheckout(currentPlan)}
                         >
-                          {checkoutPlan ? 'Starting…' : 'Add payment method'}
+                          {checkoutPlan ? 'Starting…' : 'Start 14-day trial'}
                         </button>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
@@ -783,8 +835,11 @@ export function UserBillingLive() {
                         <section className="card" style={{ marginBottom: 16 }}>
                           <h3 style={{ marginTop: 0 }}>{billingCopy.title}</h3>
                           <p className="sub">{billingCopy.body}</p>
-                          {billing?.trialNoChargeUntilEndVerified ? (
-                            <p className="sub">Paddle is configured to collect your payment method now and charge after the trial ends.</p>
+                          {!hasPaymentMethod && !['past_due', 'paused', 'canceled'].includes(billingState) ? (
+                            <p className="sub">{liveTrialDueTodayCopy(billing?.trialNoChargeUntilEndVerified)}</p>
+                          ) : null}
+                          {['active', 'trialing_valid'].includes(billingState) && manageBillingAvailable ? (
+                            <p className="sub">Changes made in billing management may take a minute to appear here.</p>
                           ) : null}
                           {checkoutAvailable && availableBillingIntervals.length > 1 && !hasPaymentMethod ? (
                             <div style={{ display: 'flex', gap: 8, margin: '12px 0', flexWrap: 'wrap' }} aria-label="Billing interval">
@@ -805,7 +860,27 @@ export function UserBillingLive() {
                               </button>
                             </div>
                           ) : null}
-                          {!checkoutAvailable ? (
+                          {['active', 'trialing_valid'].includes(billingState) ? (
+                            manageBillingAvailable ? (
+                              <button
+                                type="button"
+                                className="btn user-save"
+                                disabled={managingBilling}
+                                onClick={() => void openManageBilling()}
+                              >
+                                {managingBilling ? 'Opening…' : 'Manage billing'}
+                              </button>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                                <button type="button" className="btn" disabled>
+                                  Manage billing unavailable
+                                </button>
+                                <p className="sub" style={{ margin: 0 }}>
+                                  Billing management is not available right now. Contact support or try again later.
+                                </p>
+                              </div>
+                            )
+                          ) : !checkoutAvailable && !manageBillingAvailable ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                               <button type="button" className="btn" disabled>
                                 Payment setup unavailable
@@ -814,15 +889,41 @@ export function UserBillingLive() {
                                 {checkoutUnavailableCopy(billing?.checkoutDisabledReason)}
                               </p>
                             </div>
-                          ) : ['past_due', 'paused', 'canceled'].includes(billingState) ? (
-                            <button
-                              type="button"
-                              className="btn user-save"
-                              disabled={checkoutPlan !== null}
-                              onClick={() => void openReactivateCheckout()}
-                            >
-                              {checkoutPlan ? 'Starting…' : 'Resolve billing issue'}
-                            </button>
+                          ) : ['past_due', 'paused'].includes(billingState) ? (
+                            manageBillingAvailable ? (
+                              <button
+                                type="button"
+                                className="btn user-save"
+                                disabled={managingBilling}
+                                onClick={() => void openManageBilling()}
+                              >
+                                {managingBilling ? 'Opening…' : 'Resolve billing issue'}
+                              </button>
+                            ) : checkoutAvailable ? (
+                              <button
+                                type="button"
+                                className="btn user-save"
+                                disabled={checkoutPlan !== null}
+                                onClick={() => void openReactivateCheckout()}
+                              >
+                                {checkoutPlan ? 'Starting…' : 'Resolve billing issue'}
+                              </button>
+                            ) : (
+                              <a className="btn" href="/contact?topic=support">Contact support</a>
+                            )
+                          ) : billingState === 'canceled' ? (
+                            checkoutAvailable ? (
+                              <button
+                                type="button"
+                                className="btn user-save"
+                                disabled={checkoutPlan !== null}
+                                onClick={() => void openReactivateCheckout()}
+                              >
+                                {checkoutPlan ? 'Starting…' : 'Restart 14-day trial'}
+                              </button>
+                            ) : (
+                              <a className="btn" href="/contact?topic=support">Contact support</a>
+                            )
                           ) : !hasPaymentMethod ? (
                             <button
                               type="button"
@@ -830,7 +931,7 @@ export function UserBillingLive() {
                               disabled={checkoutPlan !== null}
                               onClick={() => void openCheckout(currentPlan)}
                             >
-                              {checkoutPlan ? 'Starting…' : 'Add payment method'}
+                              {checkoutPlan ? 'Starting…' : 'Start 14-day trial'}
                             </button>
                           ) : null}
                         </section>
@@ -869,7 +970,7 @@ export function UserBillingLive() {
                                   disabled={isBusy || !checkoutAvailable}
                                   onClick={() => void openCheckout(plan.plan)}
                                 >
-                                  {isBusy ? 'Starting…' : checkoutAvailable ? 'Add payment method' : 'Payment setup unavailable'}
+                                  {isBusy ? 'Starting…' : checkoutAvailable ? 'Start 14-day trial' : 'Payment setup unavailable'}
                                 </button>
                               );
                             } else {
@@ -929,7 +1030,7 @@ export function UserBillingLive() {
                           <li>Call summaries</li>
                           <li>SMS workflows where enabled for your plan</li>
                         </ul>
-                        <p className="plan-includes-foot">Billing is managed securely through Paddle.</p>
+                        <p className="plan-includes-foot">Billing is managed securely by our payment provider.</p>
                       </section>
                     </div>
                   ) : null}
@@ -940,9 +1041,16 @@ export function UserBillingLive() {
                         <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
                           <div className="panel-head">
                             <div>
-                              <h3>Billing history</h3>
-                              <p className="sub">Recent subscription activity and renewal timing.</p>
+                              <h3>{billing?.billingHistoryLabel ?? 'Account billing activity'}</h3>
+                              <p className="sub">
+                                Recent subscription activity and renewal timing. Official invoices and payment receipts are available in billing management.
+                              </p>
                             </div>
+                            {manageBillingAvailable ? (
+                              <button type="button" className="btn" disabled={managingBilling} onClick={() => void openManageBilling()}>
+                                {managingBilling ? 'Opening…' : 'Manage billing'}
+                              </button>
+                            ) : null}
                           </div>
                           <table className="table">
                             <thead>
@@ -971,12 +1079,11 @@ export function UserBillingLive() {
                         <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
                           <div className="panel-head">
                             <div>
-                              <h3>Billing history</h3>
+                              <h3>{billing?.billingHistoryLabel ?? 'Account billing activity'}</h3>
                             </div>
                           </div>
                           <p className="sub" style={{ marginBottom: 0 }}>
-                            No invoices yet. Your invoices and subscription events will appear here after your first billing
-                            period.
+                            Account billing activity appears after your first subscription event. Official invoices and payment receipts are available in billing management.
                           </p>
                         </section>
                       )}

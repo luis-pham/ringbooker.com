@@ -251,28 +251,7 @@ button.subtle-link:hover{text-decoration:underline}
   background-repeat:no-repeat;background-position:right 12px center;background-size:16px;
 }
 
-/* Services & Hours — SaaS-style layout */
-.sh-services-hours-card{padding:0;overflow:hidden}
-.sh-panel-head{padding:22px 22px 18px;border-bottom:1px solid var(--border)}
-.sh-panel-title{margin:0;font-size:18px;font-weight:780;letter-spacing:-.03em;line-height:1.25;color:var(--text-dark)}
-.sh-panel-desc{margin:8px 0 0;font-size:14px;line-height:1.55;color:var(--text-gray);max-width:44rem}
-.sh-segments{
-  display:flex;gap:6px;padding:12px 16px 14px;
-  background:linear-gradient(180deg,#fafafa 0%,#f3f4f6 100%);
-  border-bottom:1px solid var(--border);flex-wrap:wrap;
-}
-.sh-segment{
-  border:1px solid transparent;background:transparent;padding:9px 18px;border-radius:10px;
-  font:inherit;font-size:13px;font-weight:650;color:var(--text-gray);cursor:pointer;
-  transition:background .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease;
-}
-.sh-segment:hover{color:var(--text-dark);background:rgba(255,255,255,.75);border-color:#e5e7eb}
-.sh-segment:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
-.sh-segment.active{
-  background:#fff;color:var(--text-dark);border-color:var(--border);
-  box-shadow:0 1px 3px rgba(15,23,42,.07);font-weight:750;
-}
-.sh-form-body{padding:20px 22px 10px}
+/* Services & Hours — catalog, active services table, weekly grid */
 .sh-catalog-intro{margin:0 0 16px;font-size:13px;line-height:1.55;color:var(--text-gray);max-width:40rem}
 .sh-catalog-grid{
   display:grid;
@@ -331,7 +310,6 @@ button.subtle-link:hover{text-decoration:underline}
 .sh-active-row .small-field{margin-bottom:0}
 .sh-active-row .small-field label{font-size:10px;margin-bottom:6px}
 
-.sh-hours-body{padding:20px 22px 12px}
 .sh-hours-intro{margin-bottom:18px}
 .sh-hours-presets{margin-bottom:18px}
 .sh-hours-presets-label{margin:0 0 10px;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-gray)}
@@ -351,10 +329,6 @@ button.subtle-link:hover{text-decoration:underline}
 }
 .sh-hours-wrap .hours-row.closed{opacity:.72}
 .sh-hours-wrap .hours-day{font-size:13px;font-weight:780;color:var(--text-dark)}
-.sh-save-bar{
-  padding:16px 22px 20px;border-top:1px solid rgba(15,23,42,.08);
-  display:flex;justify-content:flex-end;align-items:center;gap:12px;background:#fafafa;
-}
 
 .plan-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:#f5f3ff;color:var(--purple-dark);font-size:11px;font-weight:800}
 .upgrade-panel{background:linear-gradient(135deg,#f7f3ff,#fff);border:1px dashed rgba(99,14,212,.28)}
@@ -443,17 +417,6 @@ html[data-user-theme="dark"] .integrations-primary-button:hover:not(:disabled){
 html[data-user-theme="dark"] .hours-grid{border-color:var(--border);background:var(--surface-card)}
 html[data-user-theme="dark"] .hours-row{background:var(--surface-card);border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .hours-row.closed{background:#0d1117}
-html[data-user-theme="dark"] .sh-panel-head{border-bottom-color:var(--border)}
-html[data-user-theme="dark"] .sh-segments{
-  background:linear-gradient(180deg,#0d1117 0%,#161b22 100%);
-  border-bottom-color:var(--border);
-}
-html[data-user-theme="dark"] .sh-segment{color:var(--text-gray)}
-html[data-user-theme="dark"] .sh-segment:hover{background:#21262d;border-color:var(--border);color:var(--text-dark)}
-html[data-user-theme="dark"] .sh-segment.active{
-  background:var(--surface-card);color:var(--text-dark);border-color:var(--border);
-  box-shadow:0 1px 3px rgba(0,0,0,.35);
-}
 html[data-user-theme="dark"] .sh-catalog-card{background:var(--surface-card)}
 html[data-user-theme="dark"] .sh-catalog-card:hover{border-color:#58a6ff}
 html[data-user-theme="dark"] .sh-catalog-card.selected{
@@ -471,7 +434,6 @@ html[data-user-theme="dark"] .sh-active-thead{background:#161b22;border-bottom-c
 html[data-user-theme="dark"] .sh-active-row{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .sh-hours-wrap{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .sh-hours-thead{background:#161b22;border-bottom-color:var(--border)}
-html[data-user-theme="dark"] .sh-save-bar{border-top-color:var(--border);background:#0d1117}
 html[data-user-theme="dark"] .sh-active-row .sh-active-service{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .service-chip{border-color:var(--border);background:var(--surface-card)}
 html[data-user-theme="dark"] .service-chip.active{border-color:rgba(56,139,253,.45);box-shadow:0 0 0 4px rgba(56,139,253,.12)}
@@ -505,13 +467,7 @@ html[data-user-theme="dark"] .upgrade-panel{
   .business-subtabs{gap:6px}
   .business-subtab{padding:7px 10px;font-size:11px}
   .card-section-form{padding:0}
-  .sh-segments{padding:10px 12px}
-  .sh-segment{padding:8px 14px;font-size:12px}
-  .sh-panel-head{padding:18px 16px 14px}
-  .sh-form-body{padding:16px 14px 8px}
-  .sh-hours-body{padding:16px 14px 10px}
   .sh-catalog-grid{grid-template-columns:1fr}
-  .sh-save-bar{padding:14px 16px 16px}
   .sh-active-thead{display:none}
   .sh-active-row{
     grid-template-columns:1fr;

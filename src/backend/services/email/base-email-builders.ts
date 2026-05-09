@@ -17,8 +17,8 @@ function ensureAbsoluteBaseUrl(appBaseUrl: string): string {
 
 function paymentMethodTrialCopy(paddleTrialConfigVerified?: boolean): string {
   return paddleTrialConfigVerified
-    ? "A payment method is required before live answering on your business number. You won't be charged until your trial ends."
-    : 'No card is needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.';
+    ? "Start your 14-day trial before RingBooker answers real callers on your business number. Due today: $0. You won't be charged until your 14-day trial ends. Final total may include applicable taxes based on your location."
+    : 'No card is needed for setup and test calls. Start your 14-day trial before RingBooker answers real callers on your business number. Due today: $0. Final total may include applicable taxes based on your location.';
 }
 
 export function buildWelcomeSignupEmailPayload(params: {
@@ -97,8 +97,8 @@ export function buildTrialReminderEmailPayload(params: {
   const input: BaseEmailInput = {
     title: `Your RingBooker trial ends in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}`,
     previewText: params.paddleTrialConfigVerified
-      ? "Add a payment method before go-live. You won't be charged until your trial ends."
-      : 'Add a payment method before live answering.',
+      ? "Start your 14-day trial before go-live. You won't be charged until your 14-day trial ends."
+      : 'Start your 14-day trial before live answering.',
     heroTitle: `Trial ends in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}`,
     heroSubtitleHtml: `<p style="margin:0">Your trial for <strong>${businessName}</strong> ends on <strong>${escapeHtmlText(trialEndText)}</strong>.</p>`,
     greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
@@ -106,7 +106,7 @@ export function buildTrialReminderEmailPayload(params: {
       `<p style="margin:0 0 12px 0">${escapeHtmlText(trialPaymentCopy)}</p>`,
       '<p style="margin:0">Live answering only starts after billing is valid and phone forwarding is connected.</p>',
     ].join(''),
-    ctaLabel: 'Add payment method',
+    ctaLabel: 'Start 14-day trial',
     ctaUrl: billingUrl,
     signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
   };
@@ -114,7 +114,7 @@ export function buildTrialReminderEmailPayload(params: {
     `Your RingBooker trial for "${params.shopName}" ends in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'} (${trialEndText}).`,
     trialPaymentCopy,
     'Live answering only starts after billing is valid and phone forwarding is connected.',
-    `Add payment method: ${billingUrl}`,
+    `Start 14-day trial: ${billingUrl}`,
   ].join('\n');
   return { input, text };
 }
@@ -308,9 +308,9 @@ export function buildAddPaymentMethodGoLiveEmailPayload(params: {
   const billingUrl = `${base}/user/billing`;
   const trialCopy = paymentMethodTrialCopy(params.paddleTrialConfigVerified);
   const input: BaseEmailInput = {
-    title: 'Add a payment method to go live',
-    previewText: 'Payment method required before live answering on your business number.',
-    heroTitle: 'Add a payment method to go live',
+    title: 'Start your 14-day trial',
+    previewText: 'Start your 14-day trial before RingBooker answers real callers.',
+    heroTitle: 'Start your 14-day trial',
     heroSubtitleHtml: `<p style="margin:0">RingBooker setup for <strong>${escapeHtmlText(params.shopName)}</strong> can continue without a card.</p>`,
     greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
     bodyHtml: [
@@ -318,7 +318,7 @@ export function buildAddPaymentMethodGoLiveEmailPayload(params: {
       '<p style="margin:0 0 12px 0">You keep your current business number. After payment is verified, RingBooker will create a forwarding number and guide you through forwarding missed or after-hours calls.</p>',
       '<p style="margin:0">Live answering is not active yet.</p>',
     ].join(''),
-    ctaLabel: 'Add payment method',
+    ctaLabel: 'Start 14-day trial',
     ctaUrl: billingUrl,
     signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
   };
@@ -328,7 +328,7 @@ export function buildAddPaymentMethodGoLiveEmailPayload(params: {
     'You keep your current business number.',
     'After payment is verified, RingBooker will create a forwarding number and guide you through forwarding missed or after-hours calls.',
     'Live answering is not active yet.',
-    `Add payment method: ${billingUrl}`,
+    `Start 14-day trial: ${billingUrl}`,
   ].join('\n');
   return { input, text };
 }

@@ -1598,15 +1598,14 @@ export function UserOnboardingLive() {
               Setup complete
             </h3>
             <p className="onb-subtitle" style={{ marginTop: 8 }}>
-              Open your dashboard to finish going live when you&apos;re ready. Add a payment method from billing — live answering stays off until you
-              complete the checklist there.
+              Open your dashboard to finish going live when you&apos;re ready. Start your 14-day trial from Billing — live answering stays off until billing and phone forwarding are complete.
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
               <button className="onb-btn-primary" type="button" onClick={completeSetup}>
                 Open dashboard
               </button>
               <a className="onb-btn-secondary" href="/user/billing">
-                Add payment method to go live
+                Start 14-day trial
               </a>
             </div>
           </div>
@@ -1639,7 +1638,7 @@ export function UserOnboardingLive() {
                 Open dashboard
               </button>
               <a className="onb-btn-secondary" href="/user/billing">
-                Add payment method to go live
+                Start 14-day trial
               </a>
             </>
           )}

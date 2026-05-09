@@ -610,6 +610,8 @@ const userBillingCheckoutSchema = z.object({
   billing_interval: z.enum(['monthly', 'annual']).optional(),
 }).strict();
 
+const userBillingManageSchema = z.object({}).strict();
+
 const readWebsiteSchema = z.object({
   url: z.string().url(),
 });
@@ -1226,8 +1228,8 @@ async function sendSignupWelcomeEmail(params: {
 export function buildGoLivePaymentRequiredMessage(params?: { paddleTrialConfigVerified?: boolean }): string {
   const verified = params?.paddleTrialConfigVerified ?? process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true';
   return verified
-    ? "Add a payment method to go live. You won't be charged until your trial ends."
-    : 'Add a payment method to go live. A payment method is required before RingBooker answers real callers on your business number.';
+    ? "Start your 14-day trial. Due today: $0. You won't be charged until your 14-day trial ends. Final total may include applicable taxes based on your location."
+    : 'Start your 14-day trial. Due today: $0. Final total may include applicable taxes based on your location. RingBooker will not answer real calls on your business number until billing and phone forwarding are set up.';
 }
 
 async function sendPasswordResetEmail(params: {
@@ -5469,11 +5471,22 @@ export function createBackendApp(deps: {
       if (!usageTimedOut && usageTimeout) clearTimeout(usageTimeout);
     }
     const env = getEnv();
+    const selfServePlan = isSelfServeTrialPlan(shop.plan);
+    const subscriptionProvider = subscription?.provider ?? customer?.provider ?? deps.billingProvider?.provider ?? 'manual';
+    const manageBillingAvailable = Boolean(
+      selfServePlan &&
+        deps.billingProvider?.provider === 'paddle' &&
+        typeof deps.billingProvider.createManageBillingSession === 'function' &&
+        subscription?.provider === 'paddle' &&
+        ['active', 'trialing', 'past_due', 'paused'].includes(subscription.status) &&
+        subscription.providerCustomerId?.trim() &&
+        subscription.providerSubscriptionId?.trim(),
+    );
     const checkoutAvailable = Boolean(
       env.BILLING_CHECKOUT_ENABLED &&
         deps.billingProvider &&
         env.PADDLE_CLIENT_TOKEN &&
-        isSelfServeTrialPlan(shop.plan),
+        selfServePlan,
     );
     const availableBillingIntervals = [
       env.PADDLE_PRICE_STARTER_MONTHLY && env.PADDLE_PRICE_PROFESSIONAL_MONTHLY ? 'monthly' : null,
@@ -5489,7 +5502,7 @@ export function createBackendApp(deps: {
         active: shop.active,
       },
       billing: {
-        provider: subscription?.provider ?? customer?.provider ?? deps.billingProvider?.provider ?? 'manual',
+        provider: subscriptionProvider,
         customer,
         subscription,
         plan: subscription?.plan ?? shop.plan,
@@ -5522,11 +5535,133 @@ export function createBackendApp(deps: {
             ? 'billing_provider_unavailable'
             : 'billing_checkout_disabled',
         availableBillingIntervals,
-        manageBillingAvailable: false,
+        manageBillingAvailable,
+        manageBillingDisabledReason: manageBillingAvailable
+          ? null
+          : !selfServePlan
+            ? 'plan_not_self_serve'
+            : deps.billingProvider?.provider !== 'paddle' || typeof deps.billingProvider?.createManageBillingSession !== 'function'
+              ? 'billing_management_unavailable'
+              : subscription?.provider !== 'paddle'
+                ? 'provider_not_supported'
+                : !subscription?.providerCustomerId?.trim()
+                  ? 'missing_provider_customer_id'
+                  : !subscription?.providerSubscriptionId?.trim()
+                    ? 'missing_provider_subscription_id'
+                    : ['canceled', 'trial_expired', 'unpaid', 'incomplete', 'unknown'].includes(subscription.status)
+                      ? 'subscription_not_manageable'
+                      : 'billing_management_unavailable',
+        canViewInvoicesViaPortal: manageBillingAvailable,
+        canUpdatePaymentMethodViaPortal: manageBillingAvailable,
+        canCancelViaPortal: manageBillingAvailable,
+        billingHistoryLabel: 'Account billing activity',
         forwardingNumber: shop.telnyx_number?.trim() ? shop.telnyx_number.trim() : null,
         usage,
       },
     });
+  });
+
+  app.post(path('/user/billing/manage'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_billing_manage, 'user_billing_manage');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.billingProvider || !deps.billingSubscriptionsRepository || !deps.billingCustomersRepository) {
+      return c.json({ ok: false, error: 'billing_management_unavailable' }, 500);
+    }
+
+    const rawBody = await c.req.json().catch(() => ({}));
+    const parsed = userBillingManageSchema.safeParse(rawBody ?? {});
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!isSelfServeTrialPlan(shop.plan)) {
+      return c.json({ ok: false, error: 'plan_not_self_serve', message: 'Please contact support to manage billing for this account.' }, 400);
+    }
+    if (deps.billingProvider.provider !== 'paddle' || typeof deps.billingProvider.createManageBillingSession !== 'function') {
+      return c.json({ ok: false, error: 'billing_management_unavailable', message: 'Billing management is not available right now. Please contact support or try again later.' }, 503);
+    }
+
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    if (!subscription || subscription.provider !== 'paddle') {
+      return c.json({ ok: false, error: 'provider_not_supported', message: 'Billing management is not available for this account.' }, 409);
+    }
+    if (!['active', 'trialing', 'past_due', 'paused'].includes(subscription.status)) {
+      return c.json({ ok: false, error: 'subscription_not_manageable', message: 'This subscription cannot be managed through self-service billing right now.' }, 409);
+    }
+
+    const providerCustomerId = subscription.providerCustomerId?.trim();
+    const providerSubscriptionId = subscription.providerSubscriptionId?.trim();
+    if (!providerCustomerId) return c.json({ ok: false, error: 'missing_provider_customer_id', message: 'Billing management is not ready for this account yet.' }, 409);
+    if (!providerSubscriptionId) return c.json({ ok: false, error: 'missing_provider_subscription_id', message: 'Billing management is not ready for this account yet.' }, 409);
+
+    const [customerByProvider, subscriptionByProvider] = await Promise.all([
+      deps.billingCustomersRepository.findByProviderCustomerId('paddle', providerCustomerId),
+      deps.billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', providerSubscriptionId),
+    ]);
+    if (customerByProvider && customerByProvider.shopId !== shop.id) {
+      logger.error(
+        {
+          event: 'user_billing_manage_ownership_conflict',
+          reason: 'customer_shop_mismatch',
+          shop_id: shop.id,
+          provider_customer_id: providerCustomerId,
+          existing_customer_shop_id: customerByProvider.shopId,
+        },
+        'user_billing_manage_ownership_conflict',
+      );
+      return c.json({ ok: false, error: 'billing_ownership_conflict' }, 409);
+    }
+    if (subscriptionByProvider && subscriptionByProvider.shopId !== shop.id) {
+      logger.error(
+        {
+          event: 'user_billing_manage_ownership_conflict',
+          reason: 'subscription_shop_mismatch',
+          shop_id: shop.id,
+          provider_subscription_id: providerSubscriptionId,
+          existing_subscription_shop_id: subscriptionByProvider.shopId,
+        },
+        'user_billing_manage_ownership_conflict',
+      );
+      return c.json({ ok: false, error: 'billing_ownership_conflict' }, 409);
+    }
+
+    try {
+      const session = await deps.billingProvider.createManageBillingSession({
+        shop,
+        providerCustomerId,
+        providerSubscriptionId,
+      });
+      return c.json({
+        ok: true,
+        provider: session.provider,
+        manageUrl: session.manageUrl,
+        canViewInvoicesViaPortal: session.canViewInvoicesViaPortal === true,
+        canUpdatePaymentMethodViaPortal: session.canUpdatePaymentMethodViaPortal === true,
+        canCancelViaPortal: session.canCancelViaPortal === true,
+      });
+    } catch (err) {
+      logger.error(
+        {
+          err,
+          shopId: shop.id,
+          providerCustomerId,
+          providerSubscriptionId,
+        },
+        'user_billing_manage_create_failed',
+      );
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_management_failed',
+          message: 'Billing management is not available right now. Please contact support or try again later.',
+        },
+        502,
+      );
+    }
   });
 
   app.post(path('/user/billing/checkout'), async (c) => {

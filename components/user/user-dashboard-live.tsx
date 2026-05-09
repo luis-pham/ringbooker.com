@@ -454,7 +454,7 @@ export function UserDashboardLive() {
       case 'add_payment_method':
         return (
           <a className="btn user-save" href="/user/billing">
-            Add payment method to go live
+            Start 14-day trial
           </a>
         );
       case 'set_up_call_forwarding':
@@ -493,7 +493,7 @@ export function UserDashboardLive() {
   function getGoLiveBannerCopy() {
     switch (data?.goLive?.primaryCta) {
       case 'add_payment_method':
-        return 'You can keep using setup and test calls without a card. Add a payment method when you are ready for RingBooker to answer real callers on your business number.';
+        return 'You can keep using setup and test calls without a card. Start your 14-day trial when you are ready to connect your business phone. RingBooker will not answer real calls until billing and phone forwarding are complete.';
       case 'set_up_call_forwarding':
         return 'Your billing is ready. Next, set up call forwarding so callers to your current business number can reach RingBooker behind the scenes.';
       case 'test_forwarding_setup':

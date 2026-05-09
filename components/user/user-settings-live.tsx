@@ -381,12 +381,6 @@ function tabCopyForPortal(portal: UserSettingsPortal, id: SettingsTabId): { labe
       description: 'Name, address, contact lines, policies, and promos.',
     };
   }
-  if (portal === 'knowledge' && id === 'services-hours') {
-    return {
-      label: 'Services & pricing',
-      description: 'Services, prices, durations, and business hours.',
-    };
-  }
   if (portal === 'ai-settings' && id === 'ai-call-behavior') {
     return {
       label: 'AI voice & tone',
@@ -1719,16 +1713,12 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
             ) : null}
 
             {activeTab === 'services-hours' ? (
-            <section className="card sh-services-hours-card">
-              <header className="sh-panel-head">
-                <h2 className="sh-panel-title">Services &amp; hours</h2>
-                <p className="sh-panel-desc">Tell callers what you offer and when you answer. These details power availability checks and AI bookings.</p>
-              </header>
-              <div className="sh-segments" role="tablist" aria-label="Services and hours sections">
-                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'services'} className={`sh-segment ${servicesHoursSubTab === 'services' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('services')}>
+            <section className="card">
+              <div className="business-subtabs" role="tablist" aria-label="Services and hours sections">
+                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'services'} className={`business-subtab ${servicesHoursSubTab === 'services' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('services')}>
                   Services
                 </button>
-                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'hours'} className={`sh-segment ${servicesHoursSubTab === 'hours' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('hours')}>
+                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'hours'} className={`business-subtab ${servicesHoursSubTab === 'hours' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('hours')}>
                   Business hours
                 </button>
               </div>
@@ -1740,7 +1730,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                   void commitSettingsPatch('services', { services: currentForm.services });
                 }}
               >
-                <div className="sh-form-body">
+                <div className="card-section">
                   <p className="sh-catalog-intro">Choose services from the catalog, then set duration and price for each active offering.</p>
                   <div className="sh-catalog-grid">
                     {serviceChoices.map((service) => (
@@ -1800,7 +1790,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     )}
                   </div>
                 </div>
-                <div className="sh-save-bar">
+                <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'services' ? 'Saving...' : 'Save services'}
                   </button>
@@ -1816,7 +1806,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                   void commitSettingsPatch('hours', { hours: currentForm.hours });
                 }}
               >
-                <div className="sh-hours-body">
+                <div className="card-section">
                   <p className="sh-catalog-intro sh-hours-intro">Set your weekly schedule. Use a preset for a quick start, then fine-tune individual days.</p>
                   <div className="sh-hours-presets">
                     <p className="sh-hours-presets-label">Quick apply</p>
@@ -1867,7 +1857,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     </div>
                   </div>
                 </div>
-                <div className="sh-save-bar">
+                <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'hours' ? 'Saving...' : 'Save hours'}
                   </button>

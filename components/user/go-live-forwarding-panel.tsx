@@ -351,7 +351,7 @@ export function GoLiveForwardingPanel() {
           </div>
           <div className="card soft" style={{ margin: 0 }}>
             <div className="sub" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>RingBooker forwarding number</div>
-            <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, marginTop: 4 }}>{forwardingNumber || 'Created after payment method'}</div>
+            <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, marginTop: 4 }}>{forwardingNumber || 'Created after 14-day trial starts'}</div>
           </div>
         </div>
         {copy.blockingReason ? <p className="sub" style={{ marginTop: 12, color: '#92400e' }}>{copy.blockingReason}</p> : null}
@@ -379,7 +379,7 @@ export function GoLiveForwardingPanel() {
         ) : (
           <div className="card soft" style={{ margin: 0 }}>
             <p className="sub" style={{ margin: 0 }}>
-              Add a valid payment method first. Then RingBooker will create your managed forwarding number and show carrier-specific forwarding steps here.
+              Start your 14-day trial first. Then RingBooker will create your forwarding number and show carrier-specific forwarding steps here.
             </p>
           </div>
         )}

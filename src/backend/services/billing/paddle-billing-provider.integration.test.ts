@@ -115,6 +115,93 @@ test('paddle checkout uses production API when PADDLE_ENV=production', async () 
   }
 });
 
+test('paddle manage billing creates sandbox customer portal session with subscription id', async () => {
+  applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'production' });
+  resetEnvCacheForTests();
+  const { provider, shopsRepository } = buildProvider();
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+
+  const calls: Array<{ url: string; body: { subscription_ids?: string[] } }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls.push({
+      url: String(input),
+      body: JSON.parse(String(init?.body ?? '{}')) as { subscription_ids?: string[] },
+    });
+    return new Response(
+      JSON.stringify({
+        data: {
+          id: 'cpls_test',
+          customer_id: 'ctm_demo_paddle',
+          urls: {
+            general: { overview: 'https://customer-portal.paddle.com/session/general' },
+            subscriptions: [
+              {
+                subscription_id: 'sub_demo_paddle',
+                overview: 'https://customer-portal.paddle.com/session/subscription',
+              },
+            ],
+          },
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+  try {
+    const session = await provider.createManageBillingSession({
+      shop,
+      providerCustomerId: 'ctm_demo_paddle',
+      providerSubscriptionId: 'sub_demo_paddle',
+    });
+    assert.equal(calls[0]?.url, 'https://sandbox-api.paddle.com/customers/ctm_demo_paddle/portal-sessions');
+    assert.deepEqual(calls[0]?.body, { subscription_ids: ['sub_demo_paddle'] });
+    assert.equal(session.manageUrl, 'https://customer-portal.paddle.com/session/subscription');
+    assert.equal(session.providerPortalSessionId, 'cpls_test');
+    assert.equal(session.canViewInvoicesViaPortal, true);
+    assert.equal(session.canUpdatePaymentMethodViaPortal, true);
+    assert.equal(session.canCancelViaPortal, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'sandbox' });
+    resetEnvCacheForTests();
+  }
+});
+
+test('paddle manage billing uses production API and maps Paddle failures safely', async () => {
+  applyRequiredTestEnv({ PADDLE_ENV: 'production', PADDLE_ENVIRONMENT: 'sandbox' });
+  resetEnvCacheForTests();
+  const { provider, shopsRepository } = buildProvider();
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+
+  let url = '';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    url = String(input);
+    return new Response(JSON.stringify({ error: { code: 'nope' } }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      () =>
+        provider.createManageBillingSession({
+          shop,
+          providerCustomerId: 'ctm_demo_paddle',
+          providerSubscriptionId: 'sub_demo_paddle',
+        }),
+      /paddle_create_portal_session_failed:500/,
+    );
+    assert.equal(url, 'https://api.paddle.com/customers/ctm_demo_paddle/portal-sessions');
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'sandbox' });
+    resetEnvCacheForTests();
+  }
+});
+
 test('paddle billing provider syncs webhook payload into normalized billing records', async () => {
   const shopsRepository = new InMemoryShopsRepository();
   const billingCustomersRepository = new InMemoryBillingCustomersRepository();

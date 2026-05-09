@@ -29,6 +29,18 @@ export interface BillingProviderAdapter {
     successUrl: string;
     cancelUrl: string;
   }): Promise<BillingCheckoutSession & { trialConfigVerified?: boolean }>;
+  createManageBillingSession?(params: {
+    shop: Shop;
+    providerCustomerId: string;
+    providerSubscriptionId: string;
+  }): Promise<{
+    provider: BillingProvider;
+    manageUrl: string;
+    providerPortalSessionId?: string | null;
+    canViewInvoicesViaPortal?: boolean;
+    canUpdatePaymentMethodViaPortal?: boolean;
+    canCancelViaPortal?: boolean;
+  }>;
   syncWebhookEvent(params: {
     eventType: string;
     payload: Record<string, unknown>;

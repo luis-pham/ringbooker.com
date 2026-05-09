@@ -12,7 +12,7 @@ import {
 } from '@/src/backend/services/email/base-email-builders';
 
 const appBaseUrl = 'https://ringbooker.test';
-const forbiddenNoChargePattern = /charged until (your )?trial ends|charged until the trial ends/i;
+const forbiddenNoChargePattern = /won'?t be charged until|charged until (your )?(14-day )?trial ends|charged until the trial ends/i;
 
 test('trial emails and go-live message do not promise no-charge when Paddle trial config is unverified', () => {
   const welcome = buildWelcomeSignupEmailPayload({
@@ -44,10 +44,10 @@ test('trial emails and go-live message do not promise no-charge when Paddle tria
   ].join('\n');
 
   assert.doesNotMatch(policyCombined, forbiddenNoChargePattern);
-  assert.match(
-    policyCombined,
-    /A payment method is required before RingBooker answers real callers on your business number/i,
-  );
+  assert.match(policyCombined, /Start your 14-day trial/i);
+  assert.match(policyCombined, /Due today: \$0/i);
+  assert.match(policyCombined, /Final total may include applicable taxes based on your location/i);
+  assert.match(policyCombined, /RingBooker will not answer real calls on your business number/i);
 });
 
 test('trial emails and go-live message may promise no-charge when Paddle trial config is verified', () => {
@@ -77,7 +77,8 @@ test('trial emails and go-live message may promise no-charge when Paddle trial c
     goLiveMessage,
   ].join('\n');
 
-  assert.match(combined, /You won't be charged until your trial ends/i);
+  assert.match(combined, /You won't be charged until your 14-day trial ends/i);
+  assert.match(combined, /Final total may include applicable taxes based on your location/i);
 });
 
 test('phone setup lifecycle emails clearly state live answering state', () => {

@@ -258,6 +258,39 @@ function hasPaymentMethodEvidence(eventType: string, data: Record<string, unknow
   return normalized.includes('payment_method') && !normalized.includes('deleted') && !normalized.includes('failed');
 }
 
+function pickPaddlePortalUrl(data: Record<string, unknown> | undefined, providerSubscriptionId: string): string | null {
+  const urls = data?.urls;
+  if (!urls || typeof urls !== 'object') return null;
+  const urlRecord = urls as Record<string, unknown>;
+
+  const general = urlRecord.general;
+  const generalOverview = general && typeof general === 'object'
+    ? (general as Record<string, unknown>).overview
+    : null;
+
+  const subscriptions = Array.isArray(urlRecord.subscriptions) ? urlRecord.subscriptions : [];
+  for (const subscription of subscriptions) {
+    if (!subscription || typeof subscription !== 'object') continue;
+    const sub = subscription as Record<string, unknown>;
+    const subscriptionId = typeof sub.subscription_id === 'string'
+      ? sub.subscription_id
+      : typeof sub.id === 'string'
+        ? sub.id
+        : null;
+    if (subscriptionId && subscriptionId !== providerSubscriptionId) continue;
+    for (const key of ['overview', 'update_payment_method', 'payment_method', 'cancel_subscription', 'subscription']) {
+      const value = sub[key];
+      if (typeof value === 'string' && value.startsWith('https://')) return value;
+      if (value && typeof value === 'object') {
+        const nestedUrl = (value as Record<string, unknown>).url ?? (value as Record<string, unknown>).href;
+        if (typeof nestedUrl === 'string' && nestedUrl.startsWith('https://')) return nestedUrl;
+      }
+    }
+  }
+
+  return typeof generalOverview === 'string' && generalOverview.startsWith('https://') ? generalOverview : null;
+}
+
 function extractMoneyAmount(data: Record<string, unknown> | undefined): { amount: number; currency: string } {
   if (!data || typeof data !== 'object') return { amount: 0, currency: 'USD' };
   const totals = data as {
@@ -444,6 +477,55 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       providerTransactionId: json.data?.id ?? null,
       providerCustomerId: json.data?.customer_id ?? null,
       trialConfigVerified,
+    };
+  }
+
+  async createManageBillingSession(params: {
+    shop: Shop;
+    providerCustomerId: string;
+    providerSubscriptionId: string;
+  }) {
+    const response = await fetch(
+      `${getPaddleApiBaseUrl()}/customers/${encodeURIComponent(params.providerCustomerId)}/portal-sessions`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getEnv().PADDLE_API_KEY}`,
+        },
+        body: JSON.stringify({
+          subscription_ids: [params.providerSubscriptionId],
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      throw new Error(`paddle_create_portal_session_failed:${response.status}:${bodyText}`);
+    }
+
+    const json = (await response.json()) as {
+      data?: {
+        id?: string;
+        customer_id?: string;
+        urls?: Record<string, unknown>;
+      };
+    };
+    if (json.data?.customer_id && json.data.customer_id !== params.providerCustomerId) {
+      throw new Error('paddle_create_portal_session_customer_mismatch');
+    }
+    const manageUrl = pickPaddlePortalUrl(json.data as Record<string, unknown> | undefined, params.providerSubscriptionId);
+    if (!manageUrl) {
+      throw new Error('paddle_create_portal_session_missing_url');
+    }
+
+    return {
+      provider: 'paddle' as const,
+      manageUrl,
+      providerPortalSessionId: json.data?.id ?? null,
+      canViewInvoicesViaPortal: true,
+      canUpdatePaymentMethodViaPortal: true,
+      canCancelViaPortal: true,
     };
   }
 
