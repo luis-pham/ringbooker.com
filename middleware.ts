@@ -12,6 +12,7 @@ const CONTENT_SECURITY_POLICY = [
     'https://www.googletagmanager.com',
     'https://tagmanager.google.com',
     'https://www.google-analytics.com',
+    'https://cdn.paddle.com',
   ].join(' '),
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
@@ -25,6 +26,8 @@ const CONTENT_SECURITY_POLICY = [
     'wss://*.openai.com',
     'https://api.resend.com',
     'https://api.paddle.com',
+    'https://sandbox-api.paddle.com',
+    'https://*.paddle.com',
     'https://challenges.cloudflare.com',
     'https://*.livekit.cloud',
     'wss://*.livekit.cloud',
@@ -39,10 +42,10 @@ const CONTENT_SECURITY_POLICY = [
     'https://*.googletagmanager.com',
     'https://stats.g.doubleclick.net',
   ].join(' '),
-  "frame-src 'self' https://challenges.cloudflare.com https://www.googletagmanager.com",
+  "frame-src 'self' https://challenges.cloudflare.com https://www.googletagmanager.com https://*.paddle.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://*.paddle.com",
 ].join('; ');
 
 function getSigningKey(): Uint8Array | null {

@@ -1805,7 +1805,7 @@ export function createBackendApp(deps: {
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline'",
+        "script-src 'self' 'unsafe-inline' https://cdn.paddle.com",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https:",
         "font-src 'self'",
@@ -1818,10 +1818,13 @@ export function createBackendApp(deps: {
           'wss://*.openai.com',
           'https://api.resend.com',
           'https://api.paddle.com',
+          'https://sandbox-api.paddle.com',
+          'https://*.paddle.com',
         ].join(' '),
+        "frame-src 'self' https://*.paddle.com",
         "frame-ancestors 'none'",
         "base-uri 'self'",
-        "form-action 'self'",
+        "form-action 'self' https://*.paddle.com",
       ].join('; '),
     );
 
