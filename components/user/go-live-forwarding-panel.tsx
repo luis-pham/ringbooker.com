@@ -23,6 +23,8 @@ type GoLiveStatusResponse = {
   businessPhone?: string | null;
   paymentMethodStatus?: string | null;
   subscriptionStatus?: string | null;
+  providerCustomerId?: string | null;
+  providerSubscriptionId?: string | null;
   hasPaymentMethod?: boolean;
   forwardingNumber?: string | null;
   hasForwardingNumber?: boolean;
@@ -60,11 +62,24 @@ function checkoutUnavailableCopy(reason?: string | null): string {
   return 'Payment setup is temporarily unavailable. Contact support when you are ready to go live.';
 }
 
-function stateTone(state: PhoneSetupState): { border: string; background: string; color: string; badge: string } {
-  if (state === 'live_answering_active') return { border: '#bbf7d0', background: '#f0fdf4', color: '#166534', badge: 'Live' };
-  if (state === 'billing_issue') return { border: '#fecaca', background: '#fef2f2', color: '#991b1b', badge: 'Blocked' };
-  if (state === 'ready_to_enable_live') return { border: '#c4b5fd', background: '#faf5ff', color: '#5b21b6', badge: 'Ready' };
-  return { border: '#bfdbfe', background: '#eff6ff', color: '#1e3a8a', badge: 'Next step' };
+function goLiveSetupStatusVariant(state: PhoneSetupState): 'live' | 'blocked' | 'ready' | 'next' {
+  if (state === 'live_answering_active') return 'live';
+  if (state === 'billing_issue') return 'blocked';
+  if (state === 'ready_to_enable_live') return 'ready';
+  return 'next';
+}
+
+function toneBadgeLabel(variant: ReturnType<typeof goLiveSetupStatusVariant>): string {
+  switch (variant) {
+    case 'live':
+      return 'Live';
+    case 'blocked':
+      return 'Blocked';
+    case 'ready':
+      return 'Ready';
+    default:
+      return 'Next step';
+  }
 }
 
 /**
@@ -123,6 +138,8 @@ export function GoLiveForwardingPanel() {
         onboardingRequired: status?.blockReason === 'onboarding_incomplete',
         subscriptionStatus: status?.subscriptionStatus,
         paymentMethodStatus: status?.paymentMethodStatus,
+        providerCustomerId: status?.providerCustomerId,
+        providerSubscriptionId: status?.providerSubscriptionId,
         hasPaymentMethod: status?.hasPaymentMethod,
         hasForwardingNumber: status?.hasForwardingNumber,
         forwardingSetupVerified: status?.forwardingSetupVerified,
@@ -134,7 +151,7 @@ export function GoLiveForwardingPanel() {
     [status],
   );
   const copy = getPhoneSetupCopy(state);
-  const tone = stateTone(state);
+  const statusVariant = goLiveSetupStatusVariant(state);
 
   async function openPaymentSetup() {
     setBusyAction('checkout');
@@ -275,6 +292,14 @@ export function GoLiveForwardingPanel() {
   }
 
   function runAction(target: string) {
+    if (target === 'refresh') {
+      setBusyAction('refresh');
+      setMessage(null);
+      void refresh()
+        .catch(() => setMessage('Could not refresh status. Please try again.'))
+        .finally(() => setBusyAction(null));
+      return;
+    }
     if (target === 'checkout') return void openPaymentSetup();
     if (target === 'provision_forwarding_number') return void provisionForwardingNumber();
     if (target === 'start_forwarding_test') return void startForwardingTest();
@@ -284,14 +309,15 @@ export function GoLiveForwardingPanel() {
   }
 
   function renderAction(label: string, target: string, primary = false) {
+    const primaryClass = primary ? ' user-save' : '';
     if (target.startsWith('/') || target.startsWith('#')) {
-      return <a className={`btn${primary ? ' purple' : ''}`} href={target}>{label}</a>;
+      return <a className={`btn${primaryClass}`} href={target}>{label}</a>;
     }
     if (target === 'checkout' && !checkoutAvailable) {
       return <button type="button" className="btn" disabled>{checkoutUnavailableCopy(billing?.billing?.checkoutDisabledReason)}</button>;
     }
     return (
-      <button type="button" className={`btn${primary ? ' purple' : ''}`} disabled={busyAction === target} onClick={() => runAction(target)}>
+      <button type="button" className={`btn${primaryClass}`} disabled={busyAction === target} onClick={() => runAction(target)}>
         {busyAction === target ? 'Working...' : label}
       </button>
     );
@@ -310,12 +336,12 @@ export function GoLiveForwardingPanel() {
 
   return (
     <div className="section-stack">
-      <section className="card" style={{ borderColor: tone.border, background: tone.background }}>
+      <section className={`card go-live-setup-status go-live-setup-status--${statusVariant}`}>
         <div className="panel-head" style={{ alignItems: 'flex-start', gap: 16 }}>
           <div>
-            <span className="tag" style={{ color: tone.color, borderColor: tone.border, background: '#fff' }}>{tone.badge}</span>
+            <span className={`tag go-live-setup-status__badge go-live-setup-status__badge--${statusVariant}`}>{toneBadgeLabel(statusVariant)}</span>
             <h3 style={{ marginTop: 10 }}>{copy.title}</h3>
-            <p className="sub" style={{ color: tone.color }}>{copy.explanation}</p>
+            <p className="sub go-live-setup-status__lead">{copy.explanation}</p>
           </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginTop: 14 }}>

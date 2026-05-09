@@ -51,6 +51,21 @@ test('phone setup state advances from number creation to verification to enable 
   );
 });
 
+test('phone setup shows payment verification pending after Paddle returns before valid webhook state', () => {
+  const state = resolvePhoneSetupState({
+    subscriptionStatus: 'trialing',
+    paymentMethodStatus: 'unknown',
+    providerCustomerId: 'ctm_test',
+    providerSubscriptionId: 'sub_test',
+    hasPaymentMethod: false,
+    hasForwardingNumber: false,
+    forwardingSetupVerified: false,
+  });
+
+  assert.equal(state, 'payment_verification_pending');
+  assert.match(getPhoneSetupCopy(state).explanation, /billing has not been verified by webhook/i);
+});
+
 test('billing issues take precedence over live flag', () => {
   assert.equal(
     resolvePhoneSetupState({

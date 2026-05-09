@@ -66,44 +66,53 @@ export class SupabaseBillingCustomersRepository implements BillingCustomersRepos
     name?: string | null;
     metadata?: Record<string, unknown> | null;
   }): Promise<BillingCustomer> {
-    if (!params.providerCustomerId) {
-      const existing = await this.findByShopId(params.shopId, params.provider);
-      if (existing) {
-        const { data, error } = await this.supabase
-          .from('billing_customers')
-          .update({
-            email: params.email ?? existing.email ?? null,
-            name: params.name ?? existing.name ?? null,
-            metadata: params.metadata ?? existing.metadata ?? {},
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id)
-          .select('*')
-          .single<BillingCustomersRow>();
-        if (error) throw new Error(`billing_customers_upsert_failed:${error.message}`);
-        return toBillingCustomer(data);
-      }
+    const providerCustomerId = params.providerCustomerId?.trim() || null;
+    const existing = providerCustomerId
+      ? await this.findByProviderCustomerId(params.provider, providerCustomerId)
+      : await this.findByShopId(params.shopId, params.provider);
+
+    if (existing) {
+      const { data, error } = await this.supabase
+        .from('billing_customers')
+        .update({
+          shop_id: existing.shopId,
+          provider: existing.provider,
+          provider_customer_id: providerCustomerId ?? existing.providerCustomerId ?? null,
+          email: params.email ?? existing.email ?? null,
+          name: params.name ?? existing.name ?? null,
+          metadata: params.metadata ?? existing.metadata ?? {},
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .select('*')
+        .single<BillingCustomersRow>();
+      if (error) throw new Error(`billing_customers_upsert_failed:${error.message}`);
+      return toBillingCustomer(data);
     }
 
     const { data, error } = await this.supabase
       .from('billing_customers')
-      .upsert(
-        {
-          shop_id: params.shopId,
-          provider: params.provider,
-          provider_customer_id: params.providerCustomerId,
-          email: params.email ?? null,
-          name: params.name ?? null,
-          metadata: params.metadata ?? {},
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: params.providerCustomerId ? 'provider,provider_customer_id' : 'shop_id,provider',
-        },
-      )
+      .insert({
+        shop_id: params.shopId,
+        provider: params.provider,
+        provider_customer_id: providerCustomerId,
+        email: params.email ?? null,
+        name: params.name ?? null,
+        metadata: params.metadata ?? {},
+        updated_at: new Date().toISOString(),
+      })
       .select('*')
       .single<BillingCustomersRow>();
     if (error) {
+      // If another webhook inserted the customer first, recover by reading it back.
+      if (providerCustomerId && error.code === '23505') {
+        const concurrent = await this.findByProviderCustomerId(params.provider, providerCustomerId);
+        if (concurrent) return this.upsert(params);
+      }
+      if (!providerCustomerId && error.code === '23505') {
+        const concurrent = await this.findByShopId(params.shopId, params.provider);
+        if (concurrent) return this.upsert(params);
+      }
       throw new Error(`billing_customers_upsert_failed:${error.message}`);
     }
     return toBillingCustomer(data);

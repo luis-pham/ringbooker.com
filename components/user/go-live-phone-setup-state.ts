@@ -1,6 +1,7 @@
 export type PhoneSetupState =
   | 'onboarding_incomplete'
   | 'setup_ready_for_test'
+  | 'payment_verification_pending'
   | 'payment_method_required'
   | 'forwarding_number_needed'
   | 'forwarding_number_ready'
@@ -14,6 +15,8 @@ export type PhoneSetupStatusInput = {
   onboardingRequired?: boolean;
   subscriptionStatus?: string | null;
   paymentMethodStatus?: string | null;
+  providerCustomerId?: string | null;
+  providerSubscriptionId?: string | null;
   hasPaymentMethod?: boolean;
   hasForwardingNumber?: boolean;
   forwardingSetupVerified?: boolean;
@@ -47,6 +50,13 @@ export function resolvePhoneSetupState(input: PhoneSetupStatusInput): PhoneSetup
   if (input.primaryCta === 'set_up_call_forwarding' || (input.hasPaymentMethod && !input.hasForwardingNumber)) {
     return 'forwarding_number_needed';
   }
+  if (
+    ['unknown', 'pending'].includes(input.paymentMethodStatus ?? '') &&
+    ['active', 'trialing'].includes(input.subscriptionStatus ?? '') &&
+    (Boolean(input.providerCustomerId?.trim()) || Boolean(input.providerSubscriptionId?.trim()))
+  ) {
+    return 'payment_verification_pending';
+  }
   if ((input.paymentMethodStatus ?? 'none') !== 'valid' || !input.hasPaymentMethod) return 'payment_method_required';
   if (input.hasForwardingNumber) return 'forwarding_number_ready';
   return 'setup_ready_for_test';
@@ -68,6 +78,15 @@ export function getPhoneSetupCopy(state: PhoneSetupState): PhoneSetupCopy {
       primaryTarget: 'test_call',
       secondaryLabel: 'Add payment method',
       secondaryTarget: '/user/billing',
+    },
+    payment_verification_pending: {
+      title: 'Payment method is being verified',
+      explanation: 'Paddle has returned you to RingBooker, but billing has not been verified by webhook yet. Live answering stays off until verification is complete.',
+      primaryLabel: 'Refresh status',
+      primaryTarget: 'refresh',
+      secondaryLabel: 'Open Billing',
+      secondaryTarget: '/user/billing',
+      blockingReason: 'This usually updates shortly after Paddle sends confirmation.',
     },
     payment_method_required: {
       title: 'Add a payment method to connect your phone',

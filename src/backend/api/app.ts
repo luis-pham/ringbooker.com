@@ -4336,6 +4336,8 @@ export function createBackendApp(deps: {
       businessPhone: shop.phone_number?.trim() || null,
       paymentMethodStatus: access.paymentMethodStatus,
       subscriptionStatus: access.subscriptionStatus,
+      providerCustomerId: access.providerCustomerId,
+      providerSubscriptionId: access.providerSubscriptionId,
       hasPaymentMethod: access.paymentMethodStatus === 'valid',
       forwardingNumber: shop.telnyx_number?.trim() || null,
       hasForwardingNumber: access.hasForwardingNumber,
