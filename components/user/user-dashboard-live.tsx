@@ -321,15 +321,6 @@ export function UserDashboardLive() {
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="overview" />
           <main className="main">
-            {loading ? (
-              <section className="card" style={{ marginBottom: 18 }}>
-                <p className="sub">Loading dashboard...</p>
-              </section>
-            ) : !data?.ok ? (
-              <section className="card" style={{ marginBottom: 18 }}>
-                <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>
-              </section>
-            ) : null}
             <UserPortalTopbar
               title={shopName}
               subtitle="Track calls, bookings, and reminders."
@@ -347,6 +338,16 @@ export function UserDashboardLive() {
                 </div>
               }
             />
+            {loading ? (
+              <section className="card" style={{ marginBottom: 18 }}>
+                <p className="sub">Loading dashboard...</p>
+              </section>
+            ) : !data?.ok ? (
+              <section className="card" style={{ marginBottom: 18 }}>
+                <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>
+              </section>
+            ) : (
+              <>
             {enterpriseApprovalPending ? (
               <section className="card" style={{ marginBottom: 18, borderColor: '#ddd6fe', background: '#faf5ff' }}>
                 <div className="panel-head">
@@ -559,6 +560,8 @@ export function UserDashboardLive() {
               <span>RingBooker business panel</span>
               <span>Live data + restored shared styling</span>
             </div>
+              </>
+            )}
           </main>
         </div>
         <UserPortalMobileTabbar active="overview" />

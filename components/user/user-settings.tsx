@@ -77,42 +77,51 @@ const userSettingsSpecificStyles = String.raw`
 .hint-copy{font-size:12px;color:var(--text-gray);line-height:1.6}
 .subtle-link{color:var(--purple-dark);font-weight:700}
 .tab-strip{
-  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px;
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:18px;
 }
 .tab-button{
-  display:flex;flex-direction:row;align-items:flex-start;gap:4px;text-align:left;
-  padding:14px 16px;border-radius:20px;border:1px solid var(--border);
-  background:#fff;color:var(--text-dark);cursor:pointer;transition:.18s ease;min-width:0;
+  display:flex;flex-direction:row;align-items:flex-start;gap:10px;text-align:left;
+  padding:12px 14px;border-radius:8px;border:1px solid var(--border);
+  background:#fff;color:var(--text-dark);cursor:pointer;min-width:0;
+  box-shadow:none;font:inherit;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
 }
-.tab-button:hover{transform:translateY(-1px);box-shadow:var(--shadow-soft);border-color:#d8ccff}
+.tab-button:hover{
+  transform:none;box-shadow:none;
+  background:#f9fafb;border-color:#d1d5db;
+}
+.tab-button:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
 .tab-button.active{
-  background:linear-gradient(135deg,#f5f3ff,#ede9fe);
-  border-color:rgba(139,92,246,.35);
-  box-shadow:0 0 0 4px rgba(139,92,246,.08);
+  background:var(--purple-dark);color:#fff;border-color:var(--purple-dark);
+  box-shadow:none;
+}
+.tab-button.active:hover{
+  background:#5609c4;border-color:#5609c4;color:#fff;
 }
 .tab-button-icon{
-  flex-shrink:0;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-  background:transparent;color:var(--purple-dark);
-  border:none;
+  flex-shrink:0;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  background:transparent;color:inherit;border:none;
 }
-.tab-button.active .tab-button-icon{
-  background:transparent;color:var(--purple-dark);border-color:transparent;
-}
-.tab-button-icon svg{display:block;width:22px;height:22px}
-.tab-button-body{display:flex;flex-direction:column;gap:1px;min-width:0}
-.tab-button strong{font-size:14px;letter-spacing:-.02em}
-.tab-button-desc{font-size:12px;line-height:1.55;color:var(--text-gray)}
-.tab-button.active .tab-button-desc{color:#5b21b6}
+.tab-button-icon svg{display:block;width:20px;height:20px}
+.tab-button-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tab-button strong{font-size:14px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
+.tab-button-desc{font-size:12px;line-height:1.5;color:var(--text-gray);font-weight:400}
+.tab-button.active .tab-button-desc{color:rgba(255,255,255,.88)}
 .business-subtabs{
   display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
 }
 .business-subtab{
-  border:1px solid var(--border);background:#fff;border-radius:999px;padding:8px 12px;
-  font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;transition:.18s ease;
+  border:1px solid var(--border);background:#fff;border-radius:8px;padding:8px 14px;
+  font-size:13px;font-weight:600;color:#4a4455;cursor:pointer;font:inherit;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+  box-shadow:none;
 }
+.business-subtab:hover{background:#f9fafb;border-color:#d1d5db;color:var(--text-dark)}
+.business-subtab:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
 .business-subtab.active{
-  background:#111827;color:#fff;border-color:#111827;
+  background:var(--purple-dark);color:#fff;border-color:var(--purple-dark);
 }
+.business-subtab.active:hover{background:#5609c4;border-color:#5609c4;color:#fff}
 .card-section-form{
   border:none;border-radius:0;padding:0;background:transparent;
 }
