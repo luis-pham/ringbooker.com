@@ -5,6 +5,7 @@ export type CalendarProviderId =
   | 'square_appointments'
   | 'glossgenius'
   | 'fresha'
+  | 'custom'
   | 'mindbody'
   | 'booksy';
 
@@ -125,6 +126,24 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
   fresha: {
     id: 'fresha',
     label: 'Fresha',
+    type: 'booking_link',
+    implemented: true,
+    status: 'live',
+    capabilities: {
+      checkAvailability: false,
+      createBooking: false,
+      rescheduleBooking: false,
+      cancelBooking: false,
+      webhookSync: false,
+      serviceSync: false,
+      staffSync: false,
+      customerSync: false,
+      hasBookingLink: true,
+    },
+  },
+  custom: {
+    id: 'custom',
+    label: 'Custom booking link',
     type: 'booking_link',
     implemented: true,
     status: 'live',

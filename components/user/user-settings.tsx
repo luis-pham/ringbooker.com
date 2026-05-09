@@ -46,6 +46,23 @@ const userSettingsSpecificStyles = String.raw`
 .integrations-section-heading--first{margin-top:10px;padding-top:0;border-top:none}
 .integrations-section-lead{margin:0 0 20px;line-height:1.6;max-width:52rem}
 .calendar-int-card--solo{max-width:100%;gap:12px}
+.calendar-int-card--plain{
+  border:none;
+  border-radius:0;
+  padding:0;
+  background:transparent;
+  box-shadow:none;
+}
+.calendar-int-card--plain:hover{
+  transform:none;
+  box-shadow:none;
+  border-color:transparent;
+}
+.calendar-int-card--plain.connected-active{
+  border:none;
+  background:transparent;
+  box-shadow:none;
+}
 .calendar-int-badge{
   display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
   font-size:11px;font-weight:700;background:#f3f4f6;color:#6b7280;border:1px solid var(--border);
@@ -161,13 +178,15 @@ button.subtle-link:hover{text-decoration:underline}
 .calendar-int-card .btn.user-save,
 .integrations-vagaro-booking-actions .btn.user-save,
 .integrations-vagaro-primary-actions .btn.user-save,
-.calendar-int-card .integrations-inline-actions .btn.user-save{
+.calendar-int-card .integrations-inline-actions .btn.user-save,
+.integrations-primary-button{
   background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;
 }
 .calendar-int-card .btn.user-save:hover:not(:disabled),
 .integrations-vagaro-booking-actions .btn.user-save:hover:not(:disabled),
 .integrations-vagaro-primary-actions .btn.user-save:hover:not(:disabled),
-.calendar-int-card .integrations-inline-actions .btn.user-save:hover:not(:disabled){
+.calendar-int-card .integrations-inline-actions .btn.user-save:hover:not(:disabled),
+.integrations-primary-button:hover:not(:disabled){
   background:#161b22;border-color:#161b22;color:#fff;
 }
 .card-section-form{
@@ -329,6 +348,13 @@ html[data-user-theme="dark"] .calendar-int-card.connected-active{
   box-shadow:0 0 0 4px rgba(56,139,253,.12);
 }
 html[data-user-theme="dark"] .calendar-int-card.soon{background:#21262d}
+html[data-user-theme="dark"] .calendar-int-card--plain,
+html[data-user-theme="dark"] .calendar-int-card--plain:hover,
+html[data-user-theme="dark"] .calendar-int-card--plain.connected-active{
+  background:transparent;
+  border-color:transparent;
+  box-shadow:none;
+}
 html[data-user-theme="dark"] .calendar-int-logo-wrap{background:#0d1117;border-color:var(--border)}
 html[data-user-theme="dark"] .integrations-section-heading{color:var(--text-dark);border-top-color:var(--border)}
 html[data-user-theme="dark"] .calendar-int-actions{border-top-color:rgba(240,246,252,.08)}
@@ -376,7 +402,8 @@ html[data-user-theme="dark"] .business-subtab.active:hover{
 html[data-user-theme="dark"] .calendar-int-card .btn.user-save,
 html[data-user-theme="dark"] .integrations-vagaro-booking-actions .btn.user-save,
 html[data-user-theme="dark"] .integrations-vagaro-primary-actions .btn.user-save,
-html[data-user-theme="dark"] .calendar-int-card .integrations-inline-actions .btn.user-save{
+html[data-user-theme="dark"] .calendar-int-card .integrations-inline-actions .btn.user-save,
+html[data-user-theme="dark"] .integrations-primary-button{
   background:#010409;
   color:#f0f6fc;
   border-color:#30363d;
@@ -385,7 +412,8 @@ html[data-user-theme="dark"] .calendar-int-card .integrations-inline-actions .bt
 html[data-user-theme="dark"] .calendar-int-card .btn.user-save:hover:not(:disabled),
 html[data-user-theme="dark"] .integrations-vagaro-booking-actions .btn.user-save:hover:not(:disabled),
 html[data-user-theme="dark"] .integrations-vagaro-primary-actions .btn.user-save:hover:not(:disabled),
-html[data-user-theme="dark"] .calendar-int-card .integrations-inline-actions .btn.user-save:hover:not(:disabled){
+html[data-user-theme="dark"] .calendar-int-card .integrations-inline-actions .btn.user-save:hover:not(:disabled),
+html[data-user-theme="dark"] .integrations-primary-button:hover:not(:disabled){
   background:#0d1117;
   border-color:#58a6ff;
   color:#f0f6fc;

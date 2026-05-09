@@ -58,7 +58,7 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
 async function connectBookingLinkProvider(params: {
   app: ReturnType<typeof createBackendApp>;
   cookie: string;
-  provider: 'glossgenius' | 'fresha' | 'booksy';
+  provider: 'glossgenius' | 'fresha' | 'custom' | 'booksy';
   bookingUrl: string;
 }) {
   return params.app.request(`/user/calendar/providers/${params.provider}/connect`, {
@@ -153,6 +153,25 @@ test('booksy connect accepts valid https URL', async () => {
   assert.equal(response.status, 200);
   const body = (await response.json()) as { ok: boolean; connected: boolean; provider: string };
   assert.deepEqual(body, { ok: true, connected: true, provider: 'booksy' });
+});
+
+test('custom booking link accepts any valid https URL', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await connectBookingLinkProvider({
+    app,
+    cookie,
+    provider: 'custom',
+    bookingUrl: 'https://booking.example.com/ringbooker-salon',
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; connected: boolean; provider: string };
+  assert.deepEqual(body, { ok: true, connected: true, provider: 'custom' });
+
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.booking_url, 'https://booking.example.com/ringbooker-salon');
 });
 
 test('options returns capability note for glossgenius', async () => {

@@ -184,14 +184,16 @@ const CALENDAR_PROVIDER_LOGOS: Record<string, string> = {
   booksy: '/images/booksy.png',
   glossgenius: textLogo('GlossGenius'),
   fresha: textLogo('Fresha'),
+  custom: textLogo('Custom'),
 };
 
-type BookingLinkProviderId = 'glossgenius' | 'fresha' | 'booksy';
+type BookingLinkProviderId = 'glossgenius' | 'fresha' | 'custom' | 'booksy';
 
-const BOOKING_LINK_PROVIDER_IDS = ['glossgenius', 'fresha', 'booksy'] as const;
+const BOOKING_LINK_PROVIDER_IDS = ['glossgenius', 'fresha', 'custom', 'booksy'] as const;
 const BOOKING_LINK_PLACEHOLDERS: Record<BookingLinkProviderId, string> = {
   glossgenius: 'https://glossgenius.com/your-business or your custom domain',
   fresha: 'https://fresha.com/your-business-name',
+  custom: 'https://yourbookingpage.com/your-business',
   booksy: 'https://booksy.com/en-us/your-profile',
 };
 
@@ -512,6 +514,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
   const [bookingLinkInputs, setBookingLinkInputs] = useState<Record<BookingLinkProviderId, string>>({
     glossgenius: '',
     fresha: '',
+    custom: '',
     booksy: '',
   });
   const [bookingLinkErrors, setBookingLinkErrors] = useState<Partial<Record<BookingLinkProviderId, string>>>({});
@@ -1044,10 +1047,11 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     Square Appointments
                   </h4>
                   {squareProvider ? (
-                <div
+                  <div
                   className={[
                     'calendar-int-card',
                     'calendar-int-card--solo',
+                    'calendar-int-card--plain',
                     squareProvider.connected ? 'connected-active' : '',
                   ]
                     .filter(Boolean)
@@ -1075,7 +1079,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                   <div className="calendar-int-actions">
                     <button
                       type="button"
-                      className="btn user-save"
+                      className="btn user-save integrations-primary-button"
                       onClick={() => {
                         window.location.href = '/api/backend/user/calendar/providers/square_appointments/connect/start';
                       }}
@@ -1221,8 +1225,8 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 Booking page link
               </h4>
               <p className="sub integrations-section-lead">
-                Pick your app, paste your public booking URL once. RingBooker texts it to callers when needed — one link per
-                account (Fresha, Booksy, or GlossGenius).
+                Pick your app or choose custom, then paste your public booking URL once. RingBooker texts it to callers when
+                needed — one link per account.
               </p>
               {(() => {
                 const blMeta = calendarProviders.find((p) => p.id === bookingLinkPick);
@@ -1239,9 +1243,9 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                       .join(' ')}
                   >
                     <div className="field" style={{ marginBottom: 12 }}>
-                      <label htmlFor="booking-link-brand-select">Your booking app</label>
                       <select
                         id="booking-link-brand-select"
+                        aria-label="Booking app"
                         value={bookingLinkPick}
                         onChange={(event) => {
                           const next = event.target.value as BookingLinkProviderId;
@@ -1330,7 +1334,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                               ) : null}
                               <button
                                 type="button"
-                                className="btn user-save"
+                                className="btn user-save integrations-primary-button"
                                 disabled={
                                   savingBookingLinkProvider === bookingLinkPick ||
                                   !bookingLinkInputs[bookingLinkPick].trim()
