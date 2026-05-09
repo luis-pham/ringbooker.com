@@ -71,11 +71,9 @@ canvas {
     gap: 1px;
     padding: 7px 4px calc(7px + env(safe-area-inset-bottom, 0px));
     margin: 0;
-    background: rgba(255, 255, 255, 0.97);
-    -webkit-backdrop-filter: blur(16px);
-    backdrop-filter: blur(16px);
+    background: #ffffff;
     border-top: 1px solid #e5e7eb;
-    box-shadow: 0 -10px 28px rgba(17, 24, 39, 0.08);
+    box-shadow: none;
     pointer-events: auto;
   }
 
@@ -103,8 +101,9 @@ canvas {
 
   .user-mobile-tabbar__link--active {
     color: #5b21b6;
-    background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+    background: #f5f3ff;
     box-shadow: none;
+    border: 1px solid #e9d5ff;
   }
 
   .user-mobile-tabbar__icon {

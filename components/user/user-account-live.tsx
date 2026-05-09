@@ -180,7 +180,7 @@ export function UserAccountLive() {
 .rb-account-card{
   background:var(--surface-card);border-radius:12px;padding:24px;
   border:1px solid var(--border);
-  box-shadow:var(--card-shadow-material);
+  box-shadow:none;
 }
 .rb-account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
 .rb-account-card-head-main{display:flex;align-items:center;gap:10px;min-width:0}
@@ -204,13 +204,15 @@ export function UserAccountLive() {
 }
 .rb-account-billing-warn{color:var(--red-deep);font-weight:600}
 .rb-account-callout{
-  margin-top:24px;padding:14px 16px;border-radius:10px;background:#f3f4f6;
+  margin-top:24px;padding:14px 16px;border-radius:10px;background:#f9fafb;
   display:flex;align-items:flex-start;gap:12px;
+  border:1px solid var(--border);
 }
 .rb-account-callout p{margin:0;font-size:13px;line-height:1.55;color:var(--text-gray)}
 .rb-account-banner{
   position:relative;height:192px;border-radius:12px;overflow:hidden;
-  box-shadow:var(--card-shadow-material);
+  box-shadow:none;
+  border:1px solid var(--border);
   background:linear-gradient(135deg,#7c3aed 0%,#630ed4 45%,#4648d4 100%);
 }
 .rb-account-banner::after{
@@ -237,7 +239,8 @@ export function UserAccountLive() {
 .rb-account-action:hover .rb-account-action-icon{color:var(--purple-dark)}
 .rb-account-help{
   background:var(--secondary-accent);color:#fff;border-radius:12px;padding:24px;
-  box-shadow:var(--card-shadow-material);
+  box-shadow:none;
+  border:1px solid rgba(0,0,0,.08);
 }
 .rb-account-help h4{margin:0 0 8px;font-size:20px;font-weight:600;letter-spacing:-.02em}
 .rb-account-help p{margin:0 0 16px;font-size:13px;line-height:1.55;opacity:.92}

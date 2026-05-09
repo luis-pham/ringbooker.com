@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Your Account | RingBooker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#5a00c6",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#ede0ff",
+                        "surface-container-low": "#f3f4f5",
+                        "on-surface-variant": "#4a4455",
+                        "primary-fixed-dim": "#d2bbff",
+                        "outline-variant": "#ccc3d8",
+                        "on-secondary-container": "#fffbff",
+                        "surface-dim": "#d9dadb",
+                        "on-error": "#ffffff",
+                        "surface-tint": "#732ee4",
+                        "outline": "#7b7487",
+                        "surface-container": "#edeeef",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "surface": "#f8f9fa",
+                        "secondary-container": "#6063ee",
+                        "surface-container-highest": "#e1e3e4",
+                        "tertiary-container": "#a15100",
+                        "primary-container": "#7c3aed",
+                        "surface-variant": "#e1e3e4",
+                        "on-tertiary-fixed-variant": "#713700",
+                        "inverse-on-surface": "#f0f1f2",
+                        "on-tertiary-fixed": "#301400",
+                        "tertiary-fixed": "#ffdcc6",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-background": "#191c1d",
+                        "inverse-primary": "#d2bbff",
+                        "background": "#f8f9fa",
+                        "primary": "#630ed4",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#ffe0cd",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "surface-bright": "#f8f9fa",
+                        "secondary": "#4648d4",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#25005a",
+                        "inverse-surface": "#2e3132",
+                        "tertiary-fixed-dim": "#ffb784",
+                        "tertiary": "#7d3d00",
+                        "on-surface": "#191c1d",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#e1e0ff",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-container-high": "#e7e8e9",
+                        "primary-fixed": "#eaddff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "2xl": "48px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "xl": "32px",
+                        "container-padding": "24px",
+                        "xs": "4px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "h2": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "h3": ["Inter"],
+                        "h1-mobile": ["Inter"],
+                        "display": ["Inter"],
+                        "h1": ["Inter"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "h2": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "h3": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "h1-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "display": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "h1": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .card-shadow { box-shadow: 0px 1px 3px rgba(0,0,0,0.1), 0px 1px 2px rgba(0,0,0,0.06); }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full w-64 z-50 bg-white border-r border-outline-variant flex flex-col py-lg">
+<div class="px-lg mb-xl">
+<h1 class="text-h3 font-h3 text-primary">RingBooker</h1>
+<p class="text-label-sm text-on-surface-variant">Admin Portal</p>
+</div>
+<nav class="flex-1 space-y-xs px-md">
+<a class="flex items-center gap-md text-on-surface-variant hover:bg-surface-container-high transition-all px-md py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">dashboard</span>
+<span class="font-label-md text-label-md">Overview</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:bg-surface-container-high transition-all px-md py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">calendar_today</span>
+<span class="font-label-md text-label-md">Bookings</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:bg-surface-container-high transition-all px-md py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">transcribe</span>
+<span class="font-label-md text-label-md">Calls &amp; Transcripts</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:bg-surface-container-high transition-all px-md py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-md bg-secondary-container text-on-secondary-container rounded-lg px-md py-sm border-l-4 border-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-label-md">Account</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:bg-surface-container-high transition-all px-md py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">payments</span>
+<span class="font-label-md text-label-md">Billing</span>
+</a>
+</nav>
+<div class="mt-auto px-md pt-lg border-t border-outline-variant">
+<a class="flex items-center gap-md text-on-surface-variant hover:text-error px-md py-sm transition-colors" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Sign Out</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- Top App Bar -->
+<header class="flex justify-between items-center w-full px-lg h-16 bg-surface shadow-sm sticky top-0 z-40">
+<div class="flex items-center gap-md">
+<span class="text-h2 font-h2 text-primary">Your account</span>
+</div>
+<div class="flex items-center gap-xl">
+<div class="flex items-center gap-sm">
+<button class="p-sm hover:bg-surface-container-low transition-colors rounded-full cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<button class="p-sm hover:bg-surface-container-low transition-colors rounded-full cursor-pointer active:opacity-80">
+<span class="material-symbols-outlined text-on-surface-variant">help</span>
+</button>
+</div>
+<div class="flex items-center gap-md border-l border-outline-variant pl-xl">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md text-on-surface">Tpx Greenruby</p>
+<p class="text-label-sm text-on-surface-variant">Administrator</p>
+</div>
+<img alt="Administrator profile avatar" class="w-10 h-10 rounded-full border-2 border-primary-fixed" data-alt="A professional headshot of a smiling middle-aged man with short dark hair and a neat beard, wearing a crisp white dress shirt. The background is a soft, out-of-focus modern office setting with natural lighting. The image is bright and airy, perfectly fitting a light-mode enterprise UI design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuARRjpuoyaXRsDd44yWuo5AveQpfXFEzlyi0_J4I94A-EvvEI_6ne-gj6HBkNXt14w5Pzm6zYwV9c9DB5NXvzEp1IQjKXoSDoOSejAOZepcYzHUcxuyvabMojMPk85Jiv1no0WmI4xoSxzNGpPcpni0sRS0fS8FIOAdxeCwYb4oQJiPCT2hMN5xjZWxHKUuFWJ2xSEdZk0Z-3eiNSqLIhcU8TCicpYH2koTLqPVMsm9BJLb4lO2eNhVaB1_iw1pOeCRRmuyEwUOTnQ"/>
+</div>
+</div>
+</header>
+<div class="p-lg max-w-7xl mx-auto">
+<div class="mb-xl">
+<p class="text-body-md text-on-surface-variant">Manage your login, plan, and security settings.</p>
+</div>
+<div class="grid grid-cols-12 gap-lg">
+<!-- Column 1: Account Details -->
+<div class="col-span-12 lg:col-span-7 space-y-lg">
+<section class="bg-surface-container-lowest rounded-xl p-lg card-shadow">
+<div class="flex items-center justify-between mb-xl">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">badge</span>
+<h2 class="text-h3 font-h3">Account details</h2>
+</div>
+<button class="text-primary font-label-md text-label-md hover:underline">Edit details</button>
+</div>
+<div class="space-y-lg">
+<div class="flex flex-col sm:flex-row sm:items-center py-sm border-b border-surface-container">
+<span class="w-48 text-label-sm text-on-surface-variant uppercase tracking-wider">Email</span>
+<span class="text-body-md font-medium">tpx.greenruby@gmail.com</span>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center py-sm border-b border-surface-container">
+<span class="w-48 text-label-sm text-on-surface-variant uppercase tracking-wider">Display Name</span>
+<span class="text-body-md font-medium">Tpx Greenruby</span>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center py-sm border-b border-surface-container">
+<span class="w-48 text-label-sm text-on-surface-variant uppercase tracking-wider">Business</span>
+<span class="text-body-md font-medium">Tpx Greenruby</span>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center py-sm border-b border-surface-container">
+<span class="w-48 text-label-sm text-on-surface-variant uppercase tracking-wider">Plan</span>
+<div class="flex items-center gap-sm">
+<span class="text-body-md font-medium">Starter</span>
+<span class="bg-[#f5f3ff] text-primary px-sm py-xs rounded-full text-label-sm">Active</span>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row sm:items-center py-sm">
+<span class="w-48 text-label-sm text-on-surface-variant uppercase tracking-wider">Billing Status</span>
+<span class="text-body-md text-error font-medium">No active subscription</span>
+</div>
+</div>
+<div class="mt-xl p-md bg-surface-container-low rounded-lg flex items-center gap-md">
+<span class="material-symbols-outlined text-primary">info</span>
+<p class="text-body-sm text-on-surface-variant">Update your billing information to unlock premium enterprise features.</p>
+</div>
+</section>
+<!-- Profile Banner Section -->
+<section class="relative h-48 rounded-xl overflow-hidden bg-primary-container card-shadow group">
+<img alt="Modern office background" class="w-full h-full object-cover opacity-60 mix-blend-overlay group-hover:scale-105 transition-transform duration-700" data-alt="A wide-angle shot of a high-end, minimalist corporate office lobby with glass walls, polished concrete floors, and lush green plants. The space is filled with soft, diffused sunlight, creating a calm and professional atmosphere. The color palette is dominated by whites, grays, and natural wood tones, reflecting a clean and modern aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzhyi6lvoHE9ZmhDbhrlEBr-jK7mtjEvou3OXN1stG6I0UmINLgZh9Y3e8D-rOLZNFGcyrdhISA5Udp7e9KYviJvqzU7ZSwi7bdJLpnCLSBsJGAtWWSC6epEdRofTjJifz-fax1O82JPrIyxkFhVqAYwTlBUXZlXyonGIo7xvK79McVxxDghn7wXTdmdH3PdXgtg2clFl6aP3wrMtB8Kmvai6WXeR2O0aFLxH4Enaq99oeRTdNF3rjIXiQBWRlz9PdEKfy-lhtAS8"/>
+<div class="absolute inset-0 p-lg flex flex-col justify-end bg-gradient-to-t from-primary/80 to-transparent">
+<h3 class="text-white text-h3 font-h3">Enterprise Ready</h3>
+<p class="text-on-primary-container text-body-md">Scale RingBooker across your entire organization with ease.</p>
+</div>
+</section>
+</div>
+<!-- Column 2: Password & Actions -->
+<div class="col-span-12 lg:col-span-5 space-y-lg">
+<!-- Change Password Card -->
+<section class="bg-surface-container-lowest rounded-xl p-lg card-shadow">
+<div class="flex items-center gap-sm mb-xl">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">lock</span>
+<h2 class="text-h3 font-h3">Change password</h2>
+</div>
+<form class="space-y-md">
+<div class="space-y-xs">
+<label class="text-label-sm text-on-surface-variant">Current Password</label>
+<input class="w-full px-md py-sm border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" placeholder="••••••••" type="password"/>
+</div>
+<div class="space-y-xs">
+<label class="text-label-sm text-on-surface-variant">New Password</label>
+<input class="w-full px-md py-sm border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" placeholder="••••••••" type="password"/>
+</div>
+<div class="space-y-xs">
+<label class="text-label-sm text-on-surface-variant">Confirm New Password</label>
+<input class="w-full px-md py-sm border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none" placeholder="••••••••" type="password"/>
+</div>
+<button class="w-full mt-md bg-primary text-white font-label-md py-md rounded-lg hover:bg-on-primary-fixed-variant transition-colors active:scale-[0.98] duration-150 shadow-sm" type="submit">
+                                Update password
+                            </button>
+</form>
+</section>
+<!-- Account Actions Card -->
+<section class="bg-surface-container-lowest rounded-xl p-lg card-shadow">
+<div class="flex items-center gap-sm mb-xl">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<h2 class="text-h3 font-h3">Account actions</h2>
+</div>
+<div class="space-y-sm">
+<button class="w-full flex items-center justify-between px-md py-md border border-outline-variant rounded-lg hover:bg-surface-container-low transition-all group">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary">settings_applications</span>
+<span class="text-label-md font-medium">Edit business settings</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between px-md py-md border border-error/20 rounded-lg hover:bg-error/5 transition-all group">
+<div class="flex items-center gap-md">
+<span class="material-symbols-outlined text-error">logout</span>
+<span class="text-label-md font-medium text-error">Sign out</span>
+</div>
+<span class="material-symbols-outlined text-error/40">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Help Widget -->
+<div class="bg-secondary-container text-on-secondary-container rounded-xl p-lg card-shadow">
+<h4 class="text-h3 font-h3 mb-sm">Need assistance?</h4>
+<p class="text-body-sm opacity-90 mb-md">Our support team is available 24/7 to help you with your account or billing inquiries.</p>
+<a class="inline-flex items-center gap-xs font-label-md hover:underline" href="#">
+                            Contact Support Center
+                            <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
