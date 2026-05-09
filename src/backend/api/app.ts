@@ -81,6 +81,11 @@ import { resolveGoLiveDashboardPrimaryCta } from '@/src/backend/services/billing
 import { normalizeInboundE164 } from '@/src/backend/services/calls/shop-resolver';
 import { formatPlanPrice, getPlanCatalogEntry, isSelfServeTrialPlan } from '@/src/backend/domain/plan-catalog';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
+import { buildDashboardOverviewRail } from '@/src/backend/services/user/dashboard-overview-rail';
+import {
+  buildUserPortalNotifications,
+  type UserPortalNotificationsUsageInput,
+} from '@/src/backend/services/user/user-portal-notifications';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
 import type { EmailService } from '@/src/backend/services/email/types';
@@ -3848,11 +3853,12 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    const [bookingCount, callCount, missedCalls, commercialAccount] = await Promise.all([
+    const [bookingCount, callCount, missedCalls, commercialAccount, recentCallRows] = await Promise.all([
       deps.bookingsRepository.countByShop(shop.id),
       deps.callLogsRepository.countByShop(shop.id, {}),
       deps.callLogsRepository.countByShop(shop.id, { outcome: 'missed' }),
       deps.commercialAccountsRepository ? deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : Promise.resolve(null),
+      deps.callLogsRepository.listByShop(shop.id, { limit: 3 }),
     ]);
     const usage = await getShopUsageForPeriod(
       {
@@ -3908,6 +3914,29 @@ export function createBackendApp(deps: {
       };
     }
 
+    const onboardingRequired = !isShopSetupWizardComplete(shop);
+    const recentCalls = recentCallRows.map((row) => ({
+      requestId: row.requestId,
+      startedAt: row.startedAt,
+      callerPhone: row.callerPhone,
+      outcome: row.outcome,
+      subtitle: row.summaryServiceRequest ?? null,
+    }));
+
+    const overviewRail = buildDashboardOverviewRail({
+      shop,
+      onboardingRequired,
+      goLive,
+      usage: usage
+        ? {
+            nearCapturedCallerLimit: usage.nearCapturedCallerLimit,
+            overCapturedCallerLimit: usage.overCapturedCallerLimit,
+          }
+        : null,
+      recentCalls,
+      totalCallCount: callCount,
+    });
+
     return c.json({
       ok: true,
       shop: {
@@ -3918,7 +3947,7 @@ export function createBackendApp(deps: {
         plan: shop.plan,
         active: shop.active,
       },
-      onboardingRequired: !isShopSetupWizardComplete(shop),
+      onboardingRequired,
       onboardingCompleted: isShopSetupWizardComplete(shop),
       metrics: {
         bookingCount,
@@ -3927,7 +3956,72 @@ export function createBackendApp(deps: {
       },
       usage,
       goLive,
+      overviewRail,
     });
+  });
+
+  app.get(path('/user/notifications'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_notifications');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    if (
+      !deps.billingSubscriptionsRepository ||
+      !deps.shopAccessStatesRepository ||
+      !deps.testCallAttemptsRepository
+    ) {
+      return c.json({ ok: true, notifications: [] });
+    }
+
+    const now = new Date();
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    const access = await getShopBillingAccess(
+      {
+        shopsRepository: deps.shopsRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      },
+      { shopId: shop.id },
+    );
+
+    let usage: UserPortalNotificationsUsageInput = null;
+    if (deps.callLogsRepository) {
+      const commercialAccount = deps.commercialAccountsRepository
+        ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null)
+        : null;
+      const usageRow = await getShopUsageForPeriod(
+        {
+          callLogsRepository: deps.callLogsRepository,
+          shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+        },
+        { shop, commercialAccount },
+      ).catch(() => null);
+      if (usageRow) {
+        usage = {
+          nearCapturedCallerLimit: usageRow.nearCapturedCallerLimit,
+          overCapturedCallerLimit: usageRow.overCapturedCallerLimit,
+          capturedCallersUsed: usageRow.capturedCallersUsed,
+          capturedCallersLimit: usageRow.capturedCallersLimit,
+        };
+      }
+    }
+
+    const notifications = buildUserPortalNotifications({
+      access,
+      subscription,
+      usage,
+      now,
+    });
+
+    return c.json({ ok: true, notifications });
   });
 
   app.get(path('/user/onboarding-status'), async (c) => {
@@ -5315,7 +5409,13 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.shopsRepository || !deps.billingProvider || !deps.billingSubscriptionsRepository) {
+    if (
+      !deps.shopsRepository ||
+      !deps.billingProvider ||
+      !deps.billingSubscriptionsRepository ||
+      !deps.billingCustomersRepository ||
+      !deps.shopAccessStatesRepository
+    ) {
       return c.json({ ok: false, error: 'billing_provider_unavailable' }, 500);
     }
 
@@ -5336,7 +5436,22 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    let subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    if (!subscription && isSelfServeTrialPlan(shop.plan)) {
+      const trial = await createNoCardTrialForShop(
+        {
+          billingCustomersRepository: deps.billingCustomersRepository,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+          shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        },
+        {
+          shopId: shop.id,
+          email: sessionResult.email,
+          plan: shop.plan,
+        },
+      );
+      subscription = trial.subscription;
+    }
     if (!subscription || !['trialing', 'trial_expired', 'paused', 'canceled', 'active'].includes(subscription.status)) {
       return c.json({ ok: false, error: 'subscription_not_ready_for_checkout' }, 409);
     }

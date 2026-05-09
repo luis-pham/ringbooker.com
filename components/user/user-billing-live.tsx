@@ -289,8 +289,8 @@ function billingUiCopy(state: BillingUiState) {
   switch (state) {
     case 'billing_not_configured':
       return {
-        title: 'Billing is not ready yet',
-        body: 'You can continue setup and test calls. Billing checkout will appear here when your trial subscription record is ready.',
+        title: 'Add a payment method to go live',
+        body: 'You can continue setup and test calls without a card. Start secure Paddle checkout when you are ready for RingBooker to answer real callers.',
       };
     case 'setup_allowed_no_payment':
       return {
@@ -564,6 +564,28 @@ export function UserBillingLive() {
                   </div>
                 </section>
 
+                {data.billing && !isEnterprisePlan && !liveEnabled && !hasPaymentMethod ? (
+                  <section className="billing-alert-strip">
+                    <p>
+                      <strong>Add a payment method to go live.</strong> Setup and test calls still work without a card, but live answering on your business number requires Paddle billing first.
+                    </p>
+                    {checkoutAvailable ? (
+                      <button
+                        type="button"
+                        className="btn purple"
+                        disabled={checkoutPlan !== null}
+                        onClick={() => void openCheckout(currentPlan)}
+                      >
+                        {checkoutPlan ? 'Starting…' : 'Add payment method'}
+                      </button>
+                    ) : (
+                      <button type="button" className="btn" disabled>
+                        Checkout hidden
+                      </button>
+                    )}
+                  </section>
+                ) : null}
+
                 <div className="billing-tab-strip" role="tablist" aria-label="Billing sections">
                   <button
                     type="button"
@@ -721,7 +743,7 @@ export function UserBillingLive() {
                             >
                               {checkoutPlan ? 'Starting…' : 'Resolve billing issue'}
                             </button>
-                          ) : subscription && !hasPaymentMethod ? (
+                          ) : !hasPaymentMethod ? (
                             <button
                               type="button"
                               className="btn purple"

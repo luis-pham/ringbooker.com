@@ -195,3 +195,118 @@ test('billing checkout endpoint is hidden when BILLING_CHECKOUT_ENABLED is false
   applyRequiredTestEnv({ BILLING_CHECKOUT_ENABLED: 'true' });
   resetEnvCacheForTests();
 });
+
+test('billing checkout creates missing internal trial and opens Paddle sandbox checkout', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    PADDLE_ENV: 'sandbox',
+    USER_AUTH_EMAIL: 'billing-new-trial-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Checkout Missing Trial Salon',
+    phone_number: '+17145558888',
+    user_phone: '+17145558889',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: shop.id });
+  resetEnvCacheForTests();
+
+  const originalFetch = globalThis.fetch;
+  const paddleRequests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    paddleRequests.push({
+      url,
+      body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
+    });
+    return new Response(
+      JSON.stringify({
+        data: {
+          id: 'txn_sandbox_missing_trial',
+          checkout: { url: 'https://sandbox-checkout.paddle.com/checkout/test' },
+          customer_id: 'ctm_sandbox_missing_trial',
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      jobsRepository: new InMemoryJobsRepository(),
+      bookingsRepository: new InMemoryBookingsRepository(),
+      billingCustomersRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      callbacksRepository: new InMemoryCallbacksRepository(),
+      shopsRepository,
+      telephonyService: new NoopTelephonyService(),
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      authUsersRepository: new InMemoryAuthUsersRepository(),
+      realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+      billingProvider: new PaddleBillingProvider({
+        billingCustomersRepository,
+        billingSubscriptionsRepository,
+        shopAccessStatesRepository,
+        shopsRepository,
+      }),
+    });
+
+    assert.equal(await billingSubscriptionsRepository.findCurrentByShopId(shop.id), null);
+
+    const login = await app.request('/auth/user/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({
+        email: 'billing-new-trial-user@ringbooker.local',
+        password: 'change_me_user_password',
+      }),
+    });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get('set-cookie')?.split(';')[0];
+    assert.ok(cookie);
+
+    const checkout = await app.request('/user/billing/checkout', {
+      method: 'POST',
+      headers: {
+        cookie,
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+      },
+      body: JSON.stringify({
+        plan: 'starter',
+        billing_interval: 'monthly',
+      }),
+    });
+
+    assert.equal(checkout.status, 200);
+    const body = (await checkout.json()) as { ok: boolean; checkoutUrl?: string };
+    assert.equal(body.ok, true);
+    assert.equal(body.checkoutUrl, 'https://sandbox-checkout.paddle.com/checkout/test');
+    assert.equal(paddleRequests.length, 1);
+    assert.equal(paddleRequests[0].url, 'https://sandbox-api.paddle.com/transactions');
+    assert.deepEqual((paddleRequests[0].body.items as Array<{ price_id: string; quantity: number }>)[0], {
+      price_id: process.env.PADDLE_PRICE_STARTER_MONTHLY,
+      quantity: 1,
+    });
+    assert.equal((await billingSubscriptionsRepository.findCurrentByShopId(shop.id))?.status, 'trialing');
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({
+      USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+      USER_AUTH_SHOP_ID: 'demo-shop',
+    });
+    resetEnvCacheForTests();
+  }
+});
