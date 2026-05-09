@@ -486,9 +486,10 @@ export function UserBillingLive() {
         ok: boolean;
         checkoutUrl?: string;
         error?: string;
+        message?: string;
       };
       if (!response.ok || !body.ok || !body.checkoutUrl) {
-        throw new Error(body.error ?? 'checkout_failed');
+        throw new Error(body.message ?? body.error ?? 'Payment setup could not start.');
       }
       window.location.href = body.checkoutUrl;
     } catch (error) {
@@ -514,9 +515,10 @@ export function UserBillingLive() {
         ok: boolean;
         checkoutUrl?: string;
         error?: string;
+        message?: string;
       };
       if (!response.ok || !body.ok || !body.checkoutUrl) {
-        throw new Error(body.error ?? 'checkout_failed');
+        throw new Error(body.message ?? body.error ?? 'Payment setup could not start.');
       }
       window.location.href = body.checkoutUrl;
     } catch (error) {
@@ -815,7 +817,7 @@ export function UserBillingLive() {
 
                       {checkoutError ? (
                         <section className="card" style={{ marginTop: 0 }}>
-                          <h3>Checkout could not start</h3>
+                          <h3>Payment setup could not start</h3>
                           <p className="sub">{checkoutError}</p>
                         </section>
                       ) : null}

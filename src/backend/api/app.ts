@@ -631,12 +631,12 @@ function telnyxCountryCodeFromForwardingCountry(value: string | null | undefined
 }
 
 const calendarProviderParamSchema = z.object({
-  provider: z.enum(['square_appointments', 'google_calendar', 'vagaro', 'glossgenius', 'fresha', 'mindbody', 'booksy']),
+  provider: z.enum(['square_appointments', 'google_calendar', 'vagaro', 'glossgenius', 'fresha', 'custom', 'mindbody', 'booksy']),
 });
 type CalendarProviderParam = z.infer<typeof calendarProviderParamSchema>['provider'];
-type BookingLinkProviderId = 'glossgenius' | 'fresha' | 'booksy';
+type BookingLinkProviderId = 'glossgenius' | 'fresha' | 'custom' | 'booksy';
 
-const BOOKING_LINK_PROVIDER_IDS = ['glossgenius', 'fresha', 'booksy'] as const satisfies readonly BookingLinkProviderId[];
+const BOOKING_LINK_PROVIDER_IDS = ['glossgenius', 'fresha', 'custom', 'booksy'] as const satisfies readonly BookingLinkProviderId[];
 
 const squareConfigureSchema = z.object({
   locationId: z.string().min(1),
@@ -5532,8 +5532,15 @@ export function createBackendApp(deps: {
       );
       subscription = trial.subscription;
     }
-    if (!subscription || !['trialing', 'trial_expired', 'paused', 'canceled', 'active'].includes(subscription.status)) {
-      return c.json({ ok: false, error: 'subscription_not_ready_for_checkout' }, 409);
+    if (!subscription || !['trialing', 'trial_expired', 'paused', 'canceled', 'active', 'incomplete', 'past_due', 'unpaid'].includes(subscription.status)) {
+      return c.json(
+        {
+          ok: false,
+          error: 'subscription_not_ready_for_payment_setup',
+          message: 'Payment setup is not ready for this account yet. Please contact support if you are ready to go live.',
+        },
+        409,
+      );
     }
     const checkoutPlan = subscription.plan;
     const billingInterval = parsed.data.billing_interval === 'annual' ? 'year' : 'month';
