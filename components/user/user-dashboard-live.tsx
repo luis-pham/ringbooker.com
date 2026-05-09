@@ -459,7 +459,7 @@ export function UserDashboardLive() {
         );
       case 'set_up_call_forwarding':
         return (
-          <a className="btn purple" href="/user/settings#go-live-forwarding">
+          <a className="btn purple" href="/user/go-live#go-live-forwarding">
             Set up call forwarding
           </a>
         );
@@ -741,15 +741,15 @@ export function UserDashboardLive() {
                       </div>
                       <div className="list-item">
                         <div className="item-main">
-                          <div className="avatar quick-avatar--settings" aria-hidden title="Settings">
+                          <div className="avatar quick-avatar--settings" aria-hidden title="Business Knowledge">
                             <IconQuickSettings />
                           </div>
                           <div>
-                            <h4>Update business settings</h4>
-                            <p>Hours, services, AI greeting, and transfer rules.</p>
+                            <h4>Business Knowledge</h4>
+                            <p>Services, hours, policies, and how your AI sounds on calls.</p>
                           </div>
                         </div>
-                        <a className="btn" href="/user/settings">
+                        <a className="btn" href="/user/knowledge">
                           Go
                         </a>
                       </div>
@@ -797,15 +797,15 @@ export function UserDashboardLive() {
                       </div>
                       <div className="list-item">
                         <div className="item-main">
-                          <div className="avatar quick-avatar--settings" aria-hidden title="Settings">
+                          <div className="avatar quick-avatar--settings" aria-hidden title="Business Knowledge">
                             <IconQuickSettings />
                           </div>
                           <div>
-                            <h4>Update business settings</h4>
-                            <p>Hours, services, AI greeting, and transfer rules.</p>
+                            <h4>Business Knowledge</h4>
+                            <p>Services, hours, policies, and how your AI sounds on calls.</p>
                           </div>
                         </div>
-                        <a className="btn" href="/user/settings">
+                        <a className="btn" href="/user/knowledge">
                           Go
                         </a>
                       </div>

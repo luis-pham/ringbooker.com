@@ -1696,6 +1696,34 @@ function buildAdminCallChartDaily(calls: Array<{ startedAt?: string }>): Array<{
     .map(([day, count]) => ({ day, count }));
 }
 
+/** Settings UI: show dedicated Go Live tab only after wizard completion and before live answering is enabled. */
+async function computeShowGoLiveSettingsTab(params: {
+  shop: Shop;
+  shopsRepository: ShopsRepository;
+  shopAccessStatesRepository?: ShopAccessStatesRepository;
+  billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+  testCallAttemptsRepository?: TestCallAttemptsRepository;
+}): Promise<boolean> {
+  if (!isShopSetupWizardComplete(params.shop)) return false;
+  if (
+    !params.shopAccessStatesRepository ||
+    !params.billingSubscriptionsRepository ||
+    !params.testCallAttemptsRepository
+  ) {
+    return false;
+  }
+  const access = await getShopBillingAccess(
+    {
+      shopsRepository: params.shopsRepository,
+      billingSubscriptionsRepository: params.billingSubscriptionsRepository,
+      shopAccessStatesRepository: params.shopAccessStatesRepository,
+      testCallAttemptsRepository: params.testCallAttemptsRepository,
+    },
+    { shopId: params.shop.id },
+  );
+  return !access.liveCallsEnabled;
+}
+
 export function createBackendApp(deps: {
   providerEventsRepository: ProviderEventsRepository;
   jobsRepository?: JobsRepository;
@@ -4623,11 +4651,19 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const showGoLiveSettingsTab = await computeShowGoLiveSettingsTab({
+      shop,
+      shopsRepository: deps.shopsRepository,
+      shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+      testCallAttemptsRepository: deps.testCallAttemptsRepository,
+    });
     return c.json({
       ok: true,
       shop,
       capabilities: getShopPlanCapabilities(shop.plan),
       capabilityLabels: CAPABILITY_LABELS,
+      showGoLiveSettingsTab,
     });
   });
 
@@ -5483,17 +5519,49 @@ export function createBackendApp(deps: {
     }
 
     const appBaseUrl = getAppBaseUrl(c.req);
-    const session = await deps.billingProvider.createCheckoutSession({
-      shop,
-      plan: checkoutPlan,
-      email: sessionResult.email,
-      internalSubscriptionId: subscription.id,
-      trialEndsAt: subscription.trialEndsAt ?? null,
-      billingInterval,
-      source: 'add_payment_method_before_go_live',
-      successUrl: parsed.data.successUrl ?? `${appBaseUrl}/user/billing?checkout=success`,
-      cancelUrl: parsed.data.cancelUrl ?? `${appBaseUrl}/user/billing?checkout=cancelled`,
-    });
+    let session: Awaited<ReturnType<typeof deps.billingProvider.createCheckoutSession>>;
+    try {
+      session = await deps.billingProvider.createCheckoutSession({
+        shop,
+        plan: checkoutPlan,
+        email: sessionResult.email,
+        internalSubscriptionId: subscription.id,
+        trialEndsAt: subscription.trialEndsAt ?? null,
+        billingInterval,
+        source: 'add_payment_method_before_go_live',
+        successUrl: parsed.data.successUrl ?? `${appBaseUrl}/user/billing?checkout=success`,
+        cancelUrl: parsed.data.cancelUrl ?? `${appBaseUrl}/user/billing?checkout=cancelled`,
+      });
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      logger.error(
+        {
+          err,
+          shopId: shop.id,
+          plan: checkoutPlan,
+          billingInterval,
+        },
+        'user_billing_checkout_create_failed',
+      );
+      if (errorMessage.startsWith('missing_paddle_price_id:')) {
+        return c.json(
+          {
+            ok: false,
+            error: 'billing_price_not_configured',
+            message: 'Payment setup is not configured for this plan yet. Please contact support.',
+          },
+          503,
+        );
+      }
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_checkout_failed',
+          message: 'Payment setup could not start. Please open Billing or contact support.',
+        },
+        502,
+      );
+    }
 
     return c.json({
       ok: true,
@@ -6092,10 +6160,19 @@ export function createBackendApp(deps: {
       updated = dynamicUpdated;
     }
 
+    const showGoLiveSettingsTab = await computeShowGoLiveSettingsTab({
+      shop: updated,
+      shopsRepository: deps.shopsRepository,
+      shopAccessStatesRepository: deps.shopAccessStatesRepository,
+      billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+      testCallAttemptsRepository: deps.testCallAttemptsRepository,
+    });
+
     return c.json({
       ok: true,
       shop: updated,
       capabilities: getShopPlanCapabilities(updated.plan),
+      showGoLiveSettingsTab,
     });
   });
 

@@ -39,6 +39,33 @@ function IconCalls(): ReactNode {
   );
 }
 
+function IconKnowledge(): ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <path d="M8 7h8M8 11h6" />
+    </svg>
+  );
+}
+
+function IconIntegrations(): ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <circle cx={12} cy={12} r={3} />
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+    </svg>
+  );
+}
+
+function IconGoLive(): ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.682.305 1.348.53 1.99M9 18h4.17M14.21 9.09 15.25 7.05a2 2 0 0 1 2.83-.09l2.12 2.12a2 2 0 0 1 .09 2.83l-2.3 2.3M10.59 13.59 12 15l1.41 1.41" />
+    </svg>
+  );
+}
+
 function IconSettings(): ReactNode {
   return (
     <svg viewBox="0 0 24 24" aria-hidden>
@@ -85,13 +112,16 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
   };
 
   return (
-    <nav className="user-mobile-tabbar" aria-label="User portal">
+    <nav className="user-mobile-tabbar user-mobile-tabbar--scroll" aria-label="User portal">
       {item('overview', '/user', 'Overview', <IconOverview />)}
       {item('bookings', '/user/bookings', 'Bookings', <IconBookings />)}
       {item('calls', '/user/calls', 'Calls', <IconCalls />)}
+      {item('knowledge', '/user/knowledge', 'Knowledge', <IconKnowledge />)}
+      {item('integrations', '/user/integrations', 'Integr.', <IconIntegrations />)}
+      {item('go-live', '/user/go-live', 'Go live', <IconGoLive />)}
       {item('settings', '/user/settings', 'Settings', <IconSettings />)}
-      {item('account', '/user/account', 'Account', <IconAccount />)}
       {item('billing', '/user/billing', 'Billing', <IconBilling />)}
+      {item('account', '/user/account', 'Account', <IconAccount />)}
     </nav>
   );
 }

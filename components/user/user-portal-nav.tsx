@@ -4,7 +4,16 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-export type UserPortalNavKey = 'overview' | 'bookings' | 'calls' | 'settings' | 'billing' | 'account';
+export type UserPortalNavKey =
+  | 'overview'
+  | 'bookings'
+  | 'calls'
+  | 'knowledge'
+  | 'integrations'
+  | 'go-live'
+  | 'settings'
+  | 'billing'
+  | 'account';
 
 type UserPortalNavProps = {
   active: UserPortalNavKey;
@@ -72,6 +81,33 @@ function IconCalls() {
   );
 }
 
+function IconKnowledge() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <path d="M8 7h8M8 11h8M8 15h5" />
+    </svg>
+  );
+}
+
+function IconIntegrations() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <circle cx={12} cy={12} r={3} />
+      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+    </svg>
+  );
+}
+
+function IconGoLive() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.682.305 1.348.53 1.99M9 18h4.17M14.21 9.09 15.25 7.05a2 2 0 0 1 2.83-.09l2.12 2.12a2 2 0 0 1 .09 2.83l-2.3 2.3M10.59 13.59 12 15l1.41 1.41" />
+    </svg>
+  );
+}
+
 function IconSettings() {
   return (
     <svg viewBox="0 0 24 24">
@@ -124,9 +160,12 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
         {navLink('overview', '/user', 'Overview', <IconOverview />, active)}
         {navLink('bookings', '/user/bookings', 'Bookings', <IconBookings />, active)}
         {navLink('calls', '/user/calls', 'Calls & Transcripts', <IconCalls />, active, followUpCount)}
+        {navLink('knowledge', '/user/knowledge', 'Business Knowledge', <IconKnowledge />, active)}
+        {navLink('integrations', '/user/integrations', 'Integrations', <IconIntegrations />, active)}
+        {navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active)}
         {navLink('settings', '/user/settings', 'Settings', <IconSettings />, active)}
-        {navLink('account', '/user/account', 'Account', <IconAccount />, active)}
         {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active)}
+        {navLink('account', '/user/account', 'Account', <IconAccount />, active)}
       </div>
     </div>
   );

@@ -141,19 +141,19 @@ export function buildDashboardOverviewRail(params: {
         id: 'forwarding_number',
         title: 'Provision or confirm your RingBooker forwarding number',
         done: goLive.hasForwardingNumber,
-        href: '/user/settings#go-live-forwarding',
+        href: '/user/go-live#go-live-forwarding',
       },
       {
         id: 'forwarding_verify',
         title: 'Verify call forwarding (place a test call)',
         done: goLive.forwardingSetupVerified,
-        href: '/user/settings#go-live-forwarding',
+        href: '/user/go-live#go-live-forwarding',
       },
       {
         id: 'live_enable',
         title: 'Enable live answering',
         done: goLive.liveCallsEnabled,
-        href: '/user/settings#go-live-forwarding',
+        href: '/user/go-live#go-live-forwarding',
       },
     ];
 
@@ -187,7 +187,7 @@ export function buildDashboardOverviewRail(params: {
       label: 'Live answering',
       state: 'ok',
       detail: 'RingBooker can pick up forwarded calls.',
-      href: '/user/settings#go-live-forwarding',
+      href: '/user/go-live#go-live-forwarding',
     },
     {
       id: 'forwarding',
@@ -204,14 +204,14 @@ export function buildDashboardOverviewRail(params: {
           : goLive.hasForwardingNumber
             ? 'Not verified — run a forwarding test'
             : 'Forwarding number missing',
-      href: '/user/settings#go-live-forwarding',
+      href: '/user/go-live#go-live-forwarding',
     },
     {
       id: 'calendar',
       label: 'Booking / calendar',
       state: calendar.ready ? 'ok' : 'neutral',
       detail: calendar.detail,
-      href: '/user/settings#integrations',
+      href: '/user/integrations#integrations',
     },
   ];
 

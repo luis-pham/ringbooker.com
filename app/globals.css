@@ -175,6 +175,29 @@ canvas {
   html[data-user-theme="dark"] .user-mobile-tabbar__link--active .user-mobile-tabbar__icon svg {
     stroke: #58a6ff;
   }
+
+  .user-mobile-tabbar--scroll {
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    gap: 2px;
+    padding-left: 6px;
+    padding-right: 6px;
+    scrollbar-width: none;
+  }
+  .user-mobile-tabbar--scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .user-mobile-tabbar--scroll .user-mobile-tabbar__link {
+    flex: 0 0 auto;
+    min-width: 52px;
+    max-width: 78px;
+  }
+  .user-mobile-tabbar--scroll .user-mobile-tabbar__label {
+    font-size: 8px;
+    letter-spacing: -0.02em;
+  }
 }
 
 /* Shared logo override: use uploaded raster logo everywhere */

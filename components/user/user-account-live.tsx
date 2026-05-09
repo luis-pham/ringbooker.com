@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
@@ -10,8 +11,9 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { userSettingsStyles } from '@/components/user/user-settings';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
-import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
+import { userDashboardScripts } from '@/components/user/user-dashboard';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
 
 type NavStateResponse = {
@@ -23,6 +25,15 @@ type NavStateResponse = {
   subscriptionStatus?: string | null;
   error?: string;
 };
+
+type AccountSettingsSaveResponse = {
+  ok?: boolean;
+  error?: string;
+  message?: string;
+  shop?: { user_name?: string | null; name?: string };
+};
+
+type AccountTabId = 'details' | 'password';
 
 function planLabel(plan?: string) {
   const raw = plan ?? 'starter';
@@ -60,6 +71,40 @@ function subscriptionLooksHealthy(status: string | null | undefined): boolean {
   return status === 'active' || status === 'trialing';
 }
 
+function AccountTabIcon({ tabId }: { tabId: AccountTabId }): ReactNode {
+  const wrap = (children: ReactNode) => (
+    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
+      <g fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        {children}
+      </g>
+    </svg>
+  );
+
+  switch (tabId) {
+    case 'details':
+      return wrap(
+        <>
+          <circle cx={12} cy={8} r={4} />
+          <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+        </>,
+      );
+    case 'password':
+      return wrap(
+        <>
+          <rect x={5} y={11} width={14} height={10} rx={2} />
+          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+        </>,
+      );
+    default:
+      return null;
+  }
+}
+
+const ACCOUNT_TABS: Array<{ id: AccountTabId; label: string; description: string }> = [
+  { id: 'details', label: 'Account details', description: 'Your login identity, business summary, and billing status.' },
+  { id: 'password', label: 'Change password', description: 'Update the password you use to sign in.' },
+];
+
 function IconBadge(props: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden className={props.className}>
@@ -82,14 +127,6 @@ function IconLock(props: { className?: string }) {
   );
 }
 
-function IconBolt(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden className={props.className}>
-      <path fill="currentColor" d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08-.07-.12C8.48 10.94 10.42 7.54 11 7h1l-1 7h3.5c.49 0 .56.33.47.51-.1.17-.51 1.03-.51 1.03-.17.34-.66 1.46-.66 1.46z" />
-    </svg>
-  );
-}
-
 function IconInfo(props: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden className={props.className}>
@@ -101,56 +138,20 @@ function IconInfo(props: { className?: string }) {
   );
 }
 
-function IconSettingsRow(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden className={props.className}>
-      <path
-        fill="currentColor"
-        d="M19.43 12.98c.04-.32.07-.64.07-.98 0-.34-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98 0 .33.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"
-      />
-    </svg>
-  );
-}
-
-function IconLogoutRow(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden className={props.className}>
-      <path
-        fill="currentColor"
-        d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"
-      />
-    </svg>
-  );
-}
-
-function IconChevronRight(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden className={props.className}>
-      <path fill="currentColor" d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-    </svg>
-  );
-}
-
-function IconOpenInNew(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden className={props.className}>
-      <path
-        fill="currentColor"
-        d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"
-      />
-    </svg>
-  );
-}
-
 export function UserAccountLive() {
   const { workspace, setWorkspace } = useUserWorkspace();
   const [nav, setNav] = useState<NavStateResponse | null>(null);
   const [navError, setNavError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<AccountTabId>('details');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwMessage, setPwMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [pwLoading, setPwLoading] = useState(false);
+  const [accountEditOpen, setAccountEditOpen] = useState(false);
+  const [contactNameDraft, setContactNameDraft] = useState('');
+  const [accountSaveLoading, setAccountSaveLoading] = useState(false);
+  const [accountSaveMessage, setAccountSaveMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   useEffect(() => {
     void fetch('/api/backend/user/nav-state')
@@ -168,18 +169,14 @@ export function UserAccountLive() {
       .catch(() => setNavError('network_error'));
   }, []);
 
-  const extraStyles = useMemo(
+  const accountStyles = useMemo(
     () => [
-      ...userDashboardStyles,
+      ...userSettingsStyles,
       String.raw`
 .rb-account-page{margin-top:0}
-.rb-account-intro{margin:0 0 24px;font-size:15px;line-height:1.55;color:var(--text-gray)}
-.rb-account-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:24px;align-items:start;max-width:80rem;margin:0 auto}
-.rb-account-col-main{grid-column:span 12;display:flex;flex-direction:column;gap:24px}
-.rb-account-col-aside{grid-column:span 12;display:flex;flex-direction:column;gap:24px}
-@media(min-width:1024px){
-  .rb-account-col-main{grid-column:span 7}
-  .rb-account-col-aside{grid-column:span 5}
+.rb-account-intro{margin:0 0 18px;font-size:15px;line-height:1.55;color:var(--text-gray)}
+@media(max-width:860px){
+  .rb-account-page .tab-strip{grid-template-columns:repeat(2,minmax(0,1fr));}
 }
 .rb-account-card{
   background:var(--surface-card);border-radius:12px;padding:24px;
@@ -192,6 +189,8 @@ export function UserAccountLive() {
 .rb-account-card-head h2{margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.3;color:var(--text-dark)}
 .rb-account-link{font-size:14px;font-weight:600;color:var(--purple-dark);text-decoration:none}
 .rb-account-link:hover{text-decoration:underline}
+button.rb-account-link{font:inherit;font-size:14px;font-weight:600;color:var(--purple-dark);background:none;border:none;padding:0;cursor:pointer;text-decoration:none;text-align:right}
+button.rb-account-link:hover{text-decoration:underline}
 .rb-account-rows{display:flex;flex-direction:column}
 .rb-account-row{
   display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px solid var(--border);
@@ -213,51 +212,26 @@ export function UserAccountLive() {
   border:1px solid var(--border);
 }
 .rb-account-callout p{margin:0;font-size:13px;line-height:1.55;color:var(--text-gray)}
-.rb-account-banner{
-  position:relative;height:192px;border-radius:12px;overflow:hidden;
-  box-shadow:none;
-  border:1px solid var(--border);
-  background:linear-gradient(135deg,#7c3aed 0%,#630ed4 45%,#4648d4 100%);
+.rb-account-subsection{margin-top:28px;padding-top:22px;border-top:1px solid var(--border)}
+.rb-account-subsection:first-of-type{margin-top:0;padding-top:0;border-top:none}
+.rb-account-subsection-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.rb-account-subsection-title{margin:0;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray)}
+.rb-account-subsection-lead{margin:6px 0 0;flex:1 1 100%;font-size:13px;line-height:1.5;color:var(--text-gray);max-width:40rem}
+.rb-account-field-hint{margin:6px 0 0;font-size:12px;line-height:1.45;color:var(--text-gray);max-width:36rem}
+.rb-account-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.rb-account-btn-ghost{
+  font:inherit;font-size:13px;font-weight:650;color:var(--text-dark);
+  background:var(--surface-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;
 }
-.rb-account-banner::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(to top,rgba(99,14,212,.88),transparent 65%);
-  pointer-events:none;
-}
-.rb-account-banner-inner{position:relative;z-index:1;height:100%;padding:24px;display:flex;flex-direction:column;justify-content:flex-end}
-.rb-account-banner-inner h3{margin:0 0 6px;font-size:20px;font-weight:600;color:#fff;letter-spacing:-.02em}
-.rb-account-banner-inner p{margin:0;font-size:15px;line-height:1.5;color:rgba(237,224,255,.95)}
-.rb-account-actions{display:flex;flex-direction:column;gap:10px}
-.rb-account-action{
-  width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:14px 16px;border-radius:10px;border:1px solid var(--border);
-  background:var(--surface-card);font:inherit;font-size:14px;font-weight:600;color:var(--text-dark);
-  cursor:pointer;text-align:left;text-decoration:none;transition:background .15s ease;
-}
-.rb-account-action:hover{background:#f3f4f6}
-.rb-account-action-left{display:flex;align-items:center;gap:12px;min-width:0}
-.rb-account-action-danger{border-color:rgba(186,26,26,.25);color:var(--red-deep)}
-.rb-account-action-danger:hover{background:rgba(186,26,26,.06)}
-.rb-account-action-danger .rb-account-action-icon{color:var(--red-deep)}
-.rb-account-action-icon{color:var(--text-gray);flex-shrink:0}
-.rb-account-action:hover .rb-account-action-icon{color:var(--purple-dark)}
-.rb-account-help{
-  background:var(--secondary-accent);color:#fff;border-radius:12px;padding:24px;
-  box-shadow:none;
-  border:1px solid rgba(0,0,0,.08);
-}
-.rb-account-help h4{margin:0 0 8px;font-size:20px;font-weight:600;letter-spacing:-.02em}
-.rb-account-help p{margin:0 0 16px;font-size:13px;line-height:1.55;opacity:.92}
-.rb-account-help a{
-  display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:#fff;text-decoration:none;
-}
-.rb-account-help a:hover{text-decoration:underline}
+.rb-account-btn-ghost:hover:not(:disabled){background:#f9fafb;border-color:#d1d5db}
+.rb-account-btn-ghost:disabled{opacity:.55;cursor:not-allowed}
 .rb-account-password-actions{margin-top:18px}
-.rb-account-action-danger:hover .rb-account-chevron-muted{opacity:.45;color:rgba(186,26,26,.55)}
-.rb-account-chevron-muted{opacity:.35}
+.account-password-hint{margin:0 0 14px;font-size:13px;color:var(--text-gray);line-height:1.5}
 @media(min-width:521px){
   .rb-account-password-actions .btn.user-save{width:100%}
 }
+html[data-user-theme="dark"] .rb-account-callout{background:#161b22;border-color:var(--border)}
+html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){background:#21262d;border-color:#58a6ff}
       `,
     ],
     [],
@@ -304,15 +278,48 @@ export function UserAccountLive() {
     }
   }, [confirmPassword, currentPassword, newPassword]);
 
-  async function signOut() {
-    await fetch('/api/backend/auth/logout', { method: 'POST' });
-    window.location.href = '/user/login';
-  }
+  const submitAccountContact = useCallback(async () => {
+    setAccountSaveMessage(null);
+    const trimmed = contactNameDraft.trim();
+    if (trimmed.length < 1) {
+      setAccountSaveMessage({ type: 'err', text: 'Enter your name (at least one character).' });
+      return;
+    }
+    if (trimmed.length > 120) {
+      setAccountSaveMessage({ type: 'err', text: 'Name must be 120 characters or fewer.' });
+      return;
+    }
+    setAccountSaveLoading(true);
+    try {
+      const response = await fetch('/api/backend/user/settings', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ user_name: trimmed }),
+      });
+      const body = (await response.json()) as AccountSettingsSaveResponse;
+      if (!response.ok || !body.ok) {
+        const msg =
+          body.error === 'plan_feature_locked'
+            ? 'Your plan does not allow updating this field. Upgrade to continue.'
+            : apiUserVisibleMessage(body, 'Could not save your name.');
+        setAccountSaveMessage({ type: 'err', text: msg });
+        return;
+      }
+      const nextName = body.shop?.user_name?.trim() ?? trimmed;
+      setNav((prev) => (prev?.ok ? { ...prev, userName: nextName } : prev));
+      setAccountSaveMessage({ type: 'ok', text: 'Your name was updated.' });
+      setAccountEditOpen(false);
+    } catch {
+      setAccountSaveMessage({ type: 'err', text: 'Network error. Try again.' });
+    } finally {
+      setAccountSaveLoading(false);
+    }
+  }, [contactNameDraft]);
 
   const showBillingHint = nav?.ok && !subscriptionLooksHealthy(nav.subscriptionStatus);
 
   return (
-    <UserLayout styles={extraStyles} scripts={userDashboardScripts} scriptPrefix="user-account-live">
+    <UserLayout styles={accountStyles} scripts={userDashboardScripts} scriptPrefix="user-account-live">
       <>
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="account" />
@@ -320,11 +327,10 @@ export function UserAccountLive() {
           <main className="main account-page rb-account-page">
             <UserPortalTopbar
               title="Your account"
+              subtitle="Manage your login and security."
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />
-
-            <p className="rb-account-intro">Manage your login, plan, and security settings.</p>
 
             {navError ? (
               <div className="note" style={{ marginBottom: 16 }}>
@@ -332,17 +338,44 @@ export function UserAccountLive() {
               </div>
             ) : null}
 
-            <div className="rb-account-grid">
-              <div className="rb-account-col-main">
-                <section className="rb-account-card">
+            <div className="tab-strip" role="tablist" aria-label="Account sections">
+              {ACCOUNT_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  id={`account-tab-${tab.id}`}
+                  aria-selected={activeTab === tab.id}
+                  aria-controls={`account-panel-${tab.id}`}
+                  title={tab.description}
+                  className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    if (tab.id !== 'details') {
+                      setAccountEditOpen(false);
+                      setAccountSaveMessage(null);
+                    }
+                  }}
+                >
+                  <span className="tab-button-icon">
+                    <AccountTabIcon tabId={tab.id} />
+                  </span>
+                  <span className="tab-button-body">
+                    <strong>{tab.label}</strong>
+                    <span className="tab-button-desc">{tab.description}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="section-stack">
+              {activeTab === 'details' ? (
+                <section className="rb-account-card" role="tabpanel" id="account-panel-details" aria-labelledby="account-tab-details">
                   <div className="rb-account-card-head">
                     <div className="rb-account-card-head-main">
                       <IconBadge className="rb-account-section-icon" />
                       <h2>Account details</h2>
                     </div>
-                    <a className="rb-account-link" href="/user/settings">
-                      Edit details
-                    </a>
                   </div>
 
                   {!nav?.ok ? (
@@ -350,59 +383,156 @@ export function UserAccountLive() {
                       Loading…
                     </p>
                   ) : (
-                    <dl className="rb-account-rows">
-                      <div className="rb-account-row">
-                        <dt>Email</dt>
-                        <dd>{nav.email ?? '—'}</dd>
-                      </div>
-                      <div className="rb-account-row">
-                        <dt>Display name</dt>
-                        <dd>{nav.userName?.trim() ? nav.userName : '—'}</dd>
-                      </div>
-                      <div className="rb-account-row">
-                        <dt>Business</dt>
-                        <dd>{nav.shopName ?? '—'}</dd>
-                      </div>
-                      <div className="rb-account-row">
-                        <dt>Plan</dt>
-                        <dd>
-                          <span>{planLabel(nav.plan)}</span>
-                          {subscriptionLooksHealthy(nav.subscriptionStatus) ? (
-                            <span className="rb-account-plan-pill">Active</span>
+                    <>
+                      <div className="rb-account-subsection">
+                        <div className="rb-account-subsection-head">
+                          <div>
+                            <h3 className="rb-account-subsection-title">Your account</h3>
+                            <p className="rb-account-subsection-lead">
+                              Sign-in identity and how your name appears in the product (same as “Primary contact name” in business settings).
+                            </p>
+                          </div>
+                          {!accountEditOpen ? (
+                            <button
+                              type="button"
+                              className="rb-account-link"
+                              onClick={() => {
+                                setContactNameDraft(nav.userName?.trim() ?? '');
+                                setAccountSaveMessage(null);
+                                setAccountEditOpen(true);
+                              }}
+                            >
+                              Edit details
+                            </button>
                           ) : null}
-                        </dd>
+                        </div>
+
+                        {accountSaveMessage ? (
+                          <div
+                            className="note"
+                            style={{
+                              marginBottom: 14,
+                              color: accountSaveMessage.type === 'err' ? '#b91c1c' : '#047857',
+                            }}
+                          >
+                            {accountSaveMessage.text}
+                          </div>
+                        ) : null}
+
+                        <dl className="rb-account-rows">
+                          <div className="rb-account-row">
+                            <dt>Email</dt>
+                            <dd>
+                              <div>{nav.email ?? '—'}</div>
+                              <p className="rb-account-field-hint">
+                                This is the email you use to sign in. Changing it is not available in the app yet—contact
+                                support if you need to update it.
+                              </p>
+                            </dd>
+                          </div>
+                          <div className="rb-account-row">
+                            <dt>Your name</dt>
+                            <dd>
+                              {accountEditOpen ? (
+                                <div className="field" style={{ marginBottom: 0, maxWidth: 420 }}>
+                                  <label htmlFor="account-contact-name">Primary contact name</label>
+                                  <input
+                                    id="account-contact-name"
+                                    type="text"
+                                    autoComplete="name"
+                                    maxLength={120}
+                                    value={contactNameDraft}
+                                    onChange={(e) => setContactNameDraft(e.target.value)}
+                                  />
+                                  <div className="rb-account-inline-actions">
+                                    <button
+                                      type="button"
+                                      className="btn user-save"
+                                      disabled={accountSaveLoading}
+                                      onClick={() => void submitAccountContact()}
+                                    >
+                                      {accountSaveLoading ? 'Saving…' : 'Save'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="rb-account-btn-ghost"
+                                      disabled={accountSaveLoading}
+                                      onClick={() => {
+                                        setAccountEditOpen(false);
+                                        setAccountSaveMessage(null);
+                                        setContactNameDraft(nav.userName?.trim() ?? '');
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span>{nav.userName?.trim() ? nav.userName : '—'}</span>
+                              )}
+                            </dd>
+                          </div>
+                        </dl>
                       </div>
-                      <div className="rb-account-row">
-                        <dt>Billing status</dt>
-                        <dd
-                          className={
-                            subscriptionLooksHealthy(nav.subscriptionStatus) ? undefined : 'rb-account-billing-warn'
-                          }
-                        >
-                          {subscriptionFriendlyLabel(nav.subscriptionStatus)}
-                        </dd>
+
+                      <div className="rb-account-subsection">
+                        <div className="rb-account-subsection-head">
+                          <div>
+                            <h3 className="rb-account-subsection-title">Business & subscription</h3>
+                            <p className="rb-account-subsection-lead">
+                              Business profile, plan, and billing are managed separately from your login.
+                            </p>
+                          </div>
+                          <a className="rb-account-link" href="/user/settings">
+                            Business settings
+                          </a>
+                        </div>
+                        <dl className="rb-account-rows">
+                          <div className="rb-account-row">
+                            <dt>Business name</dt>
+                            <dd>{nav.shopName ?? '—'}</dd>
+                          </div>
+                          <div className="rb-account-row">
+                            <dt>Plan</dt>
+                            <dd>
+                              <span>{planLabel(nav.plan)}</span>
+                              {subscriptionLooksHealthy(nav.subscriptionStatus) ? (
+                                <span className="rb-account-plan-pill">Active</span>
+                              ) : null}
+                            </dd>
+                          </div>
+                          <div className="rb-account-row">
+                            <dt>Billing status</dt>
+                            <dd
+                              className={
+                                subscriptionLooksHealthy(nav.subscriptionStatus) ? undefined : 'rb-account-billing-warn'
+                              }
+                            >
+                              {subscriptionFriendlyLabel(nav.subscriptionStatus)}
+                            </dd>
+                          </div>
+                        </dl>
                       </div>
-                    </dl>
+                    </>
                   )}
 
                   {showBillingHint ? (
                     <div className="rb-account-callout">
                       <IconInfo className="rb-account-section-icon" />
-                      <p>Update your billing information to unlock premium enterprise features.</p>
+                      <p>
+                        Your subscription may need attention. Open{' '}
+                        <a href="/user/billing" className="rb-account-link">
+                          Billing
+                        </a>{' '}
+                        to review payment and plan status.
+                      </p>
                     </div>
                   ) : null}
                 </section>
+              ) : null}
 
-                <section className="rb-account-banner" aria-hidden={false}>
-                  <div className="rb-account-banner-inner">
-                    <h3>Enterprise ready</h3>
-                    <p>Scale RingBooker across your organization with consistent AI reception on every line.</p>
-                  </div>
-                </section>
-              </div>
-
-              <div className="rb-account-col-aside">
-                <section className="rb-account-card">
+              {activeTab === 'password' ? (
+                <section className="rb-account-card" role="tabpanel" id="account-panel-password" aria-labelledby="account-tab-password">
                   <div className="rb-account-card-head" style={{ marginBottom: 16 }}>
                     <div className="rb-account-card-head-main">
                       <IconLock className="rb-account-section-icon" />
@@ -466,41 +596,7 @@ export function UserAccountLive() {
                     </div>
                   </div>
                 </section>
-
-                <section className="rb-account-card">
-                  <div className="rb-account-card-head" style={{ marginBottom: 16 }}>
-                    <div className="rb-account-card-head-main">
-                      <IconBolt className="rb-account-section-icon" />
-                      <h2>Account actions</h2>
-                    </div>
-                  </div>
-                  <div className="rb-account-actions">
-                    <a className="rb-account-action" href="/user/settings">
-                      <span className="rb-account-action-left">
-                        <IconSettingsRow className="rb-account-action-icon" />
-                        <span>Edit business settings</span>
-                      </span>
-                      <IconChevronRight className="rb-account-action-icon" />
-                    </a>
-                    <button type="button" className="rb-account-action rb-account-action-danger" onClick={() => void signOut()}>
-                      <span className="rb-account-action-left">
-                        <IconLogoutRow className="rb-account-action-icon" />
-                        <span>Sign out</span>
-                      </span>
-                      <IconChevronRight className="rb-account-action-icon rb-account-chevron-muted" />
-                    </button>
-                  </div>
-                </section>
-
-                <section className="rb-account-help">
-                  <h4>Need assistance?</h4>
-                  <p>Our team can help with account access, onboarding, or billing questions.</p>
-                  <a href="/contact">
-                    Contact support
-                    <IconOpenInNew />
-                  </a>
-                </section>
-              </div>
+              ) : null}
             </div>
           </main>
         </div>

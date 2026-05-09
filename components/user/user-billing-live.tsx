@@ -403,7 +403,7 @@ export function UserBillingLive() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (window.location.hash === '#go-live-forwarding') {
-      window.location.replace(`${window.location.origin}/user/settings#go-live-forwarding`);
+      window.location.replace(`${window.location.origin}/user/go-live#go-live-forwarding`);
     }
     const checkout = new URLSearchParams(window.location.search).get('checkout');
     if (checkout === 'success') {
@@ -582,7 +582,7 @@ export function UserBillingLive() {
                     <p>
                       <strong>Payment method submitted.</strong> Paddle is confirming your billing status. Live answering stays off until billing is verified and forwarding setup is complete.
                     </p>
-                    <a className="btn purple" href="/user/settings#go-live-forwarding">
+                    <a className="btn purple" href="/user/go-live#go-live-forwarding">
                       Continue go-live setup
                     </a>
                   </section>
@@ -688,11 +688,11 @@ export function UserBillingLive() {
                           Your RingBooker forwarding number and carrier steps live under Settings, so Billing stays focused on
                           your subscription and payment method.
                         </p>
-                        <a className="btn" href="/user/settings#go-live-forwarding">
+                        <a className="btn" href="/user/go-live#go-live-forwarding">
                           Open Settings — Go live
                         </a>
                       </section>
-                      {data.billing?.usage ? (
+                      {hasPaymentMethod && data.billing?.usage ? (
                         <section
                           className={`card usage-captured-card${data.billing.usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${data.billing.usage.nearCapturedCallerLimit && !data.billing.usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
                           style={{ marginBottom: 16 }}

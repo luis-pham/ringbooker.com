@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
+import type { UserPortalNavKey } from '@/components/user/user-portal-nav';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import {
@@ -12,8 +13,16 @@ import {
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
-import { GoLiveForwardingPanel } from '@/components/user/go-live-forwarding-panel';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
+
+/** Which top-level portal this settings UI serves (separate sidebar destinations). */
+export type UserSettingsPortal = 'settings' | 'knowledge' | 'integrations';
+
+export function userSettingsPortalNavKey(portal: UserSettingsPortal): UserPortalNavKey {
+  if (portal === 'knowledge') return 'knowledge';
+  if (portal === 'integrations') return 'integrations';
+  return 'settings';
+}
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type BusinessHoursEntry =
@@ -74,6 +83,8 @@ type UserSettingsResponse = {
   ok: boolean;
   shop?: ShopSettings;
   capabilities?: ShopCapabilities;
+  /** When true, Settings shows a Go live tab first until live answering is enabled. */
+  showGoLiveSettingsTab?: boolean;
   error?: string;
   fields?: string[];
 };
@@ -112,6 +123,7 @@ type SquareOptionsResponse = {
 };
 
 type SettingsState = {
+  name: string;
   user_name: string;
   user_phone: string;
   backup_phone: string;
@@ -137,7 +149,6 @@ type SettingsTabId =
   | 'services-hours'
   | 'ai-call-behavior'
   | 'messaging'
-  | 'go-live'
   | 'integrations';
 
 /** Logos under /public/images — used in Calendar integrations cards. */
@@ -305,23 +316,50 @@ function SettingsTabIcon({ tabId }: { tabId: SettingsTabId }): ReactNode {
           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
         </>,
       );
-    case 'go-live':
-      return wrap(
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
-      );
     default:
       return null;
   }
 }
 
-const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; description: string }> = [
-  { id: 'business', label: 'Business', description: 'Profile, policy, and promo details.' },
-  { id: 'services-hours', label: 'Services & Hours', description: 'What you offer and when you are open.' },
-  { id: 'ai-call-behavior', label: 'AI Call Behavior', description: 'Voice, greeting, and call handling.' },
-  { id: 'messaging', label: 'Messaging', description: 'Reminders, reviews, and follow-up SMS.' },
-  { id: 'go-live', label: 'Go live', description: 'Forwarding number and carrier setup.' },
-  { id: 'integrations', label: 'Integrations', description: 'Square, Vagaro, or booking page links.' },
-];
+const SETTINGS_TAB_META: Record<SettingsTabId, { label: string; description: string }> = {
+  business: { label: 'Business', description: 'Profile, policy, and promo details.' },
+  'services-hours': { label: 'Services & Hours', description: 'What you offer and when you are open.' },
+  'ai-call-behavior': { label: 'AI Call Behavior', description: 'Voice, greeting, and call handling.' },
+  messaging: { label: 'Messaging', description: 'Reminders, reviews, and follow-up SMS.' },
+  integrations: { label: 'Integrations', description: 'Square, Vagaro, or booking page links.' },
+};
+
+const SETTINGS_PORTAL_TAB_ORDER: Record<UserSettingsPortal, SettingsTabId[]> = {
+  settings: ['business', 'messaging'],
+  knowledge: ['business', 'services-hours', 'ai-call-behavior'],
+  integrations: ['integrations'],
+};
+
+function tabCopyForPortal(portal: UserSettingsPortal, id: SettingsTabId): { label: string; description: string } {
+  if (portal === 'knowledge' && id === 'business') {
+    return {
+      label: 'Policies & promos',
+      description: 'Cancellation rules and offers callers may hear.',
+    };
+  }
+  if (portal === 'knowledge' && id === 'ai-call-behavior') {
+    return {
+      label: 'AI voice & tone',
+      description: 'Greeting, voice, handling rules, and extra instructions for callers.',
+    };
+  }
+  if (portal === 'settings' && id === 'business') {
+    return {
+      label: 'Business profile',
+      description: 'Contact, location, timezone, and booking link.',
+    };
+  }
+  return SETTINGS_TAB_META[id];
+}
+
+function visibleTabsForPortal(portal: UserSettingsPortal): Array<{ id: SettingsTabId; label: string; description: string }> {
+  return SETTINGS_PORTAL_TAB_ORDER[portal].map((id) => ({ id, ...tabCopyForPortal(portal, id) }));
+}
 
 const REQUIRED_PLAN_BY_CAPABILITY: Partial<Record<keyof ShopCapabilities, ShopPlan>> = {
   edit_ai_voice: 'professional',
@@ -341,6 +379,7 @@ function normalizeGreeting(template: string, shopName: string) {
 
 function buildInitialState(shop: ShopSettings): SettingsState {
   return {
+    name: shop.name ?? '',
     user_name: shop.user_name ?? '',
     user_phone: shop.user_phone,
     backup_phone: shop.backup_phone ?? '',
@@ -372,8 +411,29 @@ function getHourPresetId(hours: Record<string, BusinessHoursEntry>) {
   return match?.id ?? 'custom';
 }
 
-export function UserSettingsLive() {
+export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSettingsPortal }) {
   const { setWorkspace } = useUserWorkspace();
+  const sidebarNav = userSettingsPortalNavKey(portal);
+  const portalHead =
+    portal === 'knowledge'
+      ? {
+          title: 'Business Knowledge',
+          subtitle:
+            'Teach RingBooker about your salon—services, pricing, hours, policies, and how the AI should sound on calls.',
+        }
+      : portal === 'integrations'
+        ? {
+            title: 'Integrations',
+            subtitle: 'Connect Square, Vagaro, or your public booking link so the AI stays aligned with real availability.',
+          }
+        : {
+            title: 'Settings',
+            subtitle: 'Business profile basics and SMS automation preferences.',
+          };
+
+  const defaultTabForPortal = (): SettingsTabId =>
+    portal === 'knowledge' ? 'services-hours' : portal === 'integrations' ? 'integrations' : 'business';
+
   const [shop, setShop] = useState<ShopSettings | null>(null);
   const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(null);
   const [form, setForm] = useState<SettingsState | null>(null);
@@ -383,7 +443,7 @@ export function UserSettingsLive() {
   const [promoPreset, setPromoPreset] = useState<string>('custom');
   const [greetingPreset, setGreetingPreset] = useState<string>('custom');
   const [hourPreset, setHourPreset] = useState<string>('custom');
-  const [activeTab, setActiveTab] = useState<SettingsTabId>('business');
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(defaultTabForPortal);
   const [calendarProviders, setCalendarProviders] = useState<CalendarProviderSummary[]>([]);
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null);
   const [loadingCalendarProviders, setLoadingCalendarProviders] = useState(false);
@@ -409,7 +469,6 @@ export function UserSettingsLive() {
   const [bookingLinkErrors, setBookingLinkErrors] = useState<Partial<Record<BookingLinkProviderId, string>>>({});
   const [editingBookingLinkProvider, setEditingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [savingBookingLinkProvider, setSavingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
-  const [businessSubTab, setBusinessSubTab] = useState<'profile' | 'policies'>('profile');
   const [servicesHoursSubTab, setServicesHoursSubTab] = useState<'services' | 'hours'>('services');
   const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('handling');
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
@@ -418,9 +477,7 @@ export function UserSettingsLive() {
     setActiveTab(tabId);
     if (typeof window === 'undefined') return;
     const base = `${window.location.pathname}${window.location.search}`;
-    if (tabId === 'go-live') {
-      window.history.replaceState(null, '', `${base}#go-live-forwarding`);
-    } else if (tabId === 'integrations') {
+    if (tabId === 'integrations') {
       window.history.replaceState(null, '', `${base}#integrations`);
     } else if (window.location.hash) {
       window.history.replaceState(null, '', base);
@@ -447,6 +504,17 @@ export function UserSettingsLive() {
         setPromoPreset(getPresetMatch(nextState.promotions, PROMOTION_PRESETS));
         setGreetingPreset(getPresetMatch(nextState.ai_welcome_message, AI_GREETING_PRESETS.map((item) => normalizeGreeting(item, nextShop.name))));
         setHourPreset(getHourPresetId(nextState.hours));
+
+        const allowedIds = new Set(SETTINGS_PORTAL_TAB_ORDER[portal]);
+        const h = typeof window !== 'undefined' ? window.location.hash : '';
+        let nextTab: SettingsTabId = defaultTabForPortal();
+        if (h === '#integrations' && allowedIds.has('integrations')) {
+          nextTab = 'integrations';
+        }
+        setActiveTab(nextTab);
+        if (h === '#integrations' && portal === 'settings' && typeof window !== 'undefined') {
+          window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+        }
       })
       .catch(() => {
         if (active) setStatus('network_error');
@@ -454,7 +522,7 @@ export function UserSettingsLive() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [portal]);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -470,19 +538,23 @@ export function UserSettingsLive() {
   }, []);
 
   useEffect(() => {
+    const allowedIds = new Set(SETTINGS_PORTAL_TAB_ORDER[portal]);
     const syncHash = () => {
       if (typeof window === 'undefined') return;
       const h = window.location.hash;
-      if (h === '#go-live-forwarding' || h === '#go-live') {
-        setActiveTab('go-live');
-      } else if (h === '#integrations') {
+      if (h === '#integrations' && allowedIds.has('integrations')) {
         setActiveTab('integrations');
+        return;
+      }
+      if (h === '#integrations' && !allowedIds.has('integrations')) {
+        const base = `${window.location.pathname}${window.location.search}`;
+        window.history.replaceState(null, '', base);
       }
     };
     syncHash();
     window.addEventListener('hashchange', syncHash);
     return () => window.removeEventListener('hashchange', syncHash);
-  }, []);
+  }, [portal]);
 
   async function loadCalendarProviders() {
     setLoadingCalendarProviders(true);
@@ -678,16 +750,27 @@ export function UserSettingsLive() {
     );
   }, [form?.services]);
 
+  const visibleTabs = useMemo(() => visibleTabsForPortal(portal), [portal]);
+
+  useEffect(() => {
+    const allowed = SETTINGS_PORTAL_TAB_ORDER[portal];
+    if (!allowed.includes(activeTab)) {
+      setActiveTab(
+        portal === 'knowledge' ? 'services-hours' : portal === 'integrations' ? 'integrations' : 'business',
+      );
+    }
+  }, [portal, activeTab]);
+
   if (!shop || !capabilities || !form) {
     return (
       <UserLayout styles={userSettingsStyles} scripts={userSettingsScripts} scriptPrefix="user-settings-live">
         <>
           <div className="app-shell user-app-shell">
-            <UserPortalSidebar active="settings" />
+            <UserPortalSidebar active={sidebarNav} />
             <main className="main">
               <UserPortalTopbar
-                title="Business settings and AI behavior."
-                subtitle="Configure answering, offers, and plan-based automations."
+                title={portalHead.title}
+                subtitle={portalHead.subtitle}
                 actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
                 actions={<UserPortalStandardTopActions />}
               />
@@ -696,7 +779,7 @@ export function UserSettingsLive() {
               </section>
             </main>
           </div>
-          <UserPortalMobileTabbar active="settings" />
+          <UserPortalMobileTabbar active={sidebarNav} />
         </>
       </UserLayout>
     );
@@ -797,18 +880,19 @@ export function UserSettingsLive() {
     <UserLayout styles={userSettingsStyles} scripts={userSettingsScripts} scriptPrefix="user-settings-live">
       <>
       <div className="app-shell user-app-shell">
-        <UserPortalSidebar active="settings" />
+        <UserPortalSidebar active={sidebarNav} />
 
         <main className="main">
           <UserPortalTopbar
-            title="Business settings and AI behavior."
-            subtitle="Configure answering, offers, and plan-based automations."
+            title={portalHead.title}
+            subtitle={portalHead.subtitle}
             actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
             actions={<UserPortalStandardTopActions />}
           />
 
-          <div className="tab-strip" role="tablist" aria-label="Settings tabs">
-            {SETTINGS_TABS.map((tab) => (
+          {portal !== 'integrations' ? (
+          <div className="tab-strip" role="tablist" aria-label={portal === 'knowledge' ? 'Business Knowledge tabs' : 'Settings tabs'}>
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -828,6 +912,7 @@ export function UserSettingsLive() {
               </button>
             ))}
           </div>
+          ) : null}
 
           <div className="section-stack">
             {activeTab === 'integrations' ? (
@@ -1368,63 +1453,9 @@ export function UserSettingsLive() {
             </section>
             ) : null}
 
-            {activeTab === 'go-live' ? <GoLiveForwardingPanel /> : null}
-
             {activeTab === 'business' ? (
             <section className="card">
-              <div className="business-subtabs" role="tablist" aria-label="Business settings sections">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={businessSubTab === 'profile'}
-                  className={`business-subtab ${businessSubTab === 'profile' ? 'active' : ''}`}
-                  onClick={() => setBusinessSubTab('profile')}
-                >
-                  Business profile
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={businessSubTab === 'policies'}
-                  className={`business-subtab ${businessSubTab === 'policies' ? 'active' : ''}`}
-                  onClick={() => setBusinessSubTab('policies')}
-                >
-                  Policies and promos
-                </button>
-              </div>
-
-              {businessSubTab === 'profile' ? (
-              <form
-                className="card-section-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void commitSettingsPatch('business-profile', {
-                    user_name: form.user_name,
-                    user_phone: form.user_phone,
-                    backup_phone: form.backup_phone || null,
-                    address: form.address || null,
-                    timezone: form.timezone,
-                    booking_url: form.booking_url.trim() ? form.booking_url.trim() : null,
-                  });
-                }}
-              >
-                <div className="form-grid">
-                  <div className="field"><label>Business name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} /></div>
-                  <div className="field"><label>Main user phone</label><input value={form.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
-                  <div className="field"><label>Backup phone</label><input value={form.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
-                  <div className="field"><label>Timezone</label><select value={form.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={form.address} onChange={(event) => patchState('address', event.target.value)} /></div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={form.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
-                </div>
-                <div className="settings-save-footer">
-                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
-                    {savingSection === 'business-profile' ? 'Saving...' : 'Save business profile'}
-                  </button>
-                </div>
-              </form>
-              ) : null}
-
-              {businessSubTab === 'policies' ? (
+              {portal === 'knowledge' ? (
               <form
                 className="card-section-form"
                 onSubmit={(event) => {
@@ -1486,17 +1517,52 @@ export function UserSettingsLive() {
                   </button>
                 </div>
               </form>
-              ) : null}
+              ) : (
+              <form
+                className="card-section-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('business-profile', {
+                    name: form.name,
+                    user_name: form.user_name,
+                    user_phone: form.user_phone,
+                    backup_phone: form.backup_phone || null,
+                    address: form.address || null,
+                    timezone: form.timezone,
+                    booking_url: form.booking_url.trim() ? form.booking_url.trim() : null,
+                  });
+                }}
+              >
+                <div className="form-grid">
+                  <div className="field"><label>Business name</label><input value={form.name} onChange={(event) => patchState('name', event.target.value)} /></div>
+                  <div className="field"><label>Primary contact name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
+                  <div className="field"><label>Main user phone</label><input value={form.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
+                  <div className="field"><label>Backup phone</label><input value={form.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
+                  <div className="field"><label>Timezone</label><select value={form.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={form.address} onChange={(event) => patchState('address', event.target.value)} /></div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={form.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
+                </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
+                    {savingSection === 'business-profile' ? 'Saving...' : 'Save business profile'}
+                  </button>
+                </div>
+              </form>
+              )}
             </section>
             ) : null}
 
             {activeTab === 'services-hours' ? (
-            <section className="card">
-              <div className="business-subtabs" role="tablist" aria-label="Services and hours sections">
-                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'services'} className={`business-subtab ${servicesHoursSubTab === 'services' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('services')}>
+            <section className="card sh-services-hours-card">
+              <header className="sh-panel-head">
+                <h2 className="sh-panel-title">Services &amp; hours</h2>
+                <p className="sh-panel-desc">Tell callers what you offer and when you answer. These details power availability checks and AI bookings.</p>
+              </header>
+              <div className="sh-segments" role="tablist" aria-label="Services and hours sections">
+                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'services'} className={`sh-segment ${servicesHoursSubTab === 'services' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('services')}>
                   Services
                 </button>
-                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'hours'} className={`business-subtab ${servicesHoursSubTab === 'hours' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('hours')}>
+                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'hours'} className={`sh-segment ${servicesHoursSubTab === 'hours' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('hours')}>
                   Business hours
                 </button>
               </div>
@@ -1508,40 +1574,67 @@ export function UserSettingsLive() {
                   void commitSettingsPatch('services', { services: form.services });
                 }}
               >
-                <div className="services-grid">
-                  {serviceChoices.map((service) => (
-                    <div key={service.key} className={`service-chip ${service.selected ? 'active' : ''}`}>
-                      <div className="service-copy">
-                        <h4>{service.name}</h4>
-                        <p>{service.description}</p>
-                      </div>
-                      <button type="button" className={`btn ${service.selected ? '' : 'purple'}`} onClick={() => toggleService(service)}>
-                        {service.selected ? 'Remove' : 'Add'}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {form.services.length > 0 ? (
-                  <div className="card-section" style={{ marginTop: 16 }}>
-                    {form.services.map((service) => (
-                      <div key={service.name} className="service-controls">
-                        <div className="small-field">
-                          <label>{service.name} duration</label>
-                          <select value={String(service.duration_min)} onChange={(event) => updateService(service.name, { duration_min: Number(event.target.value) })}>
-                            {[15, 30, 45, 60, 75, 90, 120, 150].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
-                          </select>
+                <div className="sh-form-body">
+                  <p className="sh-catalog-intro">Choose services from the catalog, then set duration and price for each active offering.</p>
+                  <div className="sh-catalog-grid">
+                    {serviceChoices.map((service) => (
+                      <div key={service.key} className={`sh-catalog-card ${service.selected ? 'selected' : ''}`}>
+                        <div className="sh-catalog-top">
+                          <div>
+                            <h3 className="sh-catalog-name">{service.name}</h3>
+                            <p className="sh-catalog-desc">{service.description}</p>
+                          </div>
+                          <button
+                            type="button"
+                            className={`sh-catalog-action ${service.selected ? '' : 'primary'}`}
+                            onClick={() => toggleService(service)}
+                          >
+                            {service.selected ? 'Remove' : 'Add'}
+                          </button>
                         </div>
-                        <div className="small-field">
-                          <label>{service.name} price</label>
-                          <input type="number" min={0} value={service.price} onChange={(event) => updateService(service.name, { price: Number(event.target.value) })} />
+                        <div className="sh-catalog-meta">
+                          <span className={`sh-catalog-badge ${service.selected ? '' : 'off'}`}>{service.selected ? 'Active' : 'Not offered'}</span>
                         </div>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <div className="note" style={{ marginTop: 16 }}>Pick at least one service so availability checks and voice bookings stay consistent.</div>
-                )}
-                <div className="settings-save-footer">
+
+                  <div className="sh-active-section">
+                    <div className="sh-active-head">
+                      <p className="sh-active-label">Active services</p>
+                      <p className="sh-active-hint">
+                        {form.services.length > 0 ? `${form.services.length} selected · shown to callers when booking` : 'Add at least one service to keep voice bookings aligned with your real menu.'}
+                      </p>
+                    </div>
+                    {form.services.length > 0 ? (
+                      <div className="sh-active-table" role="region" aria-label="Configure duration and price for active services">
+                        <div className="sh-active-thead" aria-hidden="true">
+                          <span>Service</span>
+                          <span>Duration</span>
+                          <span>Price</span>
+                        </div>
+                        {form.services.map((service, svcIndex) => (
+                          <div key={service.name} className="sh-active-row">
+                            <div className="sh-active-service">{service.name}</div>
+                            <div className="small-field">
+                              <label htmlFor={`svc-dur-${svcIndex}`}>Duration</label>
+                              <select id={`svc-dur-${svcIndex}`} value={String(service.duration_min)} onChange={(event) => updateService(service.name, { duration_min: Number(event.target.value) })}>
+                                {[15, 30, 45, 60, 75, 90, 120, 150].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
+                              </select>
+                            </div>
+                            <div className="small-field">
+                              <label htmlFor={`svc-price-${svcIndex}`}>Price</label>
+                              <input id={`svc-price-${svcIndex}`} type="number" min={0} value={service.price} onChange={(event) => updateService(service.name, { price: Number(event.target.value) })} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="sh-empty">Pick at least one service so availability checks and voice bookings stay consistent.</div>
+                    )}
+                  </div>
+                </div>
+                <div className="sh-save-bar">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'services' ? 'Saving...' : 'Save services'}
                   </button>
@@ -1557,42 +1650,58 @@ export function UserSettingsLive() {
                   void commitSettingsPatch('hours', { hours: form.hours });
                 }}
               >
-                <div className="preset-pills" style={{ marginBottom: 14 }}>
-                  {HOURS_PRESETS.map((preset) => (
-                    <button key={preset.id} type="button" className={`preset-pill ${hourPreset === preset.id ? 'active' : ''}`} onClick={() => applyHourPreset(preset.id)}>
-                      {preset.label}
-                    </button>
-                  ))}
-                  <button type="button" className={`preset-pill ${hourPreset === 'custom' ? 'active' : ''}`} onClick={() => setHourPreset('custom')}>Custom</button>
+                <div className="sh-hours-body">
+                  <p className="sh-catalog-intro sh-hours-intro">Set your weekly schedule. Use a preset for a quick start, then fine-tune individual days.</p>
+                  <div className="sh-hours-presets">
+                    <p className="sh-hours-presets-label">Quick apply</p>
+                    <div className="preset-pills">
+                      {HOURS_PRESETS.map((preset) => (
+                        <button key={preset.id} type="button" className={`preset-pill ${hourPreset === preset.id ? 'active' : ''}`} onClick={() => applyHourPreset(preset.id)}>
+                          {preset.label}
+                        </button>
+                      ))}
+                      <button type="button" className={`preset-pill ${hourPreset === 'custom' ? 'active' : ''}`} onClick={() => setHourPreset('custom')}>Custom</button>
+                    </div>
+                  </div>
+                  <div className="sh-hours-wrap">
+                    <div className="sh-hours-thead" aria-hidden="true">
+                      <span>Day</span>
+                      <span>Opens</span>
+                      <span>Closes</span>
+                      <span>Status</span>
+                    </div>
+                    <div className="hours-grid">
+                      {DAY_ORDER.map((day) => {
+                        const entry = form.hours[day] ?? { closed: true };
+                        const isClosed = 'closed' in entry;
+                        const openId = `hours-open-${day}`;
+                        const closeId = `hours-close-${day}`;
+                        return (
+                          <div key={day} className={`hours-row ${isClosed ? 'closed' : ''}`}>
+                            <div className="hours-day">{DAY_LABELS[day]}</div>
+                            <div className="small-field">
+                              <label htmlFor={openId}>Open</label>
+                              <select id={openId} value={isClosed ? '09:00' : entry.open} disabled={isClosed} onChange={(event) => updateHours(day, { open: event.target.value, close: isClosed ? '18:00' : entry.close })}>
+                                {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
+                              </select>
+                            </div>
+                            <div className="small-field">
+                              <label htmlFor={closeId}>Close</label>
+                              <select id={closeId} value={isClosed ? '18:00' : entry.close} disabled={isClosed} onChange={(event) => updateHours(day, { open: isClosed ? '09:00' : entry.open, close: event.target.value })}>
+                                {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
+                              </select>
+                            </div>
+                            <label className="inline-check">
+                              <input type="checkbox" checked={isClosed} onChange={(event) => updateHours(day, event.target.checked ? { closed: true } : { open: '09:00', close: '18:00' })} />
+                              Closed
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-                <div className="hours-grid">
-                  {DAY_ORDER.map((day) => {
-                    const entry = form.hours[day] ?? { closed: true };
-                    const isClosed = 'closed' in entry;
-                    return (
-                      <div key={day} className={`hours-row ${isClosed ? 'closed' : ''}`}>
-                        <div className="hours-day">{DAY_LABELS[day]}</div>
-                        <div className="small-field">
-                          <label>Open</label>
-                          <select value={isClosed ? '09:00' : entry.open} disabled={isClosed} onChange={(event) => updateHours(day, { open: event.target.value, close: isClosed ? '18:00' : entry.close })}>
-                            {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
-                          </select>
-                        </div>
-                        <div className="small-field">
-                          <label>Close</label>
-                          <select value={isClosed ? '18:00' : entry.close} disabled={isClosed} onChange={(event) => updateHours(day, { open: isClosed ? '09:00' : entry.open, close: event.target.value })}>
-                            {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
-                          </select>
-                        </div>
-                        <label className="inline-check">
-                          <input type="checkbox" checked={isClosed} onChange={(event) => updateHours(day, event.target.checked ? { closed: true } : { open: '09:00', close: '18:00' })} />
-                          Closed that day
-                        </label>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="settings-save-footer">
+                <div className="sh-save-bar">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'hours' ? 'Saving...' : 'Save hours'}
                   </button>
@@ -1777,7 +1886,7 @@ export function UserSettingsLive() {
 
         </main>
       </div>
-      <UserPortalMobileTabbar active="settings" />
+      <UserPortalMobileTabbar active={sidebarNav} />
       </>
     </UserLayout>
   );
