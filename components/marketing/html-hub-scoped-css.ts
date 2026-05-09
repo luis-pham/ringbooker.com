@@ -106,7 +106,21 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .hero.hero--landing .btn-hero-live .btn-hero-live-arrow{color:#fff}
 .html-hub-page .hero.hero--landing .btn-outline{background:transparent;color:var(--gray-800);padding:13px 26px;border-radius:var(--radius-pill);font-size:var(--mk-btn);font-weight:600;text-decoration:none;border:1px solid var(--border);display:inline-flex;align-items:center;gap:8px;transition:border-color .2s,color .2s,background .2s,transform .15s;font-family:inherit;cursor:pointer;box-sizing:border-box}
 .html-hub-page .hero.hero--landing .btn-outline:hover{border-color:rgba(139,92,246,.45);color:#5B21B6;background:rgba(245,243,255,.5)}
-.html-hub-page .hero.hero--landing .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
+/* Secondary hero CTA — same language as marketing-home / current-btn-secondary; tint follows hub variant below */
+.html-hub-page .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
+  background:rgba(255,255,255,.56);
+  color:#5b21b6;
+  border:1px solid rgba(196,181,253,.55);
+  padding:11px 20px;
+  font-size:var(--mk-btn-sm);
+  font-weight:600;
+}
+.html-hub-page .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial:hover{
+  background:#fff;
+  border-color:rgba(196,181,253,.75);
+  color:#5b21b6;
+  transform:translateY(-1px);
+}
 @media(max-width:640px){
   .html-hub-page .hero-landing-shell{padding-left:24px;padding-right:24px;padding-top:34px;padding-bottom:64px}
   .html-hub-page .hero-ctas,
@@ -294,6 +308,15 @@ export const HTML_HUB_SCOPED_CSS = `
   box-shadow:0 12px 36px rgba(13,148,136,.38);
 }
 .html-hub-page--teal .hero.hero--landing .btn-outline:hover{border-color:#0d9488;color:#0f7669}
+.html-hub-page--teal .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
+  color:#115e59;
+  border-color:rgba(94,234,212,.65);
+}
+.html-hub-page--teal .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial:hover{
+  background:#fff;
+  border-color:rgba(13,148,136,.75);
+  color:#0f7669;
+}
 .html-hub-page--teal .section-label:not(.dark){
   color:#115e59;
 }
@@ -339,6 +362,15 @@ export const HTML_HUB_SCOPED_CSS = `
   box-shadow:0 12px 36px rgba(180,83,9,.42);
 }
 .html-hub-page--hair .hero.hero--landing .btn-outline:hover{border-color:#d97706;color:#b45309}
+.html-hub-page--hair .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
+  color:#92400e;
+  border-color:rgba(251,191,36,.65);
+}
+.html-hub-page--hair .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial:hover{
+  background:#fff;
+  border-color:rgba(217,119,6,.75);
+  color:#b45309;
+}
 .html-hub-page--hair .section-label:not(.dark){
   color:#b45309;
 }
@@ -384,6 +416,15 @@ export const HTML_HUB_SCOPED_CSS = `
   box-shadow:0 12px 36px rgba(67,56,202,.45);
 }
 .html-hub-page--med-spa .hero.hero--landing .btn-outline:hover{border-color:#4f46e5;color:#4338ca}
+.html-hub-page--med-spa .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
+  color:#3730a3;
+  border-color:rgba(165,180,252,.75);
+}
+.html-hub-page--med-spa .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial:hover{
+  background:#fff;
+  border-color:rgba(79,70,229,.75);
+  color:#4338ca;
+}
 .html-hub-page--med-spa .section-label:not(.dark){
   color:#4338ca;
 }
@@ -435,6 +476,15 @@ export const HTML_HUB_SCOPED_CSS = `
   box-shadow:0 12px 36px rgba(192,38,211,.42);
 }
 .html-hub-page--beauty-clinic .hero.hero--landing .btn-outline:hover{border-color:#c026d3;color:#a21caf}
+.html-hub-page--beauty-clinic .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
+  color:#86198f;
+  border-color:rgba(240,171,252,.65);
+}
+.html-hub-page--beauty-clinic .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial:hover{
+  background:#fff;
+  border-color:rgba(192,38,211,.75);
+  color:#a21caf;
+}
 .html-hub-page--beauty-clinic .section-label:not(.dark){
   color:#a21caf;
 }
@@ -492,6 +542,15 @@ export const HTML_HUB_SCOPED_CSS = `
   box-shadow:0 12px 36px rgba(180,83,9,.42);
 }
 .html-hub-page--amber .hero.hero--landing .btn-outline:hover{border-color:#d97706;color:#b45309}
+.html-hub-page--amber .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
+  color:#92400e;
+  border-color:rgba(251,191,36,.65);
+}
+.html-hub-page--amber .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial:hover{
+  background:#fff;
+  border-color:rgba(217,119,6,.75);
+  color:#b45309;
+}
 .html-hub-page--amber .section-label:not(.dark){
   color:#b45309;
 }
@@ -536,6 +595,15 @@ export const HTML_HUB_SCOPED_CSS = `
   box-shadow:0 12px 36px rgba(91,33,182,.38);
 }
 .html-hub-page--trust .hero.hero--landing .btn-outline:hover{border-color:var(--purple);color:var(--purple)}
+.html-hub-page--trust .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
+  color:#5b21b6;
+  border-color:rgba(196,181,253,.55);
+}
+.html-hub-page--trust .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial:hover{
+  background:#fff;
+  border-color:rgba(139,92,246,.65);
+  color:var(--purple);
+}
 /* Must beat .html-hub-page .section-label.green|blue|amber below (same specificity, source order). */
 .html-hub-page.html-hub-page--trust .section-label:not(.dark){
   color:var(--purple);

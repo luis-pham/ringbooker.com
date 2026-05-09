@@ -118,9 +118,9 @@ export function UserBillingTemplate() {
             <div><div className="metric" style={{fontSize: 44}}>$149<span style={{fontSize: 15, fontWeight: 600, letterSpacing: 0}}> / month</span></div><div className="metric-sub" style={{color: 'rgba(255,255,255,.72)', marginTop: 6}}>Next renewal: May 8, 2026</div><div style={{marginTop: 16}}><span className="tag green">Paid</span></div></div>
           </section>
           <section className="pricing-mini" style={{marginTop: 18}}>
-            <div className="price-mini"><h4>Starter</h4><div className="amt">$79</div><ul><li>AI answers calls 24/7</li><li>Booking + confirmations</li><li>1 number included or forwarding</li><li>Basic call logs</li></ul></div>
-            <div className="price-mini featured"><span className="tag purple">Current plan</span><h4 style={{marginTop: 10}}>Professional</h4><div className="amt">$149</div><ul><li>Everything in Starter</li><li>Reminder SMS</li><li>Customer memory</li><li>Bilingual user summaries</li></ul></div>
-            <div className="price-mini"><h4>Custom</h4><div className="amt">Let’s talk</div><ul><li>Multi-location setup</li><li>Custom integrations</li><li>Higher call volume</li><li>Concierge onboarding</li></ul></div>
+            <div className="price-mini"><h4>Starter</h4><div className="amt">$79</div><ul><li>Up to 100 captured callers/month</li><li>Forwarded call answering</li><li>Booking request capture</li><li>Optional missed-call text back where enabled</li><li>Basic call logs and summaries</li></ul></div>
+            <div className="price-mini featured"><span className="tag purple">Current plan</span><h4 style={{marginTop: 10}}>Professional</h4><div className="amt">$149</div><ul><li>Up to 300 captured callers/month</li><li>Reminder and review SMS where configured</li><li>Returning caller notes</li><li>Bilingual answering where configured</li><li>Owner transfer</li></ul></div>
+            <div className="price-mini"><h4>Custom</h4><div className="amt">Let’s talk</div><ul><li>Custom captured caller volume</li><li>Managed routing and integrations</li><li>Multi-location support</li><li>Implementation support</li></ul></div>
           </section>
           <section className="grid grid-2" style={{marginTop: 18}}>
             <div className="card">

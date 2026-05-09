@@ -32,6 +32,9 @@ export const RUNTIME_CONFIG_TEMPLATE = [
   'Must-do rules:',
   '- Treat runtime data as the source of truth for business facts.',
   '- If runtime data is missing, say you can check or offer human follow-up instead of guessing.',
+  '- When services are grouped, use the group as context. If a caller asks for a broad group, ask which specific service item they want.',
+  '- Respect service price wording: "starts at" means a minimum price, "price varies" or "consultation required" is not a fixed quote.',
+  '- If a service says capture request only, capture the request for the team instead of implying direct booking.',
   '',
   'Must-avoid rules:',
   '- Do not use stale, invented, or cross-business data.',
@@ -50,22 +53,47 @@ export function compactPromptLine(input: string, maxChars = MAX_LINE_CHARS): str
   return `${normalized.slice(0, maxChars)}...`;
 }
 
+function renderServicePrice(service: RuntimeService): string | null {
+  if (service.priceType === 'consultation') return 'consultation required';
+  if (service.priceType === 'varies') return 'price varies';
+  if (service.price !== undefined && service.price !== null && service.price > 0) {
+    return service.priceType === 'from' ? `starts at $${service.price}` : `$${service.price}`;
+  }
+  if (service.price !== undefined && service.price !== null) return 'consultation / varies';
+  return null;
+}
+
 function renderService(service: RuntimeService): string {
   const parts = [service.name];
-  if (service.price !== undefined && service.price !== null) {
-    parts.push(service.price > 0 ? `$${service.price}` : 'consultation / varies');
-  }
+  const price = renderServicePrice(service);
+  if (price) parts.push(price);
   if (service.duration !== undefined && service.duration !== null && service.duration !== '') {
     parts.push(`${service.duration}`);
   }
   if (service.notes) parts.push(compactPromptLine(service.notes, 120));
+  if (service.bookable === false) parts.push('capture request only; do not imply direct booking');
   return `- ${compactPromptLine(parts.join(' | '), 220)}`;
 }
 
-export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): string {
-  const services = (config.services ?? []).slice(0, MAX_SERVICES_IN_PROMPT).map(renderService);
+function renderGroupedServices(config: RuntimeBusinessConfig): string[] {
+  const services = (config.services ?? []).slice(0, MAX_SERVICES_IN_PROMPT);
   const omitted = Math.max(0, (config.services?.length ?? 0) - MAX_SERVICES_IN_PROMPT);
-  if (omitted > 0) services.push(`- +${omitted} more services omitted for latency budget.`);
+  const groups = new Map<string, RuntimeService[]>();
+  for (const service of services) {
+    const category = service.category?.trim() || 'General Services';
+    groups.set(category, [...(groups.get(category) ?? []), service]);
+  }
+  const lines: string[] = [];
+  for (const [category, groupServices] of groups.entries()) {
+    lines.push(`${category}:`);
+    lines.push(...groupServices.map(renderService));
+  }
+  if (omitted > 0) lines.push(`- +${omitted} more services omitted for latency budget.`);
+  return lines;
+}
+
+export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): string {
+  const services = renderGroupedServices(config);
 
   return [
     'RUNTIME BUSINESS CONFIG',

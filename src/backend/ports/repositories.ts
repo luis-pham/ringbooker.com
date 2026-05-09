@@ -467,6 +467,9 @@ export interface ShopsRepository {
     shopId: string,
     patch: Pick<Shop, 'google_cal_id' | 'google_cal_credentials_encrypted'>,
   ): Promise<Shop | null>;
+  findServiceCatalogByShopId(shopId: string): Promise<Shop['service_catalog'] | null>;
+  saveServiceCatalog(shopId: string, catalog: NonNullable<Shop['service_catalog']>): Promise<Shop['service_catalog'] | null>;
+  deleteServiceCategory(params: { shopId: string; categoryId: string }): Promise<Shop['service_catalog'] | null>;
 }
 
 export interface BillingCustomersRepository {
@@ -723,6 +726,8 @@ export interface BookingRecord {
   customerPhone: string;
   customerName?: string | null;
   service: string;
+  matchedServiceId?: string | null;
+  matchedServiceConfidence?: number | null;
   datetimeUtc: string;
   timezone: string;
   status: string;
@@ -746,6 +751,8 @@ export interface BookingsRepository {
     customerPhone: string;
     customerName?: string | null;
     service: string;
+    matchedServiceId?: string | null;
+    matchedServiceConfidence?: number | null;
     datetimeUtc: string;
     timezone: string;
     status: string;

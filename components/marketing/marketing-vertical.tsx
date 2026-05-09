@@ -60,8 +60,8 @@ const BOOKING_TOOL_INTEGRATIONS: BookingToolIntegration[] = [
   { id: 'booksy', name: 'Booksy', logoSrc: '/images/booksy.png', status: 'compatible' },
 ];
 
-const TRIAL_CTA_BASE =
-  'inline-flex items-center justify-center rounded-full border border-slate-200 bg-transparent px-6 py-3 text-[14px] font-semibold text-slate-900 transition';
+const TRIAL_CTA_SECONDARY =
+  'inline-flex items-center justify-center rounded-full border bg-white/55 px-6 py-3 text-[14px] font-semibold transition hover:-translate-y-px hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
 
 const DEMO_CTA_BASE =
   'inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-bold text-white transition hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
@@ -88,7 +88,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
     finalCtaGradient: 'bg-[linear-gradient(125deg,#5b21b6_0%,#7c3aed_50%,#a78bfa_100%)]',
     finalCtaPrimaryBtnText: 'text-violet-900',
     demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_6px_18px_rgba(91,33,182,0.16),0_1px_4px_rgba(91,33,182,0.08)]`,
-    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-violet-500 hover:text-violet-600`,
+    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-violet-400/55 text-violet-900 hover:border-violet-500 hover:text-violet-950 focus-visible:outline-violet-600`,
     accentClass: 'text-violet-600',
   },
   'hair-salon': {
@@ -97,7 +97,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
     finalCtaGradient: 'bg-[linear-gradient(125deg,#9a3412_0%,#d97706_48%,#f59e0b_100%)]',
     finalCtaPrimaryBtnText: 'text-amber-950',
     demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_6px_18px_rgba(180,83,9,0.15),0_1px_4px_rgba(180,83,9,0.08)]`,
-    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-amber-500 hover:text-amber-800`,
+    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-amber-400/55 text-amber-950 hover:border-amber-500 hover:text-amber-950 focus-visible:outline-amber-600`,
     accentClass: 'text-amber-600',
   },
   spa: {
@@ -106,7 +106,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
     finalCtaGradient: 'bg-[linear-gradient(125deg,#115e59_0%,#0d9488_50%,#14b8a6_100%)]',
     finalCtaPrimaryBtnText: 'text-teal-950',
     demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_6px_18px_rgba(13,148,136,0.15),0_1px_4px_rgba(13,148,136,0.08)]`,
-    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-teal-500 hover:text-teal-800`,
+    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-teal-400/55 text-teal-950 hover:border-teal-500 hover:text-teal-950 focus-visible:outline-teal-600`,
     accentClass: 'text-teal-600',
   },
   'med-spa': {
@@ -115,7 +115,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
     finalCtaGradient: 'bg-[linear-gradient(125deg,#312e81_0%,#4f46e5_52%,#818cf8_100%)]',
     finalCtaPrimaryBtnText: 'text-indigo-950',
     demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_6px_18px_rgba(67,56,202,0.16),0_1px_4px_rgba(67,56,202,0.08)]`,
-    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-indigo-500 hover:text-indigo-800`,
+    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-indigo-400/55 text-indigo-950 hover:border-indigo-500 hover:text-indigo-950 focus-visible:outline-indigo-600`,
     accentClass: 'text-indigo-600',
   },
   'beauty-clinic': {
@@ -124,7 +124,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
     finalCtaGradient: 'bg-[linear-gradient(125deg,#86198f_0%,#c026d3_50%,#e879f9_100%)]',
     finalCtaPrimaryBtnText: 'text-fuchsia-950',
     demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_6px_18px_rgba(192,38,211,0.16),0_1px_4px_rgba(192,38,211,0.08)]`,
-    trialCtaClass: `${TRIAL_CTA_BASE} hover:border-fuchsia-500 hover:text-fuchsia-800`,
+    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-fuchsia-400/55 text-fuchsia-950 hover:border-fuchsia-500 hover:text-fuchsia-950 focus-visible:outline-fuchsia-600`,
     accentClass: 'text-fuchsia-600',
   },
 };

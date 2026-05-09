@@ -69,6 +69,58 @@ export interface ServiceItem {
   price: number;
 }
 
+export type ShopServicePriceType = 'fixed' | 'from' | 'varies' | 'consultation';
+
+export interface ServiceCategory {
+  id: string;
+  shopId: string;
+  name: string;
+  description?: string | null;
+  sortOrder: number;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ShopService {
+  id: string;
+  shopId: string;
+  categoryId?: string | null;
+  name: string;
+  description?: string | null;
+  durationMinutes?: number | null;
+  priceAmount?: number | null;
+  priceCurrency: string;
+  priceType: ShopServicePriceType;
+  bookable: boolean;
+  active: boolean;
+  sortOrder: number;
+  aliases: string[];
+  bookingNotes?: string | null;
+  externalProvider?: string | null;
+  externalServiceId?: string | null;
+  externalLocationId?: string | null;
+  externalStaffRequired?: boolean;
+  externalMetadata?: Record<string, unknown>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ServiceMatchResult {
+  matchedServiceId?: string;
+  matchedCategoryId?: string;
+  confidence: number;
+  matchedName?: string;
+  reason?: string;
+  requiresClarification?: boolean;
+  bookable?: boolean;
+}
+
+export interface ShopServiceCatalog {
+  categories: ServiceCategory[];
+  services: ShopService[];
+}
+
 export interface StaffMember {
   name: string;
   role?: string | null;
@@ -165,6 +217,7 @@ export interface Shop {
   address?: string | null;
   timezone: string;
   services: ServiceItem[];
+  service_catalog?: ShopServiceCatalog;
   staff?: StaffMember[];
   faqs?: BusinessFaqItem[];
   hours: BusinessHours;
@@ -228,6 +281,8 @@ export interface BookingInput {
   source: 'inbound_call' | 'outbound_call' | 'sms' | 'manual';
   notes?: string;
   callLogId?: string;
+  matchedServiceId?: string | null;
+  matchedServiceConfidence?: number | null;
   idempotencyKey: string;
 }
 

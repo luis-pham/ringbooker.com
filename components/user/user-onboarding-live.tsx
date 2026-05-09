@@ -17,7 +17,23 @@ export type BeautySubtype =
   | 'other_beauty';
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type WizardStep = 1 | 2 | 3 | 4;
-type ServiceItem = { name: string; duration_min: number; price: number };
+type ServicePriceType = 'fixed' | 'from' | 'varies' | 'consultation';
+type ServiceItem = { name: string; duration_min: number; price: number; group?: string; aliases?: string[]; price_type?: ServicePriceType; bookable?: boolean };
+type ServiceCatalogResponse = {
+  categories: Array<{ id: string; name: string; sortOrder: number; active: boolean }>;
+  services: Array<{
+    id: string;
+    categoryId?: string | null;
+    name: string;
+    durationMinutes?: number | null;
+    priceAmount?: number | null;
+    priceType?: ServicePriceType;
+    bookable?: boolean;
+    aliases?: string[];
+    sortOrder: number;
+    active: boolean;
+  }>;
+};
 type ApiHours = Record<string, { closed: true } | { open: string; close: string }>;
 type WizardHours = Record<string, { open: boolean; from: string; to: string }>;
 type ImportSource = 'none' | 'website' | 'google_business' | 'manual';
@@ -29,6 +45,7 @@ type OnboardingStatusResponse = {
   liveCallsEnabled?: boolean;
   forwardingSetupVerified?: boolean;
   paymentMethodStatus?: 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
+  serviceCatalogEnabled?: boolean;
   shop?: {
     id: string;
     name: string;
@@ -39,6 +56,7 @@ type OnboardingStatusResponse = {
     timezone: string;
     cancel_policy: string;
     services: ServiceItem[];
+    service_catalog?: ServiceCatalogResponse | null;
     hours: ApiHours;
     languages?: string[];
     website_url?: string;
@@ -495,7 +513,76 @@ function cleanServices(rows: ServiceItem[]): ServiceItem[] {
       name: item.name.trim(),
       duration_min: item.duration_min && item.duration_min > 0 ? item.duration_min : 60,
       price: Number.isFinite(item.price) ? item.price : 0,
+      group: item.group?.trim() || 'General Services',
+      aliases: item.aliases ?? [],
+      price_type: item.price_type ?? (item.price > 0 ? 'fixed' : 'varies'),
+      bookable: item.bookable ?? true,
     }));
+}
+
+function onboardingClientId() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `service-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function suggestedGroupsForVertical(vertical: Vertical | '', subtype: BeautySubtype | '') {
+  if (vertical === 'nail_salon') return ['Manicure', 'Pedicure', 'Acrylics / Extensions'];
+  if (vertical === 'hair_salon') return ['Haircuts', 'Color', 'Treatments'];
+  if (vertical === 'day_spa') return ['Facials', 'Massage', 'Waxing'];
+  if (vertical === 'med_spa') return ['Injectables', 'Laser', 'Facials'];
+  if (vertical === 'beauty_clinic' && subtype === 'wax_studio') return ['Waxing', 'Brows', 'Packages'];
+  if (vertical === 'beauty_clinic' && subtype === 'lash_studio') return ['Lash Sets', 'Lash Fills', 'Brows'];
+  if (vertical === 'beauty_clinic') return ['Facials', 'Waxing', 'Lash / Brow'];
+  return ['General Services'];
+}
+
+function servicesFromCatalog(catalog?: ServiceCatalogResponse | null): ServiceItem[] {
+  if (!catalog?.services.length) return [];
+  return catalog.services
+    .filter((service) => service.active !== false)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((service) => {
+      const category = catalog.categories.find((item) => item.id === service.categoryId);
+      return {
+        name: service.name,
+        duration_min: service.durationMinutes ?? 60,
+        price: service.priceAmount ?? 0,
+        group: category?.name ?? 'General Services',
+        aliases: service.aliases ?? [],
+        price_type: service.priceType ?? 'fixed',
+        bookable: service.bookable ?? true,
+      };
+    });
+}
+
+function serviceCatalogFromRows(rows: ServiceItem[]) {
+  const cleaned = cleanServices(rows);
+  const groupNames = [...new Set(cleaned.map((service) => service.group?.trim() || 'General Services'))];
+  const categories = groupNames.map((name, index) => ({
+    id: onboardingClientId(),
+    name,
+    sortOrder: index,
+    active: true,
+  }));
+  return {
+    categories,
+    services: cleaned.map((service, index) => {
+      const category = categories.find((item) => item.name === (service.group?.trim() || 'General Services')) ?? categories[0];
+      return {
+        id: onboardingClientId(),
+        categoryId: category?.id ?? null,
+        name: service.name,
+        durationMinutes: service.duration_min,
+        priceAmount: service.price,
+        priceCurrency: 'USD',
+        priceType: service.price_type ?? (service.price > 0 ? 'fixed' : 'varies'),
+        bookable: service.bookable ?? true,
+        active: true,
+        sortOrder: index,
+        aliases: service.aliases ?? [],
+      };
+    }),
+  };
 }
 
 function findCountryForTimezone(timezone: string) {
@@ -549,6 +636,7 @@ export function UserOnboardingLive() {
   const [websiteImportAttempted, setWebsiteImportAttempted] = useState(false);
   const [servicesFound, setServicesFound] = useState(0);
   const [services, setServices] = useState<ServiceItem[]>([{ name: '', duration_min: 60, price: 0 }]);
+  const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(false);
   const [importSource, setImportSource] = useState<ImportSource>('none');
   const [step1View, setStep1View] = useState<Step1View>('quick');
   const [manualPrimaryPick, setManualPrimaryPick] = useState<Vertical | 'beauty_umbrella' | ''>('');
@@ -639,7 +727,9 @@ export function UserOnboardingLive() {
     if (savedSite.trim() && isProbablyGoogleBusinessUrl(savedSite)) setImportSource('google_business');
     else if (savedSite.trim()) setImportSource('website');
     else setImportSource('none');
-    setServices(body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: 60, price: 0 }]);
+    const catalogServices = servicesFromCatalog(body.shop.service_catalog);
+    setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
+    setServices(catalogServices.length > 0 ? catalogServices : body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: 60, price: 0, group: 'General Services' }]);
     setCurrentStep(normalizeStep(body.shop.current_onboarding_step));
     setShopPlan(body.shop.plan ?? 'starter');
     if (normalizeStep(body.shop.current_onboarding_step) === 1) {
@@ -893,6 +983,7 @@ export function UserOnboardingLive() {
     }
     trackOnboarding('onboarding_services_reviewed');
     const patch: Record<string, unknown> = { current_onboarding_step: 4, services: nextServices };
+    if (serviceCatalogEnabled) patch.service_catalog = serviceCatalogFromRows(nextServices);
     if (websiteUrl.trim()) patch.website_url = normalizeWebsiteUrl(websiteUrl);
     const ok = await saveSettings(patch);
     if (ok) {
@@ -942,13 +1033,23 @@ export function UserOnboardingLive() {
     const existing = new Set(services.map((s) => s.name.trim().toLowerCase()).filter(Boolean));
     const toAdd = preset
       .filter((name) => !existing.has(name.toLowerCase()))
-      .map((name) => ({ name, duration_min: 60, price: 0 }));
+      .map((name) => ({ name, duration_min: 60, price: 0, group: suggestedGroupsForVertical(vertical, beautySubtype)[0] ?? 'General Services' }));
     if (toAdd.length === 0) {
       setStatus('Those preset services are already on your list.');
       return;
     }
     setServices([...services.filter((s) => s.name.trim().length > 0), ...toAdd]);
     setStatus(null);
+  }
+
+  function applySuggestedServiceGroups() {
+    const groups = suggestedGroupsForVertical(vertical, beautySubtype);
+    setServices((current) => {
+      const filled = current.filter((item) => item.name.trim().length > 0);
+      if (filled.length === 0) return [{ name: '', duration_min: 60, price: 0, group: groups[0] ?? 'General Services' }];
+      return filled.map((item, index) => ({ ...item, group: item.group || groups[index % groups.length] || 'General Services' }));
+    });
+    setStatus('Suggested service groups added. You can refine this later in Business Knowledge.');
   }
 
   function setServiceRow(index: number, value: ServiceItem) {
@@ -1016,8 +1117,8 @@ export function UserOnboardingLive() {
 .hours-summary{font-size:14px;color:#334155;line-height:1.5;margin:0 0 12px}
 .acc{border:1px solid #e2e8f0;border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}.acc-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;background:#fff;font:inherit;font-weight:800;text-align:left;cursor:pointer}.acc-body{padding:0 16px 16px;border-top:1px solid #f1f5f9}
 .test-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:20px}.test-card{border:1px solid #e2e8f0;border-radius:16px;padding:20px;background:#fff;display:flex;flex-direction:column;gap:10px;min-height:160px;box-shadow:none}.test-card h3{margin:0;font-size:17px}.test-card p{margin:0;font-size:14px;color:#64748b;line-height:1.55}
-.manual-header{display:grid;grid-template-columns:minmax(0,2fr) 72px 72px;gap:10px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-.service-row{display:grid;grid-template-columns:minmax(0,2fr) 72px 72px;gap:10px;align-items:center;margin-bottom:10px}
+.manual-header{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.6fr) 72px 72px;gap:10px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.service-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.6fr) 72px 72px;gap:10px;align-items:center;margin-bottom:10px}
 .price-wrap{position:relative}.price-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b}.price-wrap input{padding-left:28px!important}
 .add-service-btn{border:1.5px dashed #a78bfa;border-radius:10px;background:#fff;color:#6d28d9;padding:0 13px;font-weight:900;cursor:pointer;width:100%;height:44px}
 .onb-status{margin-top:14px;padding:12px 14px;border-radius:16px;background:#f8fafc;color:#475569;font-size:14px}
@@ -1025,7 +1126,7 @@ export function UserOnboardingLive() {
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress-pills{justify-content:flex-start}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid{grid-template-columns:1fr}.test-grid{grid-template-columns:1fr}.manual-header,.service-row{grid-template-columns:minmax(0,1fr) 64px 64px}.onb-actions:not(.onb-actions-desktop){display:none}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress-pills{justify-content:flex-start}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid{grid-template-columns:1fr}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:minmax(0,1fr) 64px 64px}.service-row select{grid-column:1 / -1}.onb-actions:not(.onb-actions-desktop){display:none}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -1476,7 +1577,7 @@ export function UserOnboardingLive() {
       <div>
         <h1 className="onb-title">Review your services</h1>
         <p className="onb-subtitle">
-          RingBooker uses this to answer questions about services, pricing, and booking requests.
+          Add the services callers ask about most. You can group them now or refine them later in Business Knowledge.
         </p>
         {servicesFound > 0 ? (
           <p className="read-success">Imported {servicesFound} services from your website — edit below.</p>
@@ -1496,14 +1597,23 @@ export function UserOnboardingLive() {
           <button type="button" className="preset-chip" onClick={applyPresetServices} disabled={!vertical || (vertical === 'beauty_clinic' && !beautySubtype)}>
             Add {presetLabel} presets
           </button>
+          <button type="button" className="preset-chip" onClick={applySuggestedServiceGroups} disabled={!vertical}>
+            Group services
+          </button>
         </div>
         <div className="manual-header">
+          <span>Group</span>
           <span>Service</span>
           <span>Min</span>
           <span>Price</span>
         </div>
         {services.map((service, index) => (
           <div className="service-row" key={index}>
+            <select value={service.group ?? 'General Services'} onChange={(event) => setServiceRow(index, { ...service, group: event.target.value })}>
+              {[...new Set(['General Services', ...suggestedGroupsForVertical(vertical, beautySubtype), ...services.map((item) => item.group).filter((item): item is string => Boolean(item))])].map((group) => (
+                <option key={group} value={group}>{group}</option>
+              ))}
+            </select>
             <input
               value={service.name}
               onChange={(event) => setServiceRow(index, { ...service, name: event.target.value })}
@@ -1529,7 +1639,7 @@ export function UserOnboardingLive() {
             </div>
           </div>
         ))}
-        <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0 }])}>
+        <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group: services[0]?.group ?? 'General Services' }])}>
           + Add service
         </button>
         <div className="onb-actions onb-actions-desktop" style={{ marginTop: 28 }}>

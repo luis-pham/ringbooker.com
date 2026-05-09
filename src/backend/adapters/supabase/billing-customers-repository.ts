@@ -67,9 +67,11 @@ export class SupabaseBillingCustomersRepository implements BillingCustomersRepos
     metadata?: Record<string, unknown> | null;
   }): Promise<BillingCustomer> {
     const providerCustomerId = params.providerCustomerId?.trim() || null;
-    const existing = providerCustomerId
+    const existingByProviderCustomer = providerCustomerId
       ? await this.findByProviderCustomerId(params.provider, providerCustomerId)
-      : await this.findByShopId(params.shopId, params.provider);
+      : null;
+    const existing =
+      existingByProviderCustomer ?? (await this.findByShopId(params.shopId, params.provider));
 
     if (existing) {
       const { data, error } = await this.supabase

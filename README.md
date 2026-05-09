@@ -145,7 +145,9 @@ Thư mục migration: `src/backend/db/migrations`.
 
 #### Billing
 - `BILLING_PROVIDER=paddle`
-- `BILLING_CHECKOUT_ENABLED=false` until Paddle sandbox checkout and webhooks pass manual QA; set `true` to expose checkout buttons.
+- `BILLING_CHECKOUT_ENABLED=false` until Paddle sandbox checkout and webhooks pass manual QA; set `true` to expose checkout/reactivate/upgrade buttons.
+- `BILLING_MANAGE_ENABLED=false` until Paddle Customer Portal QA passes for update card, cancel, and invoices; set `true` to expose Manage billing.
+- `SERVICE_CATALOG_ENABLED=false` until service catalog migrations `0045_shop_service_catalog.sql`, `0046_booking_service_match_readiness.sql`, and `0047_replace_shop_service_catalog_rpc.sql` are applied; set `true` to expose grouped service catalog editing.
 - `PADDLE_API_KEY=...`
 - `PADDLE_CLIENT_TOKEN=...`
 - `PADDLE_WEBHOOK_SECRET=...`

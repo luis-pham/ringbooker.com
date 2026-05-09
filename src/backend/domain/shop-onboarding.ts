@@ -11,6 +11,9 @@ export function isShopOnboardingComplete(shop: Shop): boolean {
 }
 
 export function shopHasConfiguredServices(shop: Shop): boolean {
+  if (shop.service_catalog?.services.some((s) => s.active !== false && typeof s.name === 'string' && s.name.trim().length > 0)) {
+    return true;
+  }
   return shop.services.some((s) => typeof s.name === 'string' && s.name.trim().length > 0);
 }
 

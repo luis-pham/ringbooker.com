@@ -41,6 +41,20 @@ export interface BillingProviderAdapter {
     canUpdatePaymentMethodViaPortal?: boolean;
     canCancelViaPortal?: boolean;
   }>;
+  upgradeSubscriptionPlan?(params: {
+    shop: Shop;
+    providerCustomerId: string;
+    providerSubscriptionId: string;
+    targetPlan: Extract<Shop['plan'], 'professional'>;
+    billingInterval: BillingInterval;
+    prorationBillingMode: 'prorated_next_billing_period';
+  }): Promise<{
+    provider: BillingProvider;
+    providerSubscriptionId: string;
+    targetPlan: Extract<Shop['plan'], 'professional'>;
+    billingInterval: BillingInterval;
+    prorationBillingMode: 'prorated_next_billing_period';
+  }>;
   syncWebhookEvent(params: {
     eventType: string;
     payload: Record<string, unknown>;

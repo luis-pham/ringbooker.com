@@ -27,6 +27,14 @@ function createValidatedEnv() {
         .enum(['true', 'false'])
         .default('false')
         .transform((value) => value === 'true'),
+      BILLING_MANAGE_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
+      SERVICE_CATALOG_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
       AGENT_RUNTIME_MODE: z.enum(['mock', 'livekit_gemini', 'livekit_native_gemini', 'livekit_openai', 'livekit_native_openai']).default('mock'),
       AGENT_TRANSPORT: z.enum(['mock', 'livekit']).default('mock'),
       AGENT_VOICE_PROVIDER: z.enum(['none', 'gemini_live', 'openai_realtime']).default('none'),

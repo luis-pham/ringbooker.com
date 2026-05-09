@@ -367,8 +367,8 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 .tag.orange{background:#fff7ed;color:#c2410c}
 .tag.red{background:#fef2f2;color:#b91c1c}
 .dashboard-banner-go-live{
-  border-color:#ddd6fe !important;
-  background:linear-gradient(180deg,#faf5ff 0%,#ede9fe 100%) !important;
+  border-color:#bfdbfe !important;
+  background:#eff6ff !important;
 }
 .usage-progress-track{
   height:10px;border-radius:999px;margin-top:14px;overflow:hidden;
@@ -590,7 +590,6 @@ html[data-user-theme="dark"] .go-live-setup-status--ready{
   border-color:var(--border);
   box-shadow:none;
 }
-html[data-user-theme="dark"] .go-live-setup-status--next{box-shadow:inset 4px 0 0 #58a6ff}
 html[data-user-theme="dark"] .go-live-setup-status--live{box-shadow:inset 4px 0 0 #3fb950}
 html[data-user-theme="dark"] .go-live-setup-status--blocked{box-shadow:inset 4px 0 0 #f85149}
 html[data-user-theme="dark"] .go-live-setup-status--ready{box-shadow:inset 4px 0 0 #a371f7}

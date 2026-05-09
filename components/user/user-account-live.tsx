@@ -245,6 +245,13 @@ button.rb-account-link:hover{text-decoration:underline}
 .rb-account-subsection-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
 .rb-account-subsection-title{margin:0;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray)}
 .rb-account-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
+.rb-account-contact-name-field.field{margin-bottom:0;width:100%;max-width:100%}
+@media(min-width:641px){
+  .rb-account-contact-name-field.field{max-width:min(100%,520px)}
+}
+@media(min-width:861px){
+  .rb-account-contact-name-field.field{max-width:min(100%,640px)}
+}
 .rb-account-btn-ghost{
   font:inherit;font-size:13px;font-weight:650;color:var(--text-dark);
   background:var(--surface-card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;
@@ -462,7 +469,7 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                               <dt>Your name</dt>
                               <dd>
                                 {accountEditOpen ? (
-                                  <div className="field" style={{ marginBottom: 0, maxWidth: 420 }}>
+                                  <div className="field rb-account-contact-name-field">
                                     <label htmlFor="account-contact-name">Primary contact name</label>
                                     <input
                                       id="account-contact-name"

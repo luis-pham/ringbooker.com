@@ -6,6 +6,8 @@ const REQUIRED_TEST_ENV: Record<string, string> = {
   BACKEND_REPOSITORY_MODE: 'memory',
   BACKEND_COMM_PROVIDER: 'noop',
   BILLING_CHECKOUT_ENABLED: 'true',
+  BILLING_MANAGE_ENABLED: 'true',
+  SERVICE_CATALOG_ENABLED: 'true',
   AGENT_RUNTIME_MODE: 'mock',
   AGENT_GEMINI_MODEL: 'gemini-2.5-flash-preview-native-audio-dialog',
   AGENT_LIVEKIT_AGENT_COMMAND: 'true',

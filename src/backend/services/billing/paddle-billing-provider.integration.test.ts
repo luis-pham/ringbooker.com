@@ -202,6 +202,57 @@ test('paddle manage billing uses production API and maps Paddle failures safely'
   }
 });
 
+test('paddle upgrade subscription uses sandbox API, Professional price, and next-period proration', async () => {
+  applyRequiredTestEnv({
+    PADDLE_ENV: 'sandbox',
+    PADDLE_ENVIRONMENT: 'production',
+    PADDLE_PRICE_PROFESSIONAL_MONTHLY: 'pri_test_professional_monthly_upgrade',
+  });
+  resetEnvCacheForTests();
+  const { provider, shopsRepository } = buildProvider();
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.ok(shop);
+
+  const calls: Array<{ url: string; body: Record<string, unknown> }> = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls.push({
+      url: String(input),
+      body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
+    });
+    return new Response(
+      JSON.stringify({
+        data: {
+          id: 'sub_demo_paddle',
+          customer_id: 'ctm_demo_paddle',
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+  try {
+    const result = await provider.upgradeSubscriptionPlan({
+      shop,
+      providerCustomerId: 'ctm_demo_paddle',
+      providerSubscriptionId: 'sub_demo_paddle',
+      targetPlan: 'professional',
+      billingInterval: 'month',
+      prorationBillingMode: 'prorated_next_billing_period',
+    });
+    assert.equal(result.providerSubscriptionId, 'sub_demo_paddle');
+    assert.equal(calls[0]?.url, 'https://sandbox-api.paddle.com/subscriptions/sub_demo_paddle');
+    assert.deepEqual(calls[0]?.body, {
+      items: [{ price_id: 'pri_test_professional_monthly_upgrade', quantity: 1 }],
+      proration_billing_mode: 'prorated_next_billing_period',
+      on_payment_failure: 'prevent_change',
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'sandbox' });
+    resetEnvCacheForTests();
+  }
+});
+
 test('paddle billing provider syncs webhook payload into normalized billing records', async () => {
   const shopsRepository = new InMemoryShopsRepository();
   const billingCustomersRepository = new InMemoryBillingCustomersRepository();

@@ -529,6 +529,58 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     };
   }
 
+  async upgradeSubscriptionPlan(params: {
+    shop: Shop;
+    providerCustomerId: string;
+    providerSubscriptionId: string;
+    targetPlan: Extract<ShopPlan, 'professional'>;
+    billingInterval: BillingInterval;
+    prorationBillingMode: 'prorated_next_billing_period';
+  }) {
+    const targetPriceId = resolvePaddlePriceId(params.targetPlan, params.billingInterval);
+    const response = await fetch(
+      `${getPaddleApiBaseUrl()}/subscriptions/${encodeURIComponent(params.providerSubscriptionId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getEnv().PADDLE_API_KEY}`,
+        },
+        body: JSON.stringify({
+          items: [{ price_id: targetPriceId, quantity: 1 }],
+          proration_billing_mode: params.prorationBillingMode,
+          on_payment_failure: 'prevent_change',
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      throw new Error(`paddle_upgrade_subscription_failed:${response.status}:${bodyText}`);
+    }
+
+    const json = (await response.json()) as {
+      data?: {
+        id?: string;
+        customer_id?: string;
+      };
+    };
+    if (json.data?.id && json.data.id !== params.providerSubscriptionId) {
+      throw new Error('paddle_upgrade_subscription_id_mismatch');
+    }
+    if (json.data?.customer_id && json.data.customer_id !== params.providerCustomerId) {
+      throw new Error('paddle_upgrade_customer_id_mismatch');
+    }
+
+    return {
+      provider: 'paddle' as const,
+      providerSubscriptionId: json.data?.id ?? params.providerSubscriptionId,
+      targetPlan: params.targetPlan,
+      billingInterval: params.billingInterval,
+      prorationBillingMode: params.prorationBillingMode,
+    };
+  }
+
   async syncWebhookEvent(params: {
     eventType: string;
     payload: Record<string, unknown>;

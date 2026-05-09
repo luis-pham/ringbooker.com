@@ -14,6 +14,14 @@ import {
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
+import {
+  USER_LANGUAGE_OPTIONS,
+  getBilingualAnsweringPlanUx,
+  getOwnerTransferPlanUx,
+  getReturningCallerNotesPlanUx,
+  languageDisplayName,
+  normalizeUserLanguages,
+} from '@/components/user/user-plan-ux-copy';
 
 /** Which top-level portal this settings UI serves (separate sidebar destinations). */
 export type UserSettingsPortal = 'ai-settings' | 'knowledge' | 'integrations';
@@ -36,6 +44,35 @@ type ServiceItem = {
   duration_min: number;
   price: number;
 };
+type ServicePriceType = 'fixed' | 'from' | 'varies' | 'consultation';
+type ServiceCategory = {
+  id: string;
+  shopId?: string;
+  name: string;
+  description?: string | null;
+  sortOrder: number;
+  active: boolean;
+};
+type ShopService = {
+  id: string;
+  shopId?: string;
+  categoryId?: string | null;
+  name: string;
+  description?: string | null;
+  durationMinutes?: number | null;
+  priceAmount?: number | null;
+  priceCurrency: string;
+  priceType: ServicePriceType;
+  bookable: boolean;
+  active: boolean;
+  sortOrder: number;
+  aliases: string[];
+  bookingNotes?: string | null;
+};
+type ShopServiceCatalog = {
+  categories: ServiceCategory[];
+  services: ShopService[];
+};
 type StaffMember = {
   name: string;
   role?: string | null;
@@ -50,6 +87,7 @@ type BusinessFaqItem = {
 type ShopSettings = {
   id: string;
   name: string;
+  vertical?: string | null;
   phone_number: string;
   user_name?: string | null;
   user_phone: string;
@@ -57,6 +95,7 @@ type ShopSettings = {
   address?: string | null;
   timezone: string;
   services: ServiceItem[];
+  service_catalog?: ShopServiceCatalog | null;
   staff?: StaffMember[];
   faqs?: BusinessFaqItem[];
   hours: Record<string, BusinessHoursEntry>;
@@ -67,6 +106,7 @@ type ShopSettings = {
   ai_voice?: string | null;
   ai_welcome_message?: string | null;
   ai_custom_instructions?: string | null;
+  languages?: string[] | null;
   allow_transfers: boolean;
   allow_callbacks: boolean;
   send_reminder_sms: boolean;
@@ -97,6 +137,7 @@ type UserSettingsResponse = {
   ok: boolean;
   shop?: ShopSettings;
   capabilities?: ShopCapabilities;
+  serviceCatalogEnabled?: boolean;
   /** When true, Settings shows a Go live tab first until live answering is enabled. */
   showGoLiveSettingsTab?: boolean;
   error?: string;
@@ -148,12 +189,14 @@ type SettingsState = {
   cancel_policy: string;
   promotions: string;
   services: ServiceItem[];
+  service_catalog: ShopServiceCatalog;
   staff: StaffMember[];
   faqs: BusinessFaqItem[];
   hours: Record<string, BusinessHoursEntry>;
   ai_voice: string;
   ai_welcome_message: string;
   ai_custom_instructions: string;
+  languages: string[];
   allow_transfers: boolean;
   allow_callbacks: boolean;
   send_reminder_sms: boolean;
@@ -223,6 +266,21 @@ const SERVICE_CATALOG: Array<ServiceItem & { key: string; description: string }>
   { key: 'haircut', name: 'Haircut', duration_min: 45, price: 45, description: 'Simple bookable service for voice callers.' },
   { key: 'color', name: 'Color Touch-up', duration_min: 90, price: 95, description: 'Longer slot with pricing clarity built in.' },
 ];
+
+const PRICE_TYPE_OPTIONS: Array<{ value: ServicePriceType; label: string }> = [
+  { value: 'fixed', label: 'Fixed' },
+  { value: 'from', label: 'Starts at' },
+  { value: 'varies', label: 'Varies' },
+  { value: 'consultation', label: 'Consultation' },
+];
+
+const SERVICE_GROUP_EXAMPLES: Record<string, string[]> = {
+  nail_salon: ['Manicure', 'Pedicure', 'Acrylics / Extensions'],
+  hair_salon: ['Haircuts', 'Color', 'Treatments'],
+  day_spa: ['Facials', 'Massage', 'Waxing'],
+  med_spa: ['Injectables', 'Laser', 'Facials'],
+  beauty_clinic: ['Facials', 'Waxing', 'Lash / Brow'],
+};
 
 const CANCEL_POLICY_PRESETS = [
   'No cancellation fee. Please give us a quick heads-up if plans change.',
@@ -395,6 +453,7 @@ function visibleTabsForPortal(portal: UserSettingsPortal): Array<{ id: SettingsT
 }
 
 const REQUIRED_PLAN_BY_CAPABILITY: Partial<Record<keyof ShopCapabilities, ShopPlan>> = {
+  edit_transfer_settings: 'professional',
   edit_ai_voice: 'professional',
   edit_ai_greeting: 'professional',
   edit_reminder_sms: 'professional',
@@ -404,6 +463,62 @@ const REQUIRED_PLAN_BY_CAPABILITY: Partial<Record<keyof ShopCapabilities, ShopPl
 
 function cloneHours(hours: Record<string, BusinessHoursEntry>) {
   return JSON.parse(JSON.stringify(hours)) as Record<string, BusinessHoursEntry>;
+}
+
+function clientId(prefix: string) {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function catalogFromLegacyServices(services: ServiceItem[], shopId = ''): ShopServiceCatalog {
+  const categoryId = clientId('service-category');
+  return {
+    categories: services.length
+      ? [{ id: categoryId, shopId, name: 'General Services', description: null, sortOrder: 0, active: true }]
+      : [],
+    services: services
+      .filter((service) => service.name.trim().length > 0)
+      .map((service, index) => ({
+        id: clientId('service'),
+        shopId,
+        categoryId,
+        name: service.name.trim(),
+        description: null,
+        durationMinutes: service.duration_min || 60,
+        priceAmount: Number.isFinite(service.price) ? service.price : 0,
+        priceCurrency: 'USD',
+        priceType: service.price > 0 ? 'fixed' : 'varies',
+        bookable: true,
+        active: true,
+        sortOrder: index,
+        aliases: [],
+        bookingNotes: null,
+      })),
+  };
+}
+
+function ensureEditableCatalog(catalog: ShopServiceCatalog, shopId = ''): ShopServiceCatalog {
+  if (catalog.categories.length > 0) return catalog;
+  return {
+    categories: [{ id: clientId('service-category'), shopId, name: 'General Services', description: null, sortOrder: 0, active: true }],
+    services: catalog.services,
+  };
+}
+
+function legacyServicesFromCatalog(catalog: ShopServiceCatalog): ServiceItem[] {
+  const categoryOrder = new Map(catalog.categories.map((category) => [category.id, category.sortOrder]));
+  return catalog.services
+    .filter((service) => service.active !== false && service.name.trim())
+    .sort((a, b) => {
+      const categoryDiff = (categoryOrder.get(a.categoryId ?? '') ?? 0) - (categoryOrder.get(b.categoryId ?? '') ?? 0);
+      if (categoryDiff !== 0) return categoryDiff;
+      return a.sortOrder - b.sortOrder;
+    })
+    .map((service) => ({
+      name: service.name,
+      duration_min: service.durationMinutes ?? 60,
+      price: service.priceAmount ?? 0,
+    }));
 }
 
 function normalizeGreeting(template: string, shopName: string) {
@@ -423,12 +538,14 @@ function buildInitialState(shop: ShopSettings): SettingsState {
     cancel_policy: shop.cancel_policy,
     promotions: shop.promotions ?? '',
     services: shop.services,
+    service_catalog: ensureEditableCatalog(shop.service_catalog ?? catalogFromLegacyServices(shop.services, shop.id), shop.id),
     staff: shop.staff ?? [],
     faqs: shop.faqs ?? [],
     hours: cloneHours(shop.hours),
     ai_voice: shop.ai_voice ?? 'Aoede',
     ai_welcome_message: shop.ai_welcome_message ?? normalizeGreeting(AI_GREETING_PRESETS[0], shop.name),
     ai_custom_instructions: shop.ai_custom_instructions ?? '',
+    languages: normalizeUserLanguages(shop.languages),
     allow_transfers: shop.allow_transfers,
     allow_callbacks: shop.allow_callbacks,
     send_reminder_sms: shop.send_reminder_sms,
@@ -440,6 +557,7 @@ function buildInitialState(shop: ShopSettings): SettingsState {
 const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   id: 'loading',
   name: 'Your business',
+  vertical: null,
   phone_number: '',
   user_name: '',
   user_phone: '',
@@ -447,6 +565,7 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   address: '',
   timezone: 'America/Los_Angeles',
   services: [],
+  service_catalog: { categories: [], services: [] },
   staff: [],
   faqs: [],
   hours: cloneHours(HOURS_PRESETS[0]?.hours ?? {}),
@@ -457,6 +576,7 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   ai_voice: 'Aoede',
   ai_welcome_message: normalizeGreeting(AI_GREETING_PRESETS[0], 'Your business'),
   ai_custom_instructions: '',
+  languages: ['en'],
   allow_transfers: false,
   allow_callbacks: true,
   send_reminder_sms: false,
@@ -528,6 +648,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
 
   const [shop, setShop] = useState<ShopSettings | null>(null);
   const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(null);
+  const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(false);
   const [form, setForm] = useState<SettingsState | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -592,6 +713,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
         setShop(nextShop);
         setVagaroBookingUrl(nextShop.booking_url ?? '');
         setCapabilities(body.capabilities);
+        setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
         const nextState = buildInitialState(nextShop);
         setForm(nextState);
         setCancelPreset(getPresetMatch(nextState.cancel_policy, CANCEL_POLICY_PRESETS));
@@ -824,6 +946,11 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
   const effectiveShop = shop ?? DEFAULT_SETTINGS_SHOP;
   const currentCapabilities = capabilities ?? DEFAULT_SETTINGS_CAPABILITIES;
   const currentForm = form ?? DEFAULT_SETTINGS_STATE;
+  const ownerTransferUx = getOwnerTransferPlanUx(effectiveShop.plan, {
+    edit_transfer_settings: currentCapabilities.edit_transfer_settings,
+  });
+  const bilingualAnsweringUx = getBilingualAnsweringPlanUx(effectiveShop.plan);
+  const returningCallerNotesUx = getReturningCallerNotesPlanUx(effectiveShop.plan);
 
   const serviceChoices = useMemo(() => {
     const selected = new Map(currentForm.services.map((item) => [item.name, item]));
@@ -883,6 +1010,113 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
     );
   }
 
+  function addLegacyService() {
+    patchState('services', [...currentForm.services, { name: '', duration_min: 60, price: 0 }]);
+  }
+
+  function updateLegacyService(index: number, patch: Partial<ServiceItem>) {
+    patchState(
+      'services',
+      currentForm.services.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
+  }
+
+  function removeLegacyService(index: number) {
+    patchState('services', currentForm.services.filter((_, itemIndex) => itemIndex !== index));
+  }
+
+  function patchServiceCatalog(nextCatalog: ShopServiceCatalog) {
+    patchState('service_catalog', nextCatalog);
+    patchState('services', legacyServicesFromCatalog(nextCatalog));
+  }
+
+  function addServiceGroup(name = 'New service group') {
+    const next = ensureEditableCatalog(currentForm.service_catalog, effectiveShop.id);
+    patchServiceCatalog({
+      ...next,
+      categories: [
+        ...next.categories,
+        {
+          id: clientId('service-category'),
+          shopId: effectiveShop.id,
+          name,
+          description: null,
+          sortOrder: next.categories.length,
+          active: true,
+        },
+      ],
+    });
+  }
+
+  function updateServiceGroup(categoryId: string, patch: Partial<ServiceCategory>) {
+    patchServiceCatalog({
+      ...currentForm.service_catalog,
+      categories: currentForm.service_catalog.categories.map((category) =>
+        category.id === categoryId ? { ...category, ...patch } : category,
+      ),
+    });
+  }
+
+  function addServiceToGroup(categoryId: string) {
+    const groupCount = currentForm.service_catalog.services.filter((service) => service.categoryId === categoryId).length;
+    patchServiceCatalog({
+      ...currentForm.service_catalog,
+      services: [
+        ...currentForm.service_catalog.services,
+        {
+          id: clientId('service'),
+          shopId: effectiveShop.id,
+          categoryId,
+          name: '',
+          description: null,
+          durationMinutes: 60,
+          priceAmount: 0,
+          priceCurrency: 'USD',
+          priceType: 'varies',
+          bookable: true,
+          active: true,
+          sortOrder: groupCount,
+          aliases: [],
+          bookingNotes: null,
+        },
+      ],
+    });
+  }
+
+  function updateCatalogService(serviceId: string, patch: Partial<ShopService>) {
+    patchServiceCatalog({
+      ...currentForm.service_catalog,
+      services: currentForm.service_catalog.services.map((service) =>
+        service.id === serviceId ? { ...service, ...patch } : service,
+      ),
+    });
+  }
+
+  function applySuggestedGroups() {
+    const examples = SERVICE_GROUP_EXAMPLES[effectiveShop.vertical ?? ''] ?? [];
+    const existing = new Set(currentForm.service_catalog.categories.map((category) => category.name.trim().toLowerCase()));
+    const toAdd = examples.filter((name) => !existing.has(name.toLowerCase()));
+    if (toAdd.length === 0) {
+      setStatus('Suggested groups are already added.');
+      return;
+    }
+    const next = ensureEditableCatalog(currentForm.service_catalog, effectiveShop.id);
+    patchServiceCatalog({
+      ...next,
+      categories: [
+        ...next.categories,
+        ...toAdd.map((name, index) => ({
+          id: clientId('service-category'),
+          shopId: effectiveShop.id,
+          name,
+          description: null,
+          sortOrder: next.categories.length + index,
+          active: true,
+        })),
+      ],
+    });
+  }
+
   function updateStaff(index: number, patch: Partial<StaffMember>) {
     patchState(
       'staff',
@@ -895,6 +1129,13 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
       'faqs',
       currentForm.faqs.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
     );
+  }
+
+  function toggleLanguage(language: string, checked: boolean) {
+    const next = new Set(normalizeUserLanguages(currentForm.languages));
+    if (checked) next.add(language);
+    else if (language !== 'en') next.delete(language);
+    patchState('languages', normalizeUserLanguages(Array.from(next)));
   }
 
   function updateHours(day: (typeof DAY_ORDER)[number], next: BusinessHoursEntry) {
@@ -927,6 +1168,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
       const nextShop = body.shop;
       setShop(nextShop);
       setCapabilities(body.capabilities);
+      setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
       const nextState = buildInitialState(nextShop);
       setForm(nextState);
       setCancelPreset(getPresetMatch(nextState.cancel_policy, CANCEL_POLICY_PRESETS));
@@ -1727,68 +1969,208 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void commitSettingsPatch('services', { services: currentForm.services });
+                  void commitSettingsPatch(
+                    'services',
+                    serviceCatalogEnabled
+                      ? { service_catalog: currentForm.service_catalog }
+                      : {
+                          services: currentForm.services
+                            .filter((service) => service.name.trim().length > 0)
+                            .map((service) => ({
+                              name: service.name.trim(),
+                              duration_min: Number.isFinite(service.duration_min) && service.duration_min > 0 ? service.duration_min : 60,
+                              price: Number.isFinite(service.price) && service.price > 0 ? service.price : 0,
+                            })),
+                        },
+                  );
                 }}
               >
                 <div className="card-section">
-                  <p className="sh-catalog-intro">Choose services from the catalog, then set duration and price for each active offering.</p>
-                  <div className="sh-catalog-grid">
-                    {serviceChoices.map((service) => (
-                      <div key={service.key} className={`sh-catalog-card ${service.selected ? 'selected' : ''}`}>
-                        <div className="sh-catalog-top">
-                          <div>
-                            <h3 className="sh-catalog-name">{service.name}</h3>
-                            <p className="sh-catalog-desc">{service.description}</p>
-                          </div>
-                          <button
-                            type="button"
-                            className={`sh-catalog-action ${service.selected ? '' : 'primary'}`}
-                            onClick={() => toggleService(service)}
-                          >
-                            {service.selected ? 'Remove' : 'Add'}
-                          </button>
+                  {!serviceCatalogEnabled ? (
+                    <>
+                      <div className="service-catalog-heading">
+                        <div>
+                          <h3>Services customers ask about</h3>
+                          <p className="sh-catalog-intro">
+                            Add the services callers ask about most. Grouped service editing will appear after service catalog migration is enabled.
+                          </p>
                         </div>
-                        <div className="sh-catalog-meta">
-                          <span className={`sh-catalog-badge ${service.selected ? '' : 'off'}`}>{service.selected ? 'Active' : 'Not offered'}</span>
-                        </div>
+                        <button type="button" className="btn" onClick={addLegacyService}>
+                          Add service
+                        </button>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="sh-active-section">
-                    <div className="sh-active-head">
-                      <p className="sh-active-label">Active services</p>
-                      <p className="sh-active-hint">
-                        {currentForm.services.length > 0 ? `${currentForm.services.length} selected · shown to callers when booking` : 'Add at least one service to keep voice bookings aligned with your real menu.'}
-                      </p>
-                    </div>
-                    {currentForm.services.length > 0 ? (
-                      <div className="sh-active-table" role="region" aria-label="Configure duration and price for active services">
-                        <div className="sh-active-thead" aria-hidden="true">
-                          <span>Service</span>
-                          <span>Duration</span>
-                          <span>Price</span>
+                      {currentForm.services.length === 0 ? (
+                        <div className="sh-empty service-catalog-empty">
+                          Add the services customers usually ask about on the phone, like Gel Manicure, Deluxe Pedicure, Balayage, or Botox Consultation.
                         </div>
-                        {currentForm.services.map((service, svcIndex) => (
-                          <div key={service.name} className="sh-active-row">
-                            <div className="sh-active-service">{service.name}</div>
-                            <div className="small-field">
-                              <label htmlFor={`svc-dur-${svcIndex}`}>Duration</label>
-                              <select id={`svc-dur-${svcIndex}`} value={String(service.duration_min)} onChange={(event) => updateService(service.name, { duration_min: Number(event.target.value) })}>
-                                {[15, 30, 45, 60, 75, 90, 120, 150].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
-                              </select>
+                      ) : null}
+                      <div className="service-group-list">
+                        {currentForm.services.map((service, index) => (
+                          <div key={`${service.name || 'service'}-${index}`} className="service-item-card">
+                            <div className="service-item-head">
+                              <div className="field">
+                                <label>Service name</label>
+                                <input value={service.name} onChange={(event) => updateLegacyService(index, { name: event.target.value })} placeholder="Gel Manicure" />
+                              </div>
+                              <div className="field">
+                                <label>Duration</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={service.duration_min || ''}
+                                  onChange={(event) => updateLegacyService(index, { duration_min: event.target.value === '' ? 0 : Number(event.target.value) })}
+                                  placeholder="60"
+                                />
+                              </div>
+                              <div className="field">
+                                <label>Price</label>
+                                <input type="number" min={0} value={service.price} onChange={(event) => updateLegacyService(index, { price: Number(event.target.value) })} />
+                              </div>
                             </div>
-                            <div className="small-field">
-                              <label htmlFor={`svc-price-${svcIndex}`}>Price</label>
-                              <input id={`svc-price-${svcIndex}`} type="number" min={0} value={service.price} onChange={(event) => updateService(service.name, { price: Number(event.target.value) })} />
-                            </div>
+                            <button type="button" className="subtle-link" onClick={() => removeLegacyService(index)}>
+                              Remove service
+                            </button>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <div className="sh-empty">Pick at least one service so availability checks and voice bookings stay consistent.</div>
-                    )}
+                    </>
+                  ) : (
+                    <>
+                  <div className="service-catalog-heading">
+                    <div>
+                      <h3>Services customers ask about</h3>
+                      <p className="sh-catalog-intro">
+                        Group your services so the AI can answer questions naturally and ask the right follow-up questions.
+                      </p>
+                    </div>
+                    <div className="service-catalog-actions">
+                      <button type="button" className="btn" onClick={() => applySuggestedGroups()}>
+                        Add suggested groups
+                      </button>
+                      <button type="button" className="btn" onClick={() => addServiceGroup()}>
+                        Add service group
+                      </button>
+                    </div>
                   </div>
+
+                  {currentForm.service_catalog.services.length === 0 ? (
+                    <div className="sh-empty service-catalog-empty">
+                      Add the services customers usually ask about on the phone, like Gel Manicure, Deluxe Pedicure, Balayage, or Botox Consultation.
+                    </div>
+                  ) : null}
+
+                  <div className="service-group-list">
+                    {ensureEditableCatalog(currentForm.service_catalog, effectiveShop.id).categories
+                      .sort((a, b) => a.sortOrder - b.sortOrder)
+                      .map((category) => {
+                        const groupServices = currentForm.service_catalog.services
+                          .filter((service) => service.categoryId === category.id)
+                          .sort((a, b) => a.sortOrder - b.sortOrder);
+                        return (
+                          <details key={category.id} className="service-group-card" open>
+                            <summary>
+                              <div>
+                                <strong>{category.name || 'Service group'}</strong>
+                                <span>{groupServices.length} services</span>
+                              </div>
+                            </summary>
+                            <div className="service-group-body">
+                              <div className="form-grid">
+                                <div className="field">
+                                  <label>Service group</label>
+                                  <input value={category.name} onChange={(event) => updateServiceGroup(category.id, { name: event.target.value })} />
+                                </div>
+                                <div className="field">
+                                  <label>Group description</label>
+                                  <input
+                                    value={category.description ?? ''}
+                                    onChange={(event) => updateServiceGroup(category.id, { description: event.target.value || null })}
+                                    placeholder="Optional context for callers"
+                                  />
+                                </div>
+                              </div>
+
+                              {groupServices.length === 0 ? (
+                                <div className="sh-empty">No services in this group yet.</div>
+                              ) : null}
+                              {groupServices.map((service) => (
+                                <div key={service.id} className={`service-item-card ${service.active === false ? 'archived' : ''}`}>
+                                  <div className="service-item-head">
+                                    <div className="field">
+                                      <label>Service name</label>
+                                      <input value={service.name} onChange={(event) => updateCatalogService(service.id, { name: event.target.value })} placeholder="Gel Manicure" />
+                                    </div>
+                                    <div className="field">
+                                      <label>Move to group</label>
+                                      <select value={service.categoryId ?? ''} onChange={(event) => updateCatalogService(service.id, { categoryId: event.target.value || null })}>
+                                        {currentForm.service_catalog.categories.map((item) => (
+                                          <option key={item.id} value={item.id}>{item.name}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <div className="form-grid">
+                                    <div className="field">
+                                      <label>Description</label>
+                                      <input value={service.description ?? ''} onChange={(event) => updateCatalogService(service.id, { description: event.target.value || null })} placeholder="Optional caller-facing details" />
+                                    </div>
+                                    <div className="field">
+                                      <label>Duration</label>
+                                      <select value={String(service.durationMinutes ?? 60)} onChange={(event) => updateCatalogService(service.id, { durationMinutes: Number(event.target.value) })}>
+                                        {[15, 30, 45, 60, 75, 90, 120, 150, 180].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
+                                      </select>
+                                    </div>
+                                    <div className="field">
+                                      <label>Price type</label>
+                                      <select value={service.priceType} onChange={(event) => updateCatalogService(service.id, { priceType: event.target.value as ServicePriceType })}>
+                                        {PRICE_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                      </select>
+                                    </div>
+                                    <div className="field">
+                                      <label>Price</label>
+                                      <input type="number" min={0} value={service.priceAmount ?? 0} onChange={(event) => updateCatalogService(service.id, { priceAmount: Number(event.target.value) })} disabled={service.priceType === 'consultation' || service.priceType === 'varies'} />
+                                    </div>
+                                  </div>
+                                  <div className="field">
+                                    <label>Aliases / other names customers use</label>
+                                    <input
+                                      value={service.aliases.join(', ')}
+                                      onChange={(event) => updateCatalogService(service.id, { aliases: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })}
+                                      placeholder="gel mani, shellac"
+                                    />
+                                  </div>
+                                  <div className="field">
+                                    <label>Booking notes</label>
+                                    <textarea
+                                      value={service.bookingNotes ?? ''}
+                                      onChange={(event) => updateCatalogService(service.id, { bookingNotes: event.target.value || null })}
+                                      placeholder="Anything the AI should know before capturing this request."
+                                    />
+                                  </div>
+                                  <div className="service-item-footer">
+                                    <label className="inline-check">
+                                      <input type="checkbox" checked={service.bookable} onChange={(event) => updateCatalogService(service.id, { bookable: event.target.checked })} />
+                                      Bookable by request
+                                    </label>
+                                    <button type="button" className="subtle-link" onClick={() => updateCatalogService(service.id, { active: service.active === false })}>
+                                      {service.active === false ? 'Restore service' : 'Archive service'}
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                              <button type="button" className="add-service-btn" onClick={() => addServiceToGroup(category.id)}>
+                                + Add service in {category.name || 'this group'}
+                              </button>
+                            </div>
+                          </details>
+                        );
+                      })}
+                  </div>
+                  <div className="service-catalog-note">
+                    These services help RingBooker answer caller questions and capture booking requests. They do not turn on direct booking integrations by themselves.
+                  </div>
+                    </>
+                  )}
                 </div>
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
@@ -1891,6 +2273,13 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                   <div>
                     <h3>Staff / Technicians</h3>
                     <p className="sub">Add approved staff names, specialties, and notes so RingBooker does not invent technician details.</p>
+                    <p className="sub" style={{ marginTop: 6 }}>
+                      {effectiveShop.plan === 'starter'
+                        ? 'Staff details stay editable on Starter. Returning caller preferred-provider memory is available on Professional.'
+                        : effectiveShop.plan === 'enterprise'
+                          ? 'Custom accounts can use staff knowledge with managed routing and provider rules.'
+                          : 'Professional can use returning caller notes to remember preferred providers when caller history is available.'}
+                    </p>
                   </div>
                   <button type="button" className="btn" onClick={() => patchState('staff', [...currentForm.staff, emptyStaffMember()])}>
                     Add staff
@@ -1987,21 +2376,46 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void commitSettingsPatch('call-handling', {
-                    allow_transfers: currentForm.allow_transfers,
+                  const patch: Record<string, unknown> = {
                     allow_callbacks: currentForm.allow_callbacks,
-                  });
+                  };
+                  if (!ownerTransferUx.locked) patch.allow_transfers = currentForm.allow_transfers;
+                  void commitSettingsPatch('call-handling', patch);
                 }}
               >
                 <div className="switch-list">
-                  <div className="switch-row">
-                    <div className="switch-copy"><h4>Allow transfers</h4><p>Let the AI hand urgent or frustrated callers to your salon line.</p></div>
-                    <div className="switch-stack"><button type="button" className={`switch ${currentForm.allow_transfers ? 'on' : ''}`} onClick={() => patchState('allow_transfers', !currentForm.allow_transfers)}><span className="sr-only">Toggle transfers</span></button></div>
+                  <div className={`switch-row ${ownerTransferUx.locked ? 'locked' : ''}`}>
+                    <div className="switch-copy">
+                      <h4>{ownerTransferUx.title}</h4>
+                      <p>{ownerTransferUx.description}</p>
+                      {ownerTransferUx.locked ? <span className="lock-copy">{ownerTransferUx.badge}</span> : null}
+                    </div>
+                    <div className="switch-stack">
+                      <button
+                        type="button"
+                        className={`switch ${currentForm.allow_transfers && !ownerTransferUx.locked ? 'on' : ''} ${ownerTransferUx.locked ? 'locked' : ''}`}
+                        disabled={ownerTransferUx.locked}
+                        aria-disabled={ownerTransferUx.locked}
+                        onClick={() => {
+                          if (ownerTransferUx.locked) return;
+                          patchState('allow_transfers', !currentForm.allow_transfers);
+                        }}
+                      >
+                        <span className="sr-only">{ownerTransferUx.locked ? 'Owner transfer is locked' : 'Toggle transfers'}</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Offer callbacks</h4><p>When the team is busy, the AI can queue a callback instead of losing the lead.</p></div>
                     <div className="switch-stack"><button type="button" className={`switch ${currentForm.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !currentForm.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>
                   </div>
+                </div>
+                <div className={`option-card ${returningCallerNotesUx.locked ? 'locked' : ''}`} style={{ marginTop: 16 }}>
+                  <div className="hint-row">
+                    <strong className="option-title">{returningCallerNotesUx.title}</strong>
+                    <span className={`tag ${returningCallerNotesUx.locked ? 'orange' : 'green'}`}>{returningCallerNotesUx.badge}</span>
+                  </div>
+                  <p className="sub" style={{ marginTop: 8 }}>{returningCallerNotesUx.description}</p>
                 </div>
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
@@ -2016,11 +2430,15 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void commitSettingsPatch('ai-voice', {
+                  const patch: Record<string, unknown> = {
                     ai_voice: currentForm.ai_voice || null,
                     ai_welcome_message: currentForm.ai_welcome_message.trim() ? currentForm.ai_welcome_message : null,
                     ai_custom_instructions: currentForm.ai_custom_instructions.trim() ? currentForm.ai_custom_instructions : null,
-                  });
+                  };
+                  if (effectiveShop.plan === 'professional') {
+                    patch.languages = normalizeUserLanguages(currentForm.languages);
+                  }
+                  void commitSettingsPatch('ai-voice', patch);
                 }}
               >
                 <div className="card-section">
@@ -2063,6 +2481,41 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     </div>
                   </div>
 
+                  <div className={`option-card ${bilingualAnsweringUx.locked ? 'locked' : ''}`}>
+                    <div className="hint-row">
+                      <strong className="option-title">{bilingualAnsweringUx.title}</strong>
+                      <span className={`tag ${bilingualAnsweringUx.locked ? 'orange' : effectiveShop.plan === 'enterprise' ? 'purple' : 'green'}`}>
+                        {bilingualAnsweringUx.badge}
+                      </span>
+                    </div>
+                    <p className="sub" style={{ marginTop: 8 }}>{bilingualAnsweringUx.description}</p>
+                    {effectiveShop.plan === 'professional' ? (
+                      <div className="preset-pills" style={{ marginTop: 12 }}>
+                        {USER_LANGUAGE_OPTIONS.map((language) => (
+                          <label key={language.code} className={`preset-pill ${currentForm.languages.includes(language.code) ? 'active' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={currentForm.languages.includes(language.code)}
+                              disabled={language.code === 'en'}
+                              onChange={(event) => toggleLanguage(language.code, event.target.checked)}
+                              style={{ marginRight: 8 }}
+                            />
+                            {language.label}
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="sub" style={{ marginTop: 8 }}>
+                        Current setup language: {normalizeUserLanguages(currentForm.languages).map(languageDisplayName).join(', ')}
+                      </p>
+                    )}
+                    {effectiveShop.plan === 'enterprise' ? (
+                      <a className="btn" href="/contact?topic=implementation" style={{ marginTop: 12 }}>
+                        Contact implementation support
+                      </a>
+                    ) : null}
+                  </div>
+
                   <div className="field">
                     <label>Advanced AI instructions</label>
                     <textarea value={currentForm.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise businesses." />
@@ -2071,7 +2524,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 </div>
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
-                    {savingSection === 'ai-voice' ? 'Saving...' : 'Save AI voice & greeting'}
+                    {savingSection === 'ai-voice' ? 'Saving...' : effectiveShop.plan === 'professional' ? 'Save AI voice & language' : 'Save AI voice & greeting'}
                   </button>
                 </div>
               </form>

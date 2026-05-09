@@ -31,6 +31,52 @@ beforeEach(() => {
   __resetRateLimitMemoryStoreForTests();
 });
 
+function buildBillingTestApp(deps: {
+  billingCustomersRepository: InMemoryBillingCustomersRepository;
+  billingSubscriptionsRepository: InMemoryBillingSubscriptionsRepository;
+  shopAccessStatesRepository: InMemoryShopAccessStatesRepository;
+  shopsRepository: InMemoryShopsRepository;
+  billingProvider?: PaddleBillingProvider;
+}) {
+  return createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    billingCustomersRepository: deps.billingCustomersRepository,
+    billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+    shopAccessStatesRepository: deps.shopAccessStatesRepository,
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository: deps.shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+    billingProvider:
+      deps.billingProvider ??
+      new PaddleBillingProvider({
+        billingCustomersRepository: deps.billingCustomersRepository,
+        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+        shopAccessStatesRepository: deps.shopAccessStatesRepository,
+        shopsRepository: deps.shopsRepository,
+      }),
+  });
+}
+
+async function loginBillingUser(app: ReturnType<typeof createBackendApp>, email = process.env.USER_AUTH_EMAIL ?? 'billing-user@ringbooker.local') {
+  const login = await app.request('/auth/user/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    body: JSON.stringify({
+      email,
+      password: 'change_me_user_password',
+    }),
+  });
+  assert.equal(login.status, 200);
+  const cookie = login.headers.get('set-cookie')?.split(';')[0];
+  assert.ok(cookie);
+  return cookie;
+}
+
 test('user billing and admin billing endpoints return normalized billing state', async () => {
   const billingCustomersRepository = new InMemoryBillingCustomersRepository();
   const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
@@ -125,6 +171,136 @@ test('user billing and admin billing endpoints return normalized billing state',
   assert.equal(adminBillingBody.metrics.activeSubscriptions >= 1, true);
   assert.equal(adminBillingBody.metrics.mrr >= 149, true);
   assert.equal(adminBillingBody.subscriptions.some((item) => item.shopId === 'demo-shop'), true);
+});
+
+test('manage billing feature flag disables GET and POST without calling Paddle or mutating DB', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    BILLING_MANAGE_ENABLED: 'false',
+    USER_AUTH_EMAIL: 'billing-manage-disabled-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+    USER_AUTH_SHOP_ID: 'demo-shop',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const before = await billingSubscriptionsRepository.findCurrentByShopId('demo-shop');
+  let paddleCalled = false;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    paddleCalled = true;
+    return new Response('{}', { status: 500, headers: { 'content-type': 'application/json' } });
+  }) as typeof fetch;
+
+  try {
+    const app = buildBillingTestApp({ billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository, shopsRepository });
+    const cookie = await loginBillingUser(app, 'billing-manage-disabled-user@ringbooker.local');
+
+    const billing = await app.request('/user/billing', { headers: { cookie } });
+    assert.equal(billing.status, 200);
+    const billingBody = (await billing.json()) as {
+      billing: { checkoutAvailable?: boolean; manageBillingAvailable?: boolean; manageBillingDisabledReason?: string | null };
+    };
+    assert.equal(billingBody.billing.checkoutAvailable, true);
+    assert.equal(billingBody.billing.manageBillingAvailable, false);
+    assert.equal(billingBody.billing.manageBillingDisabledReason, 'billing_manage_disabled');
+
+    const manage = await app.request('/user/billing/manage', {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({}),
+    });
+    assert.equal(manage.status, 503);
+    assert.deepEqual(await manage.json(), {
+      ok: false,
+      error: 'billing_manage_disabled',
+      message: 'Billing management is temporarily unavailable. Contact support if you need help updating payment details or managing your subscription.',
+    });
+    assert.equal(paddleCalled, false);
+    const after = await billingSubscriptionsRepository.findCurrentByShopId('demo-shop');
+    assert.deepEqual(after, before);
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({
+      BILLING_MANAGE_ENABLED: 'true',
+      USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+      USER_AUTH_SHOP_ID: 'demo-shop',
+    });
+    resetEnvCacheForTests();
+  }
+});
+
+test('trialing self-serve user can open Paddle-hosted manage billing when flag is enabled', async () => {
+  applyRequiredTestEnv({
+    BILLING_MANAGE_ENABLED: 'true',
+    USER_AUTH_EMAIL: 'billing-manage-trialing-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Trialing Manage Billing Salon',
+    phone_number: '+17145551280',
+    user_phone: '+17145551281',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+  await billingCustomersRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_trialing_manage',
+    email: 'billing-manage-trialing-user@ringbooker.local',
+  });
+  await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerSubscriptionId: 'sub_trialing_manage',
+    providerCustomerId: 'ctm_trialing_manage',
+    plan: 'starter',
+    status: 'trialing',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    paymentMethodStatus: 'valid',
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: shop.id });
+  resetEnvCacheForTests();
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({
+    data: {
+      id: 'cpls_trialing_manage',
+      customer_id: 'ctm_trialing_manage',
+      urls: { subscriptions: [{ subscription_id: 'sub_trialing_manage', overview: 'https://customer-portal.paddle.com/session/trialing' }] },
+    },
+  }), { status: 200, headers: { 'content-type': 'application/json' } })) as typeof fetch;
+
+  try {
+    const app = buildBillingTestApp({ billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository, shopsRepository });
+    const cookie = await loginBillingUser(app, 'billing-manage-trialing-user@ringbooker.local');
+    const manage = await app.request('/user/billing/manage', {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({}),
+    });
+    assert.equal(manage.status, 200);
+    const body = (await manage.json()) as { manageUrl?: string };
+    assert.equal(body.manageUrl, 'https://customer-portal.paddle.com/session/trialing');
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({ USER_AUTH_EMAIL: 'billing-user@ringbooker.local', USER_AUTH_SHOP_ID: 'demo-shop' });
+    resetEnvCacheForTests();
+  }
 });
 
 test('active self-serve user can open Paddle-hosted manage billing without mutating billing state', async () => {
@@ -452,6 +628,365 @@ test('manage billing rejects enterprise missing provider ids and Paddle failures
   }
 });
 
+test('Starter active user can request Professional upgrade without local plan mutation', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    PADDLE_ENV: 'sandbox',
+    USER_AUTH_EMAIL: 'billing-upgrade-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+    PADDLE_PRICE_PROFESSIONAL_MONTHLY: 'pri_test_professional_monthly_upgrade_api',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Upgrade Starter Salon',
+    phone_number: '+17145551230',
+    user_phone: '+17145551231',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+  await billingCustomersRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_upgrade_api',
+    email: 'billing-upgrade-user@ringbooker.local',
+  });
+  const subscription = await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerSubscriptionId: 'sub_upgrade_api',
+    providerCustomerId: 'ctm_upgrade_api',
+    providerPriceId: process.env.PADDLE_PRICE_STARTER_MONTHLY,
+    plan: 'starter',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    paymentMethodStatus: 'valid',
+  });
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: shop.id });
+  resetEnvCacheForTests();
+
+  const originalFetch = globalThis.fetch;
+  const paddleRequests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    paddleRequests.push({
+      url: String(input),
+      body: JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>,
+    });
+    return new Response(JSON.stringify({ data: { id: 'sub_upgrade_api', customer_id: 'ctm_upgrade_api' } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    const app = buildBillingTestApp({ billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository, shopsRepository });
+    const cookie = await loginBillingUser(app, 'billing-upgrade-user@ringbooker.local');
+
+    const upgrade = await app.request('/user/billing/upgrade', {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ target_plan: 'professional', billing_interval: 'monthly' }),
+    });
+    assert.equal(upgrade.status, 200);
+    assert.deepEqual(await upgrade.json(), {
+      ok: true,
+      status: 'pending',
+      message: 'Your upgrade is being processed. Professional features will unlock after billing is confirmed.',
+    });
+    assert.equal(paddleRequests[0]?.url, 'https://sandbox-api.paddle.com/subscriptions/sub_upgrade_api');
+    assert.deepEqual(paddleRequests[0]?.body, {
+      items: [{ price_id: 'pri_test_professional_monthly_upgrade_api', quantity: 1 }],
+      proration_billing_mode: 'prorated_next_billing_period',
+      on_payment_failure: 'prevent_change',
+    });
+
+    const afterSubscription = await billingSubscriptionsRepository.findById(subscription.id);
+    const afterShop = await shopsRepository.findById(shop.id);
+    assert.equal(afterSubscription?.plan, 'starter');
+    assert.equal(afterShop?.plan, 'starter');
+    assert.equal((afterSubscription?.metadata?.pending_plan_upgrade as { targetPlan?: string } | undefined)?.targetPlan, 'professional');
+
+    const settings = await app.request('/user/settings', { headers: { cookie } });
+    const settingsBody = (await settings.json()) as { capabilities: { edit_transfer_settings: boolean; edit_reminder_sms: boolean } };
+    assert.equal(settingsBody.capabilities.edit_transfer_settings, false);
+    assert.equal(settingsBody.capabilities.edit_reminder_sms, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({
+      USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+      USER_AUTH_SHOP_ID: 'demo-shop',
+    });
+    resetEnvCacheForTests();
+  }
+});
+
+test('billing upgrade rejects unauthenticated CSRF invalid payload non-Starter and billing issue states', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    USER_AUTH_EMAIL: 'billing-upgrade-reject-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const starterShop = await shopsRepository.create({
+    name: 'Reject Starter Salon',
+    phone_number: '+17145551240',
+    user_phone: '+17145551241',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+  await billingSubscriptionsRepository.upsert({
+    shopId: starterShop.id,
+    provider: 'paddle',
+    providerSubscriptionId: 'sub_upgrade_reject',
+    providerCustomerId: 'ctm_upgrade_reject',
+    plan: 'starter',
+    status: 'past_due',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    paymentMethodStatus: 'failed',
+  });
+  const enterpriseShop = await shopsRepository.create({
+    name: 'Reject Enterprise Salon',
+    phone_number: '+17145551242',
+    user_phone: '+17145551243',
+    timezone: 'America/Los_Angeles',
+    plan: 'enterprise',
+    active: true,
+  });
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: starterShop.id });
+  resetEnvCacheForTests();
+
+  const app = buildBillingTestApp({ billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository, shopsRepository });
+  const unauthenticated = await app.request('/user/billing/upgrade', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    body: JSON.stringify({ target_plan: 'professional' }),
+  });
+  assert.equal(unauthenticated.status, 401);
+
+  const cookie = await loginBillingUser(app, 'billing-upgrade-reject-user@ringbooker.local');
+  const missingOrigin = await app.request('/user/billing/upgrade', {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ target_plan: 'professional' }),
+  });
+  assert.equal(missingOrigin.status, 403);
+
+  const invalidPayload = await app.request('/user/billing/upgrade', {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    body: JSON.stringify({
+      target_plan: 'enterprise',
+      price_id: 'pri_attacker',
+      provider_subscription_id: 'sub_attacker',
+      returnUrl: 'https://evil.example',
+    }),
+  });
+  assert.equal(invalidPayload.status, 400);
+
+  const pastDue = await app.request('/user/billing/upgrade', {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    body: JSON.stringify({ target_plan: 'professional' }),
+  });
+  assert.equal(pastDue.status, 409);
+  assert.equal((await pastDue.json() as { error: string }).error, 'subscription_not_upgradeable');
+
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: enterpriseShop.id });
+  resetEnvCacheForTests();
+  const enterpriseApp = buildBillingTestApp({ billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository, shopsRepository });
+  const enterpriseCookie = await loginBillingUser(enterpriseApp, 'billing-upgrade-reject-user@ringbooker.local');
+  const enterpriseUpgrade = await enterpriseApp.request('/user/billing/upgrade', {
+    method: 'POST',
+    headers: { cookie: enterpriseCookie, 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    body: JSON.stringify({ target_plan: 'professional' }),
+  });
+  assert.equal(enterpriseUpgrade.status, 409);
+  assert.equal((await enterpriseUpgrade.json() as { error: string }).error, 'current_plan_not_starter');
+
+  applyRequiredTestEnv({
+    USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+    USER_AUTH_SHOP_ID: 'demo-shop',
+  });
+  resetEnvCacheForTests();
+});
+
+test('Paddle upgrade failure does not mutate local plan or pending metadata', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    PADDLE_ENV: 'sandbox',
+    USER_AUTH_EMAIL: 'billing-upgrade-fail-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Upgrade Failure Salon',
+    phone_number: '+17145551250',
+    user_phone: '+17145551251',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+  const subscription = await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerSubscriptionId: 'sub_upgrade_failure',
+    providerCustomerId: 'ctm_upgrade_failure',
+    plan: 'starter',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    paymentMethodStatus: 'valid',
+  });
+  await billingCustomersRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_upgrade_failure',
+    email: 'billing-upgrade-fail-user@ringbooker.local',
+  });
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: shop.id });
+  resetEnvCacheForTests();
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({ error: { code: 'failed' } }), { status: 500 })) as typeof fetch;
+  try {
+    const app = buildBillingTestApp({ billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository, shopsRepository });
+    const cookie = await loginBillingUser(app, 'billing-upgrade-fail-user@ringbooker.local');
+    const upgrade = await app.request('/user/billing/upgrade', {
+      method: 'POST',
+      headers: { cookie, 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({ target_plan: 'professional' }),
+    });
+    assert.equal(upgrade.status, 502);
+    const afterSubscription = await billingSubscriptionsRepository.findById(subscription.id);
+    const afterShop = await shopsRepository.findById(shop.id);
+    assert.equal(afterSubscription?.plan, 'starter');
+    assert.equal(afterShop?.plan, 'starter');
+    assert.equal(afterSubscription?.metadata?.pending_plan_upgrade, undefined);
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({
+      USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+      USER_AUTH_SHOP_ID: 'demo-shop',
+    });
+    resetEnvCacheForTests();
+  }
+});
+
+test('subscription.updated Professional price confirms upgrade and unlocks Professional settings gates', async () => {
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Webhook Upgrade Salon',
+    phone_number: '+17145551260',
+    user_phone: '+17145551261',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+  await billingCustomersRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_webhook_upgrade',
+    email: 'billing-webhook-upgrade-user@ringbooker.local',
+  });
+  const subscription = await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerSubscriptionId: 'sub_webhook_upgrade',
+    providerCustomerId: 'ctm_webhook_upgrade',
+    providerPriceId: process.env.PADDLE_PRICE_STARTER_MONTHLY,
+    plan: 'starter',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    paymentMethodStatus: 'valid',
+    metadata: {
+      pending_plan_upgrade: {
+        targetPlan: 'professional',
+        billingInterval: 'year',
+        requestedAt: '2026-05-09T00:00:00Z',
+      },
+    },
+  });
+  const provider = new PaddleBillingProvider({
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    shopsRepository,
+  });
+
+  const result = await provider.syncWebhookEvent({
+    eventType: 'subscription.updated',
+    payload: {
+      id: 'sub_webhook_upgrade',
+      status: 'active',
+      customer_id: 'ctm_webhook_upgrade',
+      custom_data: { shop_id: shop.id },
+      payment_method_id: 'pm_webhook_upgrade',
+      items: [{ price: { id: process.env.PADDLE_PRICE_PROFESSIONAL_ANNUAL } }],
+      recurring_transaction_details: { interval: 'year' },
+      unit_totals: { total: '149000' },
+      occurred_at: '2026-05-09T01:00:00Z',
+    },
+  });
+  assert.equal(result?.subscription?.plan, 'professional');
+  assert.equal(result?.subscription?.interval, 'year');
+  assert.equal(result?.subscription?.providerPriceId, process.env.PADDLE_PRICE_PROFESSIONAL_ANNUAL);
+
+  const afterShop = await shopsRepository.findById(shop.id);
+  const afterSubscription = await billingSubscriptionsRepository.findById(subscription.id);
+  assert.equal(afterShop?.plan, 'professional');
+  assert.equal(afterSubscription?.plan, 'professional');
+
+  applyRequiredTestEnv({
+    USER_AUTH_EMAIL: 'billing-webhook-upgrade-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+    USER_AUTH_SHOP_ID: shop.id,
+  });
+  resetEnvCacheForTests();
+  const app = buildBillingTestApp({ billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository, shopsRepository, billingProvider: provider });
+  const cookie = await loginBillingUser(app, 'billing-webhook-upgrade-user@ringbooker.local');
+  const settings = await app.request('/user/settings', { headers: { cookie } });
+  const settingsBody = (await settings.json()) as { capabilities: { edit_transfer_settings: boolean; edit_reminder_sms: boolean; edit_review_request_sms: boolean } };
+  assert.equal(settingsBody.capabilities.edit_transfer_settings, true);
+  assert.equal(settingsBody.capabilities.edit_reminder_sms, true);
+  assert.equal(settingsBody.capabilities.edit_review_request_sms, true);
+
+  applyRequiredTestEnv({
+    USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+    USER_AUTH_SHOP_ID: 'demo-shop',
+  });
+  resetEnvCacheForTests();
+});
+
 test('billing checkout endpoint is hidden when BILLING_CHECKOUT_ENABLED is false', async () => {
   applyRequiredTestEnv({
     BILLING_CHECKOUT_ENABLED: 'false',
@@ -744,6 +1279,183 @@ test('billing checkout creates missing internal trial and opens Paddle sandbox c
       quantity: 1,
     });
     assert.equal((await billingSubscriptionsRepository.findCurrentByShopId(shop.id))?.status, 'trialing');
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({
+      USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+      USER_AUTH_SHOP_ID: 'demo-shop',
+    });
+    resetEnvCacheForTests();
+  }
+});
+
+test('billing checkout blocks duplicate checkout when Paddle billing already exists', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    PADDLE_ENV: 'sandbox',
+    USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+    USER_AUTH_SHOP_ID: 'demo-shop',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const originalFetch = globalThis.fetch;
+  let paddleRequestCount = 0;
+  globalThis.fetch = (async () => {
+    paddleRequestCount += 1;
+    return new Response(JSON.stringify({ data: { checkout: { url: 'https://should-not-open.example' } } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      jobsRepository: new InMemoryJobsRepository(),
+      bookingsRepository: new InMemoryBookingsRepository(),
+      billingCustomersRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      callbacksRepository: new InMemoryCallbacksRepository(),
+      shopsRepository,
+      telephonyService: new NoopTelephonyService(),
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      authUsersRepository: new InMemoryAuthUsersRepository(),
+      realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+      billingProvider: new PaddleBillingProvider({
+        billingCustomersRepository,
+        billingSubscriptionsRepository,
+        shopAccessStatesRepository,
+        shopsRepository,
+      }),
+    });
+
+    const login = await app.request('/auth/user/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({
+        email: 'billing-user@ringbooker.local',
+        password: 'change_me_user_password',
+      }),
+    });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get('set-cookie')?.split(';')[0];
+    assert.ok(cookie);
+
+    const checkout = await app.request('/user/billing/checkout', {
+      method: 'POST',
+      headers: {
+        cookie,
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+      },
+      body: JSON.stringify({ billing_interval: 'monthly' }),
+    });
+
+    assert.equal(checkout.status, 409);
+    const body = (await checkout.json()) as { ok: boolean; error: string };
+    assert.equal(body.ok, false);
+    assert.equal(body.error, 'billing_already_started');
+    assert.equal(paddleRequestCount, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('billing checkout blocks duplicate checkout while Paddle webhook is pending', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    PADDLE_ENV: 'sandbox',
+    USER_AUTH_EMAIL: 'billing-pending-paddle-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Pending Paddle Salon',
+    phone_number: '+17145556660',
+    user_phone: '+17145556661',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+  await billingCustomersRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_pending_webhook',
+    email: 'billing-pending-paddle-user@ringbooker.local',
+  });
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: shop.id });
+  resetEnvCacheForTests();
+
+  const originalFetch = globalThis.fetch;
+  let paddleRequestCount = 0;
+  globalThis.fetch = (async () => {
+    paddleRequestCount += 1;
+    return new Response(JSON.stringify({ data: { checkout: { url: 'https://should-not-open.example' } } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+
+  try {
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      jobsRepository: new InMemoryJobsRepository(),
+      bookingsRepository: new InMemoryBookingsRepository(),
+      billingCustomersRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      callbacksRepository: new InMemoryCallbacksRepository(),
+      shopsRepository,
+      telephonyService: new NoopTelephonyService(),
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      authUsersRepository: new InMemoryAuthUsersRepository(),
+      realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+      billingProvider: new PaddleBillingProvider({
+        billingCustomersRepository,
+        billingSubscriptionsRepository,
+        shopAccessStatesRepository,
+        shopsRepository,
+      }),
+    });
+
+    const login = await app.request('/auth/user/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({
+        email: 'billing-pending-paddle-user@ringbooker.local',
+        password: 'change_me_user_password',
+      }),
+    });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get('set-cookie')?.split(';')[0];
+    assert.ok(cookie);
+
+    const checkout = await app.request('/user/billing/checkout', {
+      method: 'POST',
+      headers: {
+        cookie,
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+      },
+      body: JSON.stringify({ billing_interval: 'monthly' }),
+    });
+
+    assert.equal(checkout.status, 409);
+    const body = (await checkout.json()) as { ok: boolean; error: string };
+    assert.equal(body.ok, false);
+    assert.equal(body.error, 'payment_setup_pending');
+    assert.equal(paddleRequestCount, 0);
   } finally {
     globalThis.fetch = originalFetch;
     applyRequiredTestEnv({

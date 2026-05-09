@@ -152,3 +152,72 @@ test('Professional nail salon with en/vi keeps bilingual vertical and runtime bi
   assert.match(prompt, /respond naturally in Vietnamese/i);
   assert.match(prompt, /BILINGUAL WORKFLOW/);
 });
+
+test('Production prompt renders service catalog grouped by service group', () => {
+  const shop = createShop('professional');
+  shop.services = [{ name: 'Legacy Service', duration_min: 30, price: 20 }];
+  shop.service_catalog = {
+    categories: [
+      { id: '11111111-1111-4111-8111-111111111111', shopId: shop.id, name: 'Manicure', sortOrder: 0, active: true },
+      { id: '22222222-2222-4222-8222-222222222222', shopId: shop.id, name: 'Pedicure', sortOrder: 1, active: true },
+    ],
+    services: [
+      {
+        id: '33333333-3333-4333-8333-333333333333',
+        shopId: shop.id,
+        categoryId: '11111111-1111-4111-8111-111111111111',
+        name: 'Gel Manicure',
+        durationMinutes: 45,
+        priceAmount: 45,
+        priceCurrency: 'USD',
+        priceType: 'from',
+        bookable: true,
+        active: true,
+        sortOrder: 0,
+        aliases: ['gel mani', 'shellac'],
+        bookingNotes: 'Popular service',
+        externalProvider: 'square',
+        externalServiceId: 'svc_secret',
+        externalLocationId: 'loc_secret',
+        externalMetadata: { raw: 'secret_payload' },
+      },
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        shopId: shop.id,
+        categoryId: '22222222-2222-4222-8222-222222222222',
+        name: 'Deluxe Pedicure',
+        durationMinutes: 60,
+        priceAmount: null,
+        priceCurrency: 'USD',
+        priceType: 'varies',
+        bookable: false,
+        active: true,
+        sortOrder: 0,
+        aliases: [],
+        bookingNotes: null,
+      },
+    ],
+  };
+
+  const prompt = buildSystemPrompt({
+    shop,
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /SERVICES \/ PRICING:\nManicure:\n- Gel Manicure \| starts at \$45 \| 45 min \| Popular service/);
+  assert.match(prompt, /Customers may call this: gel mani, shellac/);
+  assert.match(prompt, /Pedicure:\n- Deluxe Pedicure \| price varies \| 60 min \| capture request only; do not imply direct booking/);
+  assert.doesNotMatch(prompt, /Legacy Service/);
+  assert.doesNotMatch(prompt, /svc_secret|loc_secret|secret_payload|square/);
+});
+
+test('Production prompt falls back to legacy flat services when no service catalog exists', () => {
+  const prompt = buildSystemPrompt({
+    shop: createShop('professional'),
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /General Services:\n- Haircut \| \$45 \| 45 min/);
+});

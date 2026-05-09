@@ -8,6 +8,8 @@ type BookingRow = {
   customer_phone: string;
   customer_name: string | null;
   service: string;
+  matched_service_id?: string | null;
+  matched_service_confidence?: number | string | null;
   datetime_utc: string;
   timezone: string;
   status: string;
@@ -25,7 +27,7 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     const { data, error } = await this.supabase
       .from('bookings')
       .select(
-        'id,shop_id,customer_phone,customer_name,service,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
+        'id,shop_id,customer_phone,customer_name,service,matched_service_id,matched_service_confidence,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
       )
       .eq('id', bookingId)
       .maybeSingle<BookingRow>();
@@ -41,6 +43,13 @@ export class SupabaseBookingsRepository implements BookingsRepository {
       customerPhone: data.customer_phone,
       customerName: data.customer_name,
       service: data.service,
+      matchedServiceId: data.matched_service_id ?? null,
+      matchedServiceConfidence:
+        typeof data.matched_service_confidence === 'number'
+          ? data.matched_service_confidence
+          : typeof data.matched_service_confidence === 'string'
+            ? Number(data.matched_service_confidence)
+            : null,
       datetimeUtc: data.datetime_utc,
       timezone: data.timezone,
       status: data.status,
@@ -71,7 +80,7 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     let q = this.supabase
       .from('bookings')
       .select(
-        'id,shop_id,customer_phone,customer_name,service,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
+        'id,shop_id,customer_phone,customer_name,service,matched_service_id,matched_service_confidence,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
       )
       .eq('shop_id', shopId);
     if (params?.createdAfter) q = q.gte('created_at', params.createdAfter.toISOString());
@@ -88,6 +97,13 @@ export class SupabaseBookingsRepository implements BookingsRepository {
       customerPhone: item.customer_phone,
       customerName: item.customer_name,
       service: item.service,
+      matchedServiceId: item.matched_service_id ?? null,
+      matchedServiceConfidence:
+        typeof item.matched_service_confidence === 'number'
+          ? item.matched_service_confidence
+          : typeof item.matched_service_confidence === 'string'
+            ? Number(item.matched_service_confidence)
+            : null,
       datetimeUtc: item.datetime_utc,
       timezone: item.timezone,
       status: item.status,
@@ -105,6 +121,8 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     customerPhone: string;
     customerName?: string | null;
     service: string;
+    matchedServiceId?: string | null;
+    matchedServiceConfidence?: number | null;
     datetimeUtc: string;
     timezone: string;
     status: string;
@@ -117,6 +135,8 @@ export class SupabaseBookingsRepository implements BookingsRepository {
       customer_phone: params.customerPhone,
       customer_name: params.customerName ?? null,
       service: params.service,
+      matched_service_id: params.matchedServiceId ?? null,
+      matched_service_confidence: params.matchedServiceConfidence ?? null,
       datetime_utc: params.datetimeUtc,
       timezone: params.timezone,
       status: params.status,
@@ -132,7 +152,7 @@ export class SupabaseBookingsRepository implements BookingsRepository {
       .from('bookings')
       .insert(payload)
       .select(
-        'id,shop_id,customer_phone,customer_name,service,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
+        'id,shop_id,customer_phone,customer_name,service,matched_service_id,matched_service_confidence,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
       )
       .single<BookingRow>();
 
@@ -146,6 +166,13 @@ export class SupabaseBookingsRepository implements BookingsRepository {
       customerPhone: data.customer_phone,
       customerName: data.customer_name,
       service: data.service,
+      matchedServiceId: data.matched_service_id ?? null,
+      matchedServiceConfidence:
+        typeof data.matched_service_confidence === 'number'
+          ? data.matched_service_confidence
+          : typeof data.matched_service_confidence === 'string'
+            ? Number(data.matched_service_confidence)
+            : null,
       datetimeUtc: data.datetime_utc,
       timezone: data.timezone,
       status: data.status,

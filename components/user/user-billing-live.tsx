@@ -12,6 +12,7 @@ import {
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
+import { BILLING_PLAN_CARD_FEATURES, CUSTOM_MANAGED_SETUP_ITEMS } from '@/components/user/user-plan-ux-copy';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type BillingProvider = 'paddle' | 'stripe' | 'manual';
@@ -72,6 +73,13 @@ type UserBillingResponse = {
     canViewInvoicesViaPortal?: boolean;
     canUpdatePaymentMethodViaPortal?: boolean;
     canCancelViaPortal?: boolean;
+    selfServeUpgradeAvailable?: boolean;
+    upgradeDisabledReason?: string | null;
+    pendingPlanUpgrade?: {
+      targetPlan: ShopPlan | null;
+      billingInterval: 'monthly' | 'annual' | null;
+      requestedAt: string | null;
+    } | null;
     billingHistoryLabel?: string;
     forwardingNumber?: string | null;
     usage?: {
@@ -99,32 +107,17 @@ const PLAN_CATALOG: Array<{
   {
     plan: 'starter',
     priceLine: '$79/mo',
-    features: [
-      'AI answers calls 24/7',
-      'Booking + confirmations',
-      '1 number included',
-      'Basic call logs',
-    ],
+    features: BILLING_PLAN_CARD_FEATURES.starter,
   },
   {
     plan: 'professional',
     priceLine: '$149/mo',
-    features: [
-      'Everything in Starter',
-      'Reminder SMS',
-      'Customer memory',
-      'Bilingual summaries',
-    ],
+    features: BILLING_PLAN_CARD_FEATURES.professional,
   },
   {
     plan: 'enterprise',
     priceLine: 'Custom',
-    features: [
-      'Multi-location setup',
-      'Custom integrations',
-      'Higher call volume',
-      'Concierge onboarding',
-    ],
+    features: BILLING_PLAN_CARD_FEATURES.enterprise,
   },
 ];
 
@@ -360,12 +353,21 @@ function checkoutUnavailableCopy(reason?: string | null): string {
   return 'Payment setup is not available for this account yet. Contact support if you are ready to go live.';
 }
 
+function manageBillingUnavailableCopy(reason?: string | null): string {
+  if (reason === 'billing_manage_disabled') {
+    return 'Billing management is temporarily unavailable. Contact support if you need help updating payment details or managing your subscription.';
+  }
+  return 'Billing management is not available right now. Contact support or try again later.';
+}
+
 export function UserBillingLive() {
   const { workspace, setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserBillingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
   const [managingBilling, setManagingBilling] = useState(false);
+  const [upgradingPlan, setUpgradingPlan] = useState<ShopPlan | null>(null);
+  const [upgradePendingMessage, setUpgradePendingMessage] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [billingNotice, setBillingNotice] = useState<BillingNotice>(null);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
@@ -472,6 +474,10 @@ export function UserBillingLive() {
   const usage = billing?.usage ?? null;
   const checkoutAvailable = data?.billing?.checkoutAvailable === true;
   const manageBillingAvailable = data?.billing?.manageBillingAvailable === true;
+  const selfServeUpgradeAvailable = data?.billing?.selfServeUpgradeAvailable === true;
+  const pendingPlanUpgrade = data?.billing?.pendingPlanUpgrade ?? null;
+  const upgradePending =
+    upgradePendingMessage != null || pendingPlanUpgrade?.targetPlan === 'professional';
   const availableBillingIntervals = data?.billing?.availableBillingIntervals ?? ['monthly'];
   const canChooseAnnual = checkoutAvailable && availableBillingIntervals.includes('annual');
   const effectiveBillingInterval =
@@ -561,7 +567,7 @@ export function UserBillingLive() {
 
   async function openManageBilling() {
     if (!manageBillingAvailable) {
-      setCheckoutError('Billing management is not available right now. Contact support or try again later.');
+      setCheckoutError(manageBillingUnavailableCopy(data?.billing?.manageBillingDisabledReason));
       return;
     }
     setManagingBilling(true);
@@ -586,6 +592,43 @@ export function UserBillingLive() {
       setCheckoutError(error instanceof Error ? error.message : 'billing_management_failed');
     } finally {
       setManagingBilling(false);
+    }
+  }
+
+  async function upgradeToProfessional() {
+    if (!selfServeUpgradeAvailable) {
+      setCheckoutError('Plan upgrade is not available right now. Resolve billing or contact support.');
+      return;
+    }
+    setUpgradingPlan('professional');
+    setCheckoutError(null);
+    setUpgradePendingMessage(null);
+    try {
+      const response = await fetch('/api/backend/user/billing/upgrade', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          target_plan: 'professional',
+          billing_interval: effectiveBillingInterval,
+        }),
+      });
+      const body = (await response.json()) as {
+        ok: boolean;
+        status?: string;
+        message?: string;
+        error?: string;
+      };
+      if (!response.ok || !body.ok) {
+        throw new Error(body.message ?? body.error ?? 'Plan upgrade could not start.');
+      }
+      setUpgradePendingMessage(
+        body.message ?? 'Your upgrade is being processed. Professional features will unlock after billing is confirmed.',
+      );
+      await refreshBilling().catch(() => undefined);
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'billing_upgrade_failed');
+    } finally {
+      setUpgradingPlan(null);
     }
   }
 
@@ -659,6 +702,19 @@ export function UserBillingLive() {
                   <section className="billing-alert-strip" style={{ borderColor: '#bfdbfe', background: '#eff6ff', color: '#1e40af' }}>
                     <p>
                       <strong>Billing management closed.</strong> Changes made in billing management may take a minute to appear here.
+                    </p>
+                    <button type="button" className="btn" onClick={() => void refreshBilling()}>
+                      Refresh status
+                    </button>
+                  </section>
+                ) : null}
+
+                {upgradePending ? (
+                  <section className="billing-alert-strip" style={{ borderColor: '#bfdbfe', background: '#eff6ff', color: '#1e40af' }}>
+                    <p>
+                      <strong>Upgrade pending.</strong>{' '}
+                      {upgradePendingMessage ??
+                        'Your upgrade is being processed. Professional features will unlock after billing confirms the change.'}
                     </p>
                     <button type="button" className="btn" onClick={() => void refreshBilling()}>
                       Refresh status
@@ -818,12 +874,19 @@ export function UserBillingLive() {
                         </section>
                       ) : null}
 
-                      {enterpriseApprovalPending ? (
+                      {isEnterprisePlan ? (
                         <section className="card" style={{ marginBottom: 16, borderColor: '#ddd6fe', background: '#faf5ff' }}>
                           <h3 style={{ marginTop: 0 }}>Custom billing is managed by the RingBooker team</h3>
                           <p className="sub">
-                            Your Custom setup is being prepared through sales and implementation. We will confirm contract, invoice, routing, and go-live details before live answering is enabled.
+                            {enterpriseApprovalPending
+                              ? 'Your Custom setup is being prepared through sales and implementation. We will confirm contract, invoice, routing, and go-live details before live answering is enabled.'
+                              : 'Your Custom account uses managed setup for routing, integrations, call volume planning, and billing changes.'}
                           </p>
+                          <ul className="plan-includes-list" style={{ marginTop: 12 }}>
+                            {CUSTOM_MANAGED_SETUP_ITEMS.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
                             <a className="btn purple" href="/contact?topic=sales">Contact sales</a>
                             <a className="btn" href="/contact?topic=implementation">Contact implementation support</a>
@@ -876,7 +939,7 @@ export function UserBillingLive() {
                                   Manage billing unavailable
                                 </button>
                                 <p className="sub" style={{ margin: 0 }}>
-                                  Billing management is not available right now. Contact support or try again later.
+                                  {manageBillingUnavailableCopy(billing?.manageBillingDisabledReason)}
                                 </p>
                               </div>
                             )
@@ -981,11 +1044,28 @@ export function UserBillingLive() {
                               );
                             }
                           } else if (plan.plan === 'professional' && currentPlan === 'starter') {
-                            cta = (
-                              <a className="btn" href="/contact?intent=sales&source=user_billing_upgrade&plan=professional">
-                                Contact us to upgrade
-                              </a>
-                            );
+                            if (subscriptionBillingBlocked) {
+                              cta = <span className="btn" style={{ opacity: 0.85, cursor: 'default' }}>Resolve billing first</span>;
+                            } else if (upgradePending) {
+                              cta = <span className="btn" style={{ opacity: 0.85, cursor: 'default' }}>Upgrade pending</span>;
+                            } else if (selfServeUpgradeAvailable) {
+                              cta = (
+                                <button
+                                  type="button"
+                                  className="btn user-save"
+                                  disabled={upgradingPlan === 'professional'}
+                                  onClick={() => void upgradeToProfessional()}
+                                >
+                                  {upgradingPlan === 'professional' ? 'Starting…' : 'Upgrade to Professional'}
+                                </button>
+                              );
+                            } else {
+                              cta = (
+                                <a className="btn" href="/contact?intent=sales&source=user_billing_upgrade&plan=professional">
+                                  Contact us to upgrade
+                                </a>
+                              );
+                            }
                           } else {
                             cta = (
                               <a className="btn" href={`/contact?intent=sales&source=user_billing_plan_change&plan=${plan.plan}`}>
@@ -1002,7 +1082,16 @@ export function UserBillingLive() {
                                     Current plan
                                   </span>
                                 ) : null}
-                                <h4 style={{ margin: 0 }}>{planDisplayName(plan.plan)}</h4>
+                                <h4 style={{ margin: 0 }}>
+                                  {plan.plan === 'professional' && currentPlan === 'starter'
+                                    ? 'Upgrade to Professional'
+                                    : planDisplayName(plan.plan)}
+                                </h4>
+                                {plan.plan === 'professional' && currentPlan === 'starter' ? (
+                                  <p className="sub" style={{ margin: '8px 0 0' }}>
+                                    Unlock reminder and review SMS, returning caller notes, bilingual answering where configured, and owner transfer.
+                                  </p>
+                                ) : null}
                                 <div className="amt">{plan.priceLine}</div>
                                 <ul>
                                   {plan.features.map((feature) => (

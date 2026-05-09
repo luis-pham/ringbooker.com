@@ -19,9 +19,11 @@ export type VoicePromptMode = 'production' | 'demo';
 export type RuntimeService = {
   name: string;
   price?: number | null;
+  priceType?: 'fixed' | 'from' | 'varies' | 'consultation' | null;
   duration?: string | number | null;
   category?: string | null;
   notes?: string | null;
+  bookable?: boolean | null;
 };
 
 export type RuntimeBusinessConfig = {

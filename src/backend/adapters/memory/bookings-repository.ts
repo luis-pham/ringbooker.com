@@ -35,6 +35,8 @@ export class InMemoryBookingsRepository implements BookingsRepository {
     customerPhone: string;
     customerName?: string | null;
     service: string;
+    matchedServiceId?: string | null;
+    matchedServiceConfidence?: number | null;
     datetimeUtc: string;
     timezone: string;
     status: string;
@@ -48,6 +50,8 @@ export class InMemoryBookingsRepository implements BookingsRepository {
       customerPhone: params.customerPhone,
       customerName: params.customerName ?? null,
       service: params.service,
+      matchedServiceId: params.matchedServiceId ?? null,
+      matchedServiceConfidence: params.matchedServiceConfidence ?? null,
       datetimeUtc: params.datetimeUtc,
       timezone: params.timezone,
       status: params.status,

@@ -31,6 +31,7 @@ import {
 } from '@/src/backend/domain/shop-plan-capabilities';
 import { createSignupPlaceholderBusinessPhoneE164 } from '@/src/backend/domain/signup-placeholder-phone';
 import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
+import { mergeImportedServicesIntoCatalog } from '@/src/backend/domain/service-catalog';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import { startOrReuseForwardingTestSession } from '@/src/backend/services/go-live/start-forwarding-test-session';
 import type {
@@ -42,6 +43,7 @@ import type {
   JobType,
   Shop,
   ShopAccessState,
+  ShopServiceCatalog,
 } from '@/src/backend/domain/types';
 import type {
   BlogPostsRepository,
@@ -469,6 +471,35 @@ const serviceItemSchema = z.object({
   price: z.coerce.number().min(0).max(10000),
 });
 
+const serviceCategorySchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(500).nullable().optional(),
+  sortOrder: z.coerce.number().int().min(0).max(10000).optional(),
+  active: z.boolean().optional(),
+});
+
+const shopServiceSchema = z.object({
+  id: z.string().uuid().optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(1000).nullable().optional(),
+  durationMinutes: z.coerce.number().int().min(1).max(600).nullable().optional(),
+  priceAmount: z.coerce.number().min(0).max(100000).nullable().optional(),
+  priceCurrency: z.string().trim().min(3).max(3).optional(),
+  priceType: z.enum(['fixed', 'from', 'varies', 'consultation']).optional(),
+  bookable: z.boolean().optional(),
+  active: z.boolean().optional(),
+  sortOrder: z.coerce.number().int().min(0).max(10000).optional(),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+  bookingNotes: z.string().trim().max(1000).nullable().optional(),
+});
+
+const serviceCatalogSchema = z.object({
+  categories: z.array(serviceCategorySchema).max(100),
+  services: z.array(shopServiceSchema).max(500),
+});
+
 const staffMemberSchema = z.object({
   name: z.string().trim().min(1).max(120),
   role: z.string().trim().max(120).nullable().optional(),
@@ -494,6 +525,7 @@ const businessHoursEntrySchema = z.union([
 
 const userSettingsUpdateSchema = userSettingsBaseSchema.extend({
   services: z.array(serviceItemSchema).optional(),
+  service_catalog: serviceCatalogSchema.optional(),
   staff: z.array(staffMemberSchema).max(50).optional(),
   faqs: z.array(businessFaqItemSchema).max(100).optional(),
   hours: z.record(z.string(), businessHoursEntrySchema).optional(),
@@ -612,8 +644,28 @@ const userBillingCheckoutSchema = z.object({
 
 const userBillingManageSchema = z.object({}).strict();
 
+const userBillingUpgradeSchema = z.object({
+  target_plan: z.literal('professional'),
+  billing_interval: z.enum(['monthly', 'annual']).optional(),
+}).strict();
+
 const readWebsiteSchema = z.object({
   url: z.string().url(),
+  services: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(120),
+        category: z.string().trim().max(120).nullable().optional(),
+        description: z.string().trim().max(1000).nullable().optional(),
+        durationMinutes: z.coerce.number().int().min(1).max(600).nullable().optional(),
+        priceAmount: z.coerce.number().min(0).max(100000).nullable().optional(),
+        priceType: z.enum(['fixed', 'from', 'varies', 'consultation']).optional(),
+        aliases: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+        bookingNotes: z.string().trim().max(1000).nullable().optional(),
+      }),
+    )
+    .max(100)
+    .optional(),
 });
 
 /** Post-payment RingBooker forwarding number provisioning (see docs/onboarding_go_live_sprint.md). */
@@ -786,6 +838,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   cancel_policy: 'edit_cancel_policy',
   promotions: 'edit_promotions',
   services: 'edit_services',
+  service_catalog: 'edit_services',
   staff: 'edit_services',
   faqs: 'edit_business_profile',
   hours: 'edit_hours',
@@ -919,6 +972,71 @@ function splitUserSettingsPatchByPlan(
       >]?: Shop[K];
     },
     disallowedFields,
+  };
+}
+
+function normalizeServiceCatalogForShop(
+  shopId: string,
+  input: z.infer<typeof serviceCatalogSchema>,
+): ShopServiceCatalog {
+  const now = new Date().toISOString();
+  const categories = input.categories.map((category, index) => ({
+    id: category.id ?? randomUUID(),
+    shopId,
+    name: category.name,
+    description: category.description ?? null,
+    sortOrder: category.sortOrder ?? index,
+    active: category.active ?? true,
+    createdAt: now,
+    updatedAt: now,
+  }));
+  const categoryIds = new Set(categories.map((category) => category.id));
+  return {
+    categories,
+    services: input.services.map((service, index) => ({
+      id: service.id ?? randomUUID(),
+      shopId,
+      categoryId: service.categoryId && categoryIds.has(service.categoryId) ? service.categoryId : null,
+      name: service.name,
+      description: service.description ?? null,
+      durationMinutes: service.durationMinutes ?? null,
+      priceAmount: service.priceAmount ?? null,
+      priceCurrency: service.priceCurrency ?? 'USD',
+      priceType: service.priceType ?? 'fixed',
+      bookable: service.bookable ?? true,
+      active: service.active ?? true,
+      sortOrder: service.sortOrder ?? index,
+      aliases: service.aliases ?? [],
+      bookingNotes: service.bookingNotes ?? null,
+      externalMetadata: {},
+      createdAt: now,
+      updatedAt: now,
+    })),
+  };
+}
+
+function toUserFacingServiceCatalog(catalog?: ShopServiceCatalog | null): ShopServiceCatalog | null {
+  if (!catalog) return null;
+  return {
+    categories: catalog.categories.map((category) => ({ ...category })),
+    services: catalog.services.map((service) => {
+      const {
+        externalProvider: _externalProvider,
+        externalServiceId: _externalServiceId,
+        externalLocationId: _externalLocationId,
+        externalStaffRequired: _externalStaffRequired,
+        externalMetadata: _externalMetadata,
+        ...userFacingService
+      } = service;
+      return userFacingService;
+    }),
+  };
+}
+
+function toUserFacingShop(shop: Shop): Shop {
+  return {
+    ...shop,
+    service_catalog: toUserFacingServiceCatalog(shop.service_catalog) ?? undefined,
   };
 }
 
@@ -4162,6 +4280,7 @@ export function createBackendApp(deps: {
     }
 
     const onboardingCompleted = isShopSetupWizardComplete(shop);
+    const serviceCatalogEnabled = getEnv().SERVICE_CATALOG_ENABLED;
 
     return c.json({
       ok: true,
@@ -4170,6 +4289,7 @@ export function createBackendApp(deps: {
       liveCallsEnabled,
       forwardingSetupVerified,
       paymentMethodStatus,
+      serviceCatalogEnabled,
       shop: {
         id: shop.id,
         name: shop.name,
@@ -4181,6 +4301,7 @@ export function createBackendApp(deps: {
         timezone: shop.timezone,
         cancel_policy: shop.cancel_policy,
         services: shop.services,
+        service_catalog: serviceCatalogEnabled ? toUserFacingServiceCatalog(shop.service_catalog) : null,
         hours: shop.hours,
         languages: shop.languages ?? ['en'],
         website_url: shop.website_url ?? '',
@@ -4212,16 +4333,38 @@ export function createBackendApp(deps: {
     const parsed = readWebsiteSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
 
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const serviceCatalogEnabled = getEnv().SERVICE_CATALOG_ENABLED;
+
     const updated = await deps.shopsRepository.updateUserSettings(sessionResult.shopId ?? '', {
       website_url: parsed.data.url,
     });
     if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
+    let servicesFound = 0;
+    if (serviceCatalogEnabled && parsed.data.services?.length) {
+      const currentCatalog = await deps.shopsRepository.findServiceCatalogByShopId(shop.id);
+      const merged = mergeImportedServicesIntoCatalog({
+        shopId: shop.id,
+        currentCatalog,
+        importedServices: parsed.data.services,
+        vertical: shop.vertical,
+        idForCategory: () => randomUUID(),
+        idForService: () => randomUUID(),
+      });
+      servicesFound = merged.addedCount;
+      if (servicesFound > 0) {
+        await deps.shopsRepository.saveServiceCatalog(shop.id, merged.catalog);
+      }
+    }
+
     return c.json({
       ok: true,
       success: true,
-      servicesFound: 0,
-      todo: 'website_scraping_not_implemented',
+      servicesFound,
+      imported: servicesFound > 0,
+      todo: !serviceCatalogEnabled && parsed.data.services?.length ? 'service_catalog_disabled' : parsed.data.services?.length ? undefined : 'website_scraping_not_implemented',
     });
   });
 
@@ -4722,6 +4865,7 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const serviceCatalogEnabled = getEnv().SERVICE_CATALOG_ENABLED;
     const showGoLiveSettingsTab = await computeShowGoLiveSettingsTab({
       shop,
       shopsRepository: deps.shopsRepository,
@@ -4731,10 +4875,11 @@ export function createBackendApp(deps: {
     });
     return c.json({
       ok: true,
-      shop,
+      shop: serviceCatalogEnabled ? toUserFacingShop(shop) : { ...toUserFacingShop(shop), service_catalog: null },
       capabilities: getShopPlanCapabilities(shop.plan),
       capabilityLabels: CAPABILITY_LABELS,
       showGoLiveSettingsTab,
+      serviceCatalogEnabled,
     });
   });
 
@@ -5473,8 +5618,29 @@ export function createBackendApp(deps: {
     const env = getEnv();
     const selfServePlan = isSelfServeTrialPlan(shop.plan);
     const subscriptionProvider = subscription?.provider ?? customer?.provider ?? deps.billingProvider?.provider ?? 'manual';
+    const upgradeMetadata = subscription?.metadata?.pending_plan_upgrade;
+    const pendingPlanUpgrade =
+      upgradeMetadata && typeof upgradeMetadata === 'object'
+        ? {
+            targetPlan:
+              (upgradeMetadata as Record<string, unknown>).targetPlan === 'professional'
+                ? 'professional'
+                : null,
+            billingInterval:
+              (upgradeMetadata as Record<string, unknown>).billingInterval === 'year'
+                ? 'annual'
+                : (upgradeMetadata as Record<string, unknown>).billingInterval === 'month'
+                  ? 'monthly'
+                  : null,
+            requestedAt:
+              typeof (upgradeMetadata as Record<string, unknown>).requestedAt === 'string'
+                ? ((upgradeMetadata as Record<string, unknown>).requestedAt as string)
+                : null,
+          }
+        : null;
     const manageBillingAvailable = Boolean(
-      selfServePlan &&
+      env.BILLING_MANAGE_ENABLED &&
+        selfServePlan &&
         deps.billingProvider?.provider === 'paddle' &&
         typeof deps.billingProvider.createManageBillingSession === 'function' &&
         subscription?.provider === 'paddle' &&
@@ -5538,22 +5704,52 @@ export function createBackendApp(deps: {
         manageBillingAvailable,
         manageBillingDisabledReason: manageBillingAvailable
           ? null
-          : !selfServePlan
-            ? 'plan_not_self_serve'
-            : deps.billingProvider?.provider !== 'paddle' || typeof deps.billingProvider?.createManageBillingSession !== 'function'
-              ? 'billing_management_unavailable'
-              : subscription?.provider !== 'paddle'
-                ? 'provider_not_supported'
+          : !env.BILLING_MANAGE_ENABLED
+            ? 'billing_manage_disabled'
+            : !selfServePlan
+              ? 'plan_not_self_serve'
+              : deps.billingProvider?.provider !== 'paddle' || typeof deps.billingProvider?.createManageBillingSession !== 'function'
+                ? 'billing_management_unavailable'
+                : subscription?.provider !== 'paddle'
+                  ? 'provider_not_supported'
+                  : !subscription?.providerCustomerId?.trim()
+                    ? 'missing_provider_customer_id'
+                    : !subscription?.providerSubscriptionId?.trim()
+                      ? 'missing_provider_subscription_id'
+                      : ['canceled', 'trial_expired', 'unpaid', 'incomplete', 'unknown'].includes(subscription.status)
+                        ? 'subscription_not_manageable'
+                        : 'billing_management_unavailable',
+        canViewInvoicesViaPortal: manageBillingAvailable,
+        canUpdatePaymentMethodViaPortal: manageBillingAvailable,
+        canCancelViaPortal: manageBillingAvailable,
+        selfServeUpgradeAvailable: Boolean(
+          env.BILLING_CHECKOUT_ENABLED &&
+            shop.plan === 'starter' &&
+            subscription?.plan === 'starter' &&
+            subscription.provider === 'paddle' &&
+            ['active', 'trialing'].includes(subscription.status) &&
+            subscription.providerCustomerId?.trim() &&
+            subscription.providerSubscriptionId?.trim() &&
+            deps.billingProvider?.provider === 'paddle' &&
+            typeof deps.billingProvider.upgradeSubscriptionPlan === 'function',
+        ),
+        upgradeDisabledReason:
+          !env.BILLING_CHECKOUT_ENABLED
+            ? 'billing_checkout_disabled'
+            : shop.plan !== 'starter' || subscription?.plan !== 'starter'
+            ? 'current_plan_not_starter'
+            : subscription?.provider !== 'paddle'
+              ? 'provider_not_supported'
+              : !['active', 'trialing'].includes(subscription?.status ?? '')
+                ? 'subscription_not_upgradeable'
                 : !subscription?.providerCustomerId?.trim()
                   ? 'missing_provider_customer_id'
                   : !subscription?.providerSubscriptionId?.trim()
                     ? 'missing_provider_subscription_id'
-                    : ['canceled', 'trial_expired', 'unpaid', 'incomplete', 'unknown'].includes(subscription.status)
-                      ? 'subscription_not_manageable'
-                      : 'billing_management_unavailable',
-        canViewInvoicesViaPortal: manageBillingAvailable,
-        canUpdatePaymentMethodViaPortal: manageBillingAvailable,
-        canCancelViaPortal: manageBillingAvailable,
+                    : deps.billingProvider?.provider !== 'paddle' || typeof deps.billingProvider.upgradeSubscriptionPlan !== 'function'
+                      ? 'billing_upgrade_unavailable'
+                      : null,
+        pendingPlanUpgrade: pendingPlanUpgrade?.targetPlan ? pendingPlanUpgrade : null,
         billingHistoryLabel: 'Account billing activity',
         forwardingNumber: shop.telnyx_number?.trim() ? shop.telnyx_number.trim() : null,
         usage,
@@ -5570,6 +5766,20 @@ export function createBackendApp(deps: {
     if (sessionResult instanceof Response) return sessionResult;
     if (!deps.shopsRepository || !deps.billingProvider || !deps.billingSubscriptionsRepository || !deps.billingCustomersRepository) {
       return c.json({ ok: false, error: 'billing_management_unavailable' }, 500);
+    }
+    if (!getEnv().BILLING_MANAGE_ENABLED) {
+      logger.warn(
+        { event: 'user_billing_manage_disabled', shop_id: sessionResult.shopId ?? null },
+        'user_billing_manage_disabled',
+      );
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_manage_disabled',
+          message: 'Billing management is temporarily unavailable. Contact support if you need help updating payment details or managing your subscription.',
+        },
+        503,
+      );
     }
 
     const rawBody = await c.req.json().catch(() => ({}));
@@ -5664,6 +5874,143 @@ export function createBackendApp(deps: {
     }
   });
 
+  app.post(path('/user/billing/upgrade'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_billing_upgrade, 'user_billing_upgrade');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.billingProvider || !deps.billingSubscriptionsRepository || !deps.billingCustomersRepository) {
+      return c.json({ ok: false, error: 'billing_upgrade_unavailable' }, 500);
+    }
+
+    const rawBody = await c.req.json().catch(() => null);
+    const parsed = userBillingUpgradeSchema.safeParse(rawBody);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    if (!getEnv().BILLING_CHECKOUT_ENABLED) {
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_checkout_disabled',
+          message: 'Plan upgrades are not enabled for this environment yet.',
+        },
+        503,
+      );
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (shop.plan !== 'starter') {
+      return c.json({ ok: false, error: 'current_plan_not_starter', message: 'Only Starter accounts can upgrade to Professional in-app right now.' }, 409);
+    }
+    if (parsed.data.target_plan !== 'professional') {
+      return c.json({ ok: false, error: 'invalid_target_plan' }, 400);
+    }
+    if (deps.billingProvider.provider !== 'paddle' || typeof deps.billingProvider.upgradeSubscriptionPlan !== 'function') {
+      return c.json({ ok: false, error: 'billing_upgrade_unavailable', message: 'Plan upgrade is not available right now. Please contact support.' }, 503);
+    }
+
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    if (!subscription || subscription.provider !== 'paddle') {
+      return c.json({ ok: false, error: 'provider_not_supported', message: 'This subscription cannot be upgraded in-app yet.' }, 409);
+    }
+    if (subscription.plan !== 'starter') {
+      return c.json({ ok: false, error: 'current_plan_not_starter', message: 'This account is not on Starter.' }, 409);
+    }
+    if (!['active', 'trialing'].includes(subscription.status)) {
+      return c.json({ ok: false, error: 'subscription_not_upgradeable', message: 'Resolve billing before upgrading your plan.' }, 409);
+    }
+
+    const providerCustomerId = subscription.providerCustomerId?.trim();
+    const providerSubscriptionId = subscription.providerSubscriptionId?.trim();
+    if (!providerCustomerId) return c.json({ ok: false, error: 'missing_provider_customer_id', message: 'Billing is not ready for plan upgrade yet.' }, 409);
+    if (!providerSubscriptionId) return c.json({ ok: false, error: 'missing_provider_subscription_id', message: 'Billing is not ready for plan upgrade yet.' }, 409);
+
+    const [customerByProvider, subscriptionByProvider] = await Promise.all([
+      deps.billingCustomersRepository.findByProviderCustomerId('paddle', providerCustomerId),
+      deps.billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', providerSubscriptionId),
+    ]);
+    if (customerByProvider && customerByProvider.shopId !== shop.id) {
+      logger.error(
+        {
+          event: 'user_billing_upgrade_ownership_conflict',
+          reason: 'customer_shop_mismatch',
+          shop_id: shop.id,
+          provider_customer_id: providerCustomerId,
+          existing_customer_shop_id: customerByProvider.shopId,
+        },
+        'user_billing_upgrade_ownership_conflict',
+      );
+      return c.json({ ok: false, error: 'billing_ownership_conflict' }, 409);
+    }
+    if (subscriptionByProvider && subscriptionByProvider.shopId !== shop.id) {
+      logger.error(
+        {
+          event: 'user_billing_upgrade_ownership_conflict',
+          reason: 'subscription_shop_mismatch',
+          shop_id: shop.id,
+          provider_subscription_id: providerSubscriptionId,
+          existing_subscription_shop_id: subscriptionByProvider.shopId,
+        },
+        'user_billing_upgrade_ownership_conflict',
+      );
+      return c.json({ ok: false, error: 'billing_ownership_conflict' }, 409);
+    }
+
+    const billingInterval = parsed.data.billing_interval === 'annual' ? 'year' : 'month';
+    const prorationBillingMode = 'prorated_next_billing_period' as const;
+    try {
+      const upgrade = await deps.billingProvider.upgradeSubscriptionPlan({
+        shop,
+        providerCustomerId,
+        providerSubscriptionId,
+        targetPlan: 'professional',
+        billingInterval,
+        prorationBillingMode,
+      });
+      await deps.billingSubscriptionsRepository.updateById(subscription.id, {
+        metadata: {
+          ...(subscription.metadata ?? {}),
+          pending_plan_upgrade: {
+            targetPlan: upgrade.targetPlan,
+            billingInterval: upgrade.billingInterval,
+            prorationBillingMode: upgrade.prorationBillingMode,
+            requestedAt: new Date().toISOString(),
+            requestedBy: sessionResult.email,
+          },
+        },
+      }).catch((err) => {
+        logger.warn({ err, shopId: shop.id, providerSubscriptionId }, 'user_billing_upgrade_pending_metadata_failed');
+      });
+      return c.json({
+        ok: true,
+        status: 'pending',
+        message: 'Your upgrade is being processed. Professional features will unlock after billing is confirmed.',
+      });
+    } catch (err) {
+      logger.error(
+        {
+          err,
+          shopId: shop.id,
+          providerSubscriptionId,
+          targetPlan: 'professional',
+          billingInterval,
+        },
+        'user_billing_upgrade_failed',
+      );
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_upgrade_failed',
+          message: 'Plan upgrade could not start. Please try again or contact support.',
+        },
+        502,
+      );
+    }
+  });
+
   app.post(path('/user/billing/checkout'), async (c) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
@@ -5699,6 +6046,7 @@ export function createBackendApp(deps: {
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
     let subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    const existingPaddleCustomer = await deps.billingCustomersRepository.findByShopId(shop.id, 'paddle');
     if (!subscription && isSelfServeTrialPlan(shop.plan)) {
       const trial = await createNoCardTrialForShop(
         {
@@ -5741,6 +6089,32 @@ export function createBackendApp(deps: {
           ok: false,
           error: 'subscription_not_ready_for_payment_setup',
           message: 'Payment setup is not ready for this account yet. Please contact support if you are ready to go live.',
+        },
+        409,
+      );
+    }
+    if (
+      subscription.paymentMethodStatus === 'valid' ||
+      (subscription.provider === 'paddle' && Boolean(subscription.providerSubscriptionId?.trim()))
+    ) {
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_already_started',
+          message: 'Billing is already started for this account. Refresh Billing or use Manage billing.',
+        },
+        409,
+      );
+    }
+    if (
+      existingPaddleCustomer?.providerCustomerId?.trim() &&
+      !['trial_expired', 'paused', 'canceled', 'past_due', 'unpaid', 'incomplete'].includes(subscription.status)
+    ) {
+      return c.json(
+        {
+          ok: false,
+          error: 'payment_setup_pending',
+          message: 'Payment setup is already pending. Refresh Billing in a minute; if it does not update, contact support.',
         },
         409,
       );
@@ -6434,6 +6808,11 @@ export function createBackendApp(deps: {
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
+    const serviceCatalogPatch = parsed.data.service_catalog;
+    const serviceCatalogEnabled = getEnv().SERVICE_CATALOG_ENABLED;
+    if (serviceCatalogPatch && !serviceCatalogEnabled) {
+      return c.json({ ok: false, error: 'service_catalog_disabled' }, 503);
+    }
     const { basicPatch, dynamicPatch, disallowedFields } = splitUserSettingsPatchByPlan(shop, parsed.data);
     if (disallowedFields.length > 0) {
       return c.json(
@@ -6456,9 +6835,9 @@ export function createBackendApp(deps: {
       );
     }
 
-    const hasBasicPatch = Object.keys(basicPatch).length > 0;
+    const hasBasicPatch = Object.keys(basicPatch).some((key) => key !== 'service_catalog');
     const hasDynamicPatch = Object.keys(dynamicPatch).length > 0;
-    if (!hasBasicPatch && !hasDynamicPatch) {
+    if (!hasBasicPatch && !hasDynamicPatch && !serviceCatalogPatch) {
       return c.json({ ok: false, error: 'no_changes' }, 400);
     }
 
@@ -6473,6 +6852,16 @@ export function createBackendApp(deps: {
       if (!dynamicUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
       updated = dynamicUpdated;
     }
+    if (serviceCatalogPatch) {
+      const savedCatalog = await deps.shopsRepository.saveServiceCatalog(
+        shop.id,
+        normalizeServiceCatalogForShop(shop.id, serviceCatalogPatch),
+      );
+      if (!savedCatalog) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      const reloaded = await deps.shopsRepository.findById(shop.id);
+      if (!reloaded) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      updated = reloaded;
+    }
 
     const showGoLiveSettingsTab = await computeShowGoLiveSettingsTab({
       shop: updated,
@@ -6484,9 +6873,10 @@ export function createBackendApp(deps: {
 
     return c.json({
       ok: true,
-      shop: updated,
+      shop: serviceCatalogEnabled ? toUserFacingShop(updated) : { ...toUserFacingShop(updated), service_catalog: null },
       capabilities: getShopPlanCapabilities(updated.plan),
       showGoLiveSettingsTab,
+      serviceCatalogEnabled,
     });
   });
 

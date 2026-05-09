@@ -26,7 +26,7 @@ export function UserBookingsTemplate() {
         </aside>
         <main className="main">
           <div className="topbar">
-            <div className="page-title"><h1>Bookings and calendar flow.</h1><p>See every appointment RingBooker has created, confirmed, or recovered.</p></div>
+            <div className="page-title"><h1>Bookings and calendar flow.</h1><p>See appointment requests and bookings RingBooker has captured or created.</p></div>
             <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
           </div>
           <section className="grid grid-3">
@@ -51,10 +51,10 @@ export function UserBookingsTemplate() {
             <div className="card soft">
               <div className="panel-head"><div><h3>Calendar rules</h3><p className="sub">How RingBooker decides what to offer callers.</p></div></div>
               <div className="list">
-                <div className="list-item"><div className="item-main"><div className="avatar">1</div><div><h4>Check availability first</h4><p>AI always checks your live calendar before offering a slot.</p></div></div></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">2</div><div><h4>Suggest alternatives automatically</h4><p>If a time is taken, callers hear nearby options immediately.</p></div></div></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">3</div><div><h4>Confirm by SMS after the call</h4><p>Every successful booking triggers a confirmation text automatically.</p></div></div></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">4</div><div><h4>Fallback when there is no calendar sync</h4><p>Manual mode still logs the booking and notifies the user right away.</p></div></div></div>
+                <div className="list-item"><div className="item-main"><div className="avatar">1</div><div><h4>Check availability when connected</h4><p>AI can check live availability when a connected calendar integration is configured.</p></div></div></div>
+                <div className="list-item"><div className="item-main"><div className="avatar">2</div><div><h4>Suggest alternatives when available</h4><p>When availability data is connected, nearby times can be offered; otherwise the request is captured for follow-up.</p></div></div></div>
+                <div className="list-item"><div className="item-main"><div className="avatar">3</div><div><h4>Confirm after the call</h4><p>Successful bookings can trigger confirmation and reminder messages.</p></div></div></div>
+                <div className="list-item"><div className="item-main"><div className="avatar">4</div><div><h4>Manual fallback still works</h4><p>If there is no calendar sync, the booking is still captured for the business.</p></div></div></div>
               </div>
             </div>
           </section>

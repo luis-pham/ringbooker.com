@@ -12,6 +12,7 @@ import {
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
+import { CUSTOM_MANAGED_SETUP_ITEMS } from '@/components/user/user-plan-ux-copy';
 
 type GoLiveDashboardPrimaryCta =
   | 'add_payment_method'
@@ -332,9 +333,13 @@ export function UserDashboardLive() {
 
   const liveAnsweringOn = data?.goLive?.liveCallsEnabled === true;
   const enterpriseApprovalPending = data?.goLive?.commercialApprovalRequired === true;
+  const isEnterprisePlan = data?.shop?.plan === 'enterprise';
 
   const overviewPhase = useMemo(() => userOverviewPhase(data), [data]);
-  const simplifiedOverview = overviewPhase === 'onboarding' || overviewPhase === 'activation';
+  /** While loading, `data` is null so phase is unknown — do not assume the full KPI layout (avoids a flash). */
+  const dashboardReady = !loading && data?.ok === true;
+  const simplifiedOverview =
+    dashboardReady && (overviewPhase === 'onboarding' || overviewPhase === 'activation');
 
   const topbarSubtitle = useMemo(() => {
     if (!data?.ok) return 'Track calls, bookings, and reminders.';
@@ -530,16 +535,23 @@ export function UserDashboardLive() {
                 <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>
               </section>
             ) : null}
-            {enterpriseApprovalPending ? (
+            {isEnterprisePlan && !data?.onboardingRequired ? (
               <section className="card" style={{ marginBottom: 18, borderColor: '#ddd6fe', background: '#faf5ff' }}>
                 <div className="panel-head">
                   <div>
-                    <h3>Your Custom setup is being prepared</h3>
+                    <h3>{enterpriseApprovalPending ? 'Your Custom setup is being prepared' : 'Your Custom setup is managed by RingBooker'}</h3>
                     <p className="sub">
-                      RingBooker is reviewing your locations, routing rules, and implementation plan. Our team will confirm your go-live timeline before live answering is enabled.
+                      {enterpriseApprovalPending
+                        ? 'RingBooker is reviewing your locations, routing rules, and implementation plan. Our team will confirm your go-live timeline before live answering is enabled.'
+                        : 'Your account can include managed routing, integrations, multilingual routing, higher call volume planning, and implementation support.'}
                     </p>
                   </div>
                 </div>
+                <ul className="plan-includes-list" style={{ marginTop: 12 }}>
+                  {CUSTOM_MANAGED_SETUP_ITEMS.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
                   <a className="btn purple" href="/contact?topic=implementation">Contact implementation support</a>
                   <a className="btn" href="/contact?topic=onboarding-call">Schedule onboarding call</a>
@@ -591,7 +603,7 @@ export function UserDashboardLive() {
                 </div>
               </section>
             ) : null}
-            {!simplifiedOverview ? (
+            {dashboardReady && !simplifiedOverview ? (
               <section className="grid grid-4">
                 <div className="stat-card">
                   <div className="stat-top">
@@ -648,7 +660,7 @@ export function UserDashboardLive() {
                 </div>
               </section>
             ) : null}
-            {!simplifiedOverview && data?.usage ? (
+            {dashboardReady && !simplifiedOverview && data?.usage ? (
               <section
                 className={`card usage-captured-card${data.usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${data.usage.nearCapturedCallerLimit && !data.usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
                 style={{ marginTop: 18 }}
@@ -684,6 +696,7 @@ export function UserDashboardLive() {
                 </p>
               </section>
             ) : null}
+            {dashboardReady ? (
             <section
               className={`call-grid${simplifiedOverview ? ' call-grid-phase-simple' : ''}`}
               style={{ marginTop: simplifiedOverview ? 12 : 18 }}
@@ -812,6 +825,13 @@ export function UserDashboardLive() {
                 </>
               )}
             </section>
+            ) : loading ? (
+              <section className="call-grid call-grid-phase-simple" style={{ marginTop: 12 }} aria-busy="true">
+                <div className="card soft" style={{ padding: '22px 24px' }}>
+                  <p className="sub" style={{ margin: 0 }}>Loading overview…</p>
+                </div>
+              </section>
+            ) : null}
             <div className="footer-inline">
               <span>RingBooker business panel</span>
               <span>Live data + restored shared styling</span>

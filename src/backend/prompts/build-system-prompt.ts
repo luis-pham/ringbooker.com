@@ -79,6 +79,43 @@ function renderFaqs(shop: Shop): string | null {
   ].join('\n');
 }
 
+function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
+  const catalog = shop.service_catalog;
+  if (catalog?.services.some((service) => service.active !== false)) {
+    return catalog.services
+      .filter((service) => service.active !== false)
+      .sort((a, b) => {
+        const categoryA = catalog.categories.find((category) => category.id === a.categoryId)?.sortOrder ?? 0;
+        const categoryB = catalog.categories.find((category) => category.id === b.categoryId)?.sortOrder ?? 0;
+        if (categoryA !== categoryB) return categoryA - categoryB;
+        return a.sortOrder - b.sortOrder;
+      })
+      .map((service) => {
+        const category = catalog.categories.find((item) => item.id === service.categoryId);
+        return {
+          name: service.name,
+          category: category?.name ?? 'General Services',
+          price: service.priceAmount,
+          priceType: service.priceType,
+          duration: service.durationMinutes ? `${service.durationMinutes} min` : null,
+          notes: [
+            service.bookingNotes ?? service.description ?? null,
+            service.aliases.length ? `Customers may call this: ${service.aliases.join(', ')}` : null,
+          ].filter(Boolean).join(' | ') || null,
+          bookable: service.bookable,
+        };
+      });
+  }
+
+  return shop.services.map((service) => ({
+    name: service.name,
+    category: 'General Services',
+    price: service.price,
+    priceType: service.price > 0 ? 'fixed' : 'varies',
+    duration: `${service.duration_min} min`,
+  }));
+}
+
 function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, routingRules?: ShopRoutingRule[]): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
@@ -88,11 +125,7 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
     location: shop.address ?? null,
     timezone: shop.timezone,
     hours: renderHours(shop),
-    services: shop.services.map((service) => ({
-      name: service.name,
-      price: service.price,
-      duration: `${service.duration_min} min`,
-    })),
+    services: buildRuntimeServices(shop),
     providers: (shop.staff ?? [])
       .filter((member) => member.active !== false)
       .map((member) => {

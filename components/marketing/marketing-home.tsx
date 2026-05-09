@@ -181,7 +181,21 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.hero-btns .btn-hero-live .btn-hero-live-phone{width:18px;height:18px}
 	.hero-btns .btn-hero-live .btn-hero-live-phone path{fill:#FACC15}
 	.hero-btns .btn-hero-live .btn-hero-live-arrow{color:#fff}
-	.hero-btns .btn-hero-trial{padding:11px 20px;font-size:var(--mk-btn-sm);font-weight:600}
+	/* Match current-number secondary CTA: frosted pill + tinted border (not gray btn-outline) */
+	.hero-btns .btn-outline.btn-hero-trial{
+		background:rgba(255,255,255,.56);
+		color:var(--purple-dark);
+		border:1px solid rgba(196,181,253,.55);
+		padding:11px 20px;
+		font-size:var(--mk-btn-sm);
+		font-weight:600;
+	}
+	.hero-btns .btn-outline.btn-hero-trial:hover{
+		background:#fff;
+		border-color:rgba(196,181,253,.75);
+		color:var(--purple-dark);
+		transform:translateY(-1px);
+	}
 
 	/* ─── SEO PROOF + OBJECTION BLOCKS ─── */
 	.leak-section{position:relative;margin-top:-34px;padding:122px 48px 88px;background:linear-gradient(180deg,rgba(249,250,251,0) 0%,#fcfbff 26%,#F9FAFB 100%)}

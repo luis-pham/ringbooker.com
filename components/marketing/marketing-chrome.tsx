@@ -383,7 +383,7 @@ export function MarketingFooter({
           </div>
         </nav>
         <div className="mk-footer-bottom">
-          <p className="mk-footer-copy">© 2025 RingBooker — All rights reserved.</p>
+          <p className="mk-footer-copy">© 2026 RingBooker — All rights reserved.</p>
           <div className="mk-footer-bottom-right">
             <nav className="mk-footer-legal" aria-label="Legal">
               <Link href="/privacy">Privacy Policy</Link>

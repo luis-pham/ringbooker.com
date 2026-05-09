@@ -1,6 +1,23 @@
+import { randomUUID } from 'node:crypto';
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { BusinessFaqItem, BusinessHours, ServiceItem, Shop, ShopPlan, StaffMember } from '@/src/backend/domain/types';
+import {
+  buildGeneralServiceCatalog,
+  GENERAL_SERVICE_CATEGORY_NAME,
+  serviceCatalogToLegacyServices,
+} from '@/src/backend/domain/service-catalog';
+import type {
+  BusinessFaqItem,
+  BusinessHours,
+  ServiceCategory,
+  ServiceItem,
+  Shop,
+  ShopPlan,
+  ShopService,
+  ShopServiceCatalog,
+  StaffMember,
+} from '@/src/backend/domain/types';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
 
 type ShopsRow = {
@@ -48,6 +65,41 @@ type ShopsRow = {
   google_cal_credentials_encrypted: string | null;
 };
 
+type ShopServiceCategoryRow = {
+  id: string;
+  shop_id: string;
+  name: string;
+  description: string | null;
+  sort_order: number | null;
+  active: boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+type ShopServiceRow = {
+  id: string;
+  shop_id: string;
+  category_id: string | null;
+  name: string;
+  description: string | null;
+  duration_minutes: number | null;
+  price_amount: number | string | null;
+  price_currency: string | null;
+  price_type: string | null;
+  bookable: boolean | null;
+  active: boolean | null;
+  sort_order: number | null;
+  aliases: unknown;
+  booking_notes: string | null;
+  external_provider?: string | null;
+  external_service_id?: string | null;
+  external_location_id?: string | null;
+  external_staff_required?: boolean | null;
+  external_metadata?: unknown;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 function normalizePlan(value: string | null): ShopPlan {
   if (value === 'starter' || value === 'professional' || value === 'enterprise') {
     return value;
@@ -69,6 +121,63 @@ function normalizeServices(value: unknown): ServiceItem[] {
       };
     })
     .filter((item): item is ServiceItem => item !== null);
+}
+
+function normalizePriceType(value: string | null): ShopService['priceType'] {
+  if (value === 'fixed' || value === 'from' || value === 'varies' || value === 'consultation') return value;
+  return 'fixed';
+}
+
+function toServiceCategory(row: ShopServiceCategoryRow): ServiceCategory {
+  return {
+    id: row.id,
+    shopId: row.shop_id,
+    name: row.name,
+    description: row.description,
+    sortOrder: row.sort_order ?? 0,
+    active: row.active ?? true,
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined,
+  };
+}
+
+function toShopService(row: ShopServiceRow): ShopService {
+  const priceAmount =
+    typeof row.price_amount === 'number'
+      ? row.price_amount
+      : typeof row.price_amount === 'string'
+        ? Number(row.price_amount)
+        : null;
+  return {
+    id: row.id,
+    shopId: row.shop_id,
+    categoryId: row.category_id,
+    name: row.name,
+    description: row.description,
+    durationMinutes: row.duration_minutes,
+    priceAmount: Number.isFinite(priceAmount) ? priceAmount : null,
+    priceCurrency: row.price_currency ?? 'USD',
+    priceType: normalizePriceType(row.price_type),
+    bookable: row.bookable ?? true,
+    active: row.active ?? true,
+    sortOrder: row.sort_order ?? 0,
+    aliases: Array.isArray(row.aliases) ? row.aliases.filter((alias): alias is string => typeof alias === 'string') : [],
+    bookingNotes: row.booking_notes,
+    externalProvider: row.external_provider ?? null,
+    externalServiceId: row.external_service_id ?? null,
+    externalLocationId: row.external_location_id ?? null,
+    externalStaffRequired: row.external_staff_required ?? false,
+    externalMetadata: row.external_metadata && typeof row.external_metadata === 'object' && !Array.isArray(row.external_metadata)
+      ? (row.external_metadata as Record<string, unknown>)
+      : {},
+    createdAt: row.created_at ?? undefined,
+    updatedAt: row.updated_at ?? undefined,
+  };
+}
+
+function isMissingServiceCatalogTableError(error: unknown): boolean {
+  const record = error as { code?: string; message?: string } | null;
+  return record?.code === '42P01' || /shop_service_(categories|services)/i.test(record?.message ?? '');
 }
 
 function normalizeStaff(value: unknown): StaffMember[] {
@@ -163,6 +272,16 @@ function toShop(row: ShopsRow): Shop {
 export class SupabaseShopsRepository implements ShopsRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
+  private async hydrateServiceCatalog(shop: Shop): Promise<Shop> {
+    const catalog = await this.findServiceCatalogByShopId(shop.id);
+    if (!catalog || (catalog.services.length === 0 && catalog.categories.length === 0)) return shop;
+    return {
+      ...shop,
+      service_catalog: catalog,
+      services: serviceCatalogToLegacyServices(catalog),
+    };
+  }
+
   async findByDestinationPhone(destinationPhone: string): Promise<Shop | null> {
     const { data, error } = await this.supabase
       .from('shops')
@@ -220,7 +339,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
       throw new Error(`shops_find_by_destination_phone_failed:${error.message}`);
     }
 
-    return data ? toShop(data) : null;
+    return data ? this.hydrateServiceCatalog(toShop(data)) : null;
   }
 
   async findByTelnyxNumber(e164: string): Promise<Shop | null> {
@@ -280,7 +399,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
       throw new Error(`shops_find_by_telnyx_number_failed:${error.message}`);
     }
 
-    return data ? toShop(data) : null;
+    return data ? this.hydrateServiceCatalog(toShop(data)) : null;
   }
 
   async findById(shopId: string): Promise<Shop | null> {
@@ -339,7 +458,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
       throw new Error(`shops_find_by_id_failed:${error.message}`);
     }
 
-    return data ? toShop(data) : null;
+    return data ? this.hydrateServiceCatalog(toShop(data)) : null;
   }
 
   async list(params?: { limit?: number }): Promise<Shop[]> {
@@ -382,7 +501,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (error) {
       throw new Error(`shops_list_failed:${error.message}`);
     }
-    return (data ?? []).map(toShop);
+    return Promise.all((data ?? []).map((row) => this.hydrateServiceCatalog(toShop(row))));
   }
 
   async create(params: {
@@ -470,7 +589,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (error) {
       throw new Error(`shops_create_failed:${error.message}`);
     }
-    return toShop(data);
+    return this.hydrateServiceCatalog(toShop(data));
   }
 
   async updateUserSettings(
@@ -603,7 +722,195 @@ export class SupabaseShopsRepository implements ShopsRepository {
       throw new Error(`shops_update_user_settings_failed:${error.message}`);
     }
 
-    return data ? toShop(data) : null;
+    if (!data) return null;
+    if (patch.services !== undefined) {
+      await this.saveServiceCatalog(
+        data.id,
+        buildGeneralServiceCatalog({
+          shopId: data.id,
+          services: patch.services,
+          categoryId: randomUUID(),
+          serviceIdForIndex: () => randomUUID(),
+        }),
+      );
+      return this.findById(data.id);
+    }
+    return this.hydrateServiceCatalog(toShop(data));
+  }
+
+  async findServiceCatalogByShopId(shopId: string): Promise<ShopServiceCatalog | null> {
+    const [{ data: categories, error: categoriesError }, { data: services, error: servicesError }] = await Promise.all([
+      this.supabase
+        .from('shop_service_categories')
+        .select('id,shop_id,name,description,sort_order,active,created_at,updated_at')
+        .eq('shop_id', shopId)
+        .order('sort_order', { ascending: true })
+        .returns<ShopServiceCategoryRow[]>(),
+      this.supabase
+        .from('shop_services')
+        .select(
+          'id,shop_id,category_id,name,description,duration_minutes,price_amount,price_currency,price_type,bookable,active,sort_order,aliases,booking_notes,external_provider,external_service_id,external_location_id,external_staff_required,external_metadata,created_at,updated_at',
+        )
+        .eq('shop_id', shopId)
+        .order('sort_order', { ascending: true })
+        .returns<ShopServiceRow[]>(),
+    ]);
+
+    if (categoriesError || servicesError) {
+      if (isMissingServiceCatalogTableError(categoriesError) || isMissingServiceCatalogTableError(servicesError)) {
+        const legacy = await this.findLegacyServicesByShopId(shopId);
+        if (!legacy) return null;
+        return buildGeneralServiceCatalog({
+          shopId,
+          services: legacy,
+          categoryId: randomUUID(),
+          serviceIdForIndex: () => randomUUID(),
+        });
+      }
+      throw new Error(`shop_service_catalog_find_failed:${categoriesError?.message ?? servicesError?.message}`);
+    }
+
+    if ((categories ?? []).length === 0 && (services ?? []).length === 0) {
+      const legacy = await this.findLegacyServicesByShopId(shopId);
+      if (!legacy) return null;
+      return legacy.length
+        ? buildGeneralServiceCatalog({
+            shopId,
+            services: legacy,
+            categoryId: randomUUID(),
+            serviceIdForIndex: () => randomUUID(),
+          })
+        : { categories: [], services: [] };
+    }
+
+    return {
+      categories: (categories ?? []).map(toServiceCategory),
+      services: (services ?? []).map(toShopService),
+    };
+  }
+
+  private async findLegacyServicesByShopId(shopId: string): Promise<ServiceItem[] | null> {
+    const { data, error } = await this.supabase.from('shops').select('services').eq('id', shopId).maybeSingle<{ services: unknown }>();
+    if (error) throw new Error(`shop_legacy_services_find_failed:${error.message}`);
+    if (!data) return null;
+    return normalizeServices(data.services);
+  }
+
+  async saveServiceCatalog(shopId: string, catalog: ShopServiceCatalog): Promise<ShopServiceCatalog | null> {
+    const { data: shopRow, error: shopError } = await this.supabase.from('shops').select('id').eq('id', shopId).maybeSingle<{ id: string }>();
+    if (shopError) throw new Error(`shop_service_catalog_shop_find_failed:${shopError.message}`);
+    if (!shopRow) return null;
+
+    const now = new Date().toISOString();
+    const categoryIds = new Set(catalog.categories.map((category) => category.id));
+    const categoryRows = catalog.categories.map((category, index) => ({
+      id: category.id || randomUUID(),
+      shop_id: shopId,
+      name: category.name.trim(),
+      description: category.description ?? null,
+      sort_order: Number.isFinite(category.sortOrder) ? category.sortOrder : index,
+      active: category.active !== false,
+      updated_at: now,
+    }));
+    const normalizedCategoryIds = new Set(categoryRows.map((category) => category.id));
+    const serviceRows = catalog.services
+      .filter((service) => service.name.trim().length > 0)
+      .map((service, index) => ({
+        id: service.id || randomUUID(),
+        shop_id: shopId,
+        category_id: service.categoryId && (categoryIds.has(service.categoryId) || normalizedCategoryIds.has(service.categoryId)) ? service.categoryId : null,
+        name: service.name.trim(),
+        description: service.description ?? null,
+        duration_minutes: service.durationMinutes ?? null,
+        price_amount: service.priceAmount ?? null,
+        price_currency: service.priceCurrency || 'USD',
+        price_type: service.priceType,
+        bookable: service.bookable !== false,
+        active: service.active !== false,
+        sort_order: Number.isFinite(service.sortOrder) ? service.sortOrder : index,
+        aliases: service.aliases ?? [],
+        booking_notes: service.bookingNotes ?? null,
+        external_provider: service.externalProvider ?? null,
+        external_service_id: service.externalServiceId ?? null,
+        external_location_id: service.externalLocationId ?? null,
+        external_staff_required: service.externalStaffRequired ?? false,
+        external_metadata: service.externalMetadata ?? {},
+        updated_at: now,
+      }));
+
+    const saved: ShopServiceCatalog = {
+      categories: categoryRows.map((row) =>
+        toServiceCategory({
+          id: row.id,
+          shop_id: row.shop_id,
+          name: row.name,
+          description: row.description,
+          sort_order: row.sort_order,
+          active: row.active,
+          updated_at: row.updated_at,
+        }),
+      ),
+      services: serviceRows.map((row) =>
+        toShopService({
+          id: row.id,
+          shop_id: row.shop_id,
+          category_id: row.category_id,
+          name: row.name,
+          description: row.description,
+          duration_minutes: row.duration_minutes,
+          price_amount: row.price_amount,
+          price_currency: row.price_currency,
+          price_type: row.price_type,
+          bookable: row.bookable,
+          active: row.active,
+          sort_order: row.sort_order,
+          aliases: row.aliases,
+          booking_notes: row.booking_notes,
+          external_provider: row.external_provider,
+          external_service_id: row.external_service_id,
+          external_location_id: row.external_location_id,
+          external_staff_required: row.external_staff_required,
+          external_metadata: row.external_metadata,
+          updated_at: row.updated_at,
+        }),
+      ),
+    };
+    const legacyServices = serviceCatalogToLegacyServices(saved);
+    const { error: replaceError } = await this.supabase.rpc('replace_shop_service_catalog', {
+      p_shop_id: shopId,
+      p_categories: categoryRows,
+      p_services: serviceRows,
+      p_legacy_services: legacyServices,
+    });
+    if (replaceError) throw new Error(`shop_service_catalog_replace_failed:${replaceError.message}`);
+    return this.findServiceCatalogByShopId(shopId);
+  }
+
+  async deleteServiceCategory(params: { shopId: string; categoryId: string }): Promise<ShopServiceCatalog | null> {
+    const catalog = await this.findServiceCatalogByShopId(params.shopId);
+    if (!catalog) return null;
+    if (!catalog.categories.some((category) => category.id === params.categoryId)) return catalog;
+
+    let general = catalog.categories.find((category) => category.name === GENERAL_SERVICE_CATEGORY_NAME && category.id !== params.categoryId);
+    const categories = catalog.categories.filter((category) => category.id !== params.categoryId);
+    if (!general) {
+      general = {
+        id: randomUUID(),
+        shopId: params.shopId,
+        name: GENERAL_SERVICE_CATEGORY_NAME,
+        description: null,
+        sortOrder: 0,
+        active: true,
+      };
+      categories.unshift(general);
+    }
+    const updated: ShopServiceCatalog = {
+      categories,
+      services: catalog.services.map((service) =>
+        service.categoryId === params.categoryId ? { ...service, categoryId: general.id } : service,
+      ),
+    };
+    return this.saveServiceCatalog(params.shopId, updated);
   }
 
   async tryBeginForwardingNumberProvisioning(params: {

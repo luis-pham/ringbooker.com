@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
+import {
+  buildGeneralServiceCatalog,
+  GENERAL_SERVICE_CATEGORY_NAME,
+  serviceCatalogToLegacyServices,
+} from '@/src/backend/domain/service-catalog';
 import type { Shop } from '@/src/backend/domain/types';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
 
@@ -64,12 +69,23 @@ const defaultShop: Shop = {
 
 export class InMemoryShopsRepository implements ShopsRepository {
   private readonly shops = new Map<string, Shop>([[defaultShop.id, defaultShop]]);
+  private readonly serviceCatalogs = new Map<string, NonNullable<Shop['service_catalog']>>();
   private readonly shopCreatedAt = new Map<string, string>([[defaultShop.id, new Date().toISOString()]]);
+
+  private hydrateShop(shop: Shop): Shop {
+    const catalog = this.serviceCatalogs.get(shop.id);
+    if (!catalog) return shop;
+    return {
+      ...shop,
+      service_catalog: catalog,
+      services: serviceCatalogToLegacyServices(catalog),
+    };
+  }
 
   async findByDestinationPhone(destinationPhone: string): Promise<Shop | null> {
     for (const shop of this.shops.values()) {
       if (shop.active && shop.phone_number === destinationPhone) {
-        return shop;
+        return this.hydrateShop(shop);
       }
     }
     return null;
@@ -78,19 +94,20 @@ export class InMemoryShopsRepository implements ShopsRepository {
   async findByTelnyxNumber(e164: string): Promise<Shop | null> {
     for (const shop of this.shops.values()) {
       if (shop.active && shop.telnyx_number && shop.telnyx_number === e164) {
-        return shop;
+        return this.hydrateShop(shop);
       }
     }
     return null;
   }
 
   async findById(shopId: string): Promise<Shop | null> {
-    return this.shops.get(shopId) ?? null;
+    const shop = this.shops.get(shopId);
+    return shop ? this.hydrateShop(shop) : null;
   }
 
   async list(params?: { limit?: number }): Promise<Shop[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 50;
-    return [...this.shops.values()].slice(0, limit);
+    return [...this.shops.values()].slice(0, limit).map((shop) => this.hydrateShop(shop));
   }
 
   async listCreatedAtInRange(params: { createdAfter: Date; createdBefore: Date }): Promise<string[]> {
@@ -205,7 +222,81 @@ export class InMemoryShopsRepository implements ShopsRepository {
       ...patch,
     };
     this.shops.set(shopId, updated);
-    return updated;
+    if (patch.services !== undefined) {
+      this.serviceCatalogs.set(
+        shopId,
+        buildGeneralServiceCatalog({
+          shopId,
+          services: patch.services,
+          categoryId: `service-category-${randomUUID()}`,
+          serviceIdForIndex: () => `service-${randomUUID()}`,
+        }),
+      );
+    }
+    return this.hydrateShop(updated);
+  }
+
+  async findServiceCatalogByShopId(shopId: string): Promise<Shop['service_catalog'] | null> {
+    const catalog = this.serviceCatalogs.get(shopId);
+    if (catalog) return catalog;
+    const shop = this.shops.get(shopId);
+    if (!shop) return null;
+    if (!shop.services.length) return { categories: [], services: [] };
+    return buildGeneralServiceCatalog({
+      shopId,
+      services: shop.services,
+      categoryId: `service-category-${randomUUID()}`,
+      serviceIdForIndex: () => `service-${randomUUID()}`,
+    });
+  }
+
+  async saveServiceCatalog(shopId: string, catalog: NonNullable<Shop['service_catalog']>): Promise<Shop['service_catalog'] | null> {
+    const shop = this.shops.get(shopId);
+    if (!shop) return null;
+    const sanitized = {
+      categories: catalog.categories.map((category, index) => ({
+        ...category,
+        shopId,
+        sortOrder: Number.isFinite(category.sortOrder) ? category.sortOrder : index,
+      })),
+      services: catalog.services.map((service, index) => ({
+        ...service,
+        shopId,
+        sortOrder: Number.isFinite(service.sortOrder) ? service.sortOrder : index,
+      })),
+    };
+    this.serviceCatalogs.set(shopId, sanitized);
+    this.shops.set(shopId, { ...shop, services: serviceCatalogToLegacyServices(sanitized) });
+    return sanitized;
+  }
+
+  async deleteServiceCategory(params: { shopId: string; categoryId: string }): Promise<Shop['service_catalog'] | null> {
+    const catalog = await this.findServiceCatalogByShopId(params.shopId);
+    if (!catalog) return null;
+    const category = catalog.categories.find((item) => item.id === params.categoryId);
+    if (!category) return catalog;
+    const remainingCategories = catalog.categories.filter((item) => item.id !== params.categoryId);
+    let general = remainingCategories.find((item) => item.name === GENERAL_SERVICE_CATEGORY_NAME);
+    if (!general) {
+      general = {
+        id: `service-category-${randomUUID()}`,
+        shopId: params.shopId,
+        name: GENERAL_SERVICE_CATEGORY_NAME,
+        description: null,
+        sortOrder: 0,
+        active: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      remainingCategories.unshift(general);
+    }
+    const updated = {
+      categories: remainingCategories,
+      services: catalog.services.map((service) =>
+        service.categoryId === params.categoryId ? { ...service, categoryId: general.id } : service,
+      ),
+    };
+    return this.saveServiceCatalog(params.shopId, updated);
   }
 
   async tryBeginForwardingNumberProvisioning(params: {
