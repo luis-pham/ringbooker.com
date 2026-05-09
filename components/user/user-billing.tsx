@@ -32,11 +32,30 @@ export const userBillingStyles: string[] = [
 .plan-includes-foot{font-size:12px;color:var(--text-light);margin-top:14px;line-height:1.5}
 .footer-inline{margin-top:14px}
 
+.billing-tab-strip{
+  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;padding-bottom:14px;
+  border-bottom:1px solid var(--border);
+}
+.billing-tab{
+  border:1px solid var(--border);background:#fff;border-radius:10px;padding:10px 16px;
+  font-size:13px;font-weight:650;color:var(--text-gray);cursor:pointer;font:inherit;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+  box-shadow:none;
+}
+.billing-tab:hover{background:#f9fafb;border-color:#d1d5db;color:var(--text-dark)}
+.billing-tab:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
+.billing-tab.active{
+  background:var(--purple-dark);color:#fff;border-color:var(--purple-dark);
+}
+.billing-tab.active:hover{background:#5609c4;border-color:#5609c4;color:#fff}
+.billing-tab-panels{display:flex;flex-direction:column;gap:0}
+
 @media (max-width:1200px){
   .billing-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:860px){
   .billing-status-grid{grid-template-columns:1fr}
+  .billing-tab{padding:8px 12px;font-size:12px}
 }
 
 html[data-user-theme="dark"] .billing-status-card{
@@ -50,6 +69,16 @@ html[data-user-theme="dark"] .billing-alert-strip{
 }
 html[data-user-theme="dark"] .tag.gray{background:#21262d;color:var(--text-gray)}
 html[data-user-theme="dark"] .price-mini{background:var(--surface-card)}
+html[data-user-theme="dark"] .billing-tab{
+  background:var(--surface-card);border-color:var(--border);color:var(--text-gray);
+}
+html[data-user-theme="dark"] .billing-tab:hover{background:#21262d;border-color:#8b949e;color:var(--text-dark)}
+html[data-user-theme="dark"] .billing-tab.active{
+  background:rgba(56,139,253,0.15);color:#58a6ff;border-color:rgba(56,139,253,0.45);
+}
+html[data-user-theme="dark"] .billing-tab.active:hover{
+  background:rgba(56,139,253,0.22);color:#79c0ff;border-color:#58a6ff;
+}
 `,
 ];
 

@@ -34,6 +34,14 @@ const userSettingsSpecificStyles = String.raw`
 .calendar-int-name{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
 .calendar-int-desc{font-size:12px;color:var(--text-gray);line-height:1.55;margin:0;flex:1}
 .calendar-int-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px}
+.integrations-intro-note{margin-bottom:18px}
+.integrations-section-heading{
+  font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);
+  margin:24px 0 10px;padding-top:16px;border-top:1px solid var(--border);
+}
+.integrations-section-heading--first{margin-top:4px;padding-top:0;border-top:none}
+.integrations-section-lead{margin-top:-4px;margin-bottom:14px;line-height:1.55}
+.calendar-int-card--solo{max-width:100%}
 .calendar-int-badge{
   display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
   font-size:11px;font-weight:700;background:#f3f4f6;color:#6b7280;border:1px solid var(--border);
@@ -76,8 +84,13 @@ const userSettingsSpecificStyles = String.raw`
 .hint-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .hint-copy{font-size:12px;color:var(--text-gray);line-height:1.6}
 .subtle-link{color:var(--purple-dark);font-weight:700}
+button.subtle-link{font:inherit;border:none;background:none;padding:0;cursor:pointer;text-align:left}
+button.subtle-link:hover{text-decoration:underline}
+.integrations-path-picker{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 18px}
+.integrations-path-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0 8px}
+.integrations-inline-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%}
 .tab-strip{
-  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:18px;
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px;
 }
 .tab-button{
   display:flex;flex-direction:row;align-items:flex-start;gap:10px;text-align:left;
@@ -176,6 +189,9 @@ html[data-user-theme="dark"] .calendar-int-card.connected-active{
 }
 html[data-user-theme="dark"] .calendar-int-card.soon{background:#21262d}
 html[data-user-theme="dark"] .calendar-int-logo-wrap{background:#0d1117;border-color:var(--border)}
+html[data-user-theme="dark"] .integrations-section-heading{color:var(--text-gray);border-top-color:var(--border)}
+html[data-user-theme="dark"] button.subtle-link{color:#a371f7}
+html[data-user-theme="dark"] button.subtle-link:hover{color:#d2a8ff}
 html[data-user-theme="dark"] .calendar-int-badge{background:#21262d;color:var(--text-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .option-card{background:var(--surface-card)}
 html[data-user-theme="dark"] .option-card:hover{border-color:#58a6ff}

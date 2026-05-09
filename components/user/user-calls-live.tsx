@@ -142,43 +142,50 @@ function getActionLabel(action: string): string {
   return labels[action] || action;
 }
 
-function getBadgeStyle(action: string): { background: string; color: string } {
-  const styles: Record<string, { background: string; color: string }> = {
-    booking_created: { background: '#dcfce7', color: '#16a34a' },
-    booking_link_sent: { background: '#dbeafe', color: '#1d4ed8' },
-    cancellation_requested: { background: '#fed7aa', color: '#c2410c' },
-    reschedule_requested: { background: '#fed7aa', color: '#c2410c' },
-    callback_scheduled: { background: '#ede9fe', color: '#7c3aed' },
-    info_provided: { background: '#f1f5f9', color: '#475569' },
-    escalated: { background: '#fee2e2', color: '#dc2626' },
-  };
-  return styles[action] || { background: '#f1f5f9', color: '#475569' };
+function nextActionTagClass(action: NonNullable<Call['summaryNextAction']>): string {
+  switch (action) {
+    case 'booking_created':
+      return 'tag green';
+    case 'booking_link_sent':
+      return 'tag blue';
+    case 'cancellation_requested':
+    case 'reschedule_requested':
+      return 'tag orange';
+    case 'callback_scheduled':
+      return 'tag purple';
+    case 'info_provided':
+      return 'tag gray';
+    case 'escalated':
+      return 'tag red';
+    default:
+      return 'tag purple';
+  }
 }
 
 function nextActionBadge(action?: Call['summaryNextAction']) {
   switch (action) {
     case 'booking_created':
-      return { className: 'summary-badge green', label: 'Booking created ✓' };
+      return { className: 'tag green', label: 'Booking created ✓' };
     case 'booking_link_sent':
-      return { className: 'summary-badge blue', label: 'Link sent' };
+      return { className: 'tag blue', label: 'Link sent' };
     case 'cancellation_requested':
-      return { className: 'summary-badge orange', label: 'Cancel requested' };
+      return { className: 'tag orange', label: 'Cancel requested' };
     case 'reschedule_requested':
-      return { className: 'summary-badge orange', label: 'Reschedule needed' };
+      return { className: 'tag orange', label: 'Reschedule needed' };
     case 'callback_scheduled':
-      return { className: 'summary-badge purple', label: 'Callback scheduled' };
+      return { className: 'tag purple', label: 'Callback scheduled' };
     case 'info_provided':
-      return { className: 'summary-badge gray', label: 'Info only' };
+      return { className: 'tag gray', label: 'Info only' };
     case 'escalated':
-      return { className: 'summary-badge red', label: 'Escalated' };
+      return { className: 'tag red', label: 'Escalated' };
     default:
       return null;
   }
 }
 
 function urgencyBadge(urgency?: Call['summaryUrgency']) {
-  if (urgency === 'high') return { className: 'summary-badge red', label: 'Urgent ⚠️' };
-  if (urgency === 'medium') return { className: 'summary-badge blue', label: 'Medium priority' };
+  if (urgency === 'high') return { className: 'tag red', label: 'Urgent ⚠️' };
+  if (urgency === 'medium') return { className: 'tag blue', label: 'Medium priority' };
   return null;
 }
 
@@ -329,14 +336,13 @@ export function UserCallsLive() {
   }
 
   function renderCallIntent(call: Call) {
-    const actionStyle = call.summaryNextAction ? getBadgeStyle(call.summaryNextAction) : null;
     return (
       <div className="intent-call-summary">
         <div className="intent-badges">
-          {call.summaryUrgency === 'high' ? <span className="intent-chip urgent">Urgent ⚠️</span> : null}
-          {call.summaryUrgency === 'medium' ? <span className="intent-chip medium">Medium priority</span> : null}
-          {call.summaryNextAction && call.summaryNextAction !== 'no_action_needed' && actionStyle ? (
-            <span className="intent-chip" style={actionStyle}>{getActionLabel(call.summaryNextAction)}</span>
+          {call.summaryUrgency === 'high' ? <span className="tag red">Urgent ⚠️</span> : null}
+          {call.summaryUrgency === 'medium' ? <span className="tag blue">Medium priority</span> : null}
+          {call.summaryNextAction && call.summaryNextAction !== 'no_action_needed' ? (
+            <span className={nextActionTagClass(call.summaryNextAction)}>{getActionLabel(call.summaryNextAction)}</span>
           ) : null}
         </div>
         <div className="intent-fields">
@@ -364,12 +370,12 @@ export function UserCallsLive() {
       String.raw`
 
 .intent-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:24px}
-.intent-card{background:#fff;border:.5px solid #e5e7eb;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.intent-card{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px}
 .intent-card .intent-icon{font-size:18px}.intent-card .intent-number{font-size:28px;font-weight:800;letter-spacing:-.04em;color:var(--text-dark)}.intent-card .intent-label{font-size:13px;color:var(--text-gray)}
 .intent-filter-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:.5px solid var(--border);overflow-x:auto}
 .intent-filter-tab{position:relative;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--text-gray);padding:10px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
 .intent-filter-tab.active{border-bottom-color:#7c3aed;color:#7c3aed;font-weight:600}.intent-filter-count{background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;margin-left:6px;padding:0 4px}
-.intent-call-summary{margin-top:8px;display:flex;flex-direction:column;gap:8px}.intent-badges{display:flex;gap:6px;flex-wrap:wrap}.intent-chip{font-size:11px;padding:2px 8px;border-radius:999px;font-weight:600;background:#f1f5f9;color:#475569}.intent-chip.urgent{background:#fee2e2;color:#dc2626}.intent-chip.medium{background:#dbeafe;color:#1d4ed8}
+.intent-call-summary{margin-top:8px;display:flex;flex-direction:column;gap:8px}.intent-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .intent-fields{font-size:13px;color:var(--text-gray);display:flex;flex-direction:column;gap:2px}.intent-fields span span{color:var(--text-light);font-size:11px;margin-right:4px}
 .intent-follow-up{background:#fef3c7;border:.5px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:13px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:10px}.intent-follow-up button{font-size:12px;color:#92400e;background:transparent;border:.5px solid #fde68a;border-radius:999px;padding:2px 10px;cursor:pointer;white-space:nowrap}
 @media (max-width:860px){.intent-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.summary-grid{grid-template-columns:1fr}}
@@ -396,7 +402,7 @@ export function UserCallsLive() {
   display:flex;align-items:center;justify-content:center;padding:24px;z-index:160;
 }
 .modal-card{
-  width:min(920px,100%);max-height:min(88vh,920px);overflow:auto;background:#fff;border:1px solid var(--border);
+  width:min(920px,100%);max-height:min(88vh,920px);overflow:auto;background:var(--surface-card);border:1px solid var(--border);
   border-radius:28px;box-shadow:0 24px 80px rgba(17,24,39,.18);padding:24px;
 }
 .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:18px}
@@ -404,22 +410,20 @@ export function UserCallsLive() {
 .modal-title p{margin:8px 0 0;color:var(--text-gray);font-size:13px;line-height:1.6}
 .modal-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:18px}
 .meta-tile{
-  border:1px solid var(--border);border-radius:18px;padding:14px 16px;background:linear-gradient(180deg,#fff 0%,#fcfbff 100%);
+  border:1px solid var(--border);border-radius:18px;padding:14px 16px;background:var(--bg-gray);
 }
 .meta-tile strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin-bottom:7px}
 .meta-tile span{display:block;font-size:14px;color:var(--text-dark);line-height:1.6}
 
-.summary-panel{border:1px solid var(--border);border-radius:18px;padding:14px 16px;background:#fff;margin-bottom:18px}
-.summary-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
-.summary-badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;line-height:1}
-.summary-badge.green{background:#dcfce7;color:#15803d}.summary-badge.blue{background:#dbeafe;color:#1d4ed8}.summary-badge.orange{background:#ffedd5;color:#c2410c}.summary-badge.purple{background:#ede9fe;color:#6d28d9}.summary-badge.red{background:#fee2e2;color:#b91c1c}.summary-badge.gray{background:#f1f5f9;color:#475569}
+.summary-panel{border:1px solid var(--border);border-radius:18px;padding:14px 16px;background:var(--bg-gray);margin-bottom:18px}
+.summary-badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
 .summary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;font-size:14px;line-height:1.5;color:var(--text-dark)}
 .summary-grid .full{grid-column:1/-1}.summary-grid span{color:var(--text-gray);font-size:12px;margin-right:4px}
 .follow-up-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;background:#fef3c7;border:.5px solid #fde68a;border-radius:12px;padding:8px 12px;font-size:13px;color:#92400e}
 .follow-up-banner button{font-size:12px;color:#92400e;background:transparent;border:.5px solid #fde68a;border-radius:999px;padding:3px 10px;cursor:pointer;white-space:nowrap}
 .transcript-toggle{display:flex;justify-content:flex-start;margin-bottom:10px}
 .transcript-note{
-  background:#fff;border:1px solid var(--border);border-radius:22px;padding:18px 18px 20px;white-space:pre-wrap;
+  background:var(--bg-gray);border:1px solid var(--border);border-radius:22px;padding:18px 18px 20px;white-space:pre-wrap;
   font-size:14px;line-height:1.7;color:var(--text-dark);
 }
 .mobile-calls{display:none}
@@ -427,7 +431,7 @@ export function UserCallsLive() {
   .desktop-calls{display:none}
   .mobile-calls{display:flex;flex-direction:column;gap:14px}
   .mobile-call-card{
-    border:1px solid var(--border);border-radius:22px;padding:16px;background:#fff;box-shadow:var(--shadow-soft);
+    border:1px solid var(--border);border-radius:22px;padding:16px;background:var(--surface-card);box-shadow:var(--shadow-soft);
   }
   .mobile-call-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
   .mobile-call-card h4{margin:0;font-size:15px;letter-spacing:-.02em}
@@ -438,6 +442,15 @@ export function UserCallsLive() {
   .modal-head{flex-direction:column}
   .modal-meta{grid-template-columns:1fr}
 }
+html[data-user-theme="dark"] .intent-filter-tab.active{color:#79c0ff;border-bottom-color:#79c0ff}
+html[data-user-theme="dark"] .follow-up-banner{background:rgba(187,128,9,0.12);border-color:rgba(210,153,34,.35);color:#d29922}
+html[data-user-theme="dark"] .follow-up-banner button{color:#d29922;border-color:rgba(210,153,34,.35)}
+html[data-user-theme="dark"] .intent-follow-up{background:rgba(187,128,9,0.12);border-color:rgba(210,153,34,.35);color:#d29922}
+html[data-user-theme="dark"] .intent-follow-up button{color:#d29922;border-color:rgba(210,153,34,.35)}
+html[data-user-theme="dark"] .modal-card{box-shadow:0 24px 80px rgba(0,0,0,.55)}
+html[data-user-theme="dark"] .meta-tile{background:#161b22}
+html[data-user-theme="dark"] .summary-panel{background:#161b22}
+html[data-user-theme="dark"] .transcript-note{background:#0d1117}
       `,
     ],
     [],
@@ -571,7 +584,7 @@ export function UserCallsLive() {
                             <td>
                               <div className="stack">
                                 <span className={outcomeClass(call.outcome)}>{call.outcome ?? 'in_progress'}</span>
-                                <span className="status-copy">{transcriptStatusLabel(call)} transcript</span>
+                                <span className={transcriptClass(call.transcriptStatus)}>{transcriptStatusLabel(call)} transcript</span>
                                 {hasStructuredSummary(call) ? <span className="status-copy">Structured summary ready</span> : null}
                               </div>
                             </td>

@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { CallForwardingSetup } from '@/components/user/call-forwarding-setup';
-
 import { UserLayout } from '@/components/user/user-layout';
 import { userBillingScripts, userBillingStyles } from '@/components/user/user-billing';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
@@ -335,6 +333,8 @@ function billingUiCopy(state: BillingUiState) {
   }
 }
 
+type BillingSectionTab = 'overview' | 'plans' | 'history';
+
 export function UserBillingLive() {
   const { workspace, setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserBillingResponse | null>(null);
@@ -342,8 +342,7 @@ export function UserBillingLive() {
   const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
-  const [provisionForwardingLoading, setProvisionForwardingLoading] = useState(false);
-  const [provisionForwardingError, setProvisionForwardingError] = useState<string | null>(null);
+  const [billingTab, setBillingTab] = useState<BillingSectionTab>('overview');
 
   const refreshBilling = useCallback(async () => {
     const controller = new AbortController();
@@ -386,6 +385,13 @@ export function UserBillingLive() {
     };
   }, [refreshBilling]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash === '#go-live-forwarding') {
+      window.location.replace(`${window.location.origin}/user/settings#go-live-forwarding`);
+    }
+  }, []);
+
   const subscription = data?.billing?.subscription ?? null;
   const currentPlan = subscription?.plan ?? data?.shop?.plan ?? 'starter';
   const paymentMethodStatus = data?.billing?.paymentMethodStatus ?? subscription?.paymentMethodStatus ?? 'none';
@@ -426,7 +432,6 @@ export function UserBillingLive() {
 
   const enterpriseApprovalPending = currentPlan === 'enterprise' && data?.billing?.commercialApprovalRequired === true;
   const isEnterprisePlan = currentPlan === 'enterprise';
-  const forwardingNumber = data?.billing?.forwardingNumber?.trim() ?? '';
   const checkoutAvailable = data?.billing?.checkoutAvailable === true;
   const availableBillingIntervals = data?.billing?.availableBillingIntervals ?? ['monthly'];
   const canChooseAnnual = checkoutAvailable && availableBillingIntervals.includes('annual');
@@ -435,36 +440,11 @@ export function UserBillingLive() {
   const billingState = resolveBillingUiState({ subscription, hasPaymentMethod, checkoutPlan });
   const billingCopy = billingUiCopy(billingState);
 
-  async function provisionForwardingFromBilling() {
-    setProvisionForwardingLoading(true);
-    setProvisionForwardingError(null);
-    try {
-      const response = await fetch('/api/backend/user/phone-numbers/provision-forwarding-number', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmGoLiveIntent: true }),
-      });
-      const body = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        forwardingNumber?: string;
-        error?: string;
-      } | null;
-      if (!response.ok || !body?.ok) {
-        if (body?.error === 'payment_method_required') {
-          setProvisionForwardingError('Add a payment method before provisioning a forwarding number.');
-        } else if (body?.error === 'confirmation_required') {
-          setProvisionForwardingError('Confirmation failed. Please try again.');
-        } else {
-          setProvisionForwardingError(body?.error ?? 'Could not create forwarding number.');
-        }
-        return;
-      }
-      await refreshBilling();
-    } finally {
-      setProvisionForwardingLoading(false);
-    }
-  }
+  const selectBillingTab = useCallback((tab: BillingSectionTab) => {
+    setBillingTab(tab);
+    if (typeof window === 'undefined') return;
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+  }, []);
 
   async function openCheckout(plan: ShopPlan) {
     if (!checkoutAvailable) {
@@ -543,7 +523,7 @@ export function UserBillingLive() {
           <main className="main billing-page">
             <UserPortalTopbar
               title="Billing"
-              subtitle="Manage your plan, payment method, and subscription."
+              subtitle="Summary above; tabs for account usage, plans, and billing history. Forwarding is under Settings → Go live."
             />
 
             {loading ? (
@@ -582,304 +562,295 @@ export function UserBillingLive() {
                   </div>
                 </section>
 
-                {data.billing?.usage ? (
-                  <section className="card" style={{ marginBottom: 16 }}>
-                    <h3 style={{ marginTop: 0 }}>Usage this month</h3>
-                    <p className="sub">
-                      {data.billing.usage.capturedCallersLimit == null
-                        ? `${data.billing.usage.capturedCallersUsed} captured callers · Custom allowance`
-                        : `${data.billing.usage.capturedCallersUsed} / ${data.billing.usage.capturedCallersLimit} captured callers`}
-                    </p>
-                    <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden', margin: '12px 0' }}>
-                      <div
-                        style={{
-                          height: '100%',
-                          width: `${Math.min(100, data.billing.usage.capturedCallerUsagePercent ?? 0)}%`,
-                          background: data.billing.usage.overCapturedCallerLimit ? '#dc2626' : data.billing.usage.nearCapturedCallerLimit ? '#f59e0b' : '#7c3aed',
-                        }}
-                      />
-                    </div>
-                    <p className="sub">
-                      Voice usage: {data.billing.usage.voiceMinutesUsed} min{data.billing.usage.voiceMinutesSoftLimit ? ` / ${data.billing.usage.voiceMinutesSoftLimit} soft cap` : ''}
-                    </p>
-                  </section>
-                ) : null}
+                <div className="billing-tab-strip" role="tablist" aria-label="Billing sections">
+                  <button
+                    type="button"
+                    role="tab"
+                    id="billing-tab-overview"
+                    aria-selected={billingTab === 'overview'}
+                    aria-controls="billing-panel-overview"
+                    className={`billing-tab${billingTab === 'overview' ? ' active' : ''}`}
+                    onClick={() => selectBillingTab('overview')}
+                  >
+                    Overview
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="billing-tab-plans"
+                    aria-selected={billingTab === 'plans'}
+                    aria-controls="billing-panel-plans"
+                    className={`billing-tab${billingTab === 'plans' ? ' active' : ''}`}
+                    onClick={() => selectBillingTab('plans')}
+                  >
+                    Plans
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="billing-tab-history"
+                    aria-selected={billingTab === 'history'}
+                    aria-controls="billing-panel-history"
+                    className={`billing-tab${billingTab === 'history' ? ' active' : ''}`}
+                    onClick={() => selectBillingTab('history')}
+                  >
+                    History
+                  </button>
+                </div>
 
-                {enterpriseApprovalPending ? (
-                  <section className="card" style={{ marginBottom: 16, borderColor: '#ddd6fe', background: '#faf5ff' }}>
-                    <h3 style={{ marginTop: 0 }}>Custom billing is managed by the RingBooker team</h3>
-                    <p className="sub">
-                      Your Custom setup is being prepared through sales and implementation. We will confirm contract, invoice, routing, and go-live details before live answering is enabled.
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
-                      <a className="btn purple" href="/contact?topic=sales">Contact sales</a>
-                      <a className="btn" href="/contact?topic=implementation">Contact implementation support</a>
-                    </div>
-                  </section>
-                ) : null}
-
-                {data?.billing && !isEnterprisePlan && !liveEnabled ? (
-                  <section className="card" style={{ marginBottom: 16 }}>
-                    <h3 style={{ marginTop: 0 }}>{billingCopy.title}</h3>
-                    <p className="sub">{billingCopy.body}</p>
-                    {data.billing.trialNoChargeUntilEndVerified ? (
-                      <p className="sub">Paddle is configured to collect your payment method now and charge after the trial ends.</p>
-                    ) : null}
-                    {checkoutAvailable && availableBillingIntervals.length > 1 && !hasPaymentMethod ? (
-                      <div style={{ display: 'flex', gap: 8, margin: '12px 0', flexWrap: 'wrap' }} aria-label="Billing interval">
-                        <button
-                          type="button"
-                          className={`btn${effectiveBillingInterval === 'monthly' ? ' purple' : ''}`}
-                          onClick={() => setBillingInterval('monthly')}
-                        >
-                          Monthly
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn${effectiveBillingInterval === 'annual' ? ' purple' : ''}`}
-                          onClick={() => setBillingInterval('annual')}
-                          disabled={!canChooseAnnual}
-                        >
-                          Annual
-                        </button>
-                      </div>
-                    ) : null}
-                    {!checkoutAvailable ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-                        <button type="button" className="btn" disabled>
-                          Payment checkout temporarily hidden
-                        </button>
-                        <p className="sub" style={{ margin: 0 }}>
-                          Setup and test calls remain available. Checkout will be enabled after Paddle sandbox QA is complete.
+                <div className="billing-tab-panels">
+                  {billingTab === 'overview' ? (
+                    <div role="tabpanel" id="billing-panel-overview" aria-labelledby="billing-tab-overview">
+                      <section className="card soft" style={{ marginBottom: 16 }}>
+                        <h3 style={{ marginTop: 0 }}>Call forwarding & go live</h3>
+                        <p className="sub">
+                          Your RingBooker forwarding number and carrier steps live under Settings, so Billing stays focused on
+                          your subscription and payment method.
                         </p>
-                      </div>
-                    ) : ['past_due', 'paused', 'canceled'].includes(billingState) ? (
-                      <button
-                        type="button"
-                        className="btn purple"
-                        disabled={checkoutPlan !== null}
-                        onClick={() => void openReactivateCheckout()}
-                      >
-                        {checkoutPlan ? 'Starting…' : 'Resolve billing issue'}
-                      </button>
-                    ) : subscription && !hasPaymentMethod ? (
-                      <button
-                        type="button"
-                        className="btn purple"
-                        disabled={checkoutPlan !== null}
-                        onClick={() => void openCheckout(currentPlan)}
-                      >
-                        {checkoutPlan ? 'Starting…' : 'Add payment method'}
-                      </button>
-                    ) : null}
-                  </section>
-                ) : null}
-
-                {data?.billing && !liveEnabled && hasPaymentMethod && !forwardingNumber && !enterpriseApprovalPending ? (
-                  <section className="card" style={{ marginBottom: 16 }} id="go-live-forwarding">
-                    <h3 style={{ marginTop: 0 }}>Set up call forwarding</h3>
-                    <p className="sub">
-                      RingBooker will create a forwarding number used only behind the scenes. Your customers will keep calling your current business number.
-                    </p>
-                    <button
-                      type="button"
-                      className="btn purple"
-                      disabled={provisionForwardingLoading}
-                      onClick={() => void provisionForwardingFromBilling()}
-                    >
-                      {provisionForwardingLoading ? 'Setting up your forwarding number...' : 'Set up call forwarding'}
-                    </button>
-                    {provisionForwardingError ? (
-                      <p className="sub" style={{ color: '#b45309', marginTop: 12 }}>
-                        {provisionForwardingError}{' '}
-                        <a href="/user/billing">Review billing</a>
-                      </p>
-                    ) : null}
-                  </section>
-                ) : null}
-
-                {data?.billing && !liveEnabled && hasPaymentMethod && forwardingNumber && !enterpriseApprovalPending ? (
-                  <section className="card" style={{ marginBottom: 16 }}>
-                    <h3 style={{ marginTop: 0 }}>Your RingBooker forwarding number is ready</h3>
-                    <p className="sub">
-                      Forward missed, busy, overflow, or after-hours calls from your current business number to this RingBooker forwarding number.
-                    </p>
-                    <div
-                      style={{
-                        border: '1px solid #bfdbfe',
-                        background: '#eff6ff',
-                        borderRadius: 12,
-                        padding: 12,
-                        marginTop: 10,
-                        fontSize: 14,
-                        color: '#1e3a5f',
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      Your customers keep calling your current business number. This forwarding number is used only behind the scenes.
-                    </div>
-                    <p className="sub" style={{ marginTop: 14 }}>
-                      <strong>RingBooker forwarding number:</strong>{' '}
-                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{forwardingNumber}</span>
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, alignItems: 'center' }}>
-                      <button type="button" className="btn" disabled title="Forwarding verification is coming next. Live answering stays off.">
-                        I&apos;ve set up forwarding
-                      </button>
-                      <a href="/contact" style={{ fontWeight: 600 }}>
-                        Need help? Contact support
-                      </a>
-                    </div>
-                    <p className="sub" style={{ marginTop: 8, marginBottom: 16 }}>
-                      We&apos;ll verify forwarding in a later step — RingBooker won&apos;t enable live answering yet.
-                    </p>
-                    <CallForwardingSetup
-                      ringbookerNumber={forwardingNumber}
-                      callForwardingPageUrl="/current-number/call-forwarding"
-                      initialMethod="forward"
-                      suppressForwardingTestCta
-                      onComplete={() => {}}
-                      onSkip={() => {}}
-                    />
-                  </section>
-                ) : null}
-
-                <section className="pricing-mini" style={{ marginBottom: 16 }}>
-                  {PLAN_CATALOG.map((plan) => {
-                    const isCurrent = currentPlan === plan.plan;
-                    const isBusy = checkoutPlan === plan.plan;
-                    const isEnterprise = plan.plan === 'enterprise';
-
-                    let cta: ReactNode;
-                    if (isEnterprise) {
-                      cta = (
-                        <a className="btn" href="/contact">
-                          Contact us
+                        <a className="btn" href="/user/settings#go-live-forwarding">
+                          Open Settings — Go live
                         </a>
-                      );
-                    } else if (isCurrent) {
-                      if (!hasPaymentMethod) {
-                        cta = (
-                          <button
-                            type="button"
-                            className="btn purple"
-                            disabled={isBusy || !checkoutAvailable}
-                            onClick={() => void openCheckout(plan.plan)}
-                          >
-                            {isBusy ? 'Starting…' : checkoutAvailable ? 'Add payment method' : 'Checkout hidden'}
-                          </button>
-                        );
-                      } else {
-                        cta = (
-                          <span className="btn" style={{ opacity: 0.85, cursor: 'default' }} aria-current="true">
-                            Current plan
-                          </span>
-                        );
-                      }
-                    } else if (plan.plan === 'professional' && currentPlan === 'starter') {
-                      cta = (
-                        <a className="btn" href="/contact?intent=sales&source=user_billing_upgrade&plan=professional">
-                          Contact us to upgrade
-                        </a>
-                      );
-                    } else {
-                      cta = (
-                        <a className="btn" href={`/contact?intent=sales&source=user_billing_plan_change&plan=${plan.plan}`}>
-                          Contact us to switch
-                        </a>
-                      );
-                    }
+                      </section>
+                      {data.billing?.usage ? (
+                        <section className="card" style={{ marginBottom: 16 }}>
+                          <h3 style={{ marginTop: 0 }}>Usage this month</h3>
+                          <p className="sub">
+                            {data.billing.usage.capturedCallersLimit == null
+                              ? `${data.billing.usage.capturedCallersUsed} captured callers · Custom allowance`
+                              : `${data.billing.usage.capturedCallersUsed} / ${data.billing.usage.capturedCallersLimit} captured callers`}
+                          </p>
+                          <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden', margin: '12px 0' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${Math.min(100, data.billing.usage.capturedCallerUsagePercent ?? 0)}%`,
+                                background: data.billing.usage.overCapturedCallerLimit ? '#dc2626' : data.billing.usage.nearCapturedCallerLimit ? '#f59e0b' : '#7c3aed',
+                              }}
+                            />
+                          </div>
+                          <p className="sub">
+                            Voice usage: {data.billing.usage.voiceMinutesUsed} min{data.billing.usage.voiceMinutesSoftLimit ? ` / ${data.billing.usage.voiceMinutesSoftLimit} soft cap` : ''}
+                          </p>
+                        </section>
+                      ) : null}
 
-                    return (
-                      <div className={`price-mini${isCurrent ? ' featured' : ''}`} key={plan.plan}>
-                        <div className="price-mini-body">
-                          {isCurrent ? (
-                            <span className="tag purple" style={{ marginBottom: 8, display: 'inline-flex' }}>
-                              Current plan
-                            </span>
+                      {enterpriseApprovalPending ? (
+                        <section className="card" style={{ marginBottom: 16, borderColor: '#ddd6fe', background: '#faf5ff' }}>
+                          <h3 style={{ marginTop: 0 }}>Custom billing is managed by the RingBooker team</h3>
+                          <p className="sub">
+                            Your Custom setup is being prepared through sales and implementation. We will confirm contract, invoice, routing, and go-live details before live answering is enabled.
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+                            <a className="btn purple" href="/contact?topic=sales">Contact sales</a>
+                            <a className="btn" href="/contact?topic=implementation">Contact implementation support</a>
+                          </div>
+                        </section>
+                      ) : null}
+
+                      {data?.billing && !isEnterprisePlan && !liveEnabled ? (
+                        <section className="card" style={{ marginBottom: 16 }}>
+                          <h3 style={{ marginTop: 0 }}>{billingCopy.title}</h3>
+                          <p className="sub">{billingCopy.body}</p>
+                          {data.billing.trialNoChargeUntilEndVerified ? (
+                            <p className="sub">Paddle is configured to collect your payment method now and charge after the trial ends.</p>
                           ) : null}
-                          <h4 style={{ margin: 0 }}>{planDisplayName(plan.plan)}</h4>
-                          <div className="amt">{plan.priceLine}</div>
-                          <ul>
-                            {plan.features.map((feature) => (
-                              <li key={feature}>{feature}</li>
-                            ))}
-                          </ul>
+                          {checkoutAvailable && availableBillingIntervals.length > 1 && !hasPaymentMethod ? (
+                            <div style={{ display: 'flex', gap: 8, margin: '12px 0', flexWrap: 'wrap' }} aria-label="Billing interval">
+                              <button
+                                type="button"
+                                className={`btn${effectiveBillingInterval === 'monthly' ? ' purple' : ''}`}
+                                onClick={() => setBillingInterval('monthly')}
+                              >
+                                Monthly
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn${effectiveBillingInterval === 'annual' ? ' purple' : ''}`}
+                                onClick={() => setBillingInterval('annual')}
+                                disabled={!canChooseAnnual}
+                              >
+                                Annual
+                              </button>
+                            </div>
+                          ) : null}
+                          {!checkoutAvailable ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                              <button type="button" className="btn" disabled>
+                                Payment checkout temporarily hidden
+                              </button>
+                              <p className="sub" style={{ margin: 0 }}>
+                                Setup and test calls remain available. Checkout will be enabled after Paddle sandbox QA is complete.
+                              </p>
+                            </div>
+                          ) : ['past_due', 'paused', 'canceled'].includes(billingState) ? (
+                            <button
+                              type="button"
+                              className="btn purple"
+                              disabled={checkoutPlan !== null}
+                              onClick={() => void openReactivateCheckout()}
+                            >
+                              {checkoutPlan ? 'Starting…' : 'Resolve billing issue'}
+                            </button>
+                          ) : subscription && !hasPaymentMethod ? (
+                            <button
+                              type="button"
+                              className="btn purple"
+                              disabled={checkoutPlan !== null}
+                              onClick={() => void openCheckout(currentPlan)}
+                            >
+                              {checkoutPlan ? 'Starting…' : 'Add payment method'}
+                            </button>
+                          ) : null}
+                        </section>
+                      ) : null}
+
+                      {checkoutError ? (
+                        <section className="card" style={{ marginTop: 0 }}>
+                          <h3>Checkout could not start</h3>
+                          <p className="sub">{checkoutError}</p>
+                        </section>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {billingTab === 'plans' ? (
+                    <div role="tabpanel" id="billing-panel-plans" aria-labelledby="billing-tab-plans">
+                      <section className="pricing-mini" style={{ marginBottom: 16 }}>
+                        {PLAN_CATALOG.map((plan) => {
+                          const isCurrent = currentPlan === plan.plan;
+                          const isBusy = checkoutPlan === plan.plan;
+                          const isEnterprise = plan.plan === 'enterprise';
+
+                          let cta: ReactNode;
+                          if (isEnterprise) {
+                            cta = (
+                              <a className="btn" href="/contact">
+                                Contact us
+                              </a>
+                            );
+                          } else if (isCurrent) {
+                            if (!hasPaymentMethod) {
+                              cta = (
+                                <button
+                                  type="button"
+                                  className="btn purple"
+                                  disabled={isBusy || !checkoutAvailable}
+                                  onClick={() => void openCheckout(plan.plan)}
+                                >
+                                  {isBusy ? 'Starting…' : checkoutAvailable ? 'Add payment method' : 'Checkout hidden'}
+                                </button>
+                              );
+                            } else {
+                              cta = (
+                                <span className="btn" style={{ opacity: 0.85, cursor: 'default' }} aria-current="true">
+                                  Current plan
+                                </span>
+                              );
+                            }
+                          } else if (plan.plan === 'professional' && currentPlan === 'starter') {
+                            cta = (
+                              <a className="btn" href="/contact?intent=sales&source=user_billing_upgrade&plan=professional">
+                                Contact us to upgrade
+                              </a>
+                            );
+                          } else {
+                            cta = (
+                              <a className="btn" href={`/contact?intent=sales&source=user_billing_plan_change&plan=${plan.plan}`}>
+                                Contact us to switch
+                              </a>
+                            );
+                          }
+
+                          return (
+                            <div className={`price-mini${isCurrent ? ' featured' : ''}`} key={plan.plan}>
+                              <div className="price-mini-body">
+                                {isCurrent ? (
+                                  <span className="tag purple" style={{ marginBottom: 8, display: 'inline-flex' }}>
+                                    Current plan
+                                  </span>
+                                ) : null}
+                                <h4 style={{ margin: 0 }}>{planDisplayName(plan.plan)}</h4>
+                                <div className="amt">{plan.priceLine}</div>
+                                <ul>
+                                  {plan.features.map((feature) => (
+                                    <li key={feature}>{feature}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div className="price-mini-cta">{cta}</div>
+                            </div>
+                          );
+                        })}
+                      </section>
+
+                      <section className="card soft">
+                        <div className="panel-head">
+                          <div>
+                            <h3>Current plan includes</h3>
+                            <p className="sub">What you get with RingBooker on your current plan tier.</p>
+                          </div>
                         </div>
-                        <div className="price-mini-cta">{cta}</div>
-                      </div>
-                    );
-                  })}
-                </section>
-
-                {billingHistory.length > 0 ? (
-                  <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
-                    <div className="panel-head">
-                      <div>
-                        <h3>Billing history</h3>
-                        <p className="sub">Recent subscription activity and renewal timing.</p>
-                      </div>
+                        <ul className="plan-includes-list">
+                          <li>AI phone answering</li>
+                          <li>Booking request capture</li>
+                          <li>Missed-call follow-up</li>
+                          <li>Call summaries</li>
+                          <li>SMS workflows where enabled for your plan</li>
+                        </ul>
+                        <p className="plan-includes-foot">Billing is managed securely through Paddle.</p>
+                      </section>
                     </div>
-                    <table className="table">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Description</th>
-                          <th>Amount</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {billingHistory.map((row) => (
-                          <tr key={`${row.date}-${row.description}`}>
-                            <td>{row.date}</td>
-                            <td>{row.description}</td>
-                            <td>{row.amount}</td>
-                            <td>
-                              <span className={`tag ${row.tone}`}>{row.status}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </section>
-                ) : (
-                  <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
-                    <div className="panel-head">
-                      <div>
-                        <h3>Billing history</h3>
-                      </div>
-                    </div>
-                    <p className="sub" style={{ marginBottom: 0 }}>
-                      No invoices yet. Your invoices and subscription events will appear here after your first billing
-                      period.
-                    </p>
-                  </section>
-                )}
+                  ) : null}
 
-                <section className="card soft">
-                  <div className="panel-head">
-                    <div>
-                      <h3>Current plan includes</h3>
-                      <p className="sub">What you get with RingBooker on your current plan tier.</p>
+                  {billingTab === 'history' ? (
+                    <div role="tabpanel" id="billing-panel-history" aria-labelledby="billing-tab-history">
+                      {billingHistory.length > 0 ? (
+                        <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
+                          <div className="panel-head">
+                            <div>
+                              <h3>Billing history</h3>
+                              <p className="sub">Recent subscription activity and renewal timing.</p>
+                            </div>
+                          </div>
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {billingHistory.map((row) => (
+                                <tr key={`${row.date}-${row.description}`}>
+                                  <td>{row.date}</td>
+                                  <td>{row.description}</td>
+                                  <td>{row.amount}</td>
+                                  <td>
+                                    <span className={`tag ${row.tone}`}>{row.status}</span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </section>
+                      ) : (
+                        <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
+                          <div className="panel-head">
+                            <div>
+                              <h3>Billing history</h3>
+                            </div>
+                          </div>
+                          <p className="sub" style={{ marginBottom: 0 }}>
+                            No invoices yet. Your invoices and subscription events will appear here after your first billing
+                            period.
+                          </p>
+                        </section>
+                      )}
                     </div>
-                  </div>
-                  <ul className="plan-includes-list">
-                    <li>AI phone answering</li>
-                    <li>Booking request capture</li>
-                    <li>Missed-call follow-up</li>
-                    <li>Call summaries</li>
-                    <li>SMS workflows where enabled for your plan</li>
-                  </ul>
-                  <p className="plan-includes-foot">Billing is managed securely through Paddle.</p>
-                </section>
-
-                {checkoutError ? (
-                  <section className="card" style={{ marginTop: 16 }}>
-                    <h3>Checkout could not start</h3>
-                    <p className="sub">{checkoutError}</p>
-                  </section>
-                ) : null}
+                  ) : null}
+                </div>
               </>
             )}
 

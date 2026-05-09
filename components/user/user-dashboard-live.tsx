@@ -276,7 +276,7 @@ export function UserDashboardLive() {
         );
       case 'set_up_call_forwarding':
         return (
-          <a className="btn purple" href="/user/billing#go-live-forwarding">
+          <a className="btn purple" href="/user/settings#go-live-forwarding">
             Set up call forwarding
           </a>
         );
@@ -365,7 +365,7 @@ export function UserDashboardLive() {
               </section>
             ) : null}
             {showGoLiveBanner ? (
-              <section className="card" style={{ marginBottom: 18, borderColor: '#c7d2fe', background: '#eef2ff' }}>
+              <section className="card dashboard-banner-go-live" style={{ marginBottom: 18 }}>
                 <div className="panel-head">
                   <div>
                     <h3>RingBooker is set up, but not live yet.</h3>
@@ -466,7 +466,10 @@ export function UserDashboardLive() {
               </div>
             </section>
             {data?.usage ? (
-              <section className="card" style={{ marginTop: 18, borderColor: data.usage.overCapturedCallerLimit ? '#fecaca' : data.usage.nearCapturedCallerLimit ? '#fde68a' : undefined }}>
+              <section
+                className={`card usage-captured-card${data.usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${data.usage.nearCapturedCallerLimit && !data.usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
+                style={{ marginTop: 18 }}
+              >
                 <div className="panel-head">
                   <div>
                     <h3>Captured callers this month</h3>
@@ -480,13 +483,10 @@ export function UserDashboardLive() {
                     {data.usage.capturedCallerUsagePercent == null ? 'Custom' : `${data.usage.capturedCallerUsagePercent}%`}
                   </span>
                 </div>
-                <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden', marginTop: 12 }}>
+                <div className="usage-progress-track" aria-hidden="true">
                   <div
-                    style={{
-                      width: `${Math.min(100, data.usage.capturedCallerUsagePercent ?? 0)}%`,
-                      height: '100%',
-                      background: data.usage.overCapturedCallerLimit ? '#dc2626' : data.usage.nearCapturedCallerLimit ? '#f59e0b' : '#7c3aed',
-                    }}
+                    className={`usage-progress-fill ${data.usage.overCapturedCallerLimit ? 'usage-progress-fill--over' : data.usage.nearCapturedCallerLimit ? 'usage-progress-fill--near' : 'usage-progress-fill--ok'}`}
+                    style={{ width: `${Math.min(100, data.usage.capturedCallerUsagePercent ?? 0)}%` }}
                   />
                 </div>
                 {data.usage.nearCapturedCallerLimit || data.usage.overCapturedCallerLimit ? (

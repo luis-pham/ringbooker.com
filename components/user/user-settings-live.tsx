@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
@@ -8,6 +8,7 @@ import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tab
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
+import { GoLiveForwardingPanel } from '@/components/user/go-live-forwarding-panel';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
@@ -132,6 +133,7 @@ type SettingsTabId =
   | 'services-hours'
   | 'ai-call-behavior'
   | 'messaging'
+  | 'go-live'
   | 'integrations';
 
 /** Logos under /public/images — used in Calendar integrations cards. */
@@ -158,10 +160,6 @@ const BOOKING_LINK_PLACEHOLDERS: Record<BookingLinkProviderId, string> = {
   fresha: 'https://fresha.com/your-business-name',
   booksy: 'https://booksy.com/en-us/your-profile',
 };
-
-function isBookingLinkProviderId(providerId: string): providerId is BookingLinkProviderId {
-  return BOOKING_LINK_PROVIDER_IDS.includes(providerId as BookingLinkProviderId);
-}
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<(typeof DAY_ORDER)[number], string> = {
@@ -303,6 +301,10 @@ function SettingsTabIcon({ tabId }: { tabId: SettingsTabId }): ReactNode {
           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
         </>,
       );
+    case 'go-live':
+      return wrap(
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
+      );
     default:
       return null;
   }
@@ -313,7 +315,8 @@ const SETTINGS_TABS: Array<{ id: SettingsTabId; label: string; description: stri
   { id: 'services-hours', label: 'Services & Hours', description: 'What you offer and when you are open.' },
   { id: 'ai-call-behavior', label: 'AI Call Behavior', description: 'Voice, greeting, and call handling.' },
   { id: 'messaging', label: 'Messaging', description: 'Reminders, reviews, and follow-up SMS.' },
-  { id: 'integrations', label: 'Integrations', description: 'Calendar providers and booking targets.' },
+  { id: 'go-live', label: 'Go live', description: 'Forwarding number and carrier setup.' },
+  { id: 'integrations', label: 'Integrations', description: 'Square, Vagaro, or booking page links.' },
 ];
 
 const REQUIRED_PLAN_BY_CAPABILITY: Partial<Record<keyof ShopCapabilities, ShopPlan>> = {
@@ -407,6 +410,17 @@ export function UserSettingsLive() {
   const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('handling');
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
 
+  const activateSettingsTab = useCallback((tabId: SettingsTabId) => {
+    setActiveTab(tabId);
+    if (typeof window === 'undefined') return;
+    const base = `${window.location.pathname}${window.location.search}`;
+    if (tabId === 'go-live') {
+      window.history.replaceState(null, '', `${base}#go-live-forwarding`);
+    } else if (window.location.hash) {
+      window.history.replaceState(null, '', base);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
     void fetch('/api/backend/user/settings')
@@ -447,6 +461,19 @@ export function UserSettingsLive() {
     } else {
       setCalendarStatus(message ? `Connection failed: ${message}` : `Connection failed for ${provider}.`);
     }
+  }, []);
+
+  useEffect(() => {
+    const syncHash = () => {
+      if (typeof window === 'undefined') return;
+      const h = window.location.hash;
+      if (h === '#go-live-forwarding' || h === '#go-live') {
+        setActiveTab('go-live');
+      }
+    };
+    syncHash();
+    window.addEventListener('hashchange', syncHash);
+    return () => window.removeEventListener('hashchange', syncHash);
   }, []);
 
   async function loadCalendarProviders() {
@@ -512,6 +539,44 @@ export function UserSettingsLive() {
 
   const squareProvider = calendarProviders.find((item) => item.id === 'square_appointments') ?? null;
   const vagaroProvider = calendarProviders.find((item) => item.id === 'vagaro') ?? null;
+
+  const hasAnyIntegrationSetup = useMemo(() => {
+    const bookingLinked = BOOKING_LINK_PROVIDER_IDS.some((id) =>
+      calendarProviders.some((p) => p.id === id && p.connected),
+    );
+    return Boolean(squareProvider?.connected || vagaroProvider?.connected || bookingLinked);
+  }, [calendarProviders, squareProvider?.connected, vagaroProvider?.connected]);
+
+  const [integrationsPath, setIntegrationsPath] = useState<
+    'pick' | 'square' | 'booking_link' | 'vagaro' | 'all'
+  >('pick');
+
+  useEffect(() => {
+    if (hasAnyIntegrationSetup) setIntegrationsPath('all');
+  }, [hasAnyIntegrationSetup]);
+
+  const connectedBookingLinkId = useMemo(() => {
+    return BOOKING_LINK_PROVIDER_IDS.find((id) => calendarProviders.some((p) => p.id === id && p.connected)) ?? null;
+  }, [calendarProviders]);
+
+  const [bookingLinkPick, setBookingLinkPick] = useState<BookingLinkProviderId>('fresha');
+
+  useEffect(() => {
+    if (connectedBookingLinkId) setBookingLinkPick(connectedBookingLinkId);
+  }, [connectedBookingLinkId]);
+
+  const showSquareBlock =
+    hasAnyIntegrationSetup || integrationsPath === 'all' || integrationsPath === 'square';
+  const showBookingLinkBlock =
+    hasAnyIntegrationSetup || integrationsPath === 'all' || integrationsPath === 'booking_link';
+  const showVagaroBlock =
+    hasAnyIntegrationSetup || integrationsPath === 'all' || integrationsPath === 'vagaro';
+  const showIntegrationsPathPicker = !hasAnyIntegrationSetup && integrationsPath === 'pick';
+  const showIntegrationsPathFooter =
+    !hasAnyIntegrationSetup && integrationsPath !== 'pick' && integrationsPath !== 'all';
+  const squareSectionHeadingFirst = showSquareBlock;
+  const bookingSectionHeadingFirst = showBookingLinkBlock && !showSquareBlock;
+  const vagaroSectionHeadingFirst = showVagaroBlock && !showSquareBlock && !showBookingLinkBlock;
 
   async function saveBookingLink(providerId: BookingLinkProviderId) {
     const bookingUrl = bookingLinkInputs[providerId].trim();
@@ -743,7 +808,7 @@ export function UserSettingsLive() {
                 aria-selected={activeTab === tab.id}
                 title={tab.description}
                 className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => activateSettingsTab(tab.id)}
               >
                 <span className="tab-button-icon">
                   <SettingsTabIcon tabId={tab.id} />
@@ -761,8 +826,10 @@ export function UserSettingsLive() {
             <section className="card">
               <div className="panel-head">
                 <div>
-                  <h3>Calendar integrations</h3>
-                  <p className="sub">Connect once, then choose location and service variation so the AI can check availability and create bookings correctly.</p>
+                  <h3>Integrations</h3>
+                  <p className="sub">
+                    Connect where your live appointments are stored. Most businesses only need one option below.
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -774,275 +841,380 @@ export function UserSettingsLive() {
                 </button>
               </div>
 
-              <div className="calendar-int-grid">
-                {calendarProviders.map((provider) => {
-                  const isSquare = provider.id === 'square_appointments';
-                  const isVagaro = provider.id === 'vagaro';
-                  const bookingLinkProviderId: BookingLinkProviderId | null = isBookingLinkProviderId(provider.id) ? provider.id : null;
-                  const isBookingLink = bookingLinkProviderId !== null;
-                  const logoSrc = CALENDAR_PROVIDER_LOGOS[provider.id] ?? '/images/calendar.png';
-                  const cardClass = [
+              {showIntegrationsPathPicker ? (
+                <>
+                  <p className="sub" style={{ marginBottom: 12 }}>
+                    Choose how clients book with you. You can switch or add another system anytime.
+                  </p>
+                  <div className="integrations-path-picker" role="group" aria-label="Booking system">
+                    <button type="button" className="business-subtab" onClick={() => setIntegrationsPath('square')}>
+                      Square Appointments
+                    </button>
+                    <button type="button" className="business-subtab" onClick={() => setIntegrationsPath('booking_link')}>
+                      Booking page link
+                    </button>
+                    <button type="button" className="business-subtab" onClick={() => setIntegrationsPath('vagaro')}>
+                      Vagaro
+                    </button>
+                  </div>
+                  <div className="integrations-path-actions">
+                    <button type="button" className="subtle-link" onClick={() => setIntegrationsPath('all')}>
+                      Show all options at once
+                    </button>
+                  </div>
+                </>
+              ) : null}
+
+              {!showIntegrationsPathPicker ? (
+                <div className="note integrations-intro-note">
+                  Square or Vagaro: live availability and booking in that system. Fresha, Booksy, or GlossGenius: paste a public
+                  booking URL (SMS link for callers; no calendar sync).
+                </div>
+              ) : null}
+
+              {showIntegrationsPathFooter ? (
+                <div className="integrations-path-actions">
+                  <button type="button" className="subtle-link" onClick={() => setIntegrationsPath('pick')}>
+                    Choose a different system
+                  </button>
+                  <span className="hint-copy" aria-hidden="true">
+                    ·
+                  </span>
+                  <button type="button" className="subtle-link" onClick={() => setIntegrationsPath('all')}>
+                    Show all options
+                  </button>
+                </div>
+              ) : null}
+
+              {showSquareBlock ? (
+                <>
+                  <h4
+                    className={`integrations-section-heading ${squareSectionHeadingFirst ? 'integrations-section-heading--first' : ''}`}
+                  >
+                    Square Appointments
+                  </h4>
+                  {squareProvider ? (
+                <div
+                  className={[
                     'calendar-int-card',
-                    isSquare && provider.connected ? 'connected-active' : '',
-                    isVagaro && provider.connected ? 'connected-active' : '',
-                    isBookingLink && provider.connected ? 'connected-active' : '',
-                    !isSquare && !isVagaro && !isBookingLink ? 'soon' : '',
+                    'calendar-int-card--solo',
+                    squareProvider.connected ? 'connected-active' : '',
                   ]
                     .filter(Boolean)
-                    .join(' ');
-                  const bookingLinkUrl = bookingLinkProviderId ? provider.details?.bookingUrl ?? '' : '';
-                  const isEditingBookingLink = bookingLinkProviderId ? editingBookingLinkProvider === bookingLinkProviderId : false;
-
-                  const statusCopy = isSquare
-                    ? provider.connected
-                      ? provider.configured
+                    .join(' ')}
+                >
+                  <div className="calendar-int-head">
+                    <div className="calendar-int-logo-wrap">
+                      <img
+                        src={CALENDAR_PROVIDER_LOGOS.square_appointments}
+                        alt="Square Appointments logo"
+                        width={52}
+                        height={52}
+                        loading="lazy"
+                      />
+                    </div>
+                    <span className="calendar-int-name">{squareProvider.label}</span>
+                  </div>
+                  <p className="calendar-int-desc">
+                    {squareProvider.connected
+                      ? squareProvider.configured
                         ? 'Connected and configured — live availability and booking to Square.'
                         : 'Connected. Pick location and service below, then save.'
-                      : 'OAuth to Square, then choose location and service for the AI.'
-                    : isVagaro
-                      ? provider.connected
-                        ? provider.configured
-                          ? 'Connected — availability checking and webhook sync supported.'
-                          : 'Connected. Add your Vagaro business ID to finish setup.'
-                        : 'Connect Vagaro with API credentials for availability checking and webhook sync.'
-                      : isBookingLink
-                        ? provider.connected
-                          ? 'Connected — callers can receive this booking link by SMS.'
-                          : 'Add your booking link so callers can receive it by SMS.'
-                      : 'Integration is on the roadmap.';
+                      : 'OAuth to Square, then choose location and service for the AI.'}
+                  </p>
+                  <div className="calendar-int-actions">
+                    <button
+                      type="button"
+                      className="btn purple"
+                      onClick={() => {
+                        window.location.href = '/api/backend/user/calendar/providers/square_appointments/connect/start';
+                      }}
+                    >
+                      {squareProvider.connected ? 'Reconnect Square' : 'Connect Square'}
+                    </button>
+                    {squareProvider.connected ? (
+                      <div className="integrations-inline-actions">
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(
+                                '/api/backend/user/calendar/providers/square_appointments/disconnect',
+                                { method: 'POST' },
+                              );
+                              const body = (await response.json()) as { ok: boolean; error?: string };
+                              if (!response.ok || !body.ok) {
+                                setCalendarStatus(body.error ?? 'disconnect_failed');
+                                return;
+                              }
+                              setCalendarStatus('Square disconnected.');
+                              setSquareOptions(null);
+                              await loadCalendarProviders();
+                            } catch {
+                              setCalendarStatus('disconnect_failed');
+                            }
+                          }}
+                        >
+                          Disconnect
+                        </button>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => void loadSquareOptions()}
+                          disabled={loadingSquareOptions}
+                        >
+                          {loadingSquareOptions ? 'Loading...' : 'Reload options'}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
 
-                  return (
-                    <div key={provider.id} className={cardClass}>
-                      <div className="calendar-int-head">
-                        <div className="calendar-int-logo-wrap">
-                          <img
-                            src={logoSrc}
-                            alt={`${provider.label} logo`}
-                            width={52}
-                            height={52}
-                            loading="lazy"
+                  {squareProvider?.connected ? (
+                    <div className="card-section" style={{ marginTop: 18 }}>
+                      <div className="hint-row">
+                        <strong className="option-title">Square booking targets</strong>
+                        <span className="hint-copy">Choose the location and service the AI should use.</span>
+                      </div>
+                      <div className="form-grid" style={{ marginTop: 12 }}>
+                        <div className="field">
+                          <label>Square location</label>
+                          <select value={squareLocationId} onChange={(event) => setSquareLocationId(event.target.value)}>
+                            <option value="">Select location</option>
+                            {(squareOptions?.locations ?? []).map((location) => (
+                              <option key={location.id} value={location.id}>
+                                {location.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="field">
+                          <label>Default service variation</label>
+                          <select
+                            value={squareServiceVariationId}
+                            onChange={(event) => setSquareServiceVariationId(event.target.value)}
+                          >
+                            <option value="">Select service</option>
+                            {(squareOptions?.serviceVariations ?? []).map((service) => (
+                              <option key={service.id} value={service.id}>
+                                {service.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="field">
+                          <label>Team member (optional)</label>
+                          <input
+                            value={squareTeamMemberId}
+                            onChange={(event) => setSquareTeamMemberId(event.target.value)}
+                            placeholder="Optional Square team_member_id"
                           />
                         </div>
-                        <span className="calendar-int-name">{provider.label}</span>
+                        <div className="field">
+                          <label>Connection status</label>
+                          <div className="note">
+                            {squareProvider.configured
+                              ? 'Ready: live availability + booking can use Square now.'
+                              : 'Connected but incomplete. Please choose location and service, then save.'}
+                          </div>
+                        </div>
+                        <div className="field" style={{ gridColumn: '1 / -1' }}>
+                          <button
+                            type="button"
+                            className="btn user-save"
+                            disabled={savingSquareConfig || !squareLocationId || !squareServiceVariationId}
+                            onClick={async () => {
+                              setSavingSquareConfig(true);
+                              try {
+                                const response = await fetch(
+                                  '/api/backend/user/calendar/providers/square_appointments/configure',
+                                  {
+                                    method: 'POST',
+                                    headers: { 'content-type': 'application/json' },
+                                    body: JSON.stringify({
+                                      locationId: squareLocationId,
+                                      serviceVariationId: squareServiceVariationId,
+                                      teamMemberId: squareTeamMemberId || undefined,
+                                    }),
+                                  },
+                                );
+                                const body = (await response.json()) as { ok: boolean; error?: string };
+                                if (!response.ok || !body.ok) {
+                                  setCalendarStatus(body.error ?? 'square_config_save_failed');
+                                  return;
+                                }
+                                setCalendarStatus('Square configuration saved.');
+                                await loadCalendarProviders();
+                              } catch {
+                                setCalendarStatus('square_config_save_failed');
+                              } finally {
+                                setSavingSquareConfig(false);
+                              }
+                            }}
+                          >
+                            {savingSquareConfig ? 'Saving...' : 'Save Square booking target'}
+                          </button>
+                        </div>
                       </div>
-                      <p className="calendar-int-desc">{statusCopy}</p>
-                      <div className="calendar-int-actions">
-                        {isSquare ? (
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+
+              {showBookingLinkBlock ? (
+                <>
+              <h4
+                className={`integrations-section-heading ${bookingSectionHeadingFirst ? 'integrations-section-heading--first' : ''}`}
+              >
+                Booking page link
+              </h4>
+              <p className="sub integrations-section-lead">
+                Pick your app, paste your public booking URL once. RingBooker texts it to callers when needed — one link per
+                account (Fresha, Booksy, or GlossGenius).
+              </p>
+              {(() => {
+                const blMeta = calendarProviders.find((p) => p.id === bookingLinkPick);
+                const bookingLinkUrl = blMeta?.details?.bookingUrl ?? '';
+                const isEditingBookingLink = editingBookingLinkProvider === bookingLinkPick;
+                return (
+                  <div
+                    className={[
+                      'calendar-int-card',
+                      'calendar-int-card--solo',
+                      blMeta?.connected ? 'connected-active' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    <div className="field" style={{ marginBottom: 12 }}>
+                      <label htmlFor="booking-link-brand-select">Your booking app</label>
+                      <select
+                        id="booking-link-brand-select"
+                        value={bookingLinkPick}
+                        onChange={(event) => {
+                          const next = event.target.value as BookingLinkProviderId;
+                          setBookingLinkPick(next);
+                          setEditingBookingLinkProvider(null);
+                        }}
+                      >
+                        {BOOKING_LINK_PROVIDER_IDS.map((id) => (
+                          <option key={id} value={id}>
+                            {calendarProviders.find((p) => p.id === id)?.label ?? id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="calendar-int-desc">
+                      {blMeta?.connected
+                        ? 'Connected — callers can receive this booking link by SMS.'
+                        : 'Add your booking link so callers can receive it by SMS.'}
+                    </p>
+                    <div className="calendar-int-actions">
+                      <div style={{ display: 'grid', gap: 10, width: '100%' }}>
+                        {blMeta?.connected && !isEditingBookingLink ? (
                           <>
-                            <button
-                              type="button"
-                              className="btn purple"
-                              onClick={() => {
-                                window.location.href =
-                                  '/api/backend/user/calendar/providers/square_appointments/connect/start';
+                            <span
+                              className="calendar-int-badge"
+                              aria-label="Connected"
+                              style={{
+                                background: '#ecfdf5',
+                                borderColor: '#bbf7d0',
+                                color: '#047857',
+                                width: 'fit-content',
                               }}
                             >
-                              {provider.connected ? 'Reconnect' : 'Connect'}
+                              Connected
+                            </span>
+                            <div className="note" style={{ wordBreak: 'break-word' }}>
+                              {bookingLinkUrl}
+                            </div>
+                            <button
+                              type="button"
+                              className="btn"
+                              onClick={() => {
+                                setEditingBookingLinkProvider(bookingLinkPick);
+                                setBookingLinkInputs((current) => ({
+                                  ...current,
+                                  [bookingLinkPick]: bookingLinkUrl,
+                                }));
+                              }}
+                            >
+                              Edit
                             </button>
-                            {provider.connected ? (
-                              <>
-                                <button
-                                  type="button"
-                                  className="btn"
-                                  onClick={async () => {
-                                    try {
-                                      const response = await fetch(
-                                        '/api/backend/user/calendar/providers/square_appointments/disconnect',
-                                        { method: 'POST' },
-                                      );
-                                      const body = (await response.json()) as { ok: boolean; error?: string };
-                                      if (!response.ok || !body.ok) {
-                                        setCalendarStatus(body.error ?? 'disconnect_failed');
-                                        return;
-                                      }
-                                      setCalendarStatus('Square disconnected.');
-                                      setSquareOptions(null);
-                                      await loadCalendarProviders();
-                                    } catch {
-                                      setCalendarStatus('disconnect_failed');
-                                    }
-                                  }}
-                                >
-                                  Disconnect
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn"
-                                  onClick={() => void loadSquareOptions()}
-                                  disabled={loadingSquareOptions}
-                                >
-                                  {loadingSquareOptions ? 'Loading…' : 'Reload options'}
-                                </button>
-                              </>
-                            ) : null}
                           </>
-                        ) : isVagaro ? (
-                          <span className="calendar-int-badge" aria-label={provider.connected ? 'Connected' : 'Connectable'}>
-                            {provider.connected ? 'Connected' : 'Connectable'}
-                          </span>
-                        ) : bookingLinkProviderId ? (
-                          <div style={{ display: 'grid', gap: 10, width: '100%' }}>
-                            {provider.connected && !isEditingBookingLink ? (
-                              <>
-                                <span
-                                  className="calendar-int-badge"
-                                  aria-label="Connected"
-                                  style={{
-                                    background: '#ecfdf5',
-                                    borderColor: '#bbf7d0',
-                                    color: '#047857',
-                                    width: 'fit-content',
-                                  }}
-                                >
-                                  Connected
-                                </span>
-                                <div className="note" style={{ wordBreak: 'break-word' }}>
-                                  {bookingLinkUrl}
-                                </div>
+                        ) : (
+                          <>
+                            <div className="field" style={{ width: '100%' }}>
+                              <label>Booking link URL</label>
+                              <input
+                                value={bookingLinkInputs[bookingLinkPick]}
+                                onChange={(event) => {
+                                  setBookingLinkInputs((current) => ({
+                                    ...current,
+                                    [bookingLinkPick]: event.target.value,
+                                  }));
+                                  setBookingLinkErrors((current) => ({ ...current, [bookingLinkPick]: '' }));
+                                }}
+                                placeholder={BOOKING_LINK_PLACEHOLDERS[bookingLinkPick]}
+                              />
+                            </div>
+                            {bookingLinkErrors[bookingLinkPick] ? (
+                              <div className="note" style={{ color: '#b91c1c' }}>
+                                {bookingLinkErrors[bookingLinkPick]}
+                              </div>
+                            ) : null}
+                            <div className="integrations-inline-actions">
+                              {blMeta?.connected ? (
                                 <button
                                   type="button"
                                   className="btn"
                                   onClick={() => {
-                                    setEditingBookingLinkProvider(bookingLinkProviderId);
-                                    setBookingLinkInputs((current) => ({
-                                      ...current,
-                                      [bookingLinkProviderId]: bookingLinkUrl,
-                                    }));
+                                    setEditingBookingLinkProvider(null);
+                                    setBookingLinkErrors((current) => ({ ...current, [bookingLinkPick]: '' }));
                                   }}
                                 >
-                                  Edit
+                                  Cancel
                                 </button>
-                              </>
-                            ) : (
-                              <>
-                                <div className="field" style={{ width: '100%' }}>
-                                  <label>Booking Link URL</label>
-                                  <input
-                                    value={bookingLinkInputs[bookingLinkProviderId]}
-                                    onChange={(event) => {
-                                      setBookingLinkInputs((current) => ({
-                                        ...current,
-                                        [bookingLinkProviderId]: event.target.value,
-                                      }));
-                                      setBookingLinkErrors((current) => ({ ...current, [bookingLinkProviderId]: '' }));
-                                    }}
-                                    placeholder={BOOKING_LINK_PLACEHOLDERS[bookingLinkProviderId]}
-                                  />
-                                </div>
-                                {bookingLinkErrors[bookingLinkProviderId] ? (
-                                  <div className="note" style={{ color: '#b91c1c' }}>
-                                    {bookingLinkErrors[bookingLinkProviderId]}
-                                  </div>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  className="btn user-save"
-                                  disabled={savingBookingLinkProvider === bookingLinkProviderId || !bookingLinkInputs[bookingLinkProviderId].trim()}
-                                  onClick={() => void saveBookingLink(bookingLinkProviderId)}
-                                >
-                                  {savingBookingLinkProvider === bookingLinkProviderId ? 'Saving...' : 'Save Booking Link'}
-                                </button>
-                              </>
-                            )}
-                            <div className="note">
-                              When clients call to book, they will receive your booking link via SMS automatically.
+                              ) : null}
+                              <button
+                                type="button"
+                                className="btn user-save"
+                                disabled={
+                                  savingBookingLinkProvider === bookingLinkPick ||
+                                  !bookingLinkInputs[bookingLinkPick].trim()
+                                }
+                                onClick={() => void saveBookingLink(bookingLinkPick)}
+                              >
+                                {savingBookingLinkProvider === bookingLinkPick ? 'Saving...' : 'Save booking link'}
+                              </button>
                             </div>
-                          </div>
-                        ) : (
-                          <span className="calendar-int-badge" aria-label="Coming soon">
-                            Soon
-                          </span>
+                          </>
                         )}
+                        <div className="note">
+                          When clients call to book, they will receive your booking link via SMS automatically.
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {squareProvider?.connected ? (
-              <div className="card-section" style={{ marginTop: 18 }}>
-                <div className="hint-row">
-                  <strong className="option-title">Square booking targets</strong>
-                  <span className="hint-copy">Choose the location and service the AI should use.</span>
-                </div>
-                  <div className="form-grid" style={{ marginTop: 12 }}>
-                    <div className="field">
-                      <label>Square location</label>
-                      <select value={squareLocationId} onChange={(event) => setSquareLocationId(event.target.value)}>
-                        <option value="">Select location</option>
-                        {(squareOptions?.locations ?? []).map((location) => (
-                          <option key={location.id} value={location.id}>
-                            {location.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label>Default service variation</label>
-                      <select value={squareServiceVariationId} onChange={(event) => setSquareServiceVariationId(event.target.value)}>
-                        <option value="">Select service</option>
-                        {(squareOptions?.serviceVariations ?? []).map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {service.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label>Team member (optional)</label>
-                      <input
-                        value={squareTeamMemberId}
-                        onChange={(event) => setSquareTeamMemberId(event.target.value)}
-                        placeholder="Optional Square team_member_id"
-                      />
-                    </div>
-                    <div className="field">
-                      <label>Connection status</label>
-                      <div className="note">
-                        {squareProvider.configured
-                          ? 'Ready: live availability + booking can use Square now.'
-                          : 'Connected but incomplete. Please choose location and service, then save.'}
-                      </div>
-                    </div>
-                    <div className="field" style={{ gridColumn: '1 / -1' }}>
-                      <button
-                        type="button"
-                        className="btn user-save"
-                        disabled={savingSquareConfig || !squareLocationId || !squareServiceVariationId}
-                        onClick={async () => {
-                          setSavingSquareConfig(true);
-                          try {
-                            const response = await fetch('/api/backend/user/calendar/providers/square_appointments/configure', {
-                              method: 'POST',
-                              headers: { 'content-type': 'application/json' },
-                              body: JSON.stringify({
-                                locationId: squareLocationId,
-                                serviceVariationId: squareServiceVariationId,
-                                teamMemberId: squareTeamMemberId || undefined,
-                              }),
-                            });
-                            const body = (await response.json()) as { ok: boolean; error?: string };
-                            if (!response.ok || !body.ok) {
-                              setCalendarStatus(body.error ?? 'square_config_save_failed');
-                              return;
-                            }
-                            setCalendarStatus('Square configuration saved.');
-                            await loadCalendarProviders();
-                          } catch {
-                            setCalendarStatus('square_config_save_failed');
-                          } finally {
-                            setSavingSquareConfig(false);
-                          }
-                        }}
-                      >
-                        {savingSquareConfig ? 'Saving...' : 'Save Square booking target'}
-                      </button>
                     </div>
                   </div>
-              </div>
+                );
+              })()}
+                </>
               ) : null}
 
-              {vagaroProvider ? (
+              {showVagaroBlock ? (
+                <>
+                  <h4
+                    className={`integrations-section-heading ${vagaroSectionHeadingFirst ? 'integrations-section-heading--first' : ''}`}
+                  >
+                    Vagaro
+                  </h4>
+                  <p className="sub integrations-section-lead">
+                    API-based connection for availability and webhooks. Booking checkout stays in Vagaro.
+                  </p>
+
+                  {vagaroProvider ? (
               <div className="card-section" style={{ marginTop: 18 }}>
                 <div className="hint-row">
                   <strong className="option-title">Vagaro API credentials</strong>
@@ -1114,11 +1286,11 @@ export function UserSettingsLive() {
                     ) : null}
                     <button
                       type="button"
-                      className="btn"
+                      className="btn user-save"
                       disabled={savingVagaroBookingUrl || !vagaroBookingUrl.trim()}
                       onClick={() => void saveVagaroBookingLink()}
                     >
-                      {savingVagaroBookingUrl ? 'Saving...' : 'Save Booking Link'}
+                      {savingVagaroBookingUrl ? 'Saving...' : 'Save booking link'}
                     </button>
                   </div>
                   <div className="field">
@@ -1185,12 +1357,16 @@ export function UserSettingsLive() {
                 </div>
               </div>
               ) : null}
+                </>
+              ) : null}
 
               {calendarStatus ? (
                 <div className="note" style={{ marginTop: 14 }}>{calendarStatus}</div>
               ) : null}
             </section>
             ) : null}
+
+            {activeTab === 'go-live' ? <GoLiveForwardingPanel /> : null}
 
             {activeTab === 'business' ? (
             <section className="card">
