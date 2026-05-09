@@ -3,21 +3,28 @@ import { UserLayout } from '@/components/user/user-layout';
 const styles: string[] = [
   String.raw`
 :root{
-  --purple:#8B5CF6;
-  --purple-dark:#7C3AED;
+  --purple:#630ed4;
+  --purple-dark:#630ed4;
   --purple-light:#EDE9FE;
   --purple-ultra:#F5F3FF;
-  --text-dark:#111827;
+  --nav-active-bg:#6063ee;
+  --nav-active-fg:#ffffff;
+  --surface-page:#f8f9fa;
+  --surface-card:#ffffff;
+  --sidebar-outline:#ccc3d8;
+  --text-dark:#191c1d;
   --text-gray:#6B7280;
   --text-light:#9CA3AF;
   --bg:#fff;
   --bg-gray:#F9FAFB;
-  --border:#E5E7EB;
+  --border:#edeeef;
   --green:#10B981;
   --orange:#F59E0B;
   --red:#EF4444;
+  --red-deep:#ba1a1a;
   --blue:#3B82F6;
-  --sidebar-width:284px;
+  --secondary-accent:#4648d4;
+  --sidebar-width:256px;
   --r-pill:999px;
   --r-xl:28px;
   --r-lg:24px;
@@ -25,15 +32,16 @@ const styles: string[] = [
   --r-sm:12px;
   --shadow:0 18px 48px rgba(17,24,39,.06);
   --shadow-soft:0 8px 24px rgba(17,24,39,.04);
+  --card-shadow-material:0px 1px 3px rgba(0,0,0,0.1), 0px 1px 2px rgba(0,0,0,0.06);
 }
 *{box-sizing:border-box}
-html{scrollbar-gutter:stable;background:linear-gradient(180deg,#faf7ff 0%,#fff 24%,#fff 100%)}
+html{scrollbar-gutter:stable;background:var(--surface-page)}
 body{
   margin:0;
   min-height:100vh;
   font-family:'Mona Sans Variable',sans-serif;
   color:var(--text-dark);
-  background:linear-gradient(180deg,#faf7ff 0%,#fff 24%,#fff 100%);
+  background:var(--surface-page);
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
 }
@@ -42,15 +50,23 @@ button,input,select,textarea{font:inherit}
 .app-shell{display:grid;grid-template-columns:var(--sidebar-width) minmax(0,1fr);min-height:100vh}
 .sidebar{
   position:sticky;top:0;height:100vh;overflow:auto;
-  background:rgba(255,255,255,.86);backdrop-filter:blur(16px);
-  border-right:1px solid rgba(229,231,235,.9);
-  padding:22px 18px 22px;
+  background:var(--surface-card);
+  border-right:1px solid var(--sidebar-outline);
+  padding:24px 16px 22px;
 }
 .sidebar-inner{display:flex;flex-direction:column;min-height:calc(100vh - 44px)}
 .brand{
-  display:flex;align-items:center;gap:12px;
-  font-weight:800;font-size:20px;letter-spacing:-.02em;
+  display:flex;align-items:flex-start;gap:12px;
   margin-bottom:22px;
+}
+.brand-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand-title{
+  font-weight:800;font-size:18px;letter-spacing:-.02em;
+  color:var(--purple-dark);line-height:1.2;
+}
+.brand-tagline{
+  margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--text-light);line-height:1.3;
 }
 .brand-mark{position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .brand-ripple{position:absolute;border-radius:50%;background:var(--purple)}
@@ -65,10 +81,10 @@ button,input,select,textarea{font:inherit}
 }
 .brand-core svg{width:13px;height:13px;fill:#fff}
 .workspace{
-  background:linear-gradient(135deg,#f5f3ff,#fff);
+  background:#f3f4f6;
   border:1px solid var(--border);
-  border-radius:20px;
-  padding:16px 15px;
+  border-radius:16px;
+  padding:14px 14px;
   margin-bottom:18px;
 }
 .workspace h3{margin:0 0 4px;font-size:15px;letter-spacing:-.02em}
@@ -78,29 +94,53 @@ button,input,select,textarea{font:inherit}
 .nav-list{display:flex;flex-direction:column;gap:6px}
 .nav-item{
   display:flex;align-items:center;gap:12px;
-  padding:12px;border-radius:14px;color:#4b5563;
-  font-weight:650;font-size:14px;transition:all .18s ease;
+  padding:10px 12px;border-radius:10px;color:#4a4455;
+  font-weight:600;font-size:14px;transition:background .15s ease,color .15s ease;
 }
-.nav-item:hover{background:#f9f7ff;color:var(--text-dark)}
+.nav-item:hover{background:#e7e8e9;color:var(--text-dark)}
 .nav-item.active{
-  background:linear-gradient(135deg,#f5f3ff,#ede9fe);
-  color:var(--purple-dark);
-  box-shadow:inset 0 0 0 1px rgba(139,92,246,.15);
+  background:var(--nav-active-bg);
+  color:var(--nav-active-fg);
+  box-shadow:none;
+  border-left:4px solid var(--purple-dark);
+  padding-left:8px;
 }
 .nav-icon{
-  width:34px;height:34px;border-radius:12px;background:transparent;border:none;
+  width:34px;height:34px;border-radius:10px;background:transparent;border:none;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
-.nav-icon svg{width:18px;height:18px;stroke:#6b7280;stroke-width:2;fill:none}
+.nav-icon svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none}
 .nav-item.active .nav-icon{background:transparent;border-color:transparent}
-.nav-item.active .nav-icon svg{stroke:var(--purple-dark)}
+.nav-item.active .nav-icon svg{stroke:var(--nav-active-fg)}
 .sidebar-spacer{flex:1}
 
-.main{padding:28px 30px 34px;min-width:0}
-.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:24px}
-.page-title h1{margin:0;font-size:34px;letter-spacing:-1.4px;line-height:1.06}
-.page-title p{margin:8px 0 0;color:var(--text-gray);font-size:14px;line-height:1.6;max-width:760px}
+.main{padding:0 24px 34px;min-width:0;background:var(--surface-page)}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  flex-wrap:wrap;
+  position:sticky;top:0;z-index:30;
+  min-height:64px;margin:0 -24px 24px;padding:12px 24px;
+  background:var(--surface-page);
+  border-bottom:1px solid var(--border);
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+.page-title h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.25;color:var(--purple-dark)}
+.page-title p{margin:6px 0 0;color:var(--text-gray);font-size:15px;line-height:1.55;max-width:760px}
 .top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.topbar-user-chip{
+  display:flex;align-items:center;gap:12px;
+  margin-left:auto;padding-left:20px;border-left:1px solid var(--sidebar-outline);
+}
+.topbar-user-chip-meta{text-align:right;display:none}
+.topbar-user-chip-name{margin:0;font-size:14px;font-weight:600;color:var(--text-dark)}
+.topbar-user-chip-sub{margin:2px 0 0;font-size:12px;color:var(--text-gray)}
+.topbar-user-chip-avatar{
+  width:40px;height:40px;border-radius:999px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;
+  background:linear-gradient(135deg,#f5f3ff,#ede9fe);
+  color:#5b21b6;border:2px solid #ddd6fe;
+}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:9px;
   height:36px;padding:8px 16px;border-radius:8px;font-weight:500;font-size:14px;
@@ -108,7 +148,7 @@ button,input,select,textarea{font:inherit}
   transition:transform .15s ease, box-shadow .2s ease, border-color .2s ease;
 }
 .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow-soft)}
-.btn.purple{background:var(--purple);color:#fff;border-color:var(--purple)}
+.btn.purple{background:var(--purple-dark);color:#fff;border-color:var(--purple-dark)}
 .btn.dark{background:#111827;color:#fff;border-color:#111827}
 
 .grid{display:grid;gap:18px}
@@ -144,8 +184,8 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 .forward-guide-disclaimer{margin:14px 0 0;font-size:11px;color:var(--text-light);line-height:1.5}
 
 .card,.stat-card{
-  background:#fff;border:1px solid var(--border);
-  border-radius:26px;box-shadow:var(--shadow);padding:22px;min-width:0;
+  background:var(--surface-card);border:1px solid var(--border);
+  border-radius:12px;box-shadow:var(--card-shadow-material);padding:22px;min-width:0;
 }
 .card.soft{background:linear-gradient(180deg,#fff 0%,#fcfbff 100%)}
 .card h3{margin:0 0 6px;font-size:18px;letter-spacing:-.3px}
@@ -256,12 +296,16 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
   .app-shell{grid-template-columns:96px minmax(0,1fr)}
   .sidebar{padding:18px 12px}
   .sidebar-inner{min-height:calc(100vh - 36px)}
-  .brand span,.workspace,.nav-item span,.nav-label{display:none}
-  .nav-item{justify-content:center;padding:10px}
+  .brand-title,.brand-tagline,.workspace,.nav-item span,.nav-label{display:none}
+  .nav-item{justify-content:center;padding:10px;border-left:none !important;padding-left:10px !important}
   .nav-icon{margin:0}
 }
+@media (min-width:861px){
+  .topbar-user-chip-meta{display:block}
+}
 @media (max-width:860px){
-  .main{padding:18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
+  .main{padding:0 18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
+  .topbar{margin:0 -18px 20px;padding:12px 18px}
   .grid-2,.form-grid{grid-template-columns:1fr}
   .grid.grid-3,.grid.grid-4{
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -304,13 +348,14 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
     text-overflow:ellipsis;
   }
   .topbar{align-items:flex-start;flex-direction:column}
+  .topbar-user-chip{display:none !important}
   .overview-top-actions{display:none}
-  .page-title h1{font-size:28px}
+  .page-title h1{font-size:22px}
   .app-shell{grid-template-columns:1fr}
   .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}
   .sidebar-inner{min-height:auto}
   .sidebar-spacer{display:none}
-  .brand span{display:block}
+  .brand-title,.brand-tagline{display:block}
   .workspace{display:none}
   .user-app-shell .nav-section{display:none !important}
 }
@@ -335,7 +380,7 @@ export function UserDashboardTemplate() {
       <div className="app-shell">
         <aside className="sidebar">
           <div className="sidebar-inner">
-            <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><span>RingBooker</span></div>
+            <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><div className="brand-text"><span className="brand-title">RingBooker</span><p className="brand-tagline">User Portal</p></div></div>
             <div className="workspace"><h3>Luxe Hair Studio</h3><p>AI Phone Agent is active. 1 number connected · Professional plan.</p></div>
             <div className="nav-section"><div className="nav-label">User Portal</div><div className="nav-list"><a className="nav-item active" href="/user"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={4} width={7} height={7} rx="1.5" /><rect x={14} y={4} width={7} height={4} rx="1.5" /><rect x={14} y={11} width={7} height={9} rx="1.5" /><rect x={3} y={14} width={7} height={6} rx="1.5" /></svg></div><span>Overview</span></a><a className="nav-item" href="/user/bookings"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span>Bookings</span></a><a className="nav-item" href="/user/calls"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span>Calls &amp; Transcripts</span></a><a className="nav-item" href="/user/settings"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1Z" /></svg></div><span>Settings</span></a><a className="nav-item" href="/user/billing"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={14} rx={2} /><path d="M3 10h18" /><path d="M7 15h4" /></svg></div><span>Billing</span></a></div></div>
             <div className="sidebar-spacer" />

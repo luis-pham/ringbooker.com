@@ -63,6 +63,8 @@ type UserBillingResponse = {
     requiresPaymentMethodBeforeGoLive?: boolean;
     trialNoChargeUntilEndVerified?: boolean;
     checkoutAvailable?: boolean;
+    checkoutDisabledReason?: string | null;
+    availableBillingIntervals?: Array<'monthly' | 'annual'>;
     manageBillingAvailable?: boolean;
     forwardingNumber?: string | null;
     usage?: {
@@ -257,12 +259,89 @@ function getStatusLabel(status: BillingSubscriptionStatus | undefined) {
   }
 }
 
+type BillingUiState =
+  | 'billing_not_configured'
+  | 'setup_allowed_no_payment'
+  | 'payment_method_required'
+  | 'checkout_pending'
+  | 'trialing_valid'
+  | 'active'
+  | 'past_due'
+  | 'paused'
+  | 'canceled';
+
+function resolveBillingUiState(params: {
+  subscription: BillingSubscriptionRow | null;
+  hasPaymentMethod: boolean;
+  checkoutPlan: ShopPlan | null;
+}): BillingUiState {
+  if (params.checkoutPlan) return 'checkout_pending';
+  if (!params.subscription) return 'billing_not_configured';
+  if (params.subscription.status === 'past_due') return 'past_due';
+  if (params.subscription.status === 'paused') return 'paused';
+  if (params.subscription.status === 'canceled') return 'canceled';
+  if (params.subscription.status === 'trialing' && params.hasPaymentMethod) return 'trialing_valid';
+  if (params.subscription.status === 'active' && params.hasPaymentMethod) return 'active';
+  return params.hasPaymentMethod ? 'setup_allowed_no_payment' : 'payment_method_required';
+}
+
+function billingUiCopy(state: BillingUiState) {
+  switch (state) {
+    case 'billing_not_configured':
+      return {
+        title: 'Billing is not ready yet',
+        body: 'You can continue setup and test calls. Billing checkout will appear here when your trial subscription record is ready.',
+      };
+    case 'setup_allowed_no_payment':
+      return {
+        title: 'Setup and test calls are available',
+        body: 'No card is needed for setup or test calls. Add a payment method only when you are ready for RingBooker to answer real callers.',
+      };
+    case 'payment_method_required':
+      return {
+        title: 'Add a payment method to go live',
+        body: 'No card is needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.',
+      };
+    case 'checkout_pending':
+      return {
+        title: 'Starting secure checkout',
+        body: 'Paddle will collect your payment method. Live answering will remain off until the webhook-confirmed billing state is valid.',
+      };
+    case 'trialing_valid':
+      return {
+        title: 'Payment method added',
+        body: 'Your trial is active and billing is ready. Finish forwarding verification before enabling live answering.',
+      };
+    case 'active':
+      return {
+        title: 'Subscription active',
+        body: 'Billing is valid. Live answering still depends on forwarding verification and the go-live switch.',
+      };
+    case 'past_due':
+      return {
+        title: 'Billing issue blocks live answering',
+        body: 'Your subscription is past due. Update billing before RingBooker can answer real callers.',
+      };
+    case 'paused':
+      return {
+        title: 'Subscription paused',
+        body: 'Live answering is blocked while the subscription is paused.',
+      };
+    case 'canceled':
+      return {
+        title: 'Subscription canceled',
+        body: 'Live answering is blocked. Reactivate billing before going live again.',
+      };
+  }
+}
+
 export function UserBillingLive() {
   const { workspace, setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserBillingResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [provisionForwardingLoading, setProvisionForwardingLoading] = useState(false);
   const [provisionForwardingError, setProvisionForwardingError] = useState<string | null>(null);
 
@@ -336,8 +415,14 @@ export function UserBillingLive() {
 
   const enterpriseApprovalPending = currentPlan === 'enterprise' && data?.billing?.commercialApprovalRequired === true;
   const isEnterprisePlan = currentPlan === 'enterprise';
-  const showPaymentAlert = !isEnterprisePlan && (!hasPaymentMethod || !subscription);
   const forwardingNumber = data?.billing?.forwardingNumber?.trim() ?? '';
+  const checkoutAvailable = data?.billing?.checkoutAvailable === true;
+  const availableBillingIntervals = data?.billing?.availableBillingIntervals ?? ['monthly'];
+  const canChooseAnnual = checkoutAvailable && availableBillingIntervals.includes('annual');
+  const effectiveBillingInterval =
+    billingInterval === 'annual' && canChooseAnnual ? 'annual' : 'monthly';
+  const billingState = resolveBillingUiState({ subscription, hasPaymentMethod, checkoutPlan });
+  const billingCopy = billingUiCopy(billingState);
 
   async function provisionForwardingFromBilling() {
     setProvisionForwardingLoading(true);
@@ -371,6 +456,14 @@ export function UserBillingLive() {
   }
 
   async function openCheckout(plan: ShopPlan) {
+    if (!checkoutAvailable) {
+      setCheckoutError(
+        data?.billing?.checkoutDisabledReason === 'billing_checkout_disabled'
+          ? 'Checkout is temporarily hidden until Paddle sandbox QA is complete.'
+          : 'Checkout is not available for this account yet.',
+      );
+      return;
+    }
     setCheckoutPlan(plan);
     setCheckoutError(null);
     try {
@@ -378,9 +471,40 @@ export function UserBillingLive() {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          origin: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
         },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({ plan, billing_interval: effectiveBillingInterval }),
+      });
+      const body = (await response.json()) as {
+        ok: boolean;
+        checkoutUrl?: string;
+        error?: string;
+      };
+      if (!response.ok || !body.ok || !body.checkoutUrl) {
+        throw new Error(body.error ?? 'checkout_failed');
+      }
+      window.location.href = body.checkoutUrl;
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'checkout_failed');
+    } finally {
+      setCheckoutPlan(null);
+    }
+  }
+
+  async function openReactivateCheckout() {
+    if (!checkoutAvailable) {
+      setCheckoutError(
+        data?.billing?.checkoutDisabledReason === 'billing_checkout_disabled'
+          ? 'Checkout is temporarily hidden until Paddle sandbox QA is complete.'
+          : 'Checkout is not available for this account yet.',
+      );
+      return;
+    }
+    setCheckoutPlan(currentPlan);
+    setCheckoutError(null);
+    try {
+      const response = await fetch('/api/backend/user/billing/reactivate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
       });
       const body = (await response.json()) as {
         ok: boolean;
@@ -490,13 +614,51 @@ export function UserBillingLive() {
                   </section>
                 ) : null}
 
-                {data?.billing && !liveEnabled && showPaymentAlert ? (
+                {data?.billing && !isEnterprisePlan && !liveEnabled ? (
                   <section className="card" style={{ marginBottom: 16 }}>
-                    <h3 style={{ marginTop: 0 }}>Add a payment method to go live</h3>
-                    <p className="sub">
-                      No card is needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.
-                    </p>
-                    {subscription ? (
+                    <h3 style={{ marginTop: 0 }}>{billingCopy.title}</h3>
+                    <p className="sub">{billingCopy.body}</p>
+                    {data.billing.trialNoChargeUntilEndVerified ? (
+                      <p className="sub">Paddle is configured to collect your payment method now and charge after the trial ends.</p>
+                    ) : null}
+                    {checkoutAvailable && availableBillingIntervals.length > 1 && !hasPaymentMethod ? (
+                      <div style={{ display: 'flex', gap: 8, margin: '12px 0', flexWrap: 'wrap' }} aria-label="Billing interval">
+                        <button
+                          type="button"
+                          className={`btn${effectiveBillingInterval === 'monthly' ? ' purple' : ''}`}
+                          onClick={() => setBillingInterval('monthly')}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn${effectiveBillingInterval === 'annual' ? ' purple' : ''}`}
+                          onClick={() => setBillingInterval('annual')}
+                          disabled={!canChooseAnnual}
+                        >
+                          Annual
+                        </button>
+                      </div>
+                    ) : null}
+                    {!checkoutAvailable ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                        <button type="button" className="btn" disabled>
+                          Payment checkout temporarily hidden
+                        </button>
+                        <p className="sub" style={{ margin: 0 }}>
+                          Setup and test calls remain available. Checkout will be enabled after Paddle sandbox QA is complete.
+                        </p>
+                      </div>
+                    ) : ['past_due', 'paused', 'canceled'].includes(billingState) ? (
+                      <button
+                        type="button"
+                        className="btn purple"
+                        disabled={checkoutPlan !== null}
+                        onClick={() => void openReactivateCheckout()}
+                      >
+                        {checkoutPlan ? 'Starting…' : 'Resolve billing issue'}
+                      </button>
+                    ) : subscription && !hasPaymentMethod ? (
                       <button
                         type="button"
                         className="btn purple"
@@ -597,10 +759,10 @@ export function UserBillingLive() {
                           <button
                             type="button"
                             className="btn purple"
-                            disabled={isBusy}
+                            disabled={isBusy || !checkoutAvailable}
                             onClick={() => void openCheckout(plan.plan)}
                           >
-                            {isBusy ? 'Starting…' : 'Add payment method'}
+                            {isBusy ? 'Starting…' : checkoutAvailable ? 'Add payment method' : 'Checkout hidden'}
                           </button>
                         );
                       } else {
@@ -612,25 +774,15 @@ export function UserBillingLive() {
                       }
                     } else if (plan.plan === 'professional' && currentPlan === 'starter') {
                       cta = (
-                        <button
-                          type="button"
-                          className="btn purple"
-                          disabled={isBusy}
-                          onClick={() => void openCheckout('professional')}
-                        >
-                          {isBusy ? 'Starting…' : 'Upgrade to Professional'}
-                        </button>
+                        <a className="btn" href="/contact?intent=sales&source=user_billing_upgrade&plan=professional">
+                          Contact us to upgrade
+                        </a>
                       );
                     } else {
                       cta = (
-                        <button
-                          type="button"
-                          className="btn purple"
-                          disabled={isBusy}
-                          onClick={() => void openCheckout(plan.plan)}
-                        >
-                          {isBusy ? 'Starting…' : `Choose ${planDisplayName(plan.plan)}`}
-                        </button>
+                        <a className="btn" href={`/contact?intent=sales&source=user_billing_plan_change&plan=${plan.plan}`}>
+                          Contact us to switch
+                        </a>
                       );
                     }
 

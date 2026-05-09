@@ -37,7 +37,10 @@ export function UserPortalSidebar({ active, workspaceOverride }: UserPortalSideb
               </svg>
             </div>
           </div>
-          <span>RingBooker</span>
+          <div className="brand-text">
+            <span className="brand-title">RingBooker</span>
+            <p className="brand-tagline">User Portal</p>
+          </div>
         </div>
         <div className="workspace">
           <h3>{shopName}</h3>
