@@ -101,31 +101,9 @@ function AccountTabIcon({ tabId }: { tabId: AccountTabId }): ReactNode {
 }
 
 const ACCOUNT_TABS: Array<{ id: AccountTabId; label: string; description: string }> = [
-  { id: 'details', label: 'Account details', description: 'Your login identity, business summary, and billing status.' },
+  { id: 'details', label: 'Account Details', description: 'Email, name, and workspace summary.' },
   { id: 'password', label: 'Change password', description: 'Update the password you use to sign in.' },
 ];
-
-function IconBadge(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden className={props.className}>
-      <path
-        fill="currentColor"
-        d="M14 12c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-2-8c-2.21 0-4 1.79-4 4v3H7c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2h-1V8c0-2.21-1.79-4-4-4zm0 2c1.1 0 2 .9 2 2v3H8V8c0-1.1.9-2 2-2zm8 10v8H4v-8h16z"
-      />
-    </svg>
-  );
-}
-
-function IconLock(props: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden className={props.className}>
-      <path
-        fill="currentColor"
-        d="M18 10h-1V8c0-3.31-2.69-6-6-6S5 4.69 5 8v2H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-8c0-1.1-.9-2-2-2zm-7 7c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4-7H9V8c0-2.21 1.79-4 4-4s4 1.79 4 4v2z"
-      />
-    </svg>
-  );
-}
 
 function IconInfo(props: { className?: string }) {
   return (
@@ -174,14 +152,37 @@ export function UserAccountLive() {
       ...userSettingsStyles,
       String.raw`
 .rb-account-page{margin-top:0}
-.rb-account-intro{margin:0 0 18px;font-size:15px;line-height:1.55;color:var(--text-gray)}
-@media(max-width:860px){
-  .rb-account-page .tab-strip{grid-template-columns:repeat(2,minmax(0,1fr));}
+/* Centered shell — compact card like classic account layouts */
+.rb-account-shell{
+  width:100%;max-width:520px;margin:0 auto;padding:6px 0 32px;box-sizing:border-box;
 }
-.rb-account-card{
-  background:var(--surface-card);border-radius:12px;padding:24px;
-  border:1px solid var(--border);
-  box-shadow:none;
+.rb-account-frame{
+  background:var(--surface-card);border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06);
+}
+.rb-account-frame-head{
+  padding:20px 22px 16px;border-bottom:1px solid var(--border);
+}
+.rb-account-frame-head h2{
+  margin:0;font-size:18px;font-weight:780;letter-spacing:-.03em;line-height:1.25;color:var(--text-dark);
+}
+/* Tabs inside frame — same control style as Settings tab-strip */
+.rb-account-inner-tabs.tab-strip{
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;
+  padding:12px 14px 14px;
+  background:linear-gradient(180deg,#fafafa 0%,#f3f4f6 100%);
+  border-bottom:1px solid var(--border);
+}
+.rb-account-inner-tabs .tab-button{padding:11px 12px;gap:8px}
+.rb-account-panel{padding:22px 22px 24px}
+.rb-account-panel-title{
+  margin:0 0 18px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
+}
+@media(max-width:860px){
+  .rb-account-shell{padding:4px 0 28px;max-width:100%}
+  .rb-account-inner-tabs.tab-strip{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px 12px 12px}
+  .rb-account-inner-tabs .tab-button{flex-direction:column;text-align:center;padding:10px 8px;gap:4px}
+  .rb-account-inner-tabs .tab-button strong{font-size:12px;font-weight:750;line-height:1.2}
 }
 .rb-account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
 .rb-account-card-head-main{display:flex;align-items:center;gap:10px;min-width:0}
@@ -208,16 +209,13 @@ button.rb-account-link:hover{text-decoration:underline}
 .rb-account-billing-warn{color:var(--red-deep);font-weight:600}
 .rb-account-callout{
   margin-top:24px;padding:14px 16px;border-radius:10px;background:#f9fafb;
-  display:flex;align-items:flex-start;gap:12px;
+  display:flex;align-items:center;gap:12px;
   border:1px solid var(--border);
 }
-.rb-account-callout p{margin:0;font-size:13px;line-height:1.55;color:var(--text-gray)}
 .rb-account-subsection{margin-top:28px;padding-top:22px;border-top:1px solid var(--border)}
 .rb-account-subsection:first-of-type{margin-top:0;padding-top:0;border-top:none}
 .rb-account-subsection-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
 .rb-account-subsection-title{margin:0;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray)}
-.rb-account-subsection-lead{margin:6px 0 0;flex:1 1 100%;font-size:13px;line-height:1.5;color:var(--text-gray);max-width:40rem}
-.rb-account-field-hint{margin:6px 0 0;font-size:12px;line-height:1.45;color:var(--text-gray);max-width:36rem}
 .rb-account-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
 .rb-account-btn-ghost{
   font:inherit;font-size:13px;font-weight:650;color:var(--text-dark);
@@ -226,12 +224,17 @@ button.rb-account-link:hover{text-decoration:underline}
 .rb-account-btn-ghost:hover:not(:disabled){background:#f9fafb;border-color:#d1d5db}
 .rb-account-btn-ghost:disabled{opacity:.55;cursor:not-allowed}
 .rb-account-password-actions{margin-top:18px}
-.account-password-hint{margin:0 0 14px;font-size:13px;color:var(--text-gray);line-height:1.5}
 @media(min-width:521px){
   .rb-account-password-actions .btn.user-save{width:100%}
 }
 html[data-user-theme="dark"] .rb-account-callout{background:#161b22;border-color:var(--border)}
 html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){background:#21262d;border-color:#58a6ff}
+html[data-user-theme="dark"] .rb-account-frame{box-shadow:none}
+html[data-user-theme="dark"] .rb-account-frame-head{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .rb-account-inner-tabs.tab-strip{
+  background:linear-gradient(180deg,#0d1117 0%,#161b22 100%);
+  border-bottom-color:var(--border);
+}
       `,
     ],
     [],
@@ -327,276 +330,257 @@ html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){backgrou
           <main className="main account-page rb-account-page">
             <UserPortalTopbar
               title="Your account"
-              subtitle="Manage your login and security."
+              subtitle={undefined}
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />
 
-            {navError ? (
-              <div className="note" style={{ marginBottom: 16 }}>
-                Unable to load account details: {navError}
-              </div>
-            ) : null}
-
-            <div className="tab-strip" role="tablist" aria-label="Account sections">
-              {ACCOUNT_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  id={`account-tab-${tab.id}`}
-                  aria-selected={activeTab === tab.id}
-                  aria-controls={`account-panel-${tab.id}`}
-                  title={tab.description}
-                  className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    if (tab.id !== 'details') {
-                      setAccountEditOpen(false);
-                      setAccountSaveMessage(null);
-                    }
-                  }}
-                >
-                  <span className="tab-button-icon">
-                    <AccountTabIcon tabId={tab.id} />
-                  </span>
-                  <span className="tab-button-body">
-                    <strong>{tab.label}</strong>
-                    <span className="tab-button-desc">{tab.description}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="section-stack">
-              {activeTab === 'details' ? (
-                <section className="rb-account-card" role="tabpanel" id="account-panel-details" aria-labelledby="account-tab-details">
-                  <div className="rb-account-card-head">
-                    <div className="rb-account-card-head-main">
-                      <IconBadge className="rb-account-section-icon" />
-                      <h2>Account details</h2>
-                    </div>
-                  </div>
-
-                  {!nav?.ok ? (
-                    <p className="sub" style={{ margin: 0 }}>
-                      Loading…
-                    </p>
-                  ) : (
-                    <>
-                      <div className="rb-account-subsection">
-                        <div className="rb-account-subsection-head">
-                          <div>
-                            <h3 className="rb-account-subsection-title">Your account</h3>
-                            <p className="rb-account-subsection-lead">
-                              Sign-in identity and how your name appears in the product (same as “Primary contact name” in business settings).
-                            </p>
-                          </div>
-                          {!accountEditOpen ? (
-                            <button
-                              type="button"
-                              className="rb-account-link"
-                              onClick={() => {
-                                setContactNameDraft(nav.userName?.trim() ?? '');
-                                setAccountSaveMessage(null);
-                                setAccountEditOpen(true);
-                              }}
-                            >
-                              Edit details
-                            </button>
-                          ) : null}
-                        </div>
-
-                        {accountSaveMessage ? (
-                          <div
-                            className="note"
-                            style={{
-                              marginBottom: 14,
-                              color: accountSaveMessage.type === 'err' ? '#b91c1c' : '#047857',
-                            }}
-                          >
-                            {accountSaveMessage.text}
-                          </div>
-                        ) : null}
-
-                        <dl className="rb-account-rows">
-                          <div className="rb-account-row">
-                            <dt>Email</dt>
-                            <dd>
-                              <div>{nav.email ?? '—'}</div>
-                              <p className="rb-account-field-hint">
-                                This is the email you use to sign in. Changing it is not available in the app yet—contact
-                                support if you need to update it.
-                              </p>
-                            </dd>
-                          </div>
-                          <div className="rb-account-row">
-                            <dt>Your name</dt>
-                            <dd>
-                              {accountEditOpen ? (
-                                <div className="field" style={{ marginBottom: 0, maxWidth: 420 }}>
-                                  <label htmlFor="account-contact-name">Primary contact name</label>
-                                  <input
-                                    id="account-contact-name"
-                                    type="text"
-                                    autoComplete="name"
-                                    maxLength={120}
-                                    value={contactNameDraft}
-                                    onChange={(e) => setContactNameDraft(e.target.value)}
-                                  />
-                                  <div className="rb-account-inline-actions">
-                                    <button
-                                      type="button"
-                                      className="btn user-save"
-                                      disabled={accountSaveLoading}
-                                      onClick={() => void submitAccountContact()}
-                                    >
-                                      {accountSaveLoading ? 'Saving…' : 'Save'}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="rb-account-btn-ghost"
-                                      disabled={accountSaveLoading}
-                                      onClick={() => {
-                                        setAccountEditOpen(false);
-                                        setAccountSaveMessage(null);
-                                        setContactNameDraft(nav.userName?.trim() ?? '');
-                                      }}
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <span>{nav.userName?.trim() ? nav.userName : '—'}</span>
-                              )}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
-
-                      <div className="rb-account-subsection">
-                        <div className="rb-account-subsection-head">
-                          <div>
-                            <h3 className="rb-account-subsection-title">Business & subscription</h3>
-                            <p className="rb-account-subsection-lead">
-                              Business profile, plan, and billing are managed separately from your login.
-                            </p>
-                          </div>
-                          <a className="rb-account-link" href="/user/settings">
-                            Business settings
-                          </a>
-                        </div>
-                        <dl className="rb-account-rows">
-                          <div className="rb-account-row">
-                            <dt>Business name</dt>
-                            <dd>{nav.shopName ?? '—'}</dd>
-                          </div>
-                          <div className="rb-account-row">
-                            <dt>Plan</dt>
-                            <dd>
-                              <span>{planLabel(nav.plan)}</span>
-                              {subscriptionLooksHealthy(nav.subscriptionStatus) ? (
-                                <span className="rb-account-plan-pill">Active</span>
-                              ) : null}
-                            </dd>
-                          </div>
-                          <div className="rb-account-row">
-                            <dt>Billing status</dt>
-                            <dd
-                              className={
-                                subscriptionLooksHealthy(nav.subscriptionStatus) ? undefined : 'rb-account-billing-warn'
-                              }
-                            >
-                              {subscriptionFriendlyLabel(nav.subscriptionStatus)}
-                            </dd>
-                          </div>
-                        </dl>
-                      </div>
-                    </>
-                  )}
-
-                  {showBillingHint ? (
-                    <div className="rb-account-callout">
-                      <IconInfo className="rb-account-section-icon" />
-                      <p>
-                        Your subscription may need attention. Open{' '}
-                        <a href="/user/billing" className="rb-account-link">
-                          Billing
-                        </a>{' '}
-                        to review payment and plan status.
-                      </p>
-                    </div>
-                  ) : null}
-                </section>
+            <div className="rb-account-shell">
+              {navError ? (
+                <div className="note" style={{ marginBottom: 16 }}>
+                  Unable to load account details: {navError}
+                </div>
               ) : null}
 
-              {activeTab === 'password' ? (
-                <section className="rb-account-card" role="tabpanel" id="account-panel-password" aria-labelledby="account-tab-password">
-                  <div className="rb-account-card-head" style={{ marginBottom: 16 }}>
-                    <div className="rb-account-card-head-main">
-                      <IconLock className="rb-account-section-icon" />
-                      <h2>Change password</h2>
-                    </div>
-                  </div>
+              <div className="rb-account-frame">
+                <header className="rb-account-frame-head">
+                  <h2>Your account</h2>
+                </header>
 
-                  {pwMessage ? (
-                    <div
-                      className="note"
-                      style={{
-                        marginBottom: 14,
-                        color: pwMessage.type === 'err' ? '#b91c1c' : '#047857',
+                <div className="tab-strip rb-account-inner-tabs" role="tablist" aria-label="Account sections">
+                  {ACCOUNT_TABS.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      id={`account-tab-${tab.id}`}
+                      aria-selected={activeTab === tab.id}
+                      aria-controls={`account-panel-${tab.id}`}
+                      title={tab.description}
+                      className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setActiveTab(tab.id);
+                        if (tab.id !== 'details') {
+                          setAccountEditOpen(false);
+                          setAccountSaveMessage(null);
+                        }
                       }}
                     >
-                      {pwMessage.text}
-                    </div>
-                  ) : null}
+                      <span className="tab-button-icon">
+                        <AccountTabIcon tabId={tab.id} />
+                      </span>
+                      <span className="tab-button-body">
+                        <strong>{tab.label}</strong>
+                      </span>
+                    </button>
+                  ))}
+                </div>
 
-                  <div className="account-password-inner">
-                    <p className="account-password-hint">Use at least 8 characters.</p>
-                    <div className="field">
-                      <label htmlFor="account-current-password">Current password</label>
-                      <input
-                        id="account-current-password"
-                        type="password"
-                        autoComplete="current-password"
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="account-new-password">New password</label>
-                      <input
-                        id="account-new-password"
-                        type="password"
-                        autoComplete="new-password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                      />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="account-confirm-password">Confirm new password</label>
-                      <input
-                        id="account-confirm-password"
-                        type="password"
-                        autoComplete="new-password"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-                    </div>
-                    <div className="account-password-actions rb-account-password-actions">
-                      <button
-                        type="button"
-                        className="btn user-save"
-                        disabled={pwLoading}
-                        onClick={() => void submitPassword()}
+                {activeTab === 'details' ? (
+                  <div
+                    className="rb-account-panel"
+                    role="tabpanel"
+                    id="account-panel-details"
+                    aria-labelledby="account-tab-details"
+                  >
+                    <p className="rb-account-panel-title">Profile &amp; workspace</p>
+
+                    {!nav?.ok ? (
+                      <p className="sub" style={{ margin: 0 }}>
+                        Loading…
+                      </p>
+                    ) : (
+                      <>
+                        <div className="rb-account-subsection">
+                          <div className="rb-account-subsection-head">
+                            <h3 className="rb-account-subsection-title">Your account</h3>
+                            {!accountEditOpen ? (
+                              <button
+                                type="button"
+                                className="rb-account-link"
+                                onClick={() => {
+                                  setContactNameDraft(nav.userName?.trim() ?? '');
+                                  setAccountSaveMessage(null);
+                                  setAccountEditOpen(true);
+                                }}
+                              >
+                                Edit details
+                              </button>
+                            ) : null}
+                          </div>
+
+                          {accountSaveMessage ? (
+                            <div
+                              className="note"
+                              style={{
+                                marginBottom: 14,
+                                color: accountSaveMessage.type === 'err' ? '#b91c1c' : '#047857',
+                              }}
+                            >
+                              {accountSaveMessage.text}
+                            </div>
+                          ) : null}
+
+                          <dl className="rb-account-rows">
+                            <div className="rb-account-row">
+                              <dt>Email</dt>
+                              <dd>{nav.email ?? '—'}</dd>
+                            </div>
+                            <div className="rb-account-row">
+                              <dt>Your name</dt>
+                              <dd>
+                                {accountEditOpen ? (
+                                  <div className="field" style={{ marginBottom: 0, maxWidth: 420 }}>
+                                    <label htmlFor="account-contact-name">Primary contact name</label>
+                                    <input
+                                      id="account-contact-name"
+                                      type="text"
+                                      autoComplete="name"
+                                      maxLength={120}
+                                      value={contactNameDraft}
+                                      onChange={(e) => setContactNameDraft(e.target.value)}
+                                    />
+                                    <div className="rb-account-inline-actions">
+                                      <button
+                                        type="button"
+                                        className="btn user-save"
+                                        disabled={accountSaveLoading}
+                                        onClick={() => void submitAccountContact()}
+                                      >
+                                        {accountSaveLoading ? 'Saving…' : 'Save'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="rb-account-btn-ghost"
+                                        disabled={accountSaveLoading}
+                                        onClick={() => {
+                                          setAccountEditOpen(false);
+                                          setAccountSaveMessage(null);
+                                          setContactNameDraft(nav.userName?.trim() ?? '');
+                                        }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span>{nav.userName?.trim() ? nav.userName : '—'}</span>
+                                )}
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+
+                        <div className="rb-account-subsection">
+                          <div className="rb-account-subsection-head">
+                            <h3 className="rb-account-subsection-title">Business & subscription</h3>
+                          </div>
+                          <dl className="rb-account-rows">
+                            <div className="rb-account-row">
+                              <dt>Business name</dt>
+                              <dd>{nav.shopName ?? '—'}</dd>
+                            </div>
+                            <div className="rb-account-row">
+                              <dt>Plan</dt>
+                              <dd>
+                                <span>{planLabel(nav.plan)}</span>
+                                {subscriptionLooksHealthy(nav.subscriptionStatus) ? (
+                                  <span className="rb-account-plan-pill">Active</span>
+                                ) : null}
+                              </dd>
+                            </div>
+                            <div className="rb-account-row">
+                              <dt>Billing status</dt>
+                              <dd
+                                className={
+                                  subscriptionLooksHealthy(nav.subscriptionStatus) ? undefined : 'rb-account-billing-warn'
+                                }
+                              >
+                                {subscriptionFriendlyLabel(nav.subscriptionStatus)}
+                              </dd>
+                            </div>
+                          </dl>
+                        </div>
+                      </>
+                    )}
+
+                    {showBillingHint ? (
+                      <div className="rb-account-callout">
+                        <IconInfo className="rb-account-section-icon" />
+                        <a href="/user/billing" className="rb-account-link">
+                          Billing
+                        </a>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {activeTab === 'password' ? (
+                  <div
+                    className="rb-account-panel"
+                    role="tabpanel"
+                    id="account-panel-password"
+                    aria-labelledby="account-tab-password"
+                  >
+                    <p className="rb-account-panel-title">Security</p>
+
+                    {pwMessage ? (
+                      <div
+                        className="note"
+                        style={{
+                          marginBottom: 14,
+                          color: pwMessage.type === 'err' ? '#b91c1c' : '#047857',
+                        }}
                       >
-                        {pwLoading ? 'Updating…' : 'Update password'}
-                      </button>
+                        {pwMessage.text}
+                      </div>
+                    ) : null}
+
+                    <div className="account-password-inner">
+                      <div className="field">
+                        <label htmlFor="account-current-password">Current password</label>
+                        <input
+                          id="account-current-password"
+                          type="password"
+                          autoComplete="current-password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="account-new-password">New password</label>
+                        <input
+                          id="account-new-password"
+                          type="password"
+                          autoComplete="new-password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label htmlFor="account-confirm-password">Confirm new password</label>
+                        <input
+                          id="account-confirm-password"
+                          type="password"
+                          autoComplete="new-password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                        />
+                      </div>
+                      <div className="account-password-actions rb-account-password-actions">
+                        <button
+                          type="button"
+                          className="btn user-save"
+                          disabled={pwLoading}
+                          onClick={() => void submitPassword()}
+                        >
+                          {pwLoading ? 'Updating…' : 'Update password'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </section>
-              ) : null}
+                ) : null}
+              </div>
             </div>
           </main>
         </div>
