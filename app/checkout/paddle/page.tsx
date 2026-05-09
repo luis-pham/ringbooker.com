@@ -11,15 +11,16 @@ function firstParam(value: SearchParamValue): string {
   return value ?? '';
 }
 
-export default function PaddleCheckoutPage({
+export default async function PaddleCheckoutPage({
   searchParams,
 }: {
-  searchParams?: Record<string, SearchParamValue>;
+  searchParams?: Promise<Record<string, SearchParamValue>>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const transactionId =
-    firstParam(searchParams?._ptxn) ||
-    firstParam(searchParams?.txn) ||
-    firstParam(searchParams?.transaction_id);
+    firstParam(resolvedSearchParams?._ptxn) ||
+    firstParam(resolvedSearchParams?.txn) ||
+    firstParam(resolvedSearchParams?.transaction_id);
   const paddleEnv = process.env.PADDLE_ENV ?? process.env.PADDLE_ENVIRONMENT ?? 'sandbox';
   const environment = paddleEnv === 'production' ? 'production' : 'sandbox';
 
