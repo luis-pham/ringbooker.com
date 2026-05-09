@@ -146,6 +146,7 @@ button,input,select,textarea{font:inherit}
 .page-title h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.25;color:var(--purple-dark)}
 .page-title p{margin:6px 0 0;color:var(--text-gray);font-size:15px;line-height:1.55;max-width:760px}
 .top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.top-actions.overview-top-actions{gap:14px}
 .topbar-trailing{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   margin-left:auto;
@@ -193,12 +194,101 @@ button,input,select,textarea{font:inherit}
 }
 .user-theme-toggle:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
 
+.portal-notif{position:relative;display:inline-flex;vertical-align:middle}
+.portal-notif-trigger{
+  position:relative;
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;padding:0;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface-card);
+  color:var(--text-gray);cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+}
+.portal-notif-trigger:hover{
+  background:#f9fafb;border-color:#d1d5db;color:var(--text-dark);
+}
+.portal-notif-trigger:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
+.portal-notif-badge{
+  position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;
+  border-radius:999px;background:#b91c1c;color:#fff;font-size:10px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+  border:2px solid var(--surface-page);
+}
+.portal-notif-panel{
+  position:absolute;right:0;top:calc(100% + 10px);width:min(380px,calc(100vw - 36px));
+  background:var(--surface-card);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 14px 42px rgba(15,23,42,.14);z-index:80;overflow:hidden;
+}
+.portal-notif-panel-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  font-size:13px;color:var(--text-dark);
+}
+.portal-notif-refresh{
+  font:inherit;font-size:12px;font-weight:700;border:none;background:none;padding:0;cursor:pointer;
+  color:var(--purple-dark);
+}
+.portal-notif-refresh:hover{text-decoration:underline}
+.portal-notif-list{max-height:min(420px,70vh);overflow-y:auto;padding:8px}
+.portal-notif-empty{margin:14px 12px;font-size:13px;color:var(--text-gray);line-height:1.55}
+.portal-notif-item{
+  display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border-radius:10px;margin-bottom:4px;
+  text-decoration:none;color:inherit;border:1px solid transparent;
+  transition:background .12s ease,border-color .12s ease;
+}
+.portal-notif-item:last-child{margin-bottom:0}
+.portal-notif-item:hover{background:#f9fafb;border-color:#e5e7eb}
+.portal-notif-item-text{display:flex;flex-direction:column;gap:4px;min-width:0}
+.portal-notif-title{font-size:13px;font-weight:700;color:var(--text-dark);line-height:1.35}
+.portal-notif-body{font-size:12px;color:var(--text-gray);line-height:1.5}
+.portal-notif-item--critical{border-left:3px solid #dc2626;padding-left:13px}
+.portal-notif-item--warn{border-left:3px solid #f59e0b;padding-left:13px}
+.portal-notif-item--info{border-left:3px solid #94a3b8;padding-left:13px}
+
 .grid{display:grid;gap:18px}
 .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .kpi-row{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:18px}
 .call-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:18px}
+.call-grid-phase-simple{grid-template-columns:1fr}
+.overview-rail-card.soft h3{margin:0 0 6px}
+.overview-rail-checklist{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.overview-rail-step{display:flex;gap:12px;align-items:flex-start}
+.overview-rail-step-mark{
+  flex-shrink:0;width:22px;height:22px;border-radius:999px;border:2px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;line-height:1;
+}
+.overview-rail-step.done .overview-rail-step-mark{background:#ecfdf5;border-color:#bbf7d0;color:#047857}
+.overview-rail-step.done .overview-rail-step-mark::after{content:'✓'}
+.overview-rail-step-title{font-size:14px;font-weight:700;letter-spacing:-.02em;line-height:1.35;margin:0}
+.overview-rail-step-title a{color:inherit;text-decoration:none}
+.overview-rail-step-title a:hover{text-decoration:underline;color:var(--purple-dark)}
+.overview-rail-step-meta{font-size:12px;color:var(--text-gray);margin:4px 0 0;line-height:1.45}
+.overview-rail-health{display:flex;flex-direction:column;margin-top:4px}
+.overview-rail-health-row{
+  display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;padding:12px 0;border-bottom:1px solid #f0f1f3;
+}
+.overview-rail-health-row:last-child{border-bottom:none}
+.overview-rail-health-main{min-width:0}
+.overview-rail-health-label{font-size:13px;font-weight:700;color:var(--text-dark);display:flex;align-items:center;gap:8px}
+.overview-rail-health-detail{font-size:12px;color:var(--text-gray);margin-top:4px;line-height:1.45}
+.overview-rail-health-detail a{color:var(--purple-dark);font-weight:700;text-decoration:none}
+.overview-rail-health-detail a:hover{text-decoration:underline}
+.overview-rail-dot{width:8px;height:8px;border-radius:999px;flex-shrink:0}
+.overview-rail-dot.ok{background:#10b981}
+.overview-rail-dot.warn{background:#f59e0b}
+.overview-rail-dot.neutral{background:#d1d5db}
+.overview-rail-recent{margin-top:18px;padding-top:16px;border-top:1px solid #f0f1f3}
+.overview-rail-recent-title{margin:0 0 12px;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-light)}
+.overview-rail-calls{display:flex;flex-direction:column;gap:10px}
+.overview-rail-call{
+  padding:12px 14px;border:1px solid #f0f1f3;border-radius:16px;background:#fff;
+  display:block;color:inherit;text-decoration:none;transition:border-color .15s ease,background .15s ease;
+}
+.overview-rail-call:hover{border-color:#c4b5fd;background:#fafafa}
+.overview-rail-call-main{font-size:13px;font-weight:700;color:var(--text-dark);line-height:1.35}
+.overview-rail-call-sub{font-size:12px;color:var(--text-gray);margin-top:4px;line-height:1.45}
+.overview-rail-tip{margin-top:14px;font-size:12px;color:var(--text-gray);line-height:1.55}
 .forward-guide-card{border-left:4px solid #c4b5fd}
 .forward-guide-intro{margin:0 0 14px;font-size:13px;color:var(--text-gray);line-height:1.65}
 .forward-num{
@@ -427,6 +517,33 @@ html[data-user-theme="dark"] .user-theme-toggle:hover{
   color:var(--text-dark);
   border-color:#8b949e;
 }
+html[data-user-theme="dark"] .portal-notif-trigger{
+  background:var(--surface-card);
+  border-color:var(--border);
+  color:var(--text-gray);
+}
+html[data-user-theme="dark"] .portal-notif-trigger:hover{
+  background:#21262d;
+  border-color:#8b949e;
+  color:var(--text-dark);
+}
+html[data-user-theme="dark"] .portal-notif-badge{
+  border-color:var(--surface-page);
+  background:#da3633;
+}
+html[data-user-theme="dark"] .portal-notif-panel{
+  box-shadow:0 16px 48px rgba(0,0,0,.45);
+}
+html[data-user-theme="dark"] .portal-notif-panel-head{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .portal-notif-refresh{color:#a371f7}
+html[data-user-theme="dark"] .portal-notif-refresh:hover{color:#d2a8ff}
+html[data-user-theme="dark"] .portal-notif-item:hover{background:#21262d;border-color:var(--border)}
+html[data-user-theme="dark"] .portal-notif-title{color:var(--text-dark)}
+html[data-user-theme="dark"] .portal-notif-body{color:var(--text-gray)}
+html[data-user-theme="dark"] .portal-notif-item--critical{border-left-color:#f85149}
+html[data-user-theme="dark"] .portal-notif-item--warn{border-left-color:#d29922}
+html[data-user-theme="dark"] .portal-notif-item--info{border-left-color:#8b949e}
+
 html[data-user-theme="dark"] .topbar-user-chip-avatar{
   background:rgba(56,139,253,0.12);
   color:#58a6ff;
@@ -504,6 +621,14 @@ html[data-user-theme="dark"] .carrier-callcenter-tip{
   background:#0d1117;
   border-color:var(--border);
 }
+html[data-user-theme="dark"] .overview-rail-health-row{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .overview-rail-recent{border-top-color:var(--border)}
+html[data-user-theme="dark"] .overview-rail-call{background:var(--surface-card);border-color:var(--border)}
+html[data-user-theme="dark"] .overview-rail-call:hover{border-color:#58a6ff;background:#21262d}
+html[data-user-theme="dark"] .overview-rail-step.done .overview-rail-step-mark{
+  background:rgba(35,134,54,0.15);border-color:rgba(63,185,80,.45);color:#3fb950;
+}
+html[data-user-theme="dark"] .overview-rail-dot.neutral{background:#484f58}
 html[data-user-theme="dark"] .price-mini{background:var(--surface-card)}
 html[data-user-theme="dark"] .plan-chip{
   background:rgba(56,139,253,0.12);
@@ -599,7 +724,7 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
     gap:10px;
   }
   .topbar-user-chip{display:none !important}
-  .overview-top-actions{display:none}
+  .top-actions.overview-top-actions{display:none}
   .page-title h1{font-size:22px}
   .app-shell{grid-template-columns:1fr}
   .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border);overflow:visible}
@@ -639,7 +764,7 @@ export function UserDashboardTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Overview</h1><p>Track calls, bookings, and reminders.</p></div>
-            <div className="top-actions"><a className="btn" href="/user/settings">Edit business info</a><a className="btn purple" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions overview-top-actions"><a className="btn" href="/user/settings">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
           </div>
           <section className="grid grid-4">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">+18% this week</span></div><div className="stat-value">142</div><div className="stat-meta">Calls answered by RingBooker</div></div>

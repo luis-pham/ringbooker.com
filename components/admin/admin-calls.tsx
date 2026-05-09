@@ -89,6 +89,19 @@ body.app-body{overflow-y:scroll}
 .admin-period-filter button{padding:9px 16px;border-radius:999px;font-size:13px;font-weight:700;border:1px solid var(--line-soft);background:rgba(255,255,255,.03);color:#c7d2e8;cursor:pointer;transition:background .15s ease,border-color .15s ease,color .15s ease}
 .admin-period-filter button:hover{border-color:var(--line);color:#fff}
 .admin-period-filter button.active{background:linear-gradient(135deg,var(--purple),var(--purple-2));border-color:transparent;color:#fff}
+.admin-overview-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px);gap:22px;margin-top:22px;align-items:start}
+.admin-overview-split .admin-chart-grid{margin-top:0}
+.admin-trial-watchlist{background:linear-gradient(180deg,var(--panel),var(--panel-3));border:1px solid var(--line);border-radius:22px;padding:18px 16px 16px;box-shadow:var(--shadow);position:sticky;top:18px}
+.admin-trial-watchlist h3{margin:0 0 6px;font-size:15px;letter-spacing:-.02em}
+.admin-trial-watchlist .trial-sub{font-size:12px;line-height:1.45;color:var(--muted);margin:0 0 14px}
+.admin-trial-watchlist ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.admin-trial-watchlist li{border:1px solid var(--line-soft);border-radius:14px;padding:12px 12px;background:rgba(0,0,0,.12)}
+.admin-trial-watchlist .trial-shop{font-weight:800;font-size:14px;margin:0 0 4px;line-height:1.35}
+.admin-trial-watchlist .trial-shop a{color:inherit;text-decoration:none}
+.admin-trial-watchlist .trial-shop a:hover{text-decoration:underline;color:#cfbfff}
+.admin-trial-watchlist .trial-meta{font-size:11px;color:var(--muted);line-height:1.45}
+.admin-trial-watchlist .trial-days{display:inline-block;margin-top:6px;font-size:11px;font-weight:800;padding:4px 8px;border-radius:999px;background:rgba(251,191,36,.12);color:#fcd34d}
+.admin-trial-watchlist .trial-days.urgent{background:rgba(248,113,113,.14);color:#fca5a5}
 .admin-chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:18px}
 .admin-chart-card{background:linear-gradient(180deg,var(--panel),var(--panel-3));border:1px solid var(--line);border-radius:22px;padding:18px 18px 14px;box-shadow:var(--shadow)}
 .admin-chart-card .admin-period-filter{margin:0 0 12px}
@@ -100,7 +113,7 @@ body.app-body{overflow-y:scroll}
 .admin-chart-card .chart-source{font-size:11px;color:var(--muted);line-height:1.45;margin:0 0 4px;opacity:.92}
 .admin-chart-svg{width:100%;height:auto;display:block;border-radius:14px;background:rgba(0,0,0,.15)}
 .admin-chart-x{font-size:9px;fill:#7f8baa;font-weight:700}
-@media (max-width:1100px){.admin-chart-grid{grid-template-columns:1fr}}
+@media (max-width:1100px){.admin-overview-split{grid-template-columns:1fr}.admin-trial-watchlist{position:relative;top:0}.admin-chart-grid{grid-template-columns:1fr}}
 dialog.rb-admin-modal{max-width:min(720px,94vw);width:100%;border:none;border-radius:24px;padding:0;background:linear-gradient(180deg,var(--panel),var(--panel-3));color:var(--text);box-shadow:var(--shadow)}
 dialog.rb-admin-modal::backdrop{background:rgba(5,8,16,.72);backdrop-filter:blur(4px)}
 .rb-admin-modal-head{padding:20px 22px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}

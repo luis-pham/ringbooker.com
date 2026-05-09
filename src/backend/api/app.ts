@@ -81,6 +81,10 @@ import { resolveGoLiveDashboardPrimaryCta } from '@/src/backend/services/billing
 import { normalizeInboundE164 } from '@/src/backend/services/calls/shop-resolver';
 import { formatPlanPrice, getPlanCatalogEntry, isSelfServeTrialPlan } from '@/src/backend/domain/plan-catalog';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
+import {
+  buildAdminTrialEndingSoonWatchlist,
+  type AdminTrialEndingSoonItem,
+} from '@/src/backend/services/admin/admin-dashboard-trial-watchlist';
 import { buildDashboardOverviewRail } from '@/src/backend/services/user/dashboard-overview-rail';
 import {
   buildUserPortalNotifications,
@@ -6197,9 +6201,17 @@ export function createBackendApp(deps: {
     }
 
     const [shops, calls] = await Promise.all([
-      deps.shopsRepository.list({ limit: 200 }),
+      deps.shopsRepository.list({ limit: 300 }),
       deps.callLogsRepository.listRecent({ limit: 200 }),
     ]);
+
+    let trialEndingSoon: AdminTrialEndingSoonItem[] = [];
+    if (deps.billingSubscriptionsRepository) {
+      const shopIds = shops.map((shop) => shop.id);
+      const subsByShop = await deps.billingSubscriptionsRepository.findCurrentByShopIds(shopIds);
+      trialEndingSoon = buildAdminTrialEndingSoonWatchlist(shops, subsByShop, new Date());
+    }
+
     return c.json({
       ok: true,
       metrics: {
@@ -6208,6 +6220,7 @@ export function createBackendApp(deps: {
         callCount: calls.length,
         missedCalls: calls.filter((item) => item.outcome === 'missed').length,
       },
+      trialEndingSoon,
     });
   });
 

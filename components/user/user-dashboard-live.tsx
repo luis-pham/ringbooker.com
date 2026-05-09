@@ -54,8 +54,181 @@ type UserDashboardResponse = {
     commercialGoLiveApproved?: boolean;
     commercialApprovalRequired?: boolean;
   } | null;
+  overviewRail?: UserDashboardOverviewRail;
   error?: string;
 };
+
+type UserDashboardOverviewRail =
+  | {
+      variant: 'setup';
+      title: string;
+      subtitle?: string;
+      checklist: Array<{ id: string; title: string; done: boolean; href: string }>;
+    }
+  | {
+      variant: 'live';
+      title: string;
+      subtitle?: string;
+      health: Array<{
+        id: string;
+        label: string;
+        state: 'ok' | 'warn' | 'neutral';
+        detail?: string;
+        href?: string;
+      }>;
+      recentCalls: Array<{
+        requestId?: string;
+        startedAt?: string;
+        callerPhone?: string;
+        outcome?: string;
+        subtitle?: string | null;
+      }>;
+      tip?: string;
+    };
+
+function formatOverviewPhone(phone: string | undefined): string {
+  if (!phone?.trim()) return 'Unknown caller';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) {
+    const n = digits.slice(1);
+    return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return phone;
+}
+
+function formatOverviewOutcome(outcome: string | undefined): string {
+  if (!outcome) return 'Logged';
+  const map: Record<string, string> = {
+    missed: 'Missed',
+    completed: 'Completed',
+    transferred_to_owner: 'Transferred',
+    booking_created: 'Booking created',
+    booking_link_sent: 'Booking link sent',
+    voicemail: 'Voicemail',
+    abandoned: 'Abandoned',
+    failed: 'Failed',
+  };
+  return map[outcome] ?? outcome.replace(/_/g, ' ');
+}
+
+function formatOverviewWhen(iso: string | undefined, timeZone: string): string {
+  if (!iso) return '';
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: timeZone || 'UTC',
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+function truncateOverviewText(text: string, max: number): string {
+  const t = text.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
+}
+
+/** Full KPI dashboard only after live answering is on — keeps onboarding / go-live focused on next steps. */
+function userOverviewPhase(data: UserDashboardResponse | null): 'onboarding' | 'activation' | 'live' | null {
+  if (!data?.ok) return null;
+  if (data.onboardingRequired) return 'onboarding';
+  if (data.goLive?.liveCallsEnabled === true) return 'live';
+  return 'activation';
+}
+
+function DashboardOverviewRailCard(props: { rail: UserDashboardOverviewRail; shopTimezone: string }) {
+  const { rail, shopTimezone } = props;
+
+  if (rail.variant === 'setup') {
+    return (
+      <section className="card soft overview-rail-card">
+        <div className="panel-head" style={{ marginBottom: 14 }}>
+          <div>
+            <h3>{rail.title}</h3>
+            {rail.subtitle ? <p className="sub">{rail.subtitle}</p> : null}
+          </div>
+        </div>
+        <ul className="overview-rail-checklist">
+          {rail.checklist.map((step) => (
+            <li key={step.id} className={`overview-rail-step ${step.done ? 'done' : ''}`}>
+              <span className="overview-rail-step-mark" aria-hidden />
+              <div>
+                <p className="overview-rail-step-title">
+                  {step.done ? (
+                    step.title
+                  ) : (
+                    <a href={step.href}>{step.title}</a>
+                  )}
+                </p>
+                {!step.done ? <p className="overview-rail-step-meta">Tap to open and complete.</p> : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
+  return (
+    <section className="card soft overview-rail-card">
+      <div className="panel-head" style={{ marginBottom: 14 }}>
+        <div>
+          <h3>{rail.title}</h3>
+          {rail.subtitle ? <p className="sub">{rail.subtitle}</p> : null}
+        </div>
+      </div>
+      <div className="overview-rail-health">
+        {rail.health.map((row) => (
+          <div key={row.id} className="overview-rail-health-row">
+            <span className={`overview-rail-dot ${row.state}`} title={row.state} aria-hidden />
+            <div className="overview-rail-health-main">
+              <div className="overview-rail-health-label">{row.label}</div>
+              <div className="overview-rail-health-detail">
+                {row.detail ? <span>{row.detail}</span> : null}
+                {row.href ? (
+                  <>
+                    {row.detail ? ' · ' : null}
+                    <a href={row.href}>Open</a>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {rail.recentCalls.length > 0 ? (
+        <div className="overview-rail-recent">
+          <h4 className="overview-rail-recent-title">Recent calls</h4>
+          <div className="overview-rail-calls">
+            {rail.recentCalls.map((call, index) => {
+              const key = call.requestId ?? `${call.startedAt ?? 'call'}-${index}`;
+              const line1 = `${formatOverviewPhone(call.callerPhone)} · ${formatOverviewWhen(call.startedAt, shopTimezone) || 'Recent'}`;
+              const line2Parts = [formatOverviewOutcome(call.outcome)];
+              if (call.subtitle?.trim()) line2Parts.push(truncateOverviewText(call.subtitle, 72));
+              return (
+                <a key={key} href="/user/calls" className="overview-rail-call">
+                  <div className="overview-rail-call-main">{line1}</div>
+                  <div className="overview-rail-call-sub">{line2Parts.join(' · ')}</div>
+                </a>
+              );
+            })}
+          </div>
+          <a className="subtle-link" href="/user/calls" style={{ marginTop: 12, display: 'inline-block' }}>
+            View all calls
+          </a>
+        </div>
+      ) : null}
+      {rail.tip ? <p className="overview-rail-tip">{rail.tip}</p> : null}
+    </section>
+  );
+}
 
 function IconQuickBookings() {
   return (
@@ -156,6 +329,17 @@ export function UserDashboardLive() {
   const liveAnsweringOn = data?.goLive?.liveCallsEnabled === true;
   const enterpriseApprovalPending = data?.goLive?.commercialApprovalRequired === true;
 
+  const overviewPhase = useMemo(() => userOverviewPhase(data), [data]);
+  const simplifiedOverview = overviewPhase === 'onboarding' || overviewPhase === 'activation';
+
+  const topbarSubtitle = useMemo(() => {
+    if (!data?.ok) return 'Track calls, bookings, and reminders.';
+    if (data.onboardingRequired) return "Complete setup — then we'll walk you through go-live.";
+    if (data.goLive?.commercialApprovalRequired) return 'Custom plan: we enable live answering after approval.';
+    if (!liveAnsweringOn) return 'Next: finish go-live so RingBooker can answer your business line.';
+    return 'Track calls, bookings, and reminders.';
+  }, [data?.ok, data?.onboardingRequired, data?.goLive?.commercialApprovalRequired, liveAnsweringOn]);
+
   useEffect(() => {
     if (!data?.ok || !data.shop) return;
     setWorkspace({
@@ -164,11 +348,6 @@ export function UserDashboardLive() {
       active: data.shop.active,
     });
   }, [data, setWorkspace]);
-
-  async function signOut() {
-    await fetch('/api/backend/auth/logout', { method: 'POST' });
-    window.location.href = '/user/login';
-  }
 
   function dismissWelcomeBanner() {
     if (data?.shop?.id) {
@@ -323,19 +502,17 @@ export function UserDashboardLive() {
           <main className="main">
             <UserPortalTopbar
               title={shopName}
-              subtitle="Track calls, bookings, and reminders."
+              subtitle={topbarSubtitle}
+              actionsClassName="overview-top-actions"
               actions={
-                <div className="overview-top-actions">
+                <>
                   <a className="btn" href="/user/settings">
                     Edit business info
                   </a>
-                  <a className="btn purple" href="/user/bookings">
+                  <a className="btn user-save" href="/user/bookings">
                     View bookings
                   </a>
-                  <button type="button" className="btn" onClick={signOut}>
-                    Sign out
-                  </button>
-                </div>
+                </>
               }
             />
             {loading ? (
@@ -410,62 +587,64 @@ export function UserDashboardLive() {
                 </div>
               </section>
             ) : null}
-            <section className="grid grid-4">
-              <div className="stat-card">
-                <div className="stat-top">
-                  <div className="stat-icon">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" />
-                    </svg>
+            {!simplifiedOverview ? (
+              <section className="grid grid-4">
+                <div className="stat-card">
+                  <div className="stat-top">
+                    <div className="stat-icon">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" />
+                      </svg>
+                    </div>
+                    <span className={`tag ${liveAnsweringOn ? 'green' : 'orange'}`}>
+                      {liveAnsweringOn ? 'Live answering' : 'Not live'}
+                    </span>
                   </div>
-                  <span className={`tag ${liveAnsweringOn ? 'green' : 'orange'}`}>
-                    {liveAnsweringOn ? 'Live answering' : 'Not live'}
-                  </span>
+                  <div className="stat-value">{data?.metrics?.callCount ?? 0}</div>
+                  <div className="stat-meta">Total calls logged for this business</div>
                 </div>
-                <div className="stat-value">{data?.metrics?.callCount ?? 0}</div>
-                <div className="stat-meta">Total calls logged for this business</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-top">
-                  <div className="stat-icon">
-                    <svg viewBox="0 0 24 24">
-                      <rect x={3} y={5} width={18} height={16} rx={2} />
-                      <path d="M16 3v4M8 3v4M3 10h18" />
-                    </svg>
+                <div className="stat-card">
+                  <div className="stat-top">
+                    <div className="stat-icon">
+                      <svg viewBox="0 0 24 24">
+                        <rect x={3} y={5} width={18} height={16} rx={2} />
+                        <path d="M16 3v4M8 3v4M3 10h18" />
+                      </svg>
+                    </div>
+                    <span className="tag purple">Booked</span>
                   </div>
-                  <span className="tag purple">Booked</span>
+                  <div className="stat-value">{data?.metrics?.bookingCount ?? 0}</div>
+                  <div className="stat-meta">Total bookings in your current business</div>
                 </div>
-                <div className="stat-value">{data?.metrics?.bookingCount ?? 0}</div>
-                <div className="stat-meta">Total bookings in your current business</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-top">
-                  <div className="stat-icon">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M4 6h16v12H4z" />
-                      <path d="M4 8l8 6 8-6" />
-                    </svg>
+                <div className="stat-card">
+                  <div className="stat-top">
+                    <div className="stat-icon">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 6h16v12H4z" />
+                        <path d="M4 8l8 6 8-6" />
+                      </svg>
+                    </div>
+                    <span className="tag orange">Needs follow-up</span>
                   </div>
-                  <span className="tag orange">Needs follow-up</span>
+                  <div className="stat-value">{data?.metrics?.missedCalls ?? 0}</div>
+                  <div className="stat-meta">Total missed calls (outcome = missed)</div>
                 </div>
-                <div className="stat-value">{data?.metrics?.missedCalls ?? 0}</div>
-                <div className="stat-meta">Total missed calls (outcome = missed)</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-top">
-                  <div className="stat-icon">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M4 19h16" />
-                      <path d="M7 15l3-3 3 2 4-5" />
-                    </svg>
+                <div className="stat-card">
+                  <div className="stat-top">
+                    <div className="stat-icon">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 19h16" />
+                        <path d="M7 15l3-3 3 2 4-5" />
+                      </svg>
+                    </div>
+                    <span className="tag green">{data?.shop?.active ? 'Active' : 'Paused'}</span>
                   </div>
-                  <span className="tag green">{data?.shop?.active ? 'Active' : 'Paused'}</span>
+                  <div className="stat-value">{planLabel}</div>
+                  <div className="stat-meta">{data?.shop?.timezone ?? 'Timezone unavailable'}</div>
                 </div>
-                <div className="stat-value">{planLabel}</div>
-                <div className="stat-meta">{data?.shop?.timezone ?? 'Timezone unavailable'}</div>
-              </div>
-            </section>
-            {data?.usage ? (
+              </section>
+            ) : null}
+            {!simplifiedOverview && data?.usage ? (
               <section
                 className={`card usage-captured-card${data.usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${data.usage.nearCapturedCallerLimit && !data.usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
                 style={{ marginTop: 18 }}
@@ -501,60 +680,133 @@ export function UserDashboardLive() {
                 </p>
               </section>
             ) : null}
-            <section className="call-grid" style={{ marginTop: 18 }}>
-              <div className="card soft">
-                <div className="panel-head">
-                  <div>
-                    <h3>Quick actions</h3>
-                    <p className="sub">Jump straight into the business controls that matter most.</p>
-                  </div>
-                  <span className="badge-right">User portal</span>
-                </div>
-                <div className="list">
-                  <div className="list-item">
-                    <div className="item-main">
-                      <div className="avatar quick-avatar--bookings" aria-hidden title="Bookings">
-                        <IconQuickBookings />
-                      </div>
+            <section
+              className={`call-grid${simplifiedOverview ? ' call-grid-phase-simple' : ''}`}
+              style={{ marginTop: simplifiedOverview ? 12 : 18 }}
+            >
+              {simplifiedOverview ? (
+                <>
+                  {data.overviewRail ? (
+                    <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={data.shop?.timezone ?? 'UTC'} />
+                  ) : null}
+                  <div className="card soft">
+                    <div className="panel-head">
                       <div>
-                        <h4>Open bookings</h4>
-                        <p>Review upcoming appointments and confirmations.</p>
+                        <h3>Shortcuts</h3>
+                        <p className="sub">
+                          {overviewPhase === 'onboarding'
+                            ? 'Optional — finish the checklist above first.'
+                            : 'Optional — your go-live steps above are the priority.'}
+                        </p>
+                      </div>
+                      <span className="badge-right">User portal</span>
+                    </div>
+                    <div className="list">
+                      <div className="list-item">
+                        <div className="item-main">
+                          <div className="avatar quick-avatar--bookings" aria-hidden title="Bookings">
+                            <IconQuickBookings />
+                          </div>
+                          <div>
+                            <h4>Open bookings</h4>
+                            <p>Review upcoming appointments and confirmations.</p>
+                          </div>
+                        </div>
+                        <a className="btn" href="/user/bookings">
+                          Go
+                        </a>
+                      </div>
+                      <div className="list-item">
+                        <div className="item-main">
+                          <div className="avatar quick-avatar--calls" aria-hidden title="Calls">
+                            <IconQuickCalls />
+                          </div>
+                          <div>
+                            <h4>Review call logs</h4>
+                            <p>Inspect calls, transcripts, and missed-call recovery.</p>
+                          </div>
+                        </div>
+                        <a className="btn" href="/user/calls">
+                          Go
+                        </a>
+                      </div>
+                      <div className="list-item">
+                        <div className="item-main">
+                          <div className="avatar quick-avatar--settings" aria-hidden title="Settings">
+                            <IconQuickSettings />
+                          </div>
+                          <div>
+                            <h4>Update business settings</h4>
+                            <p>Hours, services, AI greeting, and transfer rules.</p>
+                          </div>
+                        </div>
+                        <a className="btn" href="/user/settings">
+                          Go
+                        </a>
                       </div>
                     </div>
-                    <a className="btn" href="/user/bookings">
-                      Go
-                    </a>
                   </div>
-                  <div className="list-item">
-                    <div className="item-main">
-                      <div className="avatar quick-avatar--calls" aria-hidden title="Calls">
-                        <IconQuickCalls />
-                      </div>
+                </>
+              ) : (
+                <>
+                  <div className="card soft">
+                    <div className="panel-head">
                       <div>
-                        <h4>Review call logs</h4>
-                        <p>Inspect calls, transcripts, and missed-call recovery.</p>
+                        <h3>Quick actions</h3>
+                        <p className="sub">Jump straight into the business controls that matter most.</p>
+                      </div>
+                      <span className="badge-right">User portal</span>
+                    </div>
+                    <div className="list">
+                      <div className="list-item">
+                        <div className="item-main">
+                          <div className="avatar quick-avatar--bookings" aria-hidden title="Bookings">
+                            <IconQuickBookings />
+                          </div>
+                          <div>
+                            <h4>Open bookings</h4>
+                            <p>Review upcoming appointments and confirmations.</p>
+                          </div>
+                        </div>
+                        <a className="btn" href="/user/bookings">
+                          Go
+                        </a>
+                      </div>
+                      <div className="list-item">
+                        <div className="item-main">
+                          <div className="avatar quick-avatar--calls" aria-hidden title="Calls">
+                            <IconQuickCalls />
+                          </div>
+                          <div>
+                            <h4>Review call logs</h4>
+                            <p>Inspect calls, transcripts, and missed-call recovery.</p>
+                          </div>
+                        </div>
+                        <a className="btn" href="/user/calls">
+                          Go
+                        </a>
+                      </div>
+                      <div className="list-item">
+                        <div className="item-main">
+                          <div className="avatar quick-avatar--settings" aria-hidden title="Settings">
+                            <IconQuickSettings />
+                          </div>
+                          <div>
+                            <h4>Update business settings</h4>
+                            <p>Hours, services, AI greeting, and transfer rules.</p>
+                          </div>
+                        </div>
+                        <a className="btn" href="/user/settings">
+                          Go
+                        </a>
                       </div>
                     </div>
-                    <a className="btn" href="/user/calls">
-                      Go
-                    </a>
                   </div>
-                  <div className="list-item">
-                    <div className="item-main">
-                      <div className="avatar quick-avatar--settings" aria-hidden title="Settings">
-                        <IconQuickSettings />
-                      </div>
-                      <div>
-                        <h4>Update business settings</h4>
-                        <p>Hours, services, AI greeting, and transfer rules.</p>
-                      </div>
-                    </div>
-                    <a className="btn" href="/user/settings">
-                      Go
-                    </a>
-                  </div>
-                </div>
-              </div>
+                  {data.overviewRail ? (
+                    <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={data.shop?.timezone ?? 'UTC'} />
+                  ) : null}
+                </>
+              )}
             </section>
             <div className="footer-inline">
               <span>RingBooker business panel</span>

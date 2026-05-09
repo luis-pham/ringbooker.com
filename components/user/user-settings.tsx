@@ -154,9 +154,22 @@ button.subtle-link:hover{text-decoration:underline}
 .business-subtab:hover{background:#f9fafb;border-color:#d1d5db;color:var(--text-dark)}
 .business-subtab:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
 .business-subtab.active{
-  background:var(--purple-dark);color:#fff;border-color:var(--purple-dark);
+  background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;
 }
-.business-subtab.active:hover{background:#5609c4;border-color:#5609c4;color:#fff}
+.business-subtab.active:hover{background:#161b22;border-color:#161b22;color:#fff}
+/* Integrations cards sit on purple-tinted “connected” panels — keep primary CTAs clearly black */
+.calendar-int-card .btn.user-save,
+.integrations-vagaro-booking-actions .btn.user-save,
+.integrations-vagaro-primary-actions .btn.user-save,
+.calendar-int-card .integrations-inline-actions .btn.user-save{
+  background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;
+}
+.calendar-int-card .btn.user-save:hover:not(:disabled),
+.integrations-vagaro-booking-actions .btn.user-save:hover:not(:disabled),
+.integrations-vagaro-primary-actions .btn.user-save:hover:not(:disabled),
+.calendar-int-card .integrations-inline-actions .btn.user-save:hover:not(:disabled){
+  background:#161b22;border-color:#161b22;color:#fff;
+}
 .card-section-form{
   border:none;border-radius:0;padding:0;background:transparent;
 }
@@ -244,13 +257,32 @@ html[data-user-theme="dark"] .tab-button.active .tab-button-desc{color:rgba(230,
 html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
 html[data-user-theme="dark"] .business-subtab.active{
-  background:rgba(56,139,253,0.15);
-  color:#58a6ff;
-  border-color:rgba(56,139,253,0.45);
+  background:#010409;
+  color:#f0f6fc;
+  border-color:#30363d;
+  font-weight:600;
 }
 html[data-user-theme="dark"] .business-subtab.active:hover{
-  background:rgba(56,139,253,0.22);
-  color:#79c0ff;
+  background:#0d1117;
+  border-color:#58a6ff;
+  color:#f0f6fc;
+}
+html[data-user-theme="dark"] .calendar-int-card .btn.user-save,
+html[data-user-theme="dark"] .integrations-vagaro-booking-actions .btn.user-save,
+html[data-user-theme="dark"] .integrations-vagaro-primary-actions .btn.user-save,
+html[data-user-theme="dark"] .calendar-int-card .integrations-inline-actions .btn.user-save{
+  background:#010409;
+  color:#f0f6fc;
+  border-color:#30363d;
+  font-weight:600;
+}
+html[data-user-theme="dark"] .calendar-int-card .btn.user-save:hover:not(:disabled),
+html[data-user-theme="dark"] .integrations-vagaro-booking-actions .btn.user-save:hover:not(:disabled),
+html[data-user-theme="dark"] .integrations-vagaro-primary-actions .btn.user-save:hover:not(:disabled),
+html[data-user-theme="dark"] .calendar-int-card .integrations-inline-actions .btn.user-save:hover:not(:disabled){
+  background:#0d1117;
+  border-color:#58a6ff;
+  color:#f0f6fc;
 }
 html[data-user-theme="dark"] .hours-grid{border-color:var(--border);background:var(--surface-card)}
 html[data-user-theme="dark"] .hours-row{background:var(--surface-card);border-bottom-color:var(--border)}

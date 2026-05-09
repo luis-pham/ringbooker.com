@@ -14,6 +14,14 @@ type DashboardMetrics = {
   missedCalls: number;
 };
 
+type TrialEndingSoonItem = {
+  shopId: string;
+  shopName: string;
+  plan: string;
+  trialEndsAt: string;
+  daysRemaining: number;
+};
+
 type ChartPeriod = 'today' | 'week' | 'month' | 'year';
 
 type DashboardChartMetric = 'demo-calls' | 'leads' | 'shops' | 'calls';
@@ -47,6 +55,12 @@ const METRIC_SOURCE: Record<DashboardChartMetric, string> = {
 
 function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
+}
+
+function formatTrialEndUtc(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function AdminTrendSvg({
@@ -216,6 +230,7 @@ function DashboardMetricChart({
 
 export function AdminDashboardLive() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [trialEndingSoon, setTrialEndingSoon] = useState<TrialEndingSoonItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -224,6 +239,7 @@ export function AdminDashboardLive() {
         const body = (await response.json()) as {
           ok: boolean;
           metrics?: DashboardMetrics;
+          trialEndingSoon?: TrialEndingSoonItem[];
           error?: string;
         };
         if (!body.ok || !body.metrics) {
@@ -232,6 +248,7 @@ export function AdminDashboardLive() {
         }
         setError(null);
         setMetrics(body.metrics);
+        setTrialEndingSoon(Array.isArray(body.trialEndingSoon) ? body.trialEndingSoon : []);
       })
       .catch(() => setError('network_error'));
   }, []);
@@ -337,12 +354,43 @@ export function AdminDashboardLive() {
                 </div>
               </section>
 
-              <section className="admin-chart-grid" style={{ marginTop: 22 }}>
-                <DashboardMetricChart metric="demo-calls" title="Demo calls" stroke="#a78bfa" chartId="demo" />
-                <DashboardMetricChart metric="leads" title="Leads" stroke="#60a5fa" chartId="leads" />
-                <DashboardMetricChart metric="shops" title="Businesses created" stroke="#4ade80" chartId="shops" />
-                <DashboardMetricChart metric="calls" title="Calls" stroke="#c4b5fd" chartId="calls" />
-              </section>
+              <div className="admin-overview-split">
+                <section className="admin-chart-grid">
+                  <DashboardMetricChart metric="demo-calls" title="Demo calls" stroke="#a78bfa" chartId="demo" />
+                  <DashboardMetricChart metric="leads" title="Leads" stroke="#60a5fa" chartId="leads" />
+                  <DashboardMetricChart metric="shops" title="Businesses created" stroke="#4ade80" chartId="shops" />
+                  <DashboardMetricChart metric="calls" title="Calls" stroke="#c4b5fd" chartId="calls" />
+                </section>
+                <aside className="admin-trial-watchlist" aria-label="Trials ending soon">
+                  <h3>Trial ending soon</h3>
+                  <p className="trial-sub">
+                    Trialing accounts with a saved payment method and trial ending within 14 days (UTC calendar days).
+                  </p>
+                  {trialEndingSoon.length === 0 ? (
+                    <p className="sub" style={{ margin: 0 }}>No trialing accounts in this window.</p>
+                  ) : (
+                    <ul>
+                      {trialEndingSoon.map((row) => (
+                        <li key={row.shopId}>
+                          <div className="trial-shop">
+                            <a href={`/admin/shops/${encodeURIComponent(row.shopId)}`}>{row.shopName}</a>
+                          </div>
+                          <div className="trial-meta">
+                            {row.plan} · ends {formatTrialEndUtc(row.trialEndsAt)}
+                          </div>
+                          <span className={`trial-days ${row.daysRemaining <= 3 ? 'urgent' : ''}`}>
+                            {row.daysRemaining <= 0
+                              ? 'Ends today'
+                              : row.daysRemaining === 1
+                                ? '1 day left'
+                                : `${row.daysRemaining} days left`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </aside>
+              </div>
             </>
           ) : null}
         </main>

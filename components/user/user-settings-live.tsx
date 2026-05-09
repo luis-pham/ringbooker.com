@@ -416,6 +416,8 @@ export function UserSettingsLive() {
     const base = `${window.location.pathname}${window.location.search}`;
     if (tabId === 'go-live') {
       window.history.replaceState(null, '', `${base}#go-live-forwarding`);
+    } else if (tabId === 'integrations') {
+      window.history.replaceState(null, '', `${base}#integrations`);
     } else if (window.location.hash) {
       window.history.replaceState(null, '', base);
     }
@@ -469,6 +471,8 @@ export function UserSettingsLive() {
       const h = window.location.hash;
       if (h === '#go-live-forwarding' || h === '#go-live') {
         setActiveTab('go-live');
+      } else if (h === '#integrations') {
+        setActiveTab('integrations');
       }
     };
     syncHash();
@@ -1132,7 +1136,7 @@ export function UserSettingsLive() {
                             </div>
                             <button
                               type="button"
-                              className="btn"
+                              className="btn user-save"
                               onClick={() => {
                                 setEditingBookingLinkProvider(bookingLinkPick);
                                 setBookingLinkInputs((current) => ({

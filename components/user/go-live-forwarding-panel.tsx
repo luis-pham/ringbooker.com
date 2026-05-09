@@ -15,6 +15,8 @@ type GoLiveBillingResponse = {
     liveCallsEnabled?: boolean;
     forwardingNumber?: string | null;
     commercialApprovalRequired?: boolean;
+    checkoutAvailable?: boolean;
+    checkoutDisabledReason?: string | null;
   };
   error?: string;
 };
@@ -29,6 +31,8 @@ export function GoLiveForwardingPanel() {
   const [loading, setLoading] = useState(true);
   const [provisionForwardingLoading, setProvisionForwardingLoading] = useState(false);
   const [provisionForwardingError, setProvisionForwardingError] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   const refreshBilling = useCallback(async () => {
     const controller = new AbortController();
@@ -98,6 +102,34 @@ export function GoLiveForwardingPanel() {
     }
   }
 
+  async function openPaymentSetup() {
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      const response = await fetch('/api/backend/user/billing/checkout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billing_interval: 'monthly' }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        checkoutUrl?: string;
+        error?: string;
+        message?: string;
+      } | null;
+      if (!response.ok || !body?.ok || !body.checkoutUrl) {
+        setCheckoutError(body?.message ?? body?.error ?? 'Payment setup could not start. Open Billing or contact support.');
+        return;
+      }
+      window.location.href = body.checkoutUrl;
+    } catch {
+      setCheckoutError('Network error. Please try again or open Billing.');
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <section className="card">
@@ -120,6 +152,7 @@ export function GoLiveForwardingPanel() {
   const hasPaymentMethod = data.billing?.hasPaymentMethod === true;
   const liveEnabled = data.billing?.liveCallsEnabled;
   const forwardingNumber = data.billing?.forwardingNumber?.trim() ?? '';
+  const checkoutAvailable = data.billing?.checkoutAvailable === true;
 
   const showProvision =
     Boolean(data.billing) && !liveEnabled && hasPaymentMethod && !forwardingNumber && !enterpriseApprovalPending;
@@ -237,12 +270,37 @@ export function GoLiveForwardingPanel() {
           ) : !hasPaymentMethod ? (
             <>
               <p className="sub">
-                Add a payment method in Billing to provision your RingBooker forwarding number and unlock carrier-specific
-                steps here.
+                Add a payment method to unlock forwarding number provisioning. Setup and test calls still work without a card;
+                live answering starts only after billing, forwarding, and verification are complete.
               </p>
-              <a className="btn purple" href="/user/billing">
-                Open Billing
-              </a>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                {checkoutAvailable ? (
+                  <button
+                    type="button"
+                    className="btn purple"
+                    disabled={checkoutLoading}
+                    onClick={() => void openPaymentSetup()}
+                  >
+                    {checkoutLoading ? 'Starting checkout…' : 'Add payment method'}
+                  </button>
+                ) : (
+                  <button type="button" className="btn" disabled>
+                    Payment setup unavailable
+                  </button>
+                )}
+                <a className="btn" href="/user/billing">
+                  View billing
+                </a>
+              </div>
+              {checkoutError ? (
+                <p className="sub" style={{ color: '#b45309', marginTop: 10 }}>
+                  {checkoutError}
+                </p>
+              ) : !checkoutAvailable ? (
+                <p className="sub" style={{ color: '#b45309', marginTop: 10 }}>
+                  Payment setup is temporarily unavailable. Contact support if you are ready to go live.
+                </p>
+              ) : null}
             </>
           ) : (
             <p className="sub" style={{ marginBottom: 0 }}>

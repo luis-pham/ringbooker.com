@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 
+import { UserPortalNotifications } from '@/components/user/user-portal-notifications';
 import { UserPortalThemeToggle } from '@/components/user/user-portal-theme-toggle';
 
 export type UserPortalTopbarUserSummary = {
@@ -44,6 +45,7 @@ export function UserPortalTopbar({ title, subtitle, actions, actionsClassName, u
             <div className="topbar-user-chip-avatar">{chipInitials(userSummary.displayName, userSummary.initials)}</div>
           </div>
         ) : null}
+        <UserPortalNotifications />
         <UserPortalThemeToggle />
         {actions ? <div className={`top-actions${actionsClassName ? ` ${actionsClassName}` : ''}`}>{actions}</div> : null}
       </div>

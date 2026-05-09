@@ -336,6 +336,14 @@ function billingUiCopy(state: BillingUiState) {
 }
 
 type BillingSectionTab = 'overview' | 'plans' | 'history';
+type CheckoutNotice = 'success' | 'cancelled' | null;
+
+function checkoutUnavailableCopy(reason?: string | null): string {
+  if (reason === 'billing_checkout_disabled') {
+    return 'Payment setup is temporarily unavailable. Setup and test calls still work; contact support if you are ready to go live.';
+  }
+  return 'Payment setup is not available for this account yet. Contact support if you are ready to go live.';
+}
 
 export function UserBillingLive() {
   const { workspace, setWorkspace } = useUserWorkspace();
@@ -343,6 +351,7 @@ export function UserBillingLive() {
   const [loading, setLoading] = useState(true);
   const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutNotice, setCheckoutNotice] = useState<CheckoutNotice>(null);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [billingTab, setBillingTab] = useState<BillingSectionTab>('overview');
 
@@ -391,6 +400,12 @@ export function UserBillingLive() {
     if (typeof window === 'undefined') return;
     if (window.location.hash === '#go-live-forwarding') {
       window.location.replace(`${window.location.origin}/user/settings#go-live-forwarding`);
+    }
+    const checkout = new URLSearchParams(window.location.search).get('checkout');
+    if (checkout === 'success') {
+      setCheckoutNotice('success');
+    } else if (checkout === 'cancelled' || checkout === 'canceled') {
+      setCheckoutNotice('cancelled');
     }
   }, []);
 
@@ -450,11 +465,7 @@ export function UserBillingLive() {
 
   async function openCheckout(plan: ShopPlan) {
     if (!checkoutAvailable) {
-      setCheckoutError(
-        data?.billing?.checkoutDisabledReason === 'billing_checkout_disabled'
-          ? 'Checkout is temporarily hidden until Paddle sandbox QA is complete.'
-          : 'Checkout is not available for this account yet.',
-      );
+      setCheckoutError(checkoutUnavailableCopy(data?.billing?.checkoutDisabledReason));
       return;
     }
     setCheckoutPlan(plan);
@@ -485,11 +496,7 @@ export function UserBillingLive() {
 
   async function openReactivateCheckout() {
     if (!checkoutAvailable) {
-      setCheckoutError(
-        data?.billing?.checkoutDisabledReason === 'billing_checkout_disabled'
-          ? 'Checkout is temporarily hidden until Paddle sandbox QA is complete.'
-          : 'Checkout is not available for this account yet.',
-      );
+      setCheckoutError(checkoutUnavailableCopy(data?.billing?.checkoutDisabledReason));
       return;
     }
     setCheckoutPlan(currentPlan);
@@ -564,11 +571,52 @@ export function UserBillingLive() {
                   </div>
                 </section>
 
+                {checkoutNotice === 'success' ? (
+                  <section className="billing-alert-strip" style={{ borderColor: '#bbf7d0', background: '#f0fdf4', color: '#166534' }}>
+                    <p>
+                      <strong>Payment method submitted.</strong> Paddle is confirming your billing status. Live answering stays off until billing is verified and forwarding setup is complete.
+                    </p>
+                    <a className="btn purple" href="/user/settings#go-live-forwarding">
+                      Continue go-live setup
+                    </a>
+                  </section>
+                ) : checkoutNotice === 'cancelled' ? (
+                  <section className="billing-alert-strip">
+                    <p>
+                      <strong>Checkout was cancelled.</strong> No payment method was added. Setup and test calls still work; add a payment method when you are ready to go live.
+                    </p>
+                    {checkoutAvailable ? (
+                      <button type="button" className="btn purple" disabled={checkoutPlan !== null} onClick={() => void openCheckout(currentPlan)}>
+                        {checkoutPlan ? 'Starting…' : 'Try again'}
+                      </button>
+                    ) : null}
+                  </section>
+                ) : null}
+
                 {data.billing && !isEnterprisePlan && !liveEnabled && !hasPaymentMethod ? (
                   <section className="billing-alert-strip">
                     <p>
-                      <strong>Add a payment method to go live.</strong> Setup and test calls still work without a card, but live answering on your business number requires Paddle billing first.
+                      <strong>Add a payment method to go live.</strong> Setup and test calls still work without a card. Live answering on your business number starts only after billing, forwarding, and verification are complete.
                     </p>
+                    {checkoutAvailable && availableBillingIntervals.length > 1 ? (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} aria-label="Billing interval">
+                        <button
+                          type="button"
+                          className={`btn${effectiveBillingInterval === 'monthly' ? ' purple' : ''}`}
+                          onClick={() => setBillingInterval('monthly')}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn${effectiveBillingInterval === 'annual' ? ' purple' : ''}`}
+                          onClick={() => setBillingInterval('annual')}
+                          disabled={!canChooseAnnual}
+                        >
+                          Annual
+                        </button>
+                      </div>
+                    ) : null}
                     {checkoutAvailable ? (
                       <button
                         type="button"
@@ -579,9 +627,12 @@ export function UserBillingLive() {
                         {checkoutPlan ? 'Starting…' : 'Add payment method'}
                       </button>
                     ) : (
-                      <button type="button" className="btn" disabled>
-                        Checkout hidden
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                        <button type="button" className="btn" disabled>
+                          Payment setup unavailable
+                        </button>
+                        <span style={{ fontSize: 12 }}>{checkoutUnavailableCopy(data.billing.checkoutDisabledReason)}</span>
+                      </div>
                     )}
                   </section>
                 ) : null}
@@ -728,10 +779,10 @@ export function UserBillingLive() {
                           {!checkoutAvailable ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                               <button type="button" className="btn" disabled>
-                                Payment checkout temporarily hidden
+                                Payment setup unavailable
                               </button>
                               <p className="sub" style={{ margin: 0 }}>
-                                Setup and test calls remain available. Checkout will be enabled after Paddle sandbox QA is complete.
+                                {checkoutUnavailableCopy(data.billing.checkoutDisabledReason)}
                               </p>
                             </div>
                           ) : ['past_due', 'paused', 'canceled'].includes(billingState) ? (
@@ -789,7 +840,7 @@ export function UserBillingLive() {
                                   disabled={isBusy || !checkoutAvailable}
                                   onClick={() => void openCheckout(plan.plan)}
                                 >
-                                  {isBusy ? 'Starting…' : checkoutAvailable ? 'Add payment method' : 'Checkout hidden'}
+                                  {isBusy ? 'Starting…' : checkoutAvailable ? 'Add payment method' : 'Payment setup unavailable'}
                                 </button>
                               );
                             } else {
