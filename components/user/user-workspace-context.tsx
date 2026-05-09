@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 
 const USER_WORKSPACE_CACHE_KEY = 'rb_user_workspace_cache';
@@ -43,15 +43,22 @@ export function UserWorkspaceProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [workspace, setWorkspaceState] = useState<UserWorkspaceState>(DEFAULT_WORKSPACE);
 
-  function setWorkspace(next: Partial<UserWorkspaceState>) {
+  const setWorkspace = useCallback((next: Partial<UserWorkspaceState>) => {
     setWorkspaceState((current) => {
       const merged = { ...current, ...next };
+      if (
+        merged.shopName === current.shopName &&
+        merged.plan === current.plan &&
+        merged.active === current.active
+      ) {
+        return current;
+      }
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem(USER_WORKSPACE_CACHE_KEY, JSON.stringify(merged));
       }
       return merged;
     });
-  }
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -95,7 +102,7 @@ export function UserWorkspaceProvider({ children }: { children: ReactNode }) {
       workspace,
       setWorkspace,
     }),
-    [workspace],
+    [workspace, setWorkspace],
   );
 
   return <UserWorkspaceContext.Provider value={value}>{children}</UserWorkspaceContext.Provider>;
