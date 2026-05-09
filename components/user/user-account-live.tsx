@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
+import { readCachedAccountNavPanel, writeCachedAccountNavPanel } from '@/components/user/user-account-nav-cache';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import {
@@ -86,6 +87,41 @@ function IconInfo(props: { className?: string }) {
   );
 }
 
+/** Stable layout while `/api/backend/user/nav-state` loads (no “Loading…” flash). */
+function AccountDetailsSkeleton() {
+  const bar = (wide?: boolean) => (
+    <span className={`rb-account-skel-bar${wide ? ' rb-account-skel-bar--wide' : ''}`} />
+  );
+  return (
+    <>
+      <div className="rb-account-subsection">
+        <div className="rb-account-subsection-head rb-account-skel-head">{bar()}</div>
+        <dl className="rb-account-rows">
+          <div className="rb-account-row">
+            <dt>{bar()}</dt>
+            <dd>{bar(true)}</dd>
+          </div>
+          <div className="rb-account-row">
+            <dt>{bar()}</dt>
+            <dd>{bar(true)}</dd>
+          </div>
+        </dl>
+      </div>
+      <div className="rb-account-subsection">
+        <div className="rb-account-subsection-head rb-account-skel-head">{bar()}</div>
+        <dl className="rb-account-rows">
+          {[1, 2, 3].map((key) => (
+            <div key={key} className="rb-account-row">
+              <dt>{bar()}</dt>
+              <dd>{bar(true)}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </>
+  );
+}
+
 export function UserAccountLive() {
   const { workspace, setWorkspace } = useUserWorkspace();
   const [nav, setNav] = useState<NavStateResponse | null>(null);
@@ -101,6 +137,22 @@ export function UserAccountLive() {
   const [accountSaveLoading, setAccountSaveLoading] = useState(false);
   const [accountSaveMessage, setAccountSaveMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
+  useLayoutEffect(() => {
+    const cached = readCachedAccountNavPanel();
+    if (!cached) return;
+    setNav((prev) => {
+      if (prev?.ok) return prev;
+      return {
+        ok: true,
+        email: cached.email,
+        shopName: cached.shopName,
+        userName: cached.userName ?? '',
+        plan: cached.plan,
+        subscriptionStatus: cached.subscriptionStatus ?? null,
+      };
+    });
+  }, []);
+
   useEffect(() => {
     void fetch('/api/backend/user/nav-state')
       .then(async (r) => (await r.json()) as NavStateResponse)
@@ -108,6 +160,13 @@ export function UserAccountLive() {
         if (!body.ok) setNavError(body.error ?? 'unknown_error');
         else {
           setNav(body);
+          writeCachedAccountNavPanel({
+            email: body.email,
+            shopName: body.shopName,
+            userName: body.userName,
+            plan: body.plan,
+            subscriptionStatus: body.subscriptionStatus ?? null,
+          });
           setWorkspace({
             shopName: body.shopName?.trim() || workspace.shopName,
             plan: body.plan?.trim() || workspace.plan,
@@ -122,9 +181,9 @@ export function UserAccountLive() {
       ...userSettingsStyles,
       String.raw`
 .rb-account-page{margin-top:0}
-/* Centered shell — compact card like classic account layouts */
+/* Centered shell — compact card; extra top padding aligns with other portal pages */
 .rb-account-shell{
-  width:100%;max-width:520px;margin:0 auto;padding:6px 0 32px;box-sizing:border-box;
+  width:100%;max-width:520px;margin:0 auto;padding:22px 0 36px;box-sizing:border-box;
 }
 .rb-account-frame{
   background:var(--surface-card);border:1px solid var(--border);border-radius:16px;
@@ -143,7 +202,7 @@ export function UserAccountLive() {
   margin:0 0 18px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
 }
 @media(max-width:860px){
-  .rb-account-shell{padding:4px 0 28px;max-width:100%}
+  .rb-account-shell{padding:18px 0 30px;max-width:100%}
   .rb-account-subtabs.business-subtabs{padding:10px 18px 12px}
 }
 .rb-account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
@@ -194,6 +253,20 @@ html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){backgrou
 html[data-user-theme="dark"] .rb-account-frame{box-shadow:none}
 html[data-user-theme="dark"] .rb-account-frame-head{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs{border-bottom-color:var(--border)}
+.rb-account-skel-head .rb-account-skel-bar{max-width:128px;height:12px}
+.rb-account-skel-bar{
+  display:inline-block;height:14px;border-radius:7px;width:100%;max-width:200px;
+  background:linear-gradient(90deg,#eef0f2 0%,#dfe3e8 45%,#eef0f2 90%);
+  background-size:200% 100%;
+  animation:rb-go-live-nav-shimmer 1.15s ease-in-out infinite;
+  vertical-align:middle;
+}
+.rb-account-skel-bar--wide{max-width:min(100%,280px)}
+.rb-account-row dt .rb-account-skel-bar{max-width:92px;height:11px}
+html[data-user-theme="dark"] .rb-account-skel-bar{
+  background:linear-gradient(90deg,#21262d 0%,#30363d 45%,#21262d 90%);
+  background-size:200% 100%;
+}
       `,
     ],
     [],
@@ -340,9 +413,7 @@ html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs{border-bottom-
                     <p className="rb-account-panel-title">Profile &amp; workspace</p>
 
                     {!nav?.ok ? (
-                      <p className="sub" style={{ margin: 0 }}>
-                        Loading…
-                      </p>
+                      <AccountDetailsSkeleton />
                     ) : (
                       <>
                         <div className="rb-account-subsection">
