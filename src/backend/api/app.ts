@@ -5532,6 +5532,27 @@ export function createBackendApp(deps: {
       );
       subscription = trial.subscription;
     }
+    if (
+      subscription?.status === 'unknown' &&
+      isSelfServeTrialPlan(subscription.plan) &&
+      !subscription.providerSubscriptionId?.trim() &&
+      !subscription.providerCustomerId?.trim() &&
+      subscription.trialEndsAt
+    ) {
+      const trialEndsAtMs = new Date(subscription.trialEndsAt).getTime();
+      const normalizedStatus: BillingSubscriptionStatus = Number.isFinite(trialEndsAtMs) && trialEndsAtMs > Date.now() ? 'trialing' : 'trial_expired';
+      subscription =
+        (await deps.billingSubscriptionsRepository.updateById(subscription.id, {
+          provider: 'internal',
+          status: normalizedStatus,
+          paymentMethodStatus: 'none',
+          metadata: {
+            ...(subscription.metadata ?? {}),
+            normalized_from_unknown_for_checkout: true,
+            normalized_at: new Date().toISOString(),
+          },
+        })) ?? subscription;
+    }
     if (!subscription || !['trialing', 'trial_expired', 'paused', 'canceled', 'active', 'incomplete', 'past_due', 'unpaid'].includes(subscription.status)) {
       return c.json(
         {

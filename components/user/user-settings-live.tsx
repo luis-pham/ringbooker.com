@@ -443,6 +443,54 @@ function buildInitialState(shop: ShopSettings): SettingsState {
   };
 }
 
+const DEFAULT_SETTINGS_SHOP: ShopSettings = {
+  id: 'loading',
+  name: 'Your business',
+  phone_number: '',
+  user_name: '',
+  user_phone: '',
+  backup_phone: '',
+  address: '',
+  timezone: 'America/Los_Angeles',
+  services: [],
+  staff: [],
+  faqs: [],
+  hours: cloneHours(HOURS_PRESETS[0]?.hours ?? {}),
+  cancel_policy: '',
+  promotions: '',
+  booking_url: '',
+  website_url: '',
+  ai_voice: 'Aoede',
+  ai_welcome_message: normalizeGreeting(AI_GREETING_PRESETS[0], 'Your business'),
+  ai_custom_instructions: '',
+  allow_transfers: false,
+  allow_callbacks: true,
+  send_reminder_sms: false,
+  send_review_request_sms: false,
+  send_missed_call_followup_sms: true,
+  plan: 'starter',
+  active: false,
+};
+
+const DEFAULT_SETTINGS_CAPABILITIES: ShopCapabilities = {
+  edit_business_profile: true,
+  edit_booking_url: true,
+  edit_cancel_policy: true,
+  edit_promotions: true,
+  edit_services: true,
+  edit_hours: true,
+  edit_transfer_settings: false,
+  edit_callback_settings: true,
+  edit_missed_call_followup_sms: true,
+  edit_ai_voice: false,
+  edit_ai_greeting: false,
+  edit_reminder_sms: false,
+  edit_review_request_sms: false,
+  edit_ai_custom_instructions: false,
+};
+
+const DEFAULT_SETTINGS_STATE = buildInitialState(DEFAULT_SETTINGS_SHOP);
+
 function getPresetMatch(value: string, presets: string[]) {
   return presets.includes(value) ? value : 'custom';
 }
@@ -523,6 +571,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
   const [servicesHoursSubTab, setServicesHoursSubTab] = useState<'services' | 'hours'>('services');
   const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('voice');
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
+  const [businessKnowledgeSubTab, setBusinessKnowledgeSubTab] = useState<'info' | 'cancellation' | 'promotion'>('info');
 
   const activateSettingsTab = useCallback((tabId: SettingsTabId) => {
     setActiveTab(tabId);
@@ -777,14 +826,19 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
     });
   }, [shop, setWorkspace]);
 
+  const settingsReady = Boolean(shop && capabilities && form);
+  const effectiveShop = shop ?? DEFAULT_SETTINGS_SHOP;
+  const currentCapabilities = capabilities ?? DEFAULT_SETTINGS_CAPABILITIES;
+  const currentForm = form ?? DEFAULT_SETTINGS_STATE;
+
   const serviceChoices = useMemo(() => {
-    const selected = new Map((form?.services ?? []).map((item) => [item.name, item]));
+    const selected = new Map(currentForm.services.map((item) => [item.name, item]));
     return SERVICE_CATALOG.map((item) => ({
       ...item,
       selected: selected.has(item.name),
       current: selected.get(item.name) ?? item,
     })).concat(
-      (form?.services ?? [])
+      currentForm.services
         .filter((item) => !SERVICE_CATALOG.some((catalogItem) => catalogItem.name === item.name))
         .map((item) => ({
           key: item.name.toLowerCase().replace(/\s+/g, '-'),
@@ -796,7 +850,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
           current: item,
         })),
     );
-  }, [form?.services]);
+  }, [currentForm.services]);
 
   const visibleTabs = useMemo(() => visibleTabsForPortal(portal), [portal]);
 
@@ -806,33 +860,6 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
       setActiveTab(allowed[0] ?? 'business');
     }
   }, [portal, activeTab]);
-
-  if (!shop || !capabilities || !form) {
-    return (
-      <UserLayout styles={userSettingsStyles} scripts={userSettingsScripts} scriptPrefix="user-settings-live">
-        <>
-          <div className="app-shell user-app-shell">
-            <UserPortalSidebar active={sidebarNav} />
-            <main className="main">
-              <UserPortalTopbar
-                title={portalHead.title}
-                subtitle={portalHead.subtitle}
-                actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
-                actions={<UserPortalStandardTopActions />}
-              />
-              <section className="card">
-                <p className="sub">{status === null ? 'Loading settings...' : `Unable to load settings: ${status}`}</p>
-              </section>
-            </main>
-          </div>
-          <UserPortalMobileTabbar active={sidebarNav} />
-        </>
-      </UserLayout>
-    );
-  }
-
-  const currentCapabilities = capabilities;
-  const currentForm = form;
 
   function patchState<K extends keyof SettingsState>(key: K, value: SettingsState[K]) {
     setForm((current) => (current ? { ...current, [key]: value } : current));
@@ -882,6 +909,10 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
   }
 
   async function commitSettingsPatch(sectionId: string, patch: Record<string, unknown>) {
+    if (!settingsReady) {
+      setStatus('settings_still_loading');
+      return;
+    }
     setSavingSection(sectionId);
     setStatus(null);
     try {
@@ -949,6 +980,12 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
             actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
             actions={<UserPortalStandardTopActions />}
           />
+
+          {!settingsReady && status ? (
+            <div className="note" style={{ marginBottom: 18 }}>
+              Unable to load settings: {status}
+            </div>
+          ) : null}
 
           {portal !== 'integrations' ? (
           <div className="tab-strip" role="tablist" aria-label={portal === 'knowledge' ? 'Business Knowledge tabs' : 'AI Settings tabs'}>
@@ -1521,78 +1558,114 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('business-knowledge-info', {
-                    name: form.name,
-                    user_name: form.user_name,
-                    user_phone: form.user_phone,
-                    backup_phone: form.backup_phone || null,
-                    address: form.address || null,
-                    timezone: form.timezone,
-                    website_url: form.website_url.trim() ? form.website_url.trim() : '',
-                    cancel_policy: form.cancel_policy,
-                    promotions: form.promotions || null,
+                    name: currentForm.name,
+                    user_name: currentForm.user_name,
+                    user_phone: currentForm.user_phone,
+                    backup_phone: currentForm.backup_phone || null,
+                    address: currentForm.address || null,
+                    timezone: currentForm.timezone,
+                    website_url: currentForm.website_url.trim() ? currentForm.website_url.trim() : '',
+                    cancel_policy: currentForm.cancel_policy,
+                    promotions: currentForm.promotions || null,
                   });
                 }}
               >
+                <div className="business-subtabs" role="tablist" aria-label="Business knowledge sections">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={businessKnowledgeSubTab === 'info'}
+                    className={`business-subtab ${businessKnowledgeSubTab === 'info' ? 'active' : ''}`}
+                    onClick={() => setBusinessKnowledgeSubTab('info')}
+                  >
+                    Business info
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={businessKnowledgeSubTab === 'cancellation'}
+                    className={`business-subtab ${businessKnowledgeSubTab === 'cancellation' ? 'active' : ''}`}
+                    onClick={() => setBusinessKnowledgeSubTab('cancellation')}
+                  >
+                    Cancellation policy
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={businessKnowledgeSubTab === 'promotion'}
+                    className={`business-subtab ${businessKnowledgeSubTab === 'promotion' ? 'active' : ''}`}
+                    onClick={() => setBusinessKnowledgeSubTab('promotion')}
+                  >
+                    Promotion
+                  </button>
+                </div>
+
                 <div className="card-section">
-                  <div>
-                    <div className="hint-row">
-                      <strong className="option-title">Business info</strong>
-                      <span className="hint-copy">Core details RingBooker can use when callers ask who you are, where you are, or how to reach the team.</span>
+                  {businessKnowledgeSubTab === 'info' ? (
+                    <div>
+                      <div className="hint-row">
+                        <strong className="option-title">Business info</strong>
+                        <span className="hint-copy">Core details RingBooker can use when callers ask who you are, where you are, or how to reach the team.</span>
+                      </div>
+                      <div className="form-grid" style={{ marginTop: 14 }}>
+                        <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
+                        <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
+                        <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
+                        <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
+                        <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
+                        <div className="field"><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
+                        <div className="field"><label>Website</label><input value={currentForm.website_url} onChange={(event) => patchState('website_url', event.target.value)} placeholder="https://..." /></div>
+                      </div>
                     </div>
-                    <div className="form-grid" style={{ marginTop: 14 }}>
-                      <div className="field"><label>Business name</label><input value={form.name} onChange={(event) => patchState('name', event.target.value)} /></div>
-                      <div className="field"><label>Primary contact name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
-                      <div className="field"><label>Main user phone</label><input value={form.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
-                      <div className="field"><label>Backup phone</label><input value={form.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
-                      <div className="field"><label>Timezone</label><select value={form.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
-                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={form.address} onChange={(event) => patchState('address', event.target.value)} /></div>
-                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Website</label><input value={form.website_url} onChange={(event) => patchState('website_url', event.target.value)} placeholder="https://..." /></div>
-                    </div>
-                  </div>
+                  ) : null}
 
-                  <div>
-                    <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit only if your business needs a special case.</span></div>
-                    <div className="preset-pills" style={{ marginTop: 12 }}>
-                      {CANCEL_POLICY_PRESETS.map((item) => (
-                        <button key={item} type="button" className={`preset-pill ${cancelPreset === item ? 'active' : ''}`} onClick={() => {
-                          setCancelPreset(item);
-                          patchState('cancel_policy', item);
-                        }}>
-                          {item.includes('2 hours') ? '2-hour notice' : item.includes('24 hours') ? '24-hour notice' : item.includes('No cancellation') ? 'No fee' : 'Phone-only changes'}
-                        </button>
-                      ))}
-                      <button type="button" className={`preset-pill ${cancelPreset === 'custom' ? 'active' : ''}`} onClick={() => setCancelPreset('custom')}>Custom</button>
+                  {businessKnowledgeSubTab === 'cancellation' ? (
+                    <div>
+                      <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit only if your business needs a special case.</span></div>
+                      <div className="preset-pills" style={{ marginTop: 12 }}>
+                        {CANCEL_POLICY_PRESETS.map((item) => (
+                          <button key={item} type="button" className={`preset-pill ${cancelPreset === item ? 'active' : ''}`} onClick={() => {
+                            setCancelPreset(item);
+                            patchState('cancel_policy', item);
+                          }}>
+                            {item.includes('2 hours') ? '2-hour notice' : item.includes('24 hours') ? '24-hour notice' : item.includes('No cancellation') ? 'No fee' : 'Phone-only changes'}
+                          </button>
+                        ))}
+                        <button type="button" className={`preset-pill ${cancelPreset === 'custom' ? 'active' : ''}`} onClick={() => setCancelPreset('custom')}>Custom</button>
+                      </div>
+                      <div className="field" style={{ marginTop: 14, width: '60%', maxWidth: '100%' }}>
+                        <label>Policy text</label>
+                        <textarea value={currentForm.cancel_policy} onChange={(event) => {
+                          setCancelPreset('custom');
+                          patchState('cancel_policy', event.target.value);
+                        }} />
+                      </div>
                     </div>
-                    <div className="field" style={{ marginTop: 14 }}>
-                      <label>Policy text</label>
-                      <textarea value={form.cancel_policy} onChange={(event) => {
-                        setCancelPreset('custom');
-                        patchState('cancel_policy', event.target.value);
-                      }} />
-                    </div>
-                  </div>
+                  ) : null}
 
-                  <div>
-                    <div className="hint-row"><strong className="option-title">Promotion</strong><span className="hint-copy">Pick one active offer so the AI never invents a discount.</span></div>
-                    <div className="preset-pills" style={{ marginTop: 12 }}>
-                      {PROMOTION_PRESETS.map((item, index) => (
-                        <button key={`${item}-${index}`} type="button" className={`preset-pill ${promoPreset === item ? 'active' : ''}`} onClick={() => {
-                          setPromoPreset(item);
-                          patchState('promotions', item);
-                        }}>
-                          {index === 0 ? 'No promotion' : index === 1 ? '10% first visit' : index === 2 ? 'Free consult' : 'Weekday offer'}
-                        </button>
-                      ))}
-                      <button type="button" className={`preset-pill ${promoPreset === 'custom' ? 'active' : ''}`} onClick={() => setPromoPreset('custom')}>Custom</button>
+                  {businessKnowledgeSubTab === 'promotion' ? (
+                    <div>
+                      <div className="hint-row"><strong className="option-title">Promotion</strong><span className="hint-copy">Pick one active offer so the AI never invents a discount.</span></div>
+                      <div className="preset-pills" style={{ marginTop: 12 }}>
+                        {PROMOTION_PRESETS.map((item, index) => (
+                          <button key={`${item}-${index}`} type="button" className={`preset-pill ${promoPreset === item ? 'active' : ''}`} onClick={() => {
+                            setPromoPreset(item);
+                            patchState('promotions', item);
+                          }}>
+                            {index === 0 ? 'No promotion' : index === 1 ? '10% first visit' : index === 2 ? 'Free consult' : 'Weekday offer'}
+                          </button>
+                        ))}
+                        <button type="button" className={`preset-pill ${promoPreset === 'custom' ? 'active' : ''}`} onClick={() => setPromoPreset('custom')}>Custom</button>
+                      </div>
+                      <div className="field" style={{ marginTop: 14, width: '60%', maxWidth: '100%' }}>
+                        <label>Promotion text</label>
+                        <textarea value={currentForm.promotions} onChange={(event) => {
+                          setPromoPreset('custom');
+                          patchState('promotions', event.target.value);
+                        }} placeholder="Optional. Leave blank if you are not running a promotion." />
+                      </div>
                     </div>
-                    <div className="field" style={{ marginTop: 14 }}>
-                      <label>Promotion text</label>
-                      <textarea value={form.promotions} onChange={(event) => {
-                        setPromoPreset('custom');
-                        patchState('promotions', event.target.value);
-                      }} placeholder="Optional. Leave blank if you are not running a promotion." />
-                    </div>
-                  </div>
+                  ) : null}
                 </div>
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
@@ -1606,24 +1679,24 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('business-profile', {
-                    name: form.name,
-                    user_name: form.user_name,
-                    user_phone: form.user_phone,
-                    backup_phone: form.backup_phone || null,
-                    address: form.address || null,
-                    timezone: form.timezone,
-                    booking_url: form.booking_url.trim() ? form.booking_url.trim() : null,
+                    name: currentForm.name,
+                    user_name: currentForm.user_name,
+                    user_phone: currentForm.user_phone,
+                    backup_phone: currentForm.backup_phone || null,
+                    address: currentForm.address || null,
+                    timezone: currentForm.timezone,
+                    booking_url: currentForm.booking_url.trim() ? currentForm.booking_url.trim() : null,
                   });
                 }}
               >
                 <div className="form-grid">
-                  <div className="field"><label>Business name</label><input value={form.name} onChange={(event) => patchState('name', event.target.value)} /></div>
-                  <div className="field"><label>Primary contact name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
-                  <div className="field"><label>Main user phone</label><input value={form.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
-                  <div className="field"><label>Backup phone</label><input value={form.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
-                  <div className="field"><label>Timezone</label><select value={form.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={form.address} onChange={(event) => patchState('address', event.target.value)} /></div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={form.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
+                  <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
+                  <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
+                  <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
+                  <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
+                  <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={currentForm.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
                 </div>
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
@@ -1654,7 +1727,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void commitSettingsPatch('services', { services: form.services });
+                  void commitSettingsPatch('services', { services: currentForm.services });
                 }}
               >
                 <div className="sh-form-body">
@@ -1686,17 +1759,17 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     <div className="sh-active-head">
                       <p className="sh-active-label">Active services</p>
                       <p className="sh-active-hint">
-                        {form.services.length > 0 ? `${form.services.length} selected · shown to callers when booking` : 'Add at least one service to keep voice bookings aligned with your real menu.'}
+                        {currentForm.services.length > 0 ? `${currentForm.services.length} selected · shown to callers when booking` : 'Add at least one service to keep voice bookings aligned with your real menu.'}
                       </p>
                     </div>
-                    {form.services.length > 0 ? (
+                    {currentForm.services.length > 0 ? (
                       <div className="sh-active-table" role="region" aria-label="Configure duration and price for active services">
                         <div className="sh-active-thead" aria-hidden="true">
                           <span>Service</span>
                           <span>Duration</span>
                           <span>Price</span>
                         </div>
-                        {form.services.map((service, svcIndex) => (
+                        {currentForm.services.map((service, svcIndex) => (
                           <div key={service.name} className="sh-active-row">
                             <div className="sh-active-service">{service.name}</div>
                             <div className="small-field">
@@ -1730,7 +1803,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void commitSettingsPatch('hours', { hours: form.hours });
+                  void commitSettingsPatch('hours', { hours: currentForm.hours });
                 }}
               >
                 <div className="sh-hours-body">
@@ -1755,7 +1828,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     </div>
                     <div className="hours-grid">
                       {DAY_ORDER.map((day) => {
-                        const entry = form.hours[day] ?? { closed: true };
+                        const entry = currentForm.hours[day] ?? { closed: true };
                         const isClosed = 'closed' in entry;
                         const openId = `hours-open-${day}`;
                         const closeId = `hours-close-${day}`;
@@ -1801,7 +1874,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('staff', {
-                    staff: form.staff
+                    staff: currentForm.staff
                       .map((item) => ({
                         ...item,
                         name: item.name.trim(),
@@ -1819,15 +1892,15 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     <h3>Staff / Technicians</h3>
                     <p className="sub">Add approved staff names, specialties, and notes so RingBooker does not invent technician details.</p>
                   </div>
-                  <button type="button" className="btn" onClick={() => patchState('staff', [...form.staff, emptyStaffMember()])}>
+                  <button type="button" className="btn" onClick={() => patchState('staff', [...currentForm.staff, emptyStaffMember()])}>
                     Add staff
                   </button>
                 </div>
                 <div className="card-section">
-                  {form.staff.length === 0 ? (
+                  {currentForm.staff.length === 0 ? (
                     <div className="sh-empty">No staff added yet. Add names callers may request, like Sarah for nail art or Jenny for pedicures.</div>
                   ) : null}
-                  {form.staff.map((member, index) => (
+                  {currentForm.staff.map((member, index) => (
                     <div className="option-card" key={`${member.name}-${index}`}>
                       <div className="form-grid">
                         <div className="field"><label>Name</label><input value={member.name} onChange={(event) => updateStaff(index, { name: event.target.value })} placeholder="Sarah" /></div>
@@ -1836,7 +1909,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                         <div className="field" style={{ gridColumn: '1 / -1' }}><label>Notes</label><textarea value={member.notes ?? ''} onChange={(event) => updateStaff(index, { notes: event.target.value })} placeholder="Optional. Example: Available Tuesday-Friday. Best for detailed nail art." /></div>
                       </div>
                       <div className="settings-save-footer" style={{ marginTop: 10 }}>
-                        <button type="button" className="subtle-link" onClick={() => patchState('staff', form.staff.filter((_, itemIndex) => itemIndex !== index))}>
+                        <button type="button" className="subtle-link" onClick={() => patchState('staff', currentForm.staff.filter((_, itemIndex) => itemIndex !== index))}>
                           Remove
                         </button>
                       </div>
@@ -1859,7 +1932,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('faqs', {
-                    faqs: form.faqs
+                    faqs: currentForm.faqs
                       .map((item) => ({ question: item.question.trim(), answer: item.answer.trim() }))
                       .filter((item) => item.question && item.answer),
                   });
@@ -1870,20 +1943,20 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     <h3>FAQ</h3>
                     <p className="sub">Approved answers for common caller questions: parking, walk-ins, deposits, payment methods, gift cards, or group bookings.</p>
                   </div>
-                  <button type="button" className="btn" onClick={() => patchState('faqs', [...form.faqs, emptyFaqItem()])}>
+                  <button type="button" className="btn" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
                     Add FAQ
                   </button>
                 </div>
                 <div className="card-section">
-                  {form.faqs.length === 0 ? (
+                  {currentForm.faqs.length === 0 ? (
                     <div className="sh-empty">No FAQs added yet. Add common answers so RingBooker can respond consistently.</div>
                   ) : null}
-                  {form.faqs.map((item, index) => (
+                  {currentForm.faqs.map((item, index) => (
                     <div className="option-card" key={`${item.question}-${index}`}>
                       <div className="field"><label>Question</label><input value={item.question} onChange={(event) => updateFaq(index, { question: event.target.value })} placeholder="Do you accept walk-ins?" /></div>
                       <div className="field"><label>Approved answer</label><textarea value={item.answer} onChange={(event) => updateFaq(index, { answer: event.target.value })} placeholder="Walk-ins are welcome when staff are available, but appointments are recommended." /></div>
                       <div className="settings-save-footer" style={{ marginTop: 10 }}>
-                        <button type="button" className="subtle-link" onClick={() => patchState('faqs', form.faqs.filter((_, itemIndex) => itemIndex !== index))}>
+                        <button type="button" className="subtle-link" onClick={() => patchState('faqs', currentForm.faqs.filter((_, itemIndex) => itemIndex !== index))}>
                           Remove
                         </button>
                       </div>
@@ -1915,19 +1988,19 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('call-handling', {
-                    allow_transfers: form.allow_transfers,
-                    allow_callbacks: form.allow_callbacks,
+                    allow_transfers: currentForm.allow_transfers,
+                    allow_callbacks: currentForm.allow_callbacks,
                   });
                 }}
               >
                 <div className="switch-list">
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Allow transfers</h4><p>Let the AI hand urgent or frustrated callers to your salon line.</p></div>
-                    <div className="switch-stack"><button type="button" className={`switch ${form.allow_transfers ? 'on' : ''}`} onClick={() => patchState('allow_transfers', !form.allow_transfers)}><span className="sr-only">Toggle transfers</span></button></div>
+                    <div className="switch-stack"><button type="button" className={`switch ${currentForm.allow_transfers ? 'on' : ''}`} onClick={() => patchState('allow_transfers', !currentForm.allow_transfers)}><span className="sr-only">Toggle transfers</span></button></div>
                   </div>
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Offer callbacks</h4><p>When the team is busy, the AI can queue a callback instead of losing the lead.</p></div>
-                    <div className="switch-stack"><button type="button" className={`switch ${form.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !form.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>
+                    <div className="switch-stack"><button type="button" className={`switch ${currentForm.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !currentForm.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>
                   </div>
                 </div>
                 <div className="settings-save-footer">
@@ -1944,16 +2017,16 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('ai-voice', {
-                    ai_voice: form.ai_voice || null,
-                    ai_welcome_message: form.ai_welcome_message.trim() ? form.ai_welcome_message : null,
-                    ai_custom_instructions: form.ai_custom_instructions.trim() ? form.ai_custom_instructions : null,
+                    ai_voice: currentForm.ai_voice || null,
+                    ai_welcome_message: currentForm.ai_welcome_message.trim() ? currentForm.ai_welcome_message : null,
+                    ai_custom_instructions: currentForm.ai_custom_instructions.trim() ? currentForm.ai_custom_instructions : null,
                   });
                 }}
               >
                 <div className="card-section">
                   <div className="field">
                     <label>Voice style</label>
-                    <select value={form.ai_voice} disabled={isLocked('edit_ai_voice')} onChange={(event) => patchState('ai_voice', event.target.value)}>
+                    <select value={currentForm.ai_voice} disabled={isLocked('edit_ai_voice')} onChange={(event) => patchState('ai_voice', event.target.value)}>
                       {AI_VOICE_OPTIONS.map((voice) => <option key={voice.value} value={voice.value}>{voice.label}</option>)}
                     </select>
                     {renderLockCopy('edit_ai_voice')}
@@ -1963,7 +2036,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     <div className="hint-row"><strong className="option-title">Greeting preset</strong>{renderLockCopy('edit_ai_greeting')}</div>
                     <div className="preset-pills" style={{ marginTop: 12 }}>
                       {AI_GREETING_PRESETS.map((preset, index) => {
-                        const resolved = normalizeGreeting(preset, shop.name);
+                        const resolved = normalizeGreeting(preset, effectiveShop.name);
                         return (
                           <button
                             key={preset}
@@ -1983,7 +2056,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     </div>
                     <div className="field" style={{ marginTop: 14 }}>
                       <label>Greeting text</label>
-                      <textarea value={form.ai_welcome_message} disabled={isLocked('edit_ai_greeting')} onChange={(event) => {
+                      <textarea value={currentForm.ai_welcome_message} disabled={isLocked('edit_ai_greeting')} onChange={(event) => {
                         setGreetingPreset('custom');
                         patchState('ai_welcome_message', event.target.value);
                       }} />
@@ -1992,7 +2065,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
 
                   <div className="field">
                     <label>Advanced AI instructions</label>
-                    <textarea value={form.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise businesses." />
+                    <textarea value={currentForm.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise businesses." />
                     {renderLockCopy('edit_ai_custom_instructions')}
                   </div>
                 </div>
@@ -2022,9 +2095,9 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('messaging', {
-                    send_reminder_sms: form.send_reminder_sms,
-                    send_review_request_sms: form.send_review_request_sms,
-                    send_missed_call_followup_sms: form.send_missed_call_followup_sms,
+                    send_reminder_sms: currentForm.send_reminder_sms,
+                    send_review_request_sms: currentForm.send_review_request_sms,
+                    send_missed_call_followup_sms: currentForm.send_missed_call_followup_sms,
                   });
                 }}
               >
@@ -2032,20 +2105,20 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Missed-call follow-up SMS</h4><p>Send a quick text when a caller hangs up before the salon team can connect.</p></div>
                     <div className="switch-stack">
-                      <button type="button" className={`switch ${form.send_missed_call_followup_sms ? 'on' : ''}`} onClick={() => patchState('send_missed_call_followup_sms', !form.send_missed_call_followup_sms)} />
+                      <button type="button" className={`switch ${currentForm.send_missed_call_followup_sms ? 'on' : ''}`} onClick={() => patchState('send_missed_call_followup_sms', !currentForm.send_missed_call_followup_sms)} />
                     </div>
                   </div>
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Reminder SMS</h4><p>Automatic appointment reminders that reduce no-shows.</p></div>
                     <div className="switch-stack">
-                      <button type="button" className={`switch ${form.send_reminder_sms ? 'on' : ''}`} disabled={isLocked('edit_reminder_sms')} onClick={() => patchState('send_reminder_sms', !form.send_reminder_sms)} />
+                      <button type="button" className={`switch ${currentForm.send_reminder_sms ? 'on' : ''}`} disabled={isLocked('edit_reminder_sms')} onClick={() => patchState('send_reminder_sms', !currentForm.send_reminder_sms)} />
                       {renderLockCopy('edit_reminder_sms')}
                     </div>
                   </div>
                   <div className="switch-row">
                     <div className="switch-copy"><h4>Review request SMS</h4><p>Follow up completed appointments with a review request.</p></div>
                     <div className="switch-stack">
-                      <button type="button" className={`switch ${form.send_review_request_sms ? 'on' : ''}`} disabled={isLocked('edit_review_request_sms')} onClick={() => patchState('send_review_request_sms', !form.send_review_request_sms)} />
+                      <button type="button" className={`switch ${currentForm.send_review_request_sms ? 'on' : ''}`} disabled={isLocked('edit_review_request_sms')} onClick={() => patchState('send_review_request_sms', !currentForm.send_review_request_sms)} />
                       {renderLockCopy('edit_review_request_sms')}
                     </div>
                   </div>

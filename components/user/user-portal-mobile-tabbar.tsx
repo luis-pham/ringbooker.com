@@ -108,23 +108,17 @@ function IconMore(): ReactNode {
 
 /** Fixed bottom navigation for /user/* on small viewports (see globals.css `.user-mobile-tabbar`). */
 export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) {
-  const [showGoLive, setShowGoLive] = useState(() => active === 'go-live');
-  const [goLiveNavResolved, setGoLiveNavResolved] = useState(() => active === 'go-live');
+  const [showGoLive, setShowGoLive] = useState(() => active === 'go-live' || readCachedGoLiveNavVisible() === true);
 
   useEffect(() => {
     let cancelled = false;
 
     if (active === 'go-live') {
       setShowGoLive(true);
-      setGoLiveNavResolved(true);
     } else {
       const cached = readCachedGoLiveNavVisible();
       if (cached !== null) {
         setShowGoLive(cached);
-        setGoLiveNavResolved(true);
-      } else {
-        setGoLiveNavResolved(false);
-        setShowGoLive(false);
       }
     }
 
@@ -132,7 +126,6 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
       .then(async (response) => (await response.json()) as { ok?: boolean; onboardingRequired?: boolean; liveCallsEnabled?: boolean })
       .then((body) => {
         if (cancelled || !body.ok) {
-          if (!cancelled) setGoLiveNavResolved(true);
           return;
         }
         const next = Boolean(!body.onboardingRequired && !body.liveCallsEnabled);
@@ -140,11 +133,8 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
         if (active !== 'go-live') {
           setShowGoLive(next);
         }
-        setGoLiveNavResolved(true);
       })
-      .catch(() => {
-        if (!cancelled) setGoLiveNavResolved(true);
-      });
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -166,26 +156,19 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
     );
   };
 
-  const goLiveSlot =
+  const setupSlot =
     showGoLive || active === 'go-live' ? (
       item('go-live', '/user/go-live', 'Go live', <IconGoLive />)
-    ) : !goLiveNavResolved ? (
-      <div
-        key="go-live-placeholder"
-        className="user-mobile-tabbar__link user-mobile-tabbar__link--placeholder"
-        aria-busy="true"
-        aria-label="Loading navigation"
-      >
-        <span className="user-mobile-tabbar__placeholder-bar" />
-      </div>
-    ) : null;
+    ) : (
+      item('knowledge', '/user/knowledge', 'Knowledge', <IconKnowledge />)
+    );
 
   return (
     <nav className="user-mobile-tabbar" aria-label="User portal">
       {item('overview', '/user', 'Overview', <IconOverview />)}
       {item('calls', '/user/calls', 'Calls', <IconCalls />)}
       {item('bookings', '/user/bookings', 'Bookings', <IconBookings />)}
-      {goLiveSlot}
+      {setupSlot}
       {item('more', '/user/more', 'More', <IconMore />)}
     </nav>
   );

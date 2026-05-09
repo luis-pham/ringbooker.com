@@ -453,6 +453,8 @@ export function UserBillingLive() {
 
   const enterpriseApprovalPending = currentPlan === 'enterprise' && data?.billing?.commercialApprovalRequired === true;
   const isEnterprisePlan = currentPlan === 'enterprise';
+  const billing = data?.billing ?? null;
+  const usage = billing?.usage ?? null;
   const checkoutAvailable = data?.billing?.checkoutAvailable === true;
   const availableBillingIntervals = data?.billing?.availableBillingIntervals ?? ['monthly'];
   const canChooseAnnual = checkoutAvailable && availableBillingIntervals.includes('annual');
@@ -543,17 +545,12 @@ export function UserBillingLive() {
               actions={<UserPortalStandardTopActions />}
             />
 
-            {loading ? (
-              <section className="card">
-                <p className="sub">Loading billing details…</p>
-              </section>
-            ) : !data?.ok ? (
+            {!loading && !data?.ok ? (
               <section className="card">
                 <h3>Unable to load billing</h3>
                 <p className="sub">{data?.error ?? 'unknown_error'}</p>
               </section>
-            ) : (
-              <>
+            ) : null}
                 <section className="billing-status-grid" aria-label="Billing summary">
                   <div className="billing-status-card">
                     <div className="bst-label">Current plan</div>
@@ -565,7 +562,7 @@ export function UserBillingLive() {
                     <div className="bst-value">
                       <span className={subTagClass}>{subscriptionCardValue(subscription)}</span>
                     </div>
-                    <div className="bst-meta">{subscriptionCardMeta(subscription, data.billing?.trialDaysRemaining)}</div>
+                    <div className="bst-meta">{subscriptionCardMeta(subscription, data?.billing?.trialDaysRemaining)}</div>
                   </div>
                   <div className="billing-status-card">
                     <div className="bst-label">Payment method</div>
@@ -594,14 +591,14 @@ export function UserBillingLive() {
                       <strong>Checkout was cancelled.</strong> No payment method was added. Setup and test calls still work; add a payment method when you are ready to go live.
                     </p>
                     {checkoutAvailable ? (
-                      <button type="button" className="btn purple" disabled={checkoutPlan !== null} onClick={() => void openCheckout(currentPlan)}>
+                      <button type="button" className="btn user-save" disabled={checkoutPlan !== null} onClick={() => void openCheckout(currentPlan)}>
                         {checkoutPlan ? 'Starting…' : 'Try again'}
                       </button>
                     ) : null}
                   </section>
                 ) : null}
 
-                {data.billing && !isEnterprisePlan && !liveEnabled && !hasPaymentMethod ? (
+                {data?.billing && !isEnterprisePlan && !liveEnabled && !hasPaymentMethod ? (
                   <section className="billing-alert-strip">
                     <p>
                       <strong>Add a payment method to go live.</strong> Setup and test calls still work without a card. Live answering on your business number starts only after billing, forwarding, and verification are complete.
@@ -628,7 +625,7 @@ export function UserBillingLive() {
                     {checkoutAvailable ? (
                       <button
                         type="button"
-                        className="btn purple"
+                        className="btn user-save"
                         disabled={checkoutPlan !== null}
                         onClick={() => void openCheckout(currentPlan)}
                       >
@@ -639,20 +636,20 @@ export function UserBillingLive() {
                         <button type="button" className="btn" disabled>
                           Payment setup unavailable
                         </button>
-                        <span style={{ fontSize: 12 }}>{checkoutUnavailableCopy(data.billing.checkoutDisabledReason)}</span>
+                        <span style={{ fontSize: 12 }}>{checkoutUnavailableCopy(billing?.checkoutDisabledReason)}</span>
                       </div>
                     )}
                   </section>
                 ) : null}
 
-                <div className="billing-tab-strip" role="tablist" aria-label="Billing sections">
+                <div className="business-subtabs billing-subtabs" role="tablist" aria-label="Billing sections">
                   <button
                     type="button"
                     role="tab"
                     id="billing-tab-overview"
                     aria-selected={billingTab === 'overview'}
                     aria-controls="billing-panel-overview"
-                    className={`billing-tab${billingTab === 'overview' ? ' active' : ''}`}
+                    className={`business-subtab${billingTab === 'overview' ? ' active' : ''}`}
                     onClick={() => selectBillingTab('overview')}
                   >
                     Overview
@@ -663,7 +660,7 @@ export function UserBillingLive() {
                     id="billing-tab-plans"
                     aria-selected={billingTab === 'plans'}
                     aria-controls="billing-panel-plans"
-                    className={`billing-tab${billingTab === 'plans' ? ' active' : ''}`}
+                    className={`business-subtab${billingTab === 'plans' ? ' active' : ''}`}
                     onClick={() => selectBillingTab('plans')}
                   >
                     Plans
@@ -674,7 +671,7 @@ export function UserBillingLive() {
                     id="billing-tab-history"
                     aria-selected={billingTab === 'history'}
                     aria-controls="billing-panel-history"
-                    className={`billing-tab${billingTab === 'history' ? ' active' : ''}`}
+                    className={`business-subtab${billingTab === 'history' ? ' active' : ''}`}
                     onClick={() => selectBillingTab('history')}
                   >
                     History
@@ -694,53 +691,53 @@ export function UserBillingLive() {
                           Open Go live
                         </a>
                       </section>
-                      {hasPaymentMethod && data.billing?.usage ? (
+                      {hasPaymentMethod && usage ? (
                         <section
-                          className={`card usage-captured-card${data.billing.usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${data.billing.usage.nearCapturedCallerLimit && !data.billing.usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
+                          className={`card usage-captured-card${usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${usage.nearCapturedCallerLimit && !usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
                           style={{ marginBottom: 16 }}
                         >
                           <div className="panel-head">
                             <div>
                               <h3>Captured callers this month</h3>
                               <p className="sub">
-                                {data.billing.usage.capturedCallersLimit == null
-                                  ? `${data.billing.usage.capturedCallersUsed} captured callers · Custom allowance`
-                                  : `${data.billing.usage.capturedCallersUsed} / ${data.billing.usage.capturedCallersLimit} captured callers`}
+                                {usage.capturedCallersLimit == null
+                                  ? `${usage.capturedCallersUsed} captured callers · Custom allowance`
+                                  : `${usage.capturedCallersUsed} / ${usage.capturedCallersLimit} captured callers`}
                               </p>
                             </div>
                             <span
-                              className={`tag ${data.billing.usage.overCapturedCallerLimit ? 'orange' : data.billing.usage.nearCapturedCallerLimit ? 'orange' : 'green'}`}
+                              className={`tag ${usage.overCapturedCallerLimit ? 'orange' : usage.nearCapturedCallerLimit ? 'orange' : 'green'}`}
                             >
-                              {data.billing.usage.capturedCallerUsagePercent == null
+                              {usage.capturedCallerUsagePercent == null
                                 ? 'Custom'
-                                : `${data.billing.usage.capturedCallerUsagePercent}%`}
+                                : `${usage.capturedCallerUsagePercent}%`}
                             </span>
                           </div>
                           <div className="usage-progress-track" aria-hidden="true">
                             <div
-                              className={`usage-progress-fill ${data.billing.usage.overCapturedCallerLimit ? 'usage-progress-fill--over' : data.billing.usage.nearCapturedCallerLimit ? 'usage-progress-fill--near' : 'usage-progress-fill--ok'}`}
-                              style={{ width: `${Math.min(100, data.billing.usage.capturedCallerUsagePercent ?? 0)}%` }}
+                              className={`usage-progress-fill ${usage.overCapturedCallerLimit ? 'usage-progress-fill--over' : usage.nearCapturedCallerLimit ? 'usage-progress-fill--near' : 'usage-progress-fill--ok'}`}
+                              style={{ width: `${Math.min(100, usage.capturedCallerUsagePercent ?? 0)}%` }}
                             />
                           </div>
-                          {data.billing.usage.nearCapturedCallerLimit || data.billing.usage.overCapturedCallerLimit ? (
+                          {usage.nearCapturedCallerLimit || usage.overCapturedCallerLimit ? (
                             <p
                               className="sub"
                               style={{
                                 marginTop: 10,
-                                color: data.billing.usage.overCapturedCallerLimit ? '#b91c1c' : '#92400e',
+                                color: usage.overCapturedCallerLimit ? '#b91c1c' : '#92400e',
                               }}
                             >
-                              {data.billing.usage.overCapturedCallerLimit
+                              {usage.overCapturedCallerLimit
                                 ? 'You have reached your monthly captured caller limit. Upgrade for more call coverage.'
                                 : 'You are close to your monthly captured caller limit.'}
                             </p>
                           ) : null}
                           <p className="sub" style={{ marginTop: 8 }}>
-                            Voice usage: {data.billing.usage.voiceMinutesUsed} min
-                            {data.billing.usage.voiceMinutesSoftLimit
-                              ? ` / ${data.billing.usage.voiceMinutesSoftLimit} soft cap`
+                            Voice usage: {usage.voiceMinutesUsed} min
+                            {usage.voiceMinutesSoftLimit
+                              ? ` / ${usage.voiceMinutesSoftLimit} soft cap`
                               : ''}{' '}
-                            · Active calls: {data.billing.usage.activeLiveCalls ?? 0}/{data.billing.usage.maxConcurrentLiveCalls ?? 0}
+                            · Active calls: {usage.activeLiveCalls ?? 0}/{usage.maxConcurrentLiveCalls ?? 0}
                           </p>
                         </section>
                       ) : null}
@@ -762,7 +759,7 @@ export function UserBillingLive() {
                         <section className="card" style={{ marginBottom: 16 }}>
                           <h3 style={{ marginTop: 0 }}>{billingCopy.title}</h3>
                           <p className="sub">{billingCopy.body}</p>
-                          {data.billing.trialNoChargeUntilEndVerified ? (
+                          {billing?.trialNoChargeUntilEndVerified ? (
                             <p className="sub">Paddle is configured to collect your payment method now and charge after the trial ends.</p>
                           ) : null}
                           {checkoutAvailable && availableBillingIntervals.length > 1 && !hasPaymentMethod ? (
@@ -790,13 +787,13 @@ export function UserBillingLive() {
                                 Payment setup unavailable
                               </button>
                               <p className="sub" style={{ margin: 0 }}>
-                                {checkoutUnavailableCopy(data.billing.checkoutDisabledReason)}
+                                {checkoutUnavailableCopy(billing?.checkoutDisabledReason)}
                               </p>
                             </div>
                           ) : ['past_due', 'paused', 'canceled'].includes(billingState) ? (
                             <button
                               type="button"
-                              className="btn purple"
+                              className="btn user-save"
                               disabled={checkoutPlan !== null}
                               onClick={() => void openReactivateCheckout()}
                             >
@@ -805,7 +802,7 @@ export function UserBillingLive() {
                           ) : !hasPaymentMethod ? (
                             <button
                               type="button"
-                              className="btn purple"
+                              className="btn user-save"
                               disabled={checkoutPlan !== null}
                               onClick={() => void openCheckout(currentPlan)}
                             >
@@ -844,7 +841,7 @@ export function UserBillingLive() {
                               cta = (
                                 <button
                                   type="button"
-                                  className="btn purple"
+                                  className="btn user-save"
                                   disabled={isBusy || !checkoutAvailable}
                                   onClick={() => void openCheckout(plan.plan)}
                                 >
@@ -962,9 +959,6 @@ export function UserBillingLive() {
                     </div>
                   ) : null}
                 </div>
-              </>
-            )}
-
             <div className="footer-inline">
               <span>RingBooker · {data?.shop?.name ?? 'Your business'}</span>
             </div>

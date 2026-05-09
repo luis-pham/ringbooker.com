@@ -130,37 +130,27 @@ export function GoLiveForwardingPanel() {
     }
   }
 
-  if (loading) {
-    return (
-      <section className="card">
-        <p className="sub">Loading go-live status…</p>
-      </section>
-    );
-  }
-
-  if (!data?.ok) {
-    return (
-      <section className="card">
-        <h3 style={{ marginTop: 0 }}>Unable to load status</h3>
-        <p className="sub">{data?.error ?? 'unknown_error'}</p>
-      </section>
-    );
-  }
-
-  const currentPlan = data.shop?.plan ?? 'starter';
-  const enterpriseApprovalPending = currentPlan === 'enterprise' && data.billing?.commercialApprovalRequired === true;
-  const hasPaymentMethod = data.billing?.hasPaymentMethod === true;
-  const liveEnabled = data.billing?.liveCallsEnabled;
-  const forwardingNumber = data.billing?.forwardingNumber?.trim() ?? '';
-  const checkoutAvailable = data.billing?.checkoutAvailable === true;
+  const currentPlan = data?.shop?.plan ?? 'starter';
+  const enterpriseApprovalPending = currentPlan === 'enterprise' && data?.billing?.commercialApprovalRequired === true;
+  const hasPaymentMethod = data?.billing?.hasPaymentMethod === true;
+  const liveEnabled = data?.billing?.liveCallsEnabled;
+  const forwardingNumber = data?.billing?.forwardingNumber?.trim() ?? '';
+  const checkoutAvailable = data?.billing?.checkoutAvailable === true;
 
   const showProvision =
-    Boolean(data.billing) && !liveEnabled && hasPaymentMethod && !forwardingNumber && !enterpriseApprovalPending;
+    Boolean(data?.billing) && !liveEnabled && hasPaymentMethod && !forwardingNumber && !enterpriseApprovalPending;
   const showForwardingReady =
-    Boolean(data.billing) && !liveEnabled && hasPaymentMethod && Boolean(forwardingNumber) && !enterpriseApprovalPending;
+    Boolean(data?.billing) && !liveEnabled && hasPaymentMethod && Boolean(forwardingNumber) && !enterpriseApprovalPending;
 
   return (
     <div className="section-stack">
+      {!loading && !data?.ok ? (
+        <section className="card">
+          <h3 style={{ marginTop: 0 }}>Unable to load status</h3>
+          <p className="sub">{data?.error ?? 'unknown_error'}</p>
+        </section>
+      ) : null}
+
       <section className="card">
         <div className="panel-head">
           <div>
@@ -277,7 +267,7 @@ export function GoLiveForwardingPanel() {
                 {checkoutAvailable ? (
                   <button
                     type="button"
-                    className="btn purple"
+                    className="btn user-save"
                     disabled={checkoutLoading}
                     onClick={() => void openPaymentSetup()}
                   >

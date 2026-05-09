@@ -453,7 +453,7 @@ export function UserDashboardLive() {
     switch (cta) {
       case 'add_payment_method':
         return (
-          <a className="btn purple" href="/user/billing">
+          <a className="btn user-save" href="/user/billing">
             Add payment method to go live
           </a>
         );
@@ -525,16 +525,11 @@ export function UserDashboardLive() {
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />
-            {loading ? (
-              <section className="card" style={{ marginBottom: 18 }}>
-                <p className="sub">Loading dashboard...</p>
-              </section>
-            ) : !data?.ok ? (
+            {!loading && !data?.ok ? (
               <section className="card" style={{ marginBottom: 18 }}>
                 <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>
               </section>
-            ) : (
-              <>
+            ) : null}
             {enterpriseApprovalPending ? (
               <section className="card" style={{ marginBottom: 18, borderColor: '#ddd6fe', background: '#faf5ff' }}>
                 <div className="panel-head">
@@ -695,7 +690,7 @@ export function UserDashboardLive() {
             >
               {simplifiedOverview ? (
                 <>
-                  {data.overviewRail ? (
+                  {data?.overviewRail ? (
                     <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={data.shop?.timezone ?? 'UTC'} />
                   ) : null}
                   <div className="card soft">
@@ -811,7 +806,7 @@ export function UserDashboardLive() {
                       </div>
                     </div>
                   </div>
-                  {data.overviewRail ? (
+                  {data?.overviewRail ? (
                     <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={data.shop?.timezone ?? 'UTC'} />
                   ) : null}
                 </>
@@ -821,8 +816,6 @@ export function UserDashboardLive() {
               <span>RingBooker business panel</span>
               <span>Live data + restored shared styling</span>
             </div>
-              </>
-            )}
           </main>
         </div>
         <UserPortalMobileTabbar active="overview" />

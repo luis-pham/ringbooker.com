@@ -426,3 +426,127 @@ test('billing checkout allows payment setup for incomplete subscriptions', async
     resetEnvCacheForTests();
   }
 });
+
+test('billing checkout normalizes legacy unknown self-serve trial before Paddle checkout', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    PADDLE_ENV: 'sandbox',
+    USER_AUTH_EMAIL: 'billing-legacy-unknown-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Legacy Unknown Trial Salon',
+    phone_number: '+17145557770',
+    user_phone: '+17145557771',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: false,
+  });
+  const now = new Date();
+  const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerSubscriptionId: null,
+    providerCustomerId: null,
+    providerPriceId: process.env.PADDLE_PRICE_STARTER_MONTHLY,
+    providerProductId: null,
+    plan: 'starter',
+    status: 'unknown',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    currentPeriodStart: now.toISOString(),
+    currentPeriodEnd: trialEndsAt,
+    trialStartedAt: now.toISOString(),
+    trialEndsAt,
+    paymentMethodStatus: 'unknown',
+  });
+
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: shop.id });
+  resetEnvCacheForTests();
+
+  const originalFetch = globalThis.fetch;
+  let paddleRequestCount = 0;
+  globalThis.fetch = (async () => {
+    paddleRequestCount += 1;
+    return new Response(
+      JSON.stringify({
+        data: {
+          id: 'txn_sandbox_legacy_unknown',
+          checkout: { url: 'https://sandbox-checkout.paddle.com/checkout/legacy-unknown' },
+        },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      jobsRepository: new InMemoryJobsRepository(),
+      bookingsRepository: new InMemoryBookingsRepository(),
+      billingCustomersRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      callbacksRepository: new InMemoryCallbacksRepository(),
+      shopsRepository,
+      telephonyService: new NoopTelephonyService(),
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      authUsersRepository: new InMemoryAuthUsersRepository(),
+      realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+      billingProvider: new PaddleBillingProvider({
+        billingCustomersRepository,
+        billingSubscriptionsRepository,
+        shopAccessStatesRepository,
+        shopsRepository,
+      }),
+    });
+
+    const login = await app.request('/auth/user/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({
+        email: 'billing-legacy-unknown-user@ringbooker.local',
+        password: 'change_me_user_password',
+      }),
+    });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get('set-cookie')?.split(';')[0];
+    assert.ok(cookie);
+
+    const checkout = await app.request('/user/billing/checkout', {
+      method: 'POST',
+      headers: {
+        cookie,
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+      },
+      body: JSON.stringify({ billing_interval: 'monthly' }),
+    });
+
+    assert.equal(checkout.status, 200);
+    const body = (await checkout.json()) as { ok: boolean; checkoutUrl?: string };
+    assert.equal(body.ok, true);
+    assert.equal(body.checkoutUrl, 'https://sandbox-checkout.paddle.com/checkout/legacy-unknown');
+    assert.equal(paddleRequestCount, 1);
+    const normalized = await billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    assert.equal(normalized?.provider, 'internal');
+    assert.equal(normalized?.status, 'trialing');
+    assert.equal(normalized?.paymentMethodStatus, 'none');
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({
+      USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+      USER_AUTH_SHOP_ID: 'demo-shop',
+    });
+    resetEnvCacheForTests();
+  }
+});

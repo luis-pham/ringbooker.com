@@ -2,7 +2,6 @@ import { UserLayout } from '@/components/user/user-layout';
 import { userDashboardStyles } from '@/components/user/user-dashboard';
 
 const userSettingsSpecificStyles = String.raw`
-.section-stack{display:grid;gap:18px}
 .settings-save-footer{
   display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px;padding-top:16px;
   border-top:1px solid rgba(15,23,42,.08);flex-wrap:wrap;
@@ -132,7 +131,7 @@ button.subtle-link:hover{text-decoration:underline}
   display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px;
 }
 .tab-button{
-  display:flex;flex-direction:row;align-items:flex-start;gap:10px;text-align:left;
+  display:flex;flex-direction:row;align-items:center;gap:10px;text-align:left;
   padding:12px 14px;border-radius:8px;border:1px solid var(--border);
   background:#fff;color:var(--text-dark);cursor:pointer;min-width:0;
   box-shadow:none;font:inherit;

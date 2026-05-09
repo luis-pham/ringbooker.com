@@ -9,8 +9,7 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
-import { userDashboardScripts } from '@/components/user/user-dashboard';
-import { userSettingsStyles } from '@/components/user/user-settings';
+import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
 
 /**
  * Activation-focused destination: payment, forwarding number, verification, live answering.
@@ -18,7 +17,7 @@ import { userSettingsStyles } from '@/components/user/user-settings';
  */
 export function UserGoLiveLive() {
   return (
-    <UserLayout styles={userSettingsStyles} scripts={userDashboardScripts} scriptPrefix="user-go-live-live">
+    <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-go-live-live">
       <>
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="go-live" />

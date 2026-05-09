@@ -332,6 +332,7 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
   background:var(--surface-card);border:1px solid var(--border);
   border-radius:12px;box-shadow:none;padding:22px;min-width:0;
 }
+.section-stack{display:grid;gap:18px}
 .card.soft{background:linear-gradient(180deg,#fff 0%,#fcfbff 100%)}
 .card h3{margin:0 0 6px;font-size:18px;letter-spacing:-.3px}
 .card p.sub{margin:0 0 18px;color:var(--text-gray);font-size:13px;line-height:1.6}
@@ -655,6 +656,7 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
   .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
   .kpi-row,.call-grid,.billing-banner,.pricing-mini{grid-template-columns:1fr}
   .app-shell{grid-template-columns:96px minmax(0,1fr)}
+  .user-app-shell{--portal-sidebar-width:96px}
   .sidebar{padding:18px 12px}
   .sidebar-inner{min-height:calc(100vh - 36px)}
   .brand-title,.brand-tagline,.nav-item span,.nav-label{display:none}
@@ -662,13 +664,19 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
   .nav-icon{margin:0}
 }
 @media (min-width:861px){
+  .user-app-shell{
+    display:block;
+    padding-left:var(--portal-sidebar-width,var(--sidebar-width));
+    min-height:100vh;
+  }
   .topbar-user-chip-meta{display:block}
-  /* Desktop portal: only the sidebar stays put; topbar scrolls with page content. */
+  /* Desktop portal: only the sidebar stays fixed; topbar scrolls with page content. */
   .user-app-shell .sidebar{
-    position:sticky;
-    top:0;
-    height:100vh;
-    align-self:stretch;
+    position:fixed;
+    inset:0 auto 0 0;
+    width:var(--portal-sidebar-width,var(--sidebar-width));
+    height:100dvh;
+    z-index:40;
     overflow-x:hidden;
     overflow-y:auto;
     overscroll-behavior-y:contain;
@@ -732,6 +740,7 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
   .top-actions.overview-top-actions{display:none}
   .page-title h1{font-size:22px}
   .app-shell{grid-template-columns:1fr}
+  .user-app-shell{padding-left:0}
   .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border);overflow:visible}
   .sidebar-inner{min-height:auto}
   .sidebar-spacer{display:none}
