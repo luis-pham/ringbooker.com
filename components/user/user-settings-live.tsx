@@ -6,6 +6,10 @@ import type { ReactNode } from 'react';
 import { UserLayout } from '@/components/user/user-layout';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import {
+  USER_PORTAL_TOPBAR_ACTIONS_CLASS,
+  UserPortalStandardTopActions,
+} from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { GoLiveForwardingPanel } from '@/components/user/go-live-forwarding-panel';
@@ -683,9 +687,9 @@ export function UserSettingsLive() {
             <main className="main">
               <UserPortalTopbar
                 title="Business settings and AI behavior."
-                subtitle="Choose how RingBooker should answer, what it can offer, and which automations your current plan unlocks for this business."
-                actionsClassName="settings-top-actions"
-                actions={<><span className="plan-chip">Starter plan</span><a className="btn" href="/user/billing">See upgrade options</a></>}
+                subtitle="Configure answering, offers, and plan-based automations."
+                actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
+                actions={<UserPortalStandardTopActions />}
               />
               <section className="card">
                 <p className="sub">{status === null ? 'Loading settings...' : `Unable to load settings: ${status}`}</p>
@@ -798,9 +802,9 @@ export function UserSettingsLive() {
         <main className="main">
           <UserPortalTopbar
             title="Business settings and AI behavior."
-            subtitle="Choose how RingBooker should answer, what it can offer, and which automations your current plan unlocks for this business."
-            actionsClassName="settings-top-actions"
-            actions={<><span className="plan-chip">{shop.plan[0].toUpperCase() + shop.plan.slice(1)} plan</span><a className="btn" href="/user/billing">See upgrade options</a></>}
+            subtitle="Configure answering, offers, and plan-based automations."
+            actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
+            actions={<UserPortalStandardTopActions />}
           />
 
           <div className="tab-strip" role="tablist" aria-label="Settings tabs">

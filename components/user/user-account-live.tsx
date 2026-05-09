@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { UserLayout } from '@/components/user/user-layout';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import {
+  USER_PORTAL_TOPBAR_ACTIONS_CLASS,
+  UserPortalStandardTopActions,
+} from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
@@ -305,8 +309,6 @@ export function UserAccountLive() {
     window.location.href = '/user/login';
   }
 
-  const displayName = nav?.userName?.trim() || nav?.email?.split('@')[0] || 'Your account';
-  const userSubtitle = nav?.email?.includes('@') ? nav.email : undefined;
   const showBillingHint = nav?.ok && !subscriptionLooksHealthy(nav.subscriptionStatus);
 
   return (
@@ -318,14 +320,8 @@ export function UserAccountLive() {
           <main className="main account-page rb-account-page">
             <UserPortalTopbar
               title="Your account"
-              userSummary={
-                nav?.ok
-                  ? {
-                      displayName,
-                      subtitle: userSubtitle,
-                    }
-                  : null
-              }
+              actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
+              actions={<UserPortalStandardTopActions />}
             />
 
             <p className="rb-account-intro">Manage your login, plan, and security settings.</p>

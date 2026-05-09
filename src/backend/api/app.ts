@@ -3864,13 +3864,30 @@ export function createBackendApp(deps: {
       deps.commercialAccountsRepository ? deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : Promise.resolve(null),
       deps.callLogsRepository.listByShop(shop.id, { limit: 3 }),
     ]);
-    const usage = await getShopUsageForPeriod(
-      {
-        callLogsRepository: deps.callLogsRepository,
-        shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
-      },
-      { shop, commercialAccount },
-    );
+    let usage: Awaited<ReturnType<typeof getShopUsageForPeriod>> | null = null;
+    let usageTimedOut = false;
+    let usageTimeout: ReturnType<typeof setTimeout> | null = null;
+    const usageTimeoutPromise = new Promise<null>((resolve) => {
+      usageTimeout = setTimeout(() => {
+        usageTimedOut = true;
+        logger.warn({ shopId: shop.id }, 'user_dashboard_usage_timeout');
+        resolve(null);
+      }, 2500);
+    });
+    usage = await Promise.race([
+      getShopUsageForPeriod(
+        {
+          callLogsRepository: deps.callLogsRepository,
+          shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository,
+        },
+        { shop, commercialAccount },
+      ).catch((err) => {
+        logger.warn({ err, shopId: shop.id }, 'user_dashboard_usage_unavailable');
+        return null;
+      }),
+      usageTimeoutPromise,
+    ]);
+    if (!usageTimedOut && usageTimeout) clearTimeout(usageTimeout);
 
     let goLive: {
       liveCallsEnabled: boolean;

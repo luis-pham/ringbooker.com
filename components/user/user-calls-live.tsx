@@ -6,6 +6,10 @@ import { UserLayout } from '@/components/user/user-layout';
 import { userCallsScripts, userCallsStyles } from '@/components/user/user-calls';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import {
+  USER_PORTAL_TOPBAR_ACTIONS_CLASS,
+  UserPortalStandardTopActions,
+} from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 
 type Call = {
@@ -465,8 +469,9 @@ html[data-user-theme="dark"] .transcript-note{background:#0d1117}
         <main className="main">
           <UserPortalTopbar
             title="Calls, transcripts, and missed revenue recovery."
-            subtitle="See the full call list first, then open transcript preview only for the calls that need a closer look."
-            actions={<><span className="btn">Realtime call log</span><span className="btn purple">{metrics.transcriptsReady} transcripts ready</span></>}
+            subtitle={`See the full call list first, then open transcript preview only for the calls that need a closer look.${metrics.transcriptsReady > 0 ? ` ${metrics.transcriptsReady} transcript${metrics.transcriptsReady === 1 ? '' : 's'} ready to review.` : ''}`}
+            actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
+            actions={<UserPortalStandardTopActions />}
           />
 
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load calls: {error}</div> : null}

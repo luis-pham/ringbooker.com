@@ -6,6 +6,10 @@ import { UserLayout } from '@/components/user/user-layout';
 import { userBillingScripts, userBillingStyles } from '@/components/user/user-billing';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import {
+  USER_PORTAL_TOPBAR_ACTIONS_CLASS,
+  UserPortalStandardTopActions,
+} from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
@@ -533,6 +537,8 @@ export function UserBillingLive() {
             <UserPortalTopbar
               title="Billing"
               subtitle="Summary above; tabs for account usage, plans, and billing history. Forwarding is under Settings → Go live."
+              actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
+              actions={<UserPortalStandardTopActions />}
             />
 
             {loading ? (

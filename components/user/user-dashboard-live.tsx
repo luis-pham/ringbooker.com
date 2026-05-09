@@ -6,6 +6,10 @@ import { UserLayout } from '@/components/user/user-layout';
 import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import {
+  USER_PORTAL_TOPBAR_ACTIONS_CLASS,
+  UserPortalStandardTopActions,
+} from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
@@ -486,6 +490,21 @@ export function UserDashboardLive() {
     }
   }
 
+  function getGoLiveBannerCopy() {
+    switch (data?.goLive?.primaryCta) {
+      case 'add_payment_method':
+        return 'You can keep using setup and test calls without a card. Add a payment method when you are ready for RingBooker to answer real callers on your business number.';
+      case 'set_up_call_forwarding':
+        return 'Your billing is ready. Next, set up call forwarding so callers to your current business number can reach RingBooker behind the scenes.';
+      case 'test_forwarding_setup':
+        return 'Your forwarding number is ready. Place the forwarding test so RingBooker can confirm calls are reaching the correct line before live answering is enabled.';
+      case 'enable_live_answering':
+        return 'Billing and forwarding are ready. Enable live answering when you want RingBooker to start answering real callers on your business number.';
+      default:
+        return 'Finish the remaining go-live steps below when you are ready for RingBooker to answer real callers on your business number.';
+    }
+  }
+
   const showGoLiveBanner =
     data?.ok &&
     !data.onboardingRequired &&
@@ -503,17 +522,8 @@ export function UserDashboardLive() {
             <UserPortalTopbar
               title={shopName}
               subtitle={topbarSubtitle}
-              actionsClassName="overview-top-actions"
-              actions={
-                <>
-                  <a className="btn" href="/user/settings">
-                    Edit business info
-                  </a>
-                  <a className="btn user-save" href="/user/bookings">
-                    View bookings
-                  </a>
-                </>
-              }
+              actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
+              actions={<UserPortalStandardTopActions />}
             />
             {loading ? (
               <section className="card" style={{ marginBottom: 18 }}>
@@ -547,9 +557,8 @@ export function UserDashboardLive() {
                   <div>
                     <h3>RingBooker is set up, but not live yet.</h3>
                     <p className="sub">
-                      You can review test calls and summaries. Add a payment method when you&apos;re ready for RingBooker to answer real
-                      callers on your business number. Your customers keep calling your current business number until you complete billing,
-                      forwarding, and verification below.
+                      {getGoLiveBannerCopy()} Your customers keep calling your current business number until you complete the remaining
+                      go-live steps below.
                     </p>
                     {goLiveActionMessage ? (
                       <p className="sub" style={{ color: '#b45309', marginTop: 8 }}>

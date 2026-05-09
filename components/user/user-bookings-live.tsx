@@ -6,6 +6,10 @@ import { UserLayout } from '@/components/user/user-layout';
 import { userBookingsScripts, userBookingsStyles } from '@/components/user/user-bookings';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
+import {
+  USER_PORTAL_TOPBAR_ACTIONS_CLASS,
+  UserPortalStandardTopActions,
+} from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 
 type Booking = {
@@ -86,7 +90,8 @@ export function UserBookingsLive() {
           <UserPortalTopbar
             title="Bookings and calendar flow."
             subtitle="See every appointment RingBooker has created, confirmed, or recovered."
-            actions={<><a className="btn" href="/user/settings">Business hours</a><a className="btn purple" href="/user/bookings">Create manual booking</a></>}
+            actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
+            actions={<UserPortalStandardTopActions />}
           />
 
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load bookings: {error}</div> : null}

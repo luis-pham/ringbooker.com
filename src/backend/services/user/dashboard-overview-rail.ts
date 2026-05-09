@@ -229,7 +229,7 @@ export function buildDashboardOverviewRail(params: {
 
   let tip: string | undefined;
   if (recentCalls.length === 0 && totalCallCount === 0) {
-    tip = 'No calls logged yet. Run a test call from the banner above, or place a call through your forwarding setup.';
+    tip = 'No calls logged yet. Place a test call through your forwarding setup, or check back here once live traffic starts.';
   }
 
   return {

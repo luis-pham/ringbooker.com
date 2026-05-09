@@ -316,7 +316,6 @@ html[data-user-theme="dark"] .upgrade-panel{
   .tab-button-body{align-items:center;width:100%}
   .tab-button-desc{display:none !important}
   .tab-button strong{font-size:11px;font-weight:750;line-height:1.25}
-  .settings-top-actions{display:none}
   .hours-row{grid-template-columns:1fr}
   .business-subtabs{gap:6px}
   .business-subtab{padding:7px 10px;font-size:11px}
@@ -354,7 +353,7 @@ export function UserSettingsTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Business settings and AI behavior.</h1><p>Control how RingBooker answers calls, what it offers, and when it hands off to you.</p></div>
-            <div className="top-actions"><a className="btn" href="/user/settings">Test phone flow</a><a className="btn user-save" href="/user/settings">Save changes</a></div>
+            <div className="top-actions overview-top-actions"><a className="btn" href="/user/settings">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
           </div>
           <section className="grid grid-2">
             <div className="card">
