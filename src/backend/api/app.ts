@@ -5570,6 +5570,7 @@ export function createBackendApp(deps: {
     }
 
     const appBaseUrl = getAppBaseUrl(c.req);
+    const checkoutUrl = `${appBaseUrl}/checkout/paddle`;
     let session: Awaited<ReturnType<typeof deps.billingProvider.createCheckoutSession>>;
     try {
       session = await deps.billingProvider.createCheckoutSession({
@@ -5580,6 +5581,7 @@ export function createBackendApp(deps: {
         trialEndsAt: subscription.trialEndsAt ?? null,
         billingInterval,
         source: 'add_payment_method_before_go_live',
+        checkoutUrl,
         successUrl: parsed.data.successUrl ?? `${appBaseUrl}/user/billing?checkout=success`,
         cancelUrl: parsed.data.cancelUrl ?? `${appBaseUrl}/user/billing?checkout=cancelled`,
       });
@@ -5655,6 +5657,7 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'plan_not_self_serve', message: 'Please contact sales for custom plans.' }, 400);
     }
     const appBaseUrl = getAppBaseUrl(c.req);
+    const checkoutUrl = `${appBaseUrl}/checkout/paddle`;
     const session = await deps.billingProvider.createCheckoutSession({
       shop,
       plan: subscription.plan,
@@ -5662,6 +5665,7 @@ export function createBackendApp(deps: {
       internalSubscriptionId: subscription.id,
       billingInterval: subscription.interval ?? 'month',
       source: 'reactivate_subscription',
+      checkoutUrl,
       successUrl: `${appBaseUrl}/user/billing?checkout=success`,
       cancelUrl: `${appBaseUrl}/user/billing?checkout=cancelled`,
     });

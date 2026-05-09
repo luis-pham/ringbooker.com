@@ -305,6 +305,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     trialEndsAt?: string | null;
     billingInterval?: BillingInterval;
     source?: string;
+    checkoutUrl: string;
     successUrl: string;
     cancelUrl: string;
   }) {
@@ -339,9 +340,11 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
           source: params.source ?? 'add_payment_method_before_go_live',
           internal_trial_ends_at: params.trialEndsAt ?? undefined,
           no_charge_until_trial_end_verified: trialConfigVerified,
+          success_url: params.successUrl,
+          cancel_url: params.cancelUrl,
         },
         checkout: {
-          url: params.successUrl,
+          url: params.checkoutUrl,
         },
         collection_mode: 'automatic',
       }),

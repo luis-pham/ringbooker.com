@@ -296,6 +296,9 @@ test('billing checkout creates missing internal trial and opens Paddle sandbox c
     assert.equal(body.checkoutUrl, 'https://sandbox-checkout.paddle.com/checkout/test');
     assert.equal(paddleRequests.length, 1);
     assert.equal(paddleRequests[0].url, 'https://sandbox-api.paddle.com/transactions');
+    assert.deepEqual(paddleRequests[0].body.checkout, {
+      url: 'http://localhost:3000/checkout/paddle',
+    });
     assert.deepEqual((paddleRequests[0].body.items as Array<{ price_id: string; quantity: number }>)[0], {
       price_id: process.env.PADDLE_PRICE_STARTER_MONTHLY,
       quantity: 1,

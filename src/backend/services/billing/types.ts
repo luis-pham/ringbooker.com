@@ -25,6 +25,7 @@ export interface BillingProviderAdapter {
     trialEndsAt?: string | null;
     billingInterval?: BillingInterval;
     source?: string;
+    checkoutUrl: string;
     successUrl: string;
     cancelUrl: string;
   }): Promise<BillingCheckoutSession & { trialConfigVerified?: boolean }>;

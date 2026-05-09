@@ -26,7 +26,7 @@ function buildProvider() {
   return { provider, shopsRepository, billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository };
 }
 
-test('paddle checkout uses sandbox API and annual price mapping from env', async () => {
+test('paddle checkout uses sandbox API, annual price mapping, and hosted checkout page URL', async () => {
   applyRequiredTestEnv({
     PADDLE_ENV: 'sandbox',
     PADDLE_ENVIRONMENT: 'production',
@@ -37,7 +37,10 @@ test('paddle checkout uses sandbox API and annual price mapping from env', async
   const shop = await shopsRepository.findById('demo-shop');
   assert.ok(shop);
 
-  const calls: Array<{ url: string; body: { items?: Array<{ price_id?: string }> } }> = [];
+  const calls: Array<{
+    url: string;
+    body: { items?: Array<{ price_id?: string }>; checkout?: { url?: string }; custom_data?: Record<string, unknown> };
+  }> = [];
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
     calls.push({
@@ -61,12 +64,16 @@ test('paddle checkout uses sandbox API and annual price mapping from env', async
       plan: 'professional',
       email: 'billing-user@ringbooker.local',
       billingInterval: 'year',
+      checkoutUrl: 'https://ringbooker.test/checkout/paddle',
       successUrl: 'https://ringbooker.test/user/billing?checkout=success',
       cancelUrl: 'https://ringbooker.test/user/billing?checkout=cancelled',
     });
     assert.equal(session.checkoutUrl, 'https://sandbox-checkout.paddle.com/txn_test_annual');
     assert.equal(calls[0]?.url, 'https://sandbox-api.paddle.com/transactions');
     assert.equal(calls[0]?.body.items?.[0]?.price_id, 'pri_test_professional_annual_custom');
+    assert.equal(calls[0]?.body.checkout?.url, 'https://ringbooker.test/checkout/paddle');
+    assert.equal(calls[0]?.body.custom_data?.success_url, 'https://ringbooker.test/user/billing?checkout=success');
+    assert.equal(calls[0]?.body.custom_data?.cancel_url, 'https://ringbooker.test/user/billing?checkout=cancelled');
   } finally {
     globalThis.fetch = originalFetch;
     applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'sandbox' });
@@ -96,6 +103,7 @@ test('paddle checkout uses production API when PADDLE_ENV=production', async () 
       plan: 'starter',
       email: 'billing-user@ringbooker.local',
       billingInterval: 'month',
+      checkoutUrl: 'https://ringbooker.test/checkout/paddle',
       successUrl: 'https://ringbooker.test/user/billing?checkout=success',
       cancelUrl: 'https://ringbooker.test/user/billing?checkout=cancelled',
     });
