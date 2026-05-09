@@ -155,10 +155,8 @@ button.subtle-link:hover{text-decoration:underline}
   background:transparent;color:inherit;border:none;
 }
 .tab-button-icon svg{display:block;width:20px;height:20px}
-.tab-button-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tab-button-body{display:flex;align-items:center;min-width:0}
 .tab-button strong{font-size:14px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
-.tab-button-desc{font-size:12px;line-height:1.5;color:var(--text-gray);font-weight:400}
-.tab-button.active .tab-button-desc{color:rgba(255,255,255,.88)}
 .business-subtabs{
   display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
 }
@@ -385,7 +383,6 @@ html[data-user-theme="dark"] .tab-button.active:hover{
   border-color:#58a6ff;
   color:#79c0ff;
 }
-html[data-user-theme="dark"] .tab-button.active .tab-button-desc{color:rgba(230,237,243,.85)}
 html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
 html[data-user-theme="dark"] .business-subtab.active{
@@ -478,7 +475,6 @@ html[data-user-theme="dark"] .upgrade-panel{
   .tab-button-icon{width:30px;height:30px;border-radius:10px}
   .tab-button-icon svg{width:20px;height:20px}
   .tab-button-body{align-items:center;width:100%}
-  .tab-button-desc{display:none !important}
   .tab-button strong{font-size:11px;font-weight:750;line-height:1.25}
   .hours-row{grid-template-columns:1fr}
   .business-subtabs{gap:6px}

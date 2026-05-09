@@ -521,7 +521,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
   const [editingBookingLinkProvider, setEditingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [savingBookingLinkProvider, setSavingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [servicesHoursSubTab, setServicesHoursSubTab] = useState<'services' | 'hours'>('services');
-  const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('handling');
+  const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('voice');
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
 
   const activateSettingsTab = useCallback((tabId: SettingsTabId) => {
@@ -967,7 +967,6 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 </span>
                 <span className="tab-button-body">
                   <strong>{tab.label}</strong>
-                  <span className="tab-button-desc">{tab.description}</span>
                 </span>
               </button>
             ))}
@@ -1903,11 +1902,11 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
             {activeTab === 'ai-call-behavior' ? (
             <section className="card">
               <div className="business-subtabs" role="tablist" aria-label="AI call behavior sections">
-                <button type="button" role="tab" aria-selected={behaviorSubTab === 'handling'} className={`business-subtab ${behaviorSubTab === 'handling' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('handling')}>
-                  Call handling
-                </button>
                 <button type="button" role="tab" aria-selected={behaviorSubTab === 'voice'} className={`business-subtab ${behaviorSubTab === 'voice' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('voice')}>
                   AI tone and voice
+                </button>
+                <button type="button" role="tab" aria-selected={behaviorSubTab === 'handling'} className={`business-subtab ${behaviorSubTab === 'handling' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('handling')}>
+                  Call handling
                 </button>
               </div>
               {behaviorSubTab === 'handling' ? (
@@ -1934,6 +1933,72 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'call-handling' ? 'Saving...' : 'Save call handling'}
+                  </button>
+                </div>
+              </form>
+              ) : null}
+
+              {behaviorSubTab === 'voice' ? (
+              <form
+                className="card-section-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('ai-voice', {
+                    ai_voice: form.ai_voice || null,
+                    ai_welcome_message: form.ai_welcome_message.trim() ? form.ai_welcome_message : null,
+                    ai_custom_instructions: form.ai_custom_instructions.trim() ? form.ai_custom_instructions : null,
+                  });
+                }}
+              >
+                <div className="card-section">
+                  <div className="field">
+                    <label>Voice style</label>
+                    <select value={form.ai_voice} disabled={isLocked('edit_ai_voice')} onChange={(event) => patchState('ai_voice', event.target.value)}>
+                      {AI_VOICE_OPTIONS.map((voice) => <option key={voice.value} value={voice.value}>{voice.label}</option>)}
+                    </select>
+                    {renderLockCopy('edit_ai_voice')}
+                  </div>
+
+                  <div>
+                    <div className="hint-row"><strong className="option-title">Greeting preset</strong>{renderLockCopy('edit_ai_greeting')}</div>
+                    <div className="preset-pills" style={{ marginTop: 12 }}>
+                      {AI_GREETING_PRESETS.map((preset, index) => {
+                        const resolved = normalizeGreeting(preset, shop.name);
+                        return (
+                          <button
+                            key={preset}
+                            type="button"
+                            disabled={isLocked('edit_ai_greeting')}
+                            className={`preset-pill ${greetingPreset === resolved ? 'active' : ''} ${isLocked('edit_ai_greeting') ? 'locked' : ''}`}
+                            onClick={() => {
+                              setGreetingPreset(resolved);
+                              patchState('ai_welcome_message', resolved);
+                            }}
+                          >
+                            {index === 0 ? 'Friendly' : index === 1 ? 'Professional' : 'Booking-first'}
+                          </button>
+                        );
+                      })}
+                      <button type="button" disabled={isLocked('edit_ai_greeting')} className={`preset-pill ${greetingPreset === 'custom' ? 'active' : ''} ${isLocked('edit_ai_greeting') ? 'locked' : ''}`} onClick={() => setGreetingPreset('custom')}>Custom</button>
+                    </div>
+                    <div className="field" style={{ marginTop: 14 }}>
+                      <label>Greeting text</label>
+                      <textarea value={form.ai_welcome_message} disabled={isLocked('edit_ai_greeting')} onChange={(event) => {
+                        setGreetingPreset('custom');
+                        patchState('ai_welcome_message', event.target.value);
+                      }} />
+                    </div>
+                  </div>
+
+                  <div className="field">
+                    <label>Advanced AI instructions</label>
+                    <textarea value={form.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise businesses." />
+                    {renderLockCopy('edit_ai_custom_instructions')}
+                  </div>
+                </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
+                    {savingSection === 'ai-voice' ? 'Saving...' : 'Save AI voice & greeting'}
                   </button>
                 </div>
               </form>
@@ -2000,74 +2065,6 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                 </div>
               </div>
               ) : null}
-            </section>
-            ) : null}
-
-            {activeTab === 'ai-call-behavior' && behaviorSubTab === 'voice' ? (
-            <section className="card" style={{ marginTop: 14 }}>
-              <form
-                className="card-section-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void commitSettingsPatch('ai-voice', {
-                    ai_voice: form.ai_voice || null,
-                    ai_welcome_message: form.ai_welcome_message.trim() ? form.ai_welcome_message : null,
-                    ai_custom_instructions: form.ai_custom_instructions.trim() ? form.ai_custom_instructions : null,
-                  });
-                }}
-              >
-                <div className="card-section">
-                  <div className="field">
-                    <label>Voice style</label>
-                    <select value={form.ai_voice} disabled={isLocked('edit_ai_voice')} onChange={(event) => patchState('ai_voice', event.target.value)}>
-                      {AI_VOICE_OPTIONS.map((voice) => <option key={voice.value} value={voice.value}>{voice.label}</option>)}
-                    </select>
-                    {renderLockCopy('edit_ai_voice')}
-                  </div>
-
-                  <div>
-                    <div className="hint-row"><strong className="option-title">Greeting preset</strong>{renderLockCopy('edit_ai_greeting')}</div>
-                    <div className="preset-pills" style={{ marginTop: 12 }}>
-                      {AI_GREETING_PRESETS.map((preset, index) => {
-                        const resolved = normalizeGreeting(preset, shop.name);
-                        return (
-                          <button
-                            key={preset}
-                            type="button"
-                            disabled={isLocked('edit_ai_greeting')}
-                            className={`preset-pill ${greetingPreset === resolved ? 'active' : ''} ${isLocked('edit_ai_greeting') ? 'locked' : ''}`}
-                            onClick={() => {
-                              setGreetingPreset(resolved);
-                              patchState('ai_welcome_message', resolved);
-                            }}
-                          >
-                            {index === 0 ? 'Friendly' : index === 1 ? 'Professional' : 'Booking-first'}
-                          </button>
-                        );
-                      })}
-                      <button type="button" disabled={isLocked('edit_ai_greeting')} className={`preset-pill ${greetingPreset === 'custom' ? 'active' : ''} ${isLocked('edit_ai_greeting') ? 'locked' : ''}`} onClick={() => setGreetingPreset('custom')}>Custom</button>
-                    </div>
-                    <div className="field" style={{ marginTop: 14 }}>
-                      <label>Greeting text</label>
-                      <textarea value={form.ai_welcome_message} disabled={isLocked('edit_ai_greeting')} onChange={(event) => {
-                        setGreetingPreset('custom');
-                        patchState('ai_welcome_message', event.target.value);
-                      }} />
-                    </div>
-                  </div>
-
-                  <div className="field">
-                    <label>Advanced AI instructions</label>
-                    <textarea value={form.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise businesses." />
-                    {renderLockCopy('edit_ai_custom_instructions')}
-                  </div>
-                </div>
-                <div className="settings-save-footer">
-                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
-                    {savingSection === 'ai-voice' ? 'Saving...' : 'Save AI voice & greeting'}
-                  </button>
-                </div>
-              </form>
             </section>
             ) : null}
 

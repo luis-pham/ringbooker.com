@@ -149,7 +149,7 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .topbar{
   display:flex;align-items:center;justify-content:space-between;gap:18px;
   flex-wrap:wrap;
-  position:sticky;top:0;z-index:30;
+  position:relative;z-index:1;
   min-height:64px;margin:0 -24px 24px;padding:12px 24px;
   background:var(--surface-page);
   border-bottom:1px solid var(--border);
@@ -662,22 +662,12 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
 }
 @media (min-width:861px){
   .topbar-user-chip-meta{display:block}
-  /* Desktop portal: fixed-height shell; sidebar stays put; only main scrolls */
-  .user-app-shell.app-shell{
-    height:100vh;
-    max-height:100vh;
-    overflow:hidden;
-    grid-template-rows:minmax(0,1fr);
-  }
+  /* Desktop portal: only the sidebar stays put; topbar scrolls with page content. */
   .user-app-shell .sidebar{
-    position:relative;
-    top:auto;
-    height:100%;
+    position:sticky;
+    top:0;
+    height:100vh;
     align-self:stretch;
-  }
-  .user-app-shell .main{
-    min-height:0;
-    height:100%;
     overflow-x:hidden;
     overflow-y:auto;
     overscroll-behavior-y:contain;
