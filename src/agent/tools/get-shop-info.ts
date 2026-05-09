@@ -17,6 +17,8 @@ export async function getShopInfoTool(
       timezone: string;
       hours: unknown;
       services: unknown;
+      staff: unknown;
+      faqs: unknown;
       promotions?: string | null;
       bookingUrl: string | null;
       cancelPolicy: string;
@@ -40,6 +42,8 @@ export async function getShopInfoTool(
     timezone: ctx.shop.timezone,
     hours: ctx.shop.hours,
     services: ctx.shop.services,
+    staff: ctx.shop.staff ?? [],
+    faqs: ctx.shop.faqs ?? [],
     promotions: ctx.shop.promotions,
     bookingUrl: ctx.shop.booking_url ?? null,
     cancelPolicy: ctx.shop.cancel_policy,

@@ -68,6 +68,19 @@ export interface ServiceItem {
   price: number;
 }
 
+export interface StaffMember {
+  name: string;
+  role?: string | null;
+  specialties?: string[];
+  notes?: string | null;
+  active?: boolean;
+}
+
+export interface BusinessFaqItem {
+  question: string;
+  answer: string;
+}
+
 
 export interface ShopLocation {
   id: string;
@@ -151,6 +164,8 @@ export interface Shop {
   address?: string | null;
   timezone: string;
   services: ServiceItem[];
+  staff?: StaffMember[];
+  faqs?: BusinessFaqItem[];
   hours: BusinessHours;
   cancel_policy: string;
   promotions?: string | null;

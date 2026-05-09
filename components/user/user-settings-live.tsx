@@ -36,6 +36,17 @@ type ServiceItem = {
   duration_min: number;
   price: number;
 };
+type StaffMember = {
+  name: string;
+  role?: string | null;
+  specialties?: string[];
+  notes?: string | null;
+  active?: boolean;
+};
+type BusinessFaqItem = {
+  question: string;
+  answer: string;
+};
 type ShopSettings = {
   id: string;
   name: string;
@@ -46,10 +57,13 @@ type ShopSettings = {
   address?: string | null;
   timezone: string;
   services: ServiceItem[];
+  staff?: StaffMember[];
+  faqs?: BusinessFaqItem[];
   hours: Record<string, BusinessHoursEntry>;
   cancel_policy: string;
   promotions?: string | null;
   booking_url?: string | null;
+  website_url?: string | null;
   ai_voice?: string | null;
   ai_welcome_message?: string | null;
   ai_custom_instructions?: string | null;
@@ -130,9 +144,12 @@ type SettingsState = {
   address: string;
   timezone: string;
   booking_url: string;
+  website_url: string;
   cancel_policy: string;
   promotions: string;
   services: ServiceItem[];
+  staff: StaffMember[];
+  faqs: BusinessFaqItem[];
   hours: Record<string, BusinessHoursEntry>;
   ai_voice: string;
   ai_welcome_message: string;
@@ -147,6 +164,8 @@ type SettingsState = {
 type SettingsTabId =
   | 'business'
   | 'services-hours'
+  | 'staff'
+  | 'faq'
   | 'ai-call-behavior'
   | 'messaging'
   | 'integrations';
@@ -303,6 +322,22 @@ function SettingsTabIcon({ tabId }: { tabId: SettingsTabId }): ReactNode {
           <path d="M16 2v4M8 2v4M3 10h18" />
         </>,
       );
+    case 'staff':
+      return wrap(
+        <>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx={9} cy={7} r={4} />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+        </>,
+      );
+    case 'faq':
+      return wrap(
+        <>
+          <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+          <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4" />
+          <path d="M12 17h.01" />
+        </>,
+      );
     case 'ai-call-behavior':
       return wrap(
         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
@@ -324,22 +359,30 @@ function SettingsTabIcon({ tabId }: { tabId: SettingsTabId }): ReactNode {
 const SETTINGS_TAB_META: Record<SettingsTabId, { label: string; description: string }> = {
   business: { label: 'Business', description: 'Profile, policy, and promo details.' },
   'services-hours': { label: 'Services & Hours', description: 'What you offer and when you are open.' },
+  staff: { label: 'Staff', description: 'Technicians, specialists, and provider preferences.' },
+  faq: { label: 'FAQ', description: 'Common caller questions and approved answers.' },
   'ai-call-behavior': { label: 'AI Call Behavior', description: 'Voice, greeting, and call handling.' },
   messaging: { label: 'Messaging', description: 'Reminders, reviews, and follow-up SMS.' },
   integrations: { label: 'Integrations', description: 'Square, Vagaro, or booking page links.' },
 };
 
 const SETTINGS_PORTAL_TAB_ORDER: Record<UserSettingsPortal, SettingsTabId[]> = {
-  settings: ['business', 'messaging'],
-  knowledge: ['business', 'services-hours', 'ai-call-behavior'],
+  settings: ['messaging'],
+  knowledge: ['business', 'services-hours', 'staff', 'faq', 'ai-call-behavior'],
   integrations: ['integrations'],
 };
 
 function tabCopyForPortal(portal: UserSettingsPortal, id: SettingsTabId): { label: string; description: string } {
   if (portal === 'knowledge' && id === 'business') {
     return {
-      label: 'Policies & promos',
-      description: 'Cancellation rules and offers callers may hear.',
+      label: 'Business info',
+      description: 'Name, address, contact lines, policies, and promos.',
+    };
+  }
+  if (portal === 'knowledge' && id === 'services-hours') {
+    return {
+      label: 'Services & pricing',
+      description: 'Services, prices, durations, and business hours.',
     };
   }
   if (portal === 'knowledge' && id === 'ai-call-behavior') {
@@ -386,9 +429,12 @@ function buildInitialState(shop: ShopSettings): SettingsState {
     address: shop.address ?? '',
     timezone: shop.timezone,
     booking_url: shop.booking_url ?? '',
+    website_url: shop.website_url ?? '',
     cancel_policy: shop.cancel_policy,
     promotions: shop.promotions ?? '',
     services: shop.services,
+    staff: shop.staff ?? [],
+    faqs: shop.faqs ?? [],
     hours: cloneHours(shop.hours),
     ai_voice: shop.ai_voice ?? 'Aoede',
     ai_welcome_message: shop.ai_welcome_message ?? normalizeGreeting(AI_GREETING_PRESETS[0], shop.name),
@@ -411,6 +457,14 @@ function getHourPresetId(hours: Record<string, BusinessHoursEntry>) {
   return match?.id ?? 'custom';
 }
 
+function emptyStaffMember(): StaffMember {
+  return { name: '', role: '', specialties: [], notes: '', active: true };
+}
+
+function emptyFaqItem(): BusinessFaqItem {
+  return { question: '', answer: '' };
+}
+
 export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSettingsPortal }) {
   const { setWorkspace } = useUserWorkspace();
   const sidebarNav = userSettingsPortalNavKey(portal);
@@ -419,7 +473,7 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
       ? {
           title: 'Business Knowledge',
           subtitle:
-            'Teach RingBooker about your salon—services, pricing, hours, policies, and how the AI should sound on calls.',
+            'Teach RingBooker what to say on calls: business info, services, hours, staff, FAQs, policies, and AI behavior.',
         }
       : portal === 'integrations'
         ? {
@@ -428,11 +482,11 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
           }
         : {
             title: 'Settings',
-            subtitle: 'Business profile basics and SMS automation preferences.',
+            subtitle: 'Account-level preferences and SMS automation settings.',
           };
 
   const defaultTabForPortal = (): SettingsTabId =>
-    portal === 'knowledge' ? 'services-hours' : portal === 'integrations' ? 'integrations' : 'business';
+    portal === 'knowledge' ? 'business' : portal === 'integrations' ? 'integrations' : 'messaging';
 
   const [shop, setShop] = useState<ShopSettings | null>(null);
   const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(null);
@@ -813,6 +867,20 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
     patchState(
       'services',
       currentForm.services.map((item) => (item.name === name ? { ...item, ...patch } : item)),
+    );
+  }
+
+  function updateStaff(index: number, patch: Partial<StaffMember>) {
+    patchState(
+      'staff',
+      currentForm.staff.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
+    );
+  }
+
+  function updateFaq(index: number, patch: Partial<BusinessFaqItem>) {
+    patchState(
+      'faqs',
+      currentForm.faqs.map((item, itemIndex) => (itemIndex === index ? { ...item, ...patch } : item)),
     );
   }
 
@@ -1460,13 +1528,36 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
                 className="card-section-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void commitSettingsPatch('business-policies', {
+                  void commitSettingsPatch('business-knowledge-info', {
+                    name: form.name,
+                    user_name: form.user_name,
+                    user_phone: form.user_phone,
+                    backup_phone: form.backup_phone || null,
+                    address: form.address || null,
+                    timezone: form.timezone,
+                    website_url: form.website_url.trim() ? form.website_url.trim() : '',
                     cancel_policy: form.cancel_policy,
                     promotions: form.promotions || null,
                   });
                 }}
               >
                 <div className="card-section">
+                  <div>
+                    <div className="hint-row">
+                      <strong className="option-title">Business info</strong>
+                      <span className="hint-copy">Core details RingBooker can use when callers ask who you are, where you are, or how to reach the team.</span>
+                    </div>
+                    <div className="form-grid" style={{ marginTop: 14 }}>
+                      <div className="field"><label>Business name</label><input value={form.name} onChange={(event) => patchState('name', event.target.value)} /></div>
+                      <div className="field"><label>Primary contact name</label><input value={form.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
+                      <div className="field"><label>Main user phone</label><input value={form.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
+                      <div className="field"><label>Backup phone</label><input value={form.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
+                      <div className="field"><label>Timezone</label><select value={form.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
+                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={form.address} onChange={(event) => patchState('address', event.target.value)} /></div>
+                      <div className="field" style={{ gridColumn: '1 / -1' }}><label>Website</label><input value={form.website_url} onChange={(event) => patchState('website_url', event.target.value)} placeholder="https://..." /></div>
+                    </div>
+                  </div>
+
                   <div>
                     <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit only if your business needs a special case.</span></div>
                     <div className="preset-pills" style={{ marginTop: 12 }}>
@@ -1513,7 +1604,7 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
                 </div>
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
-                    {savingSection === 'business-policies' ? 'Saving...' : 'Save policies & promos'}
+                    {savingSection === 'business-knowledge-info' ? 'Saving...' : 'Save business knowledge'}
                   </button>
                 </div>
               </form>
@@ -1708,6 +1799,111 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
                 </div>
               </form>
               ) : null}
+            </section>
+            ) : null}
+
+            {activeTab === 'staff' ? (
+            <section className="card">
+              <form
+                className="card-section-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('staff', {
+                    staff: form.staff
+                      .map((item) => ({
+                        ...item,
+                        name: item.name.trim(),
+                        role: item.role?.trim() || null,
+                        specialties: (item.specialties ?? []).map((value) => value.trim()).filter(Boolean),
+                        notes: item.notes?.trim() || null,
+                        active: item.active !== false,
+                      }))
+                      .filter((item) => item.name),
+                  });
+                }}
+              >
+                <div className="panel-head">
+                  <div>
+                    <h3>Staff / Technicians</h3>
+                    <p className="sub">Add approved staff names, specialties, and notes so RingBooker does not invent technician details.</p>
+                  </div>
+                  <button type="button" className="btn" onClick={() => patchState('staff', [...form.staff, emptyStaffMember()])}>
+                    Add staff
+                  </button>
+                </div>
+                <div className="card-section">
+                  {form.staff.length === 0 ? (
+                    <div className="sh-empty">No staff added yet. Add names callers may request, like Sarah for nail art or Jenny for pedicures.</div>
+                  ) : null}
+                  {form.staff.map((member, index) => (
+                    <div className="option-card" key={`${member.name}-${index}`}>
+                      <div className="form-grid">
+                        <div className="field"><label>Name</label><input value={member.name} onChange={(event) => updateStaff(index, { name: event.target.value })} placeholder="Sarah" /></div>
+                        <div className="field"><label>Role</label><input value={member.role ?? ''} onChange={(event) => updateStaff(index, { role: event.target.value })} placeholder="Nail technician" /></div>
+                        <div className="field" style={{ gridColumn: '1 / -1' }}><label>Specialties</label><input value={(member.specialties ?? []).join(', ')} onChange={(event) => updateStaff(index, { specialties: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} placeholder="Gel nails, nail art, pedicure" /></div>
+                        <div className="field" style={{ gridColumn: '1 / -1' }}><label>Notes</label><textarea value={member.notes ?? ''} onChange={(event) => updateStaff(index, { notes: event.target.value })} placeholder="Optional. Example: Available Tuesday-Friday. Best for detailed nail art." /></div>
+                      </div>
+                      <div className="settings-save-footer" style={{ marginTop: 10 }}>
+                        <button type="button" className="subtle-link" onClick={() => patchState('staff', form.staff.filter((_, itemIndex) => itemIndex !== index))}>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
+                    {savingSection === 'staff' ? 'Saving...' : 'Save staff'}
+                  </button>
+                </div>
+              </form>
+            </section>
+            ) : null}
+
+            {activeTab === 'faq' ? (
+            <section className="card">
+              <form
+                className="card-section-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('faqs', {
+                    faqs: form.faqs
+                      .map((item) => ({ question: item.question.trim(), answer: item.answer.trim() }))
+                      .filter((item) => item.question && item.answer),
+                  });
+                }}
+              >
+                <div className="panel-head">
+                  <div>
+                    <h3>FAQ</h3>
+                    <p className="sub">Approved answers for common caller questions: parking, walk-ins, deposits, payment methods, gift cards, or group bookings.</p>
+                  </div>
+                  <button type="button" className="btn" onClick={() => patchState('faqs', [...form.faqs, emptyFaqItem()])}>
+                    Add FAQ
+                  </button>
+                </div>
+                <div className="card-section">
+                  {form.faqs.length === 0 ? (
+                    <div className="sh-empty">No FAQs added yet. Add common answers so RingBooker can respond consistently.</div>
+                  ) : null}
+                  {form.faqs.map((item, index) => (
+                    <div className="option-card" key={`${item.question}-${index}`}>
+                      <div className="field"><label>Question</label><input value={item.question} onChange={(event) => updateFaq(index, { question: event.target.value })} placeholder="Do you accept walk-ins?" /></div>
+                      <div className="field"><label>Approved answer</label><textarea value={item.answer} onChange={(event) => updateFaq(index, { answer: event.target.value })} placeholder="Walk-ins are welcome when staff are available, but appointments are recommended." /></div>
+                      <div className="settings-save-footer" style={{ marginTop: 10 }}>
+                        <button type="button" className="subtle-link" onClick={() => patchState('faqs', form.faqs.filter((_, itemIndex) => itemIndex !== index))}>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="settings-save-footer">
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
+                    {savingSection === 'faqs' ? 'Saving...' : 'Save FAQ'}
+                  </button>
+                </div>
+              </form>
             </section>
             ) : null}
 

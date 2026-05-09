@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { BusinessHours, ServiceItem, Shop, ShopPlan } from '@/src/backend/domain/types';
+import type { BusinessFaqItem, BusinessHours, ServiceItem, Shop, ShopPlan, StaffMember } from '@/src/backend/domain/types';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
 
 type ShopsRow = {
@@ -16,6 +16,8 @@ type ShopsRow = {
   address: string | null;
   timezone: string;
   services: unknown;
+  staff: unknown;
+  faqs: unknown;
   hours: unknown;
   cancel_policy: string | null;
   promotions: string | null;
@@ -69,6 +71,43 @@ function normalizeServices(value: unknown): ServiceItem[] {
     .filter((item): item is ServiceItem => item !== null);
 }
 
+function normalizeStaff(value: unknown): StaffMember[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const raw = item as Record<string, unknown>;
+      if (typeof raw.name !== 'string' || !raw.name.trim()) return null;
+      const specialties = Array.isArray(raw.specialties)
+        ? raw.specialties.filter((specialty): specialty is string => typeof specialty === 'string' && specialty.trim().length > 0)
+        : [];
+      const normalized: StaffMember = {
+        name: raw.name.trim(),
+        role: typeof raw.role === 'string' && raw.role.trim() ? raw.role.trim() : null,
+        specialties,
+        notes: typeof raw.notes === 'string' && raw.notes.trim() ? raw.notes.trim() : null,
+        active: typeof raw.active === 'boolean' ? raw.active : true,
+      };
+      return normalized;
+    })
+    .filter((item): item is StaffMember => item !== null);
+}
+
+function normalizeFaqs(value: unknown): BusinessFaqItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const raw = item as Record<string, unknown>;
+      if (typeof raw.question !== 'string' || typeof raw.answer !== 'string') return null;
+      const question = raw.question.trim();
+      const answer = raw.answer.trim();
+      if (!question || !answer) return null;
+      return { question, answer };
+    })
+    .filter((item): item is BusinessFaqItem => item !== null);
+}
+
 function normalizeHours(value: unknown): BusinessHours {
   if (!value || typeof value !== 'object') return {};
   return value as BusinessHours;
@@ -88,6 +127,8 @@ function toShop(row: ShopsRow): Shop {
     address: row.address,
     timezone: row.timezone,
     services: normalizeServices(row.services),
+    staff: normalizeStaff(row.staff),
+    faqs: normalizeFaqs(row.faqs),
     hours: normalizeHours(row.hours),
     cancel_policy: row.cancel_policy ?? '2-hour cancellation policy applies.',
     promotions: row.promotions,
@@ -139,6 +180,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -197,6 +240,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -255,6 +300,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -313,6 +360,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -366,6 +415,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
         send_review_request_sms: enableProfessionalDefaults,
         send_missed_call_followup_sms: true,
         services: [],
+        staff: [],
+        faqs: [],
         hours: {},
       })
       .select(
@@ -382,6 +433,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -435,6 +488,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'address'
         | 'timezone'
         | 'services'
+        | 'staff'
+        | 'faqs'
         | 'hours'
         | 'cancel_policy'
         | 'promotions'
@@ -467,6 +522,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.address !== undefined) payload.address = patch.address;
     if (patch.timezone !== undefined) payload.timezone = patch.timezone;
     if (patch.services !== undefined) payload.services = patch.services;
+    if (patch.staff !== undefined) payload.staff = patch.staff;
+    if (patch.faqs !== undefined) payload.faqs = patch.faqs;
     if (patch.hours !== undefined) payload.hours = patch.hours;
     if (patch.cancel_policy !== undefined) payload.cancel_policy = patch.cancel_policy;
     if (patch.promotions !== undefined) payload.promotions = patch.promotions;
@@ -508,6 +565,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -597,6 +656,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -686,6 +747,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -755,6 +818,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',
@@ -821,6 +886,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'staff',
+          'faqs',
           'hours',
           'cancel_policy',
           'promotions',

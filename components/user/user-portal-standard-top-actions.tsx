@@ -7,7 +7,10 @@ export function UserPortalStandardTopActions() {
   return (
     <>
       <a className="btn" href="/user/settings">
-        Edit business info
+        Settings
+      </a>
+      <a className="btn" href="/user/knowledge">
+        Business Knowledge
       </a>
       <a className="btn user-save" href="/user/bookings">
         View bookings

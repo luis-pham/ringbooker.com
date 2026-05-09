@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import type { UserPortalNavKey } from '@/components/user/user-portal-nav';
@@ -94,8 +95,33 @@ function IconAccount(): ReactNode {
   );
 }
 
+function IconMore(): ReactNode {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <circle cx={5} cy={12} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={12} cy={12} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={19} cy={12} r={1.5} fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 /** Fixed bottom navigation for /user/* on small viewports (see globals.css `.user-mobile-tabbar`). */
 export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) {
+  const [showGoLive, setShowGoLive] = useState(active === 'go-live');
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/backend/user/nav-state')
+      .then(async (response) => (await response.json()) as { ok?: boolean; onboardingRequired?: boolean; liveCallsEnabled?: boolean })
+      .then((body) => {
+        if (!cancelled && body.ok) setShowGoLive(Boolean(!body.onboardingRequired && !body.liveCallsEnabled));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const item = (key: UserPortalNavKey, href: string, label: string, icon: ReactNode) => {
     const isActive = active === key;
     return (
@@ -112,16 +138,12 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
   };
 
   return (
-    <nav className="user-mobile-tabbar user-mobile-tabbar--scroll" aria-label="User portal">
+    <nav className="user-mobile-tabbar" aria-label="User portal">
       {item('overview', '/user', 'Overview', <IconOverview />)}
-      {item('bookings', '/user/bookings', 'Bookings', <IconBookings />)}
       {item('calls', '/user/calls', 'Calls', <IconCalls />)}
-      {item('knowledge', '/user/knowledge', 'Knowledge', <IconKnowledge />)}
-      {item('integrations', '/user/integrations', 'Integr.', <IconIntegrations />)}
-      {item('go-live', '/user/go-live', 'Go live', <IconGoLive />)}
-      {item('settings', '/user/settings', 'Settings', <IconSettings />)}
-      {item('billing', '/user/billing', 'Billing', <IconBilling />)}
-      {item('account', '/user/account', 'Account', <IconAccount />)}
+      {item('bookings', '/user/bookings', 'Bookings', <IconBookings />)}
+      {showGoLive || active === 'go-live' ? item('go-live', '/user/go-live', 'Go live', <IconGoLive />) : null}
+      {item('more', '/user/more', 'More', <IconMore />)}
     </nav>
   );
 }

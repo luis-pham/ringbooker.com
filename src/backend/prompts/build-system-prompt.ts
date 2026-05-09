@@ -69,6 +69,16 @@ function renderRoutingRules(rules?: ShopRoutingRule[]): string | null {
   ].join('\n');
 }
 
+function renderFaqs(shop: Shop): string | null {
+  const faqs = (shop.faqs ?? []).slice(0, 12);
+  if (!faqs.length) return null;
+  return [
+    'APPROVED FAQ ANSWERS:',
+    ...faqs.map((item) => compactLine(`- Q: ${item.question} A: ${item.answer}`, 500)),
+    'Use these answers when callers ask matching questions. Do not invent FAQ answers that are not listed.',
+  ].join('\n');
+}
+
 function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, routingRules?: ShopRoutingRule[]): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
@@ -83,14 +93,28 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
       price: service.price,
       duration: `${service.duration_min} min`,
     })),
-    providers: [],
+    providers: (shop.staff ?? [])
+      .filter((member) => member.active !== false)
+      .map((member) => {
+        const parts = [
+          member.name,
+          member.role ?? null,
+          member.specialties?.length ? `specialties: ${member.specialties.join(', ')}` : null,
+          member.notes ?? null,
+        ].filter(Boolean);
+        return compactLine(parts.join(' | '), 180);
+      }),
     promotions: shop.promotions ?? null,
     cancellationPolicy: shop.cancel_policy,
     bookingUrl: shop.booking_url ?? null,
     welcomeMessage: shop.ai_welcome_message ? compactLine(shop.ai_welcome_message, 240) : null,
     customInstructions: renderProductionCustomInstructions({
       voiceStyle: shop.ai_voice,
-      shopCustomInstructions: [shop.ai_custom_instructions ? compactLine(shop.ai_custom_instructions, 700) : null, renderRoutingRules(routingRules)].filter(Boolean).join('\n\n') || null,
+      shopCustomInstructions: [
+        shop.ai_custom_instructions ? compactLine(shop.ai_custom_instructions, 700) : null,
+        renderFaqs(shop),
+        renderRoutingRules(routingRules),
+      ].filter(Boolean).join('\n\n') || null,
     }),
     ...(languageFields.languageOptions?.length ? { languageOptions: languageFields.languageOptions } : {}),
     productionLanguageDirective: languageFields.productionLanguageDirective,

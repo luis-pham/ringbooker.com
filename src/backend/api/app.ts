@@ -468,6 +468,19 @@ const serviceItemSchema = z.object({
   price: z.coerce.number().min(0).max(10000),
 });
 
+const staffMemberSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  role: z.string().trim().max(120).nullable().optional(),
+  specialties: z.array(z.string().trim().min(1).max(80)).max(12).optional().default([]),
+  notes: z.string().trim().max(500).nullable().optional(),
+  active: z.boolean().optional().default(true),
+});
+
+const businessFaqItemSchema = z.object({
+  question: z.string().trim().min(1).max(200),
+  answer: z.string().trim().min(1).max(1000),
+});
+
 const businessHoursEntrySchema = z.union([
   z.object({
     closed: z.literal(true),
@@ -480,6 +493,8 @@ const businessHoursEntrySchema = z.union([
 
 const userSettingsUpdateSchema = userSettingsBaseSchema.extend({
   services: z.array(serviceItemSchema).optional(),
+  staff: z.array(staffMemberSchema).max(50).optional(),
+  faqs: z.array(businessFaqItemSchema).max(100).optional(),
   hours: z.record(z.string(), businessHoursEntrySchema).optional(),
   ai_voice: z.string().min(1).max(80).nullable().optional(),
   ai_welcome_message: z.string().min(1).max(240).nullable().optional(),
@@ -498,6 +513,8 @@ const userPasswordChangeSchema = z.object({
 
 const adminShopSettingsUpdateSchema = userSettingsBaseSchema.extend({
   services: z.array(serviceItemSchema).optional(),
+  staff: z.array(staffMemberSchema).max(50).optional(),
+  faqs: z.array(businessFaqItemSchema).max(100).optional(),
   hours: z.record(z.string(), businessHoursEntrySchema).optional(),
 });
 
@@ -768,6 +785,8 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   cancel_policy: 'edit_cancel_policy',
   promotions: 'edit_promotions',
   services: 'edit_services',
+  staff: 'edit_services',
+  faqs: 'edit_business_profile',
   hours: 'edit_hours',
   allow_transfers: 'edit_transfer_settings',
   allow_callbacks: 'edit_callback_settings',
@@ -796,6 +815,8 @@ function splitUserSettingsPatchByPlan(
       | 'address'
       | 'timezone'
       | 'services'
+      | 'staff'
+      | 'faqs'
       | 'hours'
       | 'cancel_policy'
         | 'promotions'
@@ -868,6 +889,8 @@ function splitUserSettingsPatchByPlan(
         | 'address'
         | 'timezone'
         | 'services'
+        | 'staff'
+        | 'faqs'
         | 'hours'
         | 'cancel_policy'
         | 'promotions'

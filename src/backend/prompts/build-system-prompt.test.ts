@@ -61,6 +61,26 @@ test('Professional prompt injects returning caller context', () => {
   assert.match(prompt, /Sarah/);
 });
 
+test('Production prompt injects configured staff and FAQ answers', () => {
+  const shop = createShop('professional');
+  shop.staff = [
+    { name: 'Mia', role: 'Color specialist', specialties: ['Balayage', 'Color correction'], active: true },
+  ];
+  shop.faqs = [
+    { question: 'Do you accept walk-ins?', answer: 'Walk-ins are welcome when staff are available.' },
+  ];
+
+  const prompt = buildSystemPrompt({
+    shop,
+    customer: null,
+    mode: 'inbound',
+  });
+
+  assert.match(prompt, /PROVIDERS \/ STAFF: Mia/);
+  assert.match(prompt, /APPROVED FAQ ANSWERS/);
+  assert.match(prompt, /Do you accept walk-ins/);
+});
+
 test('Starter with languages does not receive bilingual workflow or LANGUAGE OPTIONS runtime line', () => {
   const prompt = buildSystemPrompt({
     shop: createShop('starter', ['en', 'vi']),

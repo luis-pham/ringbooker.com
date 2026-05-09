@@ -18,6 +18,14 @@ const defaultShop: Shop = {
     { name: 'Pedicure', duration_min: 45, price: 35 },
     { name: 'Gel Nails', duration_min: 60, price: 45 },
   ],
+  staff: [
+    { name: 'Jenny', role: 'Nail technician', specialties: ['Gel nails', 'Pedicure'], active: true },
+    { name: 'Sarah', role: 'Nail artist', specialties: ['Nail art', 'Acrylic'], active: true },
+  ],
+  faqs: [
+    { question: 'Do you accept walk-ins?', answer: 'Walk-ins are welcome when technicians are available, but appointments are recommended.' },
+    { question: 'Where should clients park?', answer: 'Clients can use the front parking lot or nearby street parking.' },
+  ],
   hours: {
     mon: { open: '09:00', close: '18:00' },
     tue: { open: '09:00', close: '18:00' },
@@ -122,6 +130,8 @@ export class InMemoryShopsRepository implements ShopsRepository {
       user_name: params.user_name ?? null,
       timezone: params.timezone,
       services: [],
+      staff: [],
+      faqs: [],
       hours: {},
       cancel_policy: '2-hour cancellation policy applies.',
       ai_voice: 'Aoede',
@@ -167,6 +177,8 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'address'
         | 'timezone'
         | 'services'
+        | 'staff'
+        | 'faqs'
         | 'hours'
         | 'cancel_policy'
         | 'promotions'

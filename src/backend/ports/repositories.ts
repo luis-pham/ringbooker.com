@@ -414,6 +414,8 @@ export interface ShopsRepository {
         | 'address'
         | 'timezone'
         | 'services'
+        | 'staff'
+        | 'faqs'
         | 'hours'
         | 'cancel_policy'
         | 'promotions'

@@ -178,10 +178,12 @@ export class InboundAgentSession {
 
   async warmupCallStartContext(): Promise<void> {
     const serviceSnapshot = this.shop.services.map((service) => `${service.name}:${service.price}:${service.duration_min}`).join('|');
+    const staffSnapshot = (this.shop.staff ?? []).map((member) => `${member.name}:${member.role ?? ''}`).join('|');
+    const faqSnapshot = (this.shop.faqs ?? []).map((item) => item.question).join('|');
     const hoursSnapshot = Object.entries(this.shop.hours)
       .map(([day, value]) => ('open' in value ? `${day}:${value.open}-${value.close}` : `${day}:closed`))
       .join('|');
-    const contextFingerprint = `${this.shop.id}|${this.shop.timezone}|${serviceSnapshot}|${hoursSnapshot}|${this.customer?.phone ?? ''}`;
+    const contextFingerprint = `${this.shop.id}|${this.shop.timezone}|${serviceSnapshot}|${staffSnapshot}|${faqSnapshot}|${hoursSnapshot}|${this.customer?.phone ?? ''}`;
     if (!contextFingerprint) return;
 
     if (!this.calendarProvider.prefetchAvailability) return;

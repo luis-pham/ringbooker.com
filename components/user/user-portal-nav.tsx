@@ -13,7 +13,8 @@ export type UserPortalNavKey =
   | 'go-live'
   | 'settings'
   | 'billing'
-  | 'account';
+  | 'account'
+  | 'more';
 
 type UserPortalNavProps = {
   active: UserPortalNavKey;
@@ -136,18 +137,35 @@ function IconAccount() {
   );
 }
 
+function IconMore() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <circle cx={5} cy={12} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={12} cy={12} r={1.5} fill="currentColor" stroke="none" />
+      <circle cx={19} cy={12} r={1.5} fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 /** Shared left-rail links for authenticated `/user/*` pages. */
 export function UserPortalNav({ active }: UserPortalNavProps) {
   const [followUpCount, setFollowUpCount] = useState(0);
+  const [showGoLive, setShowGoLive] = useState(active === 'go-live');
 
   useEffect(() => {
     let cancelled = false;
-    void fetch('/api/backend/user/calls/summary')
-      .then(async (response) => {
-        const body = (await response.json()) as { ok?: boolean; followUpCount?: number };
-        if (!cancelled && body.ok) setFollowUpCount(body.followUpCount ?? 0);
-      })
-      .catch(() => undefined);
+    void Promise.allSettled([
+      fetch('/api/backend/user/calls/summary').then(async (response) => (await response.json()) as { ok?: boolean; followUpCount?: number }),
+      fetch('/api/backend/user/nav-state').then(async (response) => (await response.json()) as { ok?: boolean; onboardingRequired?: boolean; liveCallsEnabled?: boolean }),
+    ]).then(([callsResult, navResult]) => {
+      if (cancelled) return;
+      if (callsResult.status === 'fulfilled' && callsResult.value.ok) {
+        setFollowUpCount(callsResult.value.followUpCount ?? 0);
+      }
+      if (navResult.status === 'fulfilled' && navResult.value.ok) {
+        setShowGoLive(Boolean(!navResult.value.onboardingRequired && !navResult.value.liveCallsEnabled));
+      }
+    }).catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -155,18 +173,22 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
 
   return (
     <div className="nav-section">
-      <div className="nav-label">User Portal</div>
       <div className="nav-list">
+        <div className="nav-label">Operate</div>
         {navLink('overview', '/user', 'Overview', <IconOverview />, active)}
+        {navLink('calls', '/user/calls', 'Calls', <IconCalls />, active, followUpCount)}
         {navLink('bookings', '/user/bookings', 'Bookings', <IconBookings />, active)}
-        {navLink('calls', '/user/calls', 'Calls & Transcripts', <IconCalls />, active, followUpCount)}
+        <div className="nav-label">Setup</div>
+        {showGoLive || active === 'go-live' ? navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active) : null}
         {navLink('knowledge', '/user/knowledge', 'Business Knowledge', <IconKnowledge />, active)}
         {navLink('integrations', '/user/integrations', 'Integrations', <IconIntegrations />, active)}
-        {navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active)}
-        {navLink('settings', '/user/settings', 'Settings', <IconSettings />, active)}
+        <div className="nav-label">Account</div>
         {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active)}
+        {navLink('settings', '/user/settings', 'Settings', <IconSettings />, active)}
         {navLink('account', '/user/account', 'Account', <IconAccount />, active)}
       </div>
     </div>
   );
 }
+
+export { IconMore };

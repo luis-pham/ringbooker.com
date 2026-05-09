@@ -536,7 +536,7 @@ export function UserBillingLive() {
           <main className="main billing-page">
             <UserPortalTopbar
               title="Billing"
-              subtitle="Summary above; tabs for account usage, plans, and billing history. Forwarding is under Settings → Go live."
+              subtitle="Summary above; tabs for account usage, plans, and billing history. Forwarding is under Go live."
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />
@@ -685,11 +685,11 @@ export function UserBillingLive() {
                       <section className="card soft" style={{ marginBottom: 16 }}>
                         <h3 style={{ marginTop: 0 }}>Call forwarding & go live</h3>
                         <p className="sub">
-                          Your RingBooker forwarding number and carrier steps live under Settings, so Billing stays focused on
+                          Your RingBooker forwarding number and carrier steps live under Go live, so Billing stays focused on
                           your subscription and payment method.
                         </p>
                         <a className="btn" href="/user/go-live#go-live-forwarding">
-                          Open Settings — Go live
+                          Open Go live
                         </a>
                       </section>
                       {hasPaymentMethod && data.billing?.usage ? (

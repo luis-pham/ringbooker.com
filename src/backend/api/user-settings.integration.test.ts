@@ -117,6 +117,51 @@ test('starter plan user settings expose capabilities and reject locked fields', 
   );
 });
 
+test('user can save business knowledge staff and FAQ fields', async () => {
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository: new InMemoryShopsRepository(),
+    telephonyService: new NoopTelephonyService(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+  });
+
+  const cookie = await loginUser(app);
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      staff: [
+        { name: 'Sarah', role: 'Nail artist', specialties: ['Nail art', 'Gel'], notes: 'Clients may request Sarah.' },
+      ],
+      faqs: [
+        { question: 'Do you accept walk-ins?', answer: 'Walk-ins are welcome when technicians are available.' },
+      ],
+    }),
+  });
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as {
+    ok: boolean;
+    shop: {
+      staff: Array<{ name: string; role?: string | null; specialties?: string[] }>;
+      faqs: Array<{ question: string; answer: string }>;
+    };
+  };
+  assert.equal(body.ok, true);
+  assert.equal(body.shop.staff[0]?.name, 'Sarah');
+  assert.equal(body.shop.staff[0]?.specialties?.[0], 'Nail art');
+  assert.equal(body.shop.faqs[0]?.question, 'Do you accept walk-ins?');
+});
+
 test('professional plan user can save professional-tier automation fields', async () => {
   const shopsRepository = new InMemoryShopsRepository();
   await shopsRepository.updatePlanAndActivation('demo-shop', { plan: 'professional', active: true });
