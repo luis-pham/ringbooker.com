@@ -7,8 +7,6 @@ const styles: string[] = [
   --purple-dark:#630ed4;
   --purple-light:#EDE9FE;
   --purple-ultra:#F5F3FF;
-  --nav-active-bg:#6063ee;
-  --nav-active-fg:#ffffff;
   --surface-page:#f8f9fa;
   --surface-card:#ffffff;
   --sidebar-outline:#ccc3d8;
@@ -49,12 +47,43 @@ a{text-decoration:none;color:inherit}
 button,input,select,textarea{font:inherit}
 .app-shell{display:grid;grid-template-columns:var(--sidebar-width) minmax(0,1fr);min-height:100vh}
 .sidebar{
-  position:sticky;top:0;height:100vh;overflow:auto;
+  position:sticky;top:0;height:100vh;overflow:hidden;
+  display:flex;flex-direction:column;
   background:var(--surface-card);
   border-right:1px solid var(--border);
   padding:24px 16px 22px;
 }
-.sidebar-inner{display:flex;flex-direction:column;min-height:calc(100vh - 44px)}
+.sidebar-inner{
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.sidebar-body{
+  flex:1;
+  min-height:0;
+  overflow-x:hidden;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+}
+.sidebar-body::-webkit-scrollbar{width:5px}
+.sidebar-body::-webkit-scrollbar-thumb{background:#e5e7eb;border-radius:999px}
+.sidebar-footer{
+  flex-shrink:0;
+  margin-top:auto;
+  padding-top:16px;
+  border-top:1px solid var(--border);
+}
+.sidebar-logout{
+  display:flex;align-items:center;gap:12px;width:100%;
+  padding:10px 12px;border-radius:10px;border:none;background:transparent;
+  font:inherit;font-weight:600;font-size:14px;color:#4a4455;
+  cursor:pointer;text-align:left;
+  transition:background .15s ease,color .15s ease;
+}
+.sidebar-logout:hover{background:#fef2f2;color:var(--red-deep)}
+.sidebar-logout svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;flex-shrink:0}
 .brand{
   display:flex;align-items:flex-start;gap:12px;
   margin-bottom:22px;
@@ -80,15 +109,6 @@ button,input,select,textarea{font:inherit}
   box-shadow:none;
 }
 .brand-core svg{width:13px;height:13px;fill:#fff}
-.workspace{
-  background:#f3f4f6;
-  border:1px solid var(--border);
-  border-radius:16px;
-  padding:14px 14px;
-  margin-bottom:18px;
-}
-.workspace h3{margin:0 0 4px;font-size:15px;letter-spacing:-.02em}
-.workspace p{margin:0;color:var(--text-gray);font-size:12px;line-height:1.5}
 .nav-section{margin-top:6px}
 .nav-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-light);font-weight:700;padding:0 10px 10px}
 .nav-list{display:flex;flex-direction:column;gap:6px}
@@ -99,19 +119,18 @@ button,input,select,textarea{font:inherit}
 }
 .nav-item:hover{background:#e7e8e9;color:var(--text-dark)}
 .nav-item.active{
-  background:var(--nav-active-bg);
-  color:var(--nav-active-fg);
-  box-shadow:none;
-  border-left:4px solid var(--purple-dark);
-  padding-left:8px;
+  background:transparent;
+  color:var(--purple-dark);
+  font-weight:750;
+  letter-spacing:-.01em;
 }
+.nav-item.active:hover{background:#f3f4f6;color:var(--purple-dark)}
 .nav-icon{
   width:34px;height:34px;border-radius:10px;background:transparent;border:none;
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
 .nav-icon svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none}
-.nav-item.active .nav-icon{background:transparent;border-color:transparent}
-.nav-item.active .nav-icon svg{stroke:var(--nav-active-fg)}
+.nav-item.active .nav-icon svg{stroke-width:2.35}
 .sidebar-spacer{flex:1}
 
 .main{padding:0 24px 34px;min-width:0;background:var(--surface-page)}
@@ -297,7 +316,7 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
   .app-shell{grid-template-columns:96px minmax(0,1fr)}
   .sidebar{padding:18px 12px}
   .sidebar-inner{min-height:calc(100vh - 36px)}
-  .brand-title,.brand-tagline,.workspace,.nav-item span,.nav-label{display:none}
+  .brand-title,.brand-tagline,.nav-item span,.nav-label{display:none}
   .nav-item{justify-content:center;padding:10px;border-left:none !important;padding-left:10px !important}
   .nav-icon{margin:0}
 }
@@ -353,11 +372,12 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
   .overview-top-actions{display:none}
   .page-title h1{font-size:22px}
   .app-shell{grid-template-columns:1fr}
-  .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}
+  .sidebar{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border);overflow:visible}
   .sidebar-inner{min-height:auto}
   .sidebar-spacer{display:none}
+  .user-app-shell .sidebar-footer{display:none !important}
+  .user-app-shell .sidebar-body{flex:none;min-height:0;overflow:visible}
   .brand-title,.brand-tagline{display:block}
-  .workspace{display:none}
   .user-app-shell .nav-section{display:none !important}
 }
 `,
@@ -382,7 +402,6 @@ export function UserDashboardTemplate() {
         <aside className="sidebar">
           <div className="sidebar-inner">
             <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><div className="brand-text"><span className="brand-title">RingBooker</span><p className="brand-tagline">User Portal</p></div></div>
-            <div className="workspace"><h3>Luxe Hair Studio</h3><p>AI Phone Agent is active. 1 number connected · Professional plan.</p></div>
             <div className="nav-section"><div className="nav-label">User Portal</div><div className="nav-list"><a className="nav-item active" href="/user"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={4} width={7} height={7} rx="1.5" /><rect x={14} y={4} width={7} height={4} rx="1.5" /><rect x={14} y={11} width={7} height={9} rx="1.5" /><rect x={3} y={14} width={7} height={6} rx="1.5" /></svg></div><span>Overview</span></a><a className="nav-item" href="/user/bookings"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span>Bookings</span></a><a className="nav-item" href="/user/calls"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span>Calls &amp; Transcripts</span></a><a className="nav-item" href="/user/settings"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1Z" /></svg></div><span>Settings</span></a><a className="nav-item" href="/user/billing"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={14} rx={2} /><path d="M3 10h18" /><path d="M7 15h4" /></svg></div><span>Billing</span></a></div></div>
             <div className="sidebar-spacer" />
           </div>

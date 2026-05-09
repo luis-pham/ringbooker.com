@@ -313,14 +313,7 @@ export function UserAccountLive() {
     <UserLayout styles={extraStyles} scripts={userDashboardScripts} scriptPrefix="user-account-live">
       <>
         <div className="app-shell user-app-shell">
-          <UserPortalSidebar
-            active="account"
-            workspaceOverride={{
-              shopName: workspace.shopName,
-              plan: workspace.plan,
-              active: workspace.active,
-            }}
-          />
+          <UserPortalSidebar active="account" />
 
           <main className="main account-page rb-account-page">
             <UserPortalTopbar

@@ -724,7 +724,7 @@ export function UserSettingsLive() {
     <UserLayout styles={userSettingsStyles} scripts={userSettingsScripts} scriptPrefix="user-settings-live">
       <>
       <div className="app-shell user-app-shell">
-        <UserPortalSidebar active="settings" workspaceOverride={{ shopName: shop.name, plan: shop.plan, active: shop.active }} />
+        <UserPortalSidebar active="settings" />
 
         <main className="main">
           <UserPortalTopbar

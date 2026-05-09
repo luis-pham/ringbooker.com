@@ -528,14 +528,7 @@ export function UserBillingLive() {
     <UserLayout styles={userBillingStyles} scripts={userBillingScripts} scriptPrefix="user-billing-live">
       <>
         <div className="app-shell user-app-shell">
-          <UserPortalSidebar
-            active="billing"
-            workspaceOverride={{
-              shopName: data?.shop?.name ?? workspace.shopName,
-              plan: data?.shop?.plan ?? workspace.plan,
-              active: data?.shop?.active ?? workspace.active,
-            }}
-          />
+          <UserPortalSidebar active="billing" />
           <main className="main billing-page">
             <UserPortalTopbar
               title="Billing"

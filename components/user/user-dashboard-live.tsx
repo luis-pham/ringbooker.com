@@ -319,10 +319,7 @@ export function UserDashboardLive() {
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
       <>
         <div className="app-shell user-app-shell">
-          <UserPortalSidebar
-            active="overview"
-            workspaceOverride={{ shopName, plan: data?.shop?.plan ?? 'starter', active: data?.shop?.active ?? true }}
-          />
+          <UserPortalSidebar active="overview" />
           <main className="main">
             {loading ? (
               <section className="card" style={{ marginBottom: 18 }}>
