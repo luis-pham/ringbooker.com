@@ -4,15 +4,20 @@ import { z } from 'zod';
 
 import { getEnv } from '@/src/backend/config/env';
 import { logger } from '@/src/backend/observability/logger';
-import type { ProviderEventsRepository } from '@/src/backend/ports/repositories';
+import type { JobsRepository, ProviderEventsRepository } from '@/src/backend/ports/repositories';
 import { incrementMetric } from '@/src/backend/observability/metrics';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { getClientIp } from '@/src/backend/security/rate-limit';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
+import { buildInternalAlertEmailPayload } from '@/src/backend/services/email/base-email-builders';
+import { renderBaseEmailHtml } from '@/src/backend/services/email/base-email-mjml';
+import { emailDefaultFrom, emailSupportAddress } from '@/src/backend/services/email/config';
+import type { EmailService } from '@/src/backend/services/email/types';
 
 const paddleEventSchema = z.object({
   event_id: z.string(),
   event_type: z.string(),
+  occurred_at: z.string().optional(),
   data: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -54,6 +59,8 @@ export async function handlePaddleWebhook(
   deps: {
     providerEventsRepository: ProviderEventsRepository;
     billingProvider?: BillingProviderAdapter;
+    jobsRepository?: JobsRepository;
+    emailService?: EmailService;
   },
 ) {
   const rawBody = await c.req.text();
@@ -102,11 +109,71 @@ export async function handlePaddleWebhook(
       return c.json({ ok: true }, 200);
     }
 
+    let syncResult: Awaited<ReturnType<BillingProviderAdapter['syncWebhookEvent']>> | null = null;
     if (deps.billingProvider?.provider === 'paddle' && event.data) {
-      await deps.billingProvider.syncWebhookEvent({
+      syncResult = await deps.billingProvider.syncWebhookEvent({
         eventType: event.event_type,
-        payload: event.data,
+        payload: {
+          ...event.data,
+          __paddle_event_id: event.event_id,
+          __paddle_event_occurred_at: event.occurred_at,
+        },
       });
+      const eventType = event.event_type.toLowerCase();
+      if (syncResult?.shopId && syncResult.subscription && deps.jobsRepository) {
+        const subscriptionId = syncResult.subscription.id;
+        if (
+          eventType.includes('payment_method.saved') &&
+          syncResult.subscription.paymentMethodStatus === 'valid' &&
+          ['trialing', 'active'].includes(syncResult.subscription.status)
+        ) {
+          await deps.jobsRepository.enqueue({
+            shopId: syncResult.shopId,
+            type: 'lifecycle_email',
+            payload: { kind: 'payment_method_added', subscriptionId },
+            runAt: new Date(),
+            idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:payment_method_added`,
+          });
+        }
+        if (
+          eventType.includes('payment_method.deleted') ||
+          eventType.includes('transaction.payment_failed') ||
+          ['subscription.canceled', 'subscription.paused', 'subscription.past_due'].some((name) => eventType.includes(name))
+        ) {
+          await deps.jobsRepository.enqueue({
+            shopId: syncResult.shopId,
+            type: 'lifecycle_email',
+            payload: {
+              kind: 'live_answering_billing_paused',
+              subscriptionId,
+              status: syncResult.subscription.status,
+            },
+            runAt: new Date(),
+            idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:live_answering_billing_paused:${syncResult.subscription.status}:${syncResult.subscription.paymentMethodStatus ?? 'unknown'}`,
+          });
+        }
+      } else if (!syncResult && deps.emailService) {
+        const { input, text } = buildInternalAlertEmailPayload({
+          title: 'Paddle webhook mapping failure',
+          summary: 'A verified Paddle webhook could not be mapped to a RingBooker shop.',
+          fields: {
+            event_id: event.event_id,
+            event_type: event.event_type,
+            provider_customer_id: typeof event.data.provider_customer_id === 'string' ? event.data.provider_customer_id : typeof event.data.customer_id === 'string' ? event.data.customer_id : null,
+            provider_subscription_id: typeof event.data.provider_subscription_id === 'string' ? event.data.provider_subscription_id : typeof event.data.subscription_id === 'string' ? event.data.subscription_id : null,
+          },
+        });
+        await deps.emailService.sendEmail({
+          to: emailSupportAddress(),
+          subject: input.title,
+          text,
+          html: await renderBaseEmailHtml(input),
+          category: 'internal_alert',
+          idempotencyKey: `internal:paddle_mapping_failure:${event.event_id}`,
+          from: emailDefaultFrom(),
+          replyTo: emailSupportAddress(),
+        }).catch((error) => logger.error({ err: error, eventId: event.event_id }, 'paddle_internal_alert_email_failed'));
+      }
     }
 
     await deps.providerEventsRepository.markProcessed({

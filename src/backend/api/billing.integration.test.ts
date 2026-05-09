@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBackendApp } from '@/src/backend/api/app';
@@ -17,6 +17,7 @@ import { PaddleBillingProvider } from '@/src/backend/adapters/paddle/billing-pro
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
+import { __resetRateLimitMemoryStoreForTests } from '@/src/backend/security/rate-limit';
 
 applyRequiredTestEnv({
   USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
@@ -24,6 +25,10 @@ applyRequiredTestEnv({
   USER_AUTH_SHOP_ID: 'demo-shop',
   ADMIN_AUTH_EMAIL: 'billing-admin@ringbooker.local',
   ADMIN_AUTH_PASSWORD: 'change_me_admin_password',
+});
+
+beforeEach(() => {
+  __resetRateLimitMemoryStoreForTests();
 });
 
 test('user billing and admin billing endpoints return normalized billing state', async () => {
@@ -192,8 +197,118 @@ test('billing checkout endpoint is hidden when BILLING_CHECKOUT_ENABLED is false
     message: 'Billing checkout is not enabled for this environment yet.',
   });
 
+  const reactivate = await app.request('/user/billing/reactivate', {
+    method: 'POST',
+    headers: {
+      cookie,
+      'content-type': 'application/json',
+      origin: 'http://localhost:3000',
+    },
+    body: JSON.stringify({}),
+  });
+  assert.equal(reactivate.status, 503);
+  assert.deepEqual(await reactivate.json(), {
+    ok: false,
+    error: 'billing_checkout_disabled',
+    message: 'Billing checkout is not enabled for this environment yet.',
+  });
+
   applyRequiredTestEnv({ BILLING_CHECKOUT_ENABLED: 'true' });
   resetEnvCacheForTests();
+});
+
+test('billing checkout rejects caller-provided return URLs and price ids', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'true',
+    PADDLE_ENV: 'sandbox',
+    USER_AUTH_EMAIL: 'billing-return-url-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Return URL Attack Salon',
+    phone_number: '+17145558001',
+    user_phone: '+17145558002',
+    timezone: 'America/Los_Angeles',
+    plan: 'starter',
+    active: true,
+  });
+
+  applyRequiredTestEnv({ USER_AUTH_SHOP_ID: shop.id });
+  resetEnvCacheForTests();
+
+  let paddleRequestCount = 0;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => {
+    paddleRequestCount += 1;
+    return new Response('{}', { status: 500 });
+  }) as typeof fetch;
+
+  try {
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      jobsRepository: new InMemoryJobsRepository(),
+      bookingsRepository: new InMemoryBookingsRepository(),
+      billingCustomersRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      callbacksRepository: new InMemoryCallbacksRepository(),
+      shopsRepository,
+      telephonyService: new NoopTelephonyService(),
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      authUsersRepository: new InMemoryAuthUsersRepository(),
+      realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+      billingProvider: new PaddleBillingProvider({
+        billingCustomersRepository,
+        billingSubscriptionsRepository,
+        shopAccessStatesRepository,
+        shopsRepository,
+      }),
+    });
+
+    const login = await app.request('/auth/user/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+      body: JSON.stringify({
+        email: 'billing-return-url-user@ringbooker.local',
+        password: 'change_me_user_password',
+      }),
+    });
+    assert.equal(login.status, 200);
+    const cookie = login.headers.get('set-cookie')?.split(';')[0];
+    assert.ok(cookie);
+
+    const checkout = await app.request('/user/billing/checkout', {
+      method: 'POST',
+      headers: {
+        cookie,
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+      },
+      body: JSON.stringify({
+        plan: 'starter',
+        billing_interval: 'monthly',
+        price_id: 'pri_attacker',
+        successUrl: 'https://evil.example/success',
+        cancelUrl: 'https://evil.example/cancel',
+      }),
+    });
+    assert.equal(checkout.status, 400);
+    assert.deepEqual(await checkout.json(), { ok: false, error: 'invalid_payload' });
+    assert.equal(paddleRequestCount, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({
+      USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
+      USER_AUTH_SHOP_ID: 'demo-shop',
+    });
+    resetEnvCacheForTests();
+  }
 });
 
 test('billing checkout creates missing internal trial and opens Paddle sandbox checkout', async () => {

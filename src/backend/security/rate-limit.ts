@@ -321,6 +321,8 @@ export const RATE_LIMIT_POLICIES = {
     blockMs: 6 * 60 * 60_000,
   },
   public_demo_status: { name: 'public_demo_status', limit: 120, windowMs: 60_000, blockMs: 5 * 60_000 },
+  user_billing_checkout: { name: 'user_billing_checkout', limit: 5, windowMs: 60 * 60_000, blockMs: 60 * 60_000 },
+  user_billing_reactivate: { name: 'user_billing_reactivate', limit: 5, windowMs: 60 * 60_000, blockMs: 60 * 60_000 },
   agent_dispatch: { name: 'agent_dispatch', limit: 120, windowMs: 60_000 },
   webhook_telnyx: { name: 'webhook_telnyx', limit: 300, windowMs: 60_000 },
   webhook_paddle: { name: 'webhook_paddle', limit: 120, windowMs: 60_000 },

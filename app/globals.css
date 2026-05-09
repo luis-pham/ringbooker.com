@@ -120,9 +120,9 @@ canvas {
 
   .user-mobile-tabbar__link--active {
     color: #5b21b6;
-    background: #f5f3ff;
+    background: transparent;
     box-shadow: none;
-    border: 1px solid #e9d5ff;
+    border: none;
   }
 
   .user-mobile-tabbar__icon {
@@ -173,8 +173,8 @@ canvas {
 
   html[data-user-theme="dark"] .user-mobile-tabbar__link--active {
     color: #58a6ff;
-    background: rgba(56, 139, 253, 0.15);
-    border-color: rgba(56, 139, 253, 0.35);
+    background: transparent;
+    border: none;
   }
 
   html[data-user-theme="dark"] .user-mobile-tabbar__icon svg {

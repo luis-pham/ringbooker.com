@@ -30,36 +30,45 @@ export async function transferToUserTool(
   const parsed = schema.safeParse(input);
   if (!parsed.success) return toToolError('Invalid transfer reason.', { code: 'VALIDATION_ERROR', retryable: false });
 
-  if (ctx.billingSubscriptionsRepository && ctx.shopAccessStatesRepository) {
-    const access = await getShopBillingAccess(
-      {
-        shopsRepository: ctx.shopsRepository,
-        billingSubscriptionsRepository: ctx.billingSubscriptionsRepository,
-        shopAccessStatesRepository: ctx.shopAccessStatesRepository,
-      },
-      { shopId: ctx.shop.id },
+  if (!ctx.billingSubscriptionsRepository || !ctx.shopAccessStatesRepository) {
+    logger.warn(
+      { event: 'live_answering_billing_blocked', shop_id: ctx.shop.id, reason: 'billing_gate_unavailable' },
+      'live_answering_billing_blocked',
     );
-    if (!access.canReceiveLiveCalls) {
-      logger.warn(
-        {
-          event: 'live_answering_billing_blocked',
-          shop_id: ctx.shop.id,
-          user_id: null,
-          billing_status: access.subscriptionStatus,
-          payment_method_status: access.paymentMethodStatus,
-          provider_subscription_id: access.providerSubscriptionId,
-          go_live_state: access.liveCallsEnabled ? 'live_enabled' : 'live_disabled',
-          reason: access.blockReason,
-          call_control_id: ctx.parentTelnyxCallControlId ?? null,
-          call_session_id: ctx.rbCallId ?? ctx.requestId,
-        },
-        'live_answering_billing_blocked',
-      );
-      return toToolError('Live transfers are unavailable right now. I can help schedule a callback instead.', {
-        code: 'TRANSFER_FAILED',
-        retryable: false,
-      });
-    }
+    return toToolError('Live transfers are unavailable right now. I can help schedule a callback instead.', {
+      code: 'TRANSFER_FAILED',
+      retryable: false,
+    });
+  }
+
+  const access = await getShopBillingAccess(
+    {
+      shopsRepository: ctx.shopsRepository,
+      billingSubscriptionsRepository: ctx.billingSubscriptionsRepository,
+      shopAccessStatesRepository: ctx.shopAccessStatesRepository,
+    },
+    { shopId: ctx.shop.id },
+  );
+  if (!access.canReceiveLiveCalls) {
+    logger.warn(
+      {
+        event: 'live_answering_billing_blocked',
+        shop_id: ctx.shop.id,
+        user_id: null,
+        billing_status: access.subscriptionStatus,
+        payment_method_status: access.paymentMethodStatus,
+        provider_subscription_id: access.providerSubscriptionId,
+        go_live_state: access.liveCallsEnabled ? 'live_enabled' : 'live_disabled',
+        reason: access.blockReason,
+        call_control_id: ctx.parentTelnyxCallControlId ?? null,
+        call_session_id: ctx.rbCallId ?? ctx.requestId,
+      },
+      'live_answering_billing_blocked',
+    );
+    return toToolError('Live transfers are unavailable right now. I can help schedule a callback instead.', {
+      code: 'TRANSFER_FAILED',
+      retryable: false,
+    });
   }
 
   try {

@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { CallForwardingSetup } from '@/components/user/call-forwarding-setup';
+import { getPhoneSetupCopy, resolvePhoneSetupState, type PhoneSetupState } from '@/components/user/go-live-phone-setup-state';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
@@ -11,58 +12,97 @@ type GoLiveBillingResponse = {
   ok: boolean;
   shop?: { id: string; name: string; plan: ShopPlan; active: boolean };
   billing?: {
-    hasPaymentMethod?: boolean;
-    liveCallsEnabled?: boolean;
-    forwardingNumber?: string | null;
-    commercialApprovalRequired?: boolean;
     checkoutAvailable?: boolean;
     checkoutDisabledReason?: string | null;
   };
   error?: string;
 };
 
+type GoLiveStatusResponse = {
+  ok: boolean;
+  businessPhone?: string | null;
+  paymentMethodStatus?: string | null;
+  subscriptionStatus?: string | null;
+  hasPaymentMethod?: boolean;
+  forwardingNumber?: string | null;
+  hasForwardingNumber?: boolean;
+  forwardingSetupVerified?: boolean;
+  forwardingSetupVerifiedAt?: string | null;
+  forwardingSetupVerifiedVia?: string | null;
+  forwardingTestStatus?: 'none' | 'pending' | 'passed' | 'expired' | 'failed';
+  forwardingTestExpiresAt?: string | null;
+  liveCallsEnabled?: boolean;
+  canGoLive?: boolean;
+  primaryCta?: string | null;
+  blockReason?: string | null;
+  commercialApprovalRequired?: boolean;
+  error?: string;
+};
+
+type PhoneSetupData = {
+  billing: GoLiveBillingResponse | null;
+  status: GoLiveStatusResponse | null;
+};
+
+function formatPhone(phone: string | null | undefined): string {
+  if (!phone?.trim()) return 'Not set';
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) {
+    const n = digits.slice(1);
+    return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
+  }
+  if (digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  return phone;
+}
+
+function checkoutUnavailableCopy(reason?: string | null): string {
+  if (reason === 'billing_checkout_disabled') return 'Payment setup is not enabled yet. Contact support when you are ready to go live.';
+  return 'Payment setup is temporarily unavailable. Contact support when you are ready to go live.';
+}
+
+function stateTone(state: PhoneSetupState): { border: string; background: string; color: string; badge: string } {
+  if (state === 'live_answering_active') return { border: '#bbf7d0', background: '#f0fdf4', color: '#166534', badge: 'Live' };
+  if (state === 'billing_issue') return { border: '#fecaca', background: '#fef2f2', color: '#991b1b', badge: 'Blocked' };
+  if (state === 'ready_to_enable_live') return { border: '#c4b5fd', background: '#faf5ff', color: '#5b21b6', badge: 'Ready' };
+  return { border: '#bfdbfe', background: '#eff6ff', color: '#1e3a8a', badge: 'Next step' };
+}
+
 /**
- * Phone forwarding / go-live steps (provision number + carrier instructions).
- * Lives under Settings — billing stays subscription-only.
+ * Phone forwarding / go-live steps: payment gate, managed forwarding number, carrier instructions, verification, enable live.
  */
 export function GoLiveForwardingPanel() {
   const { setWorkspace } = useUserWorkspace();
-  const [data, setData] = useState<GoLiveBillingResponse | null>(null);
+  const [data, setData] = useState<PhoneSetupData>({ billing: null, status: null });
   const [loading, setLoading] = useState(true);
-  const [provisionForwardingLoading, setProvisionForwardingLoading] = useState(false);
-  const [provisionForwardingError, setProvisionForwardingError] = useState<string | null>(null);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  const refreshBilling = useCallback(async () => {
+  const refresh = useCallback(async () => {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 10000);
-    let response: Response;
     try {
-      response = await fetch('/api/backend/user/billing', { signal: controller.signal });
+      const [billingResponse, statusResponse] = await Promise.all([
+        fetch('/api/backend/user/billing', { signal: controller.signal }),
+        fetch('/api/backend/user/go-live/status', { signal: controller.signal }),
+      ]);
+      const [billing, status] = await Promise.all([
+        billingResponse.json() as Promise<GoLiveBillingResponse>,
+        statusResponse.json() as Promise<GoLiveStatusResponse>,
+      ]);
+      setData({ billing, status });
+      if (billing.ok && billing.shop) {
+        setWorkspace({ shopName: billing.shop.name, plan: billing.shop.plan, active: billing.shop.active });
+      }
     } finally {
       window.clearTimeout(timeout);
-    }
-    const contentType = response.headers.get('content-type') ?? '';
-    if (!contentType.includes('application/json')) {
-      throw new Error('invalid_billing_response');
-    }
-    const body = (await response.json()) as GoLiveBillingResponse;
-    setData(body);
-    if (body.ok && body.shop) {
-      setWorkspace({
-        shopName: body.shop.name,
-        plan: body.shop.plan,
-        active: body.shop.active,
-      });
     }
   }, [setWorkspace]);
 
   useEffect(() => {
     let active = true;
-    void refreshBilling()
+    void refresh()
       .catch(() => {
-        if (active) setData({ ok: false, error: 'network_error' });
+        if (active) setData({ billing: { ok: false, error: 'network_error' }, status: { ok: false, error: 'network_error' } });
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -70,41 +110,35 @@ export function GoLiveForwardingPanel() {
     return () => {
       active = false;
     };
-  }, [refreshBilling]);
+  }, [refresh]);
 
-  async function provisionForwardingNumber() {
-    setProvisionForwardingLoading(true);
-    setProvisionForwardingError(null);
-    try {
-      const response = await fetch('/api/backend/user/phone-numbers/provision-forwarding-number', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmGoLiveIntent: true }),
-      });
-      const body = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        error?: string;
-      } | null;
-      if (!response.ok || !body?.ok) {
-        if (body?.error === 'payment_method_required') {
-          setProvisionForwardingError('Add a payment method in Billing before provisioning a forwarding number.');
-        } else if (body?.error === 'confirmation_required') {
-          setProvisionForwardingError('Confirmation failed. Please try again.');
-        } else {
-          setProvisionForwardingError(body?.error ?? 'Could not create forwarding number.');
-        }
-        return;
-      }
-      await refreshBilling();
-    } finally {
-      setProvisionForwardingLoading(false);
-    }
-  }
+  const billing = data.billing;
+  const status = data.status;
+  const checkoutAvailable = billing?.billing?.checkoutAvailable === true;
+  const forwardingNumber = status?.forwardingNumber?.trim() ?? '';
+  const businessPhone = status?.businessPhone ?? null;
+  const state = useMemo(
+    () =>
+      resolvePhoneSetupState({
+        onboardingRequired: status?.blockReason === 'onboarding_incomplete',
+        subscriptionStatus: status?.subscriptionStatus,
+        paymentMethodStatus: status?.paymentMethodStatus,
+        hasPaymentMethod: status?.hasPaymentMethod,
+        hasForwardingNumber: status?.hasForwardingNumber,
+        forwardingSetupVerified: status?.forwardingSetupVerified,
+        liveCallsEnabled: status?.liveCallsEnabled,
+        primaryCta: status?.primaryCta,
+        blockReason: status?.blockReason,
+        commercialApprovalRequired: status?.commercialApprovalRequired,
+      }),
+    [status],
+  );
+  const copy = getPhoneSetupCopy(state);
+  const tone = stateTone(state);
 
   async function openPaymentSetup() {
-    setCheckoutLoading(true);
-    setCheckoutError(null);
+    setBusyAction('checkout');
+    setMessage(null);
     try {
       const response = await fetch('/api/backend/user/billing/checkout', {
         method: 'POST',
@@ -112,124 +146,202 @@ export function GoLiveForwardingPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ billing_interval: 'monthly' }),
       });
-      const body = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        checkoutUrl?: string;
-        error?: string;
-        message?: string;
-      } | null;
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; checkoutUrl?: string; error?: string; message?: string } | null;
       if (!response.ok || !body?.ok || !body.checkoutUrl) {
-        setCheckoutError(body?.message ?? body?.error ?? 'Payment setup could not start. Open Billing or contact support.');
+        setMessage(body?.message ?? body?.error ?? 'Payment setup could not start. Open Billing or contact support.');
         return;
       }
       window.location.href = body.checkoutUrl;
     } catch {
-      setCheckoutError('Network error. Please try again or open Billing.');
+      setMessage('Network error. Please try again or open Billing.');
     } finally {
-      setCheckoutLoading(false);
+      setBusyAction(null);
     }
   }
 
-  const currentPlan = data?.shop?.plan ?? 'starter';
-  const enterpriseApprovalPending = currentPlan === 'enterprise' && data?.billing?.commercialApprovalRequired === true;
-  const hasPaymentMethod = data?.billing?.hasPaymentMethod === true;
-  const liveEnabled = data?.billing?.liveCallsEnabled;
-  const forwardingNumber = data?.billing?.forwardingNumber?.trim() ?? '';
-  const checkoutAvailable = data?.billing?.checkoutAvailable === true;
+  async function provisionForwardingNumber() {
+    setBusyAction('provision_forwarding_number');
+    setMessage(null);
+    try {
+      const response = await fetch('/api/backend/user/phone-numbers/provision-forwarding-number', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmGoLiveIntent: true }),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setMessage(body?.message ?? body?.error ?? 'Could not create your RingBooker forwarding number.');
+        return;
+      }
+      setMessage('Your RingBooker forwarding number is ready. Follow the steps below to connect your phone.');
+      await refresh();
+    } catch {
+      setMessage('Network error. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
 
-  const showProvision =
-    Boolean(data?.billing) && !liveEnabled && hasPaymentMethod && !forwardingNumber && !enterpriseApprovalPending;
-  const showForwardingReady =
-    Boolean(data?.billing) && !liveEnabled && hasPaymentMethod && Boolean(forwardingNumber) && !enterpriseApprovalPending;
+  async function startForwardingTest() {
+    setBusyAction('start_forwarding_test');
+    setMessage(null);
+    try {
+      const response = await fetch('/api/backend/user/go-live/start-forwarding-test', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string; instruction?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setMessage(body?.message ?? body?.error ?? 'Forwarding verification could not start.');
+        return;
+      }
+      setMessage(body.instruction ?? 'Call your current business number from another phone and let it forward to RingBooker.');
+      await refresh();
+    } catch {
+      setMessage('Network error. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function confirmForwardingManually() {
+    setBusyAction('confirm_forwarding');
+    setMessage(null);
+    try {
+      const response = await fetch('/api/backend/user/go-live/confirm-forwarding-setup', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmForwardingReady: true }),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setMessage(body?.message ?? body?.error ?? 'Forwarding could not be confirmed.');
+        return;
+      }
+      setMessage('Forwarding is marked verified. You can enable live answering when ready.');
+      await refresh();
+    } catch {
+      setMessage('Network error. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function enableLiveAnswering() {
+    setBusyAction('enable_live');
+    setMessage(null);
+    try {
+      const response = await fetch('/api/backend/user/go-live/enable', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setMessage(body?.message ?? body?.error ?? 'Could not enable live answering yet.');
+        return;
+      }
+      setMessage('Live answering is now active.');
+      await refresh();
+    } catch {
+      setMessage('Network error. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function requestTestCall() {
+    setBusyAction('test_call');
+    setMessage(null);
+    try {
+      const response = await fetch('/api/backend/user/test-calls/call-me', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
+      setMessage(response.ok && body?.ok ? 'Test call started. Please answer your phone.' : body?.message ?? body?.error ?? 'Could not start a test call.');
+    } catch {
+      setMessage('Network error. Please try again.');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function runAction(target: string) {
+    if (target === 'checkout') return void openPaymentSetup();
+    if (target === 'provision_forwarding_number') return void provisionForwardingNumber();
+    if (target === 'start_forwarding_test') return void startForwardingTest();
+    if (target === 'confirm_forwarding') return void confirmForwardingManually();
+    if (target === 'enable_live') return void enableLiveAnswering();
+    if (target === 'test_call') return void requestTestCall();
+  }
+
+  function renderAction(label: string, target: string, primary = false) {
+    if (target.startsWith('/') || target.startsWith('#')) {
+      return <a className={`btn${primary ? ' purple' : ''}`} href={target}>{label}</a>;
+    }
+    if (target === 'checkout' && !checkoutAvailable) {
+      return <button type="button" className="btn" disabled>{checkoutUnavailableCopy(billing?.billing?.checkoutDisabledReason)}</button>;
+    }
+    return (
+      <button type="button" className={`btn${primary ? ' purple' : ''}`} disabled={busyAction === target} onClick={() => runAction(target)}>
+        {busyAction === target ? 'Working...' : label}
+      </button>
+    );
+  }
+
+  if (!loading && (!billing?.ok || !status?.ok)) {
+    return (
+      <div className="section-stack">
+        <section className="card">
+          <h3 style={{ marginTop: 0 }}>Unable to load phone setup</h3>
+          <p className="sub">{billing?.error ?? status?.error ?? 'unknown_error'}</p>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="section-stack">
-      {!loading && !data?.ok ? (
-        <section className="card">
-          <h3 style={{ marginTop: 0 }}>Unable to load status</h3>
-          <p className="sub">{data?.error ?? 'unknown_error'}</p>
-        </section>
-      ) : null}
-
-      <section className="card">
-        <div className="panel-head">
+      <section className="card" style={{ borderColor: tone.border, background: tone.background }}>
+        <div className="panel-head" style={{ alignItems: 'flex-start', gap: 16 }}>
           <div>
-            <h3 style={{ marginTop: 0 }}>Go live on your business line</h3>
-            <p className="sub">
-              After billing is ready, RingBooker gives you a forwarding number. Your clients keep dialing your existing
-              business number — forwarding sends eligible calls to RingBooker behind the scenes.
-            </p>
+            <span className="tag" style={{ color: tone.color, borderColor: tone.border, background: '#fff' }}>{tone.badge}</span>
+            <h3 style={{ marginTop: 10 }}>{copy.title}</h3>
+            <p className="sub" style={{ color: tone.color }}>{copy.explanation}</p>
           </div>
         </div>
-        <p className="sub" style={{ marginBottom: 0 }}>
-          Payment method and plan status are managed on{' '}
-          <a href="/user/billing" style={{ fontWeight: 700 }}>
-            Billing
-          </a>
-          .
-        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginTop: 14 }}>
+          <div className="card soft" style={{ margin: 0 }}>
+            <div className="sub" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>Current business phone number</div>
+            <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, marginTop: 4 }}>{formatPhone(businessPhone)}</div>
+          </div>
+          <div className="card soft" style={{ margin: 0 }}>
+            <div className="sub" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>RingBooker forwarding number</div>
+            <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, marginTop: 4 }}>{forwardingNumber || 'Created after payment method'}</div>
+          </div>
+        </div>
+        {copy.blockingReason ? <p className="sub" style={{ marginTop: 12, color: '#92400e' }}>{copy.blockingReason}</p> : null}
+        {message ? <p className="sub" style={{ marginTop: 12, color: message.includes('error') ? '#b91c1c' : '#1e3a8a' }}>{message}</p> : null}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+          {renderAction(copy.primaryLabel, copy.primaryTarget, true)}
+          {copy.secondaryLabel && copy.secondaryTarget ? renderAction(copy.secondaryLabel, copy.secondaryTarget) : null}
+        </div>
       </section>
 
-      {showProvision ? (
-        <section className="card" id="go-live-forwarding">
-          <h3 style={{ marginTop: 0 }}>Set up call forwarding</h3>
-          <p className="sub">
-            RingBooker will create a forwarding number used only behind the scenes. Your customers will keep calling your
-            current business number.
-          </p>
-          <button
-            type="button"
-            className="btn purple"
-            disabled={provisionForwardingLoading}
-            onClick={() => void provisionForwardingNumber()}
-          >
-            {provisionForwardingLoading ? 'Setting up your forwarding number...' : 'Set up call forwarding'}
-          </button>
-          {provisionForwardingError ? (
-            <p className="sub" style={{ color: '#b45309', marginTop: 12 }}>
-              {provisionForwardingError}{' '}
-              <a href="/user/billing">Open Billing</a>
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
-      {showForwardingReady ? (
-        <section className="card">
-          <h3 style={{ marginTop: 0 }}>Your RingBooker forwarding number is ready</h3>
-          <p className="sub">
-            Forward missed, busy, overflow, or after-hours calls from your current business number to this RingBooker
-            forwarding number.
-          </p>
-          <div
-            style={{
-              border: '1px solid #bfdbfe',
-              background: '#eff6ff',
-              borderRadius: 12,
-              padding: 12,
-              marginTop: 10,
-              fontSize: 14,
-              color: '#1e3a5f',
-              lineHeight: 1.5,
-            }}
-          >
-            Your customers keep calling your current business number. This forwarding number is used only behind the scenes.
-          </div>
-          <p className="sub" style={{ marginTop: 14 }}>
-            <strong>RingBooker forwarding number:</strong>{' '}
-            <span style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}>{forwardingNumber}</span>
-          </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12, alignItems: 'center' }}>
-            <button type="button" className="btn" disabled title="Forwarding verification is coming next. Live answering stays off.">
-              I&apos;ve set up forwarding
-            </button>
-            <a href="/contact" style={{ fontWeight: 600 }}>
-              Need help? Contact support
-            </a>
-          </div>
-          <p className="sub" style={{ marginTop: 8, marginBottom: 16 }}>
-            We&apos;ll verify forwarding in a later step — RingBooker won&apos;t enable live answering yet.
-          </p>
+      <section className="card" id="forwarding-instructions">
+        <h3 style={{ marginTop: 0 }}>Connect your phone</h3>
+        <p className="sub">
+          Your clients keep calling your current business phone number. Your carrier forwards missed, busy, after-hours, or overflow calls to RingBooker behind the scenes.
+        </p>
+        {forwardingNumber ? (
           <CallForwardingSetup
             ringbookerNumber={forwardingNumber}
             callForwardingPageUrl="/current-number/call-forwarding"
@@ -238,65 +350,24 @@ export function GoLiveForwardingPanel() {
             onComplete={() => {}}
             onSkip={() => {}}
           />
-        </section>
-      ) : null}
+        ) : (
+          <div className="card soft" style={{ margin: 0 }}>
+            <p className="sub" style={{ margin: 0 }}>
+              Add a valid payment method first. Then RingBooker will create your managed forwarding number and show carrier-specific forwarding steps here.
+            </p>
+          </div>
+        )}
+      </section>
 
-      {!showProvision && !showForwardingReady ? (
+      {state === 'live_answering_active' ? (
         <section className="card soft">
-          <h3 style={{ marginTop: 0 }}>Forwarding status</h3>
-          {liveEnabled ? (
-            <p className="sub" style={{ marginBottom: 0 }}>
-              Live answering is enabled. Call forwarding is configured for your account; contact support if you need to change
-              routing.
-            </p>
-          ) : enterpriseApprovalPending ? (
-            <p className="sub" style={{ marginBottom: 0 }}>
-              Custom plans coordinate forwarding and go-live with your RingBooker contact. See{' '}
-              <a href="/user/billing" style={{ fontWeight: 700 }}>
-                Billing
-              </a>{' '}
-              for implementation links.
-            </p>
-          ) : !hasPaymentMethod ? (
-            <>
-              <p className="sub">
-                Add a payment method to unlock forwarding number provisioning. Setup and test calls still work without a card;
-                live answering starts only after billing, forwarding, and verification are complete.
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-                {checkoutAvailable ? (
-                  <button
-                    type="button"
-                    className="btn user-save"
-                    disabled={checkoutLoading}
-                    onClick={() => void openPaymentSetup()}
-                  >
-                    {checkoutLoading ? 'Starting checkout…' : 'Add payment method'}
-                  </button>
-                ) : (
-                  <button type="button" className="btn" disabled>
-                    Payment setup unavailable
-                  </button>
-                )}
-                <a className="btn" href="/user/billing">
-                  View billing
-                </a>
-              </div>
-              {checkoutError ? (
-                <p className="sub" style={{ color: '#b45309', marginTop: 10 }}>
-                  {checkoutError}
-                </p>
-              ) : !checkoutAvailable ? (
-                <p className="sub" style={{ color: '#b45309', marginTop: 10 }}>
-                  Payment setup is temporarily unavailable. Contact support if you are ready to go live.
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <p className="sub" style={{ marginBottom: 0 }}>
-              When your account is ready for go-live, provisioning and forwarding instructions will appear here automatically.
-            </p>
-          )}
+          <h3 style={{ marginTop: 0 }}>Live answering controls</h3>
+          <p className="sub">Use test calls to confirm the experience. If you need to pause live answering, contact support until self-serve pause is available.</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {renderAction('Run a test call', 'test_call')}
+            <a className="btn" href="/user/calls">View call logs</a>
+            <a className="btn" href="/contact?topic=pause-live-answering">Pause live answering</a>
+          </div>
         </section>
       ) : null}
     </div>

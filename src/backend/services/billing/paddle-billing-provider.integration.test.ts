@@ -576,3 +576,205 @@ test('paddle transaction and payment method events update entitlement-relevant s
   });
   assert.equal(deleted?.subscription?.paymentMethodStatus, 'failed');
 });
+
+test('paddle payment method events resolve subscription by customer id when shop id is absent', async () => {
+  const { provider, shopsRepository, billingCustomersRepository, billingSubscriptionsRepository, shopAccessStatesRepository } = buildProvider();
+  const shop = await shopsRepository.create({
+    name: 'Customer Only Payment Salon',
+    phone_number: '+15550101010',
+    user_phone: '+15550101011',
+    user_name: 'Customer Owner',
+    timezone: 'America/New_York',
+    plan: 'starter',
+    active: true,
+  });
+  await billingCustomersRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_customer_only',
+    email: 'customer-only@example.com',
+  });
+  const subscription = await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'paddle',
+    providerSubscriptionId: 'sub_customer_only',
+    providerCustomerId: 'ctm_customer_only',
+    plan: 'starter',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    paymentMethodStatus: 'none',
+  });
+
+  const saved = await provider.syncWebhookEvent({
+    eventType: 'payment_method.saved',
+    payload: {
+      id: 'pm_customer_only_saved',
+      customer_id: 'ctm_customer_only',
+      occurred_at: '2026-05-10T10:00:00Z',
+    },
+  });
+  assert.equal(saved?.shopId, shop.id);
+  assert.equal(saved?.subscription?.id, subscription.id);
+  assert.equal(saved?.subscription?.paymentMethodStatus, 'valid');
+
+  await shopsRepository.updateUserSettings(shop.id, {
+    telnyx_number: '+15550101012',
+    vertical: 'nail_salon',
+    hours: { mon: { open: '09:00', close: '17:00' } },
+    services: [{ name: 'Gel manicure', duration_min: 45, price: 55 }],
+    current_onboarding_step: 4,
+  });
+  await shopAccessStatesRepository.upsert({
+    shopId: shop.id,
+    liveCallsEnabled: true,
+    forwardingSetupVerifiedAt: '2026-05-10T10:00:00Z',
+    forwardingSetupVerifiedVia: 'forwarding_test',
+  });
+
+  const deleted = await provider.syncWebhookEvent({
+    eventType: 'payment_method.deleted',
+    payload: {
+      id: 'pm_customer_only_deleted',
+      customer_id: 'ctm_customer_only',
+      occurred_at: '2026-05-10T11:00:00Z',
+    },
+  });
+  assert.equal(deleted?.subscription?.paymentMethodStatus, 'failed');
+  const access = await getShopBillingAccess(
+    { shopsRepository, billingSubscriptionsRepository, shopAccessStatesRepository },
+    { shopId: shop.id, now: new Date('2026-05-10T12:00:00Z') },
+  );
+  assert.equal(access.canReceiveLiveCalls, false);
+  assert.equal(access.blockReason, 'payment_method_required');
+});
+
+test('paddle webhook rejects customer and subscription ownership conflicts without mutation', async () => {
+  const { provider, shopsRepository, billingCustomersRepository, billingSubscriptionsRepository } = buildProvider();
+  const ownerShop = await shopsRepository.create({
+    name: 'Paddle Owner Shop',
+    phone_number: '+15550202020',
+    user_phone: '+15550202021',
+    timezone: 'America/New_York',
+    plan: 'starter',
+    active: true,
+  });
+  const attackerShop = await shopsRepository.create({
+    name: 'Paddle Attacker Shop',
+    phone_number: '+15550202022',
+    user_phone: '+15550202023',
+    timezone: 'America/New_York',
+    plan: 'starter',
+    active: true,
+  });
+  await billingCustomersRepository.upsert({
+    shopId: ownerShop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_owned_elsewhere',
+    email: 'owner@example.com',
+  });
+  const ownedSub = await billingSubscriptionsRepository.upsert({
+    shopId: ownerShop.id,
+    provider: 'paddle',
+    providerSubscriptionId: 'sub_owned_elsewhere',
+    providerCustomerId: 'ctm_owned_elsewhere',
+    plan: 'starter',
+    status: 'canceled',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    paymentMethodStatus: 'failed',
+  });
+
+  const customerConflict = await provider.syncWebhookEvent({
+    eventType: 'payment_method.saved',
+    payload: {
+      id: 'pm_conflict_customer',
+      customer_id: 'ctm_owned_elsewhere',
+      custom_data: { shop_id: attackerShop.id },
+      occurred_at: '2026-05-11T10:00:00Z',
+    },
+  });
+  assert.equal(customerConflict, null);
+  assert.equal((await billingCustomersRepository.findByProviderCustomerId('paddle', 'ctm_owned_elsewhere'))?.shopId, ownerShop.id);
+
+  const subscriptionConflict = await provider.syncWebhookEvent({
+    eventType: 'subscription.updated',
+    payload: {
+      id: 'sub_owned_elsewhere',
+      status: 'active',
+      customer_id: 'ctm_owned_elsewhere',
+      custom_data: { shop_id: attackerShop.id },
+      payment_method_id: 'pm_conflict_subscription',
+      items: [{ price: { id: process.env.PADDLE_PRICE_STARTER_MONTHLY } }],
+      unit_totals: { total: '7900' },
+      occurred_at: '2026-05-11T11:00:00Z',
+    },
+  });
+  assert.equal(subscriptionConflict, null);
+  const unchanged = await billingSubscriptionsRepository.findById(ownedSub.id);
+  assert.equal(unchanged?.shopId, ownerShop.id);
+  assert.equal(unchanged?.status, 'canceled');
+  assert.equal(unchanged?.paymentMethodStatus, 'failed');
+});
+
+test('paddle stale subscription event cannot re-enable after newer canceled event', async () => {
+  const { provider, shopsRepository, billingSubscriptionsRepository, shopAccessStatesRepository } = buildProvider();
+  await shopsRepository.updateUserSettings('demo-shop', {
+    telnyx_number: '+15550303030',
+    phone_number: '+15550303031',
+    user_phone: '+15550303032',
+    user_name: 'Stale Event Owner',
+    timezone: 'America/New_York',
+    vertical: 'nail_salon',
+    hours: { mon: { open: '09:00', close: '17:00' } },
+    services: [{ name: 'Pedicure', duration_min: 45, price: 45 }],
+    current_onboarding_step: 4,
+  });
+  await shopAccessStatesRepository.upsert({
+    shopId: 'demo-shop',
+    liveCallsEnabled: true,
+    forwardingSetupVerifiedAt: '2026-05-04T00:00:00Z',
+    forwardingSetupVerifiedVia: 'forwarding_test',
+  });
+
+  const canceled = await provider.syncWebhookEvent({
+    eventType: 'subscription.canceled',
+    payload: {
+      id: 'sub_stale_guard',
+      status: 'canceled',
+      customer_id: 'ctm_stale_guard',
+      custom_data: { shop_id: 'demo-shop' },
+      items: [{ price: { id: process.env.PADDLE_PRICE_STARTER_MONTHLY } }],
+      unit_totals: { total: '7900' },
+      occurred_at: '2026-05-12T12:00:00Z',
+    },
+  });
+  assert.equal(canceled?.subscription?.status, 'canceled');
+
+  const staleActive = await provider.syncWebhookEvent({
+    eventType: 'subscription.updated',
+    payload: {
+      id: 'sub_stale_guard',
+      status: 'active',
+      payment_method_id: 'pm_stale_guard',
+      customer_id: 'ctm_stale_guard',
+      custom_data: { shop_id: 'demo-shop' },
+      items: [{ price: { id: process.env.PADDLE_PRICE_STARTER_MONTHLY } }],
+      unit_totals: { total: '7900' },
+      occurred_at: '2026-05-12T11:00:00Z',
+    },
+  });
+  assert.equal(staleActive?.subscription?.status, 'canceled');
+  const subscription = await billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', 'sub_stale_guard');
+  assert.equal(subscription?.status, 'canceled');
+
+  const access = await getShopBillingAccess(
+    { shopsRepository, billingSubscriptionsRepository, shopAccessStatesRepository },
+    { shopId: 'demo-shop', now: new Date('2026-05-12T13:00:00Z') },
+  );
+  assert.equal(access.canReceiveLiveCalls, false);
+});

@@ -106,6 +106,66 @@ function extractShopId(data: Record<string, unknown> | undefined): string | null
   return null;
 }
 
+function extractPaddleEventTimestamp(data: Record<string, unknown> | undefined): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const candidates = [
+    data.__paddle_event_occurred_at,
+    data.occurred_at,
+    data.updated_at,
+    data.created_at,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string' || !candidate.trim()) continue;
+    const timestamp = Date.parse(candidate);
+    if (Number.isFinite(timestamp)) return new Date(timestamp).toISOString();
+  }
+  return null;
+}
+
+function latestPaddleEventTimestamp(subscription: BillingSubscription | null | undefined): string | null {
+  const value = subscription?.metadata?.latest_paddle_event_at;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function isStalePaddleEvent(subscription: BillingSubscription | null | undefined, eventTimestamp: string | null): boolean {
+  if (!subscription || !eventTimestamp) return false;
+  const latestTimestamp = latestPaddleEventTimestamp(subscription);
+  if (!latestTimestamp) return false;
+  const eventMs = Date.parse(eventTimestamp);
+  const latestMs = Date.parse(latestTimestamp);
+  return Number.isFinite(eventMs) && Number.isFinite(latestMs) && eventMs < latestMs;
+}
+
+function logPaddleOwnershipConflict(params: {
+  reason: string;
+  payloadShopId: string | null;
+  resolvedShopId: string | null;
+  providerCustomerId: string | null;
+  existingCustomerShopId?: string | null;
+  providerSubscriptionId: string | null;
+  existingSubscriptionShopId?: string | null;
+  internalSubscriptionId?: string | null;
+  internalSubscriptionShopId?: string | null;
+  eventType: string;
+}) {
+  logger.error(
+    {
+      event: 'paddle_webhook_ownership_conflict',
+      reason: params.reason,
+      payload_shop_id: params.payloadShopId,
+      resolved_shop_id: params.resolvedShopId,
+      provider_customer_id: params.providerCustomerId,
+      existing_customer_shop_id: params.existingCustomerShopId ?? null,
+      provider_subscription_id: params.providerSubscriptionId,
+      existing_subscription_shop_id: params.existingSubscriptionShopId ?? null,
+      internal_subscription_id: params.internalSubscriptionId ?? null,
+      internal_subscription_shop_id: params.internalSubscriptionShopId ?? null,
+      event_type: params.eventType,
+    },
+    'paddle_webhook_ownership_conflict',
+  );
+}
+
 function extractProviderCustomerId(eventType: string, data: Record<string, unknown> | undefined): string | null {
   if (!data || typeof data !== 'object') return null;
   const candidates = [
@@ -391,13 +451,62 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     eventType: string;
     payload: Record<string, unknown>;
   }): Promise<BillingWebhookSyncResult | null> {
-    const shopId = extractShopId(params.payload);
+    const payloadShopId = extractShopId(params.payload);
+    const providerCustomerId = extractProviderCustomerId(params.eventType, params.payload);
+    const providerSubscriptionId = extractProviderSubscriptionId(params.eventType, params.payload);
+    const existingCustomer = providerCustomerId
+      ? await this.deps.billingCustomersRepository.findByProviderCustomerId('paddle', providerCustomerId)
+      : null;
+    const existingProviderSubscription = providerSubscriptionId
+      ? await this.deps.billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', providerSubscriptionId)
+      : null;
+
+    let shopId = payloadShopId ?? existingProviderSubscription?.shopId ?? existingCustomer?.shopId ?? null;
+    if (payloadShopId && existingCustomer && existingCustomer.shopId !== payloadShopId) {
+      logPaddleOwnershipConflict({
+        reason: 'customer_shop_mismatch',
+        payloadShopId,
+        resolvedShopId: shopId,
+        providerCustomerId,
+        existingCustomerShopId: existingCustomer.shopId,
+        providerSubscriptionId,
+        existingSubscriptionShopId: existingProviderSubscription?.shopId,
+        eventType: params.eventType,
+      });
+      return null;
+    }
+    if (payloadShopId && existingProviderSubscription && existingProviderSubscription.shopId !== payloadShopId) {
+      logPaddleOwnershipConflict({
+        reason: 'subscription_shop_mismatch',
+        payloadShopId,
+        resolvedShopId: shopId,
+        providerCustomerId,
+        existingCustomerShopId: existingCustomer?.shopId,
+        providerSubscriptionId,
+        existingSubscriptionShopId: existingProviderSubscription.shopId,
+        eventType: params.eventType,
+      });
+      return null;
+    }
+    if (existingCustomer && existingProviderSubscription && existingCustomer.shopId !== existingProviderSubscription.shopId) {
+      logPaddleOwnershipConflict({
+        reason: 'customer_subscription_shop_mismatch',
+        payloadShopId,
+        resolvedShopId: shopId,
+        providerCustomerId,
+        existingCustomerShopId: existingCustomer.shopId,
+        providerSubscriptionId,
+        existingSubscriptionShopId: existingProviderSubscription.shopId,
+        eventType: params.eventType,
+      });
+      return null;
+    }
+    shopId = shopId?.trim() || null;
     if (!shopId) return null;
 
     const shop = await this.deps.shopsRepository.findById(shopId);
     if (!shop) return null;
 
-    const providerCustomerId = extractProviderCustomerId(params.eventType, params.payload);
     const customerEmail = extractCustomerEmail(params.payload);
     let customer: BillingCustomer | null = null;
     if (providerCustomerId) {
@@ -410,19 +519,31 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     }
 
     const internalSubscriptionId = extractInternalSubscriptionId(params.payload);
-    const providerSubscriptionId = extractProviderSubscriptionId(params.eventType, params.payload);
-    const existingProviderSubscription = providerSubscriptionId
-      ? await this.deps.billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', providerSubscriptionId)
-      : null;
     const explicitInternalSubscription = internalSubscriptionId
       ? await this.deps.billingSubscriptionsRepository.findById(internalSubscriptionId)
       : null;
+    if (explicitInternalSubscription && explicitInternalSubscription.shopId !== shopId) {
+      logPaddleOwnershipConflict({
+        reason: 'internal_subscription_shop_mismatch',
+        payloadShopId,
+        resolvedShopId: shopId,
+        providerCustomerId,
+        existingCustomerShopId: existingCustomer?.shopId,
+        providerSubscriptionId,
+        existingSubscriptionShopId: existingProviderSubscription?.shopId,
+        internalSubscriptionId,
+        internalSubscriptionShopId: explicitInternalSubscription.shopId,
+        eventType: params.eventType,
+      });
+      return null;
+    }
     const currentInternalSubscription = !explicitInternalSubscription && !existingProviderSubscription
       ? await this.deps.billingSubscriptionsRepository.findCurrentByShopId(shopId, 'internal')
       : null;
     const internalSubscription =
       explicitInternalSubscription ?? (currentInternalSubscription?.status === 'trialing' ? currentInternalSubscription : null);
     let subscription: BillingSubscription | null = null;
+    const eventTimestamp = extractPaddleEventTimestamp(params.payload);
     if (providerSubscriptionId || internalSubscription) {
       const mappedPlan = mapPaddlePriceToPlan(params.payload) ?? shop.plan;
       const mappedStatus = mapPaddleStatus(params.eventType, params.payload);
@@ -432,6 +553,28 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
           shopId,
           customer,
           subscription: internalSubscription ?? existingProviderSubscription ?? null,
+          shopPlanChanged: false,
+        };
+      }
+      const staleTarget = existingProviderSubscription ?? internalSubscription ?? null;
+      if (isStalePaddleEvent(staleTarget, eventTimestamp)) {
+        logger.warn(
+          {
+            event: 'paddle_webhook_stale_event_ignored',
+            event_type: params.eventType,
+            shop_id: shopId,
+            provider_customer_id: providerCustomerId,
+            provider_subscription_id: providerSubscriptionId,
+            event_at: eventTimestamp,
+            latest_event_at: latestPaddleEventTimestamp(staleTarget),
+          },
+          'paddle_webhook_stale_event_ignored',
+        );
+        return {
+          provider: 'paddle',
+          shopId,
+          customer,
+          subscription: staleTarget,
           shopPlanChanged: false,
         };
       }
@@ -451,7 +594,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       const subscriptionPatch = {
         provider: 'paddle' as const,
         providerSubscriptionId: providerSubscriptionId ?? internalSubscription?.providerSubscriptionId ?? null,
-        providerCustomerId,
+        providerCustomerId: providerCustomerId ?? existingProviderSubscription?.providerCustomerId ?? internalSubscription?.providerCustomerId ?? null,
         providerPriceId,
         providerProductId: null,
         plan: mappedPlan,
@@ -473,6 +616,8 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         metadata: {
           ...params.payload,
           internal_subscription_id: internalSubscriptionId,
+          latest_paddle_event_at: eventTimestamp ?? existingProviderSubscription?.metadata?.latest_paddle_event_at ?? internalSubscription?.metadata?.latest_paddle_event_at,
+          latest_paddle_event_type: params.eventType,
         },
       };
       subscription = internalSubscription
@@ -512,6 +657,27 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     if (eventType.includes('payment_method.saved') || eventType.includes('payment_method.deleted') || eventType.includes('transaction.payment_failed')) {
       const current = await this.deps.billingSubscriptionsRepository.findCurrentByShopId(shopId);
       if (current) {
+        if (isStalePaddleEvent(current, eventTimestamp)) {
+          logger.warn(
+            {
+              event: 'paddle_webhook_stale_event_ignored',
+              event_type: params.eventType,
+              shop_id: shopId,
+              provider_customer_id: providerCustomerId,
+              provider_subscription_id: current.providerSubscriptionId,
+              event_at: eventTimestamp,
+              latest_event_at: latestPaddleEventTimestamp(current),
+            },
+            'paddle_webhook_stale_event_ignored',
+          );
+          return {
+            provider: 'paddle',
+            shopId,
+            customer,
+            subscription: current,
+            shopPlanChanged: false,
+          };
+        }
         const paymentMethodStatus: BillingSubscription['paymentMethodStatus'] =
           eventType.includes('payment_method.saved')
             ? 'valid'
@@ -519,12 +685,16 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
               ? 'failed'
               : current.paymentMethodStatus;
         const subscription = await this.deps.billingSubscriptionsRepository.updateById(current.id, {
+          provider: 'paddle',
+          providerCustomerId: providerCustomerId ?? current.providerCustomerId ?? null,
           paymentMethodStatus,
           paymentMethodAddedAt: paymentMethodStatus === 'valid' ? new Date().toISOString() : current.paymentMethodAddedAt ?? null,
           metadata: {
             ...(current.metadata ?? {}),
             last_paddle_event_type: params.eventType,
             last_paddle_event_payload: params.payload,
+            latest_paddle_event_at: eventTimestamp ?? current.metadata?.latest_paddle_event_at,
+            latest_paddle_event_type: params.eventType,
           },
         });
         return {

@@ -24,8 +24,8 @@ export function UserGoLiveLive() {
 
           <main className="main">
             <UserPortalTopbar
-              title="Go live"
-              subtitle="Forwarding number, carrier setup, verification, and live answering."
+              title="Connect Phone"
+              subtitle="Current business number, RingBooker forwarding number, verification, and live answering."
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />

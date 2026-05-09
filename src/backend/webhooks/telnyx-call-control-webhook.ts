@@ -408,6 +408,7 @@ async function processCallInitiated(
       billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
       shopAccessStatesRepository: deps.shopAccessStatesRepository,
       forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
+      jobsRepository: deps.jobsRepository,
     });
 
     const arch = inboundArchitectureLogFields();

@@ -17,7 +17,7 @@ function ensureAbsoluteBaseUrl(appBaseUrl: string): string {
 
 function paymentMethodTrialCopy(paddleTrialConfigVerified?: boolean): string {
   return paddleTrialConfigVerified
-    ? "A payment method is required before live answering. You won't be charged until your trial ends."
+    ? "A payment method is required before live answering on your business number. You won't be charged until your trial ends."
     : 'No card is needed for setup and test calls. A payment method is required before RingBooker answers real callers on your business number.';
 }
 
@@ -37,15 +37,15 @@ export function buildWelcomeSignupEmailPayload(params: {
     : '14 days from signup';
 
   const input: BaseEmailInput = {
-    title: 'Welcome to RingBooker — your 14-day trial has started',
-    previewText: 'Complete onboarding to set up your AI receptionist — no card needed for setup and tests.',
-    heroTitle: 'Your RingBooker trial has started',
+    title: 'Welcome to RingBooker — finish your AI receptionist setup',
+    previewText: 'Set up and test RingBooker without changing your current business number.',
+    heroTitle: 'Welcome to RingBooker',
     heroSubtitleHtml: `<p style="margin:0">Your account for <strong>${businessName}</strong> is ready. Your trial ends on <strong>${escapeHtmlText(trialEndText)}</strong>.</p>`,
     greetingHtml: `<p style="margin:0">Hi ${customerName},</p>`,
     bodyHtml: [
-      `<p style="margin:0 0 12px 0">Welcome to RingBooker — your account for <strong>${businessName}</strong> is ready.</p>`,
-      `<p style="margin:0 0 12px 0">Your AI receptionist setup has been created. Next, review your business details, services, and hours so RingBooker can answer questions the way you want.</p>`,
-      `<p style="margin:0">No card is needed for setup and test calls. Most businesses can finish onboarding in a few minutes.</p>`,
+      `<p style="margin:0 0 12px 0">RingBooker helps answer missed, busy, and after-hours calls for <strong>${businessName}</strong>.</p>`,
+      '<p style="margin:0 0 12px 0">You keep your current business number. During setup, you can review your business details, services, hours, and call handling preferences before RingBooker answers real callers.</p>',
+      '<p style="margin:0">No card is needed for setup and test calls. Live answering is not active yet.</p>',
     ].join(''),
     ctaLabel: 'Complete onboarding',
     ctaUrl: onboardingUrl,
@@ -57,7 +57,11 @@ export function buildWelcomeSignupEmailPayload(params: {
     `Hi ${displayNameFromEmail(params.email)},`,
     '',
     `Welcome to RingBooker. Your account for "${params.shopName}" is ready.`,
-    `Your 14-day trial ends on ${trialEndText}.`,
+    `Your trial ends on ${trialEndText}.`,
+    '',
+    'RingBooker helps answer missed, busy, and after-hours calls.',
+    'You keep your current business number. No card is needed for setup and test calls.',
+    'Live answering is not active yet.',
     '',
     'Next step: complete onboarding to finish your setup.',
     `Dashboard: ${dashboardUrl}`,
@@ -98,7 +102,10 @@ export function buildTrialReminderEmailPayload(params: {
     heroTitle: `Trial ends in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}`,
     heroSubtitleHtml: `<p style="margin:0">Your trial for <strong>${businessName}</strong> ends on <strong>${escapeHtmlText(trialEndText)}</strong>.</p>`,
     greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
-    bodyHtml: `<p style="margin:0 0 12px 0">${escapeHtmlText(trialPaymentCopy)}</p>`,
+    bodyHtml: [
+      `<p style="margin:0 0 12px 0">${escapeHtmlText(trialPaymentCopy)}</p>`,
+      '<p style="margin:0">Live answering only starts after billing is valid and phone forwarding is connected.</p>',
+    ].join(''),
     ctaLabel: 'Add payment method',
     ctaUrl: billingUrl,
     signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
@@ -106,6 +113,7 @@ export function buildTrialReminderEmailPayload(params: {
   const text = [
     `Your RingBooker trial for "${params.shopName}" ends in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'} (${trialEndText}).`,
     trialPaymentCopy,
+    'Live answering only starts after billing is valid and phone forwarding is connected.',
     `Add payment method: ${billingUrl}`,
   ].join('\n');
   return { input, text };
@@ -121,20 +129,22 @@ export function buildTrialEndedEmailPayload(params: {
   const businessName = escapeHtmlText(params.shopName);
   const input: BaseEmailInput = {
     title: 'Your RingBooker trial has ended',
-    previewText: 'RingBooker is paused and no longer answering live calls.',
+    previewText: 'Live answering is paused until billing is resolved.',
     heroTitle: 'Your trial has ended',
     heroSubtitleHtml: `<p style="margin:0">RingBooker is paused for <strong>${businessName}</strong>.</p>`,
     greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
-    bodyHtml:
-      '<p style="margin:0 0 12px 0">RingBooker is paused and no longer answering live calls. You can still log in, review your setup, and add a payment method to reactivate.</p>',
-    ctaLabel: 'Reactivate RingBooker',
+    bodyHtml: [
+      '<p style="margin:0 0 12px 0">Your trial has ended. Live answering is paused until billing is resolved.</p>',
+      '<p style="margin:0">You can still log in, review your setup, call logs, and phone setup details.</p>',
+    ].join(''),
+    ctaLabel: 'Manage billing',
     ctaUrl: billingUrl,
     signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
   };
   const text = [
     `Your RingBooker trial for "${params.shopName}" has ended.`,
-    'RingBooker is paused and no longer answering live calls.',
-    `Reactivate: ${billingUrl}`,
+    'Live answering is paused until billing is resolved.',
+    `Manage billing: ${billingUrl}`,
   ].join('\n');
   return { input, text };
 }
@@ -247,4 +257,298 @@ export function buildPasswordResetEmailPayload(params: {
   ].join('\n');
 
   return { input, text };
+}
+
+export function buildFinishOnboardingReminderEmailPayload(params: {
+  email: string;
+  shopName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const onboardingUrl = `${base}/user/onboarding`;
+  const businessName = escapeHtmlText(params.shopName);
+  const name = escapeHtmlText(displayNameFromEmail(params.email));
+  const input: BaseEmailInput = {
+    title: 'Finish setting up your RingBooker account',
+    previewText: 'Complete your setup before RingBooker answers real callers.',
+    heroTitle: 'Finish your RingBooker setup',
+    heroSubtitleHtml: `<p style="margin:0">Your account for <strong>${businessName}</strong> is waiting for a few setup details.</p>`,
+    greetingHtml: `<p style="margin:0">Hi ${name},</p>`,
+    bodyHtml: [
+      '<p style="margin:0 0 12px 0">Finish onboarding by reviewing your business info, services, hours, and call handling preferences.</p>',
+      '<p style="margin:0">No card is needed for setup and test calls. Live answering is not active yet.</p>',
+    ].join(''),
+    ctaLabel: 'Continue setup',
+    ctaUrl: onboardingUrl,
+    signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
+  };
+  const text = [
+    `Hi ${displayNameFromEmail(params.email)},`,
+    '',
+    `Finish setting up RingBooker for "${params.shopName}".`,
+    'No card is needed for setup and test calls.',
+    'Live answering is not active yet.',
+    '',
+    `Continue setup: ${onboardingUrl}`,
+    '',
+    'Thanks,',
+    'Luis Pham',
+    'RingBooker',
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildAddPaymentMethodGoLiveEmailPayload(params: {
+  email: string;
+  shopName: string;
+  appBaseUrl: string;
+  paddleTrialConfigVerified?: boolean;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const billingUrl = `${base}/user/billing`;
+  const trialCopy = paymentMethodTrialCopy(params.paddleTrialConfigVerified);
+  const input: BaseEmailInput = {
+    title: 'Add a payment method to go live',
+    previewText: 'Payment method required before live answering on your business number.',
+    heroTitle: 'Add a payment method to go live',
+    heroSubtitleHtml: `<p style="margin:0">RingBooker setup for <strong>${escapeHtmlText(params.shopName)}</strong> can continue without a card.</p>`,
+    greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
+    bodyHtml: [
+      `<p style="margin:0 0 12px 0">${escapeHtmlText(trialCopy)}</p>`,
+      '<p style="margin:0 0 12px 0">You keep your current business number. After payment is verified, RingBooker will create a forwarding number and guide you through forwarding missed or after-hours calls.</p>',
+      '<p style="margin:0">Live answering is not active yet.</p>',
+    ].join(''),
+    ctaLabel: 'Add payment method',
+    ctaUrl: billingUrl,
+    signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
+  };
+  const text = [
+    `RingBooker setup for "${params.shopName}" is ready for the next step.`,
+    trialCopy,
+    'You keep your current business number.',
+    'After payment is verified, RingBooker will create a forwarding number and guide you through forwarding missed or after-hours calls.',
+    'Live answering is not active yet.',
+    `Add payment method: ${billingUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildPaymentMethodAddedEmailPayload(params: {
+  shopName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const phoneSetupUrl = `${base}/user/go-live`;
+  const input: BaseEmailInput = {
+    title: 'Payment method verified',
+    previewText: 'Continue phone setup to connect your business number.',
+    heroTitle: 'Payment method verified',
+    heroSubtitleHtml: `<p style="margin:0">Billing is ready for <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
+    bodyHtml: [
+      '<p style="margin:0 0 12px 0">Your payment method is saved. Live answering is still off until phone setup is complete.</p>',
+      '<p style="margin:0">Next, create your RingBooker forwarding number and connect your current business phone number.</p>',
+    ].join(''),
+    ctaLabel: 'Continue phone setup',
+    ctaUrl: phoneSetupUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
+  };
+  const text = [
+    `Payment method verified for "${params.shopName}".`,
+    'Live answering is still off until phone setup is complete.',
+    'Continue phone setup to create your RingBooker forwarding number.',
+    phoneSetupUrl,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildForwardingNumberReadyEmailPayload(params: {
+  shopName: string;
+  forwardingNumber: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const setupUrl = `${base}/user/go-live#forwarding-instructions`;
+  const input: BaseEmailInput = {
+    title: 'Your RingBooker forwarding number is ready',
+    previewText: 'Keep your current business number and forward missed or after-hours calls to RingBooker.',
+    heroTitle: 'Your forwarding number is ready',
+    heroSubtitleHtml: `<p style="margin:0">RingBooker has created a managed forwarding number for <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
+    bodyHtml: [
+      '<p style="margin:0 0 12px 0">Keep your current business number. Your clients do not need to learn a new number.</p>',
+      '<p style="margin:0 0 12px 0">Forward missed, after-hours, or overflow calls to your RingBooker forwarding number:</p>',
+      `<p style="margin:0;font-size:20px;font-weight:700;letter-spacing:.02em">${escapeHtmlText(params.forwardingNumber)}</p>`,
+      '<p style="margin:12px 0 0 0">Live answering is not active until forwarding is verified and you enable it.</p>',
+    ].join(''),
+    ctaLabel: 'View forwarding instructions',
+    ctaUrl: setupUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
+  };
+  const text = [
+    `Your RingBooker forwarding number for "${params.shopName}" is ready:`,
+    params.forwardingNumber,
+    '',
+    'Keep your current business number. Forward missed, after-hours, or overflow calls to your RingBooker forwarding number.',
+    'Live answering is not active until forwarding is verified and you enable it.',
+    `View forwarding instructions: ${setupUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildForwardingProvisionFailedEmailPayload(params: {
+  shopName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const setupUrl = `${base}/user/go-live`;
+  const input: BaseEmailInput = {
+    title: 'We could not create your forwarding number',
+    previewText: 'Retry phone setup or contact support.',
+    heroTitle: 'Forwarding number setup needs attention',
+    heroSubtitleHtml: `<p style="margin:0">We could not create a RingBooker forwarding number for <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
+    bodyHtml: [
+      '<p style="margin:0 0 12px 0">Live answering is not active yet. Your current business number has not changed.</p>',
+      '<p style="margin:0">Please retry phone setup. If it still does not work, contact support and we will help you finish setup.</p>',
+    ].join(''),
+    ctaLabel: 'Retry phone setup',
+    ctaUrl: setupUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Support</p>',
+  };
+  const text = [
+    `We could not create a RingBooker forwarding number for "${params.shopName}".`,
+    'Live answering is not active yet. Your current business number has not changed.',
+    `Retry phone setup: ${setupUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildForwardingNotVerifiedReminderEmailPayload(params: {
+  email: string;
+  shopName: string;
+  forwardingNumber: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const setupUrl = `${base}/user/go-live#forwarding-instructions`;
+  const input: BaseEmailInput = {
+    title: 'Verify your RingBooker call forwarding',
+    previewText: 'Forwarding must be verified before live answering can start.',
+    heroTitle: 'Verify call forwarding',
+    heroSubtitleHtml: `<p style="margin:0">Your forwarding number for <strong>${escapeHtmlText(params.shopName)}</strong> is ready, but verification is not complete.</p>`,
+    greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
+    bodyHtml: [
+      `<p style="margin:0 0 12px 0">RingBooker has not detected forwarding yet. Please forward missed or after-hours calls from your current business number to <strong>${escapeHtmlText(params.forwardingNumber)}</strong>.</p>`,
+      '<p style="margin:0">After that, place a test call or run verification in your dashboard. Live answering is not active until forwarding is verified and enabled.</p>',
+    ].join(''),
+    ctaLabel: 'Verify forwarding',
+    ctaUrl: setupUrl,
+    signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
+  };
+  const text = [
+    `Please verify call forwarding for "${params.shopName}".`,
+    `Forward calls to: ${params.forwardingNumber}`,
+    'Live answering is not active until forwarding is verified and enabled.',
+    `Verify forwarding: ${setupUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildForwardingVerifiedEmailPayload(params: {
+  shopName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const goLiveUrl = `${base}/user/go-live`;
+  const input: BaseEmailInput = {
+    title: 'Call forwarding verified',
+    previewText: 'Forwarded calls are reaching RingBooker. Enable live answering when ready.',
+    heroTitle: 'Forwarding is verified',
+    heroSubtitleHtml: `<p style="margin:0">RingBooker confirmed forwarded calls are reaching <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
+    bodyHtml:
+      '<p style="margin:0">Your phone connection is ready. Live answering is still off until you enable it. When enabled, RingBooker can answer forwarded missed, after-hours, or overflow calls.</p>',
+    ctaLabel: 'Enable live answering',
+    ctaUrl: goLiveUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
+  };
+  const text = [
+    `Call forwarding is verified for "${params.shopName}".`,
+    'Live answering is still off until you enable it.',
+    `Enable live answering: ${goLiveUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildLiveAnsweringEnabledEmailPayload(params: {
+  shopName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const callsUrl = `${base}/user/calls`;
+  const input: BaseEmailInput = {
+    title: 'Live answering is active',
+    previewText: 'RingBooker can now answer forwarded calls.',
+    heroTitle: 'Live answering is active',
+    heroSubtitleHtml: `<p style="margin:0">RingBooker can now answer forwarded calls for <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
+    bodyHtml:
+      '<p style="margin:0">RingBooker is ready to answer forwarded missed, busy, after-hours, or overflow calls. You can view call logs, summaries, and captured caller details from your dashboard.</p>',
+    ctaLabel: 'View call logs',
+    ctaUrl: callsUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
+  };
+  const text = [
+    `Live answering is active for "${params.shopName}".`,
+    'RingBooker is ready to answer forwarded missed, busy, after-hours, or overflow calls.',
+    `View call logs: ${callsUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildLiveAnsweringBillingPausedEmailPayload(params: {
+  shopName: string;
+  status: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const billingUrl = `${base}/user/billing`;
+  const input: BaseEmailInput = {
+    title: 'Live answering is paused',
+    previewText: 'Resolve your billing issue to restore live answering.',
+    heroTitle: 'Live answering is paused',
+    heroSubtitleHtml: `<p style="margin:0">Billing status for <strong>${escapeHtmlText(params.shopName)}</strong>: <strong>${escapeHtmlText(params.status)}</strong>.</p>`,
+    bodyHtml: [
+      '<p style="margin:0 0 12px 0">Live answering is paused until billing is resolved. RingBooker will not answer forwarded live calls while this issue is active.</p>',
+      '<p style="margin:0">Your dashboard and call history are still available.</p>',
+    ].join(''),
+    ctaLabel: 'Resolve billing issue',
+    ctaUrl: billingUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Billing</p>',
+  };
+  const text = [
+    `Live answering is paused for "${params.shopName}".`,
+    `Billing status: ${params.status}`,
+    'RingBooker will not answer forwarded live calls while this issue is active.',
+    `Resolve billing issue: ${billingUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
+export function buildInternalAlertEmailPayload(params: {
+  title: string;
+  summary: string;
+  fields: Record<string, string | number | boolean | null | undefined>;
+}): { input: BaseEmailInput; text: string } {
+  const safeLines = Object.entries(params.fields)
+    .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== '')
+    .map(([key, value]) => `${key}: ${String(value)}`);
+  const body = [
+    `<p style="margin:0 0 12px 0">${escapeHtmlText(params.summary)}</p>`,
+    `<pre style="white-space:pre-wrap;font-family:Arial,sans-serif;margin:0">${escapeHtmlText(safeLines.join('\n'))}</pre>`,
+  ].join('');
+  const input: BaseEmailInput = {
+    title: params.title,
+    previewText: params.summary,
+    heroTitle: params.title,
+    bodyHtml: body,
+    signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
+  };
+  return { input, text: [params.summary, '', ...safeLines].join('\n') };
 }

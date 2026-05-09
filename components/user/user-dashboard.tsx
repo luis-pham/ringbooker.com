@@ -512,14 +512,14 @@ html[data-user-theme="dark"] .btn.purple:hover{
   color:#fff;
 }
 html[data-user-theme="dark"] .btn.user-save{
-  background:#010409;
-  color:#f0f6fc;
-  border-color:#30363d;
+  background:#1f6feb;
+  color:#fff;
+  border-color:#1f6feb;
 }
 html[data-user-theme="dark"] .btn.user-save:hover:not(:disabled){
-  background:#0d1117;
-  border-color:#58a6ff;
-  color:#f0f6fc;
+  background:#8957e5;
+  border-color:#8957e5;
+  color:#fff;
 }
 html[data-user-theme="dark"] .user-theme-toggle{
   background:var(--surface-card);

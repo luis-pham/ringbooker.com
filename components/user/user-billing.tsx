@@ -74,15 +74,15 @@ html[data-user-theme="dark"] .price-mini{background:var(--surface-card)}
 html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
 html[data-user-theme="dark"] .business-subtab.active{
-  background:#010409;
-  color:#f0f6fc;
-  border-color:#30363d;
+  background:#1f6feb;
+  color:#fff;
+  border-color:#1f6feb;
   font-weight:600;
 }
 html[data-user-theme="dark"] .business-subtab.active:hover{
-  background:#0d1117;
-  border-color:#58a6ff;
-  color:#f0f6fc;
+  background:#8957e5;
+  border-color:#8957e5;
+  color:#fff;
 }
 `,
 ];

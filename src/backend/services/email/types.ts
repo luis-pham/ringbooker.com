@@ -9,9 +9,18 @@ export type EmailCategory =
   | 'demo_request_internal'
   | 'billing_trial_reminder'
   | 'billing_trial_ended'
+  | 'finish_onboarding_reminder'
+  | 'add_payment_method_go_live'
   | 'billing_payment_method_added'
   | 'billing_subscription_active'
-  | 'billing_payment_failed';
+  | 'billing_payment_failed'
+  | 'forwarding_number_ready'
+  | 'forwarding_number_failed'
+  | 'forwarding_not_verified_reminder'
+  | 'forwarding_verified'
+  | 'live_answering_enabled'
+  | 'live_answering_billing_paused'
+  | 'internal_alert';
 
 export type EmailSendResult = {
   providerMessageId?: string;

@@ -126,39 +126,51 @@ export async function requestHumanHandoffTool(
     };
   }
 
-  if (ctx.billingSubscriptionsRepository && ctx.shopAccessStatesRepository) {
-    const access = await getShopBillingAccess(
-      {
-        shopsRepository: ctx.shopsRepository,
-        billingSubscriptionsRepository: ctx.billingSubscriptionsRepository,
-        shopAccessStatesRepository: ctx.shopAccessStatesRepository,
-      },
-      { shopId: ctx.shop.id },
+  if (!ctx.billingSubscriptionsRepository || !ctx.shopAccessStatesRepository) {
+    logger.warn(
+      { event: 'live_answering_billing_blocked', shop_id: ctx.shop.id, reason: 'billing_gate_unavailable', call_control_id: parentId },
+      'live_answering_billing_blocked',
     );
-    if (!access.canReceiveLiveCalls) {
-      logger.warn(
-        {
-          event: 'live_answering_billing_blocked',
-          shop_id: ctx.shop.id,
-          user_id: null,
-          billing_status: access.subscriptionStatus,
-          payment_method_status: access.paymentMethodStatus,
-          provider_subscription_id: access.providerSubscriptionId,
-          go_live_state: access.liveCallsEnabled ? 'live_enabled' : 'live_disabled',
-          reason: access.blockReason,
-          call_control_id: parentId,
-          call_session_id: ctx.rbCallId ?? ctx.requestId,
-        },
-        'live_answering_billing_blocked',
-      );
-      return {
-        success: false,
-        handoff_possible: false,
-        fallback: 'send_summary',
-        message_for_ai:
-          'Live handoff is not available right now. I can take your details and make sure the team follows up.',
-      };
-    }
+    return {
+      success: false,
+      handoff_possible: false,
+      fallback: 'send_summary',
+      message_for_ai:
+        'Live handoff is not available right now. I can take your details and make sure the team follows up.',
+    };
+  }
+
+  const access = await getShopBillingAccess(
+    {
+      shopsRepository: ctx.shopsRepository,
+      billingSubscriptionsRepository: ctx.billingSubscriptionsRepository,
+      shopAccessStatesRepository: ctx.shopAccessStatesRepository,
+    },
+    { shopId: ctx.shop.id },
+  );
+  if (!access.canReceiveLiveCalls) {
+    logger.warn(
+      {
+        event: 'live_answering_billing_blocked',
+        shop_id: ctx.shop.id,
+        user_id: null,
+        billing_status: access.subscriptionStatus,
+        payment_method_status: access.paymentMethodStatus,
+        provider_subscription_id: access.providerSubscriptionId,
+        go_live_state: access.liveCallsEnabled ? 'live_enabled' : 'live_disabled',
+        reason: access.blockReason,
+        call_control_id: parentId,
+        call_session_id: ctx.rbCallId ?? ctx.requestId,
+      },
+      'live_answering_billing_blocked',
+    );
+    return {
+      success: false,
+      handoff_possible: false,
+      fallback: 'send_summary',
+      message_for_ai:
+        'Live handoff is not available right now. I can take your details and make sure the team follows up.',
+    };
   }
 
   const rbCallId = ctx.rbCallId ?? ctx.requestId;

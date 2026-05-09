@@ -164,6 +164,7 @@ const jobTypeSchema = z.enum([
   'callback_outbound_call',
   'review_request_sms',
   'post_call_summary',
+  'lifecycle_email',
   'trial_reminder_email',
   'trial_expiry_check',
 ]);
@@ -607,9 +608,7 @@ const adminUserSetPasswordSchema = z.object({
 const userBillingCheckoutSchema = z.object({
   plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
   billing_interval: z.enum(['monthly', 'annual']).optional(),
-  successUrl: z.string().url().optional(),
-  cancelUrl: z.string().url().optional(),
-});
+}).strict();
 
 const readWebsiteSchema = z.object({
   url: z.string().url(),
@@ -1793,6 +1792,35 @@ export function createBackendApp(deps: {
 }) {
   const app = new Hono();
   const path = (route: string) => `${deps.basePath ?? ''}${route}`;
+  const enqueueLifecycleEmail = async (params: {
+    shopId: string;
+    kind: string;
+    subscriptionId?: string | null;
+    forwardingNumber?: string | null;
+    status?: string | null;
+    title?: string | null;
+    summary?: string | null;
+    fields?: Record<string, string | number | boolean | null>;
+    idempotencySuffix?: string;
+  }) => {
+    if (!deps.jobsRepository) return;
+    const suffix = params.idempotencySuffix ?? params.kind;
+    await deps.jobsRepository.enqueue({
+      shopId: params.shopId,
+      type: 'lifecycle_email',
+      payload: {
+        kind: params.kind,
+        subscriptionId: params.subscriptionId ?? null,
+        forwardingNumber: params.forwardingNumber ?? null,
+        status: params.status ?? null,
+        title: params.title ?? null,
+        summary: params.summary ?? null,
+        fields: params.fields ?? {},
+      },
+      runAt: new Date(),
+      idempotencyKey: `lifecycle_email:${params.shopId}:${params.subscriptionId ?? 'none'}:${suffix}`,
+    }).catch((error) => logger.warn({ err: error, shopId: params.shopId, kind: params.kind }, 'lifecycle_email_enqueue_failed'));
+  };
 
   app.use('*', async (c, next) => {
     c.header('X-Frame-Options', 'DENY');
@@ -2052,6 +2080,8 @@ export function createBackendApp(deps: {
       return handlePaddleWebhook(c, {
       providerEventsRepository: deps.providerEventsRepository,
       billingProvider: deps.billingProvider,
+      jobsRepository: deps.jobsRepository,
+      emailService: deps.emailService,
       });
     })(),
   );
@@ -4303,14 +4333,19 @@ export function createBackendApp(deps: {
 
     return c.json({
       ok: true,
+      businessPhone: shop.phone_number?.trim() || null,
       paymentMethodStatus: access.paymentMethodStatus,
+      subscriptionStatus: access.subscriptionStatus,
+      hasPaymentMethod: access.paymentMethodStatus === 'valid',
       forwardingNumber: shop.telnyx_number?.trim() || null,
+      hasForwardingNumber: access.hasForwardingNumber,
       forwardingSetupVerified: access.forwardingSetupVerified,
       forwardingSetupVerifiedAt: accessState?.forwardingSetupVerifiedAt ?? null,
       forwardingSetupVerifiedVia: accessState?.forwardingSetupVerifiedVia ?? null,
       forwardingTestStatus,
       forwardingTestExpiresAt,
       liveCallsEnabled: access.liveCallsEnabled,
+      canGoLive: access.canGoLive,
       primaryCta: access.blockReason === 'commercial_approval_required' ? null : primaryCta,
       blockReason: access.blockReason,
       commercialGoLiveApproved: access.commercialGoLiveApproved,
@@ -4456,6 +4491,12 @@ export function createBackendApp(deps: {
       shopId: shop.id,
       forwardingSetupVerifiedAt: new Date().toISOString(),
       forwardingSetupVerifiedVia: 'manual_confirmation',
+    });
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    await enqueueLifecycleEmail({
+      shopId: shop.id,
+      kind: 'forwarding_verified',
+      subscriptionId: subscription?.id ?? null,
     });
     securityAudit({
       action: 'forwarding_setup_manual_confirmed',
@@ -5429,6 +5470,7 @@ export function createBackendApp(deps: {
     const checkoutAvailable = Boolean(
       env.BILLING_CHECKOUT_ENABLED &&
         deps.billingProvider &&
+        env.PADDLE_CLIENT_TOKEN &&
         isSelfServeTrialPlan(shop.plan),
     );
     const availableBillingIntervals = [
@@ -5488,7 +5530,7 @@ export function createBackendApp(deps: {
   app.post(path('/user/billing/checkout'), async (c) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_billing_checkout');
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_billing_checkout, 'user_billing_checkout');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
@@ -5585,8 +5627,8 @@ export function createBackendApp(deps: {
         billingInterval,
         source: 'add_payment_method_before_go_live',
         checkoutUrl,
-        successUrl: parsed.data.successUrl ?? `${appBaseUrl}/user/billing?checkout=success`,
-        cancelUrl: parsed.data.cancelUrl ?? `${appBaseUrl}/user/billing?checkout=cancelled`,
+        successUrl: `${appBaseUrl}/user/billing?checkout=success`,
+        cancelUrl: `${appBaseUrl}/user/billing?checkout=cancelled`,
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -5632,7 +5674,7 @@ export function createBackendApp(deps: {
   app.post(path('/user/billing/reactivate'), async (c) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_billing_reactivate');
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_billing_reactivate, 'user_billing_reactivate');
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
@@ -5854,6 +5896,21 @@ export function createBackendApp(deps: {
           message: error instanceof Error ? error.message : 'unknown',
         },
       });
+      await enqueueLifecycleEmail({
+        shopId: shop.id,
+        kind: 'forwarding_number_failed_user',
+        subscriptionId: subscription.id,
+        idempotencySuffix: 'forwarding_number_failed_user:search',
+      });
+      await enqueueLifecycleEmail({
+        shopId: shop.id,
+        kind: 'forwarding_number_failed_internal',
+        subscriptionId: subscription.id,
+        title: 'Telnyx forwarding number search failed',
+        summary: 'Forwarding number search failed during user go-live setup.',
+        fields: { shop_id: shop.id, phase: 'search' },
+        idempotencySuffix: `forwarding_number_failed_internal:search:${Date.now()}`,
+      });
       return c.json({ ok: false, error: 'forwarding_number_search_failed' }, 502);
     }
 
@@ -5870,6 +5927,21 @@ export function createBackendApp(deps: {
         ip,
         path: c.req.path,
         details: { shopId: shop.id, phase: 'search', message: 'no_numbers_available' },
+      });
+      await enqueueLifecycleEmail({
+        shopId: shop.id,
+        kind: 'forwarding_number_failed_user',
+        subscriptionId: subscription.id,
+        idempotencySuffix: 'forwarding_number_failed_user:no_numbers_available',
+      });
+      await enqueueLifecycleEmail({
+        shopId: shop.id,
+        kind: 'forwarding_number_failed_internal',
+        subscriptionId: subscription.id,
+        title: 'No Telnyx forwarding numbers available',
+        summary: 'No forwarding number candidates were available for a shop.',
+        fields: { shop_id: shop.id, country_code: countryCode },
+        idempotencySuffix: `forwarding_number_failed_internal:no_numbers_available:${Date.now()}`,
       });
       return c.json({ ok: false, error: 'forwarding_number_search_empty' }, 503);
     }
@@ -5932,6 +6004,26 @@ export function createBackendApp(deps: {
             forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
             forwarding_number_last_error: persistError instanceof Error ? persistError.message.slice(0, 500) : 'shop_persist_failed',
           }).catch(() => undefined);
+          await enqueueLifecycleEmail({
+            shopId: shop.id,
+            kind: 'forwarding_number_failed_user',
+            subscriptionId: subscription.id,
+            idempotencySuffix: 'forwarding_number_failed_user:persist',
+          });
+          await enqueueLifecycleEmail({
+            shopId: shop.id,
+            kind: 'forwarding_number_failed_internal',
+            subscriptionId: subscription.id,
+            title: 'Telnyx forwarding number persist failed',
+            summary: 'A forwarding number was provisioned but could not be persisted to the shop record.',
+            fields: {
+              shop_id: shop.id,
+              phase: 'persist',
+              provider_number_id: order.providerNumberId ?? null,
+              provider_order_id: order.orderId ?? null,
+            },
+            idempotencySuffix: `forwarding_number_failed_internal:persist:${order.orderId ?? order.providerNumberId ?? flowRequestId}`,
+          });
           return c.json({ ok: false, error: 'forwarding_number_persist_failed' }, 502);
         }
         if (!saved) {
@@ -5982,6 +6074,12 @@ export function createBackendApp(deps: {
           forwardingSetupVerifiedAt: null,
           forwardingSetupVerifiedVia: null,
         });
+        await enqueueLifecycleEmail({
+          shopId: shop.id,
+          kind: 'forwarding_number_ready',
+          subscriptionId: subscription.id,
+          forwardingNumber: order.phoneNumber,
+        });
         return c.json({
           ok: true,
           forwardingNumber: order.phoneNumber,
@@ -6006,6 +6104,21 @@ export function createBackendApp(deps: {
       ip,
       path: c.req.path,
       details: { shopId: shop.id, phase: 'provision', message: lastErrorMessage },
+    });
+    await enqueueLifecycleEmail({
+      shopId: shop.id,
+      kind: 'forwarding_number_failed_user',
+      subscriptionId: subscription.id,
+      idempotencySuffix: 'forwarding_number_failed_user:provision',
+    });
+    await enqueueLifecycleEmail({
+      shopId: shop.id,
+      kind: 'forwarding_number_failed_internal',
+      subscriptionId: subscription.id,
+      title: 'Telnyx forwarding number provisioning failed',
+      summary: 'All forwarding number provisioning candidates failed.',
+      fields: { shop_id: shop.id, phase: 'provision' },
+      idempotencySuffix: `forwarding_number_failed_internal:provision:${Date.now()}`,
     });
     return c.json({ ok: false, error: 'forwarding_number_provision_failed' }, 502);
   });
@@ -6065,6 +6178,12 @@ export function createBackendApp(deps: {
       goLiveAt: new Date().toISOString(),
       liveCallsPausedReason: null,
       liveCallsPausedAt: null,
+    });
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    await enqueueLifecycleEmail({
+      shopId: shop.id,
+      kind: 'live_answering_enabled',
+      subscriptionId: subscription?.id ?? null,
     });
     return c.json({ ok: true, liveCallsEnabled: next.liveCallsEnabled, goLiveAt: next.goLiveAt });
   });

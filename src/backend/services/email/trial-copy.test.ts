@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 
 import { buildGoLivePaymentRequiredMessage } from '@/src/backend/api/app';
 import {
+  buildForwardingNumberReadyEmailPayload,
+  buildForwardingVerifiedEmailPayload,
+  buildLiveAnsweringBillingPausedEmailPayload,
+  buildPaymentMethodAddedEmailPayload,
   buildTrialReminderEmailPayload,
   buildWelcomeSignupEmailPayload,
 } from '@/src/backend/services/email/base-email-builders';
@@ -74,4 +78,31 @@ test('trial emails and go-live message may promise no-charge when Paddle trial c
   ].join('\n');
 
   assert.match(combined, /You won't be charged until your trial ends/i);
+});
+
+test('phone setup lifecycle emails clearly state live answering state', () => {
+  const paymentMethodAdded = buildPaymentMethodAddedEmailPayload({
+    shopName: 'Test Salon',
+    appBaseUrl,
+  });
+  const forwardingReady = buildForwardingNumberReadyEmailPayload({
+    shopName: 'Test Salon',
+    forwardingNumber: '+18888401886',
+    appBaseUrl,
+  });
+  const forwardingVerified = buildForwardingVerifiedEmailPayload({
+    shopName: 'Test Salon',
+    appBaseUrl,
+  });
+  const billingPaused = buildLiveAnsweringBillingPausedEmailPayload({
+    shopName: 'Test Salon',
+    status: 'past_due',
+    appBaseUrl,
+  });
+
+  assert.match(paymentMethodAdded.text, /Live answering is still off until phone setup is complete/i);
+  assert.match(forwardingReady.text, /Keep your current business number/i);
+  assert.match(forwardingReady.text, /Live answering is not active until forwarding is verified and you enable it/i);
+  assert.match(forwardingVerified.text, /Live answering is still off until you enable it/i);
+  assert.match(billingPaused.text, /RingBooker will not answer forwarded live calls/i);
 });

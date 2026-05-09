@@ -134,16 +134,25 @@ export function buildUserPortalNotifications(params: {
     }
   }
 
-  if (
-    access.paymentMethodStatus === 'none' &&
-    (status === 'trialing' || status === 'incomplete') &&
-    access.blockReason === 'payment_method_required'
-  ) {
+  const paymentMethodStatus = access.paymentMethodStatus ?? 'unknown';
+  const paymentMethodNotVerified =
+    paymentMethodStatus !== 'valid' &&
+    ['none', 'unknown', 'pending', 'failed'].includes(paymentMethodStatus);
+  const billingNeedsVerifiedPayment =
+    access.blockReason === 'payment_method_required' ||
+    (paymentMethodNotVerified && (status === 'trialing' || status === 'incomplete' || status === 'unknown'));
+
+  if (!trialExpired && billingNeedsVerifiedPayment) {
     push({
       id: 'payment_method_required',
-      severity: 'warn',
-      title: 'Add a payment method',
-      body: 'Required to go live or continue after trial.',
+      severity: paymentMethodStatus === 'failed' ? 'critical' : 'warn',
+      title: paymentMethodStatus === 'pending' || paymentMethodStatus === 'unknown'
+        ? 'Payment method not verified yet'
+        : 'Add a payment method',
+      body:
+        paymentMethodStatus === 'pending' || paymentMethodStatus === 'unknown'
+          ? 'Paddle has not confirmed a valid payment method yet. Live answering stays off until billing is verified.'
+          : 'Required to go live or continue after trial.',
       href: '/user/billing',
     });
   }

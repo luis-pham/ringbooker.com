@@ -46,6 +46,7 @@ export type JobType =
   | 'review_request_sms'
   | 'post_call_summary'
   | 'handoff_failed_owner_sms'
+  | 'lifecycle_email'
   | 'trial_reminder_email'
   | 'trial_expiry_check';
 
@@ -387,10 +388,27 @@ export type BillingNotificationType =
   | 'trial_ends_3_days'
   | 'trial_ends_1_day'
   | 'trial_ended'
+  | 'finish_onboarding_reminder_1'
+  | 'finish_onboarding_reminder_2'
+  | 'add_payment_method_go_live'
   | 'payment_method_added'
+  | 'forwarding_number_ready'
+  | 'forwarding_number_failed_user'
+  | 'forwarding_number_failed_internal'
+  | 'forwarding_not_verified_24h'
+  | 'forwarding_not_verified_72h'
+  | 'forwarding_verified'
   | 'subscription_active'
   | 'payment_failed'
-  | 'live_answering_enabled';
+  | 'live_answering_enabled'
+  | 'live_answering_billing_paused'
+  | 'live_answering_billing_paused_canceled'
+  | 'live_answering_billing_paused_paused'
+  | 'live_answering_billing_paused_past_due'
+  | 'live_answering_billing_paused_payment_failed'
+  | 'internal_paddle_alert'
+  | 'internal_telnyx_alert'
+  | 'internal_live_billing_blocked_alert';
 export type BillingNotificationChannel = 'email' | 'app';
 
 export interface BillingNotification {

@@ -19,6 +19,7 @@ import type { Shop } from '@/src/backend/domain/types';
 import type {
   BillingSubscriptionsRepository,
   ForwardingTestSessionsRepository,
+  JobsRepository,
   ShopAccessStatesRepository,
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
@@ -458,6 +459,7 @@ export async function evaluateTelnyxCallControlInboundInitiated(
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
     forwardingTestSessionsRepository?: ForwardingTestSessionsRepository;
+    jobsRepository?: JobsRepository;
   },
 ): Promise<TelnyxCallControlPhase1Result> {
   if (!isIncomingCallPayload(payload)) {
@@ -605,6 +607,18 @@ export async function evaluateTelnyxCallControlInboundInitiated(
       callerPhone,
       now: new Date(),
     });
+    if (completedForwardingTestThisEvent && deps.jobsRepository) {
+      const subscription = deps.billingSubscriptionsRepository
+        ? await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id).catch(() => null)
+        : null;
+      await deps.jobsRepository.enqueue({
+        shopId: shop.id,
+        type: 'lifecycle_email',
+        payload: { kind: 'forwarding_verified', subscriptionId: subscription?.id ?? null },
+        runAt: new Date(),
+        idempotencyKey: `lifecycle_email:${shop.id}:${subscription?.id ?? 'none'}:forwarding_verified`,
+      }).catch(() => undefined);
+    }
   }
 
   if (deps.billingSubscriptionsRepository && deps.shopAccessStatesRepository) {
