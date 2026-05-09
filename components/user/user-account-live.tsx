@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
@@ -71,35 +70,6 @@ function subscriptionLooksHealthy(status: string | null | undefined): boolean {
   return status === 'active' || status === 'trialing';
 }
 
-function AccountTabIcon({ tabId }: { tabId: AccountTabId }): ReactNode {
-  const wrap = (children: ReactNode) => (
-    <svg viewBox="0 0 24 24" width={20} height={20} aria-hidden>
-      <g fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        {children}
-      </g>
-    </svg>
-  );
-
-  switch (tabId) {
-    case 'details':
-      return wrap(
-        <>
-          <circle cx={12} cy={8} r={4} />
-          <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-        </>,
-      );
-    case 'password':
-      return wrap(
-        <>
-          <rect x={5} y={11} width={14} height={10} rx={2} />
-          <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-        </>,
-      );
-    default:
-      return null;
-  }
-}
-
 const ACCOUNT_TABS: Array<{ id: AccountTabId; label: string; description: string }> = [
   { id: 'details', label: 'Account Details', description: 'Email, name, and workspace summary.' },
   { id: 'password', label: 'Change password', description: 'Update the password you use to sign in.' },
@@ -166,23 +136,15 @@ export function UserAccountLive() {
 .rb-account-frame-head h2{
   margin:0;font-size:18px;font-weight:780;letter-spacing:-.03em;line-height:1.25;color:var(--text-dark);
 }
-/* Tabs inside frame — same control style as Settings tab-strip */
-.rb-account-inner-tabs.tab-strip{
-  grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;
-  padding:12px 14px 14px;
-  background:linear-gradient(180deg,#fafafa 0%,#f3f4f6 100%);
-  border-bottom:1px solid var(--border);
-}
-.rb-account-inner-tabs .tab-button{padding:11px 12px;gap:8px}
+/* Same subtabs as Messaging (SMS automations / Messaging notes) in Settings */
+.rb-account-subtabs.business-subtabs{margin-bottom:0;padding:12px 22px 14px;border-bottom:1px solid var(--border)}
 .rb-account-panel{padding:22px 22px 24px}
 .rb-account-panel-title{
   margin:0 0 18px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
 }
 @media(max-width:860px){
   .rb-account-shell{padding:4px 0 28px;max-width:100%}
-  .rb-account-inner-tabs.tab-strip{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px 12px 12px}
-  .rb-account-inner-tabs .tab-button{flex-direction:column;text-align:center;padding:10px 8px;gap:4px}
-  .rb-account-inner-tabs .tab-button strong{font-size:12px;font-weight:750;line-height:1.2}
+  .rb-account-subtabs.business-subtabs{padding:10px 18px 12px}
 }
 .rb-account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
 .rb-account-card-head-main{display:flex;align-items:center;gap:10px;min-width:0}
@@ -231,10 +193,7 @@ html[data-user-theme="dark"] .rb-account-callout{background:#161b22;border-color
 html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){background:#21262d;border-color:#58a6ff}
 html[data-user-theme="dark"] .rb-account-frame{box-shadow:none}
 html[data-user-theme="dark"] .rb-account-frame-head{border-bottom-color:var(--border)}
-html[data-user-theme="dark"] .rb-account-inner-tabs.tab-strip{
-  background:linear-gradient(180deg,#0d1117 0%,#161b22 100%);
-  border-bottom-color:var(--border);
-}
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs{border-bottom-color:var(--border)}
       `,
     ],
     [],
@@ -347,7 +306,7 @@ html[data-user-theme="dark"] .rb-account-inner-tabs.tab-strip{
                   <h2>Your account</h2>
                 </header>
 
-                <div className="tab-strip rb-account-inner-tabs" role="tablist" aria-label="Account sections">
+                <div className="business-subtabs rb-account-subtabs" role="tablist" aria-label="Account sections">
                   {ACCOUNT_TABS.map((tab) => (
                     <button
                       key={tab.id}
@@ -357,7 +316,7 @@ html[data-user-theme="dark"] .rb-account-inner-tabs.tab-strip{
                       aria-selected={activeTab === tab.id}
                       aria-controls={`account-panel-${tab.id}`}
                       title={tab.description}
-                      className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                      className={`business-subtab ${activeTab === tab.id ? 'active' : ''}`}
                       onClick={() => {
                         setActiveTab(tab.id);
                         if (tab.id !== 'details') {
@@ -366,12 +325,7 @@ html[data-user-theme="dark"] .rb-account-inner-tabs.tab-strip{
                         }
                       }}
                     >
-                      <span className="tab-button-icon">
-                        <AccountTabIcon tabId={tab.id} />
-                      </span>
-                      <span className="tab-button-body">
-                        <strong>{tab.label}</strong>
-                      </span>
+                      {tab.label}
                     </button>
                   ))}
                 </div>

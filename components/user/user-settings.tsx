@@ -509,7 +509,7 @@ export function UserSettingsTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Business settings and AI behavior.</h1><p>Control how RingBooker answers calls, what it offers, and when it hands off to you.</p></div>
-            <div className="top-actions overview-top-actions"><a className="btn" href="/user/settings">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
           </div>
           <section className="grid grid-2">
             <div className="card">

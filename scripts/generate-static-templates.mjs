@@ -175,7 +175,7 @@ const userMap = [
   ['knowledge.html', '/user/knowledge'],
   ['integrations.html', '/user/integrations'],
   ['go-live.html', '/user/go-live'],
-  ['settings.html', '/user/settings'],
+  ['ai-settings.html', '/user/ai-settings'],
   ['account.html', '/user/account'],
   ['billing.html', '/user/billing'],
 ];

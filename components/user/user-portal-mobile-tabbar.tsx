@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 import type { UserPortalNavKey } from '@/components/user/user-portal-nav';
+import { readCachedGoLiveNavVisible, writeCachedGoLiveNavVisible } from '@/components/user/user-portal-go-live-cache';
 
 export type { UserPortalNavKey };
 
@@ -107,20 +108,48 @@ function IconMore(): ReactNode {
 
 /** Fixed bottom navigation for /user/* on small viewports (see globals.css `.user-mobile-tabbar`). */
 export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) {
-  const [showGoLive, setShowGoLive] = useState(active === 'go-live');
+  const [showGoLive, setShowGoLive] = useState(() => active === 'go-live');
+  const [goLiveNavResolved, setGoLiveNavResolved] = useState(() => active === 'go-live');
 
   useEffect(() => {
     let cancelled = false;
+
+    if (active === 'go-live') {
+      setShowGoLive(true);
+      setGoLiveNavResolved(true);
+    } else {
+      const cached = readCachedGoLiveNavVisible();
+      if (cached !== null) {
+        setShowGoLive(cached);
+        setGoLiveNavResolved(true);
+      } else {
+        setGoLiveNavResolved(false);
+        setShowGoLive(false);
+      }
+    }
+
     void fetch('/api/backend/user/nav-state')
       .then(async (response) => (await response.json()) as { ok?: boolean; onboardingRequired?: boolean; liveCallsEnabled?: boolean })
       .then((body) => {
-        if (!cancelled && body.ok) setShowGoLive(Boolean(!body.onboardingRequired && !body.liveCallsEnabled));
+        if (cancelled || !body.ok) {
+          if (!cancelled) setGoLiveNavResolved(true);
+          return;
+        }
+        const next = Boolean(!body.onboardingRequired && !body.liveCallsEnabled);
+        writeCachedGoLiveNavVisible(next);
+        if (active !== 'go-live') {
+          setShowGoLive(next);
+        }
+        setGoLiveNavResolved(true);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setGoLiveNavResolved(true);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [active]);
 
   const item = (key: UserPortalNavKey, href: string, label: string, icon: ReactNode) => {
     const isActive = active === key;
@@ -137,12 +166,26 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
     );
   };
 
+  const goLiveSlot =
+    showGoLive || active === 'go-live' ? (
+      item('go-live', '/user/go-live', 'Go live', <IconGoLive />)
+    ) : !goLiveNavResolved ? (
+      <div
+        key="go-live-placeholder"
+        className="user-mobile-tabbar__link user-mobile-tabbar__link--placeholder"
+        aria-busy="true"
+        aria-label="Loading navigation"
+      >
+        <span className="user-mobile-tabbar__placeholder-bar" />
+      </div>
+    ) : null;
+
   return (
     <nav className="user-mobile-tabbar" aria-label="User portal">
       {item('overview', '/user', 'Overview', <IconOverview />)}
       {item('calls', '/user/calls', 'Calls', <IconCalls />)}
       {item('bookings', '/user/bookings', 'Bookings', <IconBookings />)}
-      {showGoLive || active === 'go-live' ? item('go-live', '/user/go-live', 'Go live', <IconGoLive />) : null}
+      {goLiveSlot}
       {item('more', '/user/more', 'More', <IconMore />)}
     </nav>
   );

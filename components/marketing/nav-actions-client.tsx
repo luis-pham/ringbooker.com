@@ -261,8 +261,8 @@ function AvatarMenu({
               <span>🔧</span> Continue Setup
             </Link>
           )}
-          <Link href="/user/settings" className="mk-avatar-item" onClick={onClose}>
-            <span>⚙️</span> Settings
+          <Link href="/user/ai-settings" className="mk-avatar-item" onClick={onClose}>
+            <span>⚙️</span> AI Settings
           </Link>
           <Link href="/user/billing" className="mk-avatar-item" onClick={onClose}>
             <span>💳</span> Billing

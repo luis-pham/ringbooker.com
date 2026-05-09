@@ -1429,7 +1429,7 @@ function normalizeHttpsBookingUrl(value: string): string | null {
 }
 
 function buildCalendarSettingsRedirect(params: { appBaseUrl: string; result: 'success' | 'error'; provider: string; message?: string }) {
-  const url = new URL('/user/settings', params.appBaseUrl);
+  const url = new URL('/user/integrations', params.appBaseUrl);
   url.searchParams.set('calendar_connect', params.result);
   url.searchParams.set('provider', params.provider);
   if (params.message) url.searchParams.set('calendar_message', params.message);

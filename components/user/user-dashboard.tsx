@@ -131,6 +131,18 @@ button,input,select,textarea{font:inherit}
 }
 .nav-icon svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none}
 .nav-item.active .nav-icon svg{stroke-width:2.35}
+.nav-go-live-placeholder{pointer-events:none;opacity:.72}
+.nav-go-live-placeholder-track{display:block;width:100%;box-sizing:border-box;padding:0 2px}
+.nav-go-live-placeholder-bar{
+  display:block;height:13px;border-radius:7px;width:100%;
+  background:linear-gradient(90deg,#eef0f2 0%,#dfe3e8 45%,#eef0f2 90%);
+  background-size:200% 100%;
+  animation:rb-go-live-nav-shimmer 1.15s ease-in-out infinite;
+}
+html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
+  background:linear-gradient(90deg,#21262d 0%,#30363d 45%,#21262d 90%);
+  background-size:200% 100%;
+}
 .sidebar-spacer{flex:1}
 
 .main{padding:0 24px 34px;min-width:0;background:var(--surface-page)}
@@ -764,7 +776,7 @@ export function UserDashboardTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Overview</h1><p>Track calls, bookings, and reminders.</p></div>
-            <div className="top-actions overview-top-actions"><a className="btn" href="/user/settings">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
           </div>
           <section className="grid grid-4">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">+18% this week</span></div><div className="stat-value">142</div><div className="stat-meta">Calls answered by RingBooker</div></div>

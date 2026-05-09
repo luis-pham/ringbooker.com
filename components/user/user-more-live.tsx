@@ -14,7 +14,7 @@ import { userSettingsStyles } from '@/components/user/user-settings';
 const moreItems = [
   {
     title: 'Business Knowledge',
-    description: 'Business info, services, hours, staff, FAQ, policies, and AI behavior.',
+    description: 'Business info, services, hours, staff, FAQ, and policies.',
     href: '/user/knowledge',
   },
   {
@@ -28,9 +28,9 @@ const moreItems = [
     href: '/user/billing',
   },
   {
-    title: 'Settings',
-    description: 'Account-level preferences and notification settings.',
-    href: '/user/settings',
+    title: 'AI Settings',
+    description: 'Voice, tone, call handling, and SMS automations.',
+    href: '/user/ai-settings',
   },
   {
     title: 'Account',
@@ -48,7 +48,7 @@ export function UserMoreLive() {
           <main className="main">
             <UserPortalTopbar
               title="More"
-              subtitle="Business setup, integrations, billing, and account settings."
+              subtitle="Business setup, integrations, billing, AI Settings, and account."
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />

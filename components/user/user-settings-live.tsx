@@ -16,12 +16,12 @@ import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
 /** Which top-level portal this settings UI serves (separate sidebar destinations). */
-export type UserSettingsPortal = 'settings' | 'knowledge' | 'integrations';
+export type UserSettingsPortal = 'ai-settings' | 'knowledge' | 'integrations';
 
 export function userSettingsPortalNavKey(portal: UserSettingsPortal): UserPortalNavKey {
   if (portal === 'knowledge') return 'knowledge';
   if (portal === 'integrations') return 'integrations';
-  return 'settings';
+  return 'ai-settings';
 }
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
@@ -367,8 +367,8 @@ const SETTINGS_TAB_META: Record<SettingsTabId, { label: string; description: str
 };
 
 const SETTINGS_PORTAL_TAB_ORDER: Record<UserSettingsPortal, SettingsTabId[]> = {
-  settings: ['messaging'],
-  knowledge: ['business', 'services-hours', 'staff', 'faq', 'ai-call-behavior'],
+  'ai-settings': ['ai-call-behavior', 'messaging'],
+  knowledge: ['business', 'services-hours', 'staff', 'faq'],
   integrations: ['integrations'],
 };
 
@@ -385,16 +385,10 @@ function tabCopyForPortal(portal: UserSettingsPortal, id: SettingsTabId): { labe
       description: 'Services, prices, durations, and business hours.',
     };
   }
-  if (portal === 'knowledge' && id === 'ai-call-behavior') {
+  if (portal === 'ai-settings' && id === 'ai-call-behavior') {
     return {
       label: 'AI voice & tone',
       description: 'Greeting, voice, handling rules, and extra instructions for callers.',
-    };
-  }
-  if (portal === 'settings' && id === 'business') {
-    return {
-      label: 'Business profile',
-      description: 'Contact, location, timezone, and booking link.',
     };
   }
   return SETTINGS_TAB_META[id];
@@ -465,7 +459,7 @@ function emptyFaqItem(): BusinessFaqItem {
   return { question: '', answer: '' };
 }
 
-export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSettingsPortal }) {
+export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSettingsPortal }) {
   const { setWorkspace } = useUserWorkspace();
   const sidebarNav = userSettingsPortalNavKey(portal);
   const portalHead =
@@ -473,7 +467,7 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
       ? {
           title: 'Business Knowledge',
           subtitle:
-            'Teach RingBooker what to say on calls: business info, services, hours, staff, FAQs, policies, and AI behavior.',
+            'Teach RingBooker what to say on calls: business info, services, hours, staff, FAQs, and policies.',
         }
       : portal === 'integrations'
         ? {
@@ -481,12 +475,12 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
             subtitle: 'Connect Square, Vagaro, or your public booking link so the AI stays aligned with real availability.',
           }
         : {
-            title: 'Settings',
-            subtitle: 'Account-level preferences and SMS automation settings.',
+            title: 'AI Settings',
+            subtitle: 'Voice, tone, call handling, and SMS automations.',
           };
 
   const defaultTabForPortal = (): SettingsTabId =>
-    portal === 'knowledge' ? 'business' : portal === 'integrations' ? 'integrations' : 'messaging';
+    portal === 'knowledge' ? 'business' : portal === 'integrations' ? 'integrations' : 'ai-call-behavior';
 
   const [shop, setShop] = useState<ShopSettings | null>(null);
   const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(null);
@@ -566,9 +560,6 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
           nextTab = 'integrations';
         }
         setActiveTab(nextTab);
-        if (h === '#integrations' && portal === 'settings' && typeof window !== 'undefined') {
-          window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
-        }
       })
       .catch(() => {
         if (active) setStatus('network_error');
@@ -809,9 +800,7 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
   useEffect(() => {
     const allowed = SETTINGS_PORTAL_TAB_ORDER[portal];
     if (!allowed.includes(activeTab)) {
-      setActiveTab(
-        portal === 'knowledge' ? 'services-hours' : portal === 'integrations' ? 'integrations' : 'business',
-      );
+      setActiveTab(allowed[0] ?? 'business');
     }
   }, [portal, activeTab]);
 
@@ -959,7 +948,7 @@ export function UserSettingsLive({ portal = 'settings' }: { portal?: UserSetting
           />
 
           {portal !== 'integrations' ? (
-          <div className="tab-strip" role="tablist" aria-label={portal === 'knowledge' ? 'Business Knowledge tabs' : 'Settings tabs'}>
+          <div className="tab-strip" role="tablist" aria-label={portal === 'knowledge' ? 'Business Knowledge tabs' : 'AI Settings tabs'}>
             {visibleTabs.map((tab) => (
               <button
                 key={tab.id}

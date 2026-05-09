@@ -27,7 +27,7 @@ export function UserBookingsTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Bookings and calendar flow.</h1><p>See every appointment RingBooker has created, confirmed, or recovered.</p></div>
-            <div className="top-actions overview-top-actions"><a className="btn" href="/user/settings">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
           </div>
           <section className="grid grid-3">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">This week</span></div><div className="stat-value">42</div><div className="stat-meta">Upcoming bookings</div></div>

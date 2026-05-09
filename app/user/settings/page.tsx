@@ -1,9 +1,6 @@
-import { UserSettingsLive } from '@/components/user/user-settings-live';
+import { redirect } from 'next/navigation';
 
-export const metadata = {
-  title: 'Settings — RingBooker',
-};
-
-export default function UserSettingsPage() {
-  return <UserSettingsLive portal="settings" />;
+/** Canonical AI Settings URL is `/user/ai-settings`. */
+export default function UserSettingsLegacyRedirectPage() {
+  redirect('/user/ai-settings');
 }

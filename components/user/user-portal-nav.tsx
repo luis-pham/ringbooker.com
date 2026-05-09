@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
+import { readCachedGoLiveNavVisible, writeCachedGoLiveNavVisible } from '@/components/user/user-portal-go-live-cache';
+
 export type UserPortalNavKey =
   | 'overview'
   | 'bookings'
@@ -11,7 +13,7 @@ export type UserPortalNavKey =
   | 'knowledge'
   | 'integrations'
   | 'go-live'
-  | 'settings'
+  | 'ai-settings'
   | 'billing'
   | 'account'
   | 'more';
@@ -150,26 +152,63 @@ function IconMore() {
 /** Shared left-rail links for authenticated `/user/*` pages. */
 export function UserPortalNav({ active }: UserPortalNavProps) {
   const [followUpCount, setFollowUpCount] = useState(0);
-  const [showGoLive, setShowGoLive] = useState(active === 'go-live');
+  const [showGoLive, setShowGoLive] = useState(() => active === 'go-live');
+  const [goLiveNavResolved, setGoLiveNavResolved] = useState(() => active === 'go-live');
 
   useEffect(() => {
     let cancelled = false;
+
+    if (active === 'go-live') {
+      setShowGoLive(true);
+      setGoLiveNavResolved(true);
+    } else {
+      const cached = readCachedGoLiveNavVisible();
+      if (cached !== null) {
+        setShowGoLive(cached);
+        setGoLiveNavResolved(true);
+      } else {
+        setGoLiveNavResolved(false);
+        setShowGoLive(false);
+      }
+    }
+
     void Promise.allSettled([
       fetch('/api/backend/user/calls/summary').then(async (response) => (await response.json()) as { ok?: boolean; followUpCount?: number }),
       fetch('/api/backend/user/nav-state').then(async (response) => (await response.json()) as { ok?: boolean; onboardingRequired?: boolean; liveCallsEnabled?: boolean }),
-    ]).then(([callsResult, navResult]) => {
-      if (cancelled) return;
-      if (callsResult.status === 'fulfilled' && callsResult.value.ok) {
-        setFollowUpCount(callsResult.value.followUpCount ?? 0);
-      }
-      if (navResult.status === 'fulfilled' && navResult.value.ok) {
-        setShowGoLive(Boolean(!navResult.value.onboardingRequired && !navResult.value.liveCallsEnabled));
-      }
-    }).catch(() => undefined);
+    ])
+      .then(([callsResult, navResult]) => {
+        if (cancelled) return;
+        if (callsResult.status === 'fulfilled' && callsResult.value.ok) {
+          setFollowUpCount(callsResult.value.followUpCount ?? 0);
+        }
+        if (navResult.status === 'fulfilled' && navResult.value.ok) {
+          const next = Boolean(!navResult.value.onboardingRequired && !navResult.value.liveCallsEnabled);
+          writeCachedGoLiveNavVisible(next);
+          if (active !== 'go-live') {
+            setShowGoLive(next);
+          }
+        }
+        setGoLiveNavResolved(true);
+      })
+      .catch(() => {
+        if (!cancelled) setGoLiveNavResolved(true);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [active]);
+
+  const goLiveRow =
+    showGoLive || active === 'go-live' ? (
+      navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active)
+    ) : !goLiveNavResolved ? (
+      <div className="nav-item nav-go-live-placeholder" aria-busy="true" aria-label="Loading navigation">
+        <span className="nav-go-live-placeholder-track">
+          <span className="nav-go-live-placeholder-bar" />
+        </span>
+      </div>
+    ) : null;
 
   return (
     <div className="nav-section">
@@ -179,12 +218,12 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
         {navLink('calls', '/user/calls', 'Calls', <IconCalls />, active, followUpCount)}
         {navLink('bookings', '/user/bookings', 'Bookings', <IconBookings />, active)}
         <div className="nav-label">Setup</div>
-        {showGoLive || active === 'go-live' ? navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active) : null}
+        {goLiveRow}
         {navLink('knowledge', '/user/knowledge', 'Business Knowledge', <IconKnowledge />, active)}
+        {navLink('ai-settings', '/user/ai-settings', 'AI Settings', <IconSettings />, active)}
         {navLink('integrations', '/user/integrations', 'Integrations', <IconIntegrations />, active)}
         <div className="nav-label">Account</div>
         {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active)}
-        {navLink('settings', '/user/settings', 'Settings', <IconSettings />, active)}
         {navLink('account', '/user/account', 'Account', <IconAccount />, active)}
       </div>
     </div>
