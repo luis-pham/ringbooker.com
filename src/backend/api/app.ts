@@ -5225,12 +5225,29 @@ export function createBackendApp(deps: {
     const catalog = getPlanCatalogEntry(subscription?.plan ?? shop.plan);
     const amountCents = access.amountCents ?? catalog.amountCents ?? 0;
     const commercialAccount = deps.commercialAccountsRepository ? await deps.commercialAccountsRepository.findByShopId(shop.id).catch(() => null) : null;
-    const usage = deps.callLogsRepository
-      ? await getShopUsageForPeriod(
+    let usage = null;
+    if (deps.callLogsRepository) {
+      let usageTimedOut = false;
+      let usageTimeout: ReturnType<typeof setTimeout> | null = null;
+      const usageTimeoutPromise = new Promise<null>((resolve) => {
+        usageTimeout = setTimeout(() => {
+          usageTimedOut = true;
+          logger.warn({ shopId: shop.id }, 'user_billing_usage_timeout');
+          resolve(null);
+        }, 2500);
+      });
+      usage = await Promise.race([
+        getShopUsageForPeriod(
           { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
           { shop, commercialAccount },
-        )
-      : null;
+        ).catch((err) => {
+          logger.warn({ err, shopId: shop.id }, 'user_billing_usage_unavailable');
+          return null;
+        }),
+        usageTimeoutPromise,
+      ]);
+      if (!usageTimedOut && usageTimeout) clearTimeout(usageTimeout);
+    }
     const env = getEnv();
     const checkoutAvailable = Boolean(
       env.BILLING_CHECKOUT_ENABLED &&

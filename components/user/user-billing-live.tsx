@@ -346,7 +346,18 @@ export function UserBillingLive() {
   const [provisionForwardingError, setProvisionForwardingError] = useState<string | null>(null);
 
   const refreshBilling = useCallback(async () => {
-    const response = await fetch('/api/backend/user/billing');
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    let response: Response;
+    try {
+      response = await fetch('/api/backend/user/billing', { signal: controller.signal });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+      throw new Error('invalid_billing_response');
+    }
     const body = (await response.json()) as UserBillingResponse;
     setData(body);
     if (body.ok && body.shop) {
