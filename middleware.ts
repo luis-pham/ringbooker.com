@@ -5,7 +5,14 @@ const USER_SESSION_COOKIE = 'rb_user_session';
 const ADMIN_SESSION_COOKIE = 'rb_admin_session';
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+  // GTM / GA4: https://developers.google.com/tag-platform/security/guides/csp
+  [
+    "script-src 'self' 'unsafe-inline'",
+    'https://challenges.cloudflare.com',
+    'https://www.googletagmanager.com',
+    'https://tagmanager.google.com',
+    'https://www.google-analytics.com',
+  ].join(' '),
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self'",
@@ -25,8 +32,14 @@ const CONTENT_SECURITY_POLICY = [
     'wss://*.livekit.io',
     'ws://localhost:*',
     'ws://127.0.0.1:*',
+    'https://www.google-analytics.com',
+    'https://*.google-analytics.com',
+    'https://*.analytics.google.com',
+    'https://www.googletagmanager.com',
+    'https://*.googletagmanager.com',
+    'https://stats.g.doubleclick.net',
   ].join(' '),
-  "frame-src 'self' https://challenges.cloudflare.com",
+  "frame-src 'self' https://challenges.cloudflare.com https://www.googletagmanager.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

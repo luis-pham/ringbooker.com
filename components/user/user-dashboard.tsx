@@ -85,10 +85,10 @@ button,input,select,textarea{font:inherit}
 .sidebar-logout:hover{background:#fef2f2;color:var(--red-deep)}
 .sidebar-logout svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;flex-shrink:0}
 .brand{
-  display:flex;align-items:flex-start;gap:12px;
+  display:flex;align-items:center;gap:12px;
   margin-bottom:22px;
 }
-.brand-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.brand-text{display:flex;flex-direction:column;gap:2px;min-width:0;justify-content:center}
 .brand-title{
   font-weight:800;font-size:18px;letter-spacing:-.02em;
   color:var(--purple-dark);line-height:1.2;
