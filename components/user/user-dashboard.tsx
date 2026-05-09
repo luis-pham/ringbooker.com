@@ -88,6 +88,7 @@ button,input,select,textarea{font:inherit}
   display:flex;align-items:center;gap:12px;
   margin-bottom:22px;
 }
+.brand-mobile-actions{display:none;margin-left:auto;align-items:center;gap:8px}
 .brand-text{display:flex;flex-direction:column;gap:2px;min-width:0;justify-content:center}
 .brand-title{
   font-weight:800;font-size:18px;letter-spacing:-.02em;
@@ -676,7 +677,7 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
 }
 @media (max-width:860px){
   .main{padding:0 18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
-  .topbar{margin:0 -18px 20px;padding:12px 18px}
+  .topbar{margin:0 -18px 20px;padding:12px 18px;border-bottom:none}
   .grid-2,.form-grid{grid-template-columns:1fr}
   .grid.grid-3,.grid.grid-4{
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -725,6 +726,8 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
     justify-content:flex-start;
     gap:10px;
   }
+  .topbar-trailing > .portal-notif,
+  .topbar-trailing > .user-theme-toggle{display:none}
   .topbar-user-chip{display:none !important}
   .top-actions.overview-top-actions{display:none}
   .page-title h1{font-size:22px}
@@ -734,7 +737,9 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
   .sidebar-spacer{display:none}
   .user-app-shell .sidebar-footer{display:none !important}
   .user-app-shell .sidebar-body{flex:none;min-height:0;overflow:visible}
+  .brand{width:100%;margin-bottom:0}
   .brand-title,.brand-tagline{display:block}
+  .brand-mobile-actions{display:flex}
   .user-app-shell .nav-section{display:none !important}
 }
 `,

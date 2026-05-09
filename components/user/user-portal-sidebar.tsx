@@ -2,6 +2,8 @@
 
 import type { UserPortalNavKey } from '@/components/user/user-portal-nav';
 import { UserPortalNav } from '@/components/user/user-portal-nav';
+import { UserPortalNotifications } from '@/components/user/user-portal-notifications';
+import { UserPortalThemeToggle } from '@/components/user/user-portal-theme-toggle';
 
 function IconLogout() {
   return (
@@ -39,6 +41,10 @@ export function UserPortalSidebar({ active }: UserPortalSidebarProps) {
             </div>
             <div className="brand-text">
               <span className="brand-title">RingBooker</span>
+            </div>
+            <div className="brand-mobile-actions" aria-label="Quick actions">
+              <UserPortalNotifications />
+              <UserPortalThemeToggle />
             </div>
           </div>
           <UserPortalNav active={active} />
