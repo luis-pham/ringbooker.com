@@ -36,7 +36,7 @@ Nền tảng AI phone receptionist cho salon/spa/clinic:
 
 ### Integrations
 - Telnyx (telephony + webhook verify/dedupe).
-- Paddle (billing + webhook sync).
+- Paddle (billing + webhook sync). See `docs/paddle-integration.md` for checkout/webhook setup.
 - Google Calendar (availability/create/reschedule/cancel).
 - Supabase (repo mode production).
 - Redis (cache/rate-limit cross-instance, optional nhưng khuyến nghị).
