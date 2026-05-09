@@ -254,6 +254,63 @@ test('paddle webhook attaches provider data to existing internal trial row', asy
   assert.equal(allForShop.length, 1);
 });
 
+test('paddle transaction events without subscription id do not corrupt internal no-card trial', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Checkout Transaction Created Salon',
+    phone_number: '+15550003333',
+    user_phone: '+15550004444',
+    timezone: 'America/New_York',
+    plan: 'starter',
+    active: true,
+  });
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const internal = await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'internal',
+    plan: 'starter',
+    status: 'trialing',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    trialStartedAt: '2026-05-01T00:00:00Z',
+    trialEndsAt: '2026-05-15T00:00:00Z',
+    paymentMethodStatus: 'none',
+  });
+  const provider = new PaddleBillingProvider({
+    shopsRepository,
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+  });
+
+  const result = await provider.syncWebhookEvent({
+    eventType: 'transaction.created',
+    payload: {
+      id: 'txn_created_without_subscription',
+      status: 'ready',
+      currency_code: 'USD',
+      custom_data: {
+        shop_id: shop.id,
+        internal_subscription_id: internal.id,
+      },
+      customer_id: 'ctm_checkout_created',
+      items: [{ price: { id: process.env.PADDLE_PRICE_STARTER_MONTHLY } }],
+      unit_totals: { total: '7900' },
+    },
+  });
+
+  assert.equal(result?.subscription?.id, internal.id);
+  const after = await billingSubscriptionsRepository.findById(internal.id);
+  assert.equal(after?.provider, 'internal');
+  assert.equal(after?.providerSubscriptionId, null);
+  assert.equal(after?.status, 'trialing');
+  assert.equal(after?.paymentMethodStatus, 'none');
+});
+
 test('paddle subscription lifecycle events map to normalized statuses', async () => {
   const statusCases: Array<{ eventType: string; paddleStatus?: string; expected: string }> = [
     { eventType: 'subscription.created', paddleStatus: 'trialing', expected: 'trialing' },

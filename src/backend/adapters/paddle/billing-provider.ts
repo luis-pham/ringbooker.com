@@ -273,6 +273,18 @@ function mapPaddleStatus(eventType: string, data: Record<string, unknown> | unde
   return 'unknown';
 }
 
+function shouldMutateSubscriptionFromPaddleEvent(params: {
+  eventType: string;
+  providerSubscriptionId: string | null;
+  mappedStatus: BillingSubscriptionStatus;
+}): boolean {
+  if (params.providerSubscriptionId) return true;
+  const normalized = params.eventType.toLowerCase();
+  if (normalized.includes('subscription.')) return true;
+  if (params.mappedStatus === 'unknown') return false;
+  return normalized.includes('payment_method.') || normalized.includes('transaction.payment_failed');
+}
+
 export class PaddleBillingProvider implements BillingProviderAdapter {
   readonly provider = 'paddle' as const;
 
@@ -411,6 +423,15 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     if (providerSubscriptionId || internalSubscription) {
       const mappedPlan = mapPaddlePriceToPlan(params.payload) ?? shop.plan;
       const mappedStatus = mapPaddleStatus(params.eventType, params.payload);
+      if (!shouldMutateSubscriptionFromPaddleEvent({ eventType: params.eventType, providerSubscriptionId, mappedStatus })) {
+        return {
+          provider: 'paddle',
+          shopId,
+          customer,
+          subscription: internalSubscription ?? existingProviderSubscription ?? null,
+          shopPlanChanged: false,
+        };
+      }
       const amount = extractMoneyAmount(params.payload);
       const period = extractPeriod(params.payload);
       const mappedInterval = mapPaddlePriceToInterval(params.payload);
