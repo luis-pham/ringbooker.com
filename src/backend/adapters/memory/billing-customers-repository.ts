@@ -50,13 +50,22 @@ export class InMemoryBillingCustomersRepository implements BillingCustomersRepos
     name?: string | null;
     metadata?: Record<string, unknown> | null;
   }): Promise<BillingCustomer> {
-    const existing = params.providerCustomerId
+    const existingByProviderCustomer = params.providerCustomerId
       ? await this.findByProviderCustomerId(params.provider, params.providerCustomerId)
-      : await this.findByShopId(params.shopId, params.provider);
+      : null;
+    const existingByShop = await this.findByShopId(params.shopId, params.provider);
+    if (
+      existingByProviderCustomer &&
+      existingByProviderCustomer.shopId !== params.shopId &&
+      existingByProviderCustomer.id !== existingByShop?.id
+    ) {
+      throw new Error('billing_customers_upsert_failed:provider_customer_id_owned_by_different_shop');
+    }
+    const existing = existingByProviderCustomer ?? existingByShop;
     const now = new Date().toISOString();
     const next: BillingCustomer = {
       id: existing?.id ?? `bc_${randomUUID()}`,
-      shopId: params.shopId,
+      shopId: existing?.shopId ?? params.shopId,
       provider: params.provider,
       providerCustomerId: params.providerCustomerId ?? existing?.providerCustomerId ?? null,
       email: params.email ?? existing?.email ?? null,

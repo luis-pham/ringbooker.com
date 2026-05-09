@@ -320,6 +320,70 @@ test('paddle billing provider syncs webhook payload into normalized billing reco
   assert.equal(shop?.active, true);
 });
 
+test('paddle webhook customer upsert merges repeated customer events for the same shop provider', async () => {
+  const { provider, billingCustomersRepository, billingSubscriptionsRepository } = buildProvider();
+  await billingCustomersRepository.upsert({
+    shopId: 'demo-shop',
+    provider: 'paddle',
+    providerCustomerId: null,
+    email: 'placeholder@ringbooker.local',
+  });
+
+  const basePayload = {
+    customer_id: 'ctm_multi_event_retry',
+    custom_data: { shop_id: 'demo-shop' },
+    items: [{ price: { id: process.env.PADDLE_PRICE_STARTER_MONTHLY } }],
+    unit_totals: { total: '7900' },
+  };
+  const updated = await provider.syncWebhookEvent({
+    eventType: 'transaction.updated',
+    payload: {
+      ...basePayload,
+      id: 'txn_multi_event_retry_1',
+      subscription_id: 'sub_multi_event_retry',
+      occurred_at: '2026-05-09T18:00:00Z',
+    },
+  });
+  const created = await provider.syncWebhookEvent({
+    eventType: 'subscription.created',
+    payload: {
+      ...basePayload,
+      id: 'sub_multi_event_retry',
+      status: 'trialing',
+      occurred_at: '2026-05-09T18:01:00Z',
+    },
+  });
+  const trialing = await provider.syncWebhookEvent({
+    eventType: 'subscription.trialing',
+    payload: {
+      ...basePayload,
+      id: 'sub_multi_event_retry',
+      status: 'trialing',
+      occurred_at: '2026-05-09T18:02:00Z',
+    },
+  });
+  const completed = await provider.syncWebhookEvent({
+    eventType: 'transaction.completed',
+    payload: {
+      ...basePayload,
+      id: 'txn_multi_event_retry_2',
+      subscription_id: 'sub_multi_event_retry',
+      payment_method_id: 'pm_multi_event_retry',
+      occurred_at: '2026-05-09T18:03:00Z',
+    },
+  });
+
+  assert.equal(updated?.shopId, 'demo-shop');
+  assert.equal(created?.shopId, 'demo-shop');
+  assert.equal(trialing?.shopId, 'demo-shop');
+  assert.equal(completed?.shopId, 'demo-shop');
+  assert.equal((await billingCustomersRepository.findByShopId('demo-shop', 'paddle'))?.providerCustomerId, 'ctm_multi_event_retry');
+  assert.equal((await billingCustomersRepository.findByProviderCustomerId('paddle', 'ctm_multi_event_retry'))?.shopId, 'demo-shop');
+  const subscription = await billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', 'sub_multi_event_retry');
+  assert.equal(subscription?.providerCustomerId, 'ctm_multi_event_retry');
+  assert.equal(subscription?.paymentMethodStatus, 'valid');
+});
+
 test('paddle webhook attaches provider data to existing internal trial row', async () => {
   const shopsRepository = new InMemoryShopsRepository();
   const shop = await shopsRepository.create({

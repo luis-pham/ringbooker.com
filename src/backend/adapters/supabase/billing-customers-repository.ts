@@ -29,6 +29,10 @@ function toBillingCustomer(row: BillingCustomersRow): BillingCustomer {
   };
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === '23505';
+}
+
 export class SupabaseBillingCustomersRepository implements BillingCustomersRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
@@ -70,8 +74,15 @@ export class SupabaseBillingCustomersRepository implements BillingCustomersRepos
     const existingByProviderCustomer = providerCustomerId
       ? await this.findByProviderCustomerId(params.provider, providerCustomerId)
       : null;
-    const existing =
-      existingByProviderCustomer ?? (await this.findByShopId(params.shopId, params.provider));
+    const existingByShop = await this.findByShopId(params.shopId, params.provider);
+    if (
+      existingByProviderCustomer &&
+      existingByProviderCustomer.shopId !== params.shopId &&
+      existingByProviderCustomer.id !== existingByShop?.id
+    ) {
+      throw new Error('billing_customers_upsert_failed:provider_customer_id_owned_by_different_shop');
+    }
+    const existing = existingByProviderCustomer ?? existingByShop;
 
     if (existing) {
       const { data, error } = await this.supabase
@@ -106,14 +117,15 @@ export class SupabaseBillingCustomersRepository implements BillingCustomersRepos
       .select('*')
       .single<BillingCustomersRow>();
     if (error) {
-      // If another webhook inserted the customer first, recover by reading it back.
-      if (providerCustomerId && error.code === '23505') {
-        const concurrent = await this.findByProviderCustomerId(params.provider, providerCustomerId);
-        if (concurrent) return this.upsert(params);
-      }
-      if (!providerCustomerId && error.code === '23505') {
-        const concurrent = await this.findByShopId(params.shopId, params.provider);
-        if (concurrent) return this.upsert(params);
+      // If another checkout/webhook inserted the row first, recover by either unique key.
+      // Paddle can emit transaction/subscription/payment events in quick succession; some
+      // contain customer_id, some race on the shop/provider placeholder row.
+      if (isUniqueViolation(error)) {
+        const concurrent = providerCustomerId
+          ? await this.findByProviderCustomerId(params.provider, providerCustomerId)
+          : null;
+        const concurrentByShop = await this.findByShopId(params.shopId, params.provider);
+        if (concurrent || concurrentByShop) return this.upsert(params);
       }
       throw new Error(`billing_customers_upsert_failed:${error.message}`);
     }
