@@ -1,4 +1,5 @@
 import type {
+  BillingInterval,
   BillingCheckoutSession,
   BillingCustomer,
   BillingProvider,
@@ -22,6 +23,7 @@ export interface BillingProviderAdapter {
     email?: string | null;
     internalSubscriptionId?: string | null;
     trialEndsAt?: string | null;
+    billingInterval?: BillingInterval;
     source?: string;
     successUrl: string;
     cancelUrl: string;

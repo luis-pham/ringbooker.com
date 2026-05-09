@@ -580,6 +580,7 @@ const adminUserSetPasswordSchema = z.object({
 
 const userBillingCheckoutSchema = z.object({
   plan: z.enum(['starter', 'professional', 'enterprise']).optional(),
+  billing_interval: z.enum(['monthly', 'annual']).optional(),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
 });
@@ -5230,6 +5231,16 @@ export function createBackendApp(deps: {
           { shop, commercialAccount },
         )
       : null;
+    const env = getEnv();
+    const checkoutAvailable = Boolean(
+      env.BILLING_CHECKOUT_ENABLED &&
+        deps.billingProvider &&
+        isSelfServeTrialPlan(shop.plan),
+    );
+    const availableBillingIntervals = [
+      env.PADDLE_PRICE_STARTER_MONTHLY && env.PADDLE_PRICE_PROFESSIONAL_MONTHLY ? 'monthly' : null,
+      env.PADDLE_PRICE_STARTER_ANNUAL && env.PADDLE_PRICE_PROFESSIONAL_ANNUAL ? 'annual' : null,
+    ].filter((value): value is 'monthly' | 'annual' => value !== null);
 
     return c.json({
       ok: true,
@@ -5265,8 +5276,14 @@ export function createBackendApp(deps: {
         commercialGoLiveApproved: access.commercialGoLiveApproved,
         commercialApprovalRequired: access.blockReason === 'commercial_approval_required',
         requiresPaymentMethodBeforeGoLive: access.paymentMethodStatus !== 'valid',
-        trialNoChargeUntilEndVerified: process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true',
-        checkoutAvailable: Boolean(deps.billingProvider && isSelfServeTrialPlan(shop.plan)),
+        trialNoChargeUntilEndVerified: env.PADDLE_TRIAL_CONFIG_VERIFIED === true,
+        checkoutAvailable,
+        checkoutDisabledReason: checkoutAvailable
+          ? null
+          : env.BILLING_CHECKOUT_ENABLED
+            ? 'billing_provider_unavailable'
+            : 'billing_checkout_disabled',
+        availableBillingIntervals,
         manageBillingAvailable: false,
         forwardingNumber: shop.telnyx_number?.trim() ? shop.telnyx_number.trim() : null,
         usage,
@@ -5289,6 +5306,17 @@ export function createBackendApp(deps: {
     const parsed = userBillingCheckoutSchema.safeParse(body);
     if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
 
+    if (!getEnv().BILLING_CHECKOUT_ENABLED) {
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_checkout_disabled',
+          message: 'Billing checkout is not enabled for this environment yet.',
+        },
+        503,
+      );
+    }
+
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
     const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
@@ -5296,6 +5324,7 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'subscription_not_ready_for_checkout' }, 409);
     }
     const checkoutPlan = subscription.plan;
+    const billingInterval = parsed.data.billing_interval === 'annual' ? 'year' : 'month';
     if (!isSelfServeTrialPlan(checkoutPlan)) {
       return c.json({ ok: false, error: 'plan_not_self_serve', message: 'Please contact sales for custom plans.' }, 400);
     }
@@ -5307,6 +5336,7 @@ export function createBackendApp(deps: {
       email: sessionResult.email,
       internalSubscriptionId: subscription.id,
       trialEndsAt: subscription.trialEndsAt ?? null,
+      billingInterval,
       source: 'add_payment_method_before_go_live',
       successUrl: parsed.data.successUrl ?? `${appBaseUrl}/user/billing?checkout=success`,
       cancelUrl: parsed.data.cancelUrl ?? `${appBaseUrl}/user/billing?checkout=cancelled`,
@@ -5332,6 +5362,16 @@ export function createBackendApp(deps: {
     if (!deps.shopsRepository || !deps.billingProvider || !deps.billingSubscriptionsRepository) {
       return c.json({ ok: false, error: 'billing_provider_unavailable' }, 500);
     }
+    if (!getEnv().BILLING_CHECKOUT_ENABLED) {
+      return c.json(
+        {
+          ok: false,
+          error: 'billing_checkout_disabled',
+          message: 'Billing checkout is not enabled for this environment yet.',
+        },
+        503,
+      );
+    }
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
@@ -5348,6 +5388,7 @@ export function createBackendApp(deps: {
       plan: subscription.plan,
       email: sessionResult.email,
       internalSubscriptionId: subscription.id,
+      billingInterval: subscription.interval ?? 'month',
       source: 'reactivate_subscription',
       successUrl: `${appBaseUrl}/user/billing?checkout=success`,
       cancelUrl: `${appBaseUrl}/user/billing?checkout=cancelled`,

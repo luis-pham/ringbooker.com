@@ -8,7 +8,14 @@ import { requestHumanHandoffTool } from '@/src/agent/tools/request-human-handoff
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
 import type { AgentToolContext } from '@/src/agent/tools/types';
 import type { Shop } from '@/src/backend/domain/types';
-import type { BookingsRepository, CallbacksRepository, JobsRepository, ShopsRepository } from '@/src/backend/ports/repositories';
+import type {
+  BillingSubscriptionsRepository,
+  BookingsRepository,
+  CallbacksRepository,
+  JobsRepository,
+  ShopAccessStatesRepository,
+  ShopsRepository,
+} from '@/src/backend/ports/repositories';
 import { logger } from '@/src/backend/observability/logger';
 import { getCalendarProvider } from '@/src/backend/services/calendar/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -19,6 +26,8 @@ export type SipToolExecutorDeps = {
   jobsRepository: JobsRepository;
   bookingsRepository: BookingsRepository;
   callbacksRepository: CallbacksRepository;
+  billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+  shopAccessStatesRepository?: ShopAccessStatesRepository;
   telephonyService: TelephonyService;
 };
 
@@ -60,6 +69,8 @@ export function createSipAgentToolContext(params: {
     bookingsRepository: params.deps.bookingsRepository,
     callbacksRepository: params.deps.callbacksRepository,
     shopsRepository: params.deps.shopsRepository,
+    billingSubscriptionsRepository: params.deps.billingSubscriptionsRepository,
+    shopAccessStatesRepository: params.deps.shopAccessStatesRepository,
     telephonyService: params.deps.telephonyService,
     parentTelnyxCallControlId: params.parentTelnyxCallControlId ?? null,
     rbCallId: params.rbCallId ?? params.requestId,

@@ -13,6 +13,7 @@ import { InMemoryMissedCallsRepository } from '@/src/backend/adapters/memory/mis
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
+import type { BillingSubscriptionStatus } from '@/src/backend/domain/types';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { buildCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
 
@@ -45,6 +46,54 @@ function callInitiatedBody(params: { id: string; to: string; from: string; callC
         direction: 'incoming',
       },
     },
+  });
+}
+
+async function configureLiveShop(params: {
+  shopsRepository: InMemoryShopsRepository;
+  billingSubscriptionsRepository: InMemoryBillingSubscriptionsRepository;
+  shopAccessStatesRepository: InMemoryShopAccessStatesRepository;
+  shopId?: string;
+  telnyxNumber?: string;
+  status?: BillingSubscriptionStatus;
+  paymentMethodStatus?: 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
+  providerCustomerId?: string | null;
+  providerSubscriptionId?: string | null;
+}) {
+  const shopId = params.shopId ?? 'demo-shop';
+  await params.shopsRepository.updateUserSettings(shopId, {
+    telnyx_number: params.telnyxNumber ?? '+15551110044',
+    phone_number: '+15552220044',
+    user_phone: '+15553330044',
+    user_name: 'Demo Owner',
+    timezone: 'America/New_York',
+    vertical: 'nail_salon',
+    hours: {
+      mon: { open: '09:00', close: '17:00' },
+    },
+    services: [{ name: 'Gel manicure', duration_min: 45, price: 45 }],
+    current_onboarding_step: 4,
+  });
+  await params.shopAccessStatesRepository.upsert({
+    shopId,
+    liveCallsEnabled: true,
+    forwardingSetupVerifiedAt: '2026-05-04T00:00:00Z',
+    forwardingSetupVerifiedVia: 'forwarding_test',
+  });
+  await params.billingSubscriptionsRepository.upsert({
+    shopId,
+    provider: 'paddle',
+    providerSubscriptionId: params.providerSubscriptionId === undefined ? `sub_${shopId}` : params.providerSubscriptionId,
+    providerCustomerId: params.providerCustomerId === undefined ? `ctm_${shopId}` : params.providerCustomerId,
+    plan: 'starter',
+    status: params.status ?? 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    trialStartedAt: params.status === 'trialing' ? '2026-05-01T00:00:00Z' : null,
+    trialEndsAt: params.status === 'trialing' ? '2099-05-15T00:00:00Z' : null,
+    paymentMethodStatus: params.paymentMethodStatus ?? 'valid',
   });
 }
 
@@ -186,6 +235,157 @@ test('telnyx call-control webhook invokes answer when dry-run off', async () => 
   assert.match(answerUrl, /\/v2\/calls\/cc_answer\/actions\/answer$/);
 });
 
+test('telnyx call-control live inbound allows active and trialing billing before answer', async () => {
+  for (const entry of [
+    { status: 'active' as const, eventId: 'evt-cc-active-allowed', callControlId: 'cc_active_allowed' },
+    { status: 'trialing' as const, eventId: 'evt-cc-trialing-allowed', callControlId: 'cc_trialing_allowed' },
+  ]) {
+    resetEnvCacheForTests();
+    applyRequiredTestEnv({
+      ...TELNYX_INBOUND_CALL_CONTROL_STACK,
+      TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+      TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+      TELNYX_CALL_CONTROL_DRY_RUN: 'false',
+    });
+
+    const urls: string[] = [];
+    const testingTelnyxFetch: typeof fetch = async (input) => {
+      urls.push(String(input));
+      return new Response(JSON.stringify({ data: {} }), { status: 200 });
+    };
+
+    const shopsRepository = new InMemoryShopsRepository();
+    const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+    const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+    await configureLiveShop({
+      shopsRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      telnyxNumber: '+15551110045',
+      status: entry.status,
+    });
+
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      shopsRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      testingTelnyxFetch,
+    });
+
+    const body = callInitiatedBody({
+      id: entry.eventId,
+      to: '+15551110045',
+      from: '+14155550000',
+      callControlId: entry.callControlId,
+    });
+    const ts = `${Date.now()}`;
+    const res = await app.request('/webhooks/telnyx/call-control', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'telnyx-timestamp': ts,
+        'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+      },
+      body,
+    });
+
+    assert.equal(res.status, 200);
+    const json = (await res.json()) as Record<string, unknown>;
+    assert.equal(json.decision, 'answer');
+    assert.ok(urls.some((u) => new RegExp(`/v2/calls/${entry.callControlId}/actions/answer$`).test(u)));
+    assert.equal(urls.some((u) => /\/actions\/reject$/.test(u)), false);
+  }
+});
+
+test('telnyx call-control live inbound rejects blocked Paddle billing states before answer', async () => {
+  const blockedCases: Array<{
+    status: BillingSubscriptionStatus;
+    paymentMethodStatus?: 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
+    providerCustomerId?: string | null;
+    providerSubscriptionId?: string | null;
+  }> = [
+    { status: 'canceled' },
+    { status: 'paused' },
+    { status: 'past_due' },
+    { status: 'active', paymentMethodStatus: 'failed' },
+    { status: 'active', providerCustomerId: null },
+    { status: 'active', providerSubscriptionId: null },
+  ];
+
+  for (const [idx, entry] of blockedCases.entries()) {
+    resetEnvCacheForTests();
+    applyRequiredTestEnv({
+      ...TELNYX_INBOUND_CALL_CONTROL_STACK,
+      TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+      TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+      TELNYX_CALL_CONTROL_DRY_RUN: 'false',
+    });
+
+    const urls: string[] = [];
+    const testingTelnyxFetch: typeof fetch = async (input) => {
+      urls.push(String(input));
+      return new Response(JSON.stringify({ data: {} }), { status: 200 });
+    };
+
+    const shopsRepository = new InMemoryShopsRepository();
+    const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+    const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+    await configureLiveShop({
+      shopsRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      telnyxNumber: '+15551110046',
+      status: entry.status,
+      paymentMethodStatus: entry.paymentMethodStatus,
+      providerCustomerId: entry.providerCustomerId,
+      providerSubscriptionId: entry.providerSubscriptionId,
+    });
+    const currentSubscription = await billingSubscriptionsRepository.findCurrentByShopId('demo-shop', 'paddle');
+    if (currentSubscription && entry.providerCustomerId === null) {
+      await billingSubscriptionsRepository.updateById(currentSubscription.id, { providerCustomerId: null });
+    }
+    if (currentSubscription && entry.providerSubscriptionId === null) {
+      await billingSubscriptionsRepository.updateById(currentSubscription.id, { providerSubscriptionId: null });
+    }
+
+    const app = createBackendApp({
+      providerEventsRepository: new InMemoryProviderEventsRepository(),
+      shopsRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      callLogsRepository: new InMemoryCallLogsRepository(),
+      testingTelnyxFetch,
+    });
+
+    const callControlId = `cc_blocked_${idx}`;
+    const body = callInitiatedBody({
+      id: `evt-cc-billing-blocked-${idx}`,
+      to: '+15551110046',
+      from: '+14155550000',
+      callControlId,
+    });
+    const ts = `${Date.now()}`;
+    const res = await app.request('/webhooks/telnyx/call-control', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'telnyx-timestamp': ts,
+        'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+      },
+      body,
+    });
+
+    assert.equal(res.status, 200);
+    const json = (await res.json()) as Record<string, unknown>;
+    assert.equal(json.decision, 'reject', `${entry.status} should reject`);
+    assert.equal(urls.some((u) => new RegExp(`/v2/calls/${callControlId}/actions/answer$`).test(u)), false);
+    assert.equal(urls.some((u) => /\/v2\/calls$/.test(u)), false);
+    assert.ok(urls.some((u) => new RegExp(`/v2/calls/${callControlId}/actions/reject$`).test(u)));
+  }
+});
+
 test('telnyx call-control webhook invokes reject for unknown DID when dry-run off', async () => {
   resetEnvCacheForTests();
   applyRequiredTestEnv({
@@ -304,6 +504,87 @@ test('telnyx call-control call.answered invokes POST /v2/calls when bridge flag 
   const openaiLeg = await voiceCallLegsRepository.findOpenAiLegByRbCallId('demo-shop', 'req_parent_answered');
   assert.ok(openaiLeg);
   assert.equal(openaiLeg?.callControlId, 'cc_openai_leg');
+});
+
+test('telnyx call-control call.answered re-checks billing before creating OpenAI leg', async () => {
+  resetEnvCacheForTests();
+  applyRequiredTestEnv({
+    ...TELNYX_INBOUND_CALL_CONTROL_STACK,
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+    TELNYX_CALL_CONTROL_WEBHOOK_ENABLED: 'true',
+    TELNYX_CALL_CONTROL_DRY_RUN: 'false',
+    TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP: 'true',
+    OPENAI_SIP_URI: 'sip:proj_test@sip.api.openai.com',
+  });
+
+  const urls: string[] = [];
+  const testingTelnyxFetch: typeof fetch = async (input) => {
+    urls.push(String(input));
+    return new Response(JSON.stringify({ data: { call_control_id: 'cc_should_not_create' } }), { status: 200 });
+  };
+
+  const shopsRepository = new InMemoryShopsRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  await configureLiveShop({
+    shopsRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    telnyxNumber: '+15551110047',
+    status: 'past_due',
+  });
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    voiceCallLegsRepository: new InMemoryVoiceCallLegsRepository(),
+    testingTelnyxFetch,
+  });
+
+  const body = JSON.stringify({
+    data: {
+      event_type: 'call.answered',
+      id: 'evt-cc-answered-billing-blocked',
+      payload: {
+        call_control_id: 'cc_parent_blocked',
+        to: '+15551110047',
+        call_direction: 'inbound',
+        client_state: buildCallControlClientState({
+          shopId: 'demo-shop',
+          requestId: 'req_parent_billing_blocked',
+          rbCallId: 'req_parent_billing_blocked',
+          callerPhone: '+14155550000',
+          ts: new Date().toISOString(),
+          telnyxCallControlId: 'cc_parent_blocked',
+          inboundDid: '+15551110047',
+          transport: 'openai_sip_direct',
+          handoffTransport: 'telnyx_call_control',
+          routeKind: 'shop',
+        }),
+      },
+    },
+  });
+  const ts = `${Date.now()}`;
+  const res = await app.request('/webhooks/telnyx/call-control', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+    },
+    body,
+  });
+
+  assert.equal(res.status, 200);
+  const json = (await res.json()) as Record<string, unknown>;
+  assert.equal(json.phase, 'answered');
+  assert.equal(json.bridged, false);
+  assert.equal(json.blocked, true);
+  assert.equal(urls.some((u) => /\/v2\/calls$/.test(u)), false);
+  assert.ok(urls.some((u) => /\/v2\/calls\/cc_parent_blocked\/actions\/speak$/.test(u)));
+  assert.ok(urls.some((u) => /\/v2\/calls\/cc_parent_blocked\/actions\/hangup$/.test(u)));
 });
 
 test('telnyx call-control openai leg call.answered bridges to parent', async () => {
@@ -601,7 +882,12 @@ test('telnyx call-control call.hangup missed enqueues follow-up SMS job', async 
 
   const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
   const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
-  await shopAccessStatesRepository.upsert({ shopId: 'demo-shop', liveCallsEnabled: true });
+  await shopAccessStatesRepository.upsert({
+    shopId: 'demo-shop',
+    liveCallsEnabled: true,
+    forwardingSetupVerifiedAt: '2026-05-04T00:00:00Z',
+    forwardingSetupVerifiedVia: 'forwarding_test',
+  });
 
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),

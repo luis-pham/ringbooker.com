@@ -2,6 +2,7 @@ import { getEnv } from '@/src/backend/config/env';
 import { resolvePaddlePriceIdFromCatalog } from '@/src/backend/domain/plan-catalog';
 import { logger } from '@/src/backend/observability/logger';
 import type {
+  BillingInterval,
   BillingCustomer,
   BillingSubscription,
   BillingSubscriptionStatus,
@@ -17,12 +18,29 @@ import type {
 import type { BillingProviderAdapter, BillingWebhookSyncResult } from '@/src/backend/services/billing/types';
 
 function getPaddleApiBaseUrl() {
-  return getEnv().PADDLE_ENVIRONMENT === 'production' ? 'https://api.paddle.com' : 'https://sandbox-api.paddle.com';
+  const env = getEnv();
+  return (env.PADDLE_ENV ?? env.PADDLE_ENVIRONMENT) === 'production' ? 'https://api.paddle.com' : 'https://sandbox-api.paddle.com';
 }
 
-function resolvePaddlePriceId(plan: ShopPlan): string {
+function resolvePaddlePriceId(plan: ShopPlan, interval: BillingInterval): string {
   getEnv();
-  return resolvePaddlePriceIdFromCatalog(plan);
+  return resolvePaddlePriceIdFromCatalog(plan, interval);
+}
+
+function configuredPaddlePriceIds(env = getEnv()): Array<{ priceId: string; plan: ShopPlan; interval: BillingInterval }> {
+  const entries: Array<{ priceId: string | undefined; plan: ShopPlan; interval: BillingInterval }> = [
+    { priceId: env.PADDLE_PRICE_STARTER_MONTHLY, plan: 'starter', interval: 'month' },
+    { priceId: env.PADDLE_PRICE_STARTER_ANNUAL, plan: 'starter', interval: 'year' },
+    { priceId: env.PADDLE_PRICE_PROFESSIONAL_MONTHLY, plan: 'professional', interval: 'month' },
+    { priceId: env.PADDLE_PRICE_PROFESSIONAL_ANNUAL, plan: 'professional', interval: 'year' },
+    { priceId: env.PADDLE_PRICE_STARTER, plan: 'starter', interval: 'month' },
+    { priceId: env.PADDLE_PRICE_PROFESSIONAL, plan: 'professional', interval: 'month' },
+    { priceId: env.PADDLE_PRICE_ENTERPRISE, plan: 'enterprise', interval: 'month' },
+  ];
+  return entries.flatMap((entry) => {
+    const priceId = entry.priceId?.trim();
+    return priceId ? [{ ...entry, priceId }] : [];
+  });
 }
 
 function mapPaddlePriceToPlan(data: Record<string, unknown> | undefined): ShopPlan | null {
@@ -44,12 +62,33 @@ function mapPaddlePriceToPlan(data: Record<string, unknown> | undefined): ShopPl
     addCandidate(nestedPrice);
   }
 
+  const configured = configuredPaddlePriceIds(env);
   for (const candidate of candidates) {
-    if (candidate === env.PADDLE_PRICE_STARTER) return 'starter';
-    if (candidate === env.PADDLE_PRICE_PROFESSIONAL) return 'professional';
-    if (candidate === env.PADDLE_PRICE_ENTERPRISE) return 'enterprise';
+    const match = configured.find((entry) => candidate === entry.priceId);
+    if (match) return match.plan;
   }
 
+  return null;
+}
+
+function mapPaddlePriceToInterval(data: Record<string, unknown> | undefined): BillingInterval | null {
+  if (!data || typeof data !== 'object') return null;
+  const candidates: string[] = [];
+  const addCandidate = (value: unknown) => {
+    if (typeof value === 'string' && value.trim().length > 0) candidates.push(value.trim());
+  };
+  addCandidate((data as { price_id?: unknown }).price_id);
+  const items = Array.isArray(data.items) ? data.items : [];
+  for (const item of items) {
+    if (!item || typeof item !== 'object') continue;
+    addCandidate((item as { price_id?: unknown }).price_id);
+    addCandidate((item as { price?: { id?: unknown } }).price?.id);
+  }
+  const configured = configuredPaddlePriceIds();
+  for (const candidate of candidates) {
+    const match = configured.find((entry) => candidate === entry.priceId);
+    if (match) return match.interval;
+  }
   return null;
 }
 
@@ -67,11 +106,12 @@ function extractShopId(data: Record<string, unknown> | undefined): string | null
   return null;
 }
 
-function extractProviderCustomerId(data: Record<string, unknown> | undefined): string | null {
+function extractProviderCustomerId(eventType: string, data: Record<string, unknown> | undefined): string | null {
   if (!data || typeof data !== 'object') return null;
   const candidates = [
     (data.customer as Record<string, unknown> | undefined)?.id,
     (data.customer_id as string | undefined),
+    eventType.toLowerCase().startsWith('customer.') ? (data.id as string | undefined) : undefined,
   ];
   for (const candidate of candidates) {
     if (typeof candidate === 'string' && candidate.trim().length > 0) return candidate.trim();
@@ -91,9 +131,13 @@ function extractCustomerEmail(data: Record<string, unknown> | undefined): string
   return null;
 }
 
-function extractProviderSubscriptionId(data: Record<string, unknown> | undefined): string | null {
+function extractProviderSubscriptionId(eventType: string, data: Record<string, unknown> | undefined): string | null {
   if (!data || typeof data !== 'object') return null;
-  const candidates = [(data.id as string | undefined), (data.subscription_id as string | undefined)];
+  const normalized = eventType.toLowerCase();
+  const candidates = [
+    (data.subscription_id as string | undefined),
+    normalized.startsWith('subscription.') ? (data.id as string | undefined) : undefined,
+  ];
   for (const candidate of candidates) {
     if (typeof candidate === 'string' && candidate.trim().length > 0) return candidate.trim();
   }
@@ -217,8 +261,14 @@ function mapPaddleStatus(eventType: string, data: Record<string, unknown> | unde
   if (statusCandidate === 'unpaid') return 'unpaid';
 
   if (normalized.includes('subscription.canceled') || normalized.includes('subscription_cancelled')) return 'canceled';
+  if (normalized.includes('subscription.paused')) return 'paused';
+  if (normalized.includes('subscription.resumed')) return 'active';
+  if (normalized.includes('subscription.past_due')) return 'past_due';
+  if (normalized.includes('subscription.trialing')) return 'trialing';
+  if (normalized.includes('subscription.activated')) return 'active';
   if (normalized.includes('subscription.created') || normalized.includes('subscription.updated')) return 'active';
-  if (normalized.includes('transaction.paid') || normalized.includes('payment.succeeded')) return 'active';
+  if (normalized.includes('transaction.completed') || normalized.includes('transaction.paid') || normalized.includes('payment.succeeded')) return 'active';
+  if (normalized.includes('transaction.payment_failed') || normalized.includes('payment_failed')) return 'past_due';
 
   return 'unknown';
 }
@@ -241,11 +291,13 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     email?: string | null;
     internalSubscriptionId?: string | null;
     trialEndsAt?: string | null;
+    billingInterval?: BillingInterval;
     source?: string;
     successUrl: string;
     cancelUrl: string;
   }) {
-    const priceId = resolvePaddlePriceId(params.plan);
+    const billingInterval = params.billingInterval ?? 'month';
+    const priceId = resolvePaddlePriceId(params.plan, billingInterval);
     const trialConfigVerified = getEnv().PADDLE_TRIAL_CONFIG_VERIFIED;
     if (!trialConfigVerified) {
       logger.warn(
@@ -270,6 +322,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
           shop_id: params.shop.id,
           internal_subscription_id: params.internalSubscriptionId ?? undefined,
           requested_plan: params.plan,
+          requested_billing_interval: billingInterval,
           plan: params.plan,
           source: params.source ?? 'add_payment_method_before_go_live',
           internal_trial_ends_at: params.trialEndsAt ?? undefined,
@@ -329,7 +382,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     const shop = await this.deps.shopsRepository.findById(shopId);
     if (!shop) return null;
 
-    const providerCustomerId = extractProviderCustomerId(params.payload);
+    const providerCustomerId = extractProviderCustomerId(params.eventType, params.payload);
     const customerEmail = extractCustomerEmail(params.payload);
     let customer: BillingCustomer | null = null;
     if (providerCustomerId) {
@@ -342,7 +395,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
     }
 
     const internalSubscriptionId = extractInternalSubscriptionId(params.payload);
-    const providerSubscriptionId = extractProviderSubscriptionId(params.payload);
+    const providerSubscriptionId = extractProviderSubscriptionId(params.eventType, params.payload);
     const existingProviderSubscription = providerSubscriptionId
       ? await this.deps.billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', providerSubscriptionId)
       : null;
@@ -360,6 +413,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       const mappedStatus = mapPaddleStatus(params.eventType, params.payload);
       const amount = extractMoneyAmount(params.payload);
       const period = extractPeriod(params.payload);
+      const mappedInterval = mapPaddlePriceToInterval(params.payload);
       const providerPriceId = extractProviderPriceId(params.payload);
       const paymentMethodStatus: BillingSubscription['paymentMethodStatus'] = hasPaymentMethodEvidence(params.eventType, params.payload)
         ? 'valid'
@@ -378,7 +432,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         providerProductId: null,
         plan: mappedPlan,
         status: mappedStatus,
-        interval: period.interval,
+        interval: mappedInterval ?? period.interval,
         currency: amount.currency,
         amount: amount.amount,
         amountCents: Math.round(amount.amount * 100),
@@ -428,6 +482,35 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         subscription,
         shopPlanChanged: existingPlan !== subscription.plan || existingActive !== shouldBeActive,
       };
+    }
+
+    const eventType = params.eventType.toLowerCase();
+    if (eventType.includes('payment_method.saved') || eventType.includes('payment_method.deleted') || eventType.includes('transaction.payment_failed')) {
+      const current = await this.deps.billingSubscriptionsRepository.findCurrentByShopId(shopId);
+      if (current) {
+        const paymentMethodStatus: BillingSubscription['paymentMethodStatus'] =
+          eventType.includes('payment_method.saved')
+            ? 'valid'
+            : eventType.includes('payment_method.deleted') || eventType.includes('transaction.payment_failed')
+              ? 'failed'
+              : current.paymentMethodStatus;
+        const subscription = await this.deps.billingSubscriptionsRepository.updateById(current.id, {
+          paymentMethodStatus,
+          paymentMethodAddedAt: paymentMethodStatus === 'valid' ? new Date().toISOString() : current.paymentMethodAddedAt ?? null,
+          metadata: {
+            ...(current.metadata ?? {}),
+            last_paddle_event_type: params.eventType,
+            last_paddle_event_payload: params.payload,
+          },
+        });
+        return {
+          provider: 'paddle',
+          shopId,
+          customer,
+          subscription,
+          shopPlanChanged: false,
+        };
+      }
     }
 
     return {

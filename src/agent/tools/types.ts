@@ -2,7 +2,14 @@ import { DateTime } from 'luxon';
 import { z } from 'zod';
 
 import type { Shop, ToolError } from '@/src/backend/domain/types';
-import type { BookingsRepository, CallbacksRepository, JobsRepository, ShopsRepository } from '@/src/backend/ports/repositories';
+import type {
+  BillingSubscriptionsRepository,
+  BookingsRepository,
+  CallbacksRepository,
+  JobsRepository,
+  ShopAccessStatesRepository,
+  ShopsRepository,
+} from '@/src/backend/ports/repositories';
 import type { CalendarProvider } from '@/src/backend/services/calendar/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 
@@ -16,6 +23,8 @@ export type AgentToolContext = {
   bookingsRepository: BookingsRepository;
   callbacksRepository: CallbacksRepository;
   shopsRepository: ShopsRepository;
+  billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+  shopAccessStatesRepository?: ShopAccessStatesRepository;
   telephonyService: TelephonyService;
   /** Present when inbound used Telnyx Call Control (client_state on SIP). Needed for owner handoff. */
   parentTelnyxCallControlId?: string | null;

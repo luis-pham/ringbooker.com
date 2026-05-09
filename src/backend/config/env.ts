@@ -8,6 +8,10 @@ const optionalPositiveIntEnv = z.preprocess(
   (val) => (val === '' || val === undefined || val === null ? undefined : val),
   z.coerce.number().int().positive().optional(),
 );
+const optionalNonEmptyStringEnv = z.preprocess(
+  (val) => (val === '' || val === undefined || val === null ? undefined : val),
+  z.string().min(1).optional(),
+);
 
 function createValidatedEnv() {
   return createEnv({
@@ -19,6 +23,10 @@ function createValidatedEnv() {
       BACKEND_REPOSITORY_MODE: z.enum(['memory', 'supabase']).default('memory'),
       BACKEND_COMM_PROVIDER: z.enum(['noop', 'telnyx']).default('noop'),
       BILLING_PROVIDER: z.enum(['paddle', 'manual']).default('paddle'),
+      BILLING_CHECKOUT_ENABLED: z
+        .enum(['true', 'false'])
+        .default('false')
+        .transform((value) => value === 'true'),
       AGENT_RUNTIME_MODE: z.enum(['mock', 'livekit_gemini', 'livekit_native_gemini', 'livekit_openai', 'livekit_native_openai']).default('mock'),
       AGENT_TRANSPORT: z.enum(['mock', 'livekit']).default('mock'),
       AGENT_VOICE_PROVIDER: z.enum(['none', 'gemini_live', 'openai_realtime']).default('none'),
@@ -197,12 +205,18 @@ function createValidatedEnv() {
       SUPABASE_SERVICE_KEY: z.string().min(1),
 
       PADDLE_API_KEY: z.string().min(1),
+      PADDLE_CLIENT_TOKEN: optionalNonEmptyStringEnv,
       PADDLE_WEBHOOK_SECRET: z.string().min(1),
       PADDLE_WEBHOOK_MAX_SKEW_SECONDS: z.coerce.number().int().positive().default(300),
+      PADDLE_ENV: z.enum(['sandbox', 'production']).optional(),
       PADDLE_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
-      PADDLE_PRICE_STARTER: z.string().min(1),
-      PADDLE_PRICE_PROFESSIONAL: z.string().min(1),
-      PADDLE_PRICE_ENTERPRISE: z.string().min(1),
+      PADDLE_PRICE_STARTER_MONTHLY: z.string().min(1),
+      PADDLE_PRICE_STARTER_ANNUAL: z.string().min(1),
+      PADDLE_PRICE_PROFESSIONAL_MONTHLY: z.string().min(1),
+      PADDLE_PRICE_PROFESSIONAL_ANNUAL: z.string().min(1),
+      PADDLE_PRICE_STARTER: optionalNonEmptyStringEnv,
+      PADDLE_PRICE_PROFESSIONAL: optionalNonEmptyStringEnv,
+      PADDLE_PRICE_ENTERPRISE: optionalNonEmptyStringEnv,
       /**
        * Must be true only after Paddle dashboard prices are verified to collect
        * payment method now and not charge until the configured 14-day trial ends.

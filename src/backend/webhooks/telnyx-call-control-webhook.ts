@@ -44,7 +44,7 @@ import {
   handoffOnOwnerOutboundInitiated,
   type HandoffOrchestratorDeps,
 } from '@/src/backend/services/calls/handoff-orchestrator';
-import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { getShopBillingAccess, type ShopBillingAccess } from '@/src/backend/services/billing/access';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 import { getTelnyxOpenAiSipLegTimeoutSecs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { resolveTelnyxOutboundCallsConnectionId } from '@/src/backend/adapters/telnyx/telnyx-outbound-connection-id';
@@ -115,6 +115,34 @@ function clearSilentCallerRiskWatch(parentCallControlId: string): void {
 
 function openAiBridgeCommitKey(parentCallControlId: string, openaiLegCallControlId: string): string {
   return `v1:${parentCallControlId}:${openaiLegCallControlId}`;
+}
+
+function liveAnsweringBillingBlockedLogFields(params: {
+  shopId: string;
+  access: Pick<
+    ShopBillingAccess,
+    | 'blockReason'
+    | 'subscriptionStatus'
+    | 'paymentMethodStatus'
+    | 'providerSubscriptionId'
+    | 'liveCallsEnabled'
+  >;
+  callControlId?: string | null;
+  callSessionId?: string | null;
+  callSessionInternalId?: string | null;
+}) {
+  return {
+    event: 'live_answering_billing_blocked',
+    shop_id: params.shopId,
+    user_id: null,
+    billing_status: params.access.subscriptionStatus,
+    payment_method_status: params.access.paymentMethodStatus,
+    provider_subscription_id: params.access.providerSubscriptionId,
+    go_live_state: params.access.liveCallsEnabled ? 'live_enabled' : 'live_disabled',
+    reason: params.access.blockReason,
+    call_control_id: params.callControlId ?? null,
+    call_session_id: params.callSessionId ?? params.callSessionInternalId ?? null,
+  };
 }
 
 type TelnyxOpenAiConnectMode = 'transfer' | 'create_and_bridge' | 'texml_fallback' | 'disabled';
@@ -458,6 +486,18 @@ async function processCallInitiated(
         result.routeKind === 'demo' ? 'vertical_demo_did_matched' : 'telnyx_call_control_inbound_decision',
       );
     } else if (result.decision === 'reject') {
+      if (result.billingAccess && result.shopId) {
+        log.warn(
+          liveAnsweringBillingBlockedLogFields({
+            shopId: result.shopId,
+            access: result.billingAccess,
+            callControlId: result.callControlId,
+            callSessionId: firstStringFromPayload(plInbound, ['call_session_id']),
+            callSessionInternalId: result.internalRequestId ?? null,
+          }),
+          'live_answering_billing_blocked',
+        );
+      }
       log.info(
         {
           ...arch,
@@ -649,6 +689,8 @@ async function processCallAnswered(
   deps: {
     providerEventsRepository: ProviderEventsRepository;
     shopsRepository: ShopsRepository;
+    billingSubscriptionsRepository?: BillingSubscriptionsRepository;
+    shopAccessStatesRepository?: ShopAccessStatesRepository;
     callLogsRepository?: CallLogsRepository;
     jobsRepository?: JobsRepository;
     handoffSessionsRepository?: HandoffSessionsRepository;
@@ -729,6 +771,47 @@ async function processCallAnswered(
       const parentCallControlId = decodedClient.parentCallControlId ?? decodedClient.telnyxCallControlId;
       if (!dryRun && parentCallControlId && openaiLegCallControlId) {
         const rbId = decodedClient.rbCallId ?? decodedClient.requestId;
+        if (
+          decodedClient.routeKind !== 'demo' &&
+          deps.billingSubscriptionsRepository &&
+          deps.shopAccessStatesRepository
+        ) {
+          const access = await getShopBillingAccess(
+            {
+              shopsRepository: deps.shopsRepository,
+              billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+              shopAccessStatesRepository: deps.shopAccessStatesRepository,
+            },
+            { shopId: decodedClient.shopId },
+          );
+          if (!access.canReceiveLiveCalls) {
+            log.warn(
+              liveAnsweringBillingBlockedLogFields({
+                shopId: decodedClient.shopId,
+                access,
+                callControlId: openaiLegCallControlId,
+                callSessionInternalId: rbId,
+              }),
+              'live_answering_billing_blocked',
+            );
+            await callControlHangup(openaiLegCallControlId, {}, fetchDeps).catch(() => undefined);
+            await callControlSpeak(
+              parentCallControlId,
+              {
+                payload: "Sorry, live answering is currently unavailable for this business. Please try again later.",
+                voice: 'Polly.Joanna',
+                language: 'en-US',
+              },
+              fetchDeps,
+            ).catch(() => undefined);
+            await callControlHangup(parentCallControlId, {}, fetchDeps).catch(() => undefined);
+            clearSilentCallerRiskWatch(parentCallControlId);
+            bridgeReason = access.blockReason;
+            await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+            incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+            return c.json({ ok: true, phase: 'answered', bridged: false, bridge_reason: access.blockReason, blocked: true }, 200);
+          }
+        }
         if (deps.voiceCallLegsRepository && decodedClient.shopId && rbId) {
           try {
             await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
@@ -867,6 +950,46 @@ async function processCallAnswered(
         const fromCli = toRaw ? normalizeInboundE164(toRaw) : null;
         if (fromCli && decodedClient?.shopId) {
           const rbCallId = decodedClient.rbCallId ?? decodedClient.requestId;
+          if (
+            decodedClient.routeKind !== 'demo' &&
+            deps.billingSubscriptionsRepository &&
+            deps.shopAccessStatesRepository
+          ) {
+            const access = await getShopBillingAccess(
+              {
+                shopsRepository: deps.shopsRepository,
+                billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+                shopAccessStatesRepository: deps.shopAccessStatesRepository,
+              },
+              { shopId: decodedClient.shopId },
+            );
+            if (!access.canReceiveLiveCalls) {
+              log.warn(
+                liveAnsweringBillingBlockedLogFields({
+                  shopId: decodedClient.shopId,
+                  access,
+                  callControlId,
+                  callSessionId: firstStringFromPayload(payload, ['call_session_id']),
+                  callSessionInternalId: rbCallId,
+                }),
+                'live_answering_billing_blocked',
+              );
+              await callControlSpeak(
+                callControlId,
+                {
+                  payload: "Sorry, live answering is currently unavailable for this business. Please try again later.",
+                  voice: 'Polly.Joanna',
+                  language: 'en-US',
+                },
+                fetchDeps,
+              ).catch(() => undefined);
+              await callControlHangup(callControlId, {}, fetchDeps).catch(() => undefined);
+              bridgeReason = access.blockReason;
+              await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+              incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+              return c.json({ ok: true, phase: 'answered', bridged: false, bridge_reason: access.blockReason, blocked: true }, 200);
+            }
+          }
           const parentCallSessionId = firstStringFromPayload(payload, ['call_session_id']) ?? decodedClient.telnyxCallSessionId;
           const parentAnsweredReceivedAt = Date.now();
 

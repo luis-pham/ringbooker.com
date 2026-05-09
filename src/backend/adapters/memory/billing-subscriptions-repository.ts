@@ -17,7 +17,7 @@ export class InMemoryBillingSubscriptionsRepository implements BillingSubscripti
         provider: 'paddle',
         providerSubscriptionId: 'sub_demo_paddle',
         providerCustomerId: 'ctm_demo_paddle',
-        providerPriceId: process.env.PADDLE_PRICE_PROFESSIONAL ?? null,
+        providerPriceId: process.env.PADDLE_PRICE_PROFESSIONAL_MONTHLY ?? process.env.PADDLE_PRICE_PROFESSIONAL ?? null,
         providerProductId: null,
         plan: 'professional',
         status: 'active',

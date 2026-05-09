@@ -47,7 +47,7 @@ import {
   RATE_LIMIT_POLICIES,
 } from '@/src/backend/security/rate-limit';
 import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/services/calls/shop-resolver';
-import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { getShopBillingAccess, type ShopBillingAccess } from '@/src/backend/services/billing/access';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
@@ -97,6 +97,28 @@ function voiceVerticalFromShopVertical(v: ShopVertical | null | undefined): Voic
     beauty_clinic: 'beauty-clinic',
   };
   return map[v];
+}
+
+function liveAnsweringBillingBlockedLogFields(params: {
+  shopId: string;
+  access: Pick<
+    ShopBillingAccess,
+    'blockReason' | 'subscriptionStatus' | 'paymentMethodStatus' | 'providerSubscriptionId' | 'liveCallsEnabled'
+  >;
+  callId?: string | null;
+}) {
+  return {
+    event: 'live_answering_billing_blocked',
+    shop_id: params.shopId,
+    user_id: null,
+    billing_status: params.access.subscriptionStatus,
+    payment_method_status: params.access.paymentMethodStatus,
+    provider_subscription_id: params.access.providerSubscriptionId,
+    go_live_state: params.access.liveCallsEnabled ? 'live_enabled' : 'live_disabled',
+    reason: params.access.blockReason,
+    call_control_id: null,
+    call_session_id: params.callId ?? null,
+  };
 }
 
 type OpenAiSipRoute = { kind: 'demo'; ctx: OpenAiSipDidContext } | { kind: 'shop'; shop: Shop; matchedRaw: string };
@@ -388,6 +410,14 @@ export async function handleOpenAiRealtimeSipWebhook(
       { shopId: route.shop.id },
     );
     if (!access.canReceiveLiveCalls) {
+      logger.warn(
+        liveAnsweringBillingBlockedLogFields({
+          shopId: route.shop.id,
+          access,
+          callId,
+        }),
+        'live_answering_billing_blocked',
+      );
       if (apiKey) await rejectCall(603, access.blockReason);
       await deps.providerEventsRepository.markProcessed({
         provider: 'openai',
@@ -629,6 +659,8 @@ export async function handleOpenAiRealtimeSipWebhook(
           jobsRepository: deps.jobsRepository!,
           bookingsRepository: deps.bookingsRepository!,
           callbacksRepository: deps.callbacksRepository!,
+          billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
+          shopAccessStatesRepository: deps.shopAccessStatesRepository,
           telephonyService: deps.telephonyService!,
         };
         const toolCtx = createSipAgentToolContext({

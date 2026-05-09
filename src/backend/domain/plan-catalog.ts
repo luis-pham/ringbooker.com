@@ -9,7 +9,8 @@ export type PlanCatalogEntry = {
   currency: 'USD';
   interval: BillingInterval;
   trialDays: number;
-  paddlePriceEnv?: 'PADDLE_PRICE_STARTER' | 'PADDLE_PRICE_PROFESSIONAL' | 'PADDLE_PRICE_ENTERPRISE';
+  paddlePriceEnv?: string;
+  paddlePriceEnvByInterval?: Partial<Record<BillingInterval, string>>;
   selfServeTrial: boolean;
   contactSalesOnly?: boolean;
 };
@@ -23,6 +24,10 @@ export const PLAN_CATALOG: Record<ShopPlan, PlanCatalogEntry> = {
     interval: 'month',
     trialDays: 14,
     paddlePriceEnv: 'PADDLE_PRICE_STARTER',
+    paddlePriceEnvByInterval: {
+      month: 'PADDLE_PRICE_STARTER_MONTHLY',
+      year: 'PADDLE_PRICE_STARTER_ANNUAL',
+    },
     selfServeTrial: true,
   },
   professional: {
@@ -33,6 +38,10 @@ export const PLAN_CATALOG: Record<ShopPlan, PlanCatalogEntry> = {
     interval: 'month',
     trialDays: 14,
     paddlePriceEnv: 'PADDLE_PRICE_PROFESSIONAL',
+    paddlePriceEnvByInterval: {
+      month: 'PADDLE_PRICE_PROFESSIONAL_MONTHLY',
+      year: 'PADDLE_PRICE_PROFESSIONAL_ANNUAL',
+    },
     selfServeTrial: true,
   },
   enterprise: {
@@ -66,12 +75,17 @@ export function formatPlanPrice(entry: PlanCatalogEntry): string {
   }).format(dollars);
 }
 
-export function resolvePaddlePriceIdFromCatalog(plan: ShopPlan, env: NodeJS.ProcessEnv = process.env): string {
+export function resolvePaddlePriceIdFromCatalog(
+  plan: ShopPlan,
+  interval: BillingInterval = 'month',
+  env: NodeJS.ProcessEnv = process.env,
+): string {
   const entry = getPlanCatalogEntry(plan);
-  const key = entry.paddlePriceEnv;
-  const value = key ? env[key]?.trim() : '';
+  const intervalKey = entry.paddlePriceEnvByInterval?.[interval];
+  const legacyKey = interval === 'month' ? entry.paddlePriceEnv : undefined;
+  const value = (intervalKey ? env[intervalKey]?.trim() : '') || (legacyKey ? env[legacyKey]?.trim() : '');
   if (!value) {
-    throw new Error(`missing_paddle_price_id:${plan}`);
+    throw new Error(`missing_paddle_price_id:${plan}:${interval}`);
   }
   return value;
 }

@@ -31,8 +31,11 @@ export type ShopBillingAccess = {
   canGoLive: boolean;
   canTestCall: boolean;
   blockReason: BillingBlockReason;
+  billingProvider: BillingSubscription['provider'] | null;
   subscriptionStatus: BillingSubscription['status'] | null;
   paymentMethodStatus: BillingSubscription['paymentMethodStatus'];
+  providerCustomerId: string | null;
+  providerSubscriptionId: string | null;
   trialEndsAt: string | null;
   trialDaysRemaining: number | null;
   liveCallsEnabled: boolean;
@@ -69,8 +72,11 @@ const inactiveAccess = (): ShopBillingAccess => ({
   canGoLive: false,
   canTestCall: false,
   blockReason: 'account_inactive',
+  billingProvider: null,
   subscriptionStatus: null,
   paymentMethodStatus: 'none',
+  providerCustomerId: null,
+  providerSubscriptionId: null,
   trialEndsAt: null,
   trialDaysRemaining: null,
   liveCallsEnabled: false,
@@ -161,8 +167,11 @@ export function computeShopBillingAccessSnapshot(params: {
       canGoLive: false,
       canTestCall: false,
       blockReason: 'commercial_approval_required',
+      billingProvider: subscription?.provider ?? null,
       subscriptionStatus: subscription?.status ?? null,
       paymentMethodStatus: subscription?.paymentMethodStatus ?? 'none',
+      providerCustomerId: subscription?.providerCustomerId ?? null,
+      providerSubscriptionId: subscription?.providerSubscriptionId ?? null,
       trialEndsAt: subscription?.trialEndsAt ?? null,
       trialDaysRemaining: daysRemaining(subscription?.trialEndsAt, now),
       liveCallsEnabled: accessState?.liveCallsEnabled ?? false,
@@ -184,8 +193,11 @@ export function computeShopBillingAccessSnapshot(params: {
       canGoLive: false,
       canTestCall: false,
       blockReason: 'no_subscription',
+      billingProvider: null,
       subscriptionStatus: null,
       paymentMethodStatus: 'none',
+      providerCustomerId: null,
+      providerSubscriptionId: null,
       trialEndsAt: null,
       trialDaysRemaining: null,
       liveCallsEnabled: accessState?.liveCallsEnabled ?? false,
@@ -202,6 +214,9 @@ export function computeShopBillingAccessSnapshot(params: {
   }
 
   const paymentMethodStatus = subscription.paymentMethodStatus ?? 'none';
+  const providerIdentityReady =
+    subscription.provider !== 'paddle' ||
+    (Boolean(subscription.providerCustomerId?.trim()) && Boolean(subscription.providerSubscriptionId?.trim()));
   const activeLike = subscription.status === 'active' || isBillingTrialStillValid(subscription, now);
   const expiredTrial =
     subscription.status === 'trial_expired' || (subscription.status === 'trialing' && !isBillingTrialStillValid(subscription, now));
@@ -218,6 +233,7 @@ export function computeShopBillingAccessSnapshot(params: {
 
   const liveAnsweringPrerequisitesMet =
     activeLike &&
+    providerIdentityReady &&
     paymentMethodStatus === 'valid' &&
     setupWizardComplete &&
     hasForwardingNumber &&
@@ -232,6 +248,8 @@ export function computeShopBillingAccessSnapshot(params: {
     blockReason = 'none';
   } else if (!activeLike) {
     blockReason = expiredTrial ? 'trial_expired' : 'subscription_inactive';
+  } else if (!providerIdentityReady) {
+    blockReason = 'no_subscription';
   } else if (paymentMethodStatus !== 'valid') {
     blockReason = 'payment_method_required';
   } else if (!setupWizardComplete) {
@@ -251,8 +269,11 @@ export function computeShopBillingAccessSnapshot(params: {
     canGoLive,
     canTestCall,
     blockReason,
+    billingProvider: subscription.provider,
     subscriptionStatus: subscription.status,
     paymentMethodStatus,
+    providerCustomerId: subscription.providerCustomerId ?? null,
+    providerSubscriptionId: subscription.providerSubscriptionId ?? null,
     trialEndsAt: subscription.trialEndsAt ?? null,
     trialDaysRemaining: daysRemaining(subscription.trialEndsAt, now),
     liveCallsEnabled,

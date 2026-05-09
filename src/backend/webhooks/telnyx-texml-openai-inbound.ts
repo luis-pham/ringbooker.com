@@ -36,6 +36,7 @@ import { resolveShopByInboundDidWithMeta, normalizeInboundE164 } from '@/src/bac
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 import { resolveVerticalDemoInboundRoute } from '@/src/backend/demo/demo-vertical-phone-map';
+import type { ShopBillingAccess } from '@/src/backend/services/billing/access';
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8"?>';
 
@@ -69,6 +70,28 @@ function texmlXmlResponse(xml: string): Response {
       'Cache-Control': 'no-store',
     },
   });
+}
+
+function liveAnsweringBillingBlockedLogFields(params: {
+  shopId: string;
+  access: Pick<
+    ShopBillingAccess,
+    'blockReason' | 'subscriptionStatus' | 'paymentMethodStatus' | 'providerSubscriptionId' | 'liveCallsEnabled'
+  >;
+  callSessionId?: string | null;
+}) {
+  return {
+    event: 'live_answering_billing_blocked',
+    shop_id: params.shopId,
+    user_id: null,
+    billing_status: params.access.subscriptionStatus,
+    payment_method_status: params.access.paymentMethodStatus,
+    provider_subscription_id: params.access.providerSubscriptionId,
+    go_live_state: params.access.liveCallsEnabled ? 'live_enabled' : 'live_disabled',
+    reason: params.access.blockReason,
+    call_control_id: null,
+    call_session_id: params.callSessionId ?? null,
+  };
 }
 
 /** Telnyx Voice URL (TeXML) — POST or GET, typically `application/x-www-form-urlencoded`. */
@@ -164,6 +187,14 @@ export async function handleTelnyxTexmlOpenAiInbound(
             forwardingTestAckTexml = true;
           } else {
             billingBlockedReason = access.blockReason;
+            logger.warn(
+              liveAnsweringBillingBlockedLogFields({
+                shopId: shop.id,
+                access,
+                callSessionId: form.CallSid ?? rbCallId,
+              }),
+              'live_answering_billing_blocked',
+            );
           }
         } else if (deps.callLogsRepository) {
           const commercialAccount = deps.commercialAccountsRepository

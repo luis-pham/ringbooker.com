@@ -30,7 +30,7 @@ import {
   getTelnyxInboundRoutingMode,
 } from '@/src/backend/config/voice-transport';
 import { isShopCallable } from '@/src/backend/services/calls/callable-check';
-import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { getShopBillingAccess, type ShopBillingAccess } from '@/src/backend/services/billing/access';
 import {
   normalizeInboundE164,
   resolveShopByInboundDidWithMeta,
@@ -102,6 +102,16 @@ export type TelnyxCallControlPhase1Result =
       demoVertical?: VoicePromptVertical;
       /** Inbound forwarding connectivity check — answered with a short prompt; does not bridge OpenAI. */
       forwardingConnectivityTest?: boolean;
+      billingAccess?: Pick<
+        ShopBillingAccess,
+        | 'blockReason'
+        | 'billingProvider'
+        | 'subscriptionStatus'
+        | 'paymentMethodStatus'
+        | 'providerCustomerId'
+        | 'providerSubscriptionId'
+        | 'liveCallsEnabled'
+      >;
     };
 
 export type TelnyxCallControlPhase1HandledResult = Extract<TelnyxCallControlPhase1Result, { handled: true }>;
@@ -649,6 +659,15 @@ export async function evaluateTelnyxCallControlInboundInitiated(
         destinationPhone: destinationPhoneShop,
         callerPhone,
         resolver: { ...resolverFromShop(shop, meta), callableBlockReason: access.blockReason },
+        billingAccess: {
+          blockReason: access.blockReason,
+          billingProvider: access.billingProvider,
+          subscriptionStatus: access.subscriptionStatus,
+          paymentMethodStatus: access.paymentMethodStatus,
+          providerCustomerId: access.providerCustomerId,
+          providerSubscriptionId: access.providerSubscriptionId,
+          liveCallsEnabled: access.liveCallsEnabled,
+        },
       };
     }
   }

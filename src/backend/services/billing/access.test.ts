@@ -65,6 +65,7 @@ test('billing access blocks go-live and live calls until payment method is verif
   await billingSubscriptionsRepository.updateById(subscription.id, {
     provider: 'paddle',
     providerSubscriptionId: 'sub_verified',
+    providerCustomerId: 'ctm_verified',
     paymentMethodStatus: 'valid',
     paymentMethodAddedAt: '2026-05-04T00:00:00Z',
   });
@@ -499,4 +500,66 @@ test('enterprise with commercial approval can go live when normal prerequisites 
   assert.equal(access.canGoLive, true);
   assert.equal(access.canReceiveLiveCalls, true);
   assert.equal(access.blockReason, 'none');
+});
+
+test('paddle entitlement gating allows active/trialing and blocks canceled paused past_due live answering', async () => {
+  const cases = [
+    { status: 'trialing' as const, expectedCanReceive: true },
+    { status: 'active' as const, expectedCanReceive: true },
+    { status: 'canceled' as const, expectedCanReceive: false },
+    { status: 'paused' as const, expectedCanReceive: false },
+    { status: 'past_due' as const, expectedCanReceive: false },
+  ];
+
+  for (const entry of cases) {
+    const shopsRepository = new InMemoryShopsRepository();
+    const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+    const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+
+    let shop = await shopsRepository.create({
+      name: `Paddle ${entry.status} Salon`,
+      phone_number: '+15551110000',
+      user_phone: '+15551112222',
+      user_name: 'Owner',
+      timezone: 'America/New_York',
+      plan: 'starter',
+      active: entry.expectedCanReceive,
+    });
+    shop = (await shopsRepository.updateUserSettings(shop.id, {
+      vertical: 'nail_salon',
+      hours: { mon: { open: '09:00', close: '18:00' } },
+      services: [{ name: 'Cut', duration_min: 30, price: 40 }],
+      current_onboarding_step: 4,
+      telnyx_number: '+15559990001',
+    }))!;
+
+    await billingSubscriptionsRepository.upsert({
+      shopId: shop.id,
+      provider: 'paddle',
+      providerSubscriptionId: `sub_${entry.status}`,
+      providerCustomerId: `ctm_${entry.status}`,
+      plan: 'starter',
+      status: entry.status,
+      interval: 'month',
+      currency: 'USD',
+      amount: 79,
+      amountCents: 7900,
+      trialStartedAt: entry.status === 'trialing' ? '2026-05-01T00:00:00Z' : null,
+      trialEndsAt: entry.status === 'trialing' ? '2026-05-15T00:00:00Z' : null,
+      paymentMethodStatus: 'valid',
+    });
+
+    await shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      liveCallsEnabled: true,
+      forwardingSetupVerifiedAt: '2026-05-04T00:00:00Z',
+      forwardingSetupVerifiedVia: 'forwarding_test',
+    });
+
+    const access = await getShopBillingAccess(
+      { shopsRepository, billingSubscriptionsRepository, shopAccessStatesRepository },
+      { shopId: shop.id, now: new Date('2026-05-04T00:00:00Z') },
+    );
+    assert.equal(access.canReceiveLiveCalls, entry.expectedCanReceive, entry.status);
+  }
 });

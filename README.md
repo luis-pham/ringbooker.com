@@ -145,11 +145,15 @@ Thư mục migration: `src/backend/db/migrations`.
 
 #### Billing
 - `BILLING_PROVIDER=paddle`
+- `BILLING_CHECKOUT_ENABLED=false` until Paddle sandbox checkout and webhooks pass manual QA; set `true` to expose checkout buttons.
 - `PADDLE_API_KEY=...`
+- `PADDLE_CLIENT_TOKEN=...`
 - `PADDLE_WEBHOOK_SECRET=...`
-- `PADDLE_PRICE_STARTER=...`
-- `PADDLE_PRICE_PROFESSIONAL=...`
-- `PADDLE_PRICE_ENTERPRISE=...`
+- `PADDLE_ENV=sandbox|production`
+- `PADDLE_PRICE_STARTER_MONTHLY=...`
+- `PADDLE_PRICE_STARTER_ANNUAL=...`
+- `PADDLE_PRICE_PROFESSIONAL_MONTHLY=...`
+- `PADDLE_PRICE_PROFESSIONAL_ANNUAL=...`
 
 #### Calendar
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL=...`

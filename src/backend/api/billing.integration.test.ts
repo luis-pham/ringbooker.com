@@ -16,6 +16,7 @@ import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-serv
 import { PaddleBillingProvider } from '@/src/backend/adapters/paddle/billing-provider';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
+import { resetEnvCacheForTests } from '@/src/backend/config/env';
 
 applyRequiredTestEnv({
   USER_AUTH_EMAIL: 'billing-user@ringbooker.local',
@@ -74,9 +75,25 @@ test('user billing and admin billing endpoints return normalized billing state',
   };
   assert.equal(userBillingBody.ok, true);
   assert.equal(userBillingBody.billing.provider, 'paddle');
+  assert.equal((userBillingBody.billing as { checkoutAvailable?: boolean }).checkoutAvailable, true);
   assert.equal(userBillingBody.billing.subscription?.plan, 'professional');
   assert.equal(userBillingBody.billing.subscription?.status, 'active');
   assert.equal(userBillingBody.billing.subscription?.amount, 149);
+
+  const invalidCheckout = await app.request('/user/billing/checkout', {
+    method: 'POST',
+    headers: {
+      cookie: userCookie!,
+      'content-type': 'application/json',
+      origin: 'http://localhost:3000',
+    },
+    body: JSON.stringify({
+      plan: 'invalid-plan',
+      billing_interval: 'monthly',
+    }),
+  });
+  assert.equal(invalidCheckout.status, 400);
+  assert.deepEqual(await invalidCheckout.json(), { ok: false, error: 'invalid_payload' });
 
   const adminLogin = await app.request('/auth/admin/login', {
     method: 'POST',
@@ -103,4 +120,78 @@ test('user billing and admin billing endpoints return normalized billing state',
   assert.equal(adminBillingBody.metrics.activeSubscriptions >= 1, true);
   assert.equal(adminBillingBody.metrics.mrr >= 149, true);
   assert.equal(adminBillingBody.subscriptions.some((item) => item.shopId === 'demo-shop'), true);
+});
+
+test('billing checkout endpoint is hidden when BILLING_CHECKOUT_ENABLED is false', async () => {
+  applyRequiredTestEnv({
+    BILLING_CHECKOUT_ENABLED: 'false',
+    USER_AUTH_EMAIL: 'billing-disabled-user@ringbooker.local',
+    USER_AUTH_PASSWORD: 'change_me_user_password',
+    USER_AUTH_SHOP_ID: 'demo-shop',
+  });
+  resetEnvCacheForTests();
+
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+    billingProvider: new PaddleBillingProvider({
+      billingCustomersRepository,
+      billingSubscriptionsRepository,
+      shopAccessStatesRepository,
+      shopsRepository,
+    }),
+  });
+
+  const login = await app.request('/auth/user/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    body: JSON.stringify({
+      email: 'billing-disabled-user@ringbooker.local',
+      password: 'change_me_user_password',
+    }),
+  });
+  assert.equal(login.status, 200);
+  const cookie = login.headers.get('set-cookie')?.split(';')[0];
+  assert.ok(cookie);
+
+  const billing = await app.request('/user/billing', { headers: { cookie } });
+  const billingBody = (await billing.json()) as { billing: { checkoutAvailable: boolean; checkoutDisabledReason: string } };
+  assert.equal(billingBody.billing.checkoutAvailable, false);
+  assert.equal(billingBody.billing.checkoutDisabledReason, 'billing_checkout_disabled');
+
+  const checkout = await app.request('/user/billing/checkout', {
+    method: 'POST',
+    headers: {
+      cookie,
+      'content-type': 'application/json',
+      origin: 'http://localhost:3000',
+    },
+    body: JSON.stringify({
+      plan: 'professional',
+      billing_interval: 'monthly',
+    }),
+  });
+  assert.equal(checkout.status, 503);
+  assert.deepEqual(await checkout.json(), {
+    ok: false,
+    error: 'billing_checkout_disabled',
+    message: 'Billing checkout is not enabled for this environment yet.',
+  });
+
+  applyRequiredTestEnv({ BILLING_CHECKOUT_ENABLED: 'true' });
+  resetEnvCacheForTests();
 });
