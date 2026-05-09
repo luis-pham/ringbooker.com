@@ -925,7 +925,7 @@ export function UserSettingsLive() {
                   <div className="calendar-int-actions">
                     <button
                       type="button"
-                      className="btn purple"
+                      className="btn user-save"
                       onClick={() => {
                         window.location.href = '/api/backend/user/calendar/providers/square_appointments/connect/start';
                       }}
@@ -973,12 +973,12 @@ export function UserSettingsLive() {
               ) : null}
 
                   {squareProvider?.connected ? (
-                    <div className="card-section" style={{ marginTop: 18 }}>
+                    <div className="card-section integrations-square-config">
                       <div className="hint-row">
                         <strong className="option-title">Square booking targets</strong>
                         <span className="hint-copy">Choose the location and service the AI should use.</span>
                       </div>
-                      <div className="form-grid" style={{ marginTop: 12 }}>
+                      <div className="form-grid">
                         <div className="field">
                           <label>Square location</label>
                           <select value={squareLocationId} onChange={(event) => setSquareLocationId(event.target.value)}>
@@ -1215,14 +1215,14 @@ export function UserSettingsLive() {
                   </p>
 
                   {vagaroProvider ? (
-              <div className="card-section" style={{ marginTop: 18 }}>
-                <div className="hint-row">
+              <div className="card-section integrations-vagaro-block">
+                <div className="integrations-vagaro-subhead">
                   <strong className="option-title">Vagaro API credentials</strong>
-                  <span className="hint-copy">
+                  <p className="hint-copy integrations-vagaro-subhead-copy">
                     Availability checking and webhook sync supported. Booking creation happens in your Vagaro app.
-                  </span>
+                  </p>
                 </div>
-                <div className="form-grid" style={{ marginTop: 12 }}>
+                <div className="form-grid integrations-vagaro-form">
                   <div className="field">
                     <label>Client ID</label>
                     <input
@@ -1256,15 +1256,7 @@ export function UserSettingsLive() {
                       placeholder="Vagaro Business ID (required)"
                     />
                   </div>
-                  <div
-                    className="field"
-                    style={{
-                      gridColumn: '1 / -1',
-                      borderTop: '1px solid rgba(15,23,42,.08)',
-                      paddingTop: 14,
-                      marginTop: 2,
-                    }}
-                  >
+                  <div className="field integrations-vagaro-booking-field">
                     <label>Vagaro Booking Link</label>
                     <span className="hint-copy">Optional — for SMS booking links</span>
                     <input
@@ -1284,16 +1276,18 @@ export function UserSettingsLive() {
                         {vagaroBookingUrlError}
                       </div>
                     ) : null}
-                    <button
-                      type="button"
-                      className="btn user-save"
-                      disabled={savingVagaroBookingUrl || !vagaroBookingUrl.trim()}
-                      onClick={() => void saveVagaroBookingLink()}
-                    >
-                      {savingVagaroBookingUrl ? 'Saving...' : 'Save booking link'}
-                    </button>
+                    <div className="integrations-vagaro-booking-actions">
+                      <button
+                        type="button"
+                        className="btn user-save"
+                        disabled={savingVagaroBookingUrl || !vagaroBookingUrl.trim()}
+                        onClick={() => void saveVagaroBookingLink()}
+                      >
+                        {savingVagaroBookingUrl ? 'Saving...' : 'Save booking link'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="field">
+                  <div className="field integrations-vagaro-status-field">
                     <label>Connection status</label>
                     <div className="note">
                       {vagaroProvider.connected
@@ -1303,7 +1297,7 @@ export function UserSettingsLive() {
                         : 'Not connected. Enter API credentials to connect Vagaro.'}
                     </div>
                   </div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                  <div className="field integrations-vagaro-primary-actions">
                     <button
                       type="button"
                       className="btn user-save"

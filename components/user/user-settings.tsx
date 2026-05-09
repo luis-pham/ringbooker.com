@@ -33,15 +33,19 @@ const userSettingsSpecificStyles = String.raw`
 .calendar-int-logo-wrap img{width:100%;height:100%;object-fit:contain;padding:7px}
 .calendar-int-name{font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.2}
 .calendar-int-desc{font-size:12px;color:var(--text-gray);line-height:1.55;margin:0;flex:1}
-.calendar-int-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:4px}
+.calendar-int-actions{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  margin-top:18px;padding-top:10px;border-top:1px solid rgba(15,23,42,.06);
+}
 .integrations-intro-note{margin-bottom:18px}
 .integrations-section-heading{
-  font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);
-  margin:24px 0 10px;padding-top:16px;border-top:1px solid var(--border);
+  font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.3;
+  color:var(--text-dark);text-transform:none;
+  margin:28px 0 12px;padding-top:20px;border-top:1px solid var(--border);
 }
-.integrations-section-heading--first{margin-top:4px;padding-top:0;border-top:none}
-.integrations-section-lead{margin-top:-4px;margin-bottom:14px;line-height:1.55}
-.calendar-int-card--solo{max-width:100%}
+.integrations-section-heading--first{margin-top:10px;padding-top:0;border-top:none}
+.integrations-section-lead{margin:0 0 20px;line-height:1.6;max-width:52rem}
+.calendar-int-card--solo{max-width:100%;gap:12px}
 .calendar-int-badge{
   display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
   font-size:11px;font-weight:700;background:#f3f4f6;color:#6b7280;border:1px solid var(--border);
@@ -86,9 +90,27 @@ const userSettingsSpecificStyles = String.raw`
 .subtle-link{color:var(--purple-dark);font-weight:700}
 button.subtle-link{font:inherit;border:none;background:none;padding:0;cursor:pointer;text-align:left}
 button.subtle-link:hover{text-decoration:underline}
-.integrations-path-picker{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 18px}
-.integrations-path-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0 8px}
-.integrations-inline-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;width:100%}
+.integrations-path-picker{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px}
+.integrations-path-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0 10px}
+.integrations-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;margin-top:4px}
+.integrations-vagaro-block{margin-top:6px;display:flex;flex-direction:column;gap:22px}
+.integrations-vagaro-subhead{display:flex;flex-direction:column;gap:8px}
+.integrations-vagaro-subhead .option-title{margin:0}
+.integrations-vagaro-subhead-copy{margin:0;line-height:1.55}
+.integrations-vagaro-form{gap:18px 22px}
+.integrations-vagaro-booking-field{
+  grid-column:1/-1;display:flex;flex-direction:column;gap:12px;
+  margin-top:6px;padding-top:22px;border-top:1px solid var(--border);
+}
+.integrations-vagaro-booking-field .hint-copy{display:block;margin-top:-2px}
+.integrations-vagaro-booking-field .note{margin:0}
+.integrations-vagaro-booking-actions{margin-top:4px}
+.integrations-vagaro-status-field{grid-column:1/-1}
+.integrations-vagaro-status-field .note{margin-top:4px}
+.integrations-vagaro-primary-actions{grid-column:1/-1;margin-top:6px}
+.integrations-square-config{margin-top:22px;display:flex;flex-direction:column;gap:18px}
+.integrations-square-config .hint-row{align-items:flex-start;gap:14px}
+.integrations-square-config .form-grid{margin-top:0}
 .tab-strip{
   display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px;
 }
@@ -189,7 +211,8 @@ html[data-user-theme="dark"] .calendar-int-card.connected-active{
 }
 html[data-user-theme="dark"] .calendar-int-card.soon{background:#21262d}
 html[data-user-theme="dark"] .calendar-int-logo-wrap{background:#0d1117;border-color:var(--border)}
-html[data-user-theme="dark"] .integrations-section-heading{color:var(--text-gray);border-top-color:var(--border)}
+html[data-user-theme="dark"] .integrations-section-heading{color:var(--text-dark);border-top-color:var(--border)}
+html[data-user-theme="dark"] .calendar-int-actions{border-top-color:rgba(240,246,252,.08)}
 html[data-user-theme="dark"] button.subtle-link{color:#a371f7}
 html[data-user-theme="dark"] button.subtle-link:hover{color:#d2a8ff}
 html[data-user-theme="dark"] .calendar-int-badge{background:#21262d;color:var(--text-gray);border-color:var(--border)}

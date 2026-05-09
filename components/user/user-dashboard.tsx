@@ -525,6 +525,27 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.
 }
 @media (min-width:861px){
   .topbar-user-chip-meta{display:block}
+  /* Desktop portal: fixed-height shell; sidebar stays put; only main scrolls */
+  .user-app-shell.app-shell{
+    height:100vh;
+    max-height:100vh;
+    overflow:hidden;
+    grid-template-rows:minmax(0,1fr);
+  }
+  .user-app-shell .sidebar{
+    position:relative;
+    top:auto;
+    height:100%;
+    align-self:stretch;
+  }
+  .user-app-shell .main{
+    min-height:0;
+    height:100%;
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+  }
 }
 @media (max-width:860px){
   .main{padding:0 18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
