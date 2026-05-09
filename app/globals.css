@@ -6,6 +6,16 @@
   color-scheme: light;
 }
 
+/* User portal: match body to stored dark theme before per-page CSS loads (see bootstrap script in root layout). */
+html[data-user-theme='dark'] {
+  color-scheme: dark;
+}
+
+html[data-user-theme='dark'] body {
+  background: #0d1117;
+  color: #e6edf3;
+}
+
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;

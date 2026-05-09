@@ -4,6 +4,7 @@ import '@fontsource-variable/mona-sans';
 import './marketing-typography.css';
 
 import { GoogleTagManagerBody, GoogleTagManagerHead } from '@/components/analytics/google-tag-manager';
+import { getUserPortalThemeBootstrapInlineScript } from '@/lib/user-portal-theme';
 import { defaultSiteOgImage, siteConfig, siteOgImageEntry } from '@/lib/site';
 
 const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
@@ -113,6 +114,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: getUserPortalThemeBootstrapInlineScript(),
+          }}
+        />
         <GoogleTagManagerHead />
         <script
           type="application/ld+json"

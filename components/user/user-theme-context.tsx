@@ -1,10 +1,10 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 
-export type UserPortalTheme = 'light' | 'dark';
+import { USER_PORTAL_THEME_STORAGE_KEY, type UserPortalTheme } from '@/lib/user-portal-theme';
 
-const STORAGE_KEY = 'rb_user_portal_theme';
+export type { UserPortalTheme };
 
 type UserThemeContextValue = {
   theme: UserPortalTheme;
@@ -18,15 +18,16 @@ export function UserThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<UserPortalTheme>('light');
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    let initial: UserPortalTheme = 'light';
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'dark' || stored === 'light') {
-        setThemeState(stored);
-      }
+      const stored = localStorage.getItem(USER_PORTAL_THEME_STORAGE_KEY);
+      if (stored === 'dark' || stored === 'light') initial = stored;
     } catch {
       // ignore
     }
+    setThemeState(initial);
+    document.documentElement.dataset.userTheme = initial;
     setReady(true);
   }, []);
 
@@ -34,7 +35,7 @@ export function UserThemeProvider({ children }: { children: React.ReactNode }) {
     if (!ready) return;
     document.documentElement.dataset.userTheme = theme;
     try {
-      localStorage.setItem(STORAGE_KEY, theme);
+      localStorage.setItem(USER_PORTAL_THEME_STORAGE_KEY, theme);
     } catch {
       // ignore
     }

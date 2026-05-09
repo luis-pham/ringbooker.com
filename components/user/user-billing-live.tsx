@@ -73,6 +73,8 @@ type UserBillingResponse = {
       voiceMinutesSoftLimit: number | null;
       nearCapturedCallerLimit: boolean;
       overCapturedCallerLimit: boolean;
+      activeLiveCalls?: number;
+      maxConcurrentLiveCalls?: number;
     } | null;
   };
   error?: string;
@@ -612,24 +614,52 @@ export function UserBillingLive() {
                         </a>
                       </section>
                       {data.billing?.usage ? (
-                        <section className="card" style={{ marginBottom: 16 }}>
-                          <h3 style={{ marginTop: 0 }}>Usage this month</h3>
-                          <p className="sub">
-                            {data.billing.usage.capturedCallersLimit == null
-                              ? `${data.billing.usage.capturedCallersUsed} captured callers · Custom allowance`
-                              : `${data.billing.usage.capturedCallersUsed} / ${data.billing.usage.capturedCallersLimit} captured callers`}
-                          </p>
-                          <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden', margin: '12px 0' }}>
+                        <section
+                          className={`card usage-captured-card${data.billing.usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${data.billing.usage.nearCapturedCallerLimit && !data.billing.usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
+                          style={{ marginBottom: 16 }}
+                        >
+                          <div className="panel-head">
+                            <div>
+                              <h3>Captured callers this month</h3>
+                              <p className="sub">
+                                {data.billing.usage.capturedCallersLimit == null
+                                  ? `${data.billing.usage.capturedCallersUsed} captured callers · Custom allowance`
+                                  : `${data.billing.usage.capturedCallersUsed} / ${data.billing.usage.capturedCallersLimit} captured callers`}
+                              </p>
+                            </div>
+                            <span
+                              className={`tag ${data.billing.usage.overCapturedCallerLimit ? 'orange' : data.billing.usage.nearCapturedCallerLimit ? 'orange' : 'green'}`}
+                            >
+                              {data.billing.usage.capturedCallerUsagePercent == null
+                                ? 'Custom'
+                                : `${data.billing.usage.capturedCallerUsagePercent}%`}
+                            </span>
+                          </div>
+                          <div className="usage-progress-track" aria-hidden="true">
                             <div
-                              style={{
-                                height: '100%',
-                                width: `${Math.min(100, data.billing.usage.capturedCallerUsagePercent ?? 0)}%`,
-                                background: data.billing.usage.overCapturedCallerLimit ? '#dc2626' : data.billing.usage.nearCapturedCallerLimit ? '#f59e0b' : '#7c3aed',
-                              }}
+                              className={`usage-progress-fill ${data.billing.usage.overCapturedCallerLimit ? 'usage-progress-fill--over' : data.billing.usage.nearCapturedCallerLimit ? 'usage-progress-fill--near' : 'usage-progress-fill--ok'}`}
+                              style={{ width: `${Math.min(100, data.billing.usage.capturedCallerUsagePercent ?? 0)}%` }}
                             />
                           </div>
-                          <p className="sub">
-                            Voice usage: {data.billing.usage.voiceMinutesUsed} min{data.billing.usage.voiceMinutesSoftLimit ? ` / ${data.billing.usage.voiceMinutesSoftLimit} soft cap` : ''}
+                          {data.billing.usage.nearCapturedCallerLimit || data.billing.usage.overCapturedCallerLimit ? (
+                            <p
+                              className="sub"
+                              style={{
+                                marginTop: 10,
+                                color: data.billing.usage.overCapturedCallerLimit ? '#b91c1c' : '#92400e',
+                              }}
+                            >
+                              {data.billing.usage.overCapturedCallerLimit
+                                ? 'You have reached your monthly captured caller limit. Upgrade for more call coverage.'
+                                : 'You are close to your monthly captured caller limit.'}
+                            </p>
+                          ) : null}
+                          <p className="sub" style={{ marginTop: 8 }}>
+                            Voice usage: {data.billing.usage.voiceMinutesUsed} min
+                            {data.billing.usage.voiceMinutesSoftLimit
+                              ? ` / ${data.billing.usage.voiceMinutesSoftLimit} soft cap`
+                              : ''}{' '}
+                            · Active calls: {data.billing.usage.activeLiveCalls ?? 0}/{data.billing.usage.maxConcurrentLiveCalls ?? 0}
                           </p>
                         </section>
                       ) : null}

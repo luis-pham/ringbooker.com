@@ -1,4 +1,7 @@
+'use client';
+
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 
 import type { UserPortalNavKey } from '@/components/user/user-portal-nav';
 
@@ -69,18 +72,15 @@ export function UserPortalMobileTabbar({ active }: UserPortalMobileTabbarProps) 
   const item = (key: UserPortalNavKey, href: string, label: string, icon: ReactNode) => {
     const isActive = active === key;
     return (
-      <a
+      <Link
         key={key}
         href={href}
+        prefetch
         className={`user-mobile-tabbar__link${isActive ? ' user-mobile-tabbar__link--active' : ''}`}
-        onClick={(event) => {
-          event.preventDefault();
-          window.location.assign(href);
-        }}
       >
         <span className="user-mobile-tabbar__icon">{icon}</span>
         <span className="user-mobile-tabbar__label">{label}</span>
-      </a>
+      </Link>
     );
   };
 
