@@ -252,7 +252,7 @@ export function UserAccountLive() {
 .rb-account-action-danger:hover .rb-account-chevron-muted{opacity:.45;color:rgba(186,26,26,.55)}
 .rb-account-chevron-muted{opacity:.35}
 @media(min-width:521px){
-  .rb-account-password-actions .btn.purple{width:100%}
+  .rb-account-password-actions .btn.user-save{width:100%}
 }
       `,
     ],
@@ -461,7 +461,7 @@ export function UserAccountLive() {
                     <div className="account-password-actions rb-account-password-actions">
                       <button
                         type="button"
-                        className="btn purple"
+                        className="btn user-save"
                         disabled={pwLoading}
                         onClick={() => void submitPassword()}
                       >

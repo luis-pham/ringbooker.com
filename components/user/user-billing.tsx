@@ -38,6 +38,18 @@ export const userBillingStyles: string[] = [
 @media (max-width:860px){
   .billing-status-grid{grid-template-columns:1fr}
 }
+
+html[data-user-theme="dark"] .billing-status-card{
+  background:var(--surface-card);
+  border-color:var(--border);
+}
+html[data-user-theme="dark"] .billing-alert-strip{
+  background:rgba(187,128,9,0.12);
+  border-color:rgba(187,128,9,0.35);
+  color:#e3b341;
+}
+html[data-user-theme="dark"] .tag.gray{background:#21262d;color:var(--text-gray)}
+html[data-user-theme="dark"] .price-mini{background:var(--surface-card)}
 `,
 ];
 

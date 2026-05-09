@@ -39,7 +39,6 @@ export function UserPortalSidebar({ active }: UserPortalSidebarProps) {
             </div>
             <div className="brand-text">
               <span className="brand-title">RingBooker</span>
-              <p className="brand-tagline">User Portal</p>
             </div>
           </div>
           <UserPortalNav active={active} />

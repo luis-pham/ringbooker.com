@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 
+import { UserPortalThemeToggle } from '@/components/user/user-portal-theme-toggle';
+
 export type UserPortalTopbarUserSummary = {
   displayName: string;
   subtitle?: string;
@@ -32,16 +34,19 @@ export function UserPortalTopbar({ title, subtitle, actions, actionsClassName, u
         <h1>{title}</h1>
         {subtitle ? <p>{subtitle}</p> : null}
       </div>
-      {userSummary ? (
-        <div className="topbar-user-chip" aria-hidden={false}>
-          <div className="topbar-user-chip-meta">
-            <p className="topbar-user-chip-name">{userSummary.displayName}</p>
-            {userSummary.subtitle ? <p className="topbar-user-chip-sub">{userSummary.subtitle}</p> : null}
+      <div className="topbar-trailing">
+        {userSummary ? (
+          <div className="topbar-user-chip" aria-hidden={false}>
+            <div className="topbar-user-chip-meta">
+              <p className="topbar-user-chip-name">{userSummary.displayName}</p>
+              {userSummary.subtitle ? <p className="topbar-user-chip-sub">{userSummary.subtitle}</p> : null}
+            </div>
+            <div className="topbar-user-chip-avatar">{chipInitials(userSummary.displayName, userSummary.initials)}</div>
           </div>
-          <div className="topbar-user-chip-avatar">{chipInitials(userSummary.displayName, userSummary.initials)}</div>
-        </div>
-      ) : null}
-      {actions ? <div className={`top-actions${actionsClassName ? ` ${actionsClassName}` : ''}`}>{actions}</div> : null}
+        ) : null}
+        <UserPortalThemeToggle />
+        {actions ? <div className={`top-actions${actionsClassName ? ` ${actionsClassName}` : ''}`}>{actions}</div> : null}
+      </div>
     </div>
   );
 }

@@ -142,6 +142,29 @@ canvas {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  html[data-user-theme="dark"] .user-mobile-tabbar {
+    background: #161b22;
+    border-top-color: #30363d;
+  }
+
+  html[data-user-theme="dark"] .user-mobile-tabbar__link {
+    color: #8b949e;
+  }
+
+  html[data-user-theme="dark"] .user-mobile-tabbar__link--active {
+    color: #58a6ff;
+    background: rgba(56, 139, 253, 0.15);
+    border-color: rgba(56, 139, 253, 0.35);
+  }
+
+  html[data-user-theme="dark"] .user-mobile-tabbar__icon svg {
+    stroke: #8b949e;
+  }
+
+  html[data-user-theme="dark"] .user-mobile-tabbar__link--active .user-mobile-tabbar__icon svg {
+    stroke: #58a6ff;
+  }
 }
 
 /* Shared logo override: use uploaded raster logo everywhere */

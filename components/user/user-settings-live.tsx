@@ -936,7 +936,7 @@ export function UserSettingsLive() {
                                 ) : null}
                                 <button
                                   type="button"
-                                  className="btn purple"
+                                  className="btn user-save"
                                   disabled={savingBookingLinkProvider === bookingLinkProviderId || !bookingLinkInputs[bookingLinkProviderId].trim()}
                                   onClick={() => void saveBookingLink(bookingLinkProviderId)}
                                 >
@@ -1007,7 +1007,7 @@ export function UserSettingsLive() {
                     <div className="field" style={{ gridColumn: '1 / -1' }}>
                       <button
                         type="button"
-                        className="btn purple"
+                        className="btn user-save"
                         disabled={savingSquareConfig || !squareLocationId || !squareServiceVariationId}
                         onClick={async () => {
                           setSavingSquareConfig(true);
@@ -1134,7 +1134,7 @@ export function UserSettingsLive() {
                   <div className="field" style={{ gridColumn: '1 / -1' }}>
                     <button
                       type="button"
-                      className="btn purple"
+                      className="btn user-save"
                       disabled={
                         savingVagaroConfig ||
                         !vagaroRegion ||
@@ -1239,7 +1239,7 @@ export function UserSettingsLive() {
                   <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={form.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
                 </div>
                 <div className="settings-save-footer">
-                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'business-profile' ? 'Saving...' : 'Save business profile'}
                   </button>
                 </div>
@@ -1303,7 +1303,7 @@ export function UserSettingsLive() {
                   </div>
                 </div>
                 <div className="settings-save-footer">
-                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'business-policies' ? 'Saving...' : 'Save policies & promos'}
                   </button>
                 </div>
@@ -1364,7 +1364,7 @@ export function UserSettingsLive() {
                   <div className="note" style={{ marginTop: 16 }}>Pick at least one service so availability checks and voice bookings stay consistent.</div>
                 )}
                 <div className="settings-save-footer">
-                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'services' ? 'Saving...' : 'Save services'}
                   </button>
                 </div>
@@ -1415,7 +1415,7 @@ export function UserSettingsLive() {
                   })}
                 </div>
                 <div className="settings-save-footer">
-                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'hours' ? 'Saving...' : 'Save hours'}
                   </button>
                 </div>
@@ -1456,7 +1456,7 @@ export function UserSettingsLive() {
                   </div>
                 </div>
                 <div className="settings-save-footer">
-                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'call-handling' ? 'Saving...' : 'Save call handling'}
                   </button>
                 </div>
@@ -1510,7 +1510,7 @@ export function UserSettingsLive() {
                   </div>
                 </div>
                 <div className="settings-save-footer">
-                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'messaging' ? 'Saving...' : 'Save messaging'}
                   </button>
                 </div>
@@ -1587,7 +1587,7 @@ export function UserSettingsLive() {
                   </div>
                 </div>
                 <div className="settings-save-footer">
-                  <button type="submit" className="btn purple" disabled={savingSection !== null}>
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'ai-voice' ? 'Saving...' : 'Save AI voice & greeting'}
                   </button>
                 </div>

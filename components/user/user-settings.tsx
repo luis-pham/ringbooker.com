@@ -163,6 +163,75 @@ const userSettingsSpecificStyles = String.raw`
 .plan-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:#f5f3ff;color:var(--purple-dark);font-size:11px;font-weight:800}
 .upgrade-panel{background:linear-gradient(135deg,#f7f3ff,#fff);border:1px dashed rgba(99,14,212,.28)}
 
+html[data-user-theme="dark"] .settings-save-footer{border-top-color:var(--border)}
+html[data-user-theme="dark"] .calendar-int-card{
+  background:var(--surface-card);
+  border-color:var(--border);
+}
+html[data-user-theme="dark"] .calendar-int-card:hover{border-color:#58a6ff;box-shadow:none}
+html[data-user-theme="dark"] .calendar-int-card.connected-active{
+  border-color:rgba(56,139,253,.45);
+  background:linear-gradient(180deg,rgba(56,139,253,.08) 0%,var(--surface-card) 100%);
+  box-shadow:0 0 0 4px rgba(56,139,253,.12);
+}
+html[data-user-theme="dark"] .calendar-int-card.soon{background:#21262d}
+html[data-user-theme="dark"] .calendar-int-logo-wrap{background:#0d1117;border-color:var(--border)}
+html[data-user-theme="dark"] .calendar-int-badge{background:#21262d;color:var(--text-gray);border-color:var(--border)}
+html[data-user-theme="dark"] .option-card{background:var(--surface-card)}
+html[data-user-theme="dark"] .option-card:hover{border-color:#58a6ff}
+html[data-user-theme="dark"] .option-card.active{
+  border-color:rgba(56,139,253,.55);
+  background:linear-gradient(180deg,rgba(56,139,253,.1) 0%,var(--surface-card) 100%);
+}
+html[data-user-theme="dark"] .option-card.locked{background:#21262d}
+html[data-user-theme="dark"] .preset-pill{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
+html[data-user-theme="dark"] .preset-pill.active{background:#58a6ff;color:#fff;border-color:#58a6ff}
+html[data-user-theme="dark"] .switch-row{border-color:var(--border);background:var(--surface-card)}
+html[data-user-theme="dark"] .switch{background:#30363d}
+html[data-user-theme="dark"] .switch::after{background:#f0f6fc}
+html[data-user-theme="dark"] .tab-button{background:var(--surface-card);border-color:var(--border);color:var(--text-dark)}
+html[data-user-theme="dark"] .tab-button:hover{background:#21262d;border-color:#8b949e}
+html[data-user-theme="dark"] .tab-button.active{
+  background:rgba(56,139,253,0.15);
+  color:#58a6ff;
+  border-color:rgba(56,139,253,0.45);
+}
+html[data-user-theme="dark"] .tab-button.active:hover{
+  background:rgba(56,139,253,0.22);
+  border-color:#58a6ff;
+  color:#79c0ff;
+}
+html[data-user-theme="dark"] .tab-button.active .tab-button-desc{color:rgba(230,237,243,.85)}
+html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
+html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
+html[data-user-theme="dark"] .business-subtab.active{
+  background:rgba(56,139,253,0.15);
+  color:#58a6ff;
+  border-color:rgba(56,139,253,0.45);
+}
+html[data-user-theme="dark"] .business-subtab.active:hover{
+  background:rgba(56,139,253,0.22);
+  color:#79c0ff;
+}
+html[data-user-theme="dark"] .hours-grid{border-color:var(--border);background:var(--surface-card)}
+html[data-user-theme="dark"] .hours-row{background:var(--surface-card);border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .hours-row.closed{background:#0d1117}
+html[data-user-theme="dark"] .service-chip{border-color:var(--border);background:var(--surface-card)}
+html[data-user-theme="dark"] .service-chip.active{border-color:rgba(56,139,253,.45);box-shadow:0 0 0 4px rgba(56,139,253,.12)}
+html[data-user-theme="dark"] .small-field label{color:var(--text-light)}
+html[data-user-theme="dark"] .small-field input,
+html[data-user-theme="dark"] .small-field select{
+  border-color:var(--border);background:#0d1117;color:var(--text-dark);
+}
+html[data-user-theme="dark"] .small-field input:disabled,
+html[data-user-theme="dark"] .small-field select:disabled{background:#21262d;color:var(--text-gray)}
+html[data-user-theme="dark"] .small-field input:focus,
+html[data-user-theme="dark"] .small-field select:focus{border-color:#58a6ff;box-shadow:0 0 0 2px rgba(88,166,255,.25)}
+html[data-user-theme="dark"] .upgrade-panel{
+  background:linear-gradient(135deg,rgba(56,139,253,.08),var(--surface-card));
+  border-color:rgba(56,139,253,.35);
+}
+
 @media (max-width:1200px){
   .option-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -214,7 +283,7 @@ export function UserSettingsTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Business settings and AI behavior.</h1><p>Control how RingBooker answers calls, what it offers, and when it hands off to you.</p></div>
-            <div className="top-actions"><a className="btn" href="/user/settings">Test phone flow</a><a className="btn purple" href="/user/settings">Save changes</a></div>
+            <div className="top-actions"><a className="btn" href="/user/settings">Test phone flow</a><a className="btn user-save" href="/user/settings">Save changes</a></div>
           </div>
           <section className="grid grid-2">
             <div className="card">

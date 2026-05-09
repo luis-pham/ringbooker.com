@@ -146,9 +146,13 @@ button,input,select,textarea{font:inherit}
 .page-title h1{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.25;color:var(--purple-dark)}
 .page-title p{margin:6px 0 0;color:var(--text-gray);font-size:15px;line-height:1.55;max-width:760px}
 .top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.topbar-trailing{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin-left:auto;
+}
 .topbar-user-chip{
   display:flex;align-items:center;gap:12px;
-  margin-left:auto;padding-left:20px;border-left:1px solid var(--border);
+  margin-left:0;padding-left:20px;border-left:1px solid var(--border);
 }
 .topbar-user-chip-meta{text-align:right;display:none}
 .topbar-user-chip-name{margin:0;font-size:14px;font-weight:600;color:var(--text-dark)}
@@ -170,6 +174,24 @@ button,input,select,textarea{font:inherit}
 .btn.purple{background:var(--purple-dark);color:#fff;border-color:var(--purple-dark)}
 .btn.purple:hover{background:#5609c4;border-color:#5609c4;color:#fff}
 .btn.dark{background:#111827;color:#fff;border-color:#111827}
+.btn.user-save{
+  background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;
+}
+.btn.user-save:hover:not(:disabled){
+  background:#161b22;border-color:#161b22;color:#fff;
+}
+.btn.user-save:disabled{opacity:.55;cursor:not-allowed}
+.user-theme-toggle{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;padding:0;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface-card);
+  color:var(--text-gray);cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+}
+.user-theme-toggle:hover{
+  background:#f9fafb;border-color:#d1d5db;color:var(--text-dark);
+}
+.user-theme-toggle:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
 
 .grid{display:grid;gap:18px}
 .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
@@ -310,6 +332,150 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 
 .footer-inline{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:18px;color:var(--text-light);font-size:12px}
 
+html[data-user-theme="dark"]{color-scheme:dark}
+html[data-user-theme="dark"],
+html[data-user-theme="dark"] body{
+  background:#0d1117;
+  color:#e6edf3;
+}
+html[data-user-theme="dark"] .user-app-shell{
+  --purple:#58a6ff;
+  --purple-dark:#58a6ff;
+  --purple-light:rgba(56,139,253,0.14);
+  --purple-ultra:rgba(56,139,253,0.08);
+  --secondary-accent:#4a8fd4;
+  --surface-page:#0d1117;
+  --surface-card:#161b22;
+  --text-dark:#e6edf3;
+  --text-gray:#8b949e;
+  --text-light:#6e7681;
+  --border:#30363d;
+  --bg:#161b22;
+  --bg-gray:#21262d;
+}
+html[data-user-theme="dark"] .sidebar-body::-webkit-scrollbar-thumb{background:#484f58}
+html[data-user-theme="dark"] .nav-item{color:#8b949e}
+html[data-user-theme="dark"] .nav-item:hover{background:#21262d;color:#e6edf3}
+html[data-user-theme="dark"] .nav-item.active{
+  background:rgba(56,139,253,0.15);
+  color:#58a6ff;
+}
+html[data-user-theme="dark"] .nav-item.active:hover{
+  background:rgba(56,139,253,0.22);
+  color:#79c0ff;
+}
+html[data-user-theme="dark"] .sidebar-logout{color:#8b949e}
+html[data-user-theme="dark"] .btn{
+  background:#21262d;
+  border-color:var(--border);
+  color:var(--text-dark);
+}
+html[data-user-theme="dark"] .btn:hover{
+  background:#30363d;
+  border-color:#8b949e;
+  color:var(--text-dark);
+}
+html[data-user-theme="dark"] .btn.purple{
+  background:#1f6feb;
+  border-color:#1f6feb;
+  color:#fff;
+}
+html[data-user-theme="dark"] .btn.purple:hover{
+  background:#388bfd;
+  border-color:#388bfd;
+  color:#fff;
+}
+html[data-user-theme="dark"] .btn.user-save{
+  background:#010409;
+  color:#f0f6fc;
+  border-color:#30363d;
+}
+html[data-user-theme="dark"] .btn.user-save:hover:not(:disabled){
+  background:#0d1117;
+  border-color:#58a6ff;
+  color:#f0f6fc;
+}
+html[data-user-theme="dark"] .user-theme-toggle{
+  background:var(--surface-card);
+  border-color:var(--border);
+  color:var(--text-gray);
+}
+html[data-user-theme="dark"] .user-theme-toggle:hover{
+  background:#21262d;
+  color:var(--text-dark);
+  border-color:#8b949e;
+}
+html[data-user-theme="dark"] .topbar-user-chip-avatar{
+  background:rgba(56,139,253,0.12);
+  color:#58a6ff;
+  border-color:#30363d;
+}
+html[data-user-theme="dark"] .card.soft{background:#161b22}
+html[data-user-theme="dark"] .list-item{
+  background:var(--surface-card);
+  border-color:var(--border);
+}
+html[data-user-theme="dark"] .table th,
+html[data-user-theme="dark"] .table td{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .field label{color:var(--text-light)}
+html[data-user-theme="dark"] .field input,
+html[data-user-theme="dark"] .field textarea,
+html[data-user-theme="dark"] .field select{
+  background:#0d1117;
+  border-color:var(--border);
+  color:var(--text-dark);
+}
+html[data-user-theme="dark"] .field input:focus,
+html[data-user-theme="dark"] .field textarea:focus,
+html[data-user-theme="dark"] .field select:focus{
+  border-color:#58a6ff;
+  outline:1px solid rgba(88,166,255,0.45);
+  outline-offset:0;
+}
+html[data-user-theme="dark"] .note{
+  background:#21262d;
+  border-color:var(--border);
+  color:var(--text-gray);
+}
+html[data-user-theme="dark"] .bar{background:#21262d}
+html[data-user-theme="dark"] .bar > span{
+  background:linear-gradient(90deg,#1f6feb,#79c0ff);
+}
+html[data-user-theme="dark"] .tag.purple{
+  background:rgba(56,139,253,0.12);
+  color:#79c0ff;
+}
+html[data-user-theme="dark"] .tag.green{background:rgba(35,134,54,0.15);color:#3fb950}
+html[data-user-theme="dark"] .tag.orange{background:rgba(187,128,9,0.15);color:#d29922}
+html[data-user-theme="dark"] .tag.red{background:rgba(248,81,73,0.12);color:#f85149}
+html[data-user-theme="dark"] .stat-icon svg{stroke:var(--purple-dark)}
+html[data-user-theme="dark"] .forward-num{
+  background:rgba(56,139,253,0.1);
+  border-color:#30363d;
+  color:#79c0ff;
+}
+html[data-user-theme="dark"] a.carrier-link{
+  background:var(--surface-card);
+  border-color:var(--border);
+}
+html[data-user-theme="dark"] a.carrier-link:hover{
+  background:#21262d;
+  border-color:#58a6ff;
+}
+html[data-user-theme="dark"] a.carrier-link strong{color:var(--text-dark)}
+html[data-user-theme="dark"] .carrier-callcenter-tip{
+  background:#0d1117;
+  border-color:var(--border);
+}
+html[data-user-theme="dark"] .price-mini{background:var(--surface-card)}
+html[data-user-theme="dark"] .plan-chip{
+  background:rgba(56,139,253,0.12);
+  color:#79c0ff;
+}
+html[data-user-theme="dark"] .rb-account-action:hover{background:#21262d}
+html[data-user-theme="dark"] .rb-account-callout{background:#21262d;border-color:var(--border)}
+html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.12);color:#79c0ff}
+
 @media (max-width:1200px){
   .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}
   .kpi-row,.call-grid,.billing-banner,.pricing-mini{grid-template-columns:1fr}
@@ -368,6 +534,12 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
     text-overflow:ellipsis;
   }
   .topbar{align-items:flex-start;flex-direction:column}
+  .topbar-trailing{
+    width:100%;
+    margin-left:0;
+    justify-content:flex-start;
+    gap:10px;
+  }
   .topbar-user-chip{display:none !important}
   .overview-top-actions{display:none}
   .page-title h1{font-size:22px}
@@ -401,7 +573,7 @@ export function UserDashboardTemplate() {
       <div className="app-shell">
         <aside className="sidebar">
           <div className="sidebar-inner">
-            <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><div className="brand-text"><span className="brand-title">RingBooker</span><p className="brand-tagline">User Portal</p></div></div>
+            <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><div className="brand-text"><span className="brand-title">RingBooker</span></div></div>
             <div className="nav-section"><div className="nav-label">User Portal</div><div className="nav-list"><a className="nav-item active" href="/user"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={4} width={7} height={7} rx="1.5" /><rect x={14} y={4} width={7} height={4} rx="1.5" /><rect x={14} y={11} width={7} height={9} rx="1.5" /><rect x={3} y={14} width={7} height={6} rx="1.5" /></svg></div><span>Overview</span></a><a className="nav-item" href="/user/bookings"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span>Bookings</span></a><a className="nav-item" href="/user/calls"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span>Calls &amp; Transcripts</span></a><a className="nav-item" href="/user/settings"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1Z" /></svg></div><span>Settings</span></a><a className="nav-item" href="/user/billing"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={14} rx={2} /><path d="M3 10h18" /><path d="M7 15h4" /></svg></div><span>Billing</span></a></div></div>
             <div className="sidebar-spacer" />
           </div>
