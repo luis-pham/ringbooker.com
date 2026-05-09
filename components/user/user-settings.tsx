@@ -44,6 +44,19 @@ const userSettingsSpecificStyles = String.raw`
 }
 .integrations-section-heading--first{margin-top:10px;padding-top:0;border-top:none}
 .integrations-section-lead{margin:0 0 20px;line-height:1.6;max-width:52rem}
+.integrations-square-section{
+  margin:28px 0 12px;padding-top:20px;border-top:1px solid var(--border);
+}
+.integrations-square-section--first{margin-top:10px;padding-top:0;border-top:none}
+.integrations-square-section-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;min-width:0}
+.integrations-square-section-logo{
+  width:44px;height:44px;border-radius:12px;flex-shrink:0;
+}
+.integrations-square-section-logo img{width:100%;height:100%;object-fit:contain;padding:6px}
+.integrations-square-section-title{margin:0;font-size:15px;font-weight:800;letter-spacing:-.02em;line-height:1.3;color:var(--text-dark)}
+.integrations-square-connect-row{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
 .calendar-int-card--solo{max-width:100%;gap:12px}
 .calendar-int-card--plain{
   border:none;
@@ -109,10 +122,23 @@ button.subtle-link:hover{text-decoration:underline}
 .integrations-path-picker{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px}
 .integrations-path-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:14px 0 10px}
 .integrations-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;margin-top:4px}
+.integrations-booking-link-card.calendar-int-card--plain .integrations-booking-link-actions.calendar-int-actions{
+  border-top:none;margin-top:0;padding-top:0;
+}
+.integrations-booking-link-stack{display:grid;gap:10px;width:100%;max-width:min(100%,36rem)}
+.integrations-booking-link-field{margin-bottom:0}
+.integrations-booking-link-card > .integrations-booking-link-field{margin-bottom:12px}
+@media (min-width:861px){
+  .integrations-booking-link-card .integrations-booking-link-field select,
+  .integrations-booking-link-card .integrations-booking-link-field input{
+    width:100%;max-width:min(100%,420px);box-sizing:border-box;
+  }
+  .integrations-vagaro-form .field input:not([type="checkbox"]):not([type="radio"]),
+  .integrations-vagaro-form .field select{
+    width:100%;max-width:min(100%,420px);box-sizing:border-box;
+  }
+}
 .integrations-vagaro-block{margin-top:6px;display:flex;flex-direction:column;gap:22px}
-.integrations-vagaro-subhead{display:flex;flex-direction:column;gap:8px}
-.integrations-vagaro-subhead .option-title{margin:0}
-.integrations-vagaro-subhead-copy{margin:0;line-height:1.55}
 .integrations-vagaro-form{gap:18px 22px}
 .integrations-vagaro-booking-field{
   grid-column:1/-1;display:flex;flex-direction:column;gap:12px;

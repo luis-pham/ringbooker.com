@@ -1036,13 +1036,13 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     Choose how clients book with you. You can switch or add another system anytime.
                   </p>
                   <div className="integrations-path-picker" role="group" aria-label="Booking system">
-                    <button type="button" className="business-subtab" onClick={() => setIntegrationsPath('square')}>
+                    <button type="button" className="btn user-save integrations-primary-button" onClick={() => setIntegrationsPath('square')}>
                       Square Appointments
                     </button>
-                    <button type="button" className="business-subtab" onClick={() => setIntegrationsPath('booking_link')}>
+                    <button type="button" className="btn user-save integrations-primary-button" onClick={() => setIntegrationsPath('booking_link')}>
                       Booking page link
                     </button>
-                    <button type="button" className="business-subtab" onClick={() => setIntegrationsPath('vagaro')}>
+                    <button type="button" className="btn user-save integrations-primary-button" onClick={() => setIntegrationsPath('vagaro')}>
                       Vagaro
                     </button>
                   </div>
@@ -1077,42 +1077,48 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
 
               {showSquareBlock ? (
                 <>
-                  <h4
-                    className={`integrations-section-heading ${squareSectionHeadingFirst ? 'integrations-section-heading--first' : ''}`}
-                  >
-                    Square Appointments
-                  </h4>
                   {squareProvider ? (
+                  <>
+                  <div
+                    className={[
+                      'integrations-square-section',
+                      squareSectionHeadingFirst ? 'integrations-square-section--first' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    <div className="integrations-square-section-head">
+                      <div className="calendar-int-logo-wrap integrations-square-section-logo">
+                        <img
+                          src={CALENDAR_PROVIDER_LOGOS.square_appointments}
+                          alt=""
+                          width={44}
+                          height={44}
+                          loading="lazy"
+                        />
+                      </div>
+                      <h4 className="integrations-square-section-title">Square Appointments</h4>
+                    </div>
+                    <p className="sub integrations-section-lead">
+                      {squareProvider.connected
+                        ? squareProvider.configured
+                          ? 'Square is connected and configured. Live availability and booking use your Square calendar.'
+                          : 'Square is connected. Choose location and default service below, then save.'
+                        : 'Sign in with Square (OAuth), then pick the location and service RingBooker should use for availability and booking.'}
+                    </p>
+                  </div>
                   <div
                   className={[
                     'calendar-int-card',
                     'calendar-int-card--solo',
                     'calendar-int-card--plain',
+                    'integrations-square-connect-card',
                     squareProvider.connected ? 'connected-active' : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
                 >
-                  <div className="calendar-int-head">
-                    <div className="calendar-int-logo-wrap">
-                      <img
-                        src={CALENDAR_PROVIDER_LOGOS.square_appointments}
-                        alt="Square Appointments logo"
-                        width={52}
-                        height={52}
-                        loading="lazy"
-                      />
-                    </div>
-                    <span className="calendar-int-name">{squareProvider.label}</span>
-                  </div>
-                  <p className="calendar-int-desc">
-                    {squareProvider.connected
-                      ? squareProvider.configured
-                        ? 'Connected and configured — live availability and booking to Square.'
-                        : 'Connected. Pick location and service below, then save.'
-                      : 'OAuth to Square, then choose location and service for the AI.'}
-                  </p>
-                  <div className="calendar-int-actions">
+                  <div className="integrations-square-connect-row">
                     <button
                       type="button"
                       className="btn user-save integrations-primary-button"
@@ -1160,7 +1166,14 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     ) : null}
                   </div>
                 </div>
-              ) : null}
+                  </>
+              ) : (
+                  <h4
+                    className={`integrations-section-heading ${squareSectionHeadingFirst ? 'integrations-section-heading--first' : ''}`}
+                  >
+                    Square Appointments
+                  </h4>
+              )}
 
                   {squareProvider?.connected ? (
                     <div className="card-section integrations-square-config">
@@ -1273,12 +1286,14 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     className={[
                       'calendar-int-card',
                       'calendar-int-card--solo',
+                      'calendar-int-card--plain',
+                      'integrations-booking-link-card',
                       blMeta?.connected ? 'connected-active' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
                   >
-                    <div className="field" style={{ marginBottom: 12 }}>
+                    <div className="field integrations-booking-link-field">
                       <select
                         id="booking-link-brand-select"
                         aria-label="Booking app"
@@ -1301,8 +1316,8 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                         ? 'Connected — callers can receive this booking link by SMS.'
                         : 'Add your booking link so callers can receive it by SMS.'}
                     </p>
-                    <div className="calendar-int-actions">
-                      <div style={{ display: 'grid', gap: 10, width: '100%' }}>
+                    <div className="calendar-int-actions integrations-booking-link-actions">
+                      <div className="integrations-booking-link-stack">
                         {blMeta?.connected && !isEditingBookingLink ? (
                           <>
                             <span
@@ -1336,7 +1351,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                           </>
                         ) : (
                           <>
-                            <div className="field" style={{ width: '100%' }}>
+                            <div className="field integrations-booking-link-field">
                               <label>Booking link URL</label>
                               <input
                                 value={bookingLinkInputs[bookingLinkPick]}
@@ -1401,17 +1416,12 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     Vagaro
                   </h4>
                   <p className="sub integrations-section-lead">
-                    API-based connection for availability and webhooks. Booking checkout stays in Vagaro.
+                    RingBooker uses your Vagaro API for availability checks and webhook sync. Booking and checkout stay in
+                    Vagaro — add your credentials below.
                   </p>
 
                   {vagaroProvider ? (
               <div className="card-section integrations-vagaro-block">
-                <div className="integrations-vagaro-subhead">
-                  <strong className="option-title">Vagaro API credentials</strong>
-                  <p className="hint-copy integrations-vagaro-subhead-copy">
-                    Availability checking and webhook sync supported. Booking creation happens in your Vagaro app.
-                  </p>
-                </div>
                 <div className="form-grid integrations-vagaro-form">
                   <div className="field">
                     <label>Client ID</label>
@@ -1469,7 +1479,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     <div className="integrations-vagaro-booking-actions">
                       <button
                         type="button"
-                        className="btn user-save"
+                        className="btn user-save integrations-primary-button"
                         disabled={savingVagaroBookingUrl || !vagaroBookingUrl.trim()}
                         onClick={() => void saveVagaroBookingLink()}
                       >

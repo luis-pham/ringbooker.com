@@ -4,7 +4,6 @@ import { userDashboardStyles } from '@/components/user/user-dashboard';
 export const userBillingStyles: string[] = [
   ...userDashboardStyles,
   String.raw`
-.main.billing-page{padding:22px 30px 28px}
 .billing-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}
 .billing-status-card{
   background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:none;

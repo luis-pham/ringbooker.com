@@ -462,6 +462,19 @@ export function UserBillingLive() {
     billingInterval === 'annual' && canChooseAnnual ? 'annual' : 'monthly';
   const billingState = resolveBillingUiState({ subscription, hasPaymentMethod, checkoutPlan });
   const billingCopy = billingUiCopy(billingState);
+  const subscriptionBillingBlocked =
+    subscription != null && ['past_due', 'paused', 'canceled'].includes(subscription.status);
+  const showAddPaymentStrip =
+    Boolean(data?.billing) &&
+    !isEnterprisePlan &&
+    !liveEnabled &&
+    !hasPaymentMethod &&
+    !subscriptionBillingBlocked;
+  const showBillingOverviewCard =
+    Boolean(data?.billing) &&
+    !isEnterprisePlan &&
+    !liveEnabled &&
+    (hasPaymentMethod || subscriptionBillingBlocked);
 
   const selectBillingTab = useCallback((tab: BillingSectionTab) => {
     setBillingTab(tab);
@@ -537,7 +550,7 @@ export function UserBillingLive() {
       <>
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="billing" />
-          <main className="main billing-page">
+          <main className="main">
             <UserPortalTopbar
               title="Billing"
               subtitle="Summary above; tabs for account usage, plans, and billing history. Forwarding is under Go live."
@@ -598,47 +611,58 @@ export function UserBillingLive() {
                   </section>
                 ) : null}
 
-                {data?.billing && !isEnterprisePlan && !liveEnabled && !hasPaymentMethod ? (
+                {showAddPaymentStrip ? (
                   <section className="billing-alert-strip">
-                    <p>
-                      <strong>Add a payment method to go live.</strong> Setup and test calls still work without a card. Live answering on your business number starts only after billing, forwarding, and verification are complete.
-                    </p>
-                    {checkoutAvailable && availableBillingIntervals.length > 1 ? (
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} aria-label="Billing interval">
+                    <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                      <p style={{ margin: 0 }}>
+                        <strong>Add a payment method to go live.</strong> Setup and test calls still work without a card.
+                        Live answering on your business number starts only after billing, forwarding, and verification are
+                        complete.
+                      </p>
+                      {billing?.trialNoChargeUntilEndVerified ? (
+                        <div className="sub" style={{ marginTop: 10 }}>
+                          Paddle is configured to collect your payment method now and charge after the trial ends.
+                        </div>
+                      ) : null}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
+                      {checkoutAvailable && availableBillingIntervals.length > 1 ? (
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} aria-label="Billing interval">
+                          <button
+                            type="button"
+                            className={`btn${effectiveBillingInterval === 'monthly' ? ' purple' : ''}`}
+                            onClick={() => setBillingInterval('monthly')}
+                          >
+                            Monthly
+                          </button>
+                          <button
+                            type="button"
+                            className={`btn${effectiveBillingInterval === 'annual' ? ' purple' : ''}`}
+                            onClick={() => setBillingInterval('annual')}
+                            disabled={!canChooseAnnual}
+                          >
+                            Annual
+                          </button>
+                        </div>
+                      ) : null}
+                      {checkoutAvailable ? (
                         <button
                           type="button"
-                          className={`btn${effectiveBillingInterval === 'monthly' ? ' purple' : ''}`}
-                          onClick={() => setBillingInterval('monthly')}
+                          className="btn user-save"
+                          disabled={checkoutPlan !== null}
+                          onClick={() => void openCheckout(currentPlan)}
                         >
-                          Monthly
+                          {checkoutPlan ? 'Starting…' : 'Add payment method'}
                         </button>
-                        <button
-                          type="button"
-                          className={`btn${effectiveBillingInterval === 'annual' ? ' purple' : ''}`}
-                          onClick={() => setBillingInterval('annual')}
-                          disabled={!canChooseAnnual}
-                        >
-                          Annual
-                        </button>
-                      </div>
-                    ) : null}
-                    {checkoutAvailable ? (
-                      <button
-                        type="button"
-                        className="btn user-save"
-                        disabled={checkoutPlan !== null}
-                        onClick={() => void openCheckout(currentPlan)}
-                      >
-                        {checkoutPlan ? 'Starting…' : 'Add payment method'}
-                      </button>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                        <button type="button" className="btn" disabled>
-                          Payment setup unavailable
-                        </button>
-                        <span style={{ fontSize: 12 }}>{checkoutUnavailableCopy(billing?.checkoutDisabledReason)}</span>
-                      </div>
-                    )}
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                          <button type="button" className="btn" disabled>
+                            Payment setup unavailable
+                          </button>
+                          <span style={{ fontSize: 12 }}>{checkoutUnavailableCopy(billing?.checkoutDisabledReason)}</span>
+                        </div>
+                      )}
+                    </div>
                   </section>
                 ) : null}
 
@@ -755,7 +779,7 @@ export function UserBillingLive() {
                         </section>
                       ) : null}
 
-                      {data?.billing && !isEnterprisePlan && !liveEnabled ? (
+                      {showBillingOverviewCard ? (
                         <section className="card" style={{ marginBottom: 16 }}>
                           <h3 style={{ marginTop: 0 }}>{billingCopy.title}</h3>
                           <p className="sub">{billingCopy.body}</p>
