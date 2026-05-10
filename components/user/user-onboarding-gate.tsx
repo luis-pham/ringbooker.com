@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-type OnboardingStatusResponse = {
+export type OnboardingStatusResponse = {
   ok: boolean;
   onboardingRequired?: boolean;
   error?: string;
@@ -23,13 +23,27 @@ function isAllowedDuringIncompleteSetup(pathname: string): boolean {
   return pathname === '/user/billing' || pathname.startsWith('/user/billing/');
 }
 
-export function UserOnboardingGate() {
+export function UserOnboardingGate({ initialStatus = null }: { initialStatus?: OnboardingStatusResponse | null }) {
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     if (!pathname.startsWith('/user')) return;
     if (isPublicUserAuthPath(pathname)) return;
+
+    const applyStatus = (body: OnboardingStatusResponse | null | undefined) => {
+      if (!body?.ok) return;
+      const onboardingRequired = body.onboardingRequired === true;
+      const isOnboardingPage = pathname === '/user/onboarding';
+      if (onboardingRequired && !isOnboardingPage && !isAllowedDuringIncompleteSetup(pathname)) {
+        router.replace('/user/onboarding');
+      }
+    };
+
+    if (initialStatus) {
+      applyStatus(initialStatus);
+      return;
+    }
 
     let canceled = false;
     void fetch('/api/backend/user/onboarding-status')
@@ -42,19 +56,14 @@ export function UserOnboardingGate() {
       })
       .then((body) => {
         if (canceled || !body?.ok) return;
-        const onboardingRequired = body.onboardingRequired === true;
-        const isOnboardingPage = pathname === '/user/onboarding';
-        if (onboardingRequired && !isOnboardingPage && !isAllowedDuringIncompleteSetup(pathname)) {
-          router.replace('/user/onboarding');
-          return;
-        }
+        applyStatus(body);
       })
       .catch(() => undefined);
 
     return () => {
       canceled = true;
     };
-  }, [pathname, router]);
+  }, [initialStatus, pathname, router]);
 
   return null;
 }

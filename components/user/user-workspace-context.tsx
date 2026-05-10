@@ -39,9 +39,18 @@ function isPublicUserAuthPath(pathname: string): boolean {
   );
 }
 
-export function UserWorkspaceProvider({ children }: { children: ReactNode }) {
+export function UserWorkspaceProvider({
+  children,
+  initialWorkspace,
+}: {
+  children: ReactNode;
+  initialWorkspace?: Partial<UserWorkspaceState> | null;
+}) {
   const pathname = usePathname();
-  const [workspace, setWorkspaceState] = useState<UserWorkspaceState>(DEFAULT_WORKSPACE);
+  const [workspace, setWorkspaceState] = useState<UserWorkspaceState>(() => ({
+    ...DEFAULT_WORKSPACE,
+    ...initialWorkspace,
+  }));
 
   const setWorkspace = useCallback((next: Partial<UserWorkspaceState>) => {
     setWorkspaceState((current) => {
@@ -63,6 +72,10 @@ export function UserWorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
+        if (initialWorkspace?.shopName || initialWorkspace?.plan || initialWorkspace?.active !== undefined) {
+          window.sessionStorage.setItem(USER_WORKSPACE_CACHE_KEY, JSON.stringify({ ...DEFAULT_WORKSPACE, ...initialWorkspace }));
+          return;
+        }
         const raw = window.sessionStorage.getItem(USER_WORKSPACE_CACHE_KEY);
         if (raw) {
           const cached = JSON.parse(raw) as Partial<UserWorkspaceState>;
@@ -72,8 +85,7 @@ export function UserWorkspaceProvider({ children }: { children: ReactNode }) {
         // ignore cache parse errors
       }
     }
-
-  }, []);
+  }, [initialWorkspace]);
 
   useEffect(() => {
     if (!pathname.startsWith('/user')) return;

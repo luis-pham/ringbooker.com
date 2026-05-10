@@ -2,6 +2,7 @@
 
 import { UserLayout } from '@/components/user/user-layout';
 import { GoLiveForwardingPanel } from '@/components/user/go-live-forwarding-panel';
+import type { GoLiveBillingResponse, GoLiveStatusResponse } from '@/components/user/go-live-forwarding-panel';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
 import {
@@ -15,7 +16,13 @@ import { userDashboardScripts, userDashboardStyles } from '@/components/user/use
  * Activation-focused destination: payment, forwarding number, verification, live answering.
  * Kept out of Settings so owners do not bury revenue-critical steps under “technical” config.
  */
-export function UserGoLiveLive() {
+export function UserGoLiveLive({
+  initialBilling = null,
+  initialStatus = null,
+}: {
+  initialBilling?: GoLiveBillingResponse | null;
+  initialStatus?: GoLiveStatusResponse | null;
+}) {
   return (
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-go-live-live">
       <>
@@ -29,7 +36,7 @@ export function UserGoLiveLive() {
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />
-            <GoLiveForwardingPanel />
+            <GoLiveForwardingPanel initialBilling={initialBilling} initialStatus={initialStatus} />
           </main>
         </div>
         <UserPortalMobileTabbar active="go-live" />

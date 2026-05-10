@@ -26,7 +26,7 @@ type BillingSubscriptionStatus =
   | 'paused'
   | 'unknown';
 
-type UserBillingResponse = {
+export type UserBillingResponse = {
   ok: boolean;
   shop?: {
     id: string;
@@ -117,7 +117,7 @@ type BillingTransactionRecord = {
   receiptUrl?: string;
 };
 
-type BillingTransactionsResponse = {
+export type BillingTransactionsResponse = {
   ok: boolean;
   available?: boolean;
   transactions?: BillingTransactionRecord[];
@@ -395,10 +395,16 @@ function manageBillingUnavailableCopy(reason?: string | null): string {
   return 'Billing management is not available right now. Contact support or try again later.';
 }
 
-export function UserBillingLive() {
+export function UserBillingLive({
+  initialData = null,
+  initialTransactions = null,
+}: {
+  initialData?: UserBillingResponse | null;
+  initialTransactions?: BillingTransactionsResponse | null;
+}) {
   const { workspace, setWorkspace } = useUserWorkspace();
-  const [data, setData] = useState<UserBillingResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<UserBillingResponse | null>(initialData);
+  const [loading, setLoading] = useState(!initialData);
   const [checkoutPlan, setCheckoutPlan] = useState<ShopPlan | null>(null);
   const [managingBilling, setManagingBilling] = useState(false);
   const [upgradingPlan, setUpgradingPlan] = useState<ShopPlan | null>(null);
@@ -412,12 +418,12 @@ export function UserBillingLive() {
     available: boolean;
     rows: BillingTransactionRecord[];
     message: string | null;
-  }>({
+  }>(() => ({
     loading: false,
-    available: false,
-    rows: [],
-    message: null,
-  });
+    available: initialTransactions?.ok === true && initialTransactions.available === true,
+    rows: initialTransactions?.ok === true && Array.isArray(initialTransactions.transactions) ? initialTransactions.transactions : [],
+    message: initialTransactions?.message ?? null,
+  }));
 
   const refreshBilling = useCallback(async () => {
     const controller = new AbortController();
@@ -444,6 +450,7 @@ export function UserBillingLive() {
   }, [setWorkspace]);
 
   useEffect(() => {
+    if (initialData) return;
     let active = true;
     void refreshBilling()
       .catch(() => {
@@ -458,9 +465,19 @@ export function UserBillingLive() {
     return () => {
       active = false;
     };
-  }, [refreshBilling]);
+  }, [initialData, refreshBilling]);
 
   useEffect(() => {
+    if (!data?.ok || !data.shop) return;
+    setWorkspace({
+      shopName: data.shop.name,
+      plan: data.shop.plan,
+      active: data.shop.active,
+    });
+  }, [data?.ok, data?.shop, setWorkspace]);
+
+  useEffect(() => {
+    if (initialTransactions) return;
     if (!data?.ok || !data.billing) return;
     let active = true;
     const controller = new AbortController();
@@ -500,7 +517,7 @@ export function UserBillingLive() {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [data?.ok, data?.billing]);
+  }, [data?.ok, data?.billing, initialTransactions]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

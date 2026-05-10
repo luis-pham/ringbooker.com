@@ -21,7 +21,7 @@ type GoLiveDashboardPrimaryCta =
   | 'test_forwarding_setup'
   | 'enable_live_answering';
 
-type UserDashboardResponse = {
+export type UserDashboardResponse = {
   ok: boolean;
   metrics?: {
     bookingCount: number;
@@ -267,10 +267,10 @@ function IconQuickSettings() {
   );
 }
 
-export function UserDashboardLive() {
+export function UserDashboardLive({ initialData = null }: { initialData?: UserDashboardResponse | null }) {
   const { setWorkspace } = useUserWorkspace();
-  const [data, setData] = useState<UserDashboardResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<UserDashboardResponse | null>(initialData);
+  const [loading, setLoading] = useState(!initialData);
   const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
   const [forwardingTestLoading, setForwardingTestLoading] = useState(false);
   const [enableLiveLoading, setEnableLiveLoading] = useState(false);
@@ -285,6 +285,7 @@ export function UserDashboardLive() {
   }, []);
 
   useEffect(() => {
+    if (initialData) return;
     let active = true;
     void loadDashboard()
       .catch(() => {
@@ -296,7 +297,7 @@ export function UserDashboardLive() {
     return () => {
       active = false;
     };
-  }, [loadDashboard]);
+  }, [initialData, loadDashboard]);
 
   useEffect(() => {
     if (!data?.ok || !data.shop || data.onboardingRequired) return;
@@ -316,7 +317,7 @@ export function UserDashboardLive() {
     }
   }, [data]);
 
-  const shopName = data?.shop?.name ?? 'Your business';
+  const shopName = data?.shop?.name ?? (loading ? 'Overview' : 'Your business');
   const planLabel = useMemo(() => {
     const raw = data?.shop?.plan ?? 'starter';
     return raw.charAt(0).toUpperCase() + raw.slice(1);
@@ -821,11 +822,9 @@ export function UserDashboardLive() {
               )}
             </section>
             ) : loading ? (
-              <section className="call-grid call-grid-phase-simple" style={{ marginTop: 12 }} aria-busy="true">
-                <div className="card soft" style={{ padding: '22px 24px' }}>
-                  <p className="sub" style={{ margin: 0 }}>Loading overview…</p>
-                </div>
-              </section>
+              <div className="note" style={{ marginTop: 18 }} aria-busy="true">
+                Loading overview…
+              </div>
             ) : null}
             <div className="footer-inline">
               <span>RingBooker business panel</span>

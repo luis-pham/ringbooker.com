@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { userCallsScripts, userCallsStyles } from '@/components/user/user-calls';
@@ -64,7 +64,7 @@ type IntentSummary = {
 
 type CallFilter = 'all' | 'follow_up_needed' | 'high_urgency' | 'bookings' | 'missed';
 
-type CallsResponse = {
+export type CallsResponse = {
   ok: boolean;
   calls?: Call[];
   shop?: { timezone?: string | null };
@@ -73,7 +73,7 @@ type CallsResponse = {
   error?: string;
 };
 
-type IntentSummaryResponse = {
+export type IntentSummaryResponse = {
   ok: boolean;
   totalLast7Days?: number;
   bookingsCount?: number;
@@ -199,23 +199,32 @@ function buildVipSignals(calls: Call[]) {
   );
 }
 
-export function UserCallsLive() {
-  const [calls, setCalls] = useState<Call[]>([]);
+export function UserCallsLive({
+  initialData = null,
+  initialIntentSummary = null,
+}: {
+  initialData?: CallsResponse | null;
+  initialIntentSummary?: IntentSummaryResponse | null;
+}) {
+  const didUseInitialCalls = useRef(Boolean(initialData?.ok));
+  const [calls, setCalls] = useState<Call[]>(initialData?.ok ? initialData.calls ?? [] : []);
   const [page, setPage] = useState(1);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
-  const [summary, setSummary] = useState<CallsSummary | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(
+    initialData?.ok ? initialData.pagination?.total ?? initialData.calls?.length ?? 0 : null,
+  );
+  const [summary, setSummary] = useState<CallsSummary | null>(initialData?.ok ? initialData.summary ?? null : null);
   const [intentSummary, setIntentSummary] = useState<IntentSummary>({
-    totalLast7Days: 0,
-    bookingsCount: 0,
-    followUpCount: 0,
-    missedCount: 0,
+    totalLast7Days: initialIntentSummary?.ok ? initialIntentSummary.totalLast7Days ?? 0 : 0,
+    bookingsCount: initialIntentSummary?.ok ? initialIntentSummary.bookingsCount ?? 0 : 0,
+    followUpCount: initialIntentSummary?.ok ? initialIntentSummary.followUpCount ?? 0 : 0,
+    missedCount: initialIntentSummary?.ok ? initialIntentSummary.missedCount ?? 0 : 0,
   });
   const [activeFilter, setActiveFilter] = useState<CallFilter>('all');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!initialData);
+  const [error, setError] = useState<string | null>(initialData && !initialData.ok ? initialData.error ?? 'unknown_error' : null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
-  const [shopTimezone, setShopTimezone] = useState<string>(getShopTimezone(null));
+  const [shopTimezone, setShopTimezone] = useState<string>(getShopTimezone(initialData?.ok ? initialData.shop : null));
 
 
   function fetchSummary() {
@@ -234,6 +243,10 @@ export function UserCallsLive() {
   }
 
   useEffect(() => {
+    if (didUseInitialCalls.current) {
+      didUseInitialCalls.current = false;
+      return;
+    }
     setLoading(true);
     setError(null);
     setCalls([]);
@@ -274,8 +287,9 @@ export function UserCallsLive() {
   }, [page, activeFilter]);
 
   useEffect(() => {
+    if (initialIntentSummary?.ok) return;
     fetchSummary();
-  }, []);
+  }, [initialIntentSummary?.ok]);
 
   const metrics = useMemo(() => {
     if (summary) return summary;

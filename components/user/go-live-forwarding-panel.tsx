@@ -8,7 +8,7 @@ import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 
-type GoLiveBillingResponse = {
+export type GoLiveBillingResponse = {
   ok: boolean;
   shop?: { id: string; name: string; plan: ShopPlan; active: boolean };
   billing?: {
@@ -18,7 +18,7 @@ type GoLiveBillingResponse = {
   error?: string;
 };
 
-type GoLiveStatusResponse = {
+export type GoLiveStatusResponse = {
   ok: boolean;
   businessPhone?: string | null;
   paymentMethodStatus?: string | null;
@@ -85,10 +85,16 @@ function toneBadgeLabel(variant: ReturnType<typeof goLiveSetupStatusVariant>): s
 /**
  * Phone forwarding / go-live steps: payment gate, managed forwarding number, carrier instructions, verification, enable live.
  */
-export function GoLiveForwardingPanel() {
+export function GoLiveForwardingPanel({
+  initialBilling = null,
+  initialStatus = null,
+}: {
+  initialBilling?: GoLiveBillingResponse | null;
+  initialStatus?: GoLiveStatusResponse | null;
+}) {
   const { setWorkspace } = useUserWorkspace();
-  const [data, setData] = useState<PhoneSetupData>({ billing: null, status: null });
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<PhoneSetupData>({ billing: initialBilling, status: initialStatus });
+  const [loading, setLoading] = useState(!(initialBilling || initialStatus));
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -114,6 +120,7 @@ export function GoLiveForwardingPanel() {
   }, [setWorkspace]);
 
   useEffect(() => {
+    if (initialBilling || initialStatus) return;
     let active = true;
     void refresh()
       .catch(() => {
@@ -125,7 +132,16 @@ export function GoLiveForwardingPanel() {
     return () => {
       active = false;
     };
-  }, [refresh]);
+  }, [initialBilling, initialStatus, refresh]);
+
+  useEffect(() => {
+    if (!data.billing?.ok || !data.billing.shop) return;
+    setWorkspace({
+      shopName: data.billing.shop.name,
+      plan: data.billing.shop.plan,
+      active: data.billing.shop.active,
+    });
+  }, [data.billing?.ok, data.billing?.shop, setWorkspace]);
 
   const billing = data.billing;
   const status = data.status;

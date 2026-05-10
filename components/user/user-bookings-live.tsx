@@ -25,7 +25,7 @@ type Booking = {
   confirmed?: boolean;
 };
 
-type BookingsResponse = {
+export type BookingsResponse = {
   ok: boolean;
   bookings?: Booking[];
   error?: string;
@@ -48,11 +48,12 @@ function statusClass(status?: string, confirmed?: boolean) {
   return 'tag purple';
 }
 
-export function UserBookingsLive() {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [error, setError] = useState<string | null>(null);
+export function UserBookingsLive({ initialData = null }: { initialData?: BookingsResponse | null }) {
+  const [bookings, setBookings] = useState<Booking[]>(initialData?.ok ? initialData.bookings ?? [] : []);
+  const [error, setError] = useState<string | null>(initialData && !initialData.ok ? initialData.error ?? 'unknown_error' : null);
 
   useEffect(() => {
+    if (initialData) return;
     void fetch('/api/backend/user/bookings')
       .then(async (response) => {
         const body = (await response.json()) as BookingsResponse;
@@ -63,7 +64,7 @@ export function UserBookingsLive() {
         setBookings(body.bookings ?? []);
       })
       .catch(() => setError('network_error'));
-  }, []);
+  }, [initialData]);
 
   const metrics = useMemo(() => {
     return {

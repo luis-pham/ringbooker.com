@@ -16,7 +16,7 @@ import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userDashboardScripts } from '@/components/user/user-dashboard';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
 
-type NavStateResponse = {
+export type NavStateResponse = {
   ok: boolean;
   email?: string;
   shopName?: string;
@@ -122,10 +122,10 @@ function AccountDetailsSkeleton() {
   );
 }
 
-export function UserAccountLive() {
+export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateResponse | null }) {
   const { workspace, setWorkspace } = useUserWorkspace();
-  const [nav, setNav] = useState<NavStateResponse | null>(null);
-  const [navError, setNavError] = useState<string | null>(null);
+  const [nav, setNav] = useState<NavStateResponse | null>(initialNav?.ok ? initialNav : null);
+  const [navError, setNavError] = useState<string | null>(initialNav && !initialNav.ok ? initialNav.error ?? 'unknown_error' : null);
   const [activeTab, setActiveTab] = useState<AccountTabId>('details');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -154,6 +154,7 @@ export function UserAccountLive() {
   }, []);
 
   useEffect(() => {
+    if (initialNav) return;
     void fetch('/api/backend/user/nav-state')
       .then(async (r) => (await r.json()) as NavStateResponse)
       .then((body) => {
@@ -174,7 +175,22 @@ export function UserAccountLive() {
         }
       })
       .catch(() => setNavError('network_error'));
-  }, []);
+  }, [initialNav]);
+
+  useEffect(() => {
+    if (!initialNav?.ok) return;
+    writeCachedAccountNavPanel({
+      email: initialNav.email,
+      shopName: initialNav.shopName,
+      userName: initialNav.userName ?? '',
+      plan: initialNav.plan,
+      subscriptionStatus: initialNav.subscriptionStatus ?? null,
+    });
+    setWorkspace({
+      shopName: initialNav.shopName?.trim() || workspace.shopName,
+      plan: initialNav.plan?.trim() || workspace.plan,
+    });
+  }, [initialNav, setWorkspace, workspace.plan, workspace.shopName]);
 
   const accountStyles = useMemo(
     () => [

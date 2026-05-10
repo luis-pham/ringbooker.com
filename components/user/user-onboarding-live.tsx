@@ -38,7 +38,7 @@ type ApiHours = Record<string, { closed: true } | { open: string; close: string 
 type WizardHours = Record<string, { open: boolean; from: string; to: string }>;
 type ImportSource = 'none' | 'website' | 'google_business' | 'manual';
 
-type OnboardingStatusResponse = {
+export type OnboardingStatusResponse = {
   ok: boolean;
   onboardingRequired?: boolean;
   onboardingCompleted?: boolean;
@@ -613,35 +613,57 @@ function toggleLanguage(current: string[], language: string, checked: boolean): 
   return [...next];
 }
 
-export function UserOnboardingLive() {
+export function UserOnboardingLive({ initialData = null }: { initialData?: OnboardingStatusResponse | null }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const initialShop = initialData?.ok ? initialData.shop : null;
+  const initialRawPhone = (initialShop?.phone_number ?? initialShop?.user_phone ?? '').trim();
+  const initialSyntheticPhone = isSignupSyntheticPlaceholderPhone(initialRawPhone);
+  const initialVertical = initialShop?.vertical ?? '';
+  const initialBeautySubtype = initialShop?.vertical === 'beauty_clinic' ? parseBeautySubtype(initialShop.vertical_detail) : '';
+  const initialServices = initialShop
+    ? (() => {
+        const catalogServices = servicesFromCatalog(initialShop.service_catalog);
+        return catalogServices.length > 0
+          ? catalogServices
+          : initialShop.services.length > 0
+            ? initialShop.services
+            : [{ name: '', duration_min: 60, price: 0, group: 'General Services' }];
+      })()
+    : [{ name: '', duration_min: 60, price: 0 }];
+
+  const [loading, setLoading] = useState(!initialData);
   const [saving, setSaving] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [shopId, setShopId] = useState('');
-  const [currentStep, setCurrentStep] = useState<WizardStep>(1);
-  const [businessName, setBusinessName] = useState('');
-  const [address, setAddress] = useState('');
-  const [vertical, setVertical] = useState<Vertical | ''>('');
-  const [businessPhone, setBusinessPhone] = useState('');
-  const [businessPhoneNeedsRealEntry, setBusinessPhoneNeedsRealEntry] = useState(false);
-  const [hours, setHours] = useState<WizardHours>(() => defaultHours());
+  const [status, setStatus] = useState<string | null>(initialData && !initialData.ok ? initialData.error ?? 'Unable to load onboarding.' : null);
+  const [shopId, setShopId] = useState(initialShop?.id ?? '');
+  const [currentStep, setCurrentStep] = useState<WizardStep>(normalizeStep(initialShop?.current_onboarding_step));
+  const [businessName, setBusinessName] = useState(initialShop?.name ?? '');
+  const [address, setAddress] = useState(typeof initialShop?.address === 'string' ? initialShop.address : '');
+  const [vertical, setVertical] = useState<Vertical | ''>(initialVertical);
+  const [businessPhone, setBusinessPhone] = useState(initialSyntheticPhone ? '' : initialRawPhone);
+  const [businessPhoneNeedsRealEntry, setBusinessPhoneNeedsRealEntry] = useState(initialSyntheticPhone);
+  const [hours, setHours] = useState<WizardHours>(() => initialShop ? apiHoursToWizard(initialShop.hours ?? {}) : defaultHours());
   const [hoursExpanded, setHoursExpanded] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [timezone, setTimezone] = useState('America/Los_Angeles');
-  const [languages, setLanguages] = useState<string[]>(['en']);
-  const [shopPlan, setShopPlan] = useState<ShopPlan>('starter');
-  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(initialShop ? findCountryForTimezone(initialShop.timezone || 'America/Los_Angeles')?.country ?? 'United States' : '');
+  const [timezone, setTimezone] = useState(initialShop?.timezone || 'America/Los_Angeles');
+  const [languages, setLanguages] = useState<string[]>(applyVerticalLanguageSelection(initialVertical, initialShop?.languages ?? ['en']));
+  const [shopPlan, setShopPlan] = useState<ShopPlan>(initialShop?.plan ?? 'starter');
+  const [websiteUrl, setWebsiteUrl] = useState(initialShop?.website_url ?? '');
   const [websiteLoading, setWebsiteLoading] = useState(false);
-  const [websiteImportAttempted, setWebsiteImportAttempted] = useState(false);
+  const [websiteImportAttempted, setWebsiteImportAttempted] = useState(Boolean(initialShop?.website_url?.trim()));
   const [servicesFound, setServicesFound] = useState(0);
-  const [services, setServices] = useState<ServiceItem[]>([{ name: '', duration_min: 60, price: 0 }]);
-  const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(false);
-  const [importSource, setImportSource] = useState<ImportSource>('none');
+  const [services, setServices] = useState<ServiceItem[]>(initialServices);
+  const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(initialData?.ok ? initialData.serviceCatalogEnabled === true : false);
+  const [importSource, setImportSource] = useState<ImportSource>(
+    initialShop?.website_url?.trim()
+      ? isProbablyGoogleBusinessUrl(initialShop.website_url)
+        ? 'google_business'
+        : 'website'
+      : 'none',
+  );
   const [step1View, setStep1View] = useState<Step1View>('quick');
   const [manualPrimaryPick, setManualPrimaryPick] = useState<Vertical | 'beauty_umbrella' | ''>('');
-  const [beautySubtype, setBeautySubtype] = useState<BeautySubtype | ''>('');
-  const [verticalConfidence, setVerticalConfidence] = useState<VerticalConfidence>('none');
+  const [beautySubtype, setBeautySubtype] = useState<BeautySubtype | ''>(initialBeautySubtype);
+  const [verticalConfidence, setVerticalConfidence] = useState<VerticalConfidence>(initialVertical ? 'high' : 'none');
   const [profileTypeEditOpen, setProfileTypeEditOpen] = useState(false);
   const [profilePickPrimary, setProfilePickPrimary] = useState<Vertical | 'beauty_umbrella' | ''>('');
   const [profilePickSubtype, setProfilePickSubtype] = useState<BeautySubtype | ''>('');
@@ -673,17 +695,19 @@ export function UserOnboardingLive() {
   }, [currentStep, vertical, beautySubtype, verticalConfidence]);
 
   useEffect(() => {
+    if (initialShop) return;
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const match = findCountryForTimezone(detected);
     if (match) {
       setSelectedCountry(match.country);
       setTimezone(detected);
     }
-  }, []);
+  }, [initialShop]);
 
   useEffect(() => {
+    if (initialData) return;
     void loadOnboarding();
-  }, []);
+  }, [initialData]);
 
   useEffect(() => {
     trackOnboarding('onboarding_start');

@@ -133,7 +133,7 @@ type ShopCapabilities = Record<
   boolean
 >;
 
-type UserSettingsResponse = {
+export type UserSettingsResponse = {
   ok: boolean;
   shop?: ShopSettings;
   capabilities?: ShopCapabilities;
@@ -623,7 +623,13 @@ function emptyFaqItem(): BusinessFaqItem {
   return { question: '', answer: '' };
 }
 
-export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSettingsPortal }) {
+export function UserSettingsLive({
+  portal = 'ai-settings',
+  initialData = null,
+}: {
+  portal?: UserSettingsPortal;
+  initialData?: UserSettingsResponse | null;
+}) {
   const { setWorkspace } = useUserWorkspace();
   const sidebarNav = userSettingsPortalNavKey(portal);
   const portalHead =
@@ -646,16 +652,22 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
   const defaultTabForPortal = (): SettingsTabId =>
     portal === 'knowledge' ? 'business' : portal === 'integrations' ? 'integrations' : 'ai-call-behavior';
 
-  const [shop, setShop] = useState<ShopSettings | null>(null);
-  const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(null);
-  const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(false);
-  const [form, setForm] = useState<SettingsState | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const initialShop = initialData?.ok && initialData.shop ? initialData.shop : null;
+  const initialState = initialShop ? buildInitialState(initialShop) : null;
+  const [shop, setShop] = useState<ShopSettings | null>(initialShop);
+  const [capabilities, setCapabilities] = useState<ShopCapabilities | null>(
+    initialData?.ok ? initialData.capabilities ?? null : null,
+  );
+  const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(initialData?.ok ? initialData.serviceCatalogEnabled === true : false);
+  const [form, setForm] = useState<SettingsState | null>(initialState);
+  const [status, setStatus] = useState<string | null>(initialData && !initialData.ok ? initialData.error ?? 'unable_to_load' : null);
   const [savingSection, setSavingSection] = useState<string | null>(null);
-  const [cancelPreset, setCancelPreset] = useState<string>('custom');
-  const [promoPreset, setPromoPreset] = useState<string>('custom');
-  const [greetingPreset, setGreetingPreset] = useState<string>('custom');
-  const [hourPreset, setHourPreset] = useState<string>('custom');
+  const [cancelPreset, setCancelPreset] = useState<string>(initialState ? getPresetMatch(initialState.cancel_policy, CANCEL_POLICY_PRESETS) : 'custom');
+  const [promoPreset, setPromoPreset] = useState<string>(initialState ? getPresetMatch(initialState.promotions, PROMOTION_PRESETS) : 'custom');
+  const [greetingPreset, setGreetingPreset] = useState<string>(
+    initialState && initialShop ? getPresetMatch(initialState.ai_welcome_message, AI_GREETING_PRESETS.map((item) => normalizeGreeting(item, initialShop.name))) : 'custom',
+  );
+  const [hourPreset, setHourPreset] = useState<string>(initialState ? getHourPresetId(initialState.hours) : 'custom');
   const [activeTab, setActiveTab] = useState<SettingsTabId>(defaultTabForPortal);
   const [calendarProviders, setCalendarProviders] = useState<CalendarProviderSummary[]>([]);
   const [calendarStatus, setCalendarStatus] = useState<string | null>(null);
@@ -670,7 +682,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
   const [vagaroClientSecretKey, setVagaroClientSecretKey] = useState('');
   const [vagaroRegion, setVagaroRegion] = useState('us');
   const [vagaroBusinessId, setVagaroBusinessId] = useState('');
-  const [vagaroBookingUrl, setVagaroBookingUrl] = useState('');
+  const [vagaroBookingUrl, setVagaroBookingUrl] = useState(initialShop?.booking_url ?? '');
   const [vagaroBookingUrlError, setVagaroBookingUrlError] = useState<string | null>(null);
   const [savingVagaroConfig, setSavingVagaroConfig] = useState(false);
   const [savingVagaroBookingUrl, setSavingVagaroBookingUrl] = useState(false);
@@ -700,6 +712,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
   }, []);
 
   useEffect(() => {
+    if (initialData) return;
     let active = true;
     void fetch('/api/backend/user/settings')
       .then(async (response) => (await response.json()) as UserSettingsResponse)
@@ -735,7 +748,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
     return () => {
       active = false;
     };
-  }, [portal]);
+  }, [initialData, portal]);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
