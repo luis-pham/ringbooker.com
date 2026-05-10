@@ -11,11 +11,17 @@ function buildCookieHeader(cookieStore: Awaited<ReturnType<typeof cookies>>): st
     .join('; ');
 }
 
+function normalizeBackendPath(path: string): string {
+  if (path.startsWith('/api/backend/')) return path;
+  if (path.startsWith('/')) return `/api/backend${path}`;
+  return `/api/backend/${path}`;
+}
+
 export async function fetchUserBackendJson<T>(path: string): Promise<T | null> {
   try {
     const cookieStore = await cookies();
     const cookieHeader = buildCookieHeader(cookieStore);
-    const response = await getBackendRuntime().app.request(path, {
+    const response = await getBackendRuntime().app.request(normalizeBackendPath(path), {
       method: 'GET',
       headers: cookieHeader ? { cookie: cookieHeader } : undefined,
     });

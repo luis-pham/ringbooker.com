@@ -22,7 +22,15 @@ type UserPortalNavProps = {
   active: UserPortalNavKey;
 };
 
-function navLink(key: UserPortalNavKey, href: string, label: string, icon: ReactNode, active: UserPortalNavKey, badgeCount?: number) {
+function navLink(
+  key: UserPortalNavKey,
+  href: string,
+  label: string,
+  icon: ReactNode,
+  active: UserPortalNavKey,
+  badgeCount?: number,
+  attentionDot?: boolean,
+) {
   const isActive = active === key;
   return (
     <Link
@@ -33,6 +41,7 @@ function navLink(key: UserPortalNavKey, href: string, label: string, icon: React
     >
       <div className="nav-icon">{icon}</div>
       <span>{label}</span>
+      {attentionDot ? <span className="nav-attention-dot" aria-label={`${label} needs attention`} /> : null}
       {badgeCount && badgeCount > 0 ? (
         <span
           style={{
@@ -201,7 +210,7 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
 
   const goLiveRow =
     showGoLive || active === 'go-live' ? (
-      navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active)
+      navLink('go-live', '/user/go-live', 'Go live', <IconGoLive />, active, undefined, true)
     ) : !goLiveNavResolved ? (
       <div className="nav-item nav-go-live-placeholder" aria-busy="true" aria-label="Loading navigation">
         <span className="nav-go-live-placeholder-track">
