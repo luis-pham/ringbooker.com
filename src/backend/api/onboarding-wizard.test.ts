@@ -1,11 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 
 import {
   applyVerticalLanguageSelection,
   validateOnboardingProfileReview,
   validateOnboardingStep1,
   validateOnboardingStep1Quick,
+  confidenceLabel,
+  importReviewBadgeState,
+  importRecommendedActionMessage,
 } from '@/components/user/user-onboarding-live';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
@@ -76,7 +81,72 @@ test('Vietnamese auto-selected for nail salon', () => {
   assert.deepEqual(applyVerticalLanguageSelection('nail_salon', ['en']).sort(), ['en', 'vi']);
 });
 
-test('Step 1 save persists current_onboarding_step', async () => {
+test('onboarding import confidence labels map to review states', () => {
+  assert.equal(confidenceLabel(0.94), 'AI verified');
+  assert.equal(confidenceLabel(0.62), 'Needs review');
+  assert.equal(confidenceLabel(undefined), 'Missing');
+});
+
+test('onboarding import review badge state maps rendered labels and sources', () => {
+  assert.deepEqual(importReviewBadgeState({ value: 'Demo Salon', confidence: 0.94, source: 'Google Places' }), { label: 'AI verified', source: 'Google' });
+  assert.deepEqual(importReviewBadgeState({ value: 'Demo Salon', confidence: 0.62, source: 'Website' }), { label: 'Needs review', source: 'Website' });
+  assert.deepEqual(importReviewBadgeState({ value: null, confidence: 0, source: null }), { label: 'Missing', source: 'Missing' });
+  assert.deepEqual(importReviewBadgeState({ value: 'https://demo.test', confidence: 0.95, source: 'User' }), { label: 'AI verified', source: 'User' });
+  assert.deepEqual(importReviewBadgeState({ value: 'Balayage', confidence: 0.91, source: 'AI' }), { label: 'AI verified', source: 'Website analysis' });
+});
+
+test('imported website text renders escaped in React text nodes', () => {
+  // Closest non-browser coverage for the onboarding review path: imported warnings/services are rendered as JSX text.
+  const malicious = '<script>window.__xss = true</script><img src=x onerror=alert(1)>';
+  const html = renderToStaticMarkup(React.createElement('div', null, [
+    React.createElement('p', { key: 'warning' }, malicious),
+    React.createElement('span', { key: 'service' }, `Service: ${malicious}`),
+  ]));
+  assert.equal(html.includes('<script>'), false);
+  assert.equal(html.includes('<img'), false);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /&lt;img/);
+});
+
+test('onboarding import recommended action maps to review copy', () => {
+  assert.equal(importRecommendedActionMessage('ready_for_review'), 'We found enough details to get started. Please review before saving.');
+  assert.equal(importRecommendedActionMessage('needs_manual_review'), 'Some details need your review before saving.');
+  assert.equal(importRecommendedActionMessage('partial_import'), 'We found some details, but you may need to add missing information manually.');
+  assert.equal(importRecommendedActionMessage('manual_setup_recommended'), 'We couldn’t find enough details. You can set this up manually.');
+  assert.equal(importRecommendedActionMessage('service_details_incomplete'), 'We found your business details, but services may need review.');
+});
+
+test('Step 1 minimal save persists step without detected vertical or website import fields', async () => {
+  const { app, shopsRepository } = createOnboardingTestApp();
+  const cookie = await loginUser(app);
+  const before = await shopsRepository.findById('demo-shop');
+  assert.ok(before);
+
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      phone_number: '+15551234567',
+      user_phone: '+15551234567',
+      current_onboarding_step: 2,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.current_onboarding_step, 2);
+  assert.equal(shop?.vertical, before.vertical);
+  assert.equal(shop?.website_url, before.website_url);
+});
+
+
+
+test('Confirmed profile review saves selected profile fields and website URL', async () => {
   const { app, shopsRepository } = createOnboardingTestApp();
   const cookie = await loginUser(app);
 
@@ -89,18 +159,64 @@ test('Step 1 save persists current_onboarding_step', async () => {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      name: 'Happy Nails & Spa',
-      user_name: 'Happy Nails & Spa',
-      vertical: 'nail_salon',
+      name: 'Confirmed Salon',
+      user_name: 'Confirmed Salon',
+      vertical: 'hair_salon',
       phone_number: '+15551234567',
       user_phone: '+15551234567',
-      current_onboarding_step: 2,
+      timezone: 'America/Los_Angeles',
+      languages: ['en'],
+      website_url: 'https://confirmedsalon.example',
+      current_onboarding_step: 3,
     }),
   });
 
   assert.equal(response.status, 200);
   const shop = await shopsRepository.findById('demo-shop');
-  assert.equal(shop?.current_onboarding_step, 2);
+  assert.equal(shop?.name, 'Confirmed Salon');
+  assert.equal(shop?.vertical, 'hair_salon');
+  assert.equal(shop?.website_url, 'https://confirmedsalon.example');
+  assert.equal(shop?.current_onboarding_step, 3);
+});
+
+test('Confirmed profile review saves user-edited values over imported suggestions', async () => {
+  const { app, shopsRepository } = createOnboardingTestApp();
+  const cookie = await loginUser(app);
+
+  const before = await shopsRepository.findById('demo-shop');
+  assert.ok(before);
+
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: 'Owner Edited Salon',
+      user_name: 'Owner Edited Salon',
+      vertical: 'nail_salon',
+      phone_number: '+15550001111',
+      user_phone: '+15550001111',
+      timezone: 'America/New_York',
+      languages: ['en'],
+      address: 'Owner Edited Address, New York, NY',
+      website_url: 'https://owner-edited.example',
+      current_onboarding_step: 3,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.name, 'Owner Edited Salon');
+  assert.equal(shop?.phone_number, '+15550001111');
+  assert.equal(shop?.vertical, 'nail_salon');
+  assert.equal(shop?.timezone, 'America/New_York');
+  assert.equal(shop?.address, 'Owner Edited Address, New York, NY');
+  assert.equal(shop?.website_url, 'https://owner-edited.example');
+  assert.deepEqual(shop?.services, before.services);
 });
 
 test('Completing required onboarding fields makes onboarding status complete with services and step 4', async () => {
@@ -116,9 +232,6 @@ test('Completing required onboarding fields makes onboarding status complete wit
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      name: 'Happy Nails & Spa',
-      user_name: 'Happy Nails & Spa',
-      vertical: 'nail_salon',
       phone_number: '+15551234567',
       user_phone: '+15551234567',
       timezone: 'America/Los_Angeles',
@@ -127,6 +240,43 @@ test('Completing required onboarding fields makes onboarding status complete wit
         mon: { open: '09:00', close: '19:00' },
       },
       services: [{ name: 'Manicure', duration_min: 45, price: 35 }],
+      current_onboarding_step: 4,
+    }),
+  });
+  assert.equal(save.status, 200);
+
+  const status = await app.request('/user/onboarding-status', {
+    headers: { cookie },
+  });
+  assert.equal(status.status, 200);
+  const body = (await status.json()) as { ok: boolean; onboardingRequired: boolean };
+  assert.equal(body.ok, true);
+  assert.equal(body.onboardingRequired, false);
+});
+
+test('Onboarding can complete without services after reaching test step', async () => {
+  const { app } = createOnboardingTestApp();
+  const cookie = await loginUser(app);
+
+  const save = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: 'Mixed Beauty Studio',
+      user_name: 'Mixed Beauty Studio',
+      vertical: 'nail_salon',
+      phone_number: '+15551234567',
+      user_phone: '+15551234567',
+      timezone: 'America/Los_Angeles',
+      hours: {
+        mon: { open: '09:00', close: '19:00' },
+      },
+      services: [],
       current_onboarding_step: 4,
     }),
   });

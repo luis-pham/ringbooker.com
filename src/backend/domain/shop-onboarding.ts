@@ -23,9 +23,11 @@ export function hasReachedOnboardingTestStep(shop: Shop): boolean {
 }
 
 /**
- * Setup wizard complete: profile + at least one service + user has opened the test/go-live step.
+ * Setup wizard complete: profile + user has opened the test/go-live step.
+ * Services are intentionally optional so users can hear a useful AI test quickly,
+ * then refine Business Knowledge later.
  * Does not imply payment, forwarding provision, or live answering.
  */
 export function isShopSetupWizardComplete(shop: Shop): boolean {
-  return isShopOnboardingComplete(shop) && shopHasConfiguredServices(shop) && hasReachedOnboardingTestStep(shop);
+  return isShopOnboardingComplete(shop) && hasReachedOnboardingTestStep(shop);
 }

@@ -414,6 +414,7 @@ export interface ShopsRepository {
         | 'address'
         | 'timezone'
         | 'services'
+        | 'not_offered_services'
         | 'staff'
         | 'faqs'
         | 'hours'

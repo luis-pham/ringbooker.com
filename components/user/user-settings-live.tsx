@@ -96,6 +96,7 @@ type ShopSettings = {
   timezone: string;
   services: ServiceItem[];
   service_catalog?: ShopServiceCatalog | null;
+  not_offered_services?: string[];
   staff?: StaffMember[];
   faqs?: BusinessFaqItem[];
   hours: Record<string, BusinessHoursEntry>;
@@ -190,6 +191,7 @@ type SettingsState = {
   promotions: string;
   services: ServiceItem[];
   service_catalog: ShopServiceCatalog;
+  not_offered_services: string[];
   staff: StaffMember[];
   faqs: BusinessFaqItem[];
   hours: Record<string, BusinessHoursEntry>;
@@ -539,6 +541,7 @@ function buildInitialState(shop: ShopSettings): SettingsState {
     promotions: shop.promotions ?? '',
     services: shop.services,
     service_catalog: ensureEditableCatalog(shop.service_catalog ?? catalogFromLegacyServices(shop.services, shop.id), shop.id),
+    not_offered_services: shop.not_offered_services ?? [],
     staff: shop.staff ?? [],
     faqs: shop.faqs ?? [],
     hours: cloneHours(shop.hours),
@@ -566,6 +569,7 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   timezone: 'America/Los_Angeles',
   services: [],
   service_catalog: { categories: [], services: [] },
+  not_offered_services: [],
   staff: [],
   faqs: [],
   hours: cloneHours(HOURS_PRESETS[0]?.hours ?? {}),
@@ -637,7 +641,7 @@ export function UserSettingsLive({
       ? {
           title: 'Business Knowledge',
           subtitle:
-            'Teach RingBooker what to say on calls: business info, services, hours, staff, FAQs, and policies.',
+            'This is what RingBooker uses to answer every caller: business info, services, hours, staff, FAQs, and policies.',
         }
       : portal === 'integrations'
         ? {
@@ -1128,6 +1132,21 @@ export function UserSettingsLive({
         })),
       ],
     });
+  }
+
+  function addNotOfferedService() {
+    patchState('not_offered_services', [...currentForm.not_offered_services, '']);
+  }
+
+  function updateNotOfferedService(index: number, value: string) {
+    patchState(
+      'not_offered_services',
+      currentForm.not_offered_services.map((item, itemIndex) => (itemIndex === index ? value : item)),
+    );
+  }
+
+  function removeNotOfferedService(index: number) {
+    patchState('not_offered_services', currentForm.not_offered_services.filter((_, itemIndex) => itemIndex !== index));
   }
 
   function updateStaff(index: number, patch: Partial<StaffMember>) {
@@ -1985,7 +2004,10 @@ export function UserSettingsLive({
                   void commitSettingsPatch(
                     'services',
                     serviceCatalogEnabled
-                      ? { service_catalog: currentForm.service_catalog }
+                      ? {
+                          service_catalog: currentForm.service_catalog,
+                          not_offered_services: currentForm.not_offered_services.map((service) => service.trim()).filter(Boolean),
+                        }
                       : {
                           services: currentForm.services
                             .filter((service) => service.name.trim().length > 0)
@@ -1994,6 +2016,7 @@ export function UserSettingsLive({
                               duration_min: Number.isFinite(service.duration_min) && service.duration_min > 0 ? service.duration_min : 60,
                               price: Number.isFinite(service.price) && service.price > 0 ? service.price : 0,
                             })),
+                          not_offered_services: currentForm.not_offered_services.map((service) => service.trim()).filter(Boolean),
                         },
                   );
                 }}
@@ -2184,6 +2207,41 @@ export function UserSettingsLive({
                   </div>
                     </>
                   )}
+                  <div className="option-card" style={{ marginTop: 18 }}>
+                    <div className="panel-head" style={{ alignItems: 'flex-start', marginBottom: 12 }}>
+                      <div>
+                        <h3>Services not offered</h3>
+                        <p className="sub">
+                          Add services you definitely do not offer so the AI can answer clearly when callers ask. If a service is not listed here or in your catalog, RingBooker should offer team follow-up instead of guessing.
+                        </p>
+                      </div>
+                      <button type="button" className="btn" onClick={addNotOfferedService}>
+                        Add not-offered service
+                      </button>
+                    </div>
+                    {currentForm.not_offered_services.length === 0 ? (
+                      <div className="sh-empty">Optional. Example: “acrylics” if your salon only does natural nails.</div>
+                    ) : null}
+                    <div className="service-group-list">
+                      {currentForm.not_offered_services.map((service, index) => (
+                        <div className="service-item-card" key={`not-offered-${index}`}>
+                          <div className="service-item-head">
+                            <div className="field">
+                              <label>Service not offered</label>
+                              <input
+                                value={service}
+                                onChange={(event) => updateNotOfferedService(index, event.target.value)}
+                                placeholder="Acrylic nails"
+                              />
+                            </div>
+                          </div>
+                          <button type="button" className="subtle-link" onClick={() => removeNotOfferedService(index)}>
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>

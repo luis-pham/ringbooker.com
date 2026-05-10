@@ -218,6 +218,8 @@ export interface Shop {
   timezone: string;
   services: ServiceItem[];
   service_catalog?: ShopServiceCatalog;
+  /** User-confirmed services the business does not offer. Never infer this from vertical alone. */
+  not_offered_services?: string[];
   staff?: StaffMember[];
   faqs?: BusinessFaqItem[];
   hours: BusinessHours;

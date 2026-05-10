@@ -119,13 +119,17 @@ function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
 function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, routingRules?: ShopRoutingRule[]): RuntimeBusinessConfig {
   const promptCustomer = canUseReturningCallerContext(shop.plan) ? customer : null;
   const languageFields = buildProductionLanguageRuntimeFields(shop.plan, shop.languages);
+  const businessType = shop.vertical
+    ? `${shop.vertical.replace(/_/g, ' ')}${shop.vertical_detail ? ` (${shop.vertical_detail.replace(/_/g, ' ')})` : ''}`
+    : 'service business';
   return {
     businessName: shop.name,
-    businessType: 'service business',
+    businessType,
     location: shop.address ?? null,
     timezone: shop.timezone,
     hours: renderHours(shop),
     services: buildRuntimeServices(shop),
+    notOfferedServices: (shop.not_offered_services ?? []).filter((service) => service.trim().length > 0),
     providers: (shop.staff ?? [])
       .filter((member) => member.active !== false)
       .map((member) => {

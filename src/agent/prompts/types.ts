@@ -33,6 +33,7 @@ export type RuntimeBusinessConfig = {
   timezone?: string | null;
   hours?: string | null;
   services?: RuntimeService[];
+  notOfferedServices?: string[];
   providers?: string[];
   promotions?: string | null;
   cancellationPolicy?: string | null;

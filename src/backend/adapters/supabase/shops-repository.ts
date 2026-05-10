@@ -33,6 +33,7 @@ type ShopsRow = {
   address: string | null;
   timezone: string;
   services: unknown;
+  not_offered_services: string[] | null;
   staff: unknown;
   faqs: unknown;
   hours: unknown;
@@ -236,6 +237,9 @@ function toShop(row: ShopsRow): Shop {
     address: row.address,
     timezone: row.timezone,
     services: normalizeServices(row.services),
+    not_offered_services: Array.isArray(row.not_offered_services)
+      ? row.not_offered_services.filter((service): service is string => typeof service === 'string' && service.trim().length > 0)
+      : [],
     staff: normalizeStaff(row.staff),
     faqs: normalizeFaqs(row.faqs),
     hours: normalizeHours(row.hours),
@@ -299,6 +303,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -359,6 +364,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -419,6 +425,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -479,6 +486,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -552,6 +560,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -607,6 +616,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'address'
         | 'timezone'
         | 'services'
+        | 'not_offered_services'
         | 'staff'
         | 'faqs'
         | 'hours'
@@ -641,6 +651,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.address !== undefined) payload.address = patch.address;
     if (patch.timezone !== undefined) payload.timezone = patch.timezone;
     if (patch.services !== undefined) payload.services = patch.services;
+    if (patch.not_offered_services !== undefined) payload.not_offered_services = patch.not_offered_services;
     if (patch.staff !== undefined) payload.staff = patch.staff;
     if (patch.faqs !== undefined) payload.faqs = patch.faqs;
     if (patch.hours !== undefined) payload.hours = patch.hours;
@@ -684,6 +695,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -963,6 +975,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -1054,6 +1067,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -1125,6 +1139,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',
@@ -1193,6 +1208,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'address',
           'timezone',
           'services',
+          'not_offered_services',
           'staff',
           'faqs',
           'hours',

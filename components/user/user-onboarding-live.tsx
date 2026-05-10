@@ -38,6 +38,51 @@ type ApiHours = Record<string, { closed: true } | { open: string; close: string 
 type WizardHours = Record<string, { open: boolean; from: string; to: string }>;
 type ImportSource = 'none' | 'website' | 'google_business' | 'manual';
 
+type ImportedWebsiteSuggestions = {
+  status: 'success' | 'partial' | 'failed';
+  sourceUrl: string;
+  businessProfile: {
+    name?: { value: string | null; confidence: number; source?: string | null };
+    primaryType?: { value: string | null; confidence: number; source?: string | null };
+    phone?: { value: string | null; confidence: number; source?: string | null };
+    website?: { value: string | null; confidence: number; source?: string | null };
+    address?: { value: string | null; confidence: number; source?: string | null };
+    timezone?: { value: string | null; confidence: number; source?: string | null };
+  };
+  hours?: { value: ApiHours | null; confidence: number; source?: string | null };
+  serviceCatalog?: {
+    confidence: number;
+    categories: Array<{ name: string; confidence: number; source?: string }>;
+    services: Array<{
+      categoryName: string;
+      name: string;
+      durationMinutes?: number | null;
+      priceAmount?: number | null;
+      priceType?: ServicePriceType;
+      aliases?: string[];
+      bookable?: boolean;
+      confidence?: number;
+    }>;
+  };
+  alsoOffers?: Array<{ value: string | null; confidence: number; source?: string | null }>;
+  bookingUrl?: { value: string | null; confidence: number; source?: string | null };
+  warnings?: string[];
+  completeness?: {
+    recommendedNextAction?: string;
+    overallConfidence?: number;
+    missingFields?: string[];
+    lowConfidenceFields?: string[];
+  };
+};
+
+type ImportWebsiteResponse = {
+  ok?: boolean;
+  suggestions?: ImportedWebsiteSuggestions;
+  diagnostics?: unknown;
+  error?: string;
+  message?: string;
+};
+
 export type OnboardingStatusResponse = {
   ok: boolean;
   onboardingRequired?: boolean;
@@ -108,6 +153,24 @@ const STEP_LABELS = ['Find', 'Profile', 'Services', 'Test'] as const;
 const WEBSITE_IMPORT_EXTRACTION_ACTIVE = process.env.NEXT_PUBLIC_WEBSITE_IMPORT_ACTIVE === 'true';
 
 type Step1View = 'quick' | 'manual_vertical' | 'manual_beauty_subtype';
+
+const MIXED_SERVICE_GROUPS = [
+  'Manicure',
+  'Pedicure',
+  'Acrylics / Extensions',
+  'Haircuts',
+  'Hair Color',
+  'Waxing',
+  'Massage',
+  'Facials',
+  'Brows & Lashes',
+  'Makeup',
+  'Injectables',
+  'Laser',
+  'Skin Treatments',
+  'Consultations',
+  'Other',
+] as const;
 type VerticalConfidence = 'high' | 'low' | 'none';
 
 const MANUAL_PRIMARY_VERTICAL: Array<{ id: Vertical | 'beauty_umbrella'; emoji: string; label: string }> = [
@@ -346,6 +409,73 @@ function isHttpsWebsiteUrl(raw: string): boolean {
   }
 }
 
+export function confidenceLabel(confidence?: number): 'AI verified' | 'Needs review' | 'Missing' | 'Review' {
+  if (!confidence) return 'Missing';
+  if (confidence > 0.9) return 'AI verified';
+  if (confidence < 0.7) return 'Needs review';
+  return 'Review';
+}
+
+export function importSourceLabel(source?: string | null): string {
+  if (!source) return 'Missing';
+  if (/google/i.test(source)) return 'Google';
+  if (/json-ld|website/i.test(source)) return 'Website';
+  if (/ai/i.test(source)) return 'Website analysis';
+  if (/user/i.test(source)) return 'User';
+  return source;
+}
+
+export function importRecommendedActionMessage(action?: string | null): string {
+  if (action === 'ready_for_review') return 'We found enough details to get started. Please review before saving.';
+  if (action === 'needs_manual_review') return 'Some details need your review before saving.';
+  if (action === 'partial_import') return 'We found some details, but you may need to add missing information manually.';
+  if (action === 'manual_setup_recommended') return 'We couldn’t find enough details. You can set this up manually.';
+  if (action === 'service_details_incomplete') return 'We found your business details, but services may need review.';
+  if (action === 'retry_with_google_maps_link') return 'A Google Maps link may help RingBooker find more accurate business details.';
+  return 'Review and edit these details before saving.';
+}
+
+export function importReviewBadgeState(field?: { value?: unknown; confidence?: number; source?: string | null } | null): { label: 'AI verified' | 'Needs review' | 'Missing' | 'Review'; source: string } {
+  const missing = !field || field.value === null || field.value === undefined || field.value === '';
+  return {
+    label: missing ? 'Missing' : confidenceLabel(field.confidence),
+    source: missing ? 'Missing' : importSourceLabel(field.source),
+  };
+}
+
+function importFieldState(field?: { value?: unknown; confidence?: number; source?: string | null } | null): ReactNode {
+  const { label, source } = importReviewBadgeState(field);
+  const verified = label === 'AI verified';
+  const needsReview = label === 'Needs review' || label === 'Missing';
+  return (
+    <p className="onb-help" style={{ marginTop: 6 }}>
+      <span className="onb-source-badge" style={{ background: verified ? '#ecfdf5' : needsReview ? '#fff7ed' : '#eef2ff', color: verified ? '#047857' : needsReview ? '#c2410c' : '#3730a3' }}>{label}</span>{' '}
+      <span className="onb-source-badge">Source: {source}</span>
+    </p>
+  );
+}
+
+function importedVerticalToApp(value?: string | null): Vertical | '' {
+  if (value === 'nail_salon' || value === 'hair_salon' || value === 'day_spa' || value === 'med_spa' || value === 'beauty_clinic') return value;
+  if (value === 'spa') return 'day_spa';
+  return '';
+}
+
+function servicesFromImport(suggestions?: ImportedWebsiteSuggestions): ServiceItem[] {
+  const imported = suggestions?.serviceCatalog?.services ?? [];
+  return imported
+    .filter((service) => service.name.trim().length > 0)
+    .map((service) => ({
+      name: service.name.trim(),
+      duration_min: service.durationMinutes ?? 60,
+      price: service.priceAmount ?? 0,
+      group: service.categoryName?.trim() || 'General Services',
+      aliases: service.aliases ?? [],
+      price_type: service.priceType ?? ((service.priceAmount ?? 0) > 0 ? 'fixed' : 'varies'),
+      bookable: service.bookable ?? true,
+    }));
+}
+
 /** Lightweight URL heuristic until automated extraction ships; user confirms or picks on Profile. */
 function inferBusinessFromUrl(raw: string): {
   vertical: Vertical | '';
@@ -527,7 +657,7 @@ function onboardingClientId() {
 
 function suggestedGroupsForVertical(vertical: Vertical | '', subtype: BeautySubtype | '') {
   if (vertical === 'nail_salon') return ['Manicure', 'Pedicure', 'Acrylics / Extensions'];
-  if (vertical === 'hair_salon') return ['Haircuts', 'Color', 'Treatments'];
+  if (vertical === 'hair_salon') return ['Haircuts', 'Hair Color', 'Treatments'];
   if (vertical === 'day_spa') return ['Facials', 'Massage', 'Waxing'];
   if (vertical === 'med_spa') return ['Injectables', 'Laser', 'Facials'];
   if (vertical === 'beauty_clinic' && subtype === 'wax_studio') return ['Waxing', 'Brows', 'Packages'];
@@ -555,9 +685,14 @@ function servicesFromCatalog(catalog?: ServiceCatalogResponse | null): ServiceIt
     });
 }
 
-function serviceCatalogFromRows(rows: ServiceItem[]) {
+function serviceCatalogFromRows(rows: ServiceItem[], extraGroups: string[] = []) {
   const cleaned = cleanServices(rows);
-  const groupNames = [...new Set(cleaned.map((service) => service.group?.trim() || 'General Services'))];
+  const groupNames = [
+    ...new Set([
+      ...extraGroups.map((group) => group.trim()).filter(Boolean),
+      ...cleaned.map((service) => service.group?.trim() || 'General Services'),
+    ]),
+  ];
   const categories = groupNames.map((name, index) => ({
     id: onboardingClientId(),
     name,
@@ -651,7 +786,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [websiteLoading, setWebsiteLoading] = useState(false);
   const [websiteImportAttempted, setWebsiteImportAttempted] = useState(Boolean(initialShop?.website_url?.trim()));
   const [servicesFound, setServicesFound] = useState(0);
+  const [importSuggestions, setImportSuggestions] = useState<ImportedWebsiteSuggestions | null>(null);
+  const [importProgress, setImportProgress] = useState<string | null>(null);
   const [services, setServices] = useState<ServiceItem[]>(initialServices);
+  const [selectedServiceGroups, setSelectedServiceGroups] = useState<string[]>(
+    [...new Set(initialServices.map((service) => service.group?.trim()).filter((group): group is string => Boolean(group)))],
+  );
   const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(initialData?.ok ? initialData.serviceCatalogEnabled === true : false);
   const [importSource, setImportSource] = useState<ImportSource>(
     initialShop?.website_url?.trim()
@@ -753,7 +893,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     else setImportSource('none');
     const catalogServices = servicesFromCatalog(body.shop.service_catalog);
     setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
-    setServices(catalogServices.length > 0 ? catalogServices : body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: 60, price: 0, group: 'General Services' }]);
+    const nextServices = catalogServices.length > 0 ? catalogServices : body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: 60, price: 0, group: 'General Services' }];
+    setServices(nextServices);
+    setSelectedServiceGroups([...new Set(nextServices.map((service) => service.group?.trim()).filter((group): group is string => Boolean(group)))]);
     setCurrentStep(normalizeStep(body.shop.current_onboarding_step));
     setShopPlan(body.shop.plan ?? 'starter');
     if (normalizeStep(body.shop.current_onboarding_step) === 1) {
@@ -791,10 +933,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setStatus(null);
 
     const trimmed = websiteUrl.trim();
-    let inferred = inferBusinessFromUrl(trimmed);
-    let nextVertical = inferred.vertical;
-    let nextSubtype = inferred.beautySubtype;
-    let nextConfidence = inferred.confidence;
+    let nextVertical: Vertical | '' = '';
+    let nextSubtype: BeautySubtype | '' = '';
+    let nextConfidence: VerticalConfidence = 'none';
 
     if (trimmed) {
       if (!isHttpsWebsiteUrl(trimmed)) {
@@ -802,32 +943,57 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         return;
       }
       const canonicalUrl = normalizeWebsiteUrl(trimmed);
+      if (!WEBSITE_IMPORT_EXTRACTION_ACTIVE) {
+        setWebsiteImportAttempted(false);
+        setWebsiteUrl(canonicalUrl);
+        setImportSource('manual');
+      } else {
       setWebsiteLoading(true);
       try {
-        const response = await fetch('/api/backend/user/read-website', {
+        setImportProgress('Finding business details...');
+        const response = await fetch('/api/backend/user/onboarding/import-website', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: canonicalUrl }),
         });
-        const body = (await response.json().catch(() => null)) as { ok?: boolean; servicesFound?: number } | null;
+        const body = (await response.json().catch(() => null)) as ImportWebsiteResponse | null;
         setWebsiteImportAttempted(true);
-        if (response.ok && body?.ok) {
-          setServicesFound(body.servicesFound ?? 0);
-          trackOnboarding('business_import_success', { servicesFound: body.servicesFound ?? 0 });
+        if (response.ok && body?.suggestions) {
+          const suggestions = body.suggestions;
+          setImportSuggestions(suggestions);
+          const importedServices = servicesFromImport(suggestions);
+          setServicesFound(importedServices.length);
+          if (suggestions.businessProfile.name?.value && !businessName.trim()) setBusinessName(suggestions.businessProfile.name.value);
+          if (suggestions.businessProfile.phone?.value && !businessPhone.trim()) setBusinessPhone(suggestions.businessProfile.phone.value);
+          if (suggestions.businessProfile.address?.value && !address.trim()) setAddress(suggestions.businessProfile.address.value);
+          if (suggestions.businessProfile.timezone?.value) setTimezone(suggestions.businessProfile.timezone.value);
+          if (suggestions.hours?.value) setHours(apiHoursToWizard(suggestions.hours.value));
+          const importedVertical = importedVerticalToApp(suggestions.businessProfile.primaryType?.value);
+          if (importedVertical) {
+            nextVertical = importedVertical;
+            nextSubtype = '';
+            nextConfidence = (suggestions.businessProfile.primaryType?.confidence ?? 0) >= 0.7 ? 'high' : 'low';
+          }
+          if (importedServices.length > 0) {
+            setServices(importedServices);
+            setSelectedServiceGroups([...new Set(importedServices.map((service) => service.group || 'General Services'))]);
+          } else if (suggestions.alsoOffers?.length) {
+            setSelectedServiceGroups([...new Set(suggestions.alsoOffers.map((item) => item.value).filter((value): value is string => Boolean(value)))]);
+          }
+          trackOnboarding('business_import_success', { servicesFound: importedServices.length });
         } else {
-          trackOnboarding('business_import_failed', { reason: 'read_website' });
+          setImportSuggestions(null);
+          trackOnboarding('business_import_failed', { reason: body?.error ?? 'import_website' });
         }
       } catch {
         trackOnboarding('business_import_failed', { reason: 'network' });
         setWebsiteImportAttempted(true);
       }
       setWebsiteLoading(false);
+      setImportProgress(null);
       setWebsiteUrl(canonicalUrl);
       setImportSource(isProbablyGoogleBusinessUrl(trimmed) ? 'google_business' : 'website');
-      inferred = inferBusinessFromUrl(canonicalUrl);
-      nextVertical = inferred.vertical;
-      nextSubtype = inferred.beautySubtype;
-      nextConfidence = inferred.confidence;
+      }
     } else {
       setImportSource('none');
       setWebsiteImportAttempted(false);
@@ -845,12 +1011,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       user_phone: businessPhone,
       current_onboarding_step: 2,
     };
-    if (trimmed) patch.website_url = normalizeWebsiteUrl(trimmed);
-    if (nextVertical) {
-      patch.vertical = nextVertical;
-      patch.vertical_detail = nextVertical === 'beauty_clinic' && nextSubtype ? nextSubtype : null;
-    }
-
     const ok = await saveSettings(patch);
     if (ok) {
       setCurrentStep(2);
@@ -889,21 +1049,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     const trimmed = websiteUrl.trim();
     if (trimmed && isHttpsWebsiteUrl(trimmed)) {
       const canonicalUrl = normalizeWebsiteUrl(trimmed);
-      setWebsiteLoading(true);
-      try {
-        await fetch('/api/backend/user/read-website', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: canonicalUrl }),
-        });
-      } catch {
-        // ignore — settings PUT still persists URL
-      }
-      setWebsiteLoading(false);
-      setWebsiteImportAttempted(true);
-      patch.website_url = canonicalUrl;
       setWebsiteUrl(canonicalUrl);
-      setImportSource(isProbablyGoogleBusinessUrl(trimmed) ? 'google_business' : 'website');
+      setWebsiteImportAttempted(false);
+      setImportSource('manual');
     }
 
     setVertical(v);
@@ -994,6 +1142,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       timezone,
       languages: applyVerticalLanguageSelection(vertical, languages),
       ...(addr ? { address: addr } : { address: null }),
+      ...(websiteUrl.trim() ? { website_url: normalizeWebsiteUrl(websiteUrl) } : { website_url: '' }),
       current_onboarding_step: 3,
     });
     if (ok) setCurrentStep(3);
@@ -1001,13 +1150,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   async function continueServices() {
     const nextServices = cleanServices(services);
-    if (nextServices.length === 0) {
-      setStatus('Add at least one service so RingBooker can answer pricing questions.');
-      return;
-    }
     trackOnboarding('onboarding_services_reviewed');
     const patch: Record<string, unknown> = { current_onboarding_step: 4, services: nextServices };
-    if (serviceCatalogEnabled) patch.service_catalog = serviceCatalogFromRows(nextServices);
+    if (serviceCatalogEnabled) patch.service_catalog = serviceCatalogFromRows(nextServices, selectedServiceGroups);
     if (websiteUrl.trim()) patch.website_url = normalizeWebsiteUrl(websiteUrl);
     const ok = await saveSettings(patch);
     if (ok) {
@@ -1068,12 +1213,19 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   function applySuggestedServiceGroups() {
     const groups = suggestedGroupsForVertical(vertical, beautySubtype);
+    setSelectedServiceGroups((current) => [...new Set([...current, ...groups])]);
     setServices((current) => {
       const filled = current.filter((item) => item.name.trim().length > 0);
       if (filled.length === 0) return [{ name: '', duration_min: 60, price: 0, group: groups[0] ?? 'General Services' }];
       return filled.map((item, index) => ({ ...item, group: item.group || groups[index % groups.length] || 'General Services' }));
     });
     setStatus('Suggested service groups added. You can refine this later in Business Knowledge.');
+  }
+
+  function toggleServiceGroup(group: string) {
+    setSelectedServiceGroups((current) =>
+      current.includes(group) ? current.filter((item) => item !== group) : [...current, group],
+    );
   }
 
   function setServiceRow(index: number, value: ServiceItem) {
@@ -1187,7 +1339,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   function renderStep1() {
     const urlHelper = WEBSITE_IMPORT_EXTRACTION_ACTIVE ? (
-      <p className="onb-help">RingBooker will look for your business details, hours, services, and booking link.</p>
+      <p className="onb-help">RingBooker will try to suggest your business details, hours, services, and booking link.</p>
     ) : (
       <p className="onb-help">
         We&apos;ll save this link today. Automated website import is rolling out soon.
@@ -1212,7 +1364,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               </button>
             ))}
           </div>
-          <div className="onb-actions onb-actions-desktop">
+          {websiteLoading && importProgress ? <p className="onb-help">{importProgress}</p> : null}
+        <div className="onb-actions onb-actions-desktop">
             <span />
             <button className="onb-btn-primary" type="button" onClick={() => void continueManualVerticalSelection()} disabled={saving || websiteLoading}>
               Continue to Profile
@@ -1245,7 +1398,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               </button>
             ))}
           </div>
-          <div className="onb-actions onb-actions-desktop">
+          {websiteLoading && importProgress ? <p className="onb-help">{importProgress}</p> : null}
+        <div className="onb-actions onb-actions-desktop">
             <span />
             <button className="onb-btn-primary" type="button" onClick={() => void continueManualBeautySubtypeSelection()} disabled={saving || websiteLoading}>
               Continue to Profile
@@ -1264,7 +1418,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       <div>
         <h1 className="onb-title">Set up your AI receptionist</h1>
         <p className="onb-subtitle">
-          Add your website or Google Business Profile if you have one. RingBooker will use it to pre-fill your setup when available.
+          Add your website or Google Business Profile if you have one. RingBooker will try to suggest setup details when available.
         </p>
         <div className="onb-stack" style={{ marginTop: 24 }}>
           <div className="onb-field">
@@ -1295,17 +1449,18 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             </p>
           </div>
         </div>
+        {websiteLoading && importProgress ? <p className="onb-help">{importProgress}</p> : null}
         <div className="onb-actions onb-actions-desktop">
           <button className="onb-btn-secondary" type="button" onClick={() => enterManualSetup()} disabled={saving || websiteLoading}>
             I&apos;ll enter details manually
           </button>
           <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Saving…' : 'Save and continue'}
+            {websiteLoading ? 'Importing…' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import and continue' : 'Continue manually'}
           </button>
         </div>
         <div className="onb-sticky-cta">
           <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Saving…' : 'Save and continue'}
+            {websiteLoading ? 'Importing…' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import and continue' : 'Continue manually'}
           </button>
           <button className="onb-btn-secondary" type="button" onClick={() => enterManualSetup()} disabled={saving || websiteLoading}>
             I&apos;ll enter details manually
@@ -1338,12 +1493,24 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           'Business details',
           <div>
             {websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
-              <p className="onb-help" style={{ marginTop: 0 }}>
-                <span className="onb-source-badge">{importSource === 'google_business' ? 'Found on Google' : 'Found on website'}</span>{' '}
-                <span className="onb-source-badge" style={{ background: '#fff7ed', color: '#c2410c' }}>
-                  Needs review
-                </span>
-              </p>
+              <div style={{ marginTop: 0, marginBottom: 12 }}>
+                <p className="onb-help" style={{ marginTop: 0 }}>
+                  <span className="onb-source-badge">{importSource === 'google_business' ? 'Found on Google' : 'Found on website'}</span>{' '}
+                  <span className="onb-source-badge" style={{ background: importSuggestions?.status === 'success' ? '#ecfdf5' : '#fff7ed', color: importSuggestions?.status === 'success' ? '#047857' : '#c2410c' }}>
+                    {confidenceLabel(importSuggestions?.businessProfile.name?.confidence)}
+                  </span>
+                </p>
+                <p className="onb-help" style={{ marginTop: 6 }}>
+                  {importRecommendedActionMessage(importSuggestions?.completeness?.recommendedNextAction)}
+                </p>
+                {importSuggestions?.warnings?.length ? (
+                  <div className="onb-warning" style={{ borderRadius: 14, border: '1px solid #fed7aa', background: '#fff7ed', color: '#9a3412', padding: '10px 12px', fontSize: 13 }}>
+                    {importSuggestions.warnings.slice(0, 3).map((warning) => (
+                      <p key={warning} style={{ margin: 0 }}>{warning}</p>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             ) : null}
             {importSource === 'manual' ? (
               <p className="onb-help" style={{ marginBottom: 14 }}>
@@ -1353,6 +1520,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             <div className="onb-field">
               <label>Business name</label>
               <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Happy Nails & Spa" />
+              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.name) : null}
             </div>
             <div className="onb-field">
               <label>Business phone number</label>
@@ -1364,9 +1532,16 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                   setBusinessPhoneNeedsRealEntry(false);
                 }}
               />
+              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.phone) : null}
+            </div>
+            <div className="onb-field">
+              <label>Website</label>
+              <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://yourbusiness.com" />
+              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.website ?? { value: websiteUrl || null, confidence: websiteUrl ? 0.95 : 0, source: websiteUrl ? 'User' : null }) : null}
             </div>
             <div className="onb-field">
               <label>Business type</label>
+              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.primaryType) : null}
               {showBusinessTypePicker ? (
                 <div>
                   {verticalConfidence === 'high' && profileTypeEditOpen ? (
@@ -1444,6 +1619,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             <div className="onb-field">
               <label>Address (optional)</label>
               <textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, city, region (if you want it mentioned on calls)" />
+              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.address) : null}
             </div>
           </div>,
         )}
@@ -1467,6 +1643,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               </div>
             </div>
             <p className="hours-summary">{summarizeHours(hours)}</p>
+            {websiteImportAttempted ? importFieldState(importSuggestions?.hours) : null}
             <button type="button" className="onb-help-link" style={{ marginBottom: 12 }} onClick={() => setHoursExpanded(!hoursExpanded)}>
               {hoursExpanded ? 'Hide day-by-day editor' : 'Edit hours by day'}
             </button>
@@ -1547,6 +1724,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     ))}
                   </select>
                 )}
+                {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.timezone) : null}
               </div>
             ) : null}
           </div>,
@@ -1578,6 +1756,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           </div>,
         )}
 
+        {websiteLoading && importProgress ? <p className="onb-help">{importProgress}</p> : null}
         <div className="onb-actions onb-actions-desktop">
           <span />
           <button className="onb-btn-primary" type="button" onClick={() => void continueProfileReview()} disabled={saving}>
@@ -1601,10 +1780,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       <div>
         <h1 className="onb-title">Review your services</h1>
         <p className="onb-subtitle">
-          Add the services callers ask about most. You can group them now or refine them later in Business Knowledge.
+          Add the services callers ask about most, or skip this for now. You can group them now or refine them later in Business Knowledge.
         </p>
         {servicesFound > 0 ? (
-          <p className="read-success">Imported {servicesFound} services from your website — edit below.</p>
+          <p className="read-success">Imported {servicesFound} service suggestions from your website — review and edit below.</p>
         ) : websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
           <p className="onb-help">
             {WEBSITE_IMPORT_EXTRACTION_ACTIVE
@@ -1625,6 +1804,25 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             Group services
           </button>
         </div>
+        <div style={{ marginTop: 18 }}>
+          <p className="onb-section-title">Also offers</p>
+          <p className="onb-help" style={{ marginTop: 4 }}>
+            Select all that apply. Many businesses offer services across categories, and you can edit this later.
+          </p>
+          <div className="preset-row" style={{ marginTop: 10 }}>
+            {MIXED_SERVICE_GROUPS.map((group) => (
+              <button
+                key={group}
+                type="button"
+                className={`preset-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
+                onClick={() => toggleServiceGroup(group)}
+              >
+                {selectedServiceGroups.includes(group) ? '✓ ' : ''}
+                {group}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="manual-header">
           <span>Group</span>
           <span>Service</span>
@@ -1634,7 +1832,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         {services.map((service, index) => (
           <div className="service-row" key={index}>
             <select value={service.group ?? 'General Services'} onChange={(event) => setServiceRow(index, { ...service, group: event.target.value })}>
-              {[...new Set(['General Services', ...suggestedGroupsForVertical(vertical, beautySubtype), ...services.map((item) => item.group).filter((item): item is string => Boolean(item))])].map((group) => (
+              {[...new Set(['General Services', ...suggestedGroupsForVertical(vertical, beautySubtype), ...selectedServiceGroups, ...services.map((item) => item.group).filter((item): item is string => Boolean(item))])].map((group) => (
                 <option key={group} value={group}>{group}</option>
               ))}
             </select>
@@ -1667,7 +1865,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           + Add service
         </button>
         <div className="onb-actions onb-actions-desktop" style={{ marginTop: 28 }}>
-          <span />
+          <button className="onb-btn-secondary" type="button" onClick={() => void continueServices()} disabled={saving}>
+            Skip services for now
+          </button>
           <button className="onb-btn-primary" type="button" onClick={() => void continueServices()} disabled={saving}>
             {saving ? 'Saving…' : 'Save services'}
           </button>
@@ -1675,6 +1875,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <div className="onb-sticky-cta">
           <button className="onb-btn-primary" type="button" onClick={() => void continueServices()} disabled={saving}>
             {saving ? 'Saving…' : 'Save services'}
+          </button>
+          <button className="onb-btn-secondary" type="button" onClick={() => void continueServices()} disabled={saving}>
+            Skip services for now
           </button>
         </div>
       </div>

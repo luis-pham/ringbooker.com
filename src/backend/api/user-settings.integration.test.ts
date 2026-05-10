@@ -12,7 +12,9 @@ import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-rep
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
+import { __resetRateLimitMemoryStoreForTests } from '@/src/backend/security/rate-limit';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
+import { setWebsiteImportCache, websiteImportCacheKey } from '@/src/backend/services/website-import/cache';
 
 applyRequiredTestEnv({
   USER_AUTH_EMAIL: 'user@ringbooker.local',
@@ -40,6 +42,21 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
   const cookie = loginResponse.headers.get('set-cookie')?.split(';')[0];
   assert.ok(cookie);
   return cookie!;
+}
+
+function createUserSettingsTestApp(shopsRepository = new InMemoryShopsRepository()) {
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+  });
+  return { app, shopsRepository };
 }
 
 test('starter plan user settings expose capabilities and reject locked fields', async () => {
@@ -107,6 +124,7 @@ test('starter plan user settings expose capabilities and reject locked fields', 
     body: JSON.stringify({
       cancel_policy: 'Appointments should be canceled at least 24 hours before the scheduled time.',
       allow_callbacks: false,
+      not_offered_services: ['Acrylic nails'],
       service_catalog: {
         categories: [{ id: '99999999-9999-4999-8999-999999999999', name: 'Starter Services', sortOrder: 0 }],
         services: [
@@ -125,7 +143,7 @@ test('starter plan user settings expose capabilities and reject locked fields', 
   assert.equal(allowedResponse.status, 200);
   const allowedBody = (await allowedResponse.json()) as {
     ok: boolean;
-    shop: { cancel_policy: string; allow_callbacks: boolean; service_catalog?: { services: Array<{ name: string }> } };
+    shop: { cancel_policy: string; allow_callbacks: boolean; not_offered_services?: string[]; service_catalog?: { services: Array<{ name: string }> } };
   };
   assert.equal(allowedBody.ok, true);
   assert.equal(allowedBody.shop.allow_callbacks, false);
@@ -134,6 +152,7 @@ test('starter plan user settings expose capabilities and reject locked fields', 
     'Appointments should be canceled at least 24 hours before the scheduled time.',
   );
   assert.equal(allowedBody.shop.service_catalog?.services[0]?.name, 'Basic Manicure');
+  assert.deepEqual(allowedBody.shop.not_offered_services, ['Acrylic nails']);
 });
 
 test('user can save business knowledge staff and FAQ fields', async () => {
@@ -579,4 +598,207 @@ test('professional plan user can save professional-tier automation fields', asyn
   assert.equal(body.shop.send_reminder_sms, false);
   assert.equal(body.shop.send_review_request_sms, false);
   assert.equal(body.capabilities.edit_ai_custom_instructions, false);
+});
+
+test('website import endpoint returns review suggestions without mutating shop data', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const before = await shopsRepository.findById('demo-shop');
+  assert.ok(before);
+  const originalWebsiteUrl = before.website_url;
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+  });
+  const cookie = await loginUser(app);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    const body = url.endsWith('/robots.txt')
+      ? 'Sitemap: https://93.184.216.34/sitemap.xml'
+      : url.endsWith('/sitemap.xml')
+        ? '<urlset><url><loc>https://93.184.216.34/services</loc></url></urlset>'
+        : url.endsWith('/services')
+          ? '<h1>Services</h1><p>Gel Manicure $45 45 minutes</p><p>Deluxe Pedicure starts at $65 60 minutes</p>'
+          : '<h1>Demo Nails</h1><script type="application/ld+json">{"@type":"NailSalon","openingHours":"Mon-Fri 9am-7pm"}</script><a href="/services">Services</a><p>Call (555) 111-2222</p>';
+    return new Response(body, { status: 200, headers: { 'content-type': url.endsWith('.xml') ? 'application/xml' : 'text/html' } });
+  }) as typeof fetch;
+  try {
+    const response = await app.request('/user/onboarding/import-website', {
+      method: 'POST',
+      headers: {
+        cookie,
+        origin: 'http://localhost:3000',
+        host: 'localhost:3000',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ url: 'https://93.184.216.34' }),
+    });
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { ok: boolean; diagnostics?: unknown; selectedPages?: unknown; rawGooglePayload?: unknown; suggestions: { businessProfile: { name: { value: string | null; confidence: number; source: string | null }; phone: { value: string | null; confidence: number; source: string | null } }; hours: { value: Record<string, unknown> | null; confidence: number; source: string | null }; serviceCatalog: { services: Array<{ name: string }> } } };
+    assert.equal(body.ok, true);
+    assert.equal('diagnostics' in body, false);
+    assert.equal('selectedPages' in body, false);
+    assert.equal('rawGooglePayload' in body, false);
+    assert.equal(body.suggestions.businessProfile.name.value, 'Demo Nails');
+    assert.equal(typeof body.suggestions.businessProfile.name.confidence, 'number');
+    assert.equal(body.suggestions.businessProfile.name.source, 'Website');
+    assert.equal(typeof body.suggestions.businessProfile.phone.confidence, 'number');
+    assert.equal(body.suggestions.hours.source, 'JSON-LD');
+    assert.ok(body.suggestions.serviceCatalog.services.some((service) => service.name.includes('Gel Manicure')));
+    const after = await shopsRepository.findById('demo-shop');
+    assert.ok(after);
+    assert.equal(after.website_url, originalWebsiteUrl);
+    assert.deepEqual(after.services, before.services);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('website import endpoint rejects unauthenticated, CSRF, and unexpected internal fields', async () => {
+  applyRequiredTestEnv({ WEBSITE_IMPORT_ENABLED: 'true' });
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  const { app } = createUserSettingsTestApp();
+  const cookie = await loginUser(app);
+
+  const unauthenticated = await app.request('/user/onboarding/import-website', {
+    method: 'POST',
+    headers: { origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({ url: 'https://93.184.216.34' }),
+  });
+  assert.equal(unauthenticated.status, 401);
+
+  const missingOrigin = await app.request('/user/onboarding/import-website', {
+    method: 'POST',
+    headers: { cookie, host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({ url: 'https://93.184.216.34' }),
+  });
+  assert.equal(missingOrigin.status, 403);
+
+  const invalidOrigin = await app.request('/user/onboarding/import-website', {
+    method: 'POST',
+    headers: { cookie, origin: 'https://attacker.example', host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({ url: 'https://93.184.216.34' }),
+  });
+  assert.equal(invalidOrigin.status, 403);
+
+  const unexpectedFields = await app.request('/user/onboarding/import-website', {
+    method: 'POST',
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      url: 'https://93.184.216.34',
+      debug: true,
+      maxPages: 1000,
+      diagnostics: true,
+      forcePlaywright: true,
+      rawGoogleData: { apiKey: 'should-not-accept' },
+      rawLlmData: { prompt: 'should-not-accept' },
+    }),
+  });
+  assert.equal(unexpectedFields.status, 400);
+  assert.deepEqual(await unexpectedFields.json(), { ok: false, error: 'invalid_payload' });
+});
+
+
+test('website import endpoint is disabled when WEBSITE_IMPORT_ENABLED=false', async () => {
+  applyRequiredTestEnv({ WEBSITE_IMPORT_ENABLED: 'false' });
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  setWebsiteImportCache(
+    websiteImportCacheKey({ normalizedUrl: 'https://93.184.216.34/', googlePlacesEnabled: true, llmEnabled: false }),
+    {
+      ok: true,
+      suggestions: {
+        status: 'success',
+        sourceUrl: 'https://93.184.216.34/',
+        sourceType: 'normal_website',
+        businessProfile: {
+          name: { value: 'Cached Should Not Return', confidence: 1, source: 'Website' },
+          primaryType: { value: null, confidence: 0, source: null },
+          phone: { value: null, confidence: 0, source: null },
+          website: { value: 'https://93.184.216.34/', confidence: 1, source: 'User' },
+          address: { value: null, confidence: 0, source: null },
+          timezone: { value: null, confidence: 0, source: null },
+        },
+        hours: { value: null, confidence: 0, source: null },
+        serviceCatalog: { confidence: 0, source: null, categories: [], services: [] },
+        alsoOffers: [],
+        bookingUrl: { value: null, confidence: 0, source: null },
+        languages: [],
+        warnings: [],
+      },
+      diagnostics: { selectedPages: [], skippedPagesSummary: [], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: {}, warnings: [], fallbackUsed: ['cache'] },
+    },
+    60,
+  );
+  const shopsRepository = new InMemoryShopsRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+  });
+  const cookie = await loginUser(app);
+  const response = await app.request('/user/onboarding/import-website', {
+    method: 'POST',
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({ url: 'https://93.184.216.34' }),
+  });
+  assert.equal(response.status, 503);
+  const body = (await response.json()) as { ok: boolean; error: string };
+  assert.equal(body.ok, false);
+  assert.equal(body.error, 'website_import_disabled');
+  applyRequiredTestEnv({ WEBSITE_IMPORT_ENABLED: 'true' });
+  resetEnvCacheForTests();
+});
+
+test('website import endpoint rate limit blocks repeated requests safely', async () => {
+  applyRequiredTestEnv({ WEBSITE_IMPORT_ENABLED: 'true' });
+  resetEnvCacheForTests();
+  __resetRateLimitMemoryStoreForTests();
+  const shopsRepository = new InMemoryShopsRepository();
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    jobsRepository: new InMemoryJobsRepository(),
+    bookingsRepository: new InMemoryBookingsRepository(),
+    callbacksRepository: new InMemoryCallbacksRepository(),
+    shopsRepository,
+    telephonyService: new NoopTelephonyService(),
+    callLogsRepository: new InMemoryCallLogsRepository(),
+    authUsersRepository: new InMemoryAuthUsersRepository(),
+    realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+  });
+  const cookie = await loginUser(app);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => new Response('<h1>Demo Nails</h1>', { status: 200, headers: { 'content-type': 'text/html' } })) as typeof fetch;
+  try {
+    let lastStatus = 0;
+    for (let i = 0; i < 13; i += 1) {
+      const response = await app.request('/user/onboarding/import-website', {
+        method: 'POST',
+        headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.55' },
+        body: JSON.stringify({ url: 'https://93.184.216.34' }),
+      });
+      lastStatus = response.status;
+    }
+    assert.equal(lastStatus, 429);
+    const after = await shopsRepository.findById('demo-shop');
+    assert.ok(after);
+    assert.deepEqual(after.services, (await new InMemoryShopsRepository().findById('demo-shop'))?.services);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

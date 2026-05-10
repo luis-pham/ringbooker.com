@@ -395,7 +395,7 @@ export function GoLiveForwardingPanel({
         ) : (
           <div className="card soft" style={{ margin: 0 }}>
             <p className="sub" style={{ margin: 0 }}>
-              Start your 14-day trial first. Then RingBooker will create your forwarding number and show carrier-specific forwarding steps here.
+              Start your 14-day trial first. Then RingBooker will create your RingBooker forwarding number and show carrier-specific steps to connect your current business number.
             </p>
           </div>
         )}

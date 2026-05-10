@@ -23,6 +23,7 @@ const defaultShop: Shop = {
     { name: 'Pedicure', duration_min: 45, price: 35 },
     { name: 'Gel Nails', duration_min: 60, price: 45 },
   ],
+  not_offered_services: [],
   staff: [
     { name: 'Jenny', role: 'Nail technician', specialties: ['Gel nails', 'Pedicure'], active: true },
     { name: 'Sarah', role: 'Nail artist', specialties: ['Nail art', 'Acrylic'], active: true },
@@ -147,6 +148,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
       user_name: params.user_name ?? null,
       timezone: params.timezone,
       services: [],
+      not_offered_services: [],
       staff: [],
       faqs: [],
       hours: {},
@@ -194,6 +196,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'address'
         | 'timezone'
         | 'services'
+        | 'not_offered_services'
         | 'staff'
         | 'faqs'
         | 'hours'

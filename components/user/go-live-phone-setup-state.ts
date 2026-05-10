@@ -98,8 +98,8 @@ export function getPhoneSetupCopy(state: PhoneSetupState): PhoneSetupCopy {
       blockingReason: 'Payment method is required before live answering.',
     },
     forwarding_number_needed: {
-      title: 'Create your RingBooker forwarding number',
-      explanation: 'RingBooker will create a managed forwarding number. Your clients keep calling your current business phone number.',
+      title: 'Connect your business phone',
+      explanation: 'Your clients keep calling your current business number. RingBooker will create a forwarding number for missed, after-hours, or overflow calls.',
       primaryLabel: 'Create forwarding number',
       primaryTarget: 'provision_forwarding_number',
       secondaryLabel: 'Open Billing',
@@ -107,7 +107,7 @@ export function getPhoneSetupCopy(state: PhoneSetupState): PhoneSetupCopy {
     },
     forwarding_number_ready: {
       title: 'Your forwarding number is ready',
-      explanation: 'Forward missed, after-hours, or overflow calls from your current business number to your RingBooker forwarding number.',
+      explanation: 'You keep your current business number. Forward missed, after-hours, or overflow calls to your RingBooker forwarding number.',
       primaryLabel: 'Show forwarding instructions',
       primaryTarget: '#forwarding-instructions',
     },

@@ -156,6 +156,7 @@ test('Professional nail salon with en/vi keeps bilingual vertical and runtime bi
 test('Production prompt renders service catalog grouped by service group', () => {
   const shop = createShop('professional');
   shop.services = [{ name: 'Legacy Service', duration_min: 30, price: 20 }];
+  shop.not_offered_services = ['Acrylic nails'];
   shop.service_catalog = {
     categories: [
       { id: '11111111-1111-4111-8111-111111111111', shopId: shop.id, name: 'Manicure', sortOrder: 0, active: true },
@@ -208,6 +209,8 @@ test('Production prompt renders service catalog grouped by service group', () =>
   assert.match(prompt, /SERVICES \/ PRICING:\nManicure:\n- Gel Manicure \| starts at \$45 \| 45 min \| Popular service/);
   assert.match(prompt, /Customers may call this: gel mani, shellac/);
   assert.match(prompt, /Pedicure:\n- Deluxe Pedicure \| price varies \| 60 min \| capture request only; do not imply direct booking/);
+  assert.match(prompt, /NOT OFFERED SERVICES: Acrylic nails/);
+  assert.match(prompt, /unknown service that is neither in SERVICES \/ PRICING nor NOT OFFERED SERVICES, do not deny/i);
   assert.doesNotMatch(prompt, /Legacy Service/);
   assert.doesNotMatch(prompt, /svc_secret|loc_secret|secret_payload|square/);
 });

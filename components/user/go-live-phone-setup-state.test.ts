@@ -28,6 +28,8 @@ test('phone setup state advances from number creation to verification to enable 
     }),
     'forwarding_number_needed',
   );
+  assert.equal(getPhoneSetupCopy('forwarding_number_needed').title, 'Connect your business phone');
+  assert.match(getPhoneSetupCopy('forwarding_number_needed').explanation, /current business number/i);
 
   assert.equal(
     resolvePhoneSetupState({

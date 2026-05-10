@@ -32,6 +32,7 @@ import {
 import { createSignupPlaceholderBusinessPhoneE164 } from '@/src/backend/domain/signup-placeholder-phone';
 import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
 import { mergeImportedServicesIntoCatalog } from '@/src/backend/domain/service-catalog';
+import { importWebsiteForOnboarding } from '@/src/backend/services/website-import/importer';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import { startOrReuseForwardingTestSession } from '@/src/backend/services/go-live/start-forwarding-test-session';
 import type {
@@ -458,6 +459,7 @@ const userSettingsBaseSchema = z.object({
   booking_url: z.string().url().nullable().optional(),
   website_url: z.string().url().optional().or(z.literal('')),
   languages: z.array(z.string()).optional(),
+  not_offered_services: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
   current_onboarding_step: z.coerce.number().int().min(1).max(4).optional(),
   setup_method: z.enum(['forward', 'new_number']).optional(),
   forwarding_type: z.enum(['no_answer', 'all', 'busy', 'unreachable']).optional(),
@@ -649,6 +651,10 @@ const userBillingUpgradeSchema = z.object({
   billing_interval: z.enum(['monthly', 'annual']).optional(),
 }).strict();
 
+const importWebsiteSchema = z.object({
+  url: z.string().trim().min(1).max(2048),
+}).strict();
+
 const readWebsiteSchema = z.object({
   url: z.string().url(),
   services: z
@@ -838,6 +844,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   cancel_policy: 'edit_cancel_policy',
   promotions: 'edit_promotions',
   services: 'edit_services',
+  not_offered_services: 'edit_services',
   service_catalog: 'edit_services',
   staff: 'edit_services',
   faqs: 'edit_business_profile',
@@ -869,6 +876,7 @@ function splitUserSettingsPatchByPlan(
       | 'address'
       | 'timezone'
       | 'services'
+      | 'not_offered_services'
       | 'staff'
       | 'faqs'
       | 'hours'
@@ -943,6 +951,7 @@ function splitUserSettingsPatchByPlan(
         | 'address'
         | 'timezone'
         | 'services'
+      | 'not_offered_services'
         | 'staff'
         | 'faqs'
         | 'hours'
@@ -4321,6 +4330,57 @@ export function createBackendApp(deps: {
         plan: shop.plan,
       },
     });
+  });
+
+  app.post(path('/user/onboarding/import-website'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_website_import, 'user_onboarding_import_website');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = importWebsiteSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!getEnv().WEBSITE_IMPORT_ENABLED) {
+      return c.json({ ok: false, error: 'website_import_disabled' }, 503);
+    }
+
+    try {
+      const env = getEnv();
+      const result = await importWebsiteForOnboarding({ url: parsed.data.url }, {
+        googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
+        llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
+        openAiApiKey: env.OPENAI_API_KEY,
+        llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
+        llmMaxTokens: env.WEBSITE_IMPORT_LLM_MAX_TOKENS,
+        cacheEnabled: true,
+        cacheTtlSeconds: env.WEBSITE_IMPORT_CACHE_TTL_SECONDS,
+        cacheMaxEntries: env.WEBSITE_IMPORT_CACHE_MAX_ENTRIES,
+      });
+      if (result.diagnostics.warnings.length > 0) {
+        logger.info({ shopId: shop.id, warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])], selectedPageCount: result.diagnostics.selectedPages.length }, 'website_import_completed_with_warnings');
+      }
+      return c.json({
+        ok: result.ok,
+        suggestions: result.suggestions,
+        warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])],
+      });
+    } catch (err) {
+      logger.warn({ err, shopId: shop.id }, 'website_import_failed');
+      return c.json({
+        ok: false,
+        error: 'website_import_failed',
+        message: 'We could not read that website right now. You can continue manually.',
+      }, 200);
+    }
   });
 
   app.post(path('/user/read-website'), async (c) => {

@@ -209,6 +209,7 @@ export const RATE_LIMIT_POLICIES = {
   auth_reset_password: { name: 'auth_reset_password', limit: 8, windowMs: 30 * 60_000, blockMs: 30 * 60_000 },
   auth_session_read: { name: 'auth_session_read', limit: 120, windowMs: 60_000 },
   user_api: { name: 'user_api', limit: 180, windowMs: 60_000 },
+  user_website_import: { name: 'user_website_import', limit: 12, windowMs: 60 * 60_000, blockMs: 60 * 60_000 },
   user_provision_forwarding_number: {
     name: 'user_provision_forwarding_number',
     limit: 3,
