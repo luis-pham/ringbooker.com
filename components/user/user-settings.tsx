@@ -86,6 +86,10 @@ const userSettingsSpecificStyles = String.raw`
 .option-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-soft);border-color:#d8ccff}
 .option-card.active{border-color:rgba(139,92,246,.55);background:linear-gradient(180deg,#faf7ff 0%,#fff 100%);box-shadow:0 0 0 4px rgba(139,92,246,.08)}
 .option-card.locked{opacity:.62;cursor:not-allowed;background:#fafafa}
+.option-card--bare{
+  border:none;padding:0;background:transparent;cursor:default;
+}
+.option-card--bare:hover{transform:none;box-shadow:none}
 .option-title{font-size:14px;font-weight:800;letter-spacing:-.02em}
 .option-copy{font-size:12px;color:var(--text-gray);line-height:1.6}
 .preset-pills{display:flex;flex-wrap:wrap;gap:10px}
@@ -349,6 +353,14 @@ button.subtle-link:hover{text-decoration:underline}
 }
 .sh-hours-wrap .hours-row.closed{opacity:.72}
 .sh-hours-wrap .hours-day{font-size:13px;font-weight:780;color:var(--text-dark)}
+@media (min-width:1024px){
+  .sh-business-hours-form > .card-section,
+  .sh-business-hours-form > .settings-save-footer{
+    width:60%;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+}
 
 .plan-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:#f5f3ff;color:var(--purple-dark);font-size:11px;font-weight:800}
 .upgrade-panel{background:linear-gradient(135deg,#f7f3ff,#fff);border:1px dashed rgba(99,14,212,.28)}
@@ -385,6 +397,8 @@ html[data-user-theme="dark"] .option-card.active{
   background:linear-gradient(180deg,rgba(56,139,253,.1) 0%,var(--surface-card) 100%);
 }
 html[data-user-theme="dark"] .option-card.locked{background:#21262d}
+html[data-user-theme="dark"] .option-card--bare{background:transparent}
+html[data-user-theme="dark"] .option-card--bare:hover{border-color:transparent}
 html[data-user-theme="dark"] .preset-pill{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .preset-pill.active{background:#58a6ff;color:#fff;border-color:#58a6ff}
 html[data-user-theme="dark"] .switch-row{border-color:var(--border);background:var(--surface-card)}

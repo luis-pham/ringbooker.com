@@ -232,7 +232,7 @@ button.rb-account-link:hover{text-decoration:underline}
 .rb-account-row dd{margin:0;font-size:15px;font-weight:500;color:var(--text-dark);line-height:1.45;word-break:break-word}
 .rb-account-plan-pill{
   display:inline-flex;align-items:center;margin-left:8px;padding:2px 10px;border-radius:999px;
-  font-size:11px;font-weight:700;background:#f5f3ff;color:var(--purple-dark);vertical-align:middle;
+  font-size:11px;font-weight:700;background:#ecfdf5;color:#047857;vertical-align:middle;
 }
 .rb-account-billing-warn{color:var(--red-deep);font-weight:600}
 .rb-account-callout{
@@ -247,10 +247,10 @@ button.rb-account-link:hover{text-decoration:underline}
 .rb-account-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
 .rb-account-contact-name-field.field{margin-bottom:0;width:100%;max-width:100%}
 @media(min-width:641px){
-  .rb-account-contact-name-field.field{max-width:min(100%,520px)}
+  .rb-account-contact-name-field.field{max-width:min(100%,676px)}
 }
 @media(min-width:861px){
-  .rb-account-contact-name-field.field{max-width:min(100%,640px)}
+  .rb-account-contact-name-field.field{max-width:min(100%,832px)}
 }
 .rb-account-btn-ghost{
   font:inherit;font-size:13px;font-weight:650;color:var(--text-dark);
@@ -262,7 +262,20 @@ button.rb-account-link:hover{text-decoration:underline}
 @media(min-width:521px){
   .rb-account-password-actions .btn.user-save{width:100%}
 }
+@media(min-width:1024px){
+  .account-password-inner > .field{
+    width:60%;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+  .account-password-inner > .account-password-actions{
+    width:60%;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+}
 html[data-user-theme="dark"] .rb-account-callout{background:#161b22;border-color:var(--border)}
+html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(35,134,54,0.18);color:#3fb950}
 html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){background:#21262d;border-color:#58a6ff}
 html[data-user-theme="dark"] .rb-account-frame{box-shadow:none}
 html[data-user-theme="dark"] .rb-account-frame-head{border-bottom-color:var(--border)}

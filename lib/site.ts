@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
 
+/** Short tagline under the RingBooker logo in marketing footers (`MarketingFooter`). */
+export const marketingFooterTagline =
+  'AI receptionist and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number.';
+
 export const siteConfig = {
   name: 'RingBooker',
   url: 'https://ringbooker.com',

@@ -15,6 +15,21 @@ export type BillingWebhookSyncResult = {
   shopPlanChanged: boolean;
 };
 
+export type BillingTransactionRecord = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  currency: string;
+  status: string;
+  type: 'payment' | 'invoice' | 'refund' | 'credit' | 'unknown';
+  billingPeriodStart?: string;
+  billingPeriodEnd?: string;
+  invoiceNumber?: string;
+  invoiceUrl?: string;
+  receiptUrl?: string;
+};
+
 export interface BillingProviderAdapter {
   readonly provider: BillingProvider;
   createCheckoutSession(params: {
@@ -54,6 +69,18 @@ export interface BillingProviderAdapter {
     targetPlan: Extract<Shop['plan'], 'professional'>;
     billingInterval: BillingInterval;
     prorationBillingMode: 'prorated_next_billing_period';
+  }>;
+  listBillingTransactions?(params: {
+    providerCustomerId: string;
+    providerSubscriptionId?: string | null;
+    limit?: number;
+    after?: string | null;
+    before?: string | null;
+  }): Promise<{
+    provider: BillingProvider;
+    transactions: BillingTransactionRecord[];
+    hasMore?: boolean;
+    nextCursor?: string | null;
   }>;
   syncWebhookEvent(params: {
     eventType: string;

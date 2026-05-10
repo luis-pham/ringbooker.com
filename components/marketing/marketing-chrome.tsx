@@ -6,7 +6,7 @@ import { MarketingMobileNav } from '@/components/marketing/marketing-mobile-nav'
 import { NavActionsClient } from '@/components/marketing/nav-actions-client';
 import { MARKETING_DEMO_NAV_ITEMS } from '@/lib/marketing-demo-nav';
 import { MARKETING_INDUSTRY_NAV_ITEMS } from '@/lib/marketing-industry-nav';
-import { siteConfig } from '@/lib/site';
+import { marketingFooterTagline, siteConfig } from '@/lib/site';
 
 type MarketingHeaderProps = {
   active?: 'demo' | 'pricing' | 'how-it-works' | 'contact' | 'industry';
@@ -324,9 +324,7 @@ export function MarketingFooter({
             </div>
             RingBooker
           </div>
-          <p className="mk-footer-desc">
-            {descriptionOverride ?? 'AI phone answering and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number.'}
-          </p>
+          <p className="mk-footer-desc">{descriptionOverride ?? marketingFooterTagline}</p>
           {socialLinks.length > 0 ? (
             <div className="mk-footer-social">
               {socialLinks.map((link) => (

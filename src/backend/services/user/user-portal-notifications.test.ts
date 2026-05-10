@@ -113,3 +113,25 @@ test('billing notification clears only after verified payment method removes pay
 
   assert.equal(notifications.some((item) => item.id === 'payment_method_required'), false);
 });
+
+test('billing notification dates render in the shop timezone', () => {
+  const trialEndsAt = '2026-05-01T06:30:00.000Z';
+  const base = {
+    access: createAccess({ trialEndsAt, trialDaysRemaining: 3 }),
+    subscription: createSubscription({ trialEndsAt, currentPeriodEnd: trialEndsAt }),
+    usage: null,
+    now: new Date('2026-04-28T12:00:00.000Z'),
+  };
+
+  const la = buildUserPortalNotifications({
+    ...base,
+    shopTimezone: 'America/Los_Angeles',
+  });
+  const ny = buildUserPortalNotifications({
+    ...base,
+    shopTimezone: 'America/New_York',
+  });
+
+  assert.match(JSON.stringify(la), /Apr 30, 2026/);
+  assert.match(JSON.stringify(ny), /May 1, 2026/);
+});

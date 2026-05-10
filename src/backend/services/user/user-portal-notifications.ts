@@ -1,5 +1,6 @@
 import type { BillingSubscription } from '@/src/backend/domain/types';
 import type { ShopBillingAccess } from '@/src/backend/services/billing/access';
+import { formatShopDate, getShopTimezone } from '@/src/shared/timezone';
 
 export type UserPortalNotificationSeverity = 'info' | 'warn' | 'critical';
 
@@ -20,11 +21,10 @@ export type UserPortalNotificationsUsageInput = {
 
 type UsageLite = UserPortalNotificationsUsageInput;
 
-function fmtDate(iso: string | null | undefined): string | null {
+function fmtDate(iso: string | null | undefined, shopTimezone: string): string | null {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const formatted = formatShopDate(iso, shopTimezone);
+  return formatted === 'Unknown' ? null : formatted;
 }
 
 function daysUntil(iso: string | null | undefined, now: Date): number | null {
@@ -43,8 +43,10 @@ export function buildUserPortalNotifications(params: {
   subscription: BillingSubscription | null;
   usage: UsageLite;
   now: Date;
+  shopTimezone?: string | null;
 }): UserPortalNotificationDto[] {
   const { access, subscription, usage, now } = params;
+  const shopTimezone = getShopTimezone({ timezone: params.shopTimezone });
   const out: UserPortalNotificationDto[] = [];
   const push = (n: UserPortalNotificationDto) => {
     if (!out.some((x) => x.id === n.id)) out.push(n);
@@ -100,13 +102,13 @@ export function buildUserPortalNotifications(params: {
       id: 'trial_ending',
       severity: d <= 3 ? 'critical' : 'warn',
       title: d === 0 ? 'Trial ends today' : `Trial ends in ${d} day${d === 1 ? '' : 's'}`,
-      body: subscription?.trialEndsAt ? `Trial end date: ${fmtDate(subscription.trialEndsAt) ?? ''}.` : undefined,
+      body: subscription?.trialEndsAt ? `Trial end date: ${fmtDate(subscription.trialEndsAt, shopTimezone) ?? ''}.` : undefined,
       href: '/user/billing',
     });
   }
 
   if (subscription?.cancelAtPeriodEnd && subscription.currentPeriodEnd) {
-    const dt = fmtDate(subscription.currentPeriodEnd);
+    const dt = fmtDate(subscription.currentPeriodEnd, shopTimezone);
     push({
       id: 'cancel_at_period_end',
       severity: 'info',
@@ -123,7 +125,7 @@ export function buildUserPortalNotifications(params: {
   ) {
     const days = daysUntil(subscription.currentPeriodEnd, now);
     if (days !== null && days >= 0 && days <= 7) {
-      const dt = fmtDate(subscription.currentPeriodEnd);
+      const dt = fmtDate(subscription.currentPeriodEnd, shopTimezone);
       push({
         id: 'renewal_soon',
         severity: 'info',

@@ -101,6 +101,62 @@ test('getShopUsageForPeriod counts captured callers and voice seconds for curren
   assert.equal(usage.voiceMinutesUsed, 3);
 });
 
+test('usage period follows the shop-local month boundary', async () => {
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  const s = shop('starter');
+  const now = new Date('2026-05-01T06:30:00.000Z'); // Apr 30, 2026 11:30 PM in Los Angeles.
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'la-april-call',
+    shopId: s.id,
+    callerPhone: '+15550000002',
+    startedAt: new Date('2026-05-01T06:45:00.000Z'),
+    requestId: 'la-april-req',
+  });
+  await callLogsRepository.updateStructuredSummary(s.id, 'la-april-req', { summaryServiceRequest: 'haircut' });
+
+  await callLogsRepository.createOrUpdateInboundCall({
+    provider: 'telnyx_call_control',
+    providerCallId: 'la-may-call',
+    shopId: s.id,
+    callerPhone: '+15550000003',
+    startedAt: new Date('2026-05-01T07:15:00.000Z'),
+    requestId: 'la-may-req',
+  });
+  await callLogsRepository.updateStructuredSummary(s.id, 'la-may-req', { summaryServiceRequest: 'color' });
+
+  const usage = await getShopUsageForPeriod({ callLogsRepository }, { shop: s, now });
+
+  assert.equal(usage.periodStart, '2026-04-01T07:00:00.000Z');
+  assert.equal(usage.periodEnd, '2026-05-01T07:00:00.000Z');
+  assert.equal(usage.capturedCallersUsed, 1);
+});
+
+test('usage period uses each shop timezone rather than UTC month', async () => {
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  const s = { ...shop('starter'), timezone: 'America/New_York' };
+
+  const usage = await getShopUsageForPeriod(
+    { callLogsRepository },
+    { shop: s, now: new Date('2026-05-01T03:30:00.000Z') },
+  );
+
+  assert.equal(usage.periodStart, '2026-04-01T04:00:00.000Z');
+  assert.equal(usage.periodEnd, '2026-05-01T04:00:00.000Z');
+});
+
+test('usage period is safe across daylight saving time changes', async () => {
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  const usage = await getShopUsageForPeriod(
+    { callLogsRepository },
+    { shop: shop('starter'), now: new Date('2026-03-15T12:00:00.000Z') },
+  );
+
+  assert.equal(usage.periodStart, '2026-03-01T08:00:00.000Z');
+  assert.equal(usage.periodEnd, '2026-04-01T07:00:00.000Z');
+});
+
 test('active call session repository enforces Starter and Professional concurrency', async () => {
   const repo = new InMemoryShopActiveCallSessionsRepository();
   const now = new Date('2026-05-06T10:00:00.000Z');

@@ -2182,7 +2182,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
 
               {servicesHoursSubTab === 'hours' ? (
               <form
-                className="card-section-form"
+                className="card-section-form sh-business-hours-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void commitSettingsPatch('hours', { hours: currentForm.hours });
@@ -2341,7 +2341,7 @@ export function UserSettingsLive({ portal = 'ai-settings' }: { portal?: UserSett
                     <div className="sh-empty">No FAQs added yet. Add common answers so RingBooker can respond consistently.</div>
                   ) : null}
                   {currentForm.faqs.map((item, index) => (
-                    <div className="option-card" key={`${item.question}-${index}`}>
+                    <div className="option-card option-card--bare" key={`${item.question}-${index}`}>
                       <div className="field"><label>Question</label><input value={item.question} onChange={(event) => updateFaq(index, { question: event.target.value })} placeholder="Do you accept walk-ins?" /></div>
                       <div className="field"><label>Approved answer</label><textarea value={item.answer} onChange={(event) => updateFaq(index, { answer: event.target.value })} placeholder="Walk-ins are welcome when staff are available, but appointments are recommended." /></div>
                       <div className="settings-save-footer" style={{ marginTop: 10 }}>

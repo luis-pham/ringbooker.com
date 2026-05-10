@@ -1705,3 +1705,154 @@ test('billing checkout normalizes legacy unknown self-serve trial before Paddle 
     resetEnvCacheForTests();
   }
 });
+
+test('user billing transactions endpoint requires auth', async () => {
+  const app = buildBillingTestApp({
+    billingCustomersRepository: new InMemoryBillingCustomersRepository(),
+    billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
+    shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
+    shopsRepository: new InMemoryShopsRepository(),
+  });
+
+  const response = await app.request('/user/billing/transactions');
+  assert.equal(response.status, 401);
+});
+
+test('user billing transactions endpoint returns sanitized Paddle transactions', async () => {
+  applyRequiredTestEnv({ PADDLE_ENV: 'sandbox' });
+  resetEnvCacheForTests();
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const app = buildBillingTestApp({
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    shopsRepository,
+  });
+  const cookie = await loginBillingUser(app);
+
+  let paddleUrl = '';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    paddleUrl = String(input);
+    assert.equal(String((init?.headers as Record<string, string> | undefined)?.Authorization), `Bearer ${process.env.PADDLE_API_KEY}`);
+    return new Response(
+      JSON.stringify({
+        data: [
+          {
+            id: 'txn_api_history_1',
+            status: 'completed',
+            billed_at: '2026-05-24T00:00:00Z',
+            currency_code: 'USD',
+            invoice_number: 'INV-2001',
+            details: { totals: { total: '14900' } },
+            invoice_url: 'https://paddle.example/invoices/INV-2001',
+            customer: { email: 'private@example.com' },
+            provider_customer_id: 'ctm_demo_paddle',
+            payment_method: { card: { last4: '4242' } },
+          },
+        ],
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+  try {
+    const response = await app.request('/user/billing/transactions', { headers: { cookie } });
+    assert.equal(response.status, 200);
+    const bodyText = await response.text();
+    assert.equal(bodyText.includes(process.env.PADDLE_API_KEY ?? 'paddle_test_key'), false);
+    assert.equal(bodyText.includes(process.env.PADDLE_WEBHOOK_SECRET ?? 'paddle_test_secret'), false);
+    assert.equal(bodyText.includes('private@example.com'), false);
+    assert.equal(bodyText.includes('4242'), false);
+    assert.equal(bodyText.includes('provider_customer_id'), false);
+    const body = JSON.parse(bodyText) as {
+      ok: boolean;
+      available: boolean;
+      transactions: Array<{ id: string; amount: number; currency: string; invoiceNumber?: string; invoiceUrl?: string }>;
+    };
+    assert.equal(body.ok, true);
+    assert.equal(body.available, true);
+    assert.equal(body.transactions[0]?.id, 'txn_api_history_1');
+    assert.equal(body.transactions[0]?.amount, 149);
+    assert.equal(body.transactions[0]?.currency, 'USD');
+    assert.equal(body.transactions[0]?.invoiceNumber, 'INV-2001');
+    assert.equal(body.transactions[0]?.invoiceUrl, 'https://paddle.example/invoices/INV-2001');
+    assert.equal(paddleUrl, 'https://sandbox-api.paddle.com/transactions?customer_id=ctm_demo_paddle&subscription_id=sub_demo_paddle&per_page=20');
+  } finally {
+    globalThis.fetch = originalFetch;
+    resetEnvCacheForTests();
+  }
+});
+
+test('user billing transactions endpoint fails gracefully for missing customer and Paddle failures', async () => {
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  await billingSubscriptionsRepository.updateById('bs_demo', { providerCustomerId: null });
+  const app = buildBillingTestApp({
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    shopsRepository,
+  });
+  const cookie = await loginBillingUser(app);
+
+  const missingCustomer = await app.request('/user/billing/transactions', { headers: { cookie } });
+  assert.equal(missingCustomer.status, 200);
+  assert.deepEqual(await missingCustomer.json(), {
+    ok: true,
+    available: false,
+    reason: 'missing_provider_customer_id',
+    transactions: [],
+    message: 'Payments and invoices will appear after your first billing event.',
+  });
+
+  await billingSubscriptionsRepository.updateById('bs_demo', { providerCustomerId: 'ctm_demo_paddle' });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({ error: { code: 'failed' } }), { status: 500 })) as typeof fetch;
+  try {
+    const failed = await app.request('/user/billing/transactions', { headers: { cookie } });
+    assert.equal(failed.status, 200);
+    const body = (await failed.json()) as { ok: boolean; available: boolean; reason: string; transactions: unknown[]; message: string };
+    assert.equal(body.ok, true);
+    assert.equal(body.available, false);
+    assert.equal(body.reason, 'paddle_transactions_unavailable');
+    assert.deepEqual(body.transactions, []);
+    assert.match(body.message, /Manage billing/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('user billing transactions endpoint rejects Paddle ownership conflicts', async () => {
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shopsRepository = new InMemoryShopsRepository();
+  const otherShop = await shopsRepository.create({
+    name: 'Other Shop',
+    phone_number: '+17145550200',
+    user_phone: '+17145550201',
+    timezone: 'America/Los_Angeles',
+  });
+  await billingCustomersRepository.upsert({
+    shopId: otherShop.id,
+    provider: 'paddle',
+    providerCustomerId: 'ctm_other_shop',
+  });
+  await billingSubscriptionsRepository.updateById('bs_demo', { providerCustomerId: 'ctm_other_shop' });
+  const app = buildBillingTestApp({
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    shopsRepository,
+  });
+  const cookie = await loginBillingUser(app);
+
+  const response = await app.request('/user/billing/transactions', { headers: { cookie } });
+  assert.equal(response.status, 409);
+  assert.deepEqual(await response.json(), { ok: false, error: 'billing_ownership_conflict' });
+});

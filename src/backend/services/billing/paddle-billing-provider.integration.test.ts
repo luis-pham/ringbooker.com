@@ -202,6 +202,100 @@ test('paddle manage billing uses production API and maps Paddle failures safely'
   }
 });
 
+test('paddle list billing transactions uses sandbox API and sanitizes transaction records', async () => {
+  applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'production' });
+  resetEnvCacheForTests();
+  const { provider } = buildProvider();
+
+  let requestUrl = '';
+  let authHeader = '';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    requestUrl = String(input);
+    authHeader = String((init?.headers as Record<string, string> | undefined)?.Authorization ?? '');
+    return new Response(
+      JSON.stringify({
+        data: [
+          {
+            id: 'txn_history_1',
+            status: 'completed',
+            customer_id: 'ctm_demo_paddle',
+            subscription_id: 'sub_demo_paddle',
+            invoice_number: 'INV-1001',
+            billed_at: '2026-05-24T00:00:00Z',
+            currency_code: 'USD',
+            details: { totals: { total: '14900' } },
+            invoice_pdf: 'https://paddle.example/invoice.pdf',
+            payments: [{ receipt_url: 'https://paddle.example/receipt' }],
+            customer: { email: 'customer@example.com' },
+            raw_secret_like_field: 'do-not-return',
+          },
+        ],
+        meta: { pagination: { has_more: false, next: null } },
+      }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as typeof fetch;
+  try {
+    const result = await provider.listBillingTransactions({
+      providerCustomerId: 'ctm_demo_paddle',
+      providerSubscriptionId: 'sub_demo_paddle',
+      limit: 20,
+    });
+    assert.equal(requestUrl, 'https://sandbox-api.paddle.com/transactions?customer_id=ctm_demo_paddle&subscription_id=sub_demo_paddle&per_page=20');
+    assert.equal(authHeader, `Bearer ${process.env.PADDLE_API_KEY}`);
+    assert.deepEqual(result.transactions, [
+      {
+        id: 'txn_history_1',
+        date: '2026-05-24T00:00:00Z',
+        description: 'Invoice INV-1001',
+        amount: 149,
+        currency: 'USD',
+        status: 'completed',
+        type: 'invoice',
+        billingPeriodStart: undefined,
+        billingPeriodEnd: undefined,
+        invoiceNumber: 'INV-1001',
+        invoiceUrl: 'https://paddle.example/invoice.pdf',
+        receiptUrl: 'https://paddle.example/receipt',
+      },
+    ]);
+    assert.equal(JSON.stringify(result).includes('customer@example.com'), false);
+    assert.equal(JSON.stringify(result).includes('do-not-return'), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'sandbox' });
+    resetEnvCacheForTests();
+  }
+});
+
+test('paddle list billing transactions uses production API and maps failures safely', async () => {
+  applyRequiredTestEnv({ PADDLE_ENV: 'production', PADDLE_ENVIRONMENT: 'sandbox' });
+  resetEnvCacheForTests();
+  const { provider } = buildProvider();
+
+  let url = '';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL | Request) => {
+    url = String(input);
+    return new Response(JSON.stringify({ error: { code: 'failed' } }), {
+      status: 500,
+      headers: { 'content-type': 'application/json' },
+    });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      () => provider.listBillingTransactions({ providerCustomerId: 'ctm_demo_paddle', limit: 20 }),
+      /paddle_list_transactions_failed:500/,
+    );
+    assert.equal(url, 'https://api.paddle.com/transactions?customer_id=ctm_demo_paddle&per_page=20');
+  } finally {
+    globalThis.fetch = originalFetch;
+    applyRequiredTestEnv({ PADDLE_ENV: 'sandbox', PADDLE_ENVIRONMENT: 'sandbox' });
+    resetEnvCacheForTests();
+  }
+});
+
 test('paddle upgrade subscription uses sandbox API, Professional price, and next-period proration', async () => {
   applyRequiredTestEnv({
     PADDLE_ENV: 'sandbox',

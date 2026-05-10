@@ -11,6 +11,7 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { formatShopDate, formatShopDateTime, formatShopTime, getShopTimezone } from '@/src/shared/timezone';
 
 type Call = {
   provider: string;
@@ -66,6 +67,7 @@ type CallFilter = 'all' | 'follow_up_needed' | 'high_urgency' | 'bookings' | 'mi
 type CallsResponse = {
   ok: boolean;
   calls?: Call[];
+  shop?: { timezone?: string | null };
   pagination?: { page: number; pageSize: number; total: number };
   summary?: CallsSummary;
   error?: string;
@@ -78,27 +80,6 @@ type IntentSummaryResponse = {
   followUpCount?: number;
   missedCount?: number;
 };
-
-function formatDate(value?: string) {
-  if (!value) return 'Unknown';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'Unknown';
-  return parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatTime(value?: string) {
-  if (!value) return 'Unknown';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'Unknown';
-  return parsed.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-}
-
-function formatDateTime(value?: string) {
-  if (!value) return 'Unknown';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'Unknown';
-  return parsed.toLocaleString();
-}
 
 function formatPhone(value?: string) {
   if (!value) return 'Unknown';
@@ -234,6 +215,7 @@ export function UserCallsLive() {
   const [error, setError] = useState<string | null>(null);
   const [activeCall, setActiveCall] = useState<Call | null>(null);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [shopTimezone, setShopTimezone] = useState<string>(getShopTimezone(null));
 
 
   function fetchSummary() {
@@ -270,6 +252,7 @@ export function UserCallsLive() {
           return;
         }
         setCalls(body.calls ?? []);
+        setShopTimezone(getShopTimezone(body.shop));
         const total = body.pagination?.total ?? body.calls?.length ?? 0;
         setTotalCount(total);
         setSummary(
@@ -584,8 +567,8 @@ html[data-user-theme="dark"] .transcript-note{background:#0d1117}
                             <td>
                               <span className={isVip ? 'tag purple' : 'tag blue'}>{isVip ? 'VIP signal' : 'Standard'}</span>
                             </td>
-                            <td>{formatDate(call.startedAt)}</td>
-                            <td>{formatTime(call.startedAt)}</td>
+                            <td>{formatShopDate(call.startedAt, shopTimezone)}</td>
+                            <td>{formatShopTime(call.startedAt, shopTimezone)}</td>
                             <td>
                               <div className="stack">
                                 <span className={outcomeClass(call.outcome)}>{call.outcome ?? 'in_progress'}</span>
@@ -617,7 +600,7 @@ html[data-user-theme="dark"] .transcript-note{background:#0d1117}
                           <div>
                             <h4>{formatPhone(call.callerPhone)}</h4>
                             <div className="mobile-call-meta">
-                              {formatDate(call.startedAt)} at {formatTime(call.startedAt)}
+                              {formatShopDate(call.startedAt, shopTimezone)} at {formatShopTime(call.startedAt, shopTimezone)}
                               <br />
                               {speakerLabel(call)}
                             </div>
@@ -680,7 +663,7 @@ html[data-user-theme="dark"] .transcript-note{background:#0d1117}
             <div className="modal-head">
               <div className="modal-title">
                 <h3 id="transcript-preview-title">Transcript preview</h3>
-                <p>{formatPhone(activeCall.callerPhone)} · {formatDateTime(activeCall.startedAt)}</p>
+                <p>{formatPhone(activeCall.callerPhone)} · {formatShopDateTime(activeCall.startedAt, shopTimezone)}</p>
               </div>
               <button className="btn ghost" type="button" onClick={() => setActiveCall(null)}>
                 Close

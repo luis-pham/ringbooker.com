@@ -1826,9 +1826,7 @@ export function MarketingHomeTemplate() {
           </div>
         </div>
       </div>
-        <MarketingFooter
-          descriptionOverride="AI receptionist and call recovery for nail salons, hair salons, spas, med spas, and beauty clinics — after-hours, peak-hour overflow, and missed-call follow-up on your current number."
-        />
+        <MarketingFooter />
       </>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeFaqJsonLd) }} />

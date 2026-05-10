@@ -1308,6 +1308,7 @@ async function sendSignupWelcomeEmail(params: {
   shopName: string;
   shopId: string;
   trialEndsAt?: string;
+  shopTimezone?: string | null;
   appBaseUrl: string;
   idempotencyKey: string;
 }): Promise<void> {
@@ -1317,6 +1318,7 @@ async function sendSignupWelcomeEmail(params: {
       email: params.email,
       shopName: params.shopName,
       trialEndsAt: params.trialEndsAt,
+      shopTimezone: params.shopTimezone,
       appBaseUrl: params.appBaseUrl,
     });
     const html = await renderBaseEmailHtml(input);
@@ -3530,6 +3532,7 @@ export function createBackendApp(deps: {
       shopName: createdShop.name,
       shopId: createdShop.id,
       trialEndsAt: trial.subscription.trialEndsAt ?? undefined,
+      shopTimezone: createdShop.timezone,
       appBaseUrl: getAppBaseUrl(c.req),
       idempotencyKey: `signup-welcome:${authUser.id}`,
     });
@@ -3777,6 +3780,7 @@ export function createBackendApp(deps: {
         shopName: shop.name,
         shopId: shop.id,
         trialEndsAt: trial?.trialEndsAt ?? undefined,
+        shopTimezone: shop.timezone,
         appBaseUrl,
         idempotencyKey: `google-signup-welcome:${authUser.id}`,
       });
@@ -4244,6 +4248,7 @@ export function createBackendApp(deps: {
       subscription,
       usage,
       now,
+      shopTimezone: shop.timezone,
     });
 
     return c.json({ ok: true, notifications });
@@ -4849,6 +4854,7 @@ export function createBackendApp(deps: {
     return c.json({
       ok: true,
       calls,
+      shop: { timezone: shop.timezone },
       pagination: { page, pageSize: USER_CALLS_PAGE_SIZE, total },
       summary: { total, booked, missed, transcriptsReady },
     });
@@ -5666,6 +5672,7 @@ export function createBackendApp(deps: {
         name: shop.name,
         plan: shop.plan,
         active: shop.active,
+        timezone: shop.timezone,
       },
       billing: {
         provider: subscriptionProvider,
@@ -5681,7 +5688,9 @@ export function createBackendApp(deps: {
         trialStartedAt: subscription?.trialStartedAt ?? null,
         trialEndsAt: subscription?.trialEndsAt ?? null,
         trialDaysRemaining: access.trialDaysRemaining,
+        currentPeriodStart: subscription?.currentPeriodStart ?? null,
         currentPeriodEnd: subscription?.currentPeriodEnd ?? null,
+        createdAt: subscription?.createdAt ?? null,
         paymentMethodStatus: access.paymentMethodStatus,
         hasPaymentMethod: access.paymentMethodStatus === 'valid',
         liveCallsEnabled: access.liveCallsEnabled,
@@ -5755,6 +5764,123 @@ export function createBackendApp(deps: {
         usage,
       },
     });
+  });
+
+  app.get(path('/user/billing/transactions'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_billing_transactions');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.billingProvider || !deps.billingSubscriptionsRepository || !deps.billingCustomersRepository) {
+      return c.json({
+        ok: true,
+        available: false,
+        reason: 'billing_transactions_unavailable',
+        transactions: [],
+        message: 'Official invoices and receipts are available in Manage billing.',
+      });
+    }
+    if (deps.billingProvider.provider !== 'paddle' || typeof deps.billingProvider.listBillingTransactions !== 'function') {
+      return c.json({
+        ok: true,
+        available: false,
+        reason: 'provider_not_supported',
+        transactions: [],
+        message: 'Official invoices and receipts are available in Manage billing.',
+      });
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+    if (!subscription || subscription.provider !== 'paddle') {
+      return c.json({
+        ok: true,
+        available: false,
+        reason: 'provider_not_supported',
+        transactions: [],
+        message: 'Payments and invoices will appear after your first billing event.',
+      });
+    }
+
+    const providerCustomerId = subscription.providerCustomerId?.trim();
+    const providerSubscriptionId = subscription.providerSubscriptionId?.trim() ?? null;
+    if (!providerCustomerId) {
+      return c.json({
+        ok: true,
+        available: false,
+        reason: 'missing_provider_customer_id',
+        transactions: [],
+        message: 'Payments and invoices will appear after your first billing event.',
+      });
+    }
+
+    const [customerByProvider, subscriptionByProvider] = await Promise.all([
+      deps.billingCustomersRepository.findByProviderCustomerId('paddle', providerCustomerId),
+      providerSubscriptionId
+        ? deps.billingSubscriptionsRepository.findByProviderSubscriptionId('paddle', providerSubscriptionId)
+        : Promise.resolve(null),
+    ]);
+    if (customerByProvider && customerByProvider.shopId !== shop.id) {
+      logger.error(
+        {
+          event: 'user_billing_transactions_ownership_conflict',
+          reason: 'customer_shop_mismatch',
+          shop_id: shop.id,
+          provider_customer_id: providerCustomerId,
+          existing_customer_shop_id: customerByProvider.shopId,
+        },
+        'user_billing_transactions_ownership_conflict',
+      );
+      return c.json({ ok: false, error: 'billing_ownership_conflict' }, 409);
+    }
+    if (subscriptionByProvider && subscriptionByProvider.shopId !== shop.id) {
+      logger.error(
+        {
+          event: 'user_billing_transactions_ownership_conflict',
+          reason: 'subscription_shop_mismatch',
+          shop_id: shop.id,
+          provider_subscription_id: providerSubscriptionId,
+          existing_subscription_shop_id: subscriptionByProvider.shopId,
+        },
+        'user_billing_transactions_ownership_conflict',
+      );
+      return c.json({ ok: false, error: 'billing_ownership_conflict' }, 409);
+    }
+
+    try {
+      const result = await deps.billingProvider.listBillingTransactions({
+        providerCustomerId,
+        providerSubscriptionId,
+        limit: 20,
+      });
+      return c.json({
+        ok: true,
+        available: true,
+        provider: result.provider,
+        transactions: result.transactions,
+        hasMore: result.hasMore === true,
+        nextCursor: result.nextCursor ?? null,
+        message: null,
+      });
+    } catch (err) {
+      logger.warn(
+        {
+          err,
+          shopId: shop.id,
+          providerCustomerId,
+          providerSubscriptionId,
+        },
+        'user_billing_transactions_fetch_failed',
+      );
+      return c.json({
+        ok: true,
+        available: false,
+        reason: 'paddle_transactions_unavailable',
+        transactions: [],
+        message: 'We could not load Paddle payment history right now. You can still view official invoices and receipts in Manage billing.',
+      });
+    }
   });
 
   app.post(path('/user/billing/manage'), async (c) => {

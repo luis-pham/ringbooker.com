@@ -86,3 +86,32 @@ test('billing UI has safe fallback copy when Manage Billing is disabled', () => 
   assert.match(billingLive, /Billing management is temporarily unavailable/);
   assert.match(billingLive, /Contact support if you need help updating payment details or managing your subscription/);
 });
+
+test('billing UI separates local account activity from Paddle payments and invoices', () => {
+  const billingLive = readFileSync('components/user/user-billing-live.tsx', 'utf8');
+  assert.match(billingLive, /Payments &amp; invoices/);
+  assert.match(billingLive, /Official payments and receipts from Paddle/);
+  assert.ok(billingLive.includes('/api/backend/user/billing/transactions'));
+  assert.match(billingLive, /Account billing activity/);
+  assert.match(billingLive, /This shows RingBooker account status changes/);
+  assert.match(billingLive, /You can still view official invoices and receipts in Manage billing/);
+});
+
+test('user-facing call and billing dates use shop timezone helpers', () => {
+  const callsLive = readFileSync('components/user/user-calls-live.tsx', 'utf8');
+  const billingLive = readFileSync('components/user/user-billing-live.tsx', 'utf8');
+  const dashboardLive = readFileSync('components/user/user-dashboard-live.tsx', 'utf8');
+
+  assert.match(callsLive, /formatShopDate/);
+  assert.match(callsLive, /formatShopTime/);
+  assert.match(callsLive, /getShopTimezone/);
+  assert.match(callsLive, /shop\?: \{ timezone\?: string \| null \}/);
+  assert.doesNotMatch(callsLive, /toLocale(?:DateString|TimeString|String)/);
+
+  assert.match(billingLive, /formatShopDate/);
+  assert.match(billingLive, /getShopTimezone/);
+  assert.doesNotMatch(billingLive, /toLocale(?:DateString|TimeString|String)/);
+
+  assert.match(dashboardLive, /formatShopDateTime/);
+  assert.match(dashboardLive, /getShopTimezone/);
+});

@@ -29,6 +29,7 @@ import type { BaseEmailInput } from '@/src/backend/services/email/base-email-typ
 import { emailDefaultFrom, emailFounderFrom, emailReplyTo, emailSupportAddress } from '@/src/backend/services/email/config';
 import type { EmailCategory } from '@/src/backend/services/email/types';
 import { SMS_MISSED_CALL, SMS_REMINDER_24H, SMS_REMINDER_2H } from '@/src/backend/services/sms/types';
+import { formatShopDate, formatShopTime } from '@/src/shared/timezone';
 
 type WorkerControls = {
   stop: () => void;
@@ -1283,6 +1284,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         shopName: shop.name,
         daysRemaining: payload.data.daysRemaining,
         trialEndsAt: subscription.trialEndsAt,
+        shopTimezone: shop.timezone,
         appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
         paddleTrialConfigVerified: process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true',
       });
@@ -1327,6 +1329,8 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           const { input, text } = buildTrialEndedEmailPayload({
             email,
             shopName: shop.name,
+            trialEndsAt: subscription.trialEndsAt,
+            shopTimezone: shop.timezone,
             appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
           });
           await runtime.emailService.sendEmail({
@@ -1389,6 +1393,8 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         const { input, text } = buildTrialEndedEmailPayload({
           email,
           shopName: shop.name,
+          trialEndsAt: expired.trialEndsAt,
+          shopTimezone: shop.timezone,
           appBaseUrl: process.env.APP_BASE_URL ?? 'http://localhost:3000',
         });
         await runtime.emailService.sendEmail({
@@ -1426,17 +1432,8 @@ function getCallbackBackoffMinutes(attemptNumber: number): number {
 }
 
 function toLocalLabels(datetimeUtcIso: string, timezone: string): { dateLabel: string; timeLabel: string } {
-  const date = new Date(datetimeUtcIso);
-  const dateLabel = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-  }).format(date);
-  const timeLabel = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(date);
-  return { dateLabel, timeLabel };
+  return {
+    dateLabel: formatShopDate(datetimeUtcIso, timezone),
+    timeLabel: formatShopTime(datetimeUtcIso, timezone),
+  };
 }

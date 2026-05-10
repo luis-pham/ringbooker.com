@@ -1,5 +1,6 @@
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
+import { marketingFooterTagline } from '@/lib/site';
 
 const styles: string[] = [
   String.raw`
@@ -381,7 +382,7 @@ export function MarketingLoginTemplate() {
                   </div>
                   RingBooker
                 </div>
-                <p className="footer-desc">AI phone agent for booking-heavy businesses. Answer calls, book appointments, and follow up automatically.</p>
+                <p className="footer-desc">{marketingFooterTagline}</p>
               </div>
               <div className="footer-col">
                 <h4>Product</h4>

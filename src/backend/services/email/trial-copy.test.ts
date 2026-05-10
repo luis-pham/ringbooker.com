@@ -7,6 +7,7 @@ import {
   buildForwardingVerifiedEmailPayload,
   buildLiveAnsweringBillingPausedEmailPayload,
   buildPaymentMethodAddedEmailPayload,
+  buildTrialEndedEmailPayload,
   buildTrialReminderEmailPayload,
   buildWelcomeSignupEmailPayload,
 } from '@/src/backend/services/email/base-email-builders';
@@ -106,4 +107,47 @@ test('phone setup lifecycle emails clearly state live answering state', () => {
   assert.match(forwardingReady.text, /Live answering is not active until forwarding is verified and you enable it/i);
   assert.match(forwardingVerified.text, /Live answering is still off until you enable it/i);
   assert.match(billingPaused.text, /RingBooker will not answer forwarded live calls/i);
+});
+
+test('trial lifecycle email dates use the shop timezone', () => {
+  const trialEndsAt = '2026-05-01T06:30:00.000Z';
+  const laReminder = buildTrialReminderEmailPayload({
+    email: 'owner@example.com',
+    shopName: 'LA Salon',
+    daysRemaining: 3,
+    trialEndsAt,
+    appBaseUrl,
+    paddleTrialConfigVerified: false,
+    shopTimezone: 'America/Los_Angeles',
+  });
+  const nyReminder = buildTrialReminderEmailPayload({
+    email: 'owner@example.com',
+    shopName: 'NY Salon',
+    daysRemaining: 3,
+    trialEndsAt,
+    appBaseUrl,
+    paddleTrialConfigVerified: false,
+    shopTimezone: 'America/New_York',
+  });
+  const ended = buildTrialEndedEmailPayload({
+    email: 'owner@example.com',
+    shopName: 'LA Salon',
+    appBaseUrl,
+    trialEndsAt,
+    shopTimezone: 'America/Los_Angeles',
+  });
+  const fallback = buildTrialReminderEmailPayload({
+    email: 'owner@example.com',
+    shopName: 'Fallback Salon',
+    daysRemaining: 1,
+    trialEndsAt: 'bad-date',
+    appBaseUrl,
+    paddleTrialConfigVerified: false,
+    shopTimezone: 'Not/AZone',
+  });
+
+  assert.match(laReminder.text, /April 30, 2026/);
+  assert.match(nyReminder.text, /May 1, 2026/);
+  assert.match(ended.text, /ended on April 30, 2026/i);
+  assert.match(fallback.text, /Unknown/);
 });

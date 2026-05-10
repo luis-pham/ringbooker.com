@@ -13,6 +13,7 @@ import {
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { CUSTOM_MANAGED_SETUP_ITEMS } from '@/components/user/user-plan-ux-copy';
+import { formatShopDateTime, getShopTimezone } from '@/src/shared/timezone';
 
 type GoLiveDashboardPrimaryCta =
   | 'add_payment_method'
@@ -121,17 +122,7 @@ function formatOverviewOutcome(outcome: string | undefined): string {
 
 function formatOverviewWhen(iso: string | undefined, timeZone: string): string {
   if (!iso) return '';
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: timeZone || 'UTC',
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
+  return formatShopDateTime(iso, timeZone);
 }
 
 function truncateOverviewText(text: string, max: number): string {
@@ -536,7 +527,7 @@ export function UserDashboardLive() {
               </section>
             ) : null}
             {isEnterprisePlan && !data?.onboardingRequired ? (
-              <section className="card" style={{ marginBottom: 18, borderColor: '#ddd6fe', background: '#faf5ff' }}>
+              <section className="card" style={{ marginBottom: 18 }}>
                 <div className="panel-head">
                   <div>
                     <h3>{enterpriseApprovalPending ? 'Your Custom setup is being prepared' : 'Your Custom setup is managed by RingBooker'}</h3>
@@ -553,8 +544,12 @@ export function UserDashboardLive() {
                   ))}
                 </ul>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
-                  <a className="btn purple" href="/contact?topic=implementation">Contact implementation support</a>
-                  <a className="btn" href="/contact?topic=onboarding-call">Schedule onboarding call</a>
+                  <a className="btn user-save" href="/contact?topic=implementation">
+                    Contact implementation support
+                  </a>
+                  <a className="btn" href="/contact?topic=onboarding-call">
+                    Schedule onboarding call
+                  </a>
                 </div>
               </section>
             ) : null}
@@ -704,7 +699,7 @@ export function UserDashboardLive() {
               {simplifiedOverview ? (
                 <>
                   {data?.overviewRail ? (
-                    <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={data.shop?.timezone ?? 'UTC'} />
+                    <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={getShopTimezone(data.shop)} />
                   ) : null}
                   <div className="card soft">
                     <div className="panel-head">
@@ -820,7 +815,7 @@ export function UserDashboardLive() {
                     </div>
                   </div>
                   {data?.overviewRail ? (
-                    <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={data.shop?.timezone ?? 'UTC'} />
+                    <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={getShopTimezone(data.shop)} />
                   ) : null}
                 </>
               )}

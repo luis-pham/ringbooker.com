@@ -11,6 +11,7 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { formatShopDateTime } from '@/src/shared/timezone';
 
 type Booking = {
   id: string;
@@ -31,16 +32,7 @@ type BookingsResponse = {
 };
 
 function formatDateTime(value?: string, timezone?: string) {
-  if (!value) return 'Unknown';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return 'Unknown';
-  return parsed.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: timezone || undefined,
-  });
+  return formatShopDateTime(value, timezone);
 }
 
 function formatPhone(value?: string) {

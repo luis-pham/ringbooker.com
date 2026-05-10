@@ -36,7 +36,9 @@ export async function getShopUsageForPeriod(
   },
 ): Promise<ShopUsageForPeriod> {
   const now = params.now ?? new Date();
-  const period = params.periodStart && params.periodEnd ? { periodStart: params.periodStart, periodEnd: params.periodEnd } : calendarMonthPeriod(now);
+  const period = params.periodStart && params.periodEnd
+    ? { periodStart: params.periodStart, periodEnd: params.periodEnd }
+    : calendarMonthPeriod(now, params.shop.timezone);
   const limits = getPlanUsageLimits(params.shop.plan, params.commercialAccount);
   const [capturedCallersUsed, voiceSecondsUsed, activeLiveCalls] = await Promise.all([
     deps.callLogsRepository.countByShop(params.shop.id, {

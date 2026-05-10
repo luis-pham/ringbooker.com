@@ -15,7 +15,7 @@ import type {
   ShopAccessStatesRepository,
   ShopsRepository,
 } from '@/src/backend/ports/repositories';
-import type { BillingProviderAdapter, BillingWebhookSyncResult } from '@/src/backend/services/billing/types';
+import type { BillingProviderAdapter, BillingTransactionRecord, BillingWebhookSyncResult } from '@/src/backend/services/billing/types';
 
 function getPaddleApiBaseUrl() {
   const env = getEnv();
@@ -378,6 +378,114 @@ function shouldMutateSubscriptionFromPaddleEvent(params: {
   return normalized.includes('payment_method.') || normalized.includes('transaction.payment_failed');
 }
 
+function firstString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function nestedRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function nestedArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function centsToAmount(value: unknown): number {
+  const raw = typeof value === 'string' ? Number(value) : typeof value === 'number' ? value : 0;
+  return Number.isFinite(raw) ? raw / 100 : 0;
+}
+
+function extractTransactionAmount(data: Record<string, unknown>): number {
+  const details = nestedRecord(data.details);
+  const totals = nestedRecord(data.totals);
+  const detailsTotals = nestedRecord(details?.totals);
+  const adjustedTotals = nestedRecord(details?.adjusted_totals);
+  const payments = nestedArray(data.payments).map(nestedRecord).filter(Boolean) as Array<Record<string, unknown>>;
+  const firstPayment = payments[0];
+  return centsToAmount(
+    firstString(
+      adjustedTotals?.grand_total,
+      adjustedTotals?.total,
+      detailsTotals?.grand_total,
+      detailsTotals?.total,
+      totals?.grand_total,
+      totals?.total,
+      firstPayment?.amount,
+    ),
+  );
+}
+
+function extractTransactionCurrency(data: Record<string, unknown>): string {
+  const details = nestedRecord(data.details);
+  const totals = nestedRecord(data.totals);
+  const payments = nestedArray(data.payments).map(nestedRecord).filter(Boolean) as Array<Record<string, unknown>>;
+  return firstString(data.currency_code, totals?.currency_code, details?.currency_code, payments[0]?.currency_code) ?? 'USD';
+}
+
+function extractTransactionDescription(data: Record<string, unknown>): string {
+  const invoiceNumber = firstString(data.invoice_number, nestedRecord(data.invoice)?.number);
+  if (invoiceNumber) return `Invoice ${invoiceNumber}`;
+  const items = nestedArray(data.items).map(nestedRecord).filter(Boolean) as Array<Record<string, unknown>>;
+  const price = nestedRecord(items[0]?.price);
+  const product = nestedRecord(price?.product);
+  const name = firstString(product?.name, price?.name, items[0]?.description);
+  return name ?? 'Paddle transaction';
+}
+
+function extractBillingPeriod(data: Record<string, unknown>): { start?: string; end?: string } {
+  const period = nestedRecord(data.billing_period) ?? nestedRecord(data.current_billing_period);
+  return {
+    start: firstString(period?.starts_at, period?.start_at),
+    end: firstString(period?.ends_at, period?.end_at),
+  };
+}
+
+function extractTransactionLinks(data: Record<string, unknown>): { invoiceUrl?: string; receiptUrl?: string } {
+  const invoice = nestedRecord(data.invoice);
+  const checkout = nestedRecord(data.checkout);
+  const payments = nestedArray(data.payments).map(nestedRecord).filter(Boolean) as Array<Record<string, unknown>>;
+  return {
+    invoiceUrl: firstString(data.invoice_url, data.invoice_pdf, invoice?.url, invoice?.pdf_url),
+    receiptUrl: firstString(data.receipt_url, data.receipt_pdf, payments[0]?.receipt_url, payments[0]?.receipt_pdf, checkout?.url),
+  };
+}
+
+function mapTransactionType(data: Record<string, unknown>): BillingTransactionRecord['type'] {
+  const status = firstString(data.status)?.toLowerCase() ?? '';
+  const origin = firstString(data.origin)?.toLowerCase() ?? '';
+  const amount = extractTransactionAmount(data);
+  if (status.includes('refunded') || origin.includes('refund')) return 'refund';
+  if (amount < 0) return 'credit';
+  if (firstString(data.invoice_number, nestedRecord(data.invoice)?.number)) return 'invoice';
+  if (status.includes('paid') || status.includes('completed')) return 'payment';
+  return 'unknown';
+}
+
+function sanitizePaddleTransaction(data: Record<string, unknown>): BillingTransactionRecord | null {
+  const id = firstString(data.id);
+  const date = firstString(data.billed_at, data.created_at, data.updated_at);
+  if (!id || !date) return null;
+  const period = extractBillingPeriod(data);
+  const links = extractTransactionLinks(data);
+  return {
+    id,
+    date,
+    description: extractTransactionDescription(data),
+    amount: extractTransactionAmount(data),
+    currency: extractTransactionCurrency(data),
+    status: firstString(data.status) ?? 'unknown',
+    type: mapTransactionType(data),
+    billingPeriodStart: period.start,
+    billingPeriodEnd: period.end,
+    invoiceNumber: firstString(data.invoice_number, nestedRecord(data.invoice)?.number),
+    invoiceUrl: links.invoiceUrl,
+    receiptUrl: links.receiptUrl,
+  };
+}
+
 export class PaddleBillingProvider implements BillingProviderAdapter {
   readonly provider = 'paddle' as const;
 
@@ -578,6 +686,60 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       targetPlan: params.targetPlan,
       billingInterval: params.billingInterval,
       prorationBillingMode: params.prorationBillingMode,
+    };
+  }
+
+  async listBillingTransactions(params: {
+    providerCustomerId: string;
+    providerSubscriptionId?: string | null;
+    limit?: number;
+    after?: string | null;
+    before?: string | null;
+  }) {
+    const limit = Math.min(Math.max(params.limit ?? 20, 1), 50);
+    const url = new URL(`${getPaddleApiBaseUrl()}/transactions`);
+    url.searchParams.set('customer_id', params.providerCustomerId);
+    if (params.providerSubscriptionId?.trim()) {
+      url.searchParams.set('subscription_id', params.providerSubscriptionId.trim());
+    }
+    url.searchParams.set('per_page', String(limit));
+    if (params.after?.trim()) url.searchParams.set('after', params.after.trim());
+    if (params.before?.trim()) url.searchParams.set('before', params.before.trim());
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${getEnv().PADDLE_API_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text().catch(() => '');
+      throw new Error(`paddle_list_transactions_failed:${response.status}:${bodyText}`);
+    }
+
+    const json = (await response.json()) as {
+      data?: unknown[];
+      meta?: {
+        has_more?: boolean;
+        pagination?: {
+          has_more?: boolean;
+          next?: string | null;
+        };
+      };
+    };
+    const transactions = (Array.isArray(json.data) ? json.data : [])
+      .map(nestedRecord)
+      .filter(Boolean)
+      .map((entry) => sanitizePaddleTransaction(entry as Record<string, unknown>))
+      .filter((entry): entry is BillingTransactionRecord => entry != null);
+
+    return {
+      provider: 'paddle' as const,
+      transactions,
+      hasMore: json.meta?.pagination?.has_more ?? json.meta?.has_more ?? false,
+      nextCursor: json.meta?.pagination?.next ?? null,
     };
   }
 

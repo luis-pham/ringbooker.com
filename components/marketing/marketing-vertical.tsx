@@ -1840,19 +1840,6 @@ const VERTICAL_LABEL: Record<MarketingVerticalKey, string> = {
   'beauty-clinic': 'Beauty Clinic',
 };
 
-const FOOTER_DESCRIPTION_BY_VERTICAL: Record<MarketingVerticalKey, string> = {
-  'nail-salon':
-    'AI receptionist for nail salons — English and Vietnamese call coverage, walk-in availability, pricing questions, and missed-call follow-up on your current number.',
-  'hair-salon':
-    'AI receptionist for hair salons — preferred stylist requests, color slot inquiries, reschedule calls, and after-hours coverage on your current number.',
-  spa:
-    'AI receptionist for day spas — couples massage bookings, package inquiries, gift certificate calls, and after-hours coverage on your current number.',
-  'med-spa':
-    'AI receptionist for med spas — Botox, filler, and aesthetic consultation call capture after hours and during treatments, on your current number.',
-  'beauty-clinic':
-    'AI receptionist for beauty clinics, wax studios, and lash studios — consultation calls, after-hours inquiries, and missed-call follow-up on your current number.',
-};
-
 export async function MarketingVerticalTemplate({ vertical }: { vertical: MarketingVerticalKey }) {
   const theme = INDUSTRY_THEME[vertical];
   const faq = FAQ_BY_VERTICAL[vertical];
@@ -1951,7 +1938,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
           title={ctaMap[vertical].title}
         />
       </main>
-      <MarketingFooter descriptionOverride={FOOTER_DESCRIPTION_BY_VERTICAL[vertical]} />
+      <MarketingFooter />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />

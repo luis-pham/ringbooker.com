@@ -1,5 +1,6 @@
 import type { BaseEmailInput } from './base-email-types';
 import { escapeHtmlText, isAbsoluteHttpOrHttpsUrl } from './base-email-escape';
+import { formatShopLongDate } from '@/src/shared/timezone';
 
 function displayNameFromEmail(email: string): string {
   const local = email.split('@')[0]?.trim() ?? 'there';
@@ -25,6 +26,7 @@ export function buildWelcomeSignupEmailPayload(params: {
   email: string;
   shopName: string;
   trialEndsAt?: string | null;
+  shopTimezone?: string | null;
   appBaseUrl: string;
 }): { input: BaseEmailInput; text: string } {
   const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
@@ -33,7 +35,7 @@ export function buildWelcomeSignupEmailPayload(params: {
   const businessName = escapeHtmlText(params.shopName);
   const customerName = escapeHtmlText(displayNameFromEmail(params.email));
   const trialEndText = params.trialEndsAt
-    ? new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(params.trialEndsAt))
+    ? formatShopLongDate(params.trialEndsAt, params.shopTimezone)
     : '14 days from signup';
 
   const input: BaseEmailInput = {
@@ -84,15 +86,14 @@ export function buildTrialReminderEmailPayload(params: {
   shopName: string;
   daysRemaining: 7 | 3 | 1;
   trialEndsAt: string;
+  shopTimezone?: string | null;
   appBaseUrl: string;
   paddleTrialConfigVerified?: boolean;
 }): { input: BaseEmailInput; text: string } {
   const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
   const billingUrl = `${base}/user/billing`;
   const businessName = escapeHtmlText(params.shopName);
-  const trialEndText = new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(
-    new Date(params.trialEndsAt),
-  );
+  const trialEndText = formatShopLongDate(params.trialEndsAt, params.shopTimezone);
   const trialPaymentCopy = paymentMethodTrialCopy(params.paddleTrialConfigVerified);
   const input: BaseEmailInput = {
     title: `Your RingBooker trial ends in ${params.daysRemaining} day${params.daysRemaining === 1 ? '' : 's'}`,
@@ -123,10 +124,13 @@ export function buildTrialEndedEmailPayload(params: {
   email: string;
   shopName: string;
   appBaseUrl: string;
+  trialEndsAt?: string | null;
+  shopTimezone?: string | null;
 }): { input: BaseEmailInput; text: string } {
   const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
   const billingUrl = `${base}/user/billing`;
   const businessName = escapeHtmlText(params.shopName);
+  const trialEndText = params.trialEndsAt ? formatShopLongDate(params.trialEndsAt, params.shopTimezone) : null;
   const input: BaseEmailInput = {
     title: 'Your RingBooker trial has ended',
     previewText: 'Live answering is paused until billing is resolved.',
@@ -134,7 +138,7 @@ export function buildTrialEndedEmailPayload(params: {
     heroSubtitleHtml: `<p style="margin:0">RingBooker is paused for <strong>${businessName}</strong>.</p>`,
     greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
     bodyHtml: [
-      '<p style="margin:0 0 12px 0">Your trial has ended. Live answering is paused until billing is resolved.</p>',
+      `<p style="margin:0 0 12px 0">Your trial${trialEndText ? ` ended on ${escapeHtmlText(trialEndText)}` : ' has ended'}. Live answering is paused until billing is resolved.</p>`,
       '<p style="margin:0">You can still log in, review your setup, call logs, and phone setup details.</p>',
     ].join(''),
     ctaLabel: 'Manage billing',
@@ -142,7 +146,7 @@ export function buildTrialEndedEmailPayload(params: {
     signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
   };
   const text = [
-    `Your RingBooker trial for "${params.shopName}" has ended.`,
+    `Your RingBooker trial for "${params.shopName}"${trialEndText ? ` ended on ${trialEndText}` : ' has ended'}.`,
     'Live answering is paused until billing is resolved.',
     `Manage billing: ${billingUrl}`,
   ].join('\n');

@@ -13,6 +13,7 @@ import {
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { BILLING_PLAN_CARD_FEATURES, CUSTOM_MANAGED_SETUP_ITEMS } from '@/components/user/user-plan-ux-copy';
+import { formatShopDate, getShopTimezone } from '@/src/shared/timezone';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type BillingProvider = 'paddle' | 'stripe' | 'manual';
@@ -32,6 +33,7 @@ type UserBillingResponse = {
     name: string;
     plan: ShopPlan;
     active: boolean;
+    timezone?: string | null;
   };
   billing?: {
     provider: BillingProvider;
@@ -46,10 +48,13 @@ type UserBillingResponse = {
       amountCents?: number | null;
       currency: string;
       interval: 'month' | 'year';
+      currentPeriodStart?: string | null;
       currentPeriodEnd?: string | null;
+      trialStartedAt?: string | null;
       trialEndsAt?: string | null;
       paymentMethodStatus?: 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
       cancelAtPeriodEnd: boolean;
+      createdAt?: string | null;
     } | null;
     planLabel?: string;
     formattedPrice?: string;
@@ -97,6 +102,30 @@ type UserBillingResponse = {
   error?: string;
 };
 
+type BillingTransactionRecord = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  currency: string;
+  status: string;
+  type: 'payment' | 'invoice' | 'refund' | 'credit' | 'unknown';
+  billingPeriodStart?: string;
+  billingPeriodEnd?: string;
+  invoiceNumber?: string;
+  invoiceUrl?: string;
+  receiptUrl?: string;
+};
+
+type BillingTransactionsResponse = {
+  ok: boolean;
+  available?: boolean;
+  transactions?: BillingTransactionRecord[];
+  message?: string | null;
+  reason?: string;
+  error?: string;
+};
+
 type BillingSubscriptionRow = NonNullable<NonNullable<UserBillingResponse['billing']>['subscription']>;
 
 const PLAN_CATALOG: Array<{
@@ -129,13 +158,9 @@ function formatMoney(amount: number, currency: string) {
   }).format(amount);
 }
 
-function formatDate(value?: string | null) {
+function formatBillingDate(value: string | null | undefined, shopTimezone: string) {
   if (!value) return 'Not scheduled';
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  }).format(new Date(value));
+  return formatShopDate(value, shopTimezone);
 }
 
 function planDisplayName(plan: ShopPlan) {
@@ -184,14 +209,15 @@ function subscriptionCardValue(subscription: BillingSubscriptionRow | null) {
 function subscriptionCardMeta(
   subscription: BillingSubscriptionRow | null,
   trialDaysRemaining: number | null | undefined,
+  shopTimezone: string,
 ) {
   if (!subscription) return 'Start a subscription to unlock invoices and renewals.';
   if (subscription.status === 'trialing' && typeof trialDaysRemaining === 'number') {
     return `${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in trial`;
   }
   if (subscription.status === 'trialing') return 'Trial in progress';
-  if (subscription.currentPeriodEnd) return `Renews around ${formatDate(subscription.currentPeriodEnd)}`;
-  return subscription.trialEndsAt ? `Trial ends ${formatDate(subscription.trialEndsAt)}` : 'Subscription details update after billing.';
+  if (subscription.currentPeriodEnd) return `Renews around ${formatBillingDate(subscription.currentPeriodEnd, shopTimezone)}`;
+  return subscription.trialEndsAt ? `Trial ends ${formatBillingDate(subscription.trialEndsAt, shopTimezone)}` : 'Subscription details update after billing.';
 }
 
 function paymentCardValue(pm: 'none' | 'pending' | 'valid' | 'failed' | 'unknown' | undefined) {
@@ -245,7 +271,7 @@ function getStatusTone(status: BillingSubscriptionStatus | undefined) {
 function getStatusLabel(status: BillingSubscriptionStatus | undefined) {
   switch (status) {
     case 'active':
-      return 'Paid';
+      return 'Active';
     case 'trialing':
       return 'Trialing';
     case 'past_due':
@@ -259,6 +285,15 @@ function getStatusLabel(status: BillingSubscriptionStatus | undefined) {
     default:
       return 'Pending';
   }
+}
+
+function transactionStatusTone(status: string): 'green' | 'purple' | 'orange' | 'red' | 'gray' {
+  const normalized = status.toLowerCase();
+  if (['completed', 'paid', 'billed'].includes(normalized)) return 'green';
+  if (['ready', 'draft', 'pending', 'past_due'].includes(normalized)) return 'orange';
+  if (['canceled', 'cancelled', 'failed'].includes(normalized)) return 'red';
+  if (normalized.includes('refund') || normalized.includes('credit')) return 'purple';
+  return 'gray';
 }
 
 type BillingUiState =
@@ -372,6 +407,17 @@ export function UserBillingLive() {
   const [billingNotice, setBillingNotice] = useState<BillingNotice>(null);
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'annual'>('monthly');
   const [billingTab, setBillingTab] = useState<BillingSectionTab>('overview');
+  const [transactionsState, setTransactionsState] = useState<{
+    loading: boolean;
+    available: boolean;
+    rows: BillingTransactionRecord[];
+    message: string | null;
+  }>({
+    loading: false,
+    available: false,
+    rows: [],
+    message: null,
+  });
 
   const refreshBilling = useCallback(async () => {
     const controller = new AbortController();
@@ -415,6 +461,48 @@ export function UserBillingLive() {
   }, [refreshBilling]);
 
   useEffect(() => {
+    if (!data?.ok || !data.billing) return;
+    let active = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    setTransactionsState((current) => ({ ...current, loading: true }));
+    void fetch('/api/backend/user/billing/transactions', { signal: controller.signal })
+      .then(async (response) => {
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) throw new Error('invalid_transactions_response');
+        const body = (await response.json()) as BillingTransactionsResponse;
+        if (!active) return;
+        setTransactionsState({
+          loading: false,
+          available: body.ok === true && body.available === true,
+          rows: body.ok === true && Array.isArray(body.transactions) ? body.transactions : [],
+          message:
+            body.message ??
+            (body.ok === true
+              ? null
+              : 'We could not load Paddle payment history right now. You can still view official invoices and receipts in Manage billing.'),
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setTransactionsState({
+          loading: false,
+          available: false,
+          rows: [],
+          message: 'We could not load Paddle payment history right now. You can still view official invoices and receipts in Manage billing.',
+        });
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [data?.ok, data?.billing]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     if (window.location.hash === '#go-live-forwarding') {
       window.location.replace(`${window.location.origin}/user/go-live#go-live-forwarding`);
@@ -436,22 +524,25 @@ export function UserBillingLive() {
   const hasPaymentMethod = data?.billing?.hasPaymentMethod === true;
   const liveEnabled = data?.billing?.liveCallsEnabled;
   const catalog = useMemo(() => PLAN_CATALOG.find((p) => p.plan === currentPlan) ?? PLAN_CATALOG[0], [currentPlan]);
+  const shopTimezone = getShopTimezone(data?.shop);
 
   const billingHistory = useMemo(() => {
     if (!subscription) return [];
     const rows = [];
+    const periodStart = subscription.currentPeriodStart ?? subscription.trialStartedAt ?? subscription.createdAt ?? null;
     const periodEnd = subscription.currentPeriodEnd ?? subscription.trialEndsAt ?? null;
+    const isTrial = subscription.status === 'trialing';
     rows.push({
-      date: formatDate(periodEnd),
-      description: `${planDisplayName(subscription.plan)} plan`,
+      date: formatBillingDate(periodStart, shopTimezone),
+      description: isTrial ? `${planDisplayName(subscription.plan)} trial started` : `${planDisplayName(subscription.plan)} plan`,
       amount: subscription.amount > 0 ? formatMoney(subscription.amount, subscription.currency) : '$0',
       status: getStatusLabel(subscription.status),
       tone: getStatusTone(subscription.status),
     });
-    if (subscription.currentPeriodEnd) {
+    if (periodEnd) {
       rows.push({
-        date: formatDate(subscription.currentPeriodEnd),
-        description: 'Upcoming renewal window',
+        date: formatBillingDate(periodEnd, shopTimezone),
+        description: isTrial ? 'Trial ends' : 'Next billing date',
         amount: subscription.amount > 0 ? formatMoney(subscription.amount, subscription.currency) : '$0',
         status: subscription.cancelAtPeriodEnd ? 'Cancel scheduled' : 'Scheduled',
         tone: subscription.cancelAtPeriodEnd ? 'orange' : 'green',
@@ -664,7 +755,7 @@ export function UserBillingLive() {
                     <div className="bst-value">
                       <span className={subTagClass}>{subscriptionCardValue(subscription)}</span>
                     </div>
-                    <div className="bst-meta">{subscriptionCardMeta(subscription, data?.billing?.trialDaysRemaining)}</div>
+                    <div className="bst-meta">{subscriptionCardMeta(subscription, data?.billing?.trialDaysRemaining, shopTimezone)}</div>
                   </div>
                   <div className="billing-status-card">
                     <div className="bst-label">Payment method</div>
@@ -875,7 +966,7 @@ export function UserBillingLive() {
                       ) : null}
 
                       {isEnterprisePlan ? (
-                        <section className="card" style={{ marginBottom: 16, borderColor: '#ddd6fe', background: '#faf5ff' }}>
+                        <section className="card" style={{ marginBottom: 16 }}>
                           <h3 style={{ marginTop: 0 }}>Custom billing is managed by the RingBooker team</h3>
                           <p className="sub">
                             {enterpriseApprovalPending
@@ -888,8 +979,12 @@ export function UserBillingLive() {
                             ))}
                           </ul>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
-                            <a className="btn purple" href="/contact?topic=sales">Contact sales</a>
-                            <a className="btn" href="/contact?topic=implementation">Contact implementation support</a>
+                            <a className="btn user-save" href="/contact?topic=sales">
+                              Contact sales
+                            </a>
+                            <a className="btn" href="/contact?topic=implementation">
+                              Contact implementation support
+                            </a>
                           </div>
                         </section>
                       ) : null}
@@ -1126,13 +1221,70 @@ export function UserBillingLive() {
 
                   {billingTab === 'history' ? (
                     <div role="tabpanel" id="billing-panel-history" aria-labelledby="billing-tab-history">
+                      <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
+                        <div className="panel-head">
+                          <div>
+                            <h3>Payments &amp; invoices</h3>
+                            <p className="sub">Official payments and receipts from Paddle.</p>
+                          </div>
+                          {manageBillingAvailable ? (
+                            <button type="button" className="btn" disabled={managingBilling} onClick={() => void openManageBilling()}>
+                              {managingBilling ? 'Opening…' : 'Manage billing'}
+                            </button>
+                          ) : null}
+                        </div>
+                        {transactionsState.loading ? (
+                          <p className="sub">Loading Paddle payment history…</p>
+                        ) : transactionsState.available && transactionsState.rows.length > 0 ? (
+                          <table className="table">
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Receipt</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {transactionsState.rows.map((row) => (
+                                <tr key={row.id}>
+                                  <td>{formatBillingDate(row.date, shopTimezone)}</td>
+                                  <td>{row.description}</td>
+                                  <td>{formatMoney(row.amount, row.currency)}</td>
+                                  <td>
+                                    <span className={`tag ${transactionStatusTone(row.status)}`}>{row.status}</span>
+                                  </td>
+                                  <td>
+                                    {row.invoiceUrl ? (
+                                      <a className="link" href={row.invoiceUrl} target="_blank" rel="noreferrer">
+                                        View invoice
+                                      </a>
+                                    ) : row.receiptUrl ? (
+                                      <a className="link" href={row.receiptUrl} target="_blank" rel="noreferrer">
+                                        View receipt
+                                      </a>
+                                    ) : (
+                                      <span className="sub">Available in Manage billing</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p className="sub">
+                            {transactionsState.message ?? 'Official invoices and receipts are available in Manage billing.'}
+                          </p>
+                        )}
+                      </section>
                       {billingHistory.length > 0 ? (
                         <section className="card billing-history-compact" style={{ marginBottom: 16 }}>
                           <div className="panel-head">
                             <div>
                               <h3>{billing?.billingHistoryLabel ?? 'Account billing activity'}</h3>
                               <p className="sub">
-                                Recent subscription activity and renewal timing. Official invoices and payment receipts are available in billing management.
+                                This shows RingBooker account status changes.
                               </p>
                             </div>
                             {manageBillingAvailable ? (
