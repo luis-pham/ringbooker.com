@@ -311,6 +311,10 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     addService({ ...item, confidence: 0.86 });
   }
 
+  for (const item of extractGroupedMenuListServices(text)) {
+    addService({ ...item, confidence: 0.68 });
+  }
+
   for (const rawLine of text.split(/\n+/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
     const match = rawLine.match(SERVICE_LINE_RE);
     if (!match) continue;
@@ -361,6 +365,63 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     });
   }
   return [...services.values()].slice(0, 80);
+}
+
+const GROUPED_MENU_PHRASES: Record<string, string[]> = {
+  Color: [
+    'Face Frame Retouch',
+    'Color Retouch & Ends Refresh',
+    'Color Retouch',
+    'Corrective Color',
+    'Brow Tinting',
+    'Partial Highlight',
+    'Full Highlight',
+    'Face Frame Highlight',
+    'Deposit-Only Color',
+    'Deposit Only Color',
+  ],
+  'Hair Cuts': ['Women', 'Men', 'Children', 'Bang Trim', 'Beard Trim', 'Consultation'],
+  Extensions: ['Hotheads', 'Donna Bella'],
+  Treatments: [
+    'Brazilian Blowout',
+    'Keratin Treatment',
+    'Full Permanent',
+    'Partial Permanent',
+    'Botanical Hair Conditioning',
+    'Botanical Repair',
+    'Glossing Treatment',
+  ],
+  Styling: ['Wash & Style', 'Special Occasion', 'Special Occassion', 'Up-do', 'Updo', 'Blow Dry', 'Straightening', 'Bridal Up-do', 'Bridal Updo'],
+  Makeup: ['Bridal Makeup', 'Eyes Only'],
+  Waxing: ['Brows', 'Lip', 'Chin'],
+  Nails: ['Polish Change', 'Shellac', 'Manicure', 'Pedicure'],
+};
+
+function extractGroupedMenuListServices(text: string): Array<{ name: string; group: string; priceType: ImportedServiceSuggestion['priceType']; confidence: number }> {
+  const normalized = cleanCompressedServiceText(text);
+  if (/\$\s?\d{1,4}|\bfrom\s+\$?\d{1,4}|\bstarting at\s+\$?\d{1,4}/i.test(normalized)) return [];
+  const groupNames = Object.keys(GROUPED_MENU_PHRASES);
+  const matches: Array<{ group: string; index: number }> = [];
+  for (const group of groupNames) {
+    const pattern = new RegExp(`\\b${group.replace(/\s+/g, '\\s+')}\\b`, 'gi');
+    for (const match of normalized.matchAll(pattern)) {
+      if (typeof match.index === 'number') matches.push({ group, index: match.index });
+    }
+  }
+  matches.sort((a, b) => a.index - b.index);
+  const out: Array<{ name: string; group: string; priceType: ImportedServiceSuggestion['priceType']; confidence: number }> = [];
+  for (let i = 0; i < matches.length; i += 1) {
+    const current = matches[i];
+    const next = matches[i + 1];
+    const segment = normalized.slice(current.index, next?.index ?? normalized.length);
+    for (const phrase of GROUPED_MENU_PHRASES[current.group] ?? []) {
+      const pattern = new RegExp(`\\b${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')}\\b`, 'i');
+      if (!pattern.test(segment)) continue;
+      const displayName = phrase === 'Special Occassion' ? 'Special Occasion' : phrase === 'Updo' ? 'Up-do' : phrase === 'Bridal Updo' ? 'Bridal Up-do' : phrase;
+      out.push({ name: displayName, group: current.group, priceType: /consultation/i.test(displayName) ? 'consultation' : 'varies', confidence: 0.68 });
+    }
+  }
+  return out;
 }
 
 function cleanCompressedServiceText(text: string): string {
@@ -585,6 +646,22 @@ function cleanStaffName(value: string): string {
   return value.replace(/^(team|staff|meet|our)\s+/i, '').replace(/\s+/g, ' ').trim();
 }
 
+function isLikelyStaffName(value: string): boolean {
+  const cleaned = cleanStaffName(value);
+  if (!cleaned || cleaned.length < 2 || cleaned.length > 60) return false;
+  if (/\d|@|#|\/|\$/.test(cleaned)) return false;
+  if (/^(home|services?|artists?|team|staff|contact|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
+  if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours|salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
+  return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
+}
+
+function staffRoleFromContext(context: string): string | undefined {
+  if (/stylist|hair|salon|artist/i.test(context)) return 'Artist';
+  if (/technician/i.test(context)) return 'Technician';
+  if (/provider/i.test(context)) return 'Provider';
+  return undefined;
+}
+
 function pageText(preview: PagePreview): string {
   return `${preview.title}\n${preview.h1}\n${preview.h2s.join('\n')}\n${preview.firstTextChars}`;
 }
@@ -676,10 +753,27 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
     }
 
     if (/(staff|team|stylist|artist|provider|injector|esthetician|barber)/i.test(lowerContext)) {
+      const structuredStaffRe = /^STAFF_MEMBER:\s*([^|\n]+?)(?:\s*\|\s*Bio:\s*([^\n]+))?$/gim;
+      for (const match of text.matchAll(structuredStaffRe)) {
+        const name = cleanStaffName(match[1]);
+        if (!isLikelyStaffName(name)) continue;
+        const bio = sanitizeSnippet(match[2], 500);
+        staffSuggestions.push({
+          name,
+          role: staffRoleFromContext(lowerContext),
+          specialties: [],
+          bio,
+          source: 'website',
+          sourceUrl: preview.url,
+          confidence: bio ? 0.74 : 0.66,
+          evidenceSnippet: sanitizeSnippet(`${name}${bio ? ` ${bio}` : ''}`),
+        });
+      }
+
       const staffLineRe = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:[-–—,|]\s*)?(Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Massage Therapist)\b/g;
       for (const match of text.matchAll(staffLineRe)) {
         const name = cleanStaffName(match[1]);
-        if (!name) continue;
+        if (!isLikelyStaffName(name)) continue;
         staffSuggestions.push({
           name,
           role: match[2].trim(),

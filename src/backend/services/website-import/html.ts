@@ -77,13 +77,54 @@ function structuredServiceText($: cheerio.CheerioAPI): string {
   return rows.join('\n');
 }
 
+function cleanStaffText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function looksLikePersonName(value: string): boolean {
+  const cleaned = cleanStaffText(value);
+  if (!cleaned || cleaned.length < 2 || cleaned.length > 60) return false;
+  if (/\d|@|#|\/|\$/.test(cleaned)) return false;
+  if (/^(home|services?|artists?|team|staff|contact|book|booking|online booking|hours|about|policies?|policy|faq)$/i.test(cleaned)) return false;
+  if (/\b(policy|policies|cancellation|deposit|specials?|offers?|faq|questions?|booking|available|hours)\b/i.test(cleaned)) return false;
+  if (/\b(salon|spa|studio|clinic|business|services?)\b/i.test(cleaned)) return false;
+  return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
+}
+
+function structuredStaffText($: cheerio.CheerioAPI): string {
+  const title = cleanStaffText($('title').first().text());
+  const h1 = cleanStaffText($('h1').first().text());
+  const bodyClass = cleanStaffText($('body').attr('class') ?? '');
+  const isDedicatedStaffPage = /\b(artists?|staff|team|stylists?|providers?|technicians?)\b/i.test(bodyClass)
+    || /^\s*(artists?|staff|team|stylists?|providers?|technicians?)\b/i.test(title)
+    || /^\s*(artists?|staff|team|stylists?|providers?|technicians?)\b/i.test(h1);
+  if (!isDedicatedStaffPage) return '';
+  const rows: string[] = [];
+  $('h2,h3,h4').each((_, el) => {
+    const heading = cleanStaffText($(el).text());
+    if (!looksLikePersonName(heading)) return;
+    const wrapper = $(el).closest('.flexible-column-wrapper, .wp-block-column, .team-member, [class*="team"], [class*="staff"], [class*="artist"]');
+    const container = wrapper.length ? wrapper : $(el).parent();
+    const bio = container
+      .find('p')
+      .map((__, p) => cleanStaffText($(p).text()))
+      .get()
+      .filter((text) => text && !/^online booking available$/i.test(text))
+      .join(' ')
+      .slice(0, 500);
+    rows.push(`STAFF_MEMBER: ${heading}${bio ? ` | Bio: ${bio}` : ''}`);
+  });
+  return rows.join('\n');
+}
+
 export function previewHtml(html: string, url: string): PagePreview {
   const $ = cheerio.load(html);
   const title = ($('title').first().text() || $('meta[property="og:title"]').attr('content') || '').trim();
   const h1 = $('h1').first().text().replace(/\s+/g, ' ').trim();
   const h2s = $('h2').slice(0, 8).map((_, el) => $(el).text().replace(/\s+/g, ' ').trim()).get().filter(Boolean);
   const structuredServices = structuredServiceText($);
-  const text = [structuredServices, visibleTextFromHtml(html)].filter(Boolean).join('\n');
+  const structuredStaff = structuredStaffText($);
+  const text = [structuredServices, structuredStaff, visibleTextFromHtml(html)].filter(Boolean).join('\n');
   const links = extractLinks(html, url);
   const priceCount = (text.match(PRICE_PATTERN) ?? []).length;
   const durationCount = (text.match(DURATION_PATTERN) ?? []).length;

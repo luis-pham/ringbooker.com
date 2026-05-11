@@ -8504,16 +8504,26 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
     const users = await deps.authUsersRepository.listForAdmin({ limit: 500 });
-    const activeAdmins = users.filter((u) => u.role === 'admin' && u.active);
-    const mfaEnabled = users.filter((u) => u.mfaEnabled).length;
+    const shops = deps.shopsRepository ? await deps.shopsRepository.list({ limit: 1000 }).catch(() => []) : [];
+    const shopsById = new Map(shops.map((shop) => [shop.id, shop]));
+    const usersWithShop = users.map((user) => {
+      const shop = user.shopId ? shopsById.get(user.shopId) : null;
+      return {
+        ...user,
+        shopName: shop?.name ?? null,
+        shopBrandSlug: shop?.brand_slug ?? null,
+      };
+    });
+    const activeAdmins = usersWithShop.filter((u) => u.role === 'admin' && u.active);
+    const mfaEnabled = usersWithShop.filter((u) => u.mfaEnabled).length;
     const stats = {
-      total: users.length,
-      adminTotal: users.filter((u) => u.role === 'admin').length,
+      total: usersWithShop.length,
+      adminTotal: usersWithShop.filter((u) => u.role === 'admin').length,
       activeAdminCount: activeAdmins.length,
       mfaEnabledCount: mfaEnabled,
-      mfaPercent: users.length ? Math.round((mfaEnabled / users.length) * 100) : 0,
+      mfaPercent: usersWithShop.length ? Math.round((mfaEnabled / usersWithShop.length) * 100) : 0,
     };
-    return c.json({ ok: true, users, stats });
+    return c.json({ ok: true, users: usersWithShop, stats });
   });
 
   app.patch(path('/admin/users/:id'), async (c) => {

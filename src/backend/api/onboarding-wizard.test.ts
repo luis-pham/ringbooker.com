@@ -144,7 +144,8 @@ test('onboarding website import progress copy uses phased states without percent
   assert.equal(importProgressStepIndex(5000), 3);
   assert.equal(importProgressStepIndex(7000), 4);
   assert.equal(importProgressDelayMessage(8500), 'Still working... Some websites take longer to read.');
-  assert.equal(importProgressDelayMessage(20000), 'This is taking longer than expected. You can continue manually and edit everything later.');
+  assert.equal(importProgressDelayMessage(20000), 'We’re still importing your website. Please wait a little longer.');
+  assert.equal(importProgressDelayMessage(120000), 'This is taking longer than expected. You can continue manually and edit everything later.');
   assert.equal(importResultMessage({ status: 'success', sourceUrl: 'https://demo.test', businessProfile: {} }), 'Ready to review');
   assert.equal(importResultMessage({ status: 'partial', sourceUrl: 'https://demo.test', businessProfile: {} }), 'Some details need review');
   assert.equal(importResultMessage(null, true), 'We couldn’t import this automatically. You can still set this up manually.');

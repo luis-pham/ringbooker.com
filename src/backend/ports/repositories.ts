@@ -845,6 +845,8 @@ export type AuthUserAdminListItem = {
   email: string;
   role: AuthRole;
   shopId?: string | null;
+  shopName?: string | null;
+  shopBrandSlug?: string | null;
   active: boolean;
   mfaEnabled: boolean;
   createdAt: string;

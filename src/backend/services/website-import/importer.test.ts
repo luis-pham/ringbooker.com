@@ -45,6 +45,39 @@ test('selected service child pages are fetched even when outside initial preview
   assert.equal(balayage?.priceAmount, 180);
 });
 
+test('normal website import probes common services path when homepage does not link it', async () => {
+  const html: Record<string, string> = {
+    'https://env.test/': '<html><head><title>enV salon</title></head><body><h1>enV salon</h1><p>An Aveda Concept Salon</p></body></html>',
+    'https://env.test/robots.txt': '',
+    'https://env.test/services': '<h1>Services</h1><h2>Color</h2><p>Face Frame Retouch Color Retouch Corrective Color Partial Highlight Full Highlight</p><h2>Hair Cuts</h2><p>Women Men Children Bang Trim Beard Trim Consultation</p><h2>Nails</h2><p>Manicure Pedicure</p>',
+    'https://env.test/services/': '<h1>Services</h1><h2>Color</h2><p>Face Frame Retouch Color Retouch Corrective Color Partial Highlight Full Highlight</p><h2>Hair Cuts</h2><p>Women Men Children Bang Trim Beard Trim Consultation</p><h2>Nails</h2><p>Manicure Pedicure</p>',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://env.test' }, {
+    lookup,
+    fetcher: async (url) => response(html[url] ?? '<h1>Not found</h1>', url),
+  });
+  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Color' && service.name === 'Color Retouch'));
+  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Hair Cuts' && service.name === 'Women'));
+  assert.ok(result.diagnostics.serviceHubPagesFound.some((url) => url.includes('/services')));
+});
+
+test('normal website import probes common artists path for staff suggestions', async () => {
+  const html: Record<string, string> = {
+    'https://artists.test/': '<html><head><title>Artist Salon</title></head><body><h1>Artist Salon</h1><p>Hair salon.</p></body></html>',
+    'https://artists.test/robots.txt': '',
+    'https://artists.test/artists': '<html><head><title>Artists - Artist Salon</title></head><body class="artists"><div class="flexible-column-wrapper"><h3>Danielle</h3></div><div class="flexible-column-wrapper"><h3>Maryann</h3><p>Senior color artist.</p></div></body></html>',
+    'https://artists.test/artists/': '<html><head><title>Artists - Artist Salon</title></head><body class="artists"><div class="flexible-column-wrapper"><h3>Danielle</h3></div><div class="flexible-column-wrapper"><h3>Maryann</h3><p>Senior color artist.</p></div></body></html>',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://artists.test' }, {
+    lookup,
+    fetcher: async (url) => response(html[url] ?? '<h1>Not found</h1>', url),
+  });
+  assert.ok(result.suggestions.staffSuggestions.some((staff) => staff.name === 'Danielle'));
+  assert.equal(result.suggestions.staffSuggestions.find((staff) => staff.name === 'Maryann')?.bio, 'Senior color artist.');
+  assert.equal(result.suggestions.staffSuggestions.some((staff) => /Artists?|Salon/i.test(staff.name)), false);
+  assert.ok(result.diagnostics.selectedPages.some((page) => page.bucket === 'staff_team' && page.url.includes('/artists')));
+});
+
 test('WordPress-style trailing slash redirects are followed without normalization loops', async () => {
   const html: Record<string, string> = {
     'https://slash.test/': '<h1>Slash Salon</h1><a href="/services/balayage">Balayage</a>',
@@ -299,6 +332,22 @@ test('LLM payload includes structured page context and deterministic facts witho
   assert.ok(payload.deterministicFacts.phoneCandidates.includes('(555) 111-2222'));
   assert.ok(payload.deterministicFacts.bookingUrlCandidates.some((url) => url.includes('/book')));
   assert.equal(JSON.stringify(payload).includes('alert("x")'), false);
+});
+
+test('LLM payload includes staff page hints for artist analysis', () => {
+  const preview = previewHtml(
+    '<html><head><title>Artists - enV salon</title></head><body class="artists"><div class="flexible-column-wrapper"><h3>Danielle</h3><p>Color artist and stylist.</p></div></body></html>',
+    'https://artist-payload.test/artists',
+  );
+  const payload = buildLlmImportPayload({
+    sourceUrl: 'https://artist-payload.test',
+    previews: [preview],
+    selectedPages: [{ url: 'https://artist-payload.test/artists', bucket: 'staff_team', score: 80, source: 'nav', reason: 'Staff/team signals' }],
+  });
+  assert.equal(payload.secondaryKnowledgeHints.staffPages[0]?.bucket, 'staff_team');
+  assert.match(payload.secondaryKnowledgeHints.staffPages[0]?.text ?? '', /STAFF_MEMBER:\s*Danielle/i);
+  assert.match(payload.schemaHint, /staffSuggestions/i);
+  assert.match(payload.schemaHint, /bio/i);
 });
 
 test('completeness scoring marks missing hours and weak services for review', async () => {

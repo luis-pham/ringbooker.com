@@ -286,11 +286,14 @@ test('admin can create shop, update plan/settings, and invite admin', async () =
   assert.equal(listResponse.status, 200);
   const listBody = (await listResponse.json()) as {
     ok: boolean;
-    users: Array<{ id: string; email: string; role: string; active: boolean }>;
+    users: Array<{ id: string; email: string; role: string; active: boolean; shopId?: string | null; shopName?: string | null }>;
     stats: { total: number };
   };
   assert.equal(listBody.ok, true);
   assert.ok(listBody.stats.total >= 3);
+  const shopUser = listBody.users.find((u) => u.email === 'user@ringbooker.local');
+  assert.equal(shopUser?.shopId, 'demo-shop');
+  assert.ok(shopUser?.shopName);
   const invited = listBody.users.find((u) => u.email === 'ops-admin@ringbooker.local');
   assert.ok(invited);
   const primaryAdmin = listBody.users.find((u) => u.email === 'admin@ringbooker.local');

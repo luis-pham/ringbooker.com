@@ -8,12 +8,15 @@ const FAQ_WORDS = /\b(faq|faqs|questions|help)\b/i;
 const PROMO_WORDS = /\b(specials|promotions|offers|deals|membership|packages)\b/i;
 
 export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview): { bucket: CandidateBucket; score: number; reason: string } {
-  const haystack = `${candidate.url} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''} ${preview?.h2s.join(' ') ?? ''}`.toLowerCase();
+  const pathSignal = (() => {
+    try { return new URL(candidate.url).pathname; } catch { return candidate.url; }
+  })();
+  const haystack = `${pathSignal} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''} ${preview?.h2s.join(' ') ?? ''}`.toLowerCase();
   let score = 0;
   let bucket: CandidateBucket = 'noise';
   const reasons: string[] = [];
   const staffContext = STAFF_WORDS.test(haystack) || /\/(?:our-)?team|\/staff|\/stylists?/.test(haystack);
-  const primaryPageSignal = `${candidate.url} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`.toLowerCase();
+  const primaryPageSignal = `${pathSignal} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`.toLowerCase();
 
   if (/privacy|terms|login|cart|checkout|account/.test(haystack)) return { bucket: 'noise', score: -50, reason: 'Excluded utility page' };
   if (/blog|news|article|post|author|tag|category/.test(haystack)) { score -= 25; reasons.push('Blog/news deprioritized'); }
@@ -55,7 +58,7 @@ export function selectPages(scored: Array<{ candidate: CandidateUrl; bucket: Can
       if (selected.length < maxPages && !selected.some((s) => s.candidate.url === item.candidate.url)) selected.push(item);
     }
   };
-  add('homepage', 1); add('service_hub', 1); add('service_child', 5); add('contact_hours', 1); add('booking', 1); add('policies', 1); add('faq', 1); add('staff_team', 1); add('promotions', 1); add('about_team', 1);
+  add('homepage', 1); add('service_hub', 1); add('service_child', 4); add('contact_hours', 1); add('staff_team', 1); add('booking', 1); add('policies', 1); add('faq', 1); add('promotions', 1); add('about_team', 1);
   return selected.slice(0, maxPages);
 }
 

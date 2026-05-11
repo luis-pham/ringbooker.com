@@ -1060,11 +1060,11 @@ export function AdminShopDetailLive() {
                             <input name="timezone" defaultValue={shop.timezone} />
                           </div>
                           <div className="field">
-                            <label>User name</label>
+                            <label>Representative name</label>
                             <input name="user_name" defaultValue={shop.user_name ?? ''} />
                           </div>
                           <div className="field">
-                            <label>User phone</label>
+                            <label>Representative phone</label>
                             <input name="user_phone" defaultValue={shop.user_phone} />
                           </div>
                           <div className="field">

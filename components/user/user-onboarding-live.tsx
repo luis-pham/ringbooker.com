@@ -108,7 +108,8 @@ export function importProgressStepIndex(elapsedMs: number): number {
 }
 
 export function importProgressDelayMessage(elapsedMs: number): string | null {
-  if (elapsedMs >= 20000) return 'This is taking longer than expected. You can continue manually and edit everything later.';
+  if (elapsedMs >= 120000) return 'This is taking longer than expected. You can continue manually and edit everything later.';
+  if (elapsedMs >= 20000) return 'We’re still importing your website. Please wait a little longer.';
   if (elapsedMs >= 8500) return 'Still working... Some websites take longer to read.';
   return null;
 }
@@ -990,7 +991,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setImportProgress('Checking your link');
     setImportProgressStep(0);
     setImportDelayMessage(null);
-    const checkpoints = [1200, 3000, 4800, 6500, 8500, 20000];
+    const checkpoints = [1200, 3000, 4800, 6500, 8500, 20000, 120000];
     importTimersRef.current = checkpoints.map((delay) =>
       setTimeout(() => {
         setImportProgressStep(importProgressStepIndex(delay));
@@ -2133,7 +2134,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
         <div className="onb-note" style={{ marginTop: 18, marginBottom: 24 }}>
           <span>ⓘ</span>
-          <span>Hours and contact are what callers ask most. Fix them now for the best test.</span>
+          <span>Review hours and contact info so the AI can answer callers more accurately.</span>
         </div>
 
         {renderAccordionSection(

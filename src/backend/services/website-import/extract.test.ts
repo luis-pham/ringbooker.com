@@ -96,6 +96,24 @@ test('normal website import keeps website address formatting when Places only ad
   assert.equal(suggestions.warnings.some((warning) => /hours differ/i.test(warning)), true);
 });
 
+test('normal website import treats common address suffix variants as the same address', () => {
+  const preview = previewHtml('<p>Address: 37917 Vine Street, Willoughby, OH 44094 Phone: (440) 555-0100</p>', 'https://env-salon.test');
+  const suggestions = buildSuggestions({
+    sourceUrl: 'https://env-salon.test',
+    sourceType: 'normal_website',
+    previews: [preview],
+    googlePlaces: {
+      name: 'enV Salon',
+      phone: '(440) 555-0100',
+      address: '37917 Vine St, Willoughby, OH 44094, USA',
+      website: 'https://env-salon.test',
+      matchConfidence: 0.9,
+    },
+  });
+  assert.equal(suggestions.businessProfile.address.value, '37917 Vine Street, Willoughby, OH 44094');
+  assert.equal(suggestions.warnings.some((warning) => /address differs/i.test(warning)), false);
+});
+
 test('keeps website data when normal website Google Places match is low confidence', () => {
   const preview = previewHtml('<script type="application/ld+json">{"@type":"Organization","name":"RAW Hair & Co."}</script><p>Address:223 N Bishop Ave, Dallas, TX 75208 Telephone:(469) 965-8500</p>', 'https://rawhairandco.com');
   const suggestions = buildSuggestions({
@@ -198,6 +216,9 @@ test('infers hair salon when a mixed salon page is hair-service heavy', () => {
   const suggestions = buildSuggestions({ sourceUrl: 'http://env-salon.test', sourceType: 'normal_website', previews: [preview] });
   assert.equal(suggestions.businessProfile.name.value, 'enV salon');
   assert.equal(suggestions.businessProfile.primaryType.value, 'hair_salon');
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Color' && service.name === 'Color Retouch'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Hair Cuts' && service.name === 'Women'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Nails' && service.name === 'Pedicure'));
 });
 
 test('normalizes imported US phone numbers to E.164 for backend storage', () => {
@@ -378,6 +399,7 @@ test('extracts secondary Business Knowledge suggestions from deterministic websi
   `, 'https://knowledge.test/team');
   const secondary = extractSecondaryKnowledge([preview]);
   assert.equal(secondary.staffSuggestions[0]?.name, 'Mia Chen');
+  assert.equal(secondary.staffSuggestions.some((staff) => staff.name === 'Cancellation Policy'), false);
   assert.equal(secondary.policySuggestions[0]?.type, 'cancellation');
   assert.equal(secondary.faqSuggestions[0]?.question, 'Do you accept walk-ins?');
   assert.equal(secondary.promotionSuggestions.length > 0, true);
@@ -386,4 +408,24 @@ test('extracts secondary Business Knowledge suggestions from deterministic websi
   const suggestions = buildSuggestions({ sourceUrl: 'https://knowledge.test', sourceType: 'normal_website', previews: [preview] });
   assert.equal(suggestions.staffSuggestions.length, 1);
   assert.equal(JSON.stringify(suggestions).includes('<script>'), false);
+});
+
+test('extracts artist page staff names and bio snippets from heading cards', () => {
+  const preview = previewHtml(`
+    <html>
+      <head><title>Artists - enV salon</title></head>
+      <body class="artists">
+        <article>
+          <div class="flexible-column-wrapper"><p><img src="/danielle.jpg" /></p><h3>Danielle</h3></div>
+          <div class="flexible-column-wrapper"><h3>Maryann</h3><p>Senior color artist specializing in Aveda color.</p></div>
+          <div class="flexible-column-wrapper"><h3>Ava</h3><p>Styling and blowouts.</p></div>
+        </article>
+      </body>
+    </html>
+  `, 'http://env-salon.test/artists');
+  const secondary = extractSecondaryKnowledge([preview]);
+  assert.ok(secondary.staffSuggestions.some((staff) => staff.name === 'Danielle' && staff.role === 'Artist'));
+  const maryann = secondary.staffSuggestions.find((staff) => staff.name === 'Maryann');
+  assert.equal(maryann?.bio, 'Senior color artist specializing in Aveda color.');
+  assert.equal(secondary.staffSuggestions.some((staff) => /Artists?|Salon/i.test(staff.name)), false);
 });

@@ -12,6 +12,8 @@ type AdminUserRow = {
   email: string;
   role: 'user' | 'admin';
   shopId?: string | null;
+  shopName?: string | null;
+  shopBrandSlug?: string | null;
   active: boolean;
   mfaEnabled: boolean;
   createdAt: string;
@@ -343,6 +345,7 @@ export function AdminUsersLive() {
               <thead>
                 <tr>
                   <th>Email</th>
+                  <th>Shop</th>
                   <th>Created</th>
                   <th>Role</th>
                   <th>Status</th>
@@ -352,13 +355,13 @@ export function AdminUsersLive() {
               <tbody>
                 {listLoading ? (
                   <tr>
-                    <td colSpan={5} className="sub">
+                    <td colSpan={6} className="sub">
                       Loading…
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="sub">
+                    <td colSpan={6} className="sub">
                       No users.
                     </td>
                   </tr>
@@ -366,6 +369,15 @@ export function AdminUsersLive() {
                   users.map((u) => (
                     <tr key={u.id}>
                       <td>{u.email}</td>
+                      <td>
+                        {u.shopId ? (
+                          <a className="sub" href={`/admin/shops/${encodeURIComponent(u.shopId)}`}>
+                            {u.shopName ?? u.shopId}
+                          </a>
+                        ) : (
+                          <span className="sub">No shop</span>
+                        )}
+                      </td>
                       <td className="sub">{formatCreatedAt(u.createdAt)}</td>
                       <td>{u.role === 'admin' ? 'Admin' : 'User'}</td>
                       <td>

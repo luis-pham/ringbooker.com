@@ -95,6 +95,24 @@ function candidateFromUrl(url: string, source: CandidateUrl['source'], anchorTex
   }
 }
 
+function commonServicePageCandidates(origin: string, discoveredFrom: string): CandidateUrl[] {
+  return [
+    ['/services/', 'Services'],
+    ['/services', 'Services'],
+    ['/service-menu/', 'Services'],
+    ['/menu/', 'Menu'],
+    ['/salon-services/', 'Services'],
+    ['/our-services/', 'Services'],
+    ['/artists/', 'Artists'],
+    ['/artists', 'Artists'],
+    ['/staff/', 'Staff'],
+    ['/team/', 'Team'],
+    ['/stylists/', 'Stylists'],
+  ]
+    .map(([path, label]) => candidateFromUrl(`${origin}${path}`, 'nav', label, discoveredFrom))
+    .filter((candidate): candidate is CandidateUrl => Boolean(candidate));
+}
+
 async function discoverSitemapCandidates(origin: string, opts: ImportOptions) {
   const sitemapSourcesFound: string[] = [];
   const candidates: CandidateUrl[] = [];
@@ -173,6 +191,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
       if (candidate) candidates.push(candidate);
     }
   }
+  candidates.push(...commonServicePageCandidates(startUrl.origin, homepage.url));
   const sitemap = await discoverSitemapCandidates(startUrl.origin, opts);
   candidates.push(...sitemap.candidates);
 

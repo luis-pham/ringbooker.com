@@ -217,6 +217,28 @@ function addressCandidates(previews: PagePreview[]): string[] {
   return [...new Set(previews.flatMap((page) => page.firstTextChars.match(re) ?? []))].slice(0, 8);
 }
 
+function staffPageHints(previews: PagePreview[], selectedPages?: SelectedPageDiagnostic[]) {
+  const selectedByUrl = new Map((selectedPages ?? []).map((page) => [page.url, page]));
+  return previews
+    .filter((page) => {
+      const selected = selectedByUrl.get(page.url);
+      const context = `${page.url} ${page.title} ${page.h1} ${page.h2s.join(' ')} ${page.firstTextChars.slice(0, 500)}`;
+      return selected?.bucket === 'staff_team'
+        || selected?.bucket === 'about_team'
+        || /\b(artists?|staff|team|stylists?|providers?|technicians?)\b/i.test(context)
+        || /STAFF_MEMBER:/i.test(page.firstTextChars);
+    })
+    .slice(0, 3)
+    .map((page) => ({
+      url: page.url,
+      bucket: selectedByUrl.get(page.url)?.bucket ?? 'staff_team',
+      title: page.title,
+      h1: page.h1,
+      h2s: page.h2s.slice(0, 8),
+      text: page.firstTextChars.slice(0, 2500),
+    }));
+}
+
 export function buildLlmImportPayload(input: LlmPayloadInput) {
   const selectedByUrl = new Map((input.selectedPages ?? []).map((page) => [page.url, page]));
   const pages = input.previews.slice(0, 8).map((page) => {
@@ -241,6 +263,7 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
       'durationMinutes is only the numeric baseline when directly parseable. For "1 hour+" use durationText "1 hour+" and durationMinutes 60. If no duration is shown, use null; never invent 60.',
       'priceType must be fixed/from/varies/consultation. Put "Consultation Required" or booking caveats in bookingNotes, not in service names.',
       'Optional secondary arrays: staffSuggestions, policySuggestions, faqSuggestions, promotionSuggestions, bookingSetupSuggestions.',
+      'For staffSuggestions, inspect artist/team/staff/stylist/provider pages and extract each person name, role/title, specialties, and bio only when supported by page text. A heading plus text below it can be a staff bio.',
       'Extract only evidence-backed website facts; do not auto-apply.',
     ].join(' '),
     sourceUrl: input.sourceUrl,
@@ -250,6 +273,9 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
       addressCandidates: addressCandidates(input.previews),
       hoursCandidates: hoursCandidates(input.previews),
       bookingUrlCandidates: bookingUrlCandidates(input.previews),
+    },
+    secondaryKnowledgeHints: {
+      staffPages: staffPageHints(input.previews, input.selectedPages),
     },
     googlePlaces: input.googlePlaces ? { name: input.googlePlaces.name, phone: input.googlePlaces.phone, address: input.googlePlaces.address, website: input.googlePlaces.website, categories: input.googlePlaces.categories, hours: input.googlePlaces.hours, timezone: input.googlePlaces.timezone } : null,
     pages,
