@@ -778,58 +778,60 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#fbbf24;box-shadow:0 
     width:100%;
     margin-left:0;
     justify-content:flex-start;
-    gap:14px;
-    flex-direction:column;
-    align-items:stretch;
+    gap:10px;
   }
   .topbar-trailing > .portal-notif,
   .topbar-trailing > .user-theme-toggle{display:none}
   .topbar-user-chip{display:none !important}
-  .user-app-shell .topbar .top-actions.overview-top-actions{
-    display:flex;
+  .top-actions.overview-top-actions{display:none}
+  /* Card section headers: marketing-style full-width black CTAs on mobile (not topbar shortcuts). */
+  .user-app-shell .panel-head{
     flex-direction:column;
     align-items:stretch;
-    width:100%;
     gap:12px;
-    margin-top:2px;
-    flex-wrap:nowrap;
   }
-  .user-app-shell .topbar .top-actions.overview-top-actions > .btn{
+  .user-app-shell .panel-head > .btn,
+  .user-app-shell .panel-head > a.btn,
+  .user-app-shell .panel-head > button.btn{
     width:100%;
-    min-height:50px;
-    height:auto;
-    padding:14px 20px;
-    border-radius:999px;
-    font-size:15px;
-    font-weight:700;
-    line-height:1.2;
     justify-content:center;
     box-sizing:border-box;
+    order:3;
+    min-height:48px;
+    height:auto;
+    padding:14px 22px;
+    border-radius:999px;
+    font-size:15px;
+    font-weight:600;
+    line-height:1.2;
     text-align:center;
-  }
-  .user-app-shell .topbar .top-actions.overview-top-actions > .btn:not(.user-save){
-    background:rgba(255,255,255,.72);
-    backdrop-filter:blur(10px);
-    -webkit-backdrop-filter:blur(10px);
-    border:1.5px solid rgba(17,24,39,.14);
-    color:#111827;
-    box-shadow:0 1px 0 rgba(255,255,255,.6) inset;
-  }
-  .user-app-shell .topbar .top-actions.overview-top-actions > .btn:not(.user-save):hover{
-    background:#fff;
-    border-color:rgba(17,24,39,.22);
-  }
-  .user-app-shell .topbar .top-actions.overview-top-actions > .btn.user-save{
-    border:none;
-    background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);
+    background:#111827;
     color:#fff;
-    box-shadow:0 10px 32px rgba(91,33,182,.25);
+    border:1px solid #111827;
+    box-shadow:none;
   }
-  .user-app-shell .topbar .top-actions.overview-top-actions > .btn.user-save:hover:not(:disabled){
-    background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 48%,#7c3aed 100%);
-    border:none;
+  .user-app-shell .panel-head > .btn:hover,
+  .user-app-shell .panel-head > a.btn:hover,
+  .user-app-shell .panel-head > button.btn:hover:not(:disabled){
+    background:#1f2937;
+    border-color:#1f2937;
     color:#fff;
   }
+  .user-app-shell .panel-head > .btn.user-save,
+  .user-app-shell .panel-head > a.btn.user-save,
+  .user-app-shell .panel-head > button.btn.user-save{
+    background:#111827;
+    color:#fff;
+    border-color:#111827;
+  }
+  .user-app-shell .panel-head > .btn.user-save:hover:not(:disabled),
+  .user-app-shell .panel-head > a.btn.user-save:hover:not(:disabled),
+  .user-app-shell .panel-head > button.btn.user-save:hover:not(:disabled){
+    background:#1f2937;
+    border-color:#1f2937;
+    color:#fff;
+  }
+  .user-app-shell .panel-head > .badge-right{align-self:flex-start;order:2}
   .page-title h1{font-size:22px}
   .page-title p{color:#111827}
   .app-shell{grid-template-columns:1fr}
@@ -846,27 +848,19 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#fbbf24;box-shadow:0 
 }
 @media (max-width:860px){
   html[data-user-theme="dark"] .page-title p{color:var(--text-gray)}
-  html[data-user-theme="dark"] .user-app-shell .topbar .top-actions.overview-top-actions > .btn:not(.user-save){
-    background:rgba(22,27,34,.82);
-    border:1.5px solid rgba(240,246,252,.12);
-    color:var(--text-dark);
-    box-shadow:0 1px 0 rgba(255,255,255,.05) inset;
+  html[data-user-theme="dark"] .user-app-shell .panel-head > .btn,
+  html[data-user-theme="dark"] .user-app-shell .panel-head > a.btn,
+  html[data-user-theme="dark"] .user-app-shell .panel-head > button.btn{
+    background:#0d1117;
+    color:#f0f6fc;
+    border-color:#30363d;
   }
-  html[data-user-theme="dark"] .user-app-shell .topbar .top-actions.overview-top-actions > .btn:not(.user-save):hover{
-    background:#30363d;
-    border-color:rgba(240,246,252,.2);
-    color:var(--text-dark);
-  }
-  html[data-user-theme="dark"] .user-app-shell .topbar .top-actions.overview-top-actions > .btn.user-save{
-    background:linear-gradient(135deg,#1f3a8a 0%,#1f6feb 52%,#388bfd 100%);
-    border:none;
-    color:#fff;
-    box-shadow:0 10px 32px rgba(31,111,235,.3);
-  }
-  html[data-user-theme="dark"] .user-app-shell .topbar .top-actions.overview-top-actions > .btn.user-save:hover:not(:disabled){
-    background:linear-gradient(135deg,#163a75 0%,#388bfd 52%,#58a6ff 100%);
-    border:none;
-    color:#fff;
+  html[data-user-theme="dark"] .user-app-shell .panel-head > .btn:hover,
+  html[data-user-theme="dark"] .user-app-shell .panel-head > a.btn:hover,
+  html[data-user-theme="dark"] .user-app-shell .panel-head > button.btn:hover:not(:disabled){
+    background:#21262d;
+    border-color:#8b949e;
+    color:#f0f6fc;
   }
 }
 `,
