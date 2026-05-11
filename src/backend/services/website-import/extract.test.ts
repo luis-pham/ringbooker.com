@@ -301,6 +301,28 @@ test('splits bullet service rows into name, description, and duration', () => {
   assert.equal(services.some((item) => /Smooth Blow Dry|30 min/i.test(item.name)), false);
 });
 
+test('extracts structured DOM service blocks with group, child name, description, and duration', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <h2>Blowout</h2>
+      <div class="wp-block-column">
+        <h3>Essential Blowout</h3>
+        <p>Shampoo & Condition • Smooth Blow Dry • 30 min+</p>
+      </div>
+      <div class="wp-block-column">
+        <h3>Signature Blowout</h3>
+        <p>Shampoo & Condition • Round Brush Finish • 45 min+</p>
+      </div>
+    </body></html>
+  `, 'https://rawhairandco.test/services');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://rawhairandco.test/services', sourceType: 'normal_website', previews: [preview] });
+  const essential = suggestions.serviceCatalog.services.find((service) => service.name === 'Essential Blowout');
+  assert.equal(essential?.categoryName, 'Blowout');
+  assert.equal(essential?.description, 'Shampoo & Condition • Smooth Blow Dry');
+  assert.equal(essential?.durationText, '30 min+');
+  assert.equal(suggestions.serviceCatalog.services.some((service) => service.name === '30 min+'), false);
+});
+
 test('extracts Elementor service-item cards with group, clean names, and prices', () => {
   const preview = previewHtml(`
     <html><body>

@@ -45,6 +45,14 @@ export type PagePreview = {
   h1: string;
   h2s: string[];
   firstTextChars: string;
+  serviceBlocks?: Array<{
+    groupHeading?: string | null;
+    serviceName: string;
+    descriptionText?: string | null;
+    priceText?: string | null;
+    durationText?: string | null;
+    sourceText?: string | null;
+  }>;
   priceCount: number;
   durationCount: number;
   serviceKeywordCount: number;

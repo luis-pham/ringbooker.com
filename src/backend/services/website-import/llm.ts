@@ -250,6 +250,7 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
       title: page.title,
       h1: page.h1,
       h2s: page.h2s.slice(0, 8),
+      serviceBlocks: (page.serviceBlocks ?? []).slice(0, 30),
       text: page.firstTextChars.slice(0, 2500),
     };
   });
@@ -257,6 +258,7 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
     task: 'Extract reviewable business knowledge for an AI receptionist. Return JSON only. Do not invent missing fields or prices.',
     schemaHint: [
       'Use {value, confidence, sourceEvidence} for profile fields.',
+      'Prefer structured serviceBlocks over flattened page text when serviceBlocks are present.',
       'For services, return serviceCatalog.categories as service groups and give every service a categoryName matching one group. If you see groupName, map it to categoryName.',
       'Preserve the website service grouping language when available. Do not flatten unrelated service groups.',
       'Service names must contain only the menu item name. If a line is "Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+", return name "Essential Blowout", description "Shampoo & Condition • Smooth Blow Dry", and durationText "30 min+".',

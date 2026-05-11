@@ -383,6 +383,18 @@ test('LLM payload includes structured page context and deterministic facts witho
   assert.equal(JSON.stringify(payload).includes('alert("x")'), false);
 });
 
+test('LLM payload includes structured service blocks before flattened text', () => {
+  const preview = previewHtml('<html><body><h2>Blowout</h2><div class="wp-block-column"><h3>Essential Blowout</h3><p>Shampoo & Condition • Smooth Blow Dry • 30 min+</p></div></body></html>', 'https://blocks.test/services');
+  const payload = buildLlmImportPayload({
+    sourceUrl: 'https://blocks.test/services',
+    previews: [preview],
+    selectedPages: [{ url: 'https://blocks.test/services', bucket: 'service_hub', score: 90, source: 'nav', reason: 'Service hub' }],
+  });
+  assert.equal(payload.pages[0]?.serviceBlocks?.[0]?.groupHeading, 'Blowout');
+  assert.equal(payload.pages[0]?.serviceBlocks?.[0]?.serviceName, 'Essential Blowout');
+  assert.match(payload.schemaHint, /Prefer structured serviceBlocks/i);
+});
+
 test('LLM payload includes staff page hints for artist analysis', () => {
   const preview = previewHtml(
     '<html><head><title>Artists - enV salon</title></head><body class="artists"><div class="flexible-column-wrapper"><h3>Danielle</h3><p>Color artist and stylist.</p></div></body></html>',

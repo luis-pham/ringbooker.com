@@ -373,6 +373,38 @@ export function extractServicesFromText(text: string, source: string): ImportedS
   return [...services.values()].slice(0, 80);
 }
 
+function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSuggestion[] {
+  const services = new Map<string, ImportedServiceSuggestion>();
+  for (const preview of previews) {
+    for (const block of preview.serviceBlocks ?? []) {
+      const parsed = splitServiceHeadingPrefix(block.serviceName);
+      const group = block.groupHeading?.trim() || parsed.group || inferGroup(parsed.name);
+      const duration = block.durationText ? parseDurationText(block.durationText) : null;
+      const priceMatch = block.priceText?.match(/\$?\s*(\d{2,4})/);
+      const priceAmount = priceMatch ? Number(priceMatch[1]) : null;
+      if (parsed.name.length < 3 || parsed.name.length > 90) continue;
+      const key = `${group}:${parsed.name}`.toLowerCase();
+      if (services.has(key)) continue;
+      services.set(key, {
+        categoryName: group,
+        name: parsed.name,
+        description: block.descriptionText ?? null,
+        priceAmount,
+        priceCurrency: CURRENCY,
+        priceType: block.priceText && /from|starting|\+/i.test(block.priceText) ? 'from' : priceAmount ? 'fixed' : 'varies',
+        durationText: duration?.durationText ?? block.durationText ?? null,
+        durationMinutes: duration?.durationMinutes ?? null,
+        aliases: aliasFor(parsed.name),
+        bookingNotes: null,
+        bookable: true,
+        source: preview.url,
+        confidence: 0.88,
+      });
+    }
+  }
+  return [...services.values()].slice(0, 80);
+}
+
 function parseDurationText(value: string): { durationText: string; durationMinutes: number | null } | null {
   const match = value.trim().match(/\b(\d{1,3})\s*(?:min|mins|minutes)(\+)?(?=\s|$)/i);
   if (!match) return null;
@@ -973,6 +1005,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   const allText = input.previews.map((p) => `${p.title}\n${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`).join('\n');
   const facts = jsonLdFacts(input.previews);
   const services = [
+    ...extractServicesFromBlocks(input.previews),
     ...input.previews.flatMap((p) => extractServicesFromText(`${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`, p.url)),
     ...extractServiceLinks(input.previews),
   ];

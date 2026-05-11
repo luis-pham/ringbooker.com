@@ -4,6 +4,7 @@ import type { PagePreview } from './types';
 export const SERVICE_KEYWORD_PATTERN = /\b(nail|manicure|pedicure|acrylic|gel|shellac|dip powder|nail art|hair|haircut|color|colour|highlights|balayage|blowout|keratin|spa|massage|facial|waxing|wax|brow|eyebrow|lashes|lash|makeup|threading|microblading|botox|filler|injectable|laser|skin|hydrafacial|peel|treatment|consultation)\b/gi;
 const PRICE_PATTERN = /(?:\$\s?\d{2,4}|\b\d{2,4}\s?(?:usd|dollars)\b|\bfrom\s+\$?\d{2,4}|\bstarting at\s+\$?\d{2,4})/gi;
 const DURATION_PATTERN = /\b\d{1,3}\s?(?:min|mins|minute|minutes|hr|hour|hours)\b/gi;
+type ServiceBlock = NonNullable<PagePreview['serviceBlocks']>[number];
 
 function absolutize(href: string, baseUrl: string): string | null {
   try {
@@ -77,6 +78,83 @@ function structuredServiceText($: cheerio.CheerioAPI): string {
   return rows.join('\n');
 }
 
+function cleanBlockText(value: string): string {
+  return value.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function firstPrice(value: string): string | null {
+  PRICE_PATTERN.lastIndex = 0;
+  return value.match(PRICE_PATTERN)?.[0] ?? null;
+}
+
+function firstDuration(value: string): string | null {
+  DURATION_PATTERN.lastIndex = 0;
+  return value.match(DURATION_PATTERN)?.[0] ?? null;
+}
+
+function isLikelyServiceGroup(value: string): boolean {
+  return /\b(blowout|color|cut|cuts|haircut|styling|extensions?|treatments?|facials?|massage|waxing|nails?|manicure|pedicure|lashes|brows|makeup|injectables?|laser|skin|services?)\b/i.test(value)
+    && value.length <= 80;
+}
+
+function isLikelyServiceName(value: string): boolean {
+  if (!value || value.length < 3 || value.length > 120) return false;
+  if (/^(home|services?|book|booking|contact|about|hours|pricing)$/i.test(value)) return false;
+  return /\b(blowout|color|cut|haircut|style|treatment|extension|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlight|keratin|essential|signature|deluxe)\b/i.test(value);
+}
+
+function structuredServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
+  const blocks: ServiceBlock[] = [];
+  const pushBlock = (block: ServiceBlock) => {
+    const serviceName = cleanBlockText(block.serviceName);
+    if (!isLikelyServiceName(serviceName)) return;
+    const key = `${block.groupHeading ?? ''}:${serviceName}:${block.sourceText ?? ''}`.toLowerCase();
+    if (blocks.some((existing) => `${existing.groupHeading ?? ''}:${existing.serviceName}:${existing.sourceText ?? ''}`.toLowerCase() === key)) return;
+    blocks.push({ ...block, serviceName });
+  };
+
+  $('.service-item, [class*="service-item"]').each((_, el) => {
+    const item = $(el);
+    const rawText = cleanBlockText(item.text());
+    const name = cleanBlockText(item.find('.name, [class*="service-name"], h3, h4').first().text());
+    if (!name) return;
+    const price = cleanBlockText(item.find('.price, [class*="service-price"]').first().text()) || firstPrice(rawText);
+    const duration = firstDuration(rawText);
+    const tabContent = item.closest('[id^="elementor-tab-content"], .elementor-tab-content');
+    const labelledBy = tabContent.attr('aria-labelledby');
+    const group = labelledBy ? cleanBlockText($(`#${labelledBy}`).first().text()) : cleanBlockText(item.prevAll('h2,h3').first().text());
+    const description = cleanBlockText(item.find('p, .description, [class*="description"]').first().text());
+    pushBlock({ groupHeading: group || null, serviceName: name, descriptionText: description || null, priceText: price || null, durationText: duration, sourceText: rawText });
+  });
+
+  $('h2,h3').each((_, headingEl) => {
+    const group = cleanBlockText($(headingEl).text());
+    if (!isLikelyServiceGroup(group)) return;
+    let cursor = $(headingEl).next();
+    let scanned = 0;
+    while (cursor.length && scanned < 12 && !/h2|h3/i.test(cursor.get(0)?.tagName ?? '')) {
+      const rawText = cleanBlockText(cursor.text());
+      const childHeading = cleanBlockText(cursor.find('h3,h4,h5,.name,[class*="service-name"]').first().text());
+      const detailText = childHeading
+        ? cleanBlockText(cursor.clone().find('h3,h4,h5,.name,[class*="service-name"]').remove().end().text())
+        : rawText;
+      if (detailText.includes('•') || firstPrice(detailText) || firstDuration(detailText)) {
+        const parts = detailText.split(/\s*•\s*/).map(cleanBlockText).filter(Boolean);
+        const durationPart = parts.find((part) => Boolean(firstDuration(part)));
+        const pricePart = parts.find((part) => Boolean(firstPrice(part)));
+        const first = childHeading || parts[0] || rawText;
+        const serviceName = first.replace(/\b(shampoo\s*&\s*condition|shampoo\s+and\s+condition|wash\s*&\s*style|wash\s+and\s+style|blow\s+dry|style\s+included)\b.*$/i, '').trim() || first;
+        const description = (childHeading ? parts : parts.slice(1)).filter((part) => part !== durationPart && part !== pricePart).join(' • ');
+        pushBlock({ groupHeading: group, serviceName, descriptionText: description || null, priceText: pricePart ?? firstPrice(detailText), durationText: durationPart ?? firstDuration(detailText), sourceText: rawText });
+      }
+      cursor = cursor.next();
+      scanned += 1;
+    }
+  });
+
+  return blocks.slice(0, 80);
+}
+
 function cleanStaffText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
@@ -122,6 +200,7 @@ export function previewHtml(html: string, url: string): PagePreview {
   const title = ($('title').first().text() || $('meta[property="og:title"]').attr('content') || '').trim();
   const h1 = $('h1').first().text().replace(/\s+/g, ' ').trim();
   const h2s = $('h2').slice(0, 8).map((_, el) => $(el).text().replace(/\s+/g, ' ').trim()).get().filter(Boolean);
+  const serviceBlocks = structuredServiceBlocks($);
   const structuredServices = structuredServiceText($);
   const structuredStaff = structuredStaffText($);
   const text = [structuredServices, structuredStaff, visibleTextFromHtml(html)].filter(Boolean).join('\n');
@@ -140,6 +219,7 @@ export function previewHtml(html: string, url: string): PagePreview {
     h1,
     h2s,
     firstTextChars: text.slice(0, 8000),
+    serviceBlocks,
     priceCount,
     durationCount,
     serviceKeywordCount,
