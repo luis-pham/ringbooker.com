@@ -27,6 +27,21 @@ test('extracts common text hours and closed days', () => {
   assert.deepEqual(hours?.sun, { closed: true });
 });
 
+test('extracts Wix-style two-column hours and footer hours', () => {
+  const wixHours = extractHoursFromText('top of pageBOOKING Follow us Hours10 AM - 4 PM 10 AM - 8 PM 10 AM - 8 PM 9 AM - 6 PM 9 AM - 6 PM 9 AM - 5 PM Monday Tuesday Wednesday Thursday Friday Saturday bottom of page')?.value;
+  assert.deepEqual(wixHours?.mon, { open: '10:00', close: '16:00' });
+  assert.deepEqual(wixHours?.tue, { open: '10:00', close: '20:00' });
+  assert.deepEqual(wixHours?.wed, { open: '10:00', close: '20:00' });
+  assert.deepEqual(wixHours?.thu, { open: '09:00', close: '18:00' });
+  assert.deepEqual(wixHours?.fri, { open: '09:00', close: '18:00' });
+  assert.deepEqual(wixHours?.sat, { open: '09:00', close: '17:00' });
+
+  const footerPreview = previewHtml('<main><h1>Footer Salon</h1></main><footer><h2>Hours</h2><p>Monday 9am-5pm</p><p>Closed Sunday</p></footer>', 'https://footer-hours.test');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://footer-hours.test', sourceType: 'normal_website', previews: [footerPreview] });
+  assert.deepEqual(suggestions.hours.value?.mon, { open: '09:00', close: '17:00' });
+  assert.deepEqual(suggestions.hours.value?.sun, { closed: true });
+});
+
 test('infers conservative US timezone from address', () => {
   assert.equal(inferTimezoneFromAddress('123 Main St, Los Angeles, CA')?.value, 'America/Los_Angeles');
   assert.equal(inferTimezoneFromAddress('10 Broadway, New York, NY')?.value, 'America/New_York');

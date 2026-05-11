@@ -520,8 +520,8 @@ function importFieldState(field?: { value?: unknown; confidence?: number; source
       <span
         className="onb-source-badge"
         style={{
-          background: verified ? '#ecfdf5' : needsReview ? '#fff7ed' : missing ? '#f8fafc' : '#eef2ff',
-          color: verified ? '#047857' : needsReview ? '#c2410c' : missing ? '#64748b' : '#3730a3',
+          background: verified ? '#ecfdf5' : needsReview ? '#fff7ed' : missing ? '#ffedd5' : '#eef2ff',
+          color: verified ? '#047857' : needsReview ? '#c2410c' : missing ? '#c2410c' : '#3730a3',
         }}
       >
         {label}
@@ -2175,9 +2175,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <h1 className="onb-title">Add a few services <span style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>optional</span></h1>
         <p className="onb-subtitle">
           So AI can answer pricing questions. You can skip this and add everything later in Business Knowledge.
-        </p>
-        <p className="onb-help">
-          You can refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge.
         </p>
         {servicesFound > 0 ? (
           <p className="onb-service-import-badge">✓ {servicesFound} {servicesFound === 1 ? 'service' : 'services'} imported from your website — review below</p>

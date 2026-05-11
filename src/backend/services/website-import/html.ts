@@ -22,7 +22,8 @@ function absolutize(href: string, baseUrl: string): string | null {
 
 export function visibleTextFromHtml(html: string): string {
   const $ = cheerio.load(html);
-  $('script, style, noscript, svg, img, nav, footer').remove();
+  // Keep footer text because salons commonly place hours/contact details there.
+  $('script, style, noscript, svg, img, nav').remove();
   return $('body').text().replace(/\s+/g, ' ').trim();
 }
 

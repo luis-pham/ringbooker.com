@@ -129,6 +129,35 @@ function parseHoursText(lines: string[]): Record<string, unknown> | null {
   return Object.keys(hours).length ? hours : null;
 }
 
+function parseColumnarHoursText(text: string): Record<string, unknown> | null {
+  const hoursIndex = text.search(/\b(?:business\s+)?hours(?=\s|\d|$)/i);
+  if (hoursIndex < 0) return null;
+  const windowText = text.slice(hoursIndex, hoursIndex + 1200).replace(/[\u2013\u2014]/g, '-').replace(/\s+/g, ' ');
+  const timeRangePattern = /(\d{1,2}(?::\d{2})?\s*(?:am|pm))\s*(?:-|to)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))/gi;
+  const dayPattern = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b/gi;
+  const ranges = [...windowText.matchAll(timeRangePattern)].map((match) => ({
+    open: normalizeTime(match[1], false),
+    close: normalizeTime(match[2], true),
+    index: match.index ?? 0,
+  })).filter((range) => range.open && range.close);
+  const days = [...windowText.matchAll(dayPattern)].map((match) => ({
+    day: dayKey(match[1]),
+    index: match.index ?? 0,
+  })).filter((item): item is { day: string; index: number } => Boolean(item.day));
+  if (ranges.length < 2 || days.length < 2) return null;
+  const hours: Record<string, unknown> = {};
+  const count = Math.min(ranges.length, days.length);
+  const timesBeforeDays = ranges[0].index < days[0].index;
+  const plausibleColumnLayout = timesBeforeDays || days[0].index < ranges[0].index;
+  if (!plausibleColumnLayout) return null;
+  for (let i = 0; i < count; i += 1) {
+    const range = ranges[i];
+    const day = days[i]?.day;
+    if (day && range.open && range.close) hours[day] = { open: range.open, close: range.close };
+  }
+  return Object.keys(hours).length ? hours : null;
+}
+
 function flattenJsonLd(items: unknown[]): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = [];
   for (const item of items) {
@@ -169,12 +198,12 @@ export function extractHoursFromJsonLd(previews: PagePreview[]): ImportField<Rec
 }
 
 export function extractHoursFromText(text: string): ImportField<Record<string, unknown>> | null {
-  const normalized = text.replace(/[\u2013\u2014]/g, '-');
+  const normalized = text.replace(/[\u2013\u2014]/g, '-').replace(/([a-z])([A-Z])/g, '$1 $2');
   const dayPattern = /(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b[^.;\n]{0,80}?(?:closed|\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*(?:-|to)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/gi;
   const closedPrefixPattern = /closed\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b/gi;
   const segments = normalized.split(/[.;\n]+/).map((segment) => segment.trim()).filter(Boolean);
   const lines = segments.flatMap((segment) => [...(segment.match(dayPattern) ?? []), ...(segment.match(closedPrefixPattern) ?? [])]);
-  const parsed = parseHoursText(lines);
+  const parsed = parseHoursText(lines) ?? parseColumnarHoursText(normalized);
   return parsed ? field(parsed, 0.72, 'Website') : null;
 }
 
