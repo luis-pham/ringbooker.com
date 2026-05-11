@@ -213,11 +213,10 @@ export const HTML_HUB_SCOPED_CSS = `
   .html-hub-page .hero-tags{gap:12px 18px;margin-top:28px}
 }
 
-/* Landing page width — align with marketing-home content rails (~1100px, 48px gutters) */
-.html-hub-page--landing-width .section{padding:var(--mk-space-section-y,88px) 48px}
+/* Landing page width — 48px gutters; must also win over .html-hub-page .section (see below). */
 /* .section-inner max-width for landing: see “Must follow” rule after .section-inner{1200px} */
 @media(max-width:640px){
-  .html-hub-page--landing-width .section{padding:56px 24px}
+  .html-hub-page.html-hub-page--landing-width .section{padding:56px 24px}
 }
 
 /* Landing-width: center section badge + title + sub (marketing-home sec-label / sec-title) */
@@ -699,6 +698,8 @@ export const HTML_HUB_SCOPED_CSS = `
 
 /* Sections */
 .html-hub-page .section{padding:88px 24px}
+/* Landing hubs (missed-booking-protection, trust, works-with, …): 48px side gutters — higher specificity than line above. */
+.html-hub-page.html-hub-page--landing-width .section{padding:var(--mk-space-section-y,88px) 48px}
 .html-hub-page .section-inner{max-width:1200px;margin:0 auto}
 /* Must follow the rule above: landing hubs use 1100px rails (otherwise auto-fill card grids hit 4 cols). */
 .html-hub-page.html-hub-page--landing-width .section-inner{max-width:1100px}
@@ -1265,6 +1266,7 @@ export const HTML_HUB_SCOPED_CSS = `
   .html-hub-page .industry-grid{grid-template-columns:repeat(2,1fr)}
   .html-hub-page .expect-split-grid{grid-template-columns:1fr}
   .html-hub-page .section{padding:56px 20px}
+  .html-hub-page.html-hub-page--landing-width .section{padding:56px 24px}
   .html-hub-page .hero{padding:56px 20px 72px}
 }
 

@@ -150,7 +150,8 @@ export function MarketingSeoPage({
       <style
         dangerouslySetInnerHTML={{
           __html: `
-.seo-shell{padding:110px 22px 70px;background:radial-gradient(ellipse 88% 58% at 50% 0%,#ede9fe 0%,#ffffff 64%)}
+/* Horizontal gutters match marketing hubs / how-it-works (48px desktop, 22px narrow). */
+.seo-shell{padding:110px 48px 70px;background:radial-gradient(ellipse 88% 58% at 50% 0%,#ede9fe 0%,#ffffff 64%)}
 .seo-article{max-width:var(--mk-reading-width,940px);margin:0 auto;background:#fff;border:1px solid var(--mk-border-soft,#e8ecf1);border-radius:var(--mk-radius-card,22px);padding:32px 28px;box-shadow:var(--mk-shadow-soft)}
 .seo-article--plain{background:transparent;border:none;border-radius:0;box-shadow:none;padding:0}
 .seo-breadcrumb{margin:0 0 10px;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8)}
@@ -176,6 +177,9 @@ export function MarketingSeoPage({
 .seo-internal-links p{margin:0}
 .seo-internal-links a{color:var(--mk-brand-purple-deep,#5b21b6);font-weight:inherit;text-decoration:none}
 .seo-internal-links a:hover{color:#4c1d95;text-decoration:none}
+@media (max-width: 960px){
+  .seo-shell{padding:100px 22px 64px}
+}
 @media (max-width: 860px){
   .seo-shell{padding-top:96px}
   .seo-article{padding:22px 18px}
