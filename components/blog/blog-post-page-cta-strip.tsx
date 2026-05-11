@@ -17,11 +17,24 @@ const stripShellClass =
 const decoOrbClass =
   'pointer-events-none absolute -right-16 -top-20 h-[300px] w-[300px] rounded-full bg-white/5';
 
+/** Align with marketing-home `.btn-white` (padding, type scale, shadow, hover). */
 const primaryBtnClass =
-  'inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-3.5 text-sm font-extrabold text-violet-800 shadow-lg shadow-black/15 transition hover:scale-[1.04]';
+  'group inline-flex w-full min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-white px-6 py-3 text-[14.5px] font-semibold text-[color:var(--mk-brand-purple-dark,#7C3AED)] shadow-[0_4px_16px_rgba(17,24,39,.08)] transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-[0_8px_22px_rgba(17,24,39,.1)] sm:w-auto';
 
+/** Align with marketing-home `.btn-ghost-w`. */
 const secondaryBtnClass =
-  'inline-flex items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white/95 backdrop-blur-sm transition hover:bg-white/20';
+  'inline-flex w-full min-w-0 items-center justify-center rounded-full border border-white/[0.32] bg-white/[0.12] px-6 py-3 text-[14px] font-semibold text-white transition-[background-color,border-color] hover:bg-white/20 hover:border-white/[0.45] sm:w-auto';
+
+const ctaWhiteArrowClass =
+  'h-4 w-4 shrink-0 text-[color:var(--mk-brand-purple-dark,#7C3AED)] transition-transform duration-200 ease-out group-hover:translate-x-[3px]';
+
+function CtaWhiteArrow() {
+  return (
+    <svg className={ctaWhiteArrowClass} viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+    </svg>
+  );
+}
 
 function isExternal(href: string): boolean {
   return /^https?:\/\//i.test(href);
@@ -38,7 +51,7 @@ export type PageCtaButtonProps = {
   demoPicker?: boolean;
 };
 
-/** Primary = white pill, secondary = glass outline (same as blog page footer CTA). */
+/** Primary = white pill, secondary = glass outline — matches marketing-home CTA banner buttons. */
 export function PageCtaButtonPair(props: { primary: PageCtaButtonProps; secondary: PageCtaButtonProps }) {
   const p = props.primary;
   const s = props.secondary;
@@ -48,11 +61,15 @@ export function PageCtaButtonPair(props: { primary: PageCtaButtonProps; secondar
   const primaryContent =
     p.demoPicker === true ? (
       <>
-        <DemoCtaPhoneIcon width={18} height={18} />
+        <DemoCtaPhoneIcon width={16} height={16} />
         {stripLeadingPhoneEmoji(p.label)}
+        <CtaWhiteArrow />
       </>
     ) : (
-      p.label
+      <>
+        <CtaWhiteArrow />
+        {p.label}
+      </>
     );
 
   const renderPrimary = () => {
@@ -86,7 +103,7 @@ export function PageCtaButtonPair(props: { primary: PageCtaButtonProps; secondar
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3">
+    <div className="mx-auto flex w-full min-w-0 flex-col gap-[10px] sm:w-fit sm:min-w-[210px]">
       {renderPrimary()}
       {renderSecondary()}
     </div>

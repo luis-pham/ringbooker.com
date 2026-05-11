@@ -267,17 +267,8 @@ export function CurrentNumberCallForwardingTool() {
   const [filter, setFilter] = useState<'popular' | 'voip' | 'other'>('popular');
   const [otherCountry, setOtherCountry] = useState<'UK' | 'NZ' | 'IE'>('UK');
   const [selected, setSelected] = useState<ProviderRecord | null>(null);
-  const [suggestedCountry, setSuggestedCountry] = useState<'UK' | 'NZ' | 'IE' | null>(null);
   const findRef = useRef<HTMLDivElement | null>(null);
   const detailRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (typeof navigator === 'undefined') return;
-    const lang = navigator.language.toLowerCase();
-    if (lang.includes('en-gb')) setSuggestedCountry('UK');
-    if (lang.includes('en-nz')) setSuggestedCountry('NZ');
-    if (lang.includes('en-ie')) setSuggestedCountry('IE');
-  }, []);
 
   const filtered = useMemo(() => CALL_FORWARDING_PROVIDERS, []);
 
@@ -353,30 +344,6 @@ export function CurrentNumberCallForwardingTool() {
             <div className="sticky top-[72px] z-20 mt-4 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-800 md:hidden">
               <div className="flex items-center gap-2">
                 <span>{selected.name} guide selected</span>
-              </div>
-            </div>
-          ) : null}
-
-          {suggestedCountry ? (
-            <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-              <p>
-                Looks like you may be in {CALL_FORWARDING_OTHER_COUNTRIES.find((c) => c.code === suggestedCountry)?.label}. View providers?
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-full bg-violet-700 px-3 py-1.5 text-xs font-semibold text-white shadow-[0_4px_14px_rgba(91,33,182,0.2)] transition hover:-translate-y-px hover:brightness-[1.04]"
-                  onClick={() => {
-                    setFilter('other');
-                    setOtherCountry(suggestedCountry);
-                    track('call_forwarding_country_selected', { country: suggestedCountry, source: 'suggestion' });
-                  }}
-                >
-                  View providers
-                </button>
-                <button type="button" className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold">
-                  Choose manually
-                </button>
               </div>
             </div>
           ) : null}

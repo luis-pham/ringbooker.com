@@ -614,6 +614,7 @@ export const worksWithHub: ContentHubPageConfig = {
         eyebrowTone: 'green',
         section: 'leak',
         stepsCentered4: true,
+        stepTrackHideNumbers: true,
       },
       heading: 'How businesses usually start',
       sub: 'Most teams adopt in stages — starting where booking loss is clearest.',
@@ -1221,6 +1222,7 @@ export const trustHub: ContentHubPageConfig = {
       html: {
         section: 'leak',
         stepsCentered4: true,
+        stepTrackHideNumbers: true,
         eyebrow: 'Phased Adoption',
         eyebrowTone: 'green',
       },

@@ -123,18 +123,45 @@ a{text-decoration:none;color:inherit}
   letter-spacing:-.2px;
   margin-bottom:9px;
 }
-.hiw-grid-3.hiw-flow .hiw-card h3{text-align:center}
 .hiw-card p{font-size:var(--mk-body-md);color:var(--mk-text-desc,#64748B);line-height:1.72}
 .hiw-list{list-style:none;display:grid;gap:10px;margin-top:16px}
 .hiw-list li{display:flex;gap:10px;font-size:var(--mk-body);color:#374151;line-height:1.55}
 .hiw-list li::before{content:"✓";width:20px;height:20px;color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;background:transparent;border:none;box-shadow:none}
-.hiw-flow{counter-reset:hiwStep}
-.hiw-step{position:relative}
-.hiw-step::before{counter-increment:hiwStep;content:counter(hiwStep);width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;margin:0 auto 18px;box-shadow:0 8px 22px rgba(124,58,237,.22)}
+/* 3-step flow — match hub .step cards (works-with / trust step_track, no circular badge) */
+.hiw-grid-3.hiw-flow{gap:24px}
+.hiw-grid-3.hiw-flow .hiw-step{
+  position:relative;
+  padding:24px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
+}
+.hiw-grid-3.hiw-flow .hiw-step:hover{
+  border-color:rgba(167,139,250,.45);
+  box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));
+  transform:translateY(-2px);
+}
+.hiw-grid-3.hiw-flow .hiw-step h3{
+  font-size:15px;
+  font-weight:700;
+  line-height:1.35;
+  letter-spacing:-.2px;
+  margin:0 0 8px;
+  color:var(--text-dark);
+  text-align:left;
+}
+.hiw-grid-3.hiw-flow .hiw-step p{
+  font-size:13px;
+  color:var(--mk-text-muted,#4B5563);
+  line-height:1.5;
+  margin:0;
+  text-align:left;
+}
 .hiw-steps-mobile-nav{display:none}
-.hiw-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:600;white-space:nowrap;transition:all .2s ease}
+.hiw-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:700;white-space:nowrap;transition:all .2s ease}
 .hiw-steps-mobile-nav a.is-active{background:var(--purple);border-color:var(--purple);color:#fff}
-.hiw-step:target{border-color:#c4b5fd;box-shadow:0 0 0 3px rgba(139,92,246,.1)}
+.hiw-step:target{border-color:#c4b5fd;box-shadow:0 0 0 3px rgba(139,92,246,.12)}
 .hiw-handle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .hiw-handle{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
 .hiw-handle:hover{transform:translateY(-2px);box-shadow:0 20px 40px -8px rgba(17,24,39,.1),0 8px 16px -6px rgba(17,24,39,.06);border-color:#d1d5db}
@@ -196,7 +223,50 @@ a{text-decoration:none;color:inherit}
 .hiw-cta-box{max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#7C3AED 0%,#A855F7 100%);color:#fff;border-radius:32px;padding:42px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;box-shadow:0 20px 56px rgba(124,58,237,.2),0 8px 24px rgba(17,24,39,.08)}
 .hiw-cta-box h2{font-size:clamp(28px,3.6vw,42px);font-weight:700;line-height:1.12;letter-spacing:-1.2px;margin-bottom:10px}
 .hiw-cta-box p{color:rgba(255,255,255,.82);font-size:16px;line-height:1.7;max-width:650px}
-.hiw-cta-box .hiw-btn-dark{background:#fff;color:#111827}
+.hiw-cta-box .hiw-actions{display:flex;flex-direction:column;gap:10px;flex-wrap:nowrap;min-width:210px}
+.hiw-cta-box .hiw-cta-btn-white{
+  background:#fff;
+  color:#5b21b6;
+  padding:12px 24px;
+  border-radius:var(--r-pill);
+  font-size:14.5px;
+  font-weight:600;
+  text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  white-space:nowrap;
+  transition:transform .15s,box-shadow .2s;
+  box-shadow:0 4px 16px rgba(17,24,39,.08);
+  border:none;
+  cursor:pointer;
+  font-family:inherit;
+  box-sizing:border-box;
+}
+.hiw-cta-box .hiw-cta-btn-white:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(17,24,39,.1)}
+.hiw-cta-box .hiw-cta-btn-white .demo-cta-phone{width:16px;height:16px;flex-shrink:0}
+.hiw-cta-box .hiw-cta-btn-white .demo-cta-phone path{fill:#FACC15}
+.hiw-cta-box .hiw-cta-btn-white-arrow{width:16px;height:16px;flex-shrink:0;color:#5b21b6;transition:transform .2s ease}
+.hiw-cta-box .hiw-cta-btn-white:hover .hiw-cta-btn-white-arrow{transform:translateX(3px)}
+.hiw-cta-box .hiw-cta-btn-ghost{
+  background:rgba(255,255,255,.12);
+  color:#fff;
+  padding:12px 24px;
+  border-radius:var(--r-pill);
+  font-size:14px;
+  font-weight:600;
+  text-decoration:none;
+  text-align:center;
+  border:1px solid rgba(255,255,255,.32);
+  transition:background .2s,border-color .2s;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-family:inherit;
+  box-sizing:border-box;
+}
+.hiw-cta-box .hiw-cta-btn-ghost:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.45)}
 .legacy-marketing > nav,
 .legacy-marketing > footer,
 .legacy-marketing > .topbar{display:none !important}
@@ -213,14 +283,24 @@ a{text-decoration:none;color:inherit}
   .hiw-hero h1{font-size:clamp(30px,8vw,40px)}
   .hiw-actions,.hiw-faq-cta-lower .hiw-actions{flex-direction:column;align-items:stretch}
   .hiw-btn-dark,.hiw-btn-outline{width:100%}
+  .hiw-cta-box .hiw-cta-btn-white,.hiw-cta-box .hiw-cta-btn-ghost{width:100%;justify-content:center;white-space:normal}
   .hiw-section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
   .hiw-trust-caller-stack .hiw-caller-after-trust{padding-top:var(--mk-space-section-y-mobile,56px)}
   .hiw-sub{margin-bottom:32px}
   .hiw-summary{padding:20px}
   .hiw-steps-mobile-nav{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px;margin:0 0 12px}
   .hiw-steps-mobile-nav{justify-content:center}
-  .hiw-grid-3.hiw-flow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 8px}
-  .hiw-grid-3.hiw-flow .hiw-step{min-width:84%;scroll-snap-align:center}
+  .hiw-grid-3.hiw-flow{
+    display:flex;
+    gap:12px;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    padding:2px 2px 8px;
+    touch-action:pan-x pinch-zoom;
+    overscroll-behavior-x:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  .hiw-grid-3.hiw-flow .hiw-step{flex:0 0 auto;min-width:84%;scroll-snap-align:center}
   .hiw-no-replace,.hiw-cta-box{padding:24px 20px}
 }
 `,
@@ -241,11 +321,13 @@ const scripts: string[] = [
   };
 
   const updateActiveByScroll = () => {
-    const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
+    const scrollerRect = scroller.getBoundingClientRect();
+    const centerX = scrollerRect.left + scroller.clientWidth / 2;
     let bestIdx = 0;
     let bestDist = Number.POSITIVE_INFINITY;
     cards.forEach((card, i) => {
-      const cardCenter = card.offsetLeft + card.clientWidth / 2;
+      const r = card.getBoundingClientRect();
+      const cardCenter = r.left + r.width / 2;
       const dist = Math.abs(cardCenter - centerX);
       if (dist < bestDist) {
         bestDist = dist;
@@ -371,7 +453,7 @@ export function MarketingHowItWorksTemplate() {
                 <a href="#hiw-step-3">Step 3</a>
               </div>
               <div className="hiw-grid-3 hiw-flow">
-                <article className="hiw-card hiw-step" id="hiw-step-1">
+                <article className="hiw-step" id="hiw-step-1">
                   <h3>Connect coverage</h3>
                   <p>
                     Forward your current business number{' '}
@@ -381,11 +463,11 @@ export function MarketingHowItWorksTemplate() {
                     for after-hours or overflow coverage, or add a dedicated RingBooker line if that fits your rollout better.
                   </p>
                 </article>
-                <article className="hiw-card hiw-step" id="hiw-step-2">
+                <article className="hiw-step" id="hiw-step-2">
                   <h3>Add services, hours, and rules</h3>
                   <p>Tell RingBooker your services, business hours, staff or provider preferences, booking rules, escalation path, and what should be confirmed by SMS.</p>
                 </article>
-                <article className="hiw-card hiw-step" id="hiw-step-3">
+                <article className="hiw-step" id="hiw-step-3">
                   <h3>Recover calls and hand off context</h3>
                   <p>RingBooker answers, captures intent, helps with routine booking calls, texts confirmations or callbacks, and gives your team the context when a human should step in.</p>
                 </article>
@@ -457,11 +539,16 @@ export function MarketingHowItWorksTemplate() {
                   <p>Try a live demo or talk through how RingBooker covers after-hours intent, peak-hour overflow, reschedules, cancellations, and missed-call text back on your line — still the number clients already use.</p>
                 </div>
                 <div className="hiw-actions">
-                  <a href="/demo" className="hiw-btn-dark" data-demo-picker>
-                    <DemoCtaPhoneIcon width={18} height={18} />
+                  <a href="/demo" className="hiw-cta-btn-white" data-demo-picker>
+                    <DemoCtaPhoneIcon width={16} height={16} />
                     Try a Live Demo Call
+                    <svg className="hiw-cta-btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                      <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                    </svg>
                   </a>
-                  <a href="/contact" className="hiw-btn-outline">Talk to us</a>
+                  <a href="/contact" className="hiw-cta-btn-ghost">
+                    Talk to us
+                  </a>
                 </div>
               </div>
             </div>

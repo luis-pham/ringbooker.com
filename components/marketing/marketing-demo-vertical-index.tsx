@@ -166,7 +166,7 @@ const styles = [
       box-shadow:var(--demo-hub-shadow-hover);
       background:#fff;
     }
-    /* Match how-it-works .hiw-step::before — purple circle, white number, centered */
+    /* Optional numbered badge (how-it-works flow cards are hub-style flat cards without this) */
     .demo-hub-step-num{
       width:36px;height:36px;border-radius:50%;
       background:var(--demo-hub-purple);

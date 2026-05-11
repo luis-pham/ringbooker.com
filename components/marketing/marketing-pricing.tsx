@@ -182,7 +182,6 @@ a{text-decoration:none;color:inherit}
 .pricing-trial-note{max-width:760px;margin:28px auto 0;padding:16px 20px;border-radius:var(--r-lg);background:rgba(245,243,255,.65);border:1px solid rgba(196,181,253,.45);font-size:14px;line-height:1.65;color:#475569;text-align:center}
 .compare-section{margin-top:0}
 .pricing-faq-cta .cta-box{margin-top:48px}
-.pricing-faq-cta .mfaq-section{padding-top:0}
 .compare-wrap{margin:0 -8px;padding:0 8px}
 /* Frame clips rounded corners; inner scroll keeps horizontal swipe on mobile (overflow:hidden on frame alone kills outer scroll). */
 .pricing-compare-frame{border-radius:var(--r-lg);border:1px solid var(--border);background:#fff;box-shadow:none;overflow:hidden}
@@ -259,7 +258,7 @@ const plans = [
     name: 'Starter',
     kicker: 'Small team',
     icon: '📞',
-    description: 'For smaller salons, spas, and clinics that need reliable after-hours and overflow call coverage.',
+    description: 'Starter covers after-hours, overflow, and missed-call recovery.',
     priceId: 'pricing-starter-price',
     price: '$79',
     note: 'Best when you want core after-hours, overflow, and missed-call recovery live quickly.',
@@ -282,7 +281,7 @@ const plans = [
     name: 'Professional',
     kicker: 'Busy location',
     icon: '⚡',
-    description: 'For busier teams that need stronger follow-up, caller context, and provider preference capture.',
+    description: 'Professional adds follow-up, caller context, and owner transfer where configured.',
     priceId: 'pricing-pro-price',
     price: '$149',
     note: 'Best for multi-provider teams with higher call volume and repeat clients.',
@@ -305,7 +304,7 @@ const plans = [
     name: 'Custom',
     kicker: 'Advanced setup',
     icon: '🏬',
-    description: 'For multi-location groups, higher-volume call flows, or businesses with custom routing needs.',
+    description: 'Custom is for multi-location teams, higher volume, and custom routing.',
     priceId: undefined,
     price: 'Let’s talk',
     note: 'Best when you need implementation planning before rollout.',
@@ -514,6 +513,7 @@ export function MarketingPricingTemplate() {
             <div className="container">
               <MarketingFaqAccordion
                 items={PRICING_FAQ_ITEMS}
+                wide
                 title="Pricing questions, answered plainly."
                 subtitle={null}
               />

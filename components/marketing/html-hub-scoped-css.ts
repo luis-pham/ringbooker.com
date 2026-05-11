@@ -123,18 +123,63 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 @media(max-width:640px){
   .html-hub-page .hero-landing-shell{padding-left:24px;padding-right:24px;padding-top:34px;padding-bottom:64px}
-  .html-hub-page .hero-ctas,
-  .html-hub-page .hero-btns{
+  .html-hub-page .hero-ctas{
     flex-direction:column;
     align-items:stretch;
     gap:10px;
   }
-  .html-hub-page .hero.hero--landing .btn-hero-live,
-  .html-hub-page .hero.hero--landing .btn-outline,
+  /* Solutions landing hero: left stack + pill CTAs like industry vertical (flex-wrap, not full-width column) */
+  .html-hub-page .hero.hero--landing .hero-inner{
+    margin-left:0;
+    margin-right:0;
+    text-align:left;
+  }
+  .html-hub-page .hero.hero--landing h1.hero-h{text-align:left}
+  .html-hub-page .hero.hero--landing .hero-sub{
+    margin-left:0;
+    margin-right:0;
+    padding-left:0;
+    padding-right:0;
+    text-align:left;
+  }
+  .html-hub-page .hero.hero--landing .hero-entity-definition{
+    margin-left:0;
+    margin-right:0;
+    padding-left:0;
+    padding-right:0;
+    text-align:left;
+  }
+  .html-hub-page .hero.hero--landing .hero-btns{
+    flex-direction:row;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:flex-start;
+    gap:12px;
+  }
+  /* Match marketing-vertical DEMO_CTA_BASE / TRIAL_CTA_SECONDARY (14px type, px-7 py-3.5 / px-6 py-3) */
+  .html-hub-page .hero.hero--landing .btn-hero-live{
+    padding:14px 28px;
+    font-size:14px;
+    font-weight:700;
+    gap:8px;
+    width:auto;
+    justify-content:center;
+  }
+  .html-hub-page .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
+    padding:12px 24px;
+    font-size:14px;
+    font-weight:600;
+    width:auto;
+    justify-content:center;
+  }
   .html-hub-page .btn,
   .html-hub-page .btn-lg{
     width:100%;
     justify-content:center;
+  }
+  .html-hub-page .hero.hero--landing .hero-btns .btn,
+  .html-hub-page .hero.hero--landing .hero-btns .btn-lg{
+    width:auto;
   }
   .html-hub-page .hero-tags{gap:12px 18px;margin-top:28px}
 }
@@ -845,6 +890,10 @@ export const HTML_HUB_SCOPED_CSS = `
   left:50%;
   transform:translateX(-50%);
 }
+/* Works-with Getting Started — cards without circular step counter */
+.html-hub-page .steps.steps--no-numbers{counter-reset:none}
+.html-hub-page .steps.steps--no-numbers .step::before{display:none;content:none}
+.html-hub-page .steps.steps--no-numbers .step h4{padding-top:0}
 .html-hub-page .step h4{font-size:15px;font-weight:700;margin-bottom:8px;padding-top:8px;color:var(--navy)}
 .html-hub-page .step p{font-size:13px;color:var(--gray-600);line-height:1.5}
 .html-hub-page .step-track-mobile-nav{display:none}
@@ -863,8 +912,9 @@ export const HTML_HUB_SCOPED_CSS = `
 @media(max-width:640px){
   .html-hub-page .step-track-mobile-nav{
     display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;margin:0 0 12px;
-    justify-content:center;
-    -webkit-overflow-scrolling:touch
+    justify-content:flex-start;
+    -webkit-overflow-scrolling:touch;
+    scroll-snap-type:x proximity;
   }
   .html-hub-page .steps,
   .html-hub-page .steps.steps--centered-4{
@@ -875,6 +925,8 @@ export const HTML_HUB_SCOPED_CSS = `
     padding:2px 2px 6px;
     max-width:100%;
     justify-content:flex-start;
+    touch-action:pan-x pinch-zoom;
+    overscroll-behavior-x:contain;
   }
   .html-hub-page .step{
     min-width:84%;
@@ -1056,10 +1108,11 @@ export const HTML_HUB_SCOPED_CSS = `
   cursor:pointer;
   box-shadow:0 4px 16px rgba(17,24,39,.08);
 }
-.html-hub-page .hub-cta-btn-white .hub-cta-btn-white-arrow{width:16px;height:16px;flex-shrink:0;color:#5b21b6}
+.html-hub-page .hub-cta-btn-white .hub-cta-btn-white-arrow{width:16px;height:16px;flex-shrink:0;color:#5b21b6;transition:transform .2s ease}
 .html-hub-page .hub-cta-btn-white .demo-cta-phone{width:16px;height:16px;flex-shrink:0}
 .html-hub-page .hub-cta-btn-white .demo-cta-phone path{fill:#FACC15}
 .html-hub-page .hub-cta-btn-white:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(17,24,39,.1)}
+.html-hub-page .hub-cta-btn-white:hover .hub-cta-btn-white-arrow{transform:translateX(3px)}
 .html-hub-page .hub-cta-btn-ghost{
   background:rgba(255,255,255,.12);
   color:#fff;
@@ -1071,13 +1124,23 @@ export const HTML_HUB_SCOPED_CSS = `
   text-align:center;
   border:1px solid rgba(255,255,255,.32);
   transition:background .2s,border-color .2s;
-  display:block;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-family:inherit;
+  box-sizing:border-box;
+  cursor:pointer;
 }
 .html-hub-page .hub-cta-btn-ghost:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.45)}
 @media(max-width:960px){
   .html-hub-page .hub-cta-outer{padding:0 22px 64px}
   .html-hub-page .hub-cta-banner{grid-template-columns:1fr;padding:32px 26px;gap:24px}
   .html-hub-page .hub-cta-actions{width:100%;min-width:0}
+}
+@media(max-width:640px){
+  .html-hub-page .hub-cta-banner{padding:28px 20px;gap:20px}
+  .html-hub-page .hub-cta-btn-white,
+  .html-hub-page .hub-cta-btn-ghost{width:100%;justify-content:center}
 }
 
 /* Topic links — pill row; no band background/border (inherits page surface) */

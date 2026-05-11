@@ -4,6 +4,7 @@ import { Fragment, type ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { HtmlHubFaq } from '@/components/marketing/html-hub-faq';
+import { HubStepTrackInit } from '@/components/marketing/hub-step-track-init';
 import { HTML_HUB_SCOPED_CSS } from '@/components/marketing/html-hub-scoped-css';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { siteConfig } from '@/lib/site';
@@ -60,6 +61,8 @@ export type HubBlockHtmlMeta = {
   scenarioGrid2x2?: boolean;
   /** `step_track` — four step cards in a centered row (wide screens) */
   stepsCentered4?: boolean;
+  /** `step_track` — hide circular step number badge on each card (e.g. works-with Getting Started) */
+  stepTrackHideNumbers?: boolean;
   /** `card_grid` + `leak` — optional label above first row of cards */
   aboveCardsEyebrow?: string;
   /** `card_grid` + `leak` — label between first and second row (e.g. after `midCardSplit` cards) */
@@ -798,7 +801,12 @@ function HubBlocksRenderer({ blocks }: { blocks: ContentHubBlock[] }) {
                 </div>
                 <div
                   className={
-                    block.html?.stepsCentered4 ? 'steps steps--centered-4' : 'steps'
+                    [
+                      block.html?.stepsCentered4 ? 'steps steps--centered-4' : 'steps',
+                      block.html?.stepTrackHideNumbers ? 'steps--no-numbers' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')
                   }
                   data-step-scroller
                 >
@@ -1202,15 +1210,21 @@ export function MarketingContentHub({
                       {...(cta.primary.href.startsWith('/demo') ? { 'data-demo-picker': true } : {})}
                     >
                       {cta.primary.href.startsWith('/demo') ? (
-                        <DemoCtaPhoneIcon width={16} height={16} />
+                        <>
+                          <DemoCtaPhoneIcon width={16} height={16} />
+                          {cta.primary.label.replace(/\s*→\s*$/, '').trim()}
+                          <svg className="hub-cta-btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                            <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                          </svg>
+                        </>
                       ) : (
-                        <svg className="hub-cta-btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                          <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
-                        </svg>
+                        <>
+                          <svg className="hub-cta-btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                            <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                          </svg>
+                          {cta.primary.label}
+                        </>
                       )}
-                      {cta.primary.href.startsWith('/demo')
-                        ? cta.primary.label.replace(/\s*→\s*$/, '').trim()
-                        : cta.primary.label}
                     </Link>
                     {cta.secondary ? (
                       <Link href={cta.secondary.href} className="hub-cta-btn-ghost">
@@ -1274,57 +1288,7 @@ export function MarketingContentHub({
       {faqJsonLd ? (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       ) : null}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-(() => {
-  const wrappers = document.querySelectorAll('.step-track-mobile-nav');
-  wrappers.forEach((nav) => {
-    const root = nav.parentElement;
-    if (!root) return;
-    const buttons = Array.from(nav.querySelectorAll('[data-step-nav-btn]'));
-    const scroller = root.querySelector('[data-step-scroller]');
-    const cards = scroller ? Array.from(scroller.querySelectorAll('[data-step-card]')) : [];
-    if (!scroller || buttons.length === 0 || cards.length === 0) return;
-
-    const setActive = (idx) => {
-      buttons.forEach((btn, i) => btn.classList.toggle('is-active', i === idx));
-    };
-
-    const updateActiveByScroll = () => {
-      const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
-      let bestIdx = 0;
-      let bestDist = Number.POSITIVE_INFINITY;
-      cards.forEach((card, i) => {
-        const cardCenter = card.offsetLeft + card.clientWidth / 2;
-        const dist = Math.abs(cardCenter - centerX);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestIdx = i;
-        }
-      });
-      setActive(bestIdx);
-    };
-
-    buttons.forEach((btn, i) => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        cards[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        setActive(i);
-      });
-    });
-
-    let raf = 0;
-    scroller.addEventListener('scroll', () => {
-      if (raf) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(updateActiveByScroll);
-    }, { passive: true });
-    updateActiveByScroll();
-  });
-})();
-`,
-        }}
-      />
+      <HubStepTrackInit />
       <style dangerouslySetInnerHTML={{ __html: HTML_HUB_SCOPED_CSS }} />
     </>
   );
