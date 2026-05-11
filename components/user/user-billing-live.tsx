@@ -1217,7 +1217,7 @@ export function UserBillingLive({
                         })}
                       </section>
 
-                      <section className="card soft">
+                      <section className="card soft billing-plan-includes-card">
                         <div className="panel-head">
                           <div>
                             <h3>Current plan includes</h3>

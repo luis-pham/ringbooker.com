@@ -18,8 +18,20 @@ export const userBillingStyles: string[] = [
 }
 .billing-alert-strip p{margin:0;flex:1;min-width:200px}
 .tag.gray{background:#f3f4f6;color:#4b5563}
-.pricing-mini{align-items:stretch}
-.price-mini{display:flex;flex-direction:column;min-height:100%;padding:20px 18px;border-radius:20px;border:1px solid var(--border);background:#fff}
+.pricing-mini{
+  width:100%;
+  max-width:780px;
+  margin:0 auto;
+  display:flex;
+  justify-content:center;
+  align-items:stretch;
+  gap:20px;
+  flex-wrap:wrap;
+}
+.price-mini{
+  display:flex;flex-direction:column;min-height:100%;padding:20px 18px;border-radius:20px;border:1px solid var(--border);background:#fff;
+  flex:0 1 240px;min-width:230px;max-width:260px;width:100%;
+}
 .price-mini.featured{border-color:var(--purple);border-width:2px;box-shadow:none}
 .price-mini .price-mini-body{flex:1}
 .price-mini .price-mini-cta{margin-top:auto;padding-top:14px}
@@ -29,6 +41,7 @@ export const userBillingStyles: string[] = [
 .billing-history-compact .table th,.billing-history-compact .table td{padding:10px 0;font-size:13px}
 .plan-includes-list{margin:0;padding-left:18px;color:var(--text-gray);font-size:13px;line-height:1.65}
 .plan-includes-foot{font-size:12px;color:var(--text-light);margin-top:14px;line-height:1.5}
+.billing-plan-includes-card{max-width:780px;margin:0 auto}
 .footer-inline{margin-top:14px}
 
 .billing-subtabs.business-subtabs{
@@ -36,6 +49,7 @@ export const userBillingStyles: string[] = [
   align-items:flex-end;
   flex-wrap:wrap;
   gap:24px;
+  margin-top:40px;
   margin-bottom:18px;
   padding-bottom:0;
   border-bottom:1px solid var(--border);
@@ -71,11 +85,14 @@ export const userBillingStyles: string[] = [
 
 @media (max-width:1200px){
   .billing-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pricing-mini{max-width:100%}
 }
 @media (max-width:860px){
   .billing-status-grid{grid-template-columns:1fr}
   .billing-subtabs.business-subtabs{gap:18px}
   .billing-subtabs.business-subtabs .business-subtab{font-size:14px;padding:0 0 10px}
+  .pricing-mini{gap:14px}
+  .price-mini{max-width:100%}
 }
 
 html[data-user-theme="dark"] .billing-status-card{

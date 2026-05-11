@@ -2190,14 +2190,42 @@ export function UserSettingsLive({
                   });
                 }}
               >
-                <div className="form-grid settings-tab-content-frame">
-                  <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
-                  <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
-                  <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
-                  <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
-                  <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
-                  <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={currentForm.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
+                <div className="settings-business-profile-layout settings-tab-content-frame">
+                  <div className="form-grid settings-business-profile-form">
+                    <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
+                    <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
+                    <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
+                    <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
+                    <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
+                    <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
+                    <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={currentForm.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
+                  </div>
+                  <aside className="settings-business-profile-helper" aria-label="Business profile helper panels">
+                    <section className="settings-helper-card">
+                      <h4>AI uses this to answer</h4>
+                      <ul className="settings-helper-list">
+                        <li>What's your address?</li>
+                        <li>What's your phone number?</li>
+                        <li>What's your website?</li>
+                        <li>Call greeting &amp; business identity</li>
+                      </ul>
+                    </section>
+                    <section className="settings-helper-card">
+                      <h4>Knowledge completeness</h4>
+                      <p className="settings-helper-progress-label">Overall 60%</p>
+                      <div className="settings-helper-progress-track" aria-hidden>
+                        <span className="settings-helper-progress-fill" style={{ width: '60%' }} />
+                      </div>
+                      <div className="settings-helper-checklist">
+                        <div className="done"><span>Business profile</span><span>Done</span></div>
+                        <div className="done"><span>Hours</span><span>Done</span></div>
+                        <div className="done"><span>Services</span><span>Done</span></div>
+                        <div className="warn"><span>Staff</span><span>Add staff</span></div>
+                        <div className="warn"><span>Policies &amp; FAQ</span><span>Add policies</span></div>
+                        <div className="done"><span>AI behavior</span><span>Done</span></div>
+                      </div>
+                    </section>
+                  </aside>
                 </div>
                 <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
