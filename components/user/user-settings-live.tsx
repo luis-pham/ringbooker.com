@@ -2151,9 +2151,11 @@ export function UserSettingsLive({
 	                }}
 	              >
 	                <div className="card-section settings-tab-content-frame">
-	                  <div className="hint-row">
-	                    <strong className="option-title">Business profile</strong>
-	                    <span className="hint-copy">Core details RingBooker can use when callers ask who you are, where you are, or how to reach the team.</span>
+	                  <div className="panel-head knowledge-tab-panel-head">
+	                    <div>
+	                      <h3>Business profile</h3>
+	                      <p className="sub">Core details RingBooker can use when callers ask who you are, where you are, or how to reach the team.</p>
+	                    </div>
 	                  </div>
 	                  <div className="form-grid settings-tab-content-frame" style={{ marginTop: 14 }}>
 	                    <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
@@ -2167,7 +2169,7 @@ export function UserSettingsLive({
 	                </div>
                 <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
-                    {savingSection === 'business-knowledge-info' ? 'Saving...' : 'Save business knowledge'}
+                    {savingSection === 'business-knowledge-info' ? 'Saving...' : 'Save business profile'}
                   </button>
                 </div>
               </form>
@@ -2235,13 +2237,13 @@ export function UserSettingsLive({
                 <div className="card-section settings-tab-content-frame">
                   {!serviceCatalogEnabled ? (
                     <>
-                      <div className="service-catalog-heading">
-                        <div>
-                          <h3>Services customers ask about</h3>
-                          <p className="sh-catalog-intro">
-                            Add the services callers ask about most. Grouped service editing will appear after service catalog migration is enabled.
-                          </p>
-                        </div>
+	                      <div className="panel-head knowledge-tab-panel-head service-catalog-heading">
+	                        <div>
+	                          <h3>Services</h3>
+	                          <p className="sub">
+	                            Add the services callers ask about most. Grouped service editing will appear after service catalog migration is enabled.
+	                          </p>
+	                        </div>
                         <button type="button" className="btn" onClick={addLegacyService}>
                           Add service
                         </button>
@@ -2304,13 +2306,13 @@ export function UserSettingsLive({
                     </>
                   ) : (
                     <>
-                  <div className="service-catalog-heading">
-                    <div>
-                      <h3>Services customers ask about</h3>
-                      <p className="sh-catalog-intro">
-                        Group your services so the AI can answer questions naturally and ask the right follow-up questions.
-                      </p>
-                    </div>
+	                  <div className="panel-head knowledge-tab-panel-head service-catalog-heading">
+	                    <div>
+	                      <h3>Services</h3>
+	                      <p className="sub">
+	                        Group your services so the AI can answer questions naturally and ask the right follow-up questions.
+	                      </p>
+	                    </div>
                     <div className="service-catalog-actions">
                       <button type="button" className="btn" onClick={() => applySuggestedGroups()}>
                         Add suggested groups
@@ -2503,7 +2505,12 @@ export function UserSettingsLive({
                 }}
               >
                 <div className="card-section settings-tab-content-frame">
-                  <p className="sh-catalog-intro sh-hours-intro">Set your weekly schedule. Use a preset for a quick start, then fine-tune individual days.</p>
+                  <div className="panel-head knowledge-tab-panel-head">
+                    <div>
+                      <h3>Hours</h3>
+                      <p className="sub">Set your weekly schedule. Use a preset for a quick start, then fine-tune individual days.</p>
+                    </div>
+                  </div>
                   <div className="sh-hours-presets">
                     <p className="sh-hours-presets-label">Quick apply</p>
                     <div className="preset-pills">
@@ -2582,7 +2589,7 @@ export function UserSettingsLive({
                   });
                 }}
               >
-                <div className="panel-head">
+                <div className="panel-head knowledge-tab-panel-head">
                   <div>
                     <h3>Staff / Technicians</h3>
                     <p className="sub">Add approved staff names, specialties, and notes so RingBooker does not invent technician details.</p>
@@ -2642,7 +2649,7 @@ export function UserSettingsLive({
                   });
                 }}
               >
-	                <div className="panel-head">
+	                <div className="panel-head knowledge-tab-panel-head">
 	                  <div>
 	                    <h3>Policies & FAQ</h3>
 	                    <p className="sub">Approved policies and answers for common caller questions: deposits, cancellations, parking, walk-ins, payment methods, gift cards, or group bookings.</p>
@@ -2720,7 +2727,7 @@ export function UserSettingsLive({
 
             {activeTab === 'ai-call-behavior' ? (
             <section className="card">
-              <div className="panel-head" style={{ marginBottom: 12 }}>
+              <div className="panel-head knowledge-tab-panel-head" style={{ marginBottom: 12 }}>
                 <div>
                   <h3>AI behavior & Call handling</h3>
                   <p className="sub">Control how your AI receptionist speaks, greets callers, follows instructions, and handles edge cases.</p>

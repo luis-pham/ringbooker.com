@@ -218,6 +218,20 @@ button.subtle-link:hover{text-decoration:underline}
   background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;
 }
 .business-subtab.active:hover{background:#161b22;border-color:#161b22;color:#fff}
+.knowledge-tab-panel-head{
+  align-items:flex-start;
+  margin-bottom:12px;
+}
+.knowledge-tab-panel-head h3{
+  margin:0;
+  font-size:20px;
+  font-weight:780;
+  letter-spacing:-.03em;
+  color:var(--text-dark);
+}
+.knowledge-tab-panel-head .sub{
+  margin-top:6px;
+}
 /* Integrations cards sit on purple-tinted “connected” panels — keep primary CTAs clearly black */
 .calendar-int-card .btn.user-save,
 .integrations-vagaro-booking-actions .btn.user-save,
@@ -388,6 +402,7 @@ button.subtle-link:hover{text-decoration:underline}
 }
 .sh-hours-wrap .hours-row.closed{opacity:.72}
 .sh-hours-wrap .hours-day{font-size:13px;font-weight:780;color:var(--text-dark)}
+.sh-hours-wrap .small-field label{display:none}
 @media (min-width:1024px){
   .card-section-form > .settings-tab-content-frame{
     width:60%;
@@ -595,7 +610,34 @@ html[data-user-theme="dark"] .upgrade-panel{
   .service-catalog-actions{display:grid;grid-template-columns:1fr;width:100%}
   .service-item-head{grid-template-columns:1fr}
   .sh-hours-thead{display:none}
-  .sh-hours-wrap .hours-row{grid-template-columns:1fr}
+  .sh-hours-wrap{border:none;background:transparent}
+  .sh-hours-wrap .hours-grid{display:grid;gap:18px;background:transparent}
+  .sh-hours-wrap .hours-row{
+    grid-template-columns:1fr 1fr auto;
+    grid-template-areas:
+      "day day day"
+      "open close closed";
+    gap:8px 10px;
+    padding:0;
+    border-bottom:none;
+    background:transparent;
+  }
+  .sh-hours-wrap .hours-day{grid-area:day}
+  .sh-hours-wrap .hours-row .small-field:nth-of-type(1){grid-area:open}
+  .sh-hours-wrap .hours-row .small-field:nth-of-type(2){grid-area:close}
+  .sh-hours-wrap .small-field label{display:block}
+  .sh-hours-wrap .small-field{margin-bottom:0}
+  .sh-hours-wrap .hours-row .inline-check{
+    grid-area:closed;
+    display:grid;
+    grid-template-rows:auto 40px;
+    align-items:end;
+    justify-items:center;
+    gap:8px;
+    margin:0;
+    min-width:56px;
+  }
+  .sh-hours-wrap .hours-row .inline-check input{align-self:center}
 }
 `;
 
