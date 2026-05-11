@@ -63,10 +63,31 @@ function normalizeAddressForCompare(value?: string | null): string {
     .replace(/\s+/g, ' ')
     .trim();
 }
+function timeToMinutes(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const match = value.trim().toLowerCase().replace(/\s+/g, '').match(/^(\d{1,2})(?::?(\d{2}))?(am|pm)?$/);
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2] ?? 0);
+  const meridiem = match[3];
+  if (hour > 23 || minute > 59) return null;
+  if (meridiem === 'pm' && hour < 12) hour += 12;
+  if (meridiem === 'am' && hour === 12) hour = 0;
+  return hour * 60 + minute;
+}
+function normalizeDayHoursForCompare(value: unknown): string {
+  if (!value || typeof value !== 'object') return normalizeText(String(value ?? ''));
+  const raw = value as Record<string, unknown>;
+  if (raw.closed === true) return 'closed';
+  const open = timeToMinutes(raw.open);
+  const close = timeToMinutes(raw.close);
+  if (open !== null && close !== null) return `${open}-${close}`;
+  return normalizeText(JSON.stringify(raw));
+}
 function normalizeHoursForCompare(value?: WeeklyHours | null): string {
   if (!value) return '';
-  return JSON.stringify(Object.keys(value).sort().reduce<Record<string, unknown>>((out, key) => {
-    out[key] = value[key];
+  return JSON.stringify(Object.keys(value).sort().reduce<Record<string, string>>((out, key) => {
+    out[key] = normalizeDayHoursForCompare(value[key]);
     return out;
   }, {}));
 }

@@ -184,7 +184,12 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     };
   }
 
+  const rootUrl = `${startUrl.origin}/`;
   const candidates: CandidateUrl[] = [candidateFromUrl(homepage.url, 'homepage')!];
+  if (new URL(homepage.url).pathname !== '/') {
+    const rootCandidate = candidateFromUrl(rootUrl, 'nav', 'Home', homepage.url);
+    if (rootCandidate) candidates.push(rootCandidate);
+  }
   for (const link of extractLinks(homepage.text, homepage.url)) {
     if (new URL(link.href).origin === startUrl.origin) {
       const candidate = candidateFromUrl(link.href, /contact|hours|location/i.test(link.text) ? 'footer' : 'nav', link.text, homepage.url);
@@ -248,7 +253,11 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   }
 
   const selectedPreviews = selected.map((item) => previewMap.get(item.candidate.url)).filter((p): p is PagePreview => Boolean(p));
-  const finalPreviews = selectedPreviews.length ? selectedPreviews : [homepagePreview];
+  const supplementalRootPreview = previewMap.get(rootUrl);
+  const finalPreviewMap = new Map<string, PagePreview>();
+  for (const preview of selectedPreviews.length ? selectedPreviews : [homepagePreview]) finalPreviewMap.set(preview.url, preview);
+  if (supplementalRootPreview) finalPreviewMap.set(supplementalRootPreview.url, supplementalRootPreview);
+  const finalPreviews = [...finalPreviewMap.values()];
   if (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey) {
     const staticPreviewSuggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews });
     googlePlaces = await lookupGooglePlaces({

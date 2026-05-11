@@ -96,6 +96,23 @@ test('normal website import keeps website address formatting when Places only ad
   assert.equal(suggestions.warnings.some((warning) => /hours differ/i.test(warning)), true);
 });
 
+test('normal website import treats equivalent 12-hour and 24-hour hours as matching', () => {
+  const preview = previewHtml('<script type="application/ld+json">{"@type":"HairSalon","name":"Hours Salon","openingHours":"Mon 10 AM - 8 PM"}</script>', 'https://hours-format.test');
+  const suggestions = buildSuggestions({
+    sourceUrl: 'https://hours-format.test',
+    sourceType: 'normal_website',
+    previews: [preview],
+    googlePlaces: {
+      name: 'Hours Salon',
+      website: 'https://hours-format.test',
+      hours: { mon: { open: '10:00', close: '20:00' } },
+      matchConfidence: 0.9,
+    },
+  });
+  assert.deepEqual(suggestions.hours.value?.mon, { open: '10:00', close: '20:00' });
+  assert.equal(suggestions.warnings.some((warning) => /hours differ/i.test(warning)), false);
+});
+
 test('normal website import treats common address suffix variants as the same address', () => {
   const preview = previewHtml('<p>Address: 37917 Vine Street, Willoughby, OH 44094 Phone: (440) 555-0100</p>', 'https://env-salon.test');
   const suggestions = buildSuggestions({
@@ -269,6 +286,18 @@ test('extracts common WordPress-style service blocks without compressed Wix clea
   assert.ok(names.includes('Signature Pedicure'));
   assert.ok(names.includes('Eyebrow Wax'));
   assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Gel Manicure')?.priceType, 'from');
+});
+
+test('splits bullet service rows into name, description, and duration', () => {
+  const services = extractServicesFromText(
+    'Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+',
+    'https://rawhairandco.test/services',
+  );
+  const service = services.find((item) => item.name === 'Essential Blowout');
+  assert.equal(service?.description, 'Shampoo & Condition • Smooth Blow Dry');
+  assert.equal(service?.durationText, '30 min+');
+  assert.equal(service?.durationMinutes, 30);
+  assert.equal(services.some((item) => /Smooth Blow Dry|30 min/i.test(item.name)), false);
 });
 
 test('extracts Elementor service-item cards with group, clean names, and prices', () => {

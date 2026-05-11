@@ -61,6 +61,20 @@ test('normal website import probes common services path when homepage does not l
   assert.ok(result.diagnostics.serviceHubPagesFound.some((url) => url.includes('/services')));
 });
 
+test('normal website import from a services URL still reads root homepage footer hours', async () => {
+  const html: Record<string, string> = {
+    'https://deep-hours.test/services/': '<html><head><title>Deep Hours Services</title></head><body><h1>Services</h1><p>Balayage starts at $180.</p></body></html>',
+    'https://deep-hours.test/': '<html><head><title>Deep Hours Salon</title></head><body><h1>Deep Hours Salon</h1><footer><h2>Hours</h2><p>Monday 10 AM - 8 PM</p><p>Closed Sunday</p></footer></body></html>',
+    'https://deep-hours.test/robots.txt': '',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://deep-hours.test/services/' }, {
+    lookup,
+    fetcher: async (url) => response(html[url] ?? '<h1>Not found</h1>', url),
+  });
+  assert.deepEqual(result.suggestions.hours.value?.mon, { open: '10:00', close: '20:00' });
+  assert.deepEqual(result.suggestions.hours.value?.sun, { closed: true });
+});
+
 test('normal website import probes common artists path for staff suggestions', async () => {
   const html: Record<string, string> = {
     'https://artists.test/': '<html><head><title>Artist Salon</title></head><body><h1>Artist Salon</h1><p>Hair salon.</p></body></html>',

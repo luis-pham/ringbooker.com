@@ -274,6 +274,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
 
   const addService = (input: {
     name: string;
+    description?: string | null;
     priceText?: string | null;
     priceAmount?: number | null;
     priceType?: ImportedServiceSuggestion['priceType'];
@@ -294,6 +295,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     services.set(key, {
       categoryName,
       name,
+      description: input.description ?? null,
       priceAmount,
       priceCurrency: CURRENCY,
       priceType: input.priceType ?? (priceAmount ? 'fixed' : /consult/i.test(name) ? 'consultation' : 'varies'),
@@ -306,6 +308,10 @@ export function extractServicesFromText(text: string, source: string): ImportedS
       confidence: input.confidence,
     });
   };
+
+  for (const item of extractBulletServiceRows(text)) {
+    addService({ ...item, confidence: 0.72 });
+  }
 
   for (const item of extractStylistPricingServices(text)) {
     addService({ ...item, confidence: 0.86 });
@@ -365,6 +371,67 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     });
   }
   return [...services.values()].slice(0, 80);
+}
+
+function parseDurationText(value: string): { durationText: string; durationMinutes: number | null } | null {
+  const match = value.trim().match(/\b(\d{1,3})\s*(?:min|mins|minutes)(\+)?(?=\s|$)/i);
+  if (!match) return null;
+  const minutes = Number(match[1]);
+  if (!Number.isFinite(minutes) || minutes <= 0) return null;
+  return { durationText: `${minutes} min${match[2] ? '+' : ''}`, durationMinutes: minutes };
+}
+
+function splitBulletServiceNameAndDescription(value: string): { name: string; descriptionPrefix: string | null } {
+  const cleaned = cleanServiceName(value);
+  const descriptionStart = cleaned.search(/\b(shampoo\s*&\s*condition|shampoo\s+and\s+condition|wash\s*&\s*style|wash\s+and\s+style|blow\s+dry|style\s+included)\b/i);
+  if (descriptionStart <= 2) return { name: cleaned, descriptionPrefix: null };
+  return {
+    name: cleaned.slice(0, descriptionStart).trim(),
+    descriptionPrefix: cleaned.slice(descriptionStart).trim(),
+  };
+}
+
+function extractBulletServiceRows(text: string): Array<{
+  name: string;
+  description: string | null;
+  durationText: string | null;
+  durationMinutes: number | null;
+  group: string | null;
+  priceType: ImportedServiceSuggestion['priceType'];
+  confidence: number;
+}> {
+  const rows: Array<{
+    name: string;
+    description: string | null;
+    durationText: string | null;
+    durationMinutes: number | null;
+    group: string | null;
+    priceType: ImportedServiceSuggestion['priceType'];
+    confidence: number;
+  }> = [];
+  for (const rawLine of text.split(/\n+/).map((line) => line.replace(/\s+/g, ' ').trim()).filter((line) => line.includes('•'))) {
+    const parts = rawLine.split(/\s*•\s*/).map((part) => part.trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const first = splitBulletServiceNameAndDescription(parts[0]);
+    if (first.name.length < 3 || first.name.length > 80) continue;
+    const durationPart = parts.find((part) => parseDurationText(part));
+    const duration = durationPart ? parseDurationText(durationPart) : null;
+    if (!duration) continue;
+    const descriptionParts = [
+      first.descriptionPrefix,
+      ...parts.slice(1).filter((part) => part !== durationPart && !/\$\s*\d/.test(part)),
+    ].filter((part): part is string => Boolean(part));
+    rows.push({
+      name: first.name,
+      description: descriptionParts.length ? descriptionParts.join(' • ') : null,
+      durationText: duration.durationText,
+      durationMinutes: duration.durationMinutes,
+      group: inferGroup(first.name),
+      priceType: 'varies',
+      confidence: 0.72,
+    });
+  }
+  return rows;
 }
 
 const GROUPED_MENU_PHRASES: Record<string, string[]> = {
