@@ -62,7 +62,16 @@ const callsPortalStyles = String.raw`
 }
 @media (max-width:860px){
   .calls-metric-grid{grid-template-columns:1fr}
-  .business-subtabs.calls-filter-tabs{gap:18px}
+  .business-subtabs.calls-filter-tabs{
+    gap:18px;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .business-subtabs.calls-filter-tabs::-webkit-scrollbar{display:none}
+  .business-subtabs.calls-filter-tabs .business-subtab{flex:0 0 auto}
 }
 html[data-user-theme="dark"] .calls-metric-card{
   background:var(--surface-card);border-color:var(--border);

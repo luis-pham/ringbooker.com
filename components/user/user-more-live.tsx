@@ -11,6 +11,18 @@ import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { userDashboardScripts } from '@/components/user/user-dashboard';
 import { userSettingsStyles } from '@/components/user/user-settings';
 
+const userMoreStyles = [
+  ...userSettingsStyles,
+  String.raw`
+@media (max-width:860px){
+  .more-page .topbar{
+    margin:0 -18px 14px;
+    padding:10px 18px 8px;
+  }
+}
+`,
+];
+
 const moreItems = [
   {
     title: 'Business Knowledge',
@@ -36,11 +48,11 @@ const moreItems = [
 
 export function UserMoreLive() {
   return (
-    <UserLayout styles={userSettingsStyles} scripts={userDashboardScripts} scriptPrefix="user-more-live">
+    <UserLayout styles={userMoreStyles} scripts={userDashboardScripts} scriptPrefix="user-more-live">
       <>
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="more" />
-          <main className="main">
+          <main className="main more-page">
             <UserPortalTopbar
               title="More"
               subtitle="Business setup, integrations, billing, and account."

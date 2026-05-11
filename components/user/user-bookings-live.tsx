@@ -128,7 +128,6 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
             </div>
           </section>
 
-          <div className="footer-inline"><span>RingBooker business panel</span><span>Bookings page restored with live data</span></div>
         </main>
       </div>
       <UserPortalMobileTabbar active="bookings" />

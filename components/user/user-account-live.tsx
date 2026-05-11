@@ -254,7 +254,20 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
 }
 @media(max-width:860px){
   .rb-account-shell{padding:18px 0 30px;max-width:100%}
-  .rb-account-subtabs.business-subtabs{gap:18px;padding:18px 18px 0}
+  .rb-account-subtabs.business-subtabs{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    align-items:stretch;
+    padding:18px 18px 0;
+  }
+  .rb-account-subtabs.business-subtabs .business-subtab{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
 }
 .rb-account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
 .rb-account-card-head-main{display:flex;align-items:center;gap:10px;min-width:0}
