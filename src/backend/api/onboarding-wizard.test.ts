@@ -145,7 +145,7 @@ test('onboarding website import progress copy uses phased states without percent
 test('onboarding copy keeps website import review-only and isolates legacy read-website', () => {
   const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
   const app = readFileSync('src/backend/api/app.ts', 'utf8');
-  assert.match(onboardingLive, /Add your website now, then review it before saving/);
+  assert.match(onboardingLive, /Paste your website or Google Maps link — we'll fill in the details/);
   assert.doesNotMatch(onboardingLive, /We'll save this link today/);
   assert.match(onboardingLive, /No website\? Fill in manually/);
   assert.match(onboardingLive, /Set up manually instead/);

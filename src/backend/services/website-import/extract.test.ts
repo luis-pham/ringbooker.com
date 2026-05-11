@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildSuggestions, extractHoursFromJsonLd, extractHoursFromText, inferTimezoneFromAddress } from './extract';
+import { buildSuggestions, extractHoursFromJsonLd, extractHoursFromText, extractServicesFromText, inferTimezoneFromAddress } from './extract';
 import { previewHtml } from './html';
 
 test('extracts JSON-LD openingHours', () => {
@@ -53,4 +53,33 @@ test('Google Places hours override website hours and phone conflicts warn', () =
   assert.equal(suggestions.businessProfile.timezone.value, 'America/New_York');
   assert.ok(suggestions.warnings.some((warning) => /phone differs/i.test(warning)));
   assert.ok(suggestions.serviceCatalog.services.some((service) => service.name.includes('Gel Manicure')));
+});
+
+test('extracts compressed Wix service menu without navigation noise', () => {
+  const services = extractServicesFromText(
+    'top of pageBOOKINGStyling ServicesHaircut $78+ ​​ Blowout & Style $60+ Color ServicesFace Frame $150+ Partial Highlight $170+ Tint $70+ Foilayage $200+ Full Highlight $200+ Toner/Gloss $50+ Balayage $180+ Hair SpecialtiesKeratin Complex $350+ Deep Conditioning $50+ Perm $250+ Extensions $599+ Brazilian Blowout $380+ Magic Sleek $380+ bottom of page',
+    'https://www.salon5014.com/services',
+  );
+  assert.ok(services.some((service) => service.name === 'Haircut' && service.categoryName === 'Styling Services' && service.priceAmount === 78 && service.priceType === 'from'));
+  assert.ok(services.some((service) => service.name === 'Balayage' && service.categoryName === 'Color Services' && service.priceAmount === 180));
+  assert.ok(services.some((service) => service.name === 'Keratin Complex' && service.categoryName === 'Hair Specialties' && service.priceAmount === 350));
+  assert.equal(services.some((service) => /top of page|BOOKING|bottom of page/i.test(service.name)), false);
+  assert.equal(services.length, 15);
+});
+
+test('extracts common WordPress-style service blocks without compressed Wix cleanup regressions', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <h2>Services</h2>
+      <div class="wp-block-column"><h3>Gel Manicure</h3><p>Starting at $45 · 45 minutes</p></div>
+      <div class="wp-block-column"><h3>Signature Pedicure</h3><p>$55 · 50 minutes</p></div>
+      <div class="wp-block-column"><h3>Eyebrow Wax</h3><p>$25</p></div>
+    </body></html>
+  `, 'https://wordpress-salon.test/services');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://wordpress-salon.test', sourceType: 'normal_website', previews: [preview] });
+  const names = suggestions.serviceCatalog.services.map((service) => service.name);
+  assert.ok(names.includes('Gel Manicure'));
+  assert.ok(names.includes('Signature Pedicure'));
+  assert.ok(names.includes('Eyebrow Wax'));
+  assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Gel Manicure')?.priceType, 'from');
 });

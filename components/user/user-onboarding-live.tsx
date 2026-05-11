@@ -493,23 +493,22 @@ export function importReviewBadgeState(field?: { value?: unknown; confidence?: n
   };
 }
 
-function profileReviewCardState(
-  field?: { value?: unknown; confidence?: number; source?: string | null } | null,
-): 'verified' | 'needs-review' | 'missing' | 'review' {
-  const { label } = importReviewBadgeState(field);
-  if (label === 'AI verified') return 'verified';
-  if (label === 'Missing') return 'missing';
-  if (label === 'Needs review') return 'needs-review';
-  return 'review';
-}
-
 function importFieldState(field?: { value?: unknown; confidence?: number; source?: string | null } | null): ReactNode {
   const { label, source } = importReviewBadgeState(field);
   const verified = label === 'AI verified';
-  const needsReview = label === 'Needs review' || label === 'Missing';
+  const missing = label === 'Missing';
+  const needsReview = label === 'Needs review';
   return (
     <p className="onb-help" style={{ marginTop: 6 }}>
-      <span className="onb-source-badge" style={{ background: verified ? '#ecfdf5' : needsReview ? '#fff7ed' : '#eef2ff', color: verified ? '#047857' : needsReview ? '#c2410c' : '#3730a3' }}>{label}</span>{' '}
+      <span
+        className="onb-source-badge"
+        style={{
+          background: verified ? '#ecfdf5' : needsReview ? '#fff7ed' : missing ? '#f8fafc' : '#eef2ff',
+          color: verified ? '#047857' : needsReview ? '#c2410c' : missing ? '#64748b' : '#3730a3',
+        }}
+      >
+        {label}
+      </span>{' '}
       {source ? <span className="onb-source-badge">Source: {source}</span> : null}
     </p>
   );
@@ -1469,9 +1468,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .mixed-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;font-size:13px;font-weight:700}
 .mixed-chip .chip-icon{font-size:12px;line-height:1;color:#64748b}.mixed-chip.active .chip-icon{color:#5b21b6}
 .onb-import-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:#ecfdf5;color:#166534;padding:5px 12px;font-size:13px;font-weight:700;margin:18px 0 16px}
+.onb-service-import-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:#ecfdf5;color:#15803d;padding:7px 13px;font-size:14px;font-weight:500;margin:18px 0 16px}
 .profile-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .profile-review-card{border:1px solid #d9deea;border-radius:12px;background:#fff;padding:14px 16px;min-height:78px}
-.profile-review-card.verified{border-color:#86efac}.profile-review-card.needs-review,.profile-review-card.missing{border-color:#fdba74;background:#fff7ed}.profile-review-card.wide{grid-column:1 / -1}
+.profile-review-card.wide{grid-column:1 / -1}
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#2563eb;padding:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.profile-review-edit:hover{text-decoration:underline;text-underline-offset:2px}
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
@@ -1537,14 +1537,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }
 
   function renderStep1() {
-    const urlHelper = WEBSITE_IMPORT_EXTRACTION_ACTIVE ? (
-      <p className="onb-help">RingBooker will try to suggest your business details, hours, services, and booking link.</p>
-    ) : (
-      <p className="onb-help">
-        Add your website now, then review it before saving. Automated website import is rolling out soon.
-      </p>
-    );
-
     if (step1View === 'manual_vertical') {
       return (
         <div>
@@ -1617,14 +1609,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       <div>
         <h1 className="onb-title">Let's set up your business profile</h1>
         <p className="onb-subtitle">
-          Paste your website or Google Maps link. RingBooker will try to suggest business details for you to review.
+          Paste your website or Google Maps link — we'll fill in the details.
         </p>
         <div className="onb-stack" style={{ marginTop: 24 }}>
           {!manualEntryOpen ? (
             <div className="onb-import-panel">
               <div className="onb-import-row">
                 <div className="onb-field">
-                  <label>Website or Google Maps link</label>
                   <input
                     value={websiteUrl}
                     onChange={(event) => setWebsiteUrl(event.target.value)}
@@ -1635,9 +1626,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                 <button className="onb-import-button" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
                   ✧ {websiteLoading ? 'Importing…' : 'Import'}
                 </button>
-              </div>
-              <div>
-                {urlHelper}
               </div>
             </div>
           ) : null}
@@ -1798,9 +1786,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       const editing = profileEditField === field;
       const hasUserValue = value.trim().length > 0;
       const showImportState = websiteImportAttempted && options.imported && (!userEditedProfileFields.includes(field) || !hasUserValue);
-      const cardState = showImportState ? profileReviewCardState(options.imported) : '';
       return (
-        <div className={`profile-review-card ${options.wide ? 'wide' : ''} ${cardState}`}>
+        <div className={`profile-review-card ${options.wide ? 'wide' : ''}`}>
           <div className="profile-review-top">
             <span className="profile-review-label">{label}</span>
             <button type="button" className="profile-review-edit" onClick={() => setProfileEditField(editing ? null : field)}>
@@ -1977,7 +1964,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               }}
               placeholder="https://yourbusiness.com"
             />,
-            { wide: true, imported: importSuggestions?.businessProfile.website ?? { value: websiteUrl || null, confidence: websiteUrl ? 0.95 : 0, source: websiteUrl ? 'User' : null } },
+            { imported: importSuggestions?.businessProfile.website ?? { value: websiteUrl || null, confidence: websiteUrl ? 0.95 : 0, source: websiteUrl ? 'User' : null } },
           )}
           {profileCard(
             'address',
@@ -1991,7 +1978,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               }}
               placeholder="Street, city, region"
             />,
-            { wide: true, imported: importSuggestions?.businessProfile.address ?? null },
+            { imported: importSuggestions?.businessProfile.address ?? null },
           )}
           {profileCard(
             'hours',
@@ -2168,7 +2155,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           You can refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge.
         </p>
         {servicesFound > 0 ? (
-          <p className="read-success">Imported {servicesFound} service suggestions from your website — review and edit below.</p>
+          <p className="onb-service-import-badge">✓ {servicesFound} {servicesFound === 1 ? 'service' : 'services'} imported from your website — review below</p>
         ) : websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
           <p className="onb-help">
             {WEBSITE_IMPORT_EXTRACTION_ACTIVE

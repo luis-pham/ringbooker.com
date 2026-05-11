@@ -6,6 +6,22 @@ import { mergeImportSuggestions } from './merge';
 const CURRENCY = 'USD';
 const PHONE_RE = /(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}(?!\d)/;
 const SERVICE_LINE_RE = /^(.{3,80}?)(?:\s+[—-]\s+|\s+)(?:from|starting at|starts at)?\s*\$\s?(\d{2,4})(?:.*?(\d{2,3})\s?(?:min|minutes))?/i;
+const COMPRESSED_PRICE_SERVICE_RE = /([A-Z][^$\n]{2,100}?)\s*(?:from|starting at|starts at)?\s*\$\s?(\d{2,4})(\+)?/g;
+const SERVICE_GROUP_HEADINGS = [
+  'Styling Services',
+  'Color Services',
+  'Hair Specialties',
+  'Hair Services',
+  'Salon Services',
+  'Nail Services',
+  'Spa Services',
+  'Massage Services',
+  'Facial Services',
+  'Waxing Services',
+  'Injectables',
+  'Laser Services',
+  'Skin Treatments',
+];
 
 const DAY_ALIASES: Record<string, string> = {
   mo: 'mon', mon: 'mon', monday: 'mon',
@@ -164,31 +180,124 @@ export function inferTimezoneFromAddress(address?: string | null): ImportField<s
 
 export function extractServicesFromText(text: string, source: string): ImportedServiceSuggestion[] {
   const services = new Map<string, ImportedServiceSuggestion>();
-  for (const rawLine of text.split(/[\n•]+/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
+
+  const addService = (input: {
+    name: string;
+    priceText?: string | null;
+    priceType?: ImportedServiceSuggestion['priceType'];
+    durationMinutes?: number | null;
+    group?: string | null;
+    confidence: number;
+  }) => {
+    const name = cleanServiceName(input.name);
+    if (name.length < 3 || name.length > 90) return;
+    const categoryName = input.group?.trim() || inferGroup(name);
+    const key = `${categoryName.toLowerCase()}::${name.toLowerCase()}`;
+    if (services.has(key)) return;
+    services.set(key, {
+      categoryName,
+      name,
+      priceAmount: input.priceText ? Number(input.priceText) : null,
+      priceCurrency: CURRENCY,
+      priceType: input.priceType ?? (input.priceText ? 'fixed' : /consult/i.test(name) ? 'consultation' : 'varies'),
+      durationMinutes: input.durationMinutes ?? null,
+      aliases: aliasFor(name),
+      bookable: true,
+      source,
+      confidence: input.confidence,
+    });
+  };
+
+  let currentCompressedGroup: string | null = null;
+  const compressedText = cleanCompressedServiceText(text);
+  for (const match of compressedText.matchAll(COMPRESSED_PRICE_SERVICE_RE)) {
+    const parsed = splitServiceHeadingPrefix(match[1]);
+    if (parsed.group) currentCompressedGroup = parsed.group;
+    const lower = match[0].toLowerCase();
+    addService({
+      name: parsed.name,
+      priceText: match[2],
+      priceType: match[3] || /from|starting at|starts at/.test(lower) ? 'from' : 'fixed',
+      group: parsed.group ?? currentCompressedGroup,
+      confidence: parsed.group ? 0.86 : 0.8,
+    });
+  }
+
+  for (const rawLine of compressedText.split(/[\n•]+/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
     const line = rawLine.slice(0, 180);
     const match = line.match(SERVICE_LINE_RE);
     const hasServiceKeyword = /manicure|pedicure|balayage|highlight|haircut|massage|facial|wax|botox|filler|laser|lash|brow|treatment/i.test(line);
     if (!match && !hasServiceKeyword) continue;
-    const name = (match?.[1] ?? line.replace(/\$.*$/, '')).replace(/^(service|treatment|menu):?/i, '').trim();
-    if (name.length < 3 || name.length > 90) continue;
-    const key = `${inferGroup(name).toLowerCase()}::${name.toLowerCase()}`;
-    if (services.has(key)) continue;
     const priceText = match?.[2];
     const lower = line.toLowerCase();
-    services.set(key, {
-      categoryName: inferGroup(name),
-      name,
-      priceAmount: priceText ? Number(priceText) : null,
-      priceCurrency: CURRENCY,
-      priceType: /from|starting at|starts at/.test(lower) ? 'from' : priceText ? 'fixed' : /consult/.test(lower) ? 'consultation' : 'varies',
+    const parsed = splitServiceHeadingPrefix(match?.[1] ?? line.replace(/\$.*$/, ''));
+    addService({
+      name: parsed.name,
+      priceText,
+      priceType: /from|starting at|starts at|\+/.test(lower) ? 'from' : priceText ? 'fixed' : /consult/.test(lower) ? 'consultation' : 'varies',
       durationMinutes: match?.[3] ? Number(match[3]) : null,
-      aliases: aliasFor(name),
-      bookable: true,
-      source,
+      group: parsed.group,
       confidence: match ? 0.82 : 0.62,
     });
   }
   return [...services.values()].slice(0, 80);
+}
+
+function cleanCompressedServiceText(text: string): string {
+  return text
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\btop of page\b/gi, ' ')
+    .replace(/\bbottom of page\b/gi, ' ')
+    .replace(/BOOKING/gi, ' ')
+    .replace(/\bLoad More\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function cleanServiceName(name: string): string {
+  return name
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\b(top of page|bottom of page|BOOKING|Load More)\b/gi, ' ')
+    .replace(/^(services|service|treatments|treatment|menu)\s*:?\s*/i, '')
+    .replace(/\b(from|starting at|starts at)\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitServiceHeadingPrefix(rawName: string): { group: string | null; name: string } {
+  let cleaned = cleanServiceName(rawName);
+  let group: string | null = null;
+  for (let pass = 0; pass < 4; pass += 1) {
+    let stripped = false;
+    for (const heading of SERVICE_GROUP_HEADINGS) {
+      const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const withSpace = new RegExp(`^${escapedHeading}\\s+(.+)$`, 'i');
+      const spacedMatch = cleaned.match(withSpace);
+      if (spacedMatch?.[1]?.trim()) {
+        group = heading;
+        cleaned = spacedMatch[1].trim();
+        stripped = true;
+        break;
+      }
+      const compactHeading = heading.replace(/\s+/g, '');
+      const compactCleaned = cleaned.replace(/\s+/g, '');
+      if (compactCleaned.toLowerCase().startsWith(compactHeading.toLowerCase())) {
+        const name = cleaned.slice(heading.length).trim();
+        if (name.length >= 3) {
+          group = heading;
+          cleaned = name;
+          stripped = true;
+          break;
+        }
+      }
+    }
+    if (!stripped) break;
+  }
+  return { group, name: cleaned };
 }
 
 function aliasFor(name: string): string[] {
