@@ -12,7 +12,7 @@ import {
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
-import { CUSTOM_MANAGED_SETUP_ITEMS } from '@/components/user/user-plan-ux-copy';
+import { CUSTOM_MANAGED_SETUP_ITEMS, ENTERPRISE_PENDING_OVERVIEW_STATUS_LINES } from '@/components/user/user-plan-ux-copy';
 import { formatShopDateTime, getShopTimezone } from '@/src/shared/timezone';
 
 type GoLiveDashboardPrimaryCta =
@@ -532,14 +532,21 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 <div className="panel-head">
                   <div>
                     <h3>{enterpriseApprovalPending ? 'Your Custom setup is being prepared' : 'Your Custom setup is managed by RingBooker'}</h3>
-                    <p className="sub">
-                      {enterpriseApprovalPending
-                        ? 'RingBooker is reviewing your locations, routing rules, and implementation plan. Our team will confirm your go-live timeline before live answering is enabled.'
-                        : 'Your account can include managed routing, integrations, multilingual routing, higher call volume planning, and implementation support.'}
-                    </p>
-                  </div>
+                    {enterpriseApprovalPending ? (
+                      <ul className="plan-includes-list" style={{ marginTop: 10 }}>
+                        {ENTERPRISE_PENDING_OVERVIEW_STATUS_LINES.map((line) => (
+                          <li key={line}>{line}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="sub">
+                        Your account can include managed routing, integrations, multilingual routing, higher call volume
+                        planning, and implementation support.
+                      </p>
+                    )}
                 </div>
-                <ul className="plan-includes-list" style={{ marginTop: 12 }}>
+                </div>
+                <ul className="plan-includes-list" style={{ marginTop: enterpriseApprovalPending ? 14 : 12 }}>
                   {CUSTOM_MANAGED_SETUP_ITEMS.map((item) => (
                     <li key={item}>{item}</li>
                   ))}

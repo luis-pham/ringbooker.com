@@ -33,6 +33,18 @@ export const CUSTOM_MANAGED_SETUP_ITEMS = [
   'Implementation support',
 ];
 
+/** Billing › Overview — Enterprise pending: replaces the single intro paragraph (matches `plan-includes-list` typography). */
+export const ENTERPRISE_PENDING_BILLING_STATUS_LINES = [
+  'Your Custom setup is being prepared through sales and implementation.',
+  'We confirm contract, invoice, routing, and go-live details before live answering is enabled.',
+] as const;
+
+/** Dashboard — Enterprise pending: status lines before managed setup capabilities. */
+export const ENTERPRISE_PENDING_OVERVIEW_STATUS_LINES = [
+  'RingBooker is reviewing your locations, routing rules, and implementation plan.',
+  'Our team confirms your go-live timeline before live answering is enabled.',
+] as const;
+
 export const USER_LANGUAGE_OPTIONS = [
   { code: 'en', label: 'English' },
   { code: 'vi', label: 'Vietnamese' },

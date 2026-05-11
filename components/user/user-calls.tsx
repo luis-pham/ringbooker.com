@@ -13,7 +13,7 @@ const callsPortalStyles = String.raw`
 .calls-metric-card .bst-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light)}
 .calls-metric-card .bst-value{font-size:17px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
 .calls-metric-card .bst-meta{font-size:12px;color:var(--text-gray);line-height:1.45;margin-top:auto}
-.calls-filter-bar{margin-top:40px;margin-bottom:16px}
+.calls-filter-bar{margin-top:40px;margin-bottom:16px;min-width:0}
 .calls-list-card{margin-top:18px}
 .calls-table-desktop{width:100%;border-collapse:separate;border-spacing:0;background:transparent}
 .calls-list-card .calls-table-desktop{
@@ -103,23 +103,29 @@ html[data-user-theme="dark"] .calls-list-card .calls-table.calls-table-desktop t
 .calls-pagination .pager-meta{color:var(--text-gray);font-size:13px;line-height:1.45}
 .calls-pagination .pager-actions{display:flex;align-items:center;gap:8px}
 .business-subtabs.calls-filter-tabs{
-  display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;
+  display:flex;gap:18px;flex-wrap:nowrap;align-items:flex-end;
   margin-bottom:0;border-bottom:1px solid var(--border);
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  scrollbar-width:none;
 }
+.business-subtabs.calls-filter-tabs::-webkit-scrollbar{display:none}
 .business-subtabs.calls-filter-tabs .business-subtab{
+  flex:0 0 auto;white-space:nowrap;
   appearance:none;background:transparent;border:none;border-radius:0;margin:0;
-  padding:12px 0 10px;font-size:14px;line-height:1.35;font-weight:500;color:var(--text-gray);
-  cursor:pointer;font:inherit;box-shadow:none;border-bottom:2px solid transparent;
-  transition:color .15s ease,border-color .15s ease;
+  padding:12px 0 9px;font-size:14px;line-height:1.35;font-weight:500;color:var(--text-gray);
+  cursor:pointer;font:inherit;box-shadow:none;border-bottom:3px solid transparent;
+  transition:color .15s ease,border-color .15s ease,font-weight .15s ease;
 }
 .business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
 .business-subtabs.calls-filter-tabs .business-subtab:focus-visible{
-  outline:2px solid var(--text-dark);outline-offset:3px;
+  outline:2px solid var(--purple-dark);outline-offset:3px;
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active{
-  color:var(--text-dark);font-weight:600;border-bottom-color:var(--text-dark);
+  color:var(--purple-dark);font-weight:650;letter-spacing:-.01em;border-bottom-color:var(--purple-dark);
 }
-.business-subtabs.calls-filter-tabs .business-subtab.active:hover{color:var(--text-dark)}
+.business-subtabs.calls-filter-tabs .business-subtab.active:hover{color:var(--purple-dark)}
 .intent-filter-count{
   margin-left:6px;background:#b91c1c;color:#fff;font-size:10px;font-weight:600;min-width:18px;height:18px;
   border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;vertical-align:middle;
@@ -130,16 +136,6 @@ html[data-user-theme="dark"] .calls-list-card .calls-table.calls-table-desktop t
 @media (max-width:860px){
   .calls-metric-grid{grid-template-columns:1fr}
   .calls-table-desktop{display:none!important}
-  .business-subtabs.calls-filter-tabs{
-    gap:18px;
-    flex-wrap:nowrap;
-    overflow-x:auto;
-    overflow-y:hidden;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-  }
-  .business-subtabs.calls-filter-tabs::-webkit-scrollbar{display:none}
-  .business-subtabs.calls-filter-tabs .business-subtab{flex:0 0 auto}
 }
 html[data-user-theme="dark"] .calls-metric-card{
   background:var(--surface-card);border-color:var(--border);
@@ -148,7 +144,7 @@ html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs{border-bottom-c
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab{color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active{
-  color:var(--text-dark);border-bottom-color:var(--text-dark);
+  color:var(--purple-dark);border-bottom-color:var(--purple-dark);
 }
 .mobile-calls{display:none}
 .intent-call-summary{margin-top:10px;display:flex;flex-direction:column;gap:8px}

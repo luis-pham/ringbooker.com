@@ -342,6 +342,30 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 .card.soft{background:linear-gradient(180deg,#fff 0%,#fcfbff 100%)}
 .card h3{margin:0 0 6px;font-size:15px;font-weight:500;letter-spacing:-.01em}
 .card p.sub{margin:0 0 18px;color:var(--text-gray);font-size:13px;line-height:1.6}
+.plan-includes-list{
+  margin:0;
+  padding:0;
+  list-style:none;
+  color:var(--text-gray);
+  font-size:13px;
+  line-height:1.65;
+  display:grid;
+  gap:8px;
+}
+.plan-includes-list li{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+.plan-includes-list li::before{
+  content:'';
+  width:6px;
+  height:6px;
+  border-radius:999px;
+  background:var(--purple-dark);
+  flex-shrink:0;
+  margin-top:6px;
+}
 .go-live-setup-status{border-radius:22px}
 .go-live-setup-status--next{border-color:#bfdbfe;background:#eff6ff}
 .go-live-setup-status--next .go-live-setup-status__lead{color:#1e3a8a}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { userCallsScripts, userCallsStyles } from '@/components/user/user-calls';
@@ -392,6 +392,14 @@ export function UserCallsLive({
     setPage(1);
   }
 
+  const callsFilterTablistRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = callsFilterTablistRef.current;
+    if (!root) return;
+    const activeEl = root.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    activeEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }, [activeFilter]);
+
   function renderCallIntent(call: Call) {
     const urgency = urgencyBadge(call.summaryUrgency);
     return (
@@ -489,7 +497,7 @@ export function UserCallsLive({
           </section>
 
 	          <div className="calls-filter-bar">
-	            <div className="business-subtabs calls-filter-tabs" role="tablist" aria-label="Call filters">
+	            <div ref={callsFilterTablistRef} className="business-subtabs calls-filter-tabs" role="tablist" aria-label="Call filters">
 	              {(['all', 'follow_up_needed', 'high_urgency', 'bookings', 'missed'] as CallFilter[]).map((filter) => (
 	                <button
 	                  key={filter}

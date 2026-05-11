@@ -12,7 +12,11 @@ import {
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
-import { BILLING_PLAN_CARD_FEATURES, CUSTOM_MANAGED_SETUP_ITEMS } from '@/components/user/user-plan-ux-copy';
+import {
+  BILLING_PLAN_CARD_FEATURES,
+  CUSTOM_MANAGED_SETUP_ITEMS,
+  ENTERPRISE_PENDING_BILLING_STATUS_LINES,
+} from '@/components/user/user-plan-ux-copy';
 import { formatShopDate, getShopTimezone } from '@/src/shared/timezone';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
@@ -984,13 +988,24 @@ export function UserBillingLive({
 
                       {isEnterprisePlan ? (
                         <section className="card" style={{ marginBottom: 16 }}>
-                          <h3 style={{ marginTop: 0 }}>Custom billing is managed by the RingBooker team</h3>
-                          <p className="sub">
+                          <h3 style={{ marginTop: 0 }}>
                             {enterpriseApprovalPending
-                              ? 'Your Custom setup is being prepared through sales and implementation. We will confirm contract, invoice, routing, and go-live details before live answering is enabled.'
-                              : 'Your Custom account uses managed setup for routing, integrations, call volume planning, and billing changes.'}
-                          </p>
-                          <ul className="plan-includes-list" style={{ marginTop: 12 }}>
+                              ? 'Your Custom setup is being prepared'
+                              : 'Custom billing is managed by the RingBooker team'}
+                          </h3>
+                          {enterpriseApprovalPending ? (
+                            <ul className="plan-includes-list" style={{ marginTop: 10 }}>
+                              {ENTERPRISE_PENDING_BILLING_STATUS_LINES.map((line) => (
+                                <li key={line}>{line}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="sub">
+                              Your Custom account uses managed setup for routing, integrations, call volume planning, and
+                              billing changes.
+                            </p>
+                          )}
+                          <ul className="plan-includes-list" style={{ marginTop: enterpriseApprovalPending ? 14 : 12 }}>
                             {CUSTOM_MANAGED_SETUP_ITEMS.map((item) => (
                               <li key={item}>{item}</li>
                             ))}
