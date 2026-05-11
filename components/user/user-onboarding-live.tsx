@@ -153,6 +153,7 @@ const STEP_LABELS = ['Find', 'Profile', 'Services', 'Test'] as const;
 const WEBSITE_IMPORT_EXTRACTION_ACTIVE = process.env.NEXT_PUBLIC_WEBSITE_IMPORT_ACTIVE === 'true';
 
 type Step1View = 'quick' | 'manual_vertical' | 'manual_beauty_subtype';
+type ProfileEditField = 'name' | 'phone' | 'website' | 'type' | 'address' | 'hours' | 'timezone' | null;
 
 const MIXED_SERVICE_GROUPS = [
   'Manicure',
@@ -174,11 +175,11 @@ const MIXED_SERVICE_GROUPS = [
 type VerticalConfidence = 'high' | 'low' | 'none';
 
 const MANUAL_PRIMARY_VERTICAL: Array<{ id: Vertical | 'beauty_umbrella'; emoji: string; label: string }> = [
-  { id: 'nail_salon', emoji: '💅', label: 'Nail Salon' },
-  { id: 'hair_salon', emoji: '✂️', label: 'Hair Salon' },
-  { id: 'day_spa', emoji: '🧖', label: 'Day Spa' },
-  { id: 'med_spa', emoji: '💉', label: 'Med Spa' },
-  { id: 'beauty_umbrella', emoji: '✨', label: 'Beauty Clinic / Aesthetic / Wax / Lash' },
+  { id: 'nail_salon', emoji: '✦', label: 'Nail salon' },
+  { id: 'hair_salon', emoji: '✂', label: 'Hair salon' },
+  { id: 'day_spa', emoji: '♡', label: 'Day spa' },
+  { id: 'med_spa', emoji: '✽', label: 'Med spa' },
+  { id: 'beauty_umbrella', emoji: '…', label: 'Mixed / other' },
 ];
 
 const BEAUTY_SUBTYPE_OPTIONS: Array<{ id: BeautySubtype; label: string }> = [
@@ -189,6 +190,24 @@ const BEAUTY_SUBTYPE_OPTIONS: Array<{ id: BeautySubtype; label: string }> = [
   { id: 'brow_studio', label: 'Brow studio' },
   { id: 'other_beauty', label: 'Other beauty service' },
 ];
+
+const MIXED_SERVICE_GROUP_ICONS: Record<(typeof MIXED_SERVICE_GROUPS)[number], string> = {
+  Manicure: '✦',
+  Pedicure: '✦',
+  'Acrylics / Extensions': '✦',
+  Haircuts: '✂',
+  'Hair Color': '✂',
+  Waxing: '♨',
+  Massage: '⌁',
+  Facials: '♡',
+  'Brows & Lashes': '◉',
+  Makeup: '✧',
+  Injectables: '✽',
+  Laser: '⌁',
+  'Skin Treatments': '♢',
+  Consultations: '□',
+  Other: '…',
+};
 
 const VERTICAL_LABELS: Record<Vertical, string> = {
   nail_salon: 'Nail Salon',
@@ -801,6 +820,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   );
   const [step1View, setStep1View] = useState<Step1View>('quick');
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
+  const [profileEditField, setProfileEditField] = useState<ProfileEditField>(null);
   const [manualPrimaryPick, setManualPrimaryPick] = useState<Vertical | 'beauty_umbrella' | ''>('');
   const [beautySubtype, setBeautySubtype] = useState<BeautySubtype | ''>(initialBeautySubtype);
   const [verticalConfidence, setVerticalConfidence] = useState<VerticalConfidence>(initialVertical ? 'high' : 'none');
@@ -1281,8 +1301,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       ...userSettingsStyles,
       String.raw`
 .onb-shell{max-width:1120px;margin:0 auto;padding:18px;padding-bottom:110px;box-sizing:border-box}
-.onb-card{background:transparent;border:none;box-shadow:none;border-radius:0;padding:32px;max-width:680px;margin:0 auto;width:100%}
-.onb-card.wide{max-width:720px}
+.onb-card{background:transparent;border:none;box-shadow:none;border-radius:0;padding:32px;max-width:816px;margin:0 auto;width:100%}
+.onb-card.wide{max-width:864px}
 .onb-progress{display:flex;align-items:center;gap:16px;margin-bottom:32px}
 .onb-back-inline{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;background:#000;color:#fff;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0}.onb-back-inline:hover{background:#1a1a1a}.onb-back-inline.hidden{visibility:hidden}
 .onb-progress-divider{width:1px;height:24px;background:#e2e8f0;flex-shrink:0}
@@ -1306,6 +1326,34 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-field input,.onb-field select,.onb-field textarea,.hours-row select{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit;box-sizing:border-box}.onb-field textarea{min-height:72px;resize:vertical}
 .onb-field input:focus,.onb-field select:focus,.onb-field textarea:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-help-link{border:0;background:transparent;padding:8px 0;cursor:pointer;text-decoration:none;font-family:inherit;font-weight:400;line-height:1.5;text-align:inherit;transition:color .15s ease}.onb-help-link:hover{color:#334155;text-decoration:underline;text-underline-offset:2px}
+.onb-import-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px}
+.onb-import-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.onb-import-panel .onb-field{margin-bottom:0}.onb-import-panel .onb-help{margin-top:8px}
+.onb-import-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#111827;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.onb-import-button:hover:not(:disabled){border-color:#7c3aed;color:#5b21b6;background:#faf5ff}.onb-import-button:disabled{opacity:.6;cursor:not-allowed}
+.onb-manual-toggle-row{text-align:center;margin:-4px 0 2px}.onb-manual-toggle-row .onb-help-link{padding:0;color:#111827;text-decoration:underline;text-underline-offset:3px}
+.onb-manual-panel{border-top:1px solid #e2e8f0;padding-top:18px}
+.onb-compact-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.choice-card.compact{min-height:78px;padding:12px;text-align:center;display:grid;align-content:center;justify-items:center}
+.choice-card.compact .emoji{font-size:1.1rem;color:#475569}.choice-card.compact h4{margin:7px 0 0;font-size:14px;font-weight:700;color:#374151}
+.choice-card.compact.active .emoji,.choice-card.compact.active h4{color:#6d28d9}
+.preset-chip.active{border-color:#7c3aed;background:#faf5ff;color:#5b21b6}
+.mixed-chip{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;font-size:13px;font-weight:700}
+.mixed-chip .chip-icon{font-size:12px;line-height:1;color:#64748b}.mixed-chip.active .chip-icon{color:#5b21b6}
+.onb-import-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:#ecfdf5;color:#166534;padding:5px 12px;font-size:13px;font-weight:700;margin:18px 0 16px}
+.profile-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.profile-review-card{border:1px solid #d9deea;border-radius:12px;background:#fff;padding:14px 16px;min-height:78px}
+.profile-review-card.verified{border-color:#86efac}.profile-review-card.wide{grid-column:1 / -1}
+.profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#2563eb;padding:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.profile-review-edit:hover{text-decoration:underline;text-underline-offset:2px}
+.profile-review-value{color:#111827;font-size:17px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
+.onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
+.service-group-card{border:1px solid #e2e8f0;border-radius:14px;background:#fff;margin-top:14px;overflow:hidden}
+.service-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+.service-group-kicker{display:block;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.service-group-title{margin:2px 0 0;color:#111827;font-size:16px;font-weight:800}
+.service-group-body{display:grid;gap:10px;padding:14px}
+.service-item-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(100px,.65fr) minmax(100px,.65fr);gap:10px;align-items:center}
+.service-item-row input{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;color:#111827;box-sizing:border-box;width:100%}
+.service-empty{border:1px dashed #cbd5e1;border-radius:10px;padding:12px;color:#64748b;font-size:13px}
 .onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:0;border-radius:8px;background:#000;color:#fff;padding:10px 18px;font-size:15px;font-weight:600;box-shadow:0 8px 18px rgba(0,0,0,.18);cursor:pointer;text-decoration:none;transition:background .15s ease,transform .15s ease,box-shadow .15s ease}.onb-btn-primary:hover:not(:disabled){background:#1f1f1f;transform:translateY(-1px);box-shadow:0 12px 24px rgba(0,0,0,.24)}
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
@@ -1325,7 +1373,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress-pills{justify-content:flex-start}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid{grid-template-columns:1fr}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:minmax(0,1fr) 64px 64px}.service-row select{grid-column:1 / -1}.onb-actions:not(.onb-actions-desktop){display:none}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress-pills{justify-content:flex-start}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row,.service-item-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions:not(.onb-actions-desktop){display:none}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -1444,23 +1492,29 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           Paste your website or Google Maps link. RingBooker will try to suggest business details for you to review.
         </p>
         <div className="onb-stack" style={{ marginTop: 24 }}>
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 18 }}>
-            <div className="onb-field" style={{ marginBottom: 8 }}>
-              <label>Website or Google Maps link</label>
-              <input
-                value={websiteUrl}
-                onChange={(event) => setWebsiteUrl(event.target.value)}
-                placeholder="https://yourbusiness.com or maps.google.com/..."
-                inputMode="url"
-              />
+          <div className="onb-import-panel">
+            <div className="onb-import-row">
+              <div className="onb-field">
+                <label>Website or Google Maps link</label>
+                <input
+                  value={websiteUrl}
+                  onChange={(event) => setWebsiteUrl(event.target.value)}
+                  placeholder="e.g. glowspa.com or maps.google.com/..."
+                  inputMode="url"
+                />
+              </div>
+              <button className="onb-import-button" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading || manualEntryOpen}>
+                ✧ {websiteLoading ? 'Importing…' : 'Import'}
+              </button>
+            </div>
+            <div>
               {urlHelper}
             </div>
           </div>
-          <div style={{ textAlign: 'center', margin: '-4px 0 2px' }}>
+          <div className="onb-manual-toggle-row">
             <button
               type="button"
               className="onb-help-link"
-              style={{ padding: 0 }}
               onClick={() => {
                 if (manualEntryOpen) {
                   setManualEntryOpen(false);
@@ -1474,27 +1528,26 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             </button>
           </div>
           {manualEntryOpen ? (
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 18 }}>
+            <div className="onb-manual-panel">
               <div className="onb-field">
                 <label>Business name</label>
-                <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Glamour Hair Studio" />
+                <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="e.g. Glamour Hair Studio" />
               </div>
               <div className="onb-field">
                 <label>What best describes your business?</label>
-                <div className="onb-grid" style={{ gap: 10 }}>
+                <div className="onb-grid onb-compact-grid">
                   {MANUAL_PRIMARY_VERTICAL.map((item) => (
                     <button
                       key={item.id}
                       type="button"
-                      className={`choice-card ${manualPrimaryPick === item.id ? 'active' : ''}`}
-                      style={{ minHeight: 76, padding: 14 }}
+                      className={`choice-card compact ${manualPrimaryPick === item.id ? 'active' : ''}`}
                       onClick={() => {
                         setManualPrimaryPick(item.id);
                         if (item.id !== 'beauty_umbrella') setBeautySubtype('');
                       }}
                     >
-                      <span className="emoji" style={{ fontSize: '1.35rem' }}>{item.emoji}</span>
-                      <h4 style={{ marginTop: 8 }}>{item.label}</h4>
+                      <span className="emoji">{item.emoji}</span>
+                      <h4>{item.label}</h4>
                     </button>
                   ))}
                 </div>
@@ -1526,10 +1579,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     <button
                       key={group}
                       type="button"
-                      className={`preset-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
+                      className={`preset-chip mixed-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
                       onClick={() => toggleServiceGroup(group)}
                     >
-                      {selectedServiceGroups.includes(group) ? '✓ ' : ''}
+                      <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[group]}</span>
                       {group}
                     </button>
                   ))}
@@ -1559,12 +1612,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <div className="onb-actions onb-actions-desktop">
           <span />
           <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Importing…' : WEBSITE_IMPORT_EXTRACTION_ACTIVE && !manualEntryOpen ? 'Import and continue' : 'Continue to profile'}
+            {websiteLoading ? 'Importing…' : manualEntryOpen ? 'Next →' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import and continue' : 'Next →'}
           </button>
         </div>
         <div className="onb-sticky-cta">
           <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Importing…' : WEBSITE_IMPORT_EXTRACTION_ACTIVE && !manualEntryOpen ? 'Import and continue' : 'Continue to profile'}
+            {websiteLoading ? 'Importing…' : manualEntryOpen ? 'Next →' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import and continue' : 'Next →'}
           </button>
           <button
             className="onb-btn-secondary"
@@ -1593,194 +1646,180 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           ? VERTICAL_LABELS[vertical]
           : '';
 
-    const showBusinessTypePicker = verticalConfidence !== 'high' || profileTypeEditOpen;
+    const importedHost = (() => {
+      try {
+        return websiteUrl ? new URL(normalizeWebsiteUrl(websiteUrl)).hostname.replace(/^www\./, '') : 'website';
+      } catch {
+        return 'website';
+      }
+    })();
+
+    const profileCard = (
+      field: Exclude<ProfileEditField, null>,
+      label: string,
+      value: string,
+      editor: ReactNode,
+      options: { wide?: boolean; imported?: { value?: unknown; confidence?: number; source?: string | null } | null } = {},
+    ) => {
+      const editing = profileEditField === field;
+      return (
+        <div className={`profile-review-card ${options.wide ? 'wide' : ''} ${websiteImportAttempted ? 'verified' : ''}`}>
+          <div className="profile-review-top">
+            <span className="profile-review-label">{label}</span>
+            <button type="button" className="profile-review-edit" onClick={() => setProfileEditField(editing ? null : field)}>
+              {editing ? 'done' : 'edit'}
+            </button>
+          </div>
+          {editing ? <div className="profile-review-editor">{editor}</div> : <div className="profile-review-value">{value || 'Missing'}</div>}
+          {websiteImportAttempted && options.imported ? importFieldState(options.imported) : null}
+        </div>
+      );
+    };
 
     return (
       <div>
-        <h1 className="onb-title">Review your business profile</h1>
-        <p className="onb-subtitle">Please check this information before RingBooker uses it to answer callers.</p>
+        <h1 className="onb-title">Confirm your details</h1>
+        <p className="onb-subtitle">AI filled these from your website. Edit anything that&apos;s wrong.</p>
 
-        {renderAccordionSection(
-          'profile',
-          'Business details',
+        {websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
           <div>
-            {websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
-              <div style={{ marginTop: 0, marginBottom: 12 }}>
-                <p className="onb-help" style={{ marginTop: 0 }}>
-                  <span className="onb-source-badge">{importSource === 'google_business' ? 'Found on Google' : 'Found on website'}</span>{' '}
-                  <span className="onb-source-badge" style={{ background: importSuggestions?.status === 'success' ? '#ecfdf5' : '#fff7ed', color: importSuggestions?.status === 'success' ? '#047857' : '#c2410c' }}>
-                    {confidenceLabel(importSuggestions?.businessProfile.name?.confidence)}
-                  </span>
-                </p>
-                <p className="onb-help" style={{ marginTop: 6 }}>
-                  {importRecommendedActionMessage(importSuggestions?.completeness?.recommendedNextAction)}
-                </p>
-                {importSuggestions?.warnings?.length ? (
-                  <div className="onb-warning" style={{ borderRadius: 14, border: '1px solid #fed7aa', background: '#fff7ed', color: '#9a3412', padding: '10px 12px', fontSize: 13 }}>
-                    {importSuggestions.warnings.slice(0, 3).map((warning) => (
-                      <p key={warning} style={{ margin: 0 }}>{warning}</p>
-                    ))}
-                  </div>
-                ) : null}
+            <span className="onb-import-badge">✓ Imported from {importSource === 'google_business' ? 'Google' : importedHost}</span>
+            {importSuggestions?.warnings?.length ? (
+              <div className="onb-warning" style={{ borderRadius: 12, border: '1px solid #fed7aa', background: '#fff7ed', color: '#9a3412', padding: '10px 12px', fontSize: 13, marginBottom: 12 }}>
+                {importSuggestions.warnings.slice(0, 3).map((warning) => (
+                  <p key={warning} style={{ margin: 0 }}>{warning}</p>
+                ))}
               </div>
             ) : null}
-            {importSource === 'manual' ? (
-              <p className="onb-help" style={{ marginBottom: 14 }}>
-                No website link saved — you can add one later from the dashboard.
-              </p>
-            ) : null}
-            <div className="onb-field">
-              <label>Business name</label>
-              <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Happy Nails & Spa" />
-              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.name) : null}
-            </div>
-            <div className="onb-field">
-              <label>Business phone number</label>
-              <input
-                type="tel"
-                value={businessPhone}
-                onChange={(event) => {
-                  setBusinessPhone(event.target.value);
-                  setBusinessPhoneNeedsRealEntry(false);
-                }}
-              />
-              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.phone) : null}
-            </div>
-            <div className="onb-field">
-              <label>Website</label>
-              <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://yourbusiness.com" />
-              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.website ?? { value: websiteUrl || null, confidence: websiteUrl ? 0.95 : 0, source: websiteUrl ? 'User' : null }) : null}
-            </div>
-            <div className="onb-field">
-              <label>Business type</label>
-              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.primaryType) : null}
-              {showBusinessTypePicker ? (
-                <div>
-                  {verticalConfidence === 'high' && profileTypeEditOpen ? (
-                    <p className="onb-help" style={{ marginBottom: 12 }}>
-                      Update your business type below.
-                    </p>
-                  ) : (
-                    <p className="onb-help" style={{ marginBottom: 12 }}>
-                      We couldn&apos;t confidently detect your business type. Please choose one so RingBooker can suggest the right services.
-                    </p>
-                  )}
-                  <div className="onb-grid">
-                    {MANUAL_PRIMARY_VERTICAL.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`choice-card ${profilePickPrimary === item.id ? 'active' : ''}`}
-                        onClick={() => {
-                          setProfilePickPrimary(item.id);
-                          if (item.id !== 'beauty_umbrella') setProfilePickSubtype('');
-                        }}
-                      >
-                        <span className="emoji">{item.emoji}</span>
-                        <h4>{item.label}</h4>
-                      </button>
-                    ))}
-                  </div>
-                  {profilePickPrimary === 'beauty_umbrella' ? (
-                    <div className="onb-stack" style={{ marginTop: 16 }}>
-                      <p className="onb-section-title">What best describes your business?</p>
-                      {BEAUTY_SUBTYPE_OPTIONS.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className={`choice-card ${profilePickSubtype === item.id ? 'active' : ''}`}
-                          style={{ minHeight: 72 }}
-                          onClick={() => setProfilePickSubtype(item.id)}
-                        >
-                          <h4 style={{ margin: 0 }}>{item.label}</h4>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div style={{ marginTop: 16 }}>
-                    <button className="onb-btn-primary" type="button" onClick={() => applyProfileBusinessType()}>
-                      Apply business type
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="timezone-readonly" style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                  <span>
-                    <strong>Business type:</strong> {resolvedVerticalLabel || 'Not set'}
-                  </span>
+          </div>
+        ) : null}
+        {importSource === 'manual' ? (
+          <p className="onb-help" style={{ margin: '14px 0' }}>
+            No website link saved — you can add one later from the dashboard.
+          </p>
+        ) : null}
+
+        <div className="profile-review-grid">
+          {profileCard(
+            'name',
+            'Business name',
+            businessName,
+            <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Happy Nails & Spa" />,
+            { imported: importSuggestions?.businessProfile.name ?? null },
+          )}
+          {profileCard(
+            'type',
+            'Type',
+            resolvedVerticalLabel || 'Not set',
+            <div>
+              <div className="onb-grid onb-compact-grid">
+                {MANUAL_PRIMARY_VERTICAL.map((item) => (
                   <button
+                    key={item.id}
                     type="button"
-                    className="onb-help-link"
-                    style={{ padding: 0 }}
+                    className={`choice-card compact ${profilePickPrimary === item.id ? 'active' : ''}`}
                     onClick={() => {
-                      setProfileTypeEditOpen(true);
-                      if (vertical === 'beauty_clinic' && beautySubtype) {
-                        setProfilePickPrimary('beauty_umbrella');
-                        setProfilePickSubtype(beautySubtype);
-                      } else if (vertical) {
-                        setProfilePickPrimary(vertical);
-                        setProfilePickSubtype('');
-                      }
+                      setProfilePickPrimary(item.id);
+                      if (item.id !== 'beauty_umbrella') setProfilePickSubtype('');
                     }}
                   >
-                    Change
+                    <span className="emoji">{item.emoji}</span>
+                    <h4>{item.label}</h4>
                   </button>
-                </div>
-              )}
-            </div>
-            {websiteImportAttempted && selectedServiceGroups.length > 0 ? (
-              <div>
-                <p className="onb-section-title">Also offers</p>
-                <p className="onb-help" style={{ marginTop: 4 }}>
-                  Review what RingBooker detected. Add or remove anything before continuing.
-                </p>
-                <div className="preset-row" style={{ marginTop: 10 }}>
-                  {MIXED_SERVICE_GROUPS.map((group) => (
+                ))}
+              </div>
+              {profilePickPrimary === 'beauty_umbrella' ? (
+                <div className="preset-row">
+                  {BEAUTY_SUBTYPE_OPTIONS.map((item) => (
                     <button
-                      key={group}
+                      key={item.id}
                       type="button"
-                      className={`preset-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
-                      onClick={() => toggleServiceGroup(group)}
+                      className={`preset-chip ${profilePickSubtype === item.id ? 'active' : ''}`}
+                      onClick={() => setProfilePickSubtype(item.id)}
                     >
-                      {selectedServiceGroups.includes(group) ? '✓ ' : ''}
-                      {group}
+                      {item.label}
                     </button>
                   ))}
                 </div>
-              </div>
-            ) : null}
-            <div className="onb-field">
-              <label>Address (optional)</label>
-              <textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, city, region (if you want it mentioned on calls)" />
-              {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.address) : null}
-            </div>
-          </div>,
-        )}
-
-        {renderAccordionSection(
-          'hours',
-          'Hours & timezone',
-          <div>
+              ) : null}
+              <button className="onb-btn-secondary" type="button" onClick={() => { applyProfileBusinessType(); setProfileEditField(null); }}>
+                Apply
+              </button>
+            </div>,
+            { imported: importSuggestions?.businessProfile.primaryType ?? null },
+          )}
+          {profileCard(
+            'phone',
+            'Phone',
+            businessPhone,
+            <input
+              type="tel"
+              value={businessPhone}
+              onChange={(event) => {
+                setBusinessPhone(event.target.value);
+                setBusinessPhoneNeedsRealEntry(false);
+              }}
+            />,
+            { imported: importSuggestions?.businessProfile.phone ?? null },
+          )}
+          {profileCard(
+            'timezone',
+            'Timezone',
+            selectedTimezoneMeta ? `${selectedTimezoneMeta.label} (${selectedTimezoneMeta.offset})` : timezone,
             <div>
-              <p className="onb-section-title">Quick presets</p>
-              <div className="preset-row">
-                <button type="button" className="preset-chip" onClick={() => setHours(defaultHours())}>
-                  Standard salon hours
-                </button>
-                <button type="button" className="preset-chip" onClick={() => setHours((h) => presetWeekendClosed({ ...h }))}>
-                  Weekend closed
-                </button>
-                <button type="button" className="preset-chip" onClick={() => setHours(presetOpen7Days(defaultHours()))}>
-                  Open 7 days
-                </button>
+              <div className="onb-field" style={{ marginBottom: 10 }}>
+                <label>Country</label>
+                <select
+                  value={selectedCountry}
+                  onChange={(event) => {
+                    const nextCountry = event.target.value;
+                    const nextCountryMeta = COUNTRY_TIMEZONES.find((item) => item.country === nextCountry);
+                    setSelectedCountry(nextCountry);
+                    if (nextCountryMeta && !nextCountryMeta.timezones.some((zone) => zone.value === timezone)) {
+                      setTimezone(nextCountryMeta.timezones[0].value);
+                    }
+                  }}
+                >
+                  <option value="">Select your country...</option>
+                  {COUNTRY_TIMEZONES.map((item) => (
+                    <option key={item.country} value={item.country}>{item.flag} {item.country}</option>
+                  ))}
+                </select>
               </div>
-            </div>
-            <p className="hours-summary">{summarizeHours(hours)}</p>
-            {websiteImportAttempted ? importFieldState(importSuggestions?.hours) : null}
-            <button type="button" className="onb-help-link" style={{ marginBottom: 12 }} onClick={() => setHoursExpanded(!hoursExpanded)}>
-              {hoursExpanded ? 'Hide day-by-day editor' : 'Edit hours by day'}
-            </button>
-            {hoursExpanded ? (
+              {countryTimezones ? (
+                <select value={timezone} onChange={(event) => setTimezone(event.target.value)}>
+                  {countryTimezones.timezones.map((zone) => (
+                    <option key={zone.value} value={zone.value}>{zone.label} ({zone.offset})</option>
+                  ))}
+                </select>
+              ) : null}
+            </div>,
+            { imported: importSuggestions?.businessProfile.timezone ?? null },
+          )}
+          {profileCard(
+            'website',
+            'Website',
+            websiteUrl,
+            <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://yourbusiness.com" />,
+            { wide: true, imported: importSuggestions?.businessProfile.website ?? { value: websiteUrl || null, confidence: websiteUrl ? 0.95 : 0, source: websiteUrl ? 'User' : null } },
+          )}
+          {profileCard(
+            'address',
+            'Address',
+            address,
+            <textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, city, region" />,
+            { wide: true, imported: importSuggestions?.businessProfile.address ?? null },
+          )}
+          {profileCard(
+            'hours',
+            'Hours',
+            summarizeHours(hours),
+            <div>
+              <div className="preset-row">
+                <button type="button" className="preset-chip" onClick={() => setHours(defaultHours())}>Standard salon hours</button>
+                <button type="button" className="preset-chip" onClick={() => setHours((h) => presetWeekendClosed({ ...h }))}>Weekend closed</button>
+                <button type="button" className="preset-chip" onClick={() => setHours(presetOpen7Days(defaultHours()))}>Open 7 days</button>
+              </div>
               <div className="hours-list">
                 {DAYS.map(([day, label]) => (
                   <div className={`hours-row ${hours[day].open ? '' : 'closed'}`} key={day}>
@@ -1794,74 +1833,45 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                       <span className="toggle-dot" />
                       {hours[day].open ? 'Open' : 'Closed'}
                     </label>
-                    <select
-                      disabled={!hours[day].open}
-                      value={hours[day].from}
-                      onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], from: event.target.value } })}
-                    >
-                      {TIME_OPTIONS.map((time) => (
-                        <option key={time} value={time}>
-                          {formatTimeLabel(time)}
-                        </option>
-                      ))}
+                    <select disabled={!hours[day].open} value={hours[day].from} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], from: event.target.value } })}>
+                      {TIME_OPTIONS.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}
                     </select>
-                    <select
-                      disabled={!hours[day].open}
-                      value={hours[day].to}
-                      onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], to: event.target.value } })}
-                    >
-                      {TIME_OPTIONS.map((time) => (
-                        <option key={time} value={time}>
-                          {formatTimeLabel(time)}
-                        </option>
-                      ))}
+                    <select disabled={!hours[day].open} value={hours[day].to} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], to: event.target.value } })}>
+                      {TIME_OPTIONS.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}
                     </select>
                   </div>
                 ))}
               </div>
-            ) : null}
-            <div className="onb-field" style={{ marginTop: 16 }}>
-              <label>Country</label>
-              <select
-                value={selectedCountry}
-                onChange={(event) => {
-                  const nextCountry = event.target.value;
-                  const nextCountryMeta = COUNTRY_TIMEZONES.find((item) => item.country === nextCountry);
-                  setSelectedCountry(nextCountry);
-                  if (nextCountryMeta && !nextCountryMeta.timezones.some((zone) => zone.value === timezone)) {
-                    setTimezone(nextCountryMeta.timezones[0].value);
-                  }
-                }}
-              >
-                <option value="">Select your country...</option>
-                {COUNTRY_TIMEZONES.map((item) => (
-                  <option key={item.country} value={item.country}>
-                    {item.flag} {item.country}
-                  </option>
-                ))}
-              </select>
+            </div>,
+            { wide: true, imported: importSuggestions?.hours ?? null },
+          )}
+        </div>
+
+        {websiteImportAttempted && selectedServiceGroups.length > 0 ? (
+          <div style={{ marginTop: 18 }}>
+            <p className="onb-section-title">Also offers</p>
+            <p className="onb-help" style={{ marginTop: 4 }}>
+              Review what RingBooker detected. Add or remove anything before continuing.
+            </p>
+            <div className="preset-row" style={{ marginTop: 10 }}>
+              {MIXED_SERVICE_GROUPS.map((group) => (
+                <button
+                  key={group}
+                  type="button"
+                  className={`preset-chip mixed-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
+                  onClick={() => toggleServiceGroup(group)}
+                >
+                  <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[group]}</span>
+                  {group}
+                </button>
+              ))}
             </div>
-            {countryTimezones ? (
-              <div className="onb-field">
-                <label>Timezone</label>
-                {countryTimezones.timezones.length === 1 && selectedTimezoneMeta ? (
-                  <div className="timezone-readonly" style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', background: '#f9fafb' }}>
-                    {countryTimezones.flag} {selectedTimezoneMeta.label} ({selectedTimezoneMeta.offset})
-                  </div>
-                ) : (
-                  <select value={timezone} onChange={(event) => setTimezone(event.target.value)}>
-                    {countryTimezones.timezones.map((zone) => (
-                      <option key={zone.value} value={zone.value}>
-                        {zone.label} ({zone.offset})
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {websiteImportAttempted ? importFieldState(importSuggestions?.businessProfile.timezone) : null}
-              </div>
-            ) : null}
-          </div>,
-        )}
+          </div>
+        ) : null}
+        <div className="onb-note" style={{ marginTop: 18 }}>
+          <span>ⓘ</span>
+          <span>Hours and contact are what callers ask most. Fix them now for the best test.</span>
+        </div>
 
         {renderAccordionSection(
           'languages',
@@ -1908,12 +1918,23 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   function renderStep3() {
     const presetLabel =
       vertical === 'beauty_clinic' && beautySubtype ? BEAUTY_SUBTYPE_LABELS[beautySubtype] : vertical ? VERTICAL_LABELS[vertical] : 'industry';
+    const groupNames = [
+      ...new Set([
+        ...selectedServiceGroups,
+        ...services.map((service) => service.group || 'General Services'),
+        services.length === 0 ? 'General Services' : '',
+      ].filter(Boolean)),
+    ];
+    const groupedServices = groupNames.map((group) => ({
+      group,
+      items: services.map((service, index) => ({ service, index })).filter(({ service }) => (service.group || 'General Services') === group),
+    }));
 
     return (
       <div>
-        <h1 className="onb-title">Review your services</h1>
+        <h1 className="onb-title">Add a few services <span style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>optional</span></h1>
         <p className="onb-subtitle">
-          Add the services callers ask about most, or skip this for now. You can group them now or refine them later in Business Knowledge.
+          So AI can answer pricing questions. You can skip this and add everything later in Business Knowledge.
         </p>
         <p className="onb-help">
           You can refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge.
@@ -1950,54 +1971,61 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               <button
                 key={group}
                 type="button"
-                className={`preset-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
+                className={`preset-chip mixed-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
                 onClick={() => toggleServiceGroup(group)}
               >
-                {selectedServiceGroups.includes(group) ? '✓ ' : ''}
+                <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[group]}</span>
                 {group}
               </button>
             ))}
           </div>
         </div>
-        <div className="manual-header">
-          <span>Group</span>
-          <span>Service</span>
-          <span>Min</span>
-          <span>Price</span>
-        </div>
-        {services.map((service, index) => (
-          <div className="service-row" key={index}>
-            <select value={service.group ?? 'General Services'} onChange={(event) => setServiceRow(index, { ...service, group: event.target.value })}>
-              {[...new Set(['General Services', ...suggestedGroupsForVertical(vertical, beautySubtype), ...selectedServiceGroups, ...services.map((item) => item.group).filter((item): item is string => Boolean(item))])].map((group) => (
-                <option key={group} value={group}>{group}</option>
+        {groupedServices.map(({ group, items }) => (
+          <div className="service-group-card" key={group}>
+            <div className="service-group-head">
+              <div>
+                <span className="service-group-kicker">Service group</span>
+                <h3 className="service-group-title">{group}</h3>
+              </div>
+              <button className="onb-help-link" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group }])}>
+                + Add service
+              </button>
+            </div>
+            <div className="service-group-body">
+              {items.length === 0 ? (
+                <div className="service-empty">No services in this group yet. Add one callers usually ask about.</div>
+              ) : null}
+              {items.map(({ service, index }) => (
+                <div className="service-item-row" key={index}>
+                  <input
+                    value={service.name}
+                    onChange={(event) => setServiceRow(index, { ...service, name: event.target.value })}
+                    placeholder="Service name"
+                  />
+                  <div className="price-wrap">
+                    <span>$</span>
+                    <input
+                      type="number"
+                      value={service.price}
+                      onChange={(event) => setServiceRow(index, { ...service, price: Number(event.target.value) })}
+                      placeholder="Price"
+                    />
+                  </div>
+                  <input
+                    type="number"
+                    min={1}
+                    value={service.duration_min || ''}
+                    placeholder="Minutes"
+                    onChange={(event) =>
+                      setServiceRow(index, { ...service, duration_min: event.target.value === '' ? 0 : Number(event.target.value) })
+                    }
+                  />
+                </div>
               ))}
-            </select>
-            <input
-              value={service.name}
-              onChange={(event) => setServiceRow(index, { ...service, name: event.target.value })}
-              placeholder="Service name"
-            />
-            <input
-              type="number"
-              min={1}
-              value={service.duration_min || ''}
-              placeholder="—"
-              onChange={(event) =>
-                setServiceRow(index, { ...service, duration_min: event.target.value === '' ? 0 : Number(event.target.value) })
-              }
-            />
-            <div className="price-wrap">
-              <span>$</span>
-              <input
-                type="number"
-                value={service.price}
-                onChange={(event) => setServiceRow(index, { ...service, price: Number(event.target.value) })}
-                placeholder="—"
-              />
             </div>
           </div>
         ))}
-        <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group: services[0]?.group ?? 'General Services' }])}>
+        <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group: groupNames[0] ?? 'General Services' }])}>
           + Add service
         </button>
         <div className="onb-actions onb-actions-desktop" style={{ marginTop: 28 }}>
