@@ -1492,25 +1492,27 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           Paste your website or Google Maps link. RingBooker will try to suggest business details for you to review.
         </p>
         <div className="onb-stack" style={{ marginTop: 24 }}>
-          <div className="onb-import-panel">
-            <div className="onb-import-row">
-              <div className="onb-field">
-                <label>Website or Google Maps link</label>
-                <input
-                  value={websiteUrl}
-                  onChange={(event) => setWebsiteUrl(event.target.value)}
-                  placeholder="e.g. glowspa.com or maps.google.com/..."
-                  inputMode="url"
-                />
+          {!manualEntryOpen ? (
+            <div className="onb-import-panel">
+              <div className="onb-import-row">
+                <div className="onb-field">
+                  <label>Website or Google Maps link</label>
+                  <input
+                    value={websiteUrl}
+                    onChange={(event) => setWebsiteUrl(event.target.value)}
+                    placeholder="e.g. glowspa.com or maps.google.com/..."
+                    inputMode="url"
+                  />
+                </div>
+                <button className="onb-import-button" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
+                  ✧ {websiteLoading ? 'Importing…' : 'Import'}
+                </button>
               </div>
-              <button className="onb-import-button" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading || manualEntryOpen}>
-                ✧ {websiteLoading ? 'Importing…' : 'Import'}
-              </button>
+              <div>
+                {urlHelper}
+              </div>
             </div>
-            <div>
-              {urlHelper}
-            </div>
-          </div>
+          ) : null}
           <div className="onb-manual-toggle-row">
             <button
               type="button"
