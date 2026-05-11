@@ -236,6 +236,10 @@ button.subtle-link:hover{text-decoration:underline}
 .card-section-form{
   border:none;border-radius:0;padding:0;background:transparent;
 }
+.settings-tab-content-frame{
+  width:100%;
+  box-sizing:border-box;
+}
 .hours-grid{
   display:grid;gap:0;
   border:1px solid var(--border);border-radius:16px;overflow:hidden;background:#fff;
@@ -336,16 +340,30 @@ button.subtle-link:hover{text-decoration:underline}
 .service-catalog-actions{display:flex;gap:10px;flex-wrap:wrap}
 .service-group-list{display:grid;gap:16px}
 .service-group-card{border:1px solid var(--border);border-radius:16px;background:#fff;overflow:hidden}
-.service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f9fafb;border-bottom:1px solid var(--border)}
+.service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f5f3ee;border-bottom:1px solid var(--border)}
 .service-group-card summary::-webkit-details-marker{display:none}
 .service-group-card summary div{display:flex;align-items:center;justify-content:space-between;gap:14px}
-.service-group-card summary strong{font-size:15px;font-weight:780;color:var(--text-dark)}
-.service-group-card summary span{font-size:12px;color:var(--text-gray);font-weight:700}
-.service-group-body{display:grid;gap:16px;padding:17px}
+.service-group-card summary strong{font-size:20px;font-weight:780;color:var(--text-dark);letter-spacing:-.03em}
+.service-group-card summary span{font-size:18px;color:var(--text-gray);font-weight:750}
+.service-group-card summary div::before{content:'+';display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;border:1px solid var(--border);color:var(--text-gray);font-size:16px;font-weight:760;line-height:1}
+.service-group-card[open] summary div::before{content:'−'}
+.service-group-card summary div strong{margin-right:auto}
+.service-group-body{display:grid;gap:0;padding:28px 24px 20px}
 .service-item-card{display:grid;gap:14px;border:1px solid rgba(15,23,42,.08);border-radius:14px;padding:15px;background:#fff}
 .service-item-card.archived{opacity:.62;background:#f9fafb}
 .service-item-head{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,.8fr);gap:14px}
 .service-item-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.service-summary-item{border-bottom:1px solid var(--border)}
+.service-summary-item:last-of-type{border-bottom:0}
+.service-summary-item.archived{opacity:.62}
+.service-summary-row{display:grid;grid-template-columns:minmax(0,1fr) auto 34px;align-items:center;gap:14px;padding:11px 0}
+.service-summary-name{font-size:20px;font-weight:500;color:#000;letter-spacing:-.03em}
+.service-summary-meta{font-size:18px;font-weight:500;color:#3f3f46;white-space:nowrap;text-align:right}
+.service-edit-icon{width:30px;height:30px;border:0;background:transparent;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer}
+.service-edit-icon:hover{background:#f3f4f6;color:var(--text-dark)}
+.service-edit-icon svg{stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.service-inline-editor{display:grid;gap:14px;margin:8px 0 18px;padding:16px;border:1px solid var(--border);border-radius:14px;background:#fff}
+.service-group-card .add-service-btn{width:260px;max-width:100%;margin-top:16px}
 .inline-check{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:650;color:var(--text-dark)}
 .inline-check input{width:16px;height:16px}
 .service-catalog-note{font-size:13px;line-height:1.55;color:var(--text-gray);padding:12px 14px;background:#f9fafb;border:1px solid var(--border);border-radius:12px}
@@ -371,8 +389,7 @@ button.subtle-link:hover{text-decoration:underline}
 .sh-hours-wrap .hours-row.closed{opacity:.72}
 .sh-hours-wrap .hours-day{font-size:13px;font-weight:780;color:var(--text-dark)}
 @media (min-width:1024px){
-  .sh-business-hours-form > .card-section,
-  .sh-business-hours-form > .settings-save-footer{
+  .card-section-form > .settings-tab-content-frame{
     width:60%;
     max-width:100%;
     box-sizing:border-box;
@@ -490,6 +507,9 @@ html[data-user-theme="dark"] .service-group-card{background:var(--surface-card);
 html[data-user-theme="dark"] .service-group-card summary{background:#161b22;border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .service-item-card{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .service-item-card.archived{background:#161b22}
+html[data-user-theme="dark"] .service-summary-name{color:var(--text-dark)}
+html[data-user-theme="dark"] .service-summary-meta{color:var(--text-gray)}
+html[data-user-theme="dark"] .service-inline-editor{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .service-catalog-note{background:#161b22;border-color:var(--border)}
 html[data-user-theme="dark"] .service-chip{border-color:var(--border);background:var(--surface-card)}
 html[data-user-theme="dark"] .service-chip.active{border-color:rgba(56,139,253,.45);box-shadow:0 0 0 4px rgba(56,139,253,.12)}

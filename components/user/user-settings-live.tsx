@@ -721,6 +721,8 @@ export function UserSettingsLive({
   const [savingBookingLinkProvider, setSavingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('voice');
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
+  const [editingLegacyServiceIndex, setEditingLegacyServiceIndex] = useState<number | null>(null);
+  const [editingCatalogServiceId, setEditingCatalogServiceId] = useState<string | null>(null);
   const [websiteSuggestions, setWebsiteSuggestions] = useState<BusinessKnowledgeSuggestion[]>([]);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
   const [suggestionEdits, setSuggestionEdits] = useState<Record<string, Record<string, unknown>>>({});
@@ -927,23 +929,6 @@ export function UserSettingsLive({
   const showIntegrationsPathPicker = !hasAnyIntegrationSetup && integrationsPath === 'pick';
   const showIntegrationsPathFooter =
     !hasAnyIntegrationSetup && integrationsPath !== 'pick' && integrationsPath !== 'all';
-  const knowledgePortalGuide =
-    portal === 'knowledge'
-      ? [
-          {
-            title: 'AI behavior & Call handling',
-            body: 'Control how RingBooker speaks, greets callers, and handles transfers from the Business Knowledge tab above.',
-            href: '#ai-call-behavior',
-            cta: 'Open tab',
-          },
-          {
-            title: 'Booking setup',
-            body: 'Connect booking links or integrations separately. Business Knowledge stays focused on facts callers ask about.',
-            href: '/user/integrations',
-            cta: 'Open Integrations',
-          },
-        ]
-      : [];
   const squareSectionHeadingFirst = showSquareBlock;
   const bookingSectionHeadingFirst = showBookingLinkBlock && !showSquareBlock;
   const vagaroSectionHeadingFirst = showVagaroBlock && !showSquareBlock && !showBookingLinkBlock;
@@ -1102,6 +1087,7 @@ export function UserSettingsLive({
   }
 
   function addLegacyService() {
+    setEditingLegacyServiceIndex(currentForm.services.length);
     patchState('services', [...currentForm.services, { name: '', duration_min: 60, price: 0 }]);
   }
 
@@ -1113,6 +1099,7 @@ export function UserSettingsLive({
   }
 
   function removeLegacyService(index: number) {
+    if (editingLegacyServiceIndex === index) setEditingLegacyServiceIndex(null);
     patchState('services', currentForm.services.filter((_, itemIndex) => itemIndex !== index));
   }
 
@@ -1150,12 +1137,14 @@ export function UserSettingsLive({
 
   function addServiceToGroup(categoryId: string) {
     const groupCount = currentForm.service_catalog.services.filter((service) => service.categoryId === categoryId).length;
+    const serviceId = clientId('service');
+    setEditingCatalogServiceId(serviceId);
     patchServiceCatalog({
       ...currentForm.service_catalog,
       services: [
         ...currentForm.service_catalog.services,
         {
-          id: clientId('service'),
+          id: serviceId,
           shopId: effectiveShop.id,
           categoryId,
           name: '',
@@ -1181,6 +1170,32 @@ export function UserSettingsLive({
         service.id === serviceId ? { ...service, ...patch } : service,
       ),
     });
+  }
+
+  function removeCatalogService(serviceId: string) {
+    if (editingCatalogServiceId === serviceId) setEditingCatalogServiceId(null);
+    patchServiceCatalog({
+      ...currentForm.service_catalog,
+      services: currentForm.service_catalog.services.filter((service) => service.id !== serviceId),
+    });
+  }
+
+  function formatServicePriceSummary(service: Pick<ShopService, 'priceType' | 'priceAmount'>) {
+    if (service.priceType === 'consultation') return 'Consultation';
+    if (service.priceType === 'varies') return 'Varies';
+    const amount = Number(service.priceAmount ?? 0);
+    if (!Number.isFinite(amount) || amount <= 0) return service.priceType === 'from' ? 'Starts at' : 'Price TBD';
+    const formatted = `$${Math.round(amount)}`;
+    return service.priceType === 'from' ? `from ${formatted}` : formatted;
+  }
+
+  function renderEditIcon() {
+    return (
+      <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+    );
   }
 
   function applySuggestedGroups() {
@@ -1513,31 +1528,6 @@ export function UserSettingsLive({
           </div>
           ) : null}
 
-          {portal === 'knowledge' ? (
-            <section className="card soft" style={{ marginBottom: 18 }}>
-              <div className="panel-head">
-                <div>
-                  <h3>Business Knowledge is the facts RingBooker knows</h3>
-                  <p className="sub">
-	                    Use this page for profile details, hours, services, staff, policies, FAQs, AI behavior, and call handling.
-	                    Integrations stay separate for booking tools.
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-2" style={{ marginTop: 12 }}>
-                {knowledgePortalGuide.map((item) => (
-                  <div className="option-card" key={item.title}>
-                    <div className="hint-row">
-                      <strong className="option-title">{item.title}</strong>
-                    </div>
-                    <p className="sub" style={{ marginTop: 8 }}>{item.body}</p>
-                    <a className="btn" href={item.href} style={{ marginTop: 12 }}>{item.cta}</a>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
-
           {portal === 'knowledge' && websiteSuggestions.length > 0 ? (
             <section className="card" style={{ marginBottom: 18 }}>
               <div className="panel-head">
@@ -1763,7 +1753,7 @@ export function UserSettingsLive({
                         <strong className="option-title">Square booking targets</strong>
                         <span className="hint-copy">Choose the location and service the AI should use.</span>
                       </div>
-                      <div className="form-grid">
+                      <div className="form-grid settings-tab-content-frame">
                         <div className="field">
                           <label>Square location</label>
                           <select value={squareLocationId} onChange={(event) => setSquareLocationId(event.target.value)}>
@@ -2160,12 +2150,12 @@ export function UserSettingsLive({
 	                  });
 	                }}
 	              >
-	                <div className="card-section">
+	                <div className="card-section settings-tab-content-frame">
 	                  <div className="hint-row">
 	                    <strong className="option-title">Business profile</strong>
 	                    <span className="hint-copy">Core details RingBooker can use when callers ask who you are, where you are, or how to reach the team.</span>
 	                  </div>
-	                  <div className="form-grid" style={{ marginTop: 14 }}>
+	                  <div className="form-grid settings-tab-content-frame" style={{ marginTop: 14 }}>
 	                    <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
 	                    <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
 	                    <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
@@ -2175,7 +2165,7 @@ export function UserSettingsLive({
 	                    <div className="field"><label>Website</label><input value={currentForm.website_url} onChange={(event) => patchState('website_url', event.target.value)} placeholder="https://..." /></div>
 	                  </div>
 	                </div>
-                <div className="settings-save-footer">
+                <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'business-knowledge-info' ? 'Saving...' : 'Save business knowledge'}
                   </button>
@@ -2197,7 +2187,7 @@ export function UserSettingsLive({
                   });
                 }}
               >
-                <div className="form-grid">
+                <div className="form-grid settings-tab-content-frame">
                   <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
                   <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
                   <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
@@ -2206,7 +2196,7 @@ export function UserSettingsLive({
                   <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
                   <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={currentForm.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
                 </div>
-                <div className="settings-save-footer">
+                <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'business-profile' ? 'Saving...' : 'Save business profile'}
                   </button>
@@ -2242,7 +2232,7 @@ export function UserSettingsLive({
                   );
                 }}
               >
-                <div className="card-section">
+                <div className="card-section settings-tab-content-frame">
                   {!serviceCatalogEnabled ? (
                     <>
                       <div className="service-catalog-heading">
@@ -2261,35 +2251,56 @@ export function UserSettingsLive({
                           Add the services customers usually ask about on the phone, like Gel Manicure, Deluxe Pedicure, Balayage, or Botox Consultation.
                         </div>
                       ) : null}
-                      <div className="service-group-list">
-                        {currentForm.services.map((service, index) => (
-                          <div key={`${service.name || 'service'}-${index}`} className="service-item-card">
-                            <div className="service-item-head">
-                              <div className="field">
-                                <label>Service name</label>
-                                <input value={service.name} onChange={(event) => updateLegacyService(index, { name: event.target.value })} placeholder="Gel Manicure" />
-                              </div>
-                              <div className="field">
-                                <label>Duration</label>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  value={service.duration_min || ''}
-                                  onChange={(event) => updateLegacyService(index, { duration_min: event.target.value === '' ? 0 : Number(event.target.value) })}
-                                  placeholder="60"
-                                />
-                              </div>
-                              <div className="field">
-                                <label>Price</label>
-                                <input type="number" min={0} value={service.price} onChange={(event) => updateLegacyService(index, { price: Number(event.target.value) })} />
-                              </div>
-                            </div>
-                            <button type="button" className="subtle-link" onClick={() => removeLegacyService(index)}>
-                              Remove service
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+	                      <div className="service-group-list">
+	                        {currentForm.services.map((service, index) => (
+	                          <div key={`${service.name || 'service'}-${index}`} className="service-summary-item">
+	                            <div className="service-summary-row">
+	                              <span className="service-summary-name">{service.name || 'Untitled service'}</span>
+	                              <span className="service-summary-meta">${Math.round(Number(service.price) || 0)} · {service.duration_min || 60} min</span>
+	                              <button
+	                                type="button"
+	                                className="service-edit-icon"
+	                                aria-label={`Edit ${service.name || 'service'}`}
+	                                onClick={() => setEditingLegacyServiceIndex(editingLegacyServiceIndex === index ? null : index)}
+	                              >
+	                                {renderEditIcon()}
+	                              </button>
+	                            </div>
+	                            {editingLegacyServiceIndex === index ? (
+	                              <div className="service-inline-editor">
+	                                <div className="service-item-head">
+	                                  <div className="field">
+	                                    <label>Service name</label>
+	                                    <input value={service.name} onChange={(event) => updateLegacyService(index, { name: event.target.value })} placeholder="Gel Manicure" />
+	                                  </div>
+	                                  <div className="field">
+	                                    <label>Duration</label>
+	                                    <input
+	                                      type="number"
+	                                      min={1}
+	                                      value={service.duration_min || ''}
+	                                      onChange={(event) => updateLegacyService(index, { duration_min: event.target.value === '' ? 0 : Number(event.target.value) })}
+	                                      placeholder="60"
+	                                    />
+	                                  </div>
+	                                  <div className="field">
+	                                    <label>Price</label>
+	                                    <input type="number" min={0} value={service.price} onChange={(event) => updateLegacyService(index, { price: Number(event.target.value) })} />
+	                                  </div>
+	                                </div>
+	                                <div className="service-item-footer">
+	                                  <button type="button" className="subtle-link" onClick={() => removeLegacyService(index)}>
+	                                    Remove service
+	                                  </button>
+	                                  <button type="button" className="btn" onClick={() => setEditingLegacyServiceIndex(null)}>
+	                                    Done
+	                                  </button>
+	                                </div>
+	                              </div>
+	                            ) : null}
+	                          </div>
+	                        ))}
+	                      </div>
                     </>
                   ) : (
                     <>
@@ -2324,97 +2335,106 @@ export function UserSettingsLive({
                           .filter((service) => service.categoryId === category.id)
                           .sort((a, b) => a.sortOrder - b.sortOrder);
                         return (
-                          <details key={category.id} className="service-group-card" open>
-                            <summary>
-                              <div>
-                                <strong>{category.name || 'Service group'}</strong>
+	                          <details key={category.id} className="service-group-card service-group-card--compact" open>
+	                            <summary>
+	                              <div>
+	                                <strong>{category.name || 'Service group'}</strong>
                                 <span>{groupServices.length} services</span>
                               </div>
-                            </summary>
-                            <div className="service-group-body">
-                              <div className="form-grid">
-                                <div className="field">
-                                  <label>Service group</label>
-                                  <input value={category.name} onChange={(event) => updateServiceGroup(category.id, { name: event.target.value })} />
-                                </div>
-                                <div className="field">
-                                  <label>Group description</label>
-                                  <input
-                                    value={category.description ?? ''}
-                                    onChange={(event) => updateServiceGroup(category.id, { description: event.target.value || null })}
-                                    placeholder="Optional context for callers"
-                                  />
-                                </div>
-                              </div>
-
-                              {groupServices.length === 0 ? (
-                                <div className="sh-empty">No services in this group yet.</div>
-                              ) : null}
-                              {groupServices.map((service) => (
-                                <div key={service.id} className={`service-item-card ${service.active === false ? 'archived' : ''}`}>
-                                  <div className="service-item-head">
-                                    <div className="field">
-                                      <label>Service name</label>
-                                      <input value={service.name} onChange={(event) => updateCatalogService(service.id, { name: event.target.value })} placeholder="Gel Manicure" />
-                                    </div>
-                                    <div className="field">
-                                      <label>Move to group</label>
-                                      <select value={service.categoryId ?? ''} onChange={(event) => updateCatalogService(service.id, { categoryId: event.target.value || null })}>
-                                        {currentForm.service_catalog.categories.map((item) => (
-                                          <option key={item.id} value={item.id}>{item.name}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  </div>
-                                  <div className="form-grid">
-                                    <div className="field">
-                                      <label>Description</label>
-                                      <input value={service.description ?? ''} onChange={(event) => updateCatalogService(service.id, { description: event.target.value || null })} placeholder="Optional caller-facing details" />
-                                    </div>
-                                    <div className="field">
-                                      <label>Duration</label>
-                                      <select value={String(service.durationMinutes ?? 60)} onChange={(event) => updateCatalogService(service.id, { durationMinutes: Number(event.target.value) })}>
-                                        {[15, 30, 45, 60, 75, 90, 120, 150, 180].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
-                                      </select>
-                                    </div>
-                                    <div className="field">
-                                      <label>Price type</label>
-                                      <select value={service.priceType} onChange={(event) => updateCatalogService(service.id, { priceType: event.target.value as ServicePriceType })}>
-                                        {PRICE_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                      </select>
-                                    </div>
-                                    <div className="field">
-                                      <label>Price</label>
-                                      <input type="number" min={0} value={service.priceAmount ?? 0} onChange={(event) => updateCatalogService(service.id, { priceAmount: Number(event.target.value) })} disabled={service.priceType === 'consultation' || service.priceType === 'varies'} />
-                                    </div>
-                                  </div>
-                                  <div className="field">
-                                    <label>Aliases / other names customers use</label>
-                                    <input
-                                      value={service.aliases.join(', ')}
-                                      onChange={(event) => updateCatalogService(service.id, { aliases: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })}
-                                      placeholder="gel mani, shellac"
-                                    />
-                                  </div>
-                                  <div className="field">
-                                    <label>Booking notes</label>
-                                    <textarea
-                                      value={service.bookingNotes ?? ''}
-                                      onChange={(event) => updateCatalogService(service.id, { bookingNotes: event.target.value || null })}
-                                      placeholder="Anything the AI should know before capturing this request."
-                                    />
-                                  </div>
-                                  <div className="service-item-footer">
-                                    <label className="inline-check">
-                                      <input type="checkbox" checked={service.bookable} onChange={(event) => updateCatalogService(service.id, { bookable: event.target.checked })} />
-                                      Bookable by request
-                                    </label>
-                                    <button type="button" className="subtle-link" onClick={() => updateCatalogService(service.id, { active: service.active === false })}>
-                                      {service.active === false ? 'Restore service' : 'Archive service'}
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
+	                            </summary>
+	                            <div className="service-group-body">
+	                              {groupServices.length === 0 ? (
+	                                <div className="sh-empty">No services in this group yet.</div>
+	                              ) : null}
+	                              {groupServices.map((service) => (
+	                                <div key={service.id} className={`service-summary-item ${service.active === false ? 'archived' : ''}`}>
+	                                  <div className="service-summary-row">
+	                                    <span className="service-summary-name">{service.name || 'Untitled service'}</span>
+	                                    <span className="service-summary-meta">{formatServicePriceSummary(service)} · {service.durationMinutes ?? 60} min</span>
+	                                    <button
+	                                      type="button"
+	                                      className="service-edit-icon"
+	                                      aria-label={`Edit ${service.name || 'service'}`}
+	                                      onClick={() => setEditingCatalogServiceId(editingCatalogServiceId === service.id ? null : service.id)}
+	                                    >
+	                                      {renderEditIcon()}
+	                                    </button>
+	                                  </div>
+	                                  {editingCatalogServiceId === service.id ? (
+	                                    <div className="service-inline-editor">
+	                                      <div className="service-item-head">
+	                                        <div className="field">
+	                                          <label>Service name</label>
+	                                          <input value={service.name} onChange={(event) => updateCatalogService(service.id, { name: event.target.value })} placeholder="Gel Manicure" />
+	                                        </div>
+	                                        <div className="field">
+	                                          <label>Move to group</label>
+	                                          <select value={service.categoryId ?? ''} onChange={(event) => updateCatalogService(service.id, { categoryId: event.target.value || null })}>
+	                                            {currentForm.service_catalog.categories.map((item) => (
+	                                              <option key={item.id} value={item.id}>{item.name}</option>
+	                                            ))}
+	                                          </select>
+	                                        </div>
+	                                      </div>
+	                                      <div className="form-grid settings-tab-content-frame">
+	                                        <div className="field">
+	                                          <label>Description</label>
+	                                          <input value={service.description ?? ''} onChange={(event) => updateCatalogService(service.id, { description: event.target.value || null })} placeholder="Optional caller-facing details" />
+	                                        </div>
+	                                        <div className="field">
+	                                          <label>Duration</label>
+	                                          <select value={String(service.durationMinutes ?? 60)} onChange={(event) => updateCatalogService(service.id, { durationMinutes: Number(event.target.value) })}>
+	                                            {[15, 30, 45, 60, 75, 90, 120, 150, 180].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
+	                                          </select>
+	                                        </div>
+	                                        <div className="field">
+	                                          <label>Price type</label>
+	                                          <select value={service.priceType} onChange={(event) => updateCatalogService(service.id, { priceType: event.target.value as ServicePriceType })}>
+	                                            {PRICE_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+	                                          </select>
+	                                        </div>
+	                                        <div className="field">
+	                                          <label>Price</label>
+	                                          <input type="number" min={0} value={service.priceAmount ?? 0} onChange={(event) => updateCatalogService(service.id, { priceAmount: Number(event.target.value) })} disabled={service.priceType === 'consultation' || service.priceType === 'varies'} />
+	                                        </div>
+	                                      </div>
+	                                      <div className="field">
+	                                        <label>Aliases / other names customers use</label>
+	                                        <input
+	                                          value={service.aliases.join(', ')}
+	                                          onChange={(event) => updateCatalogService(service.id, { aliases: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })}
+	                                          placeholder="gel mani, shellac"
+	                                        />
+	                                      </div>
+	                                      <div className="field">
+	                                        <label>Booking notes</label>
+	                                        <textarea
+	                                          value={service.bookingNotes ?? ''}
+	                                          onChange={(event) => updateCatalogService(service.id, { bookingNotes: event.target.value || null })}
+	                                          placeholder="Anything the AI should know before capturing this request."
+	                                        />
+	                                      </div>
+	                                      <div className="service-item-footer">
+	                                        <label className="inline-check">
+	                                          <input type="checkbox" checked={service.bookable} onChange={(event) => updateCatalogService(service.id, { bookable: event.target.checked })} />
+	                                          Bookable by request
+	                                        </label>
+	                                        <div className="actions-row">
+	                                          <button type="button" className="subtle-link" onClick={() => updateCatalogService(service.id, { active: service.active === false })}>
+	                                            {service.active === false ? 'Restore service' : 'Archive service'}
+	                                          </button>
+	                                          <button type="button" className="subtle-link" onClick={() => removeCatalogService(service.id)}>
+	                                            Remove
+	                                          </button>
+	                                          <button type="button" className="btn" onClick={() => setEditingCatalogServiceId(null)}>
+	                                            Done
+	                                          </button>
+	                                        </div>
+	                                      </div>
+	                                    </div>
+	                                  ) : null}
+	                                </div>
+	                              ))}
                               <button type="button" className="add-service-btn" onClick={() => addServiceToGroup(category.id)}>
                                 + Add service in {category.name || 'this group'}
                               </button>
@@ -2464,7 +2484,7 @@ export function UserSettingsLive({
                     </div>
                   </div>
                 </div>
-                <div className="settings-save-footer">
+                <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'services' ? 'Saving...' : 'Save services'}
                   </button>
@@ -2482,7 +2502,7 @@ export function UserSettingsLive({
                   void commitSettingsPatch('hours', { hours: currentForm.hours });
                 }}
               >
-                <div className="card-section">
+                <div className="card-section settings-tab-content-frame">
                   <p className="sh-catalog-intro sh-hours-intro">Set your weekly schedule. Use a preset for a quick start, then fine-tune individual days.</p>
                   <div className="sh-hours-presets">
                     <p className="sh-hours-presets-label">Quick apply</p>
@@ -2533,7 +2553,7 @@ export function UserSettingsLive({
                     </div>
                   </div>
                 </div>
-                <div className="settings-save-footer">
+                <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'hours' ? 'Saving...' : 'Save hours'}
                   </button>
@@ -2578,19 +2598,19 @@ export function UserSettingsLive({
                     Add staff
                   </button>
                 </div>
-                <div className="card-section">
+                <div className="card-section settings-tab-content-frame">
                   {currentForm.staff.length === 0 ? (
                     <div className="sh-empty">No staff added yet. Add names callers may request, like Sarah for nail art or Jenny for pedicures.</div>
                   ) : null}
                   {currentForm.staff.map((member, index) => (
                     <div className="option-card" key={`${member.name}-${index}`}>
-                      <div className="form-grid">
+                      <div className="form-grid settings-tab-content-frame">
                         <div className="field"><label>Name</label><input value={member.name} onChange={(event) => updateStaff(index, { name: event.target.value })} placeholder="Sarah" /></div>
                         <div className="field"><label>Role</label><input value={member.role ?? ''} onChange={(event) => updateStaff(index, { role: event.target.value })} placeholder="Nail technician" /></div>
                         <div className="field" style={{ gridColumn: '1 / -1' }}><label>Specialties</label><input value={(member.specialties ?? []).join(', ')} onChange={(event) => updateStaff(index, { specialties: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} placeholder="Gel nails, nail art, pedicure" /></div>
                         <div className="field" style={{ gridColumn: '1 / -1' }}><label>Notes</label><textarea value={member.notes ?? ''} onChange={(event) => updateStaff(index, { notes: event.target.value })} placeholder="Optional. Example: Available Tuesday-Friday. Best for detailed nail art." /></div>
                       </div>
-                      <div className="settings-save-footer" style={{ marginTop: 10 }}>
+                      <div className="settings-save-footer settings-tab-content-frame" style={{ marginTop: 10 }}>
                         <button type="button" className="subtle-link" onClick={() => patchState('staff', currentForm.staff.filter((_, itemIndex) => itemIndex !== index))}>
                           Remove
                         </button>
@@ -2598,7 +2618,7 @@ export function UserSettingsLive({
                     </div>
                   ))}
                 </div>
-                <div className="settings-save-footer">
+                <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'staff' ? 'Saving...' : 'Save staff'}
                   </button>
@@ -2631,7 +2651,7 @@ export function UserSettingsLive({
 	                    Add FAQ
 	                  </button>
 	                </div>
-	                <div className="card-section">
+	                <div className="card-section settings-tab-content-frame">
 	                  <div className="option-card option-card--bare">
 	                    <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit if your business needs a special case.</span></div>
 	                    <div className="preset-pills" style={{ marginTop: 12 }}>
@@ -2681,7 +2701,7 @@ export function UserSettingsLive({
                     <div className="option-card option-card--bare" key={`${item.question}-${index}`}>
                       <div className="field"><label>Question</label><input value={item.question} onChange={(event) => updateFaq(index, { question: event.target.value })} placeholder="Do you accept walk-ins?" /></div>
                       <div className="field"><label>Approved answer</label><textarea value={item.answer} onChange={(event) => updateFaq(index, { answer: event.target.value })} placeholder="Walk-ins are welcome when staff are available, but appointments are recommended." /></div>
-                      <div className="settings-save-footer" style={{ marginTop: 10 }}>
+                      <div className="settings-save-footer settings-tab-content-frame" style={{ marginTop: 10 }}>
                         <button type="button" className="subtle-link" onClick={() => patchState('faqs', currentForm.faqs.filter((_, itemIndex) => itemIndex !== index))}>
                           Remove
                         </button>
@@ -2689,7 +2709,7 @@ export function UserSettingsLive({
                     </div>
                   ))}
                 </div>
-	                <div className="settings-save-footer">
+	                <div className="settings-save-footer settings-tab-content-frame">
 	                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
 	                    {savingSection === 'faqs' ? 'Saving...' : 'Save policies & FAQ'}
 	                  </button>
@@ -2760,7 +2780,7 @@ export function UserSettingsLive({
                   </div>
                   <p className="sub" style={{ marginTop: 8 }}>{returningCallerNotesUx.description}</p>
                 </div>
-                <div className="settings-save-footer">
+                <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'call-handling' ? 'Saving...' : 'Save call handling'}
                   </button>
@@ -2784,7 +2804,7 @@ export function UserSettingsLive({
                   void commitSettingsPatch('ai-voice', patch);
                 }}
               >
-                <div className="card-section">
+                <div className="card-section settings-tab-content-frame">
                   <div className="field">
                     <label>Voice style</label>
                     <select value={currentForm.ai_voice} disabled={isLocked('edit_ai_voice')} onChange={(event) => patchState('ai_voice', event.target.value)}>
@@ -2865,7 +2885,7 @@ export function UserSettingsLive({
                     {renderLockCopy('edit_ai_custom_instructions')}
                   </div>
                 </div>
-                <div className="settings-save-footer">
+                <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'ai-voice' ? 'Saving...' : effectiveShop.plan === 'professional' ? 'Save AI voice & language' : 'Save AI voice & greeting'}
                   </button>
@@ -2919,7 +2939,7 @@ export function UserSettingsLive({
                     </div>
                   </div>
                 </div>
-                <div className="settings-save-footer">
+                <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'messaging' ? 'Saving...' : 'Save messaging'}
                   </button>
@@ -2929,7 +2949,7 @@ export function UserSettingsLive({
 
               {messagingSubTab === 'notes' ? (
               <div className="card-section-form">
-                <div className="card-section">
+                <div className="card-section settings-tab-content-frame">
                   <div className="note">Reminder and review request controls unlock by plan. Missed-call follow-up stays available because it directly protects lost revenue from unanswered calls.</div>
                 </div>
               </div>

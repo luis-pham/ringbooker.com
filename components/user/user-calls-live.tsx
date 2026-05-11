@@ -370,35 +370,57 @@ export function UserCallsLive({
       ...userCallsStyles,
       String.raw`
 
-.intent-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:24px}
-.intent-card{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px}
-.intent-card .intent-icon{font-size:18px}.intent-card .intent-number{font-size:28px;font-weight:800;letter-spacing:-.04em;color:var(--text-dark)}.intent-card .intent-label{font-size:13px;color:var(--text-gray)}
-.intent-filter-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:.5px solid var(--border);overflow-x:auto}
-.intent-filter-tab{position:relative;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--text-gray);padding:10px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
-.intent-filter-tab.active{border-bottom-color:#7c3aed;color:#7c3aed;font-weight:600}.intent-filter-count{background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;margin-left:6px;padding:0 4px}
-.intent-call-summary{margin-top:8px;display:flex;flex-direction:column;gap:8px}.intent-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.intent-fields{font-size:13px;color:var(--text-gray);display:flex;flex-direction:column;gap:2px}.intent-fields span span{color:var(--text-light);font-size:11px;margin-right:4px}
-.intent-follow-up{background:#fef3c7;border:.5px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:13px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:10px}.intent-follow-up button{font-size:12px;color:#92400e;background:transparent;border:.5px solid #fde68a;border-radius:999px;padding:2px 10px;cursor:pointer;white-space:nowrap}
-@media (max-width:860px){.intent-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.summary-grid{grid-template-columns:1fr}}
-.calls-table-wrap{overflow:auto}
-.calls-pagination{
-  display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;
-  margin-top:16px;padding-top:16px;border-top:1px solid var(--border);
-}
-.calls-pagination .pager-meta{color:var(--text-gray);font-size:13px}
-.calls-pagination .pager-actions{display:flex;align-items:center;gap:8px}
-.calls-table td:last-child,.calls-table th:last-child{text-align:right}
-.calls-table .subline{margin-top:4px;color:var(--text-gray);font-size:12px;line-height:1.5}
-.calls-table .stack{display:flex;flex-direction:column;gap:6px}
-.calls-table .pill-row{display:flex;flex-wrap:wrap;gap:8px}
-.calls-table .name-row{display:flex;align-items:center;gap:10px;min-width:0}
-.calls-table .mini-avatar{
-  width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#ede9fe,#ddd6fe);
-  display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--purple-dark);flex-shrink:0;
-}
-.calls-table .value-strong{font-weight:700;color:var(--text-dark)}
-.calls-table .status-copy{color:var(--text-gray);font-size:12px;line-height:1.5}
-.modal-backdrop{
+	.intent-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;margin-bottom:28px}
+	.intent-card{background:var(--surface-card);border:1px solid var(--border);border-radius:18px;padding:28px 32px;display:flex;align-items:center;gap:22px;min-height:110px}
+	.intent-card .intent-icon{width:68px;height:68px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#dbeafe;color:#0d1117}
+	.intent-card .intent-icon svg{width:30px;height:30px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+	.intent-card.intent-card--bookings .intent-icon{background:#e8f1d8}
+	.intent-card.intent-card--follow-up .intent-icon{background:#f6ead9}
+	.intent-card.intent-card--missed .intent-icon{background:#f5e7e7}
+	.intent-card .intent-number{display:block;font-size:42px;line-height:.9;font-weight:800;letter-spacing:-.06em;color:#000}
+	.intent-card .intent-label{display:block;margin-top:8px;font-size:24px;line-height:1.05;font-weight:500;color:#3f3f3f;letter-spacing:-.04em}
+	.calls-filter-bar{display:flex;align-items:center;gap:0;margin-bottom:32px;border-bottom:1px solid var(--border);overflow-x:auto}
+	.business-subtabs.calls-filter-tabs{display:flex;gap:0;flex-wrap:nowrap;margin:0}
+	.business-subtabs.calls-filter-tabs .business-subtab{
+	  border:1px solid #c9c4bd;background:transparent;border-radius:14px;padding:18px 32px;
+	  font-size:24px;font-weight:500;color:#111;cursor:pointer;font:inherit;white-space:nowrap;
+	  margin:0 -1px -1px 0;box-shadow:none;transition:background .15s ease,border-color .15s ease,color .15s ease;
+	}
+	.business-subtabs.calls-filter-tabs .business-subtab:hover{background:#f9fafb;border-color:#bdb7af;color:#111}
+	.business-subtabs.calls-filter-tabs .business-subtab.active{background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600}
+	.intent-filter-count{background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;margin-left:8px;padding:0 4px}
+	.intent-call-summary{margin-top:8px;display:flex;flex-direction:column;gap:8px}.intent-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+	.intent-fields{font-size:13px;color:var(--text-gray);display:flex;flex-direction:column;gap:2px}.intent-fields span span{color:var(--text-light);font-size:11px;margin-right:4px}
+	.intent-follow-up{background:#fef3c7;border:.5px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:13px;color:#92400e;display:flex;justify-content:space-between;align-items:center;gap:10px}.intent-follow-up button{font-size:12px;color:#92400e;background:transparent;border:.5px solid #fde68a;border-radius:999px;padding:2px 10px;cursor:pointer;white-space:nowrap}
+	@media (max-width:860px){.intent-card-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.intent-card{padding:18px;min-height:auto}.intent-card .intent-icon{width:52px;height:52px}.intent-card .intent-number{font-size:30px}.intent-card .intent-label{font-size:17px}.business-subtabs.calls-filter-tabs .business-subtab{font-size:15px;padding:12px 16px}.summary-grid{grid-template-columns:1fr}}
+	.calls-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:18px;background:var(--surface-card)}
+	.calls-pagination{
+	  display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:12px;
+	  margin-top:16px;padding-top:16px;border-top:1px solid var(--border);
+	}
+	.calls-pagination .pager-meta{color:var(--text-gray);font-size:13px}
+	.calls-pagination .pager-actions{display:flex;align-items:center;gap:8px}
+	.calls-table{width:100%;border-collapse:separate;border-spacing:0}
+	.calls-table th{padding:20px 28px;text-align:left;font-size:22px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#3f3f3f;border-bottom:1px solid var(--border)}
+	.calls-table td{padding:24px 28px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:24px;color:#3f3f3f}
+	.calls-table tbody tr:nth-child(even){background:#f6f4ef}
+	.calls-table tbody tr:last-child td{border-bottom:0}
+	.calls-table td:last-child,.calls-table th:last-child{text-align:right}
+	.calls-table .subline{margin-top:4px;color:#3f3f3f;font-size:18px;line-height:1.3;font-weight:500}
+	.calls-table .stack{display:flex;flex-direction:column;gap:6px}
+	.calls-table .pill-row{display:flex;flex-wrap:wrap;gap:8px}
+	.calls-table .name-row{display:flex;align-items:center;gap:10px;min-width:0}
+	.calls-table .mini-avatar{
+	  width:58px;height:58px;border-radius:999px;background:#dbeafe;
+	  display:flex;align-items:center;justify-content:center;font-weight:800;color:#2b66b1;flex-shrink:0;font-size:20px;
+	}
+	.calls-table .value-strong{font-weight:800;color:#000;font-size:24px;letter-spacing:-.03em}
+	.calls-table .status-copy{color:var(--text-gray);font-size:12px;line-height:1.5}
+	.calls-table .vip-inline{margin-left:8px;color:#7c3aed;background:#f3ecff;border:0;font-size:18px;font-weight:800}
+	.call-status-pill{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:999px;background:#f6ecd9;color:#5b4215;font-size:19px;font-weight:700;white-space:nowrap}
+	.call-status-pill svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+	.calls-table .transcript-view-btn{font-size:24px;padding:18px 32px;border-radius:14px;background:#fff;color:#000;border:1px solid #c9c4bd}
+	.modal-backdrop{
   position:fixed;inset:0;background:rgba(17,24,39,.58);backdrop-filter:blur(8px);
   display:flex;align-items:center;justify-content:center;padding:24px;z-index:160;
 }
@@ -474,48 +496,38 @@ html[data-user-theme="dark"] .transcript-note{background:#0d1117}
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load calls: {error}</div> : null}
 
 
-          <section className="intent-card-grid" aria-label="Call intent summary">
-            <div className="intent-card">
-              <span className="intent-icon">📞</span>
-              <span className="intent-number">{intentSummary.totalLast7Days}</span>
-              <span className="intent-label">Calls this week</span>
-            </div>
-            <div className="intent-card" style={{ borderColor: '#16a34a' }}>
-              <span className="intent-icon">✓</span>
-              <span className="intent-number" style={{ color: '#16a34a' }}>{intentSummary.bookingsCount}</span>
-              <span className="intent-label">Bookings captured</span>
-            </div>
-            <div className="intent-card" style={{ borderColor: intentSummary.followUpCount > 0 ? '#f59e0b' : '#e5e7eb' }}>
-              <span className="intent-icon">⚠️</span>
-              <span className="intent-number" style={{ color: intentSummary.followUpCount > 0 ? '#f59e0b' : 'var(--text-dark)' }}>{intentSummary.followUpCount}</span>
-              <span className="intent-label">Follow up needed</span>
-            </div>
-            <div className="intent-card" style={{ borderColor: intentSummary.missedCount > 0 ? '#dc2626' : '#e5e7eb' }}>
-              <span className="intent-icon">📵</span>
-              <span className="intent-number" style={{ color: intentSummary.missedCount > 0 ? '#dc2626' : 'var(--text-dark)' }}>{intentSummary.missedCount}</span>
-              <span className="intent-label">Missed</span>
-            </div>
-          </section>
+	          <section className="intent-card-grid" aria-label="Call intent summary">
+	            <div className="intent-card">
+	              <span className="intent-icon">
+	                <svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg>
+	              </span>
+	              <span><span className="intent-number">{intentSummary.totalLast7Days}</span><span className="intent-label">Calls this week</span></span>
+	            </div>
+	            <div className="intent-card intent-card--bookings">
+	              <span className="intent-icon"><svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18" /><rect x="3" y="4" width="18" height="18" rx="2" /><path d="m8 15 2.5 2.5L16 12" /></svg></span>
+	              <span><span className="intent-number">{intentSummary.bookingsCount}</span><span className="intent-label">Bookings captured</span></span>
+	            </div>
+	            <div className="intent-card intent-card--follow-up">
+	              <span className="intent-icon"><svg viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4M12 17h.01" /></svg></span>
+	              <span><span className="intent-number">{intentSummary.followUpCount}</span><span className="intent-label">Follow-up needed</span></span>
+	            </div>
+	            <div className="intent-card intent-card--missed">
+	              <span className="intent-icon"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 11.2 19a19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.1 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72" /><path d="M15 9l6-6M21 9l-6-6" /></svg></span>
+	              <span><span className="intent-number">{intentSummary.missedCount}</span><span className="intent-label">Missed</span></span>
+	            </div>
+	          </section>
 
-          <section className="grid grid-4">
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag purple">Total</span></div><div className="stat-value">{metrics.total}</div><div className="stat-meta">Recent calls in your workspace</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.5-4.5A8 8 0 1 1 21 12Z" /></svg></div><span className="tag green">Booked</span></div><div className="stat-value">{metrics.booked}</div><div className="stat-meta">Calls that turned into bookings</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z" /><path d="M4 8l8 6 8-6" /></svg></div><span className="tag orange">Missed</span></div><div className="stat-value">{metrics.missed}</div><div className="stat-meta">Calls worth recovering with callback or SMS</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg></div><span className="tag blue">Ready</span></div><div className="stat-value">{metrics.transcriptsReady}</div><div className="stat-meta">Calls with transcript ready to review</div></div>
-          </section>
-
-          <section className="card" style={{ marginTop: 18 }}>
-
-            <div className="intent-filter-tabs" role="tablist" aria-label="Call filters">
-              {(['all', 'follow_up_needed', 'high_urgency', 'bookings', 'missed'] as CallFilter[]).map((filter) => (
-                <button
-                  key={filter}
+	          <div className="calls-filter-bar">
+	            <div className="business-subtabs calls-filter-tabs" role="tablist" aria-label="Call filters">
+	              {(['all', 'follow_up_needed', 'high_urgency', 'bookings', 'missed'] as CallFilter[]).map((filter) => (
+	                <button
+	                  key={filter}
                   type="button"
                   role="tab"
                   aria-selected={activeFilter === filter}
-                  className={`intent-filter-tab${activeFilter === filter ? ' active' : ''}`}
-                  onClick={() => changeFilter(filter)}
-                >
+	                  className={`business-subtab${activeFilter === filter ? ' active' : ''}`}
+	                  onClick={() => changeFilter(filter)}
+	                >
                   {filter === 'all' ? 'All' : null}
                   {filter === 'follow_up_needed' ? 'Follow up needed' : null}
                   {filter === 'high_urgency' ? 'High urgency' : null}
@@ -524,20 +536,15 @@ html[data-user-theme="dark"] .transcript-note{background:#0d1117}
                   {filter === 'follow_up_needed' && intentSummary.followUpCount > 0 ? (
                     <span className="intent-filter-count">{intentSummary.followUpCount > 9 ? '9+' : intentSummary.followUpCount}</span>
                   ) : null}
-                </button>
-              ))}
-            </div>
+	                </button>
+	              ))}
+	            </div>
+	          </div>
 
-            <div className="panel-head">
-              <div>
-                <h3>Call list</h3>
-                <p className="sub">Desktop stays focused on the full list. Open transcript preview only when needed.</p>
-              </div>
-              <span className="badge-right">Transcript modal</span>
-            </div>
-
-            {!error && !loading && totalCount === 0 ? (
-              <div className="note">No calls have been recorded for this business yet.</div>
+	          <section>
+	
+	            {!error && !loading && totalCount === 0 ? (
+	              <div className="note">No calls have been recorded for this business yet.</div>
             ) : !error && totalCount !== null && totalCount > 0 ? (
               <>
                 {loading && calls.length === 0 ? (
@@ -551,17 +558,14 @@ html[data-user-theme="dark"] .transcript-note{background:#0d1117}
                 ) : null}
                 {calls.length > 0 ? (
                 <div className="desktop-calls calls-table-wrap">
-                  <table className="table calls-table">
-                    <thead>
-                      <tr>
-                        <th>Caller</th>
-                        <th>VIP</th>
-                        <th>Date</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                        <th>Handler</th>
-                        <th>Transcript</th>
-                      </tr>
+	                  <table className="table calls-table">
+	                    <thead>
+	                      <tr>
+	                        <th>Caller</th>
+	                        <th>Date &amp; Time</th>
+	                        <th>Status</th>
+	                        <th>Transcript</th>
+	                      </tr>
                     </thead>
                     <tbody>
                       {calls.map((call) => {
@@ -570,32 +574,25 @@ html[data-user-theme="dark"] .transcript-note{background:#0d1117}
                           <tr key={call.providerCallId}>
                             <td>
                               <div className="name-row">
-                                <div className="mini-avatar">{(call.callerPhone ?? '?').slice(-2).toUpperCase()}</div>
-                                <div className="stack">
-                                  <span className="value-strong">{formatPhone(call.callerPhone)}</span>
-                                  <span className="subline">{call.destinationPhone ? `To ${formatPhone(call.destinationPhone)}` : call.providerCallId}</span>
-                                  {renderCallIntent(call)}
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <span className={isVip ? 'tag purple' : 'tag blue'}>{isVip ? 'VIP signal' : 'Standard'}</span>
-                            </td>
-                            <td>{formatShopDate(call.startedAt, shopTimezone)}</td>
-                            <td>{formatShopTime(call.startedAt, shopTimezone)}</td>
-                            <td>
-                              <div className="stack">
-                                <span className={outcomeClass(call.outcome)}>{call.outcome ?? 'in_progress'}</span>
-                                <span className={transcriptClass(call.transcriptStatus)}>{transcriptStatusLabel(call)} transcript</span>
-                                {hasStructuredSummary(call) ? <span className="status-copy">Structured summary ready</span> : null}
-                              </div>
-                            </td>
-                            <td>{speakerLabel(call)}</td>
-                            <td>
-                              <button className="btn ghost" type="button" onClick={() => { setActiveCall(call); setShowTranscript(false); }}>
-                                Preview transcript
-                              </button>
-                            </td>
+	                                <div className="mini-avatar">{(call.callerPhone ?? '?').slice(-2).toUpperCase()}</div>
+	                                <div className="stack">
+	                                  <span className="value-strong">
+	                                    {formatPhone(call.callerPhone)}
+	                                    {isVip ? <span className="tag purple vip-inline">VIP</span> : null}
+	                                  </span>
+	                                  <span className="subline">→ {call.destinationPhone ? formatPhone(call.destinationPhone) : call.providerCallId}</span>
+	                                </div>
+	                              </div>
+	                            </td>
+	                            <td>
+	                              {formatShopDate(call.startedAt, shopTimezone)} · {formatShopTime(call.startedAt, shopTimezone)}
+	                            </td>
+	                            <td><span className="call-status-pill"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>{call.outcome === 'booked' ? 'Booked' : call.outcome === 'missed' ? 'Missed' : call.outcome === 'error' ? 'Needs review' : 'In progress'}</span></td>
+	                            <td>
+	                              <button className="btn ghost transcript-view-btn" type="button" onClick={() => { setActiveCall(call); setShowTranscript(false); }}>
+	                                View
+	                              </button>
+	                            </td>
                           </tr>
                         );
                       })}
