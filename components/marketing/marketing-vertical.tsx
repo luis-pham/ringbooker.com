@@ -61,10 +61,14 @@ const BOOKING_TOOL_INTEGRATIONS: BookingToolIntegration[] = [
 ];
 
 const TRIAL_CTA_SECONDARY =
-  'inline-flex items-center justify-center rounded-full border bg-white/55 px-6 py-3 text-[14px] font-semibold transition hover:-translate-y-px hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+  'flex w-full min-w-0 items-center justify-center rounded-full border bg-white/55 px-6 py-3.5 text-[14px] font-bold transition hover:-translate-y-px hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
 
 const DEMO_CTA_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-bold text-white transition hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
+  'flex w-full min-w-0 items-center justify-center gap-2 rounded-full px-6 py-3.5 text-[14px] font-bold text-white transition hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
+
+/** Hero / bottom band: CTAs stacked like /how-it-works (not one row). */
+const VERTICAL_HERO_CTA_STACK = 'mt-6 flex w-full max-w-md flex-col gap-3';
+const VERTICAL_FINAL_CTA_STACK = 'relative mt-8 flex w-full max-w-md flex-col gap-3 mx-auto';
 
 export type IndustryLandingTheme = {
   /** Page background wash behind hero + sections */
@@ -530,17 +534,17 @@ function FinalCta({
         <p className="relative text-[12px] font-semibold uppercase tracking-[0.08em] text-white/70">{label}</p>
         <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-bold leading-[1.1] tracking-tight">{title}</h2>
         <p className="relative mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-white/75">{subtitle}</p>
-        <div className="relative mt-8 flex flex-wrap justify-center gap-3">
+        <div className={VERTICAL_FINAL_CTA_STACK}>
           <a
             href={demoPath}
-            className={`inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-[14px] font-bold shadow-[var(--mk-shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${primaryBtnTextClass}`}
+            className={`flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-[14px] font-bold shadow-[var(--mk-shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${primaryBtnTextClass}`}
           >
             <DemoCtaPhoneIcon width={18} height={18} />
             Try a Live Demo Call
           </a>
           <Link
             href="/pricing"
-            className="inline-flex items-center justify-center rounded-full border border-white/35 bg-white/10 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:bg-white/20"
+            className="flex w-full items-center justify-center rounded-full border border-white/35 bg-white/10 px-6 py-3.5 text-[14px] font-bold text-white transition hover:bg-white/20"
           >
             Start Free 14-Day Trial
           </Link>
@@ -570,7 +574,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             calls become lost revenue. 37% of nail salon calls are missed, 82% during business hours, and 80% of callers
             never leave voicemail.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className={VERTICAL_HERO_CTA_STACK}>
             <a href="/demo/nail-salon" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
@@ -578,7 +582,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             <Link href="/pricing" className={theme.trialCtaClass}>
               Start Free 14-Day Trial
             </Link>
-            <Link href="/industries/nail-salon/vi" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
+            <Link href="/industries/nail-salon/vi" className="flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3.5 text-[14px] font-bold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
               🇻🇳 Tiếng Việt
             </Link>
           </div>
@@ -780,14 +784,14 @@ export async function MarketingNailSalonVietnameseTemplate() {
             <p className="mt-3 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
               Hoạt động cùng Square Appointments và các phần mềm quản lý tiệm nail khác — không cần thay đổi quy trình hiện tại.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className={VERTICAL_HERO_CTA_STACK}>
               <Link href="/pricing" className={theme.demoCtaClass}>
                 Thử miễn phí →
               </Link>
               <a href="/demo/nail-salon" className={theme.trialCtaClass}>
                 Xem demo trực tiếp
               </a>
-              <Link href="/industries/nail-salon" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-[14px] font-semibold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
+              <Link href="/industries/nail-salon" className="flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3.5 text-[14px] font-bold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
                 🇺🇸 English
               </Link>
             </div>
@@ -950,7 +954,7 @@ export async function MarketingNailSalonVietnameseTemplate() {
             <p className="relative mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-white/75">
               Không cần đổi số. Không cần thay đổi phần mềm đặt lịch. Setup 15 phút.
             </p>
-            <div className="relative mt-8 flex flex-wrap justify-center gap-3">
+            <div className={VERTICAL_FINAL_CTA_STACK}>
               <Link
                 href="/pricing"
                 className={`inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-[14px] font-bold shadow-[var(--mk-shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${theme.finalCtaPrimaryBtnText}`}
@@ -995,7 +999,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
             reschedule — Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel.
             Revenue-bearing calls don&apos;t have to disappear into voicemail.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className={VERTICAL_HERO_CTA_STACK}>
             <a href="/demo/hair-salon" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
@@ -1120,7 +1124,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
             after-hours calls on your current number. 52% of spa callers hang up after 3 minutes on hold. Your therapists
             stay in treatment rooms. Booking revenue stops disappearing.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className={VERTICAL_HERO_CTA_STACK}>
             <a href="/demo/day-spa" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
@@ -1265,7 +1269,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
             revenue (Lani AI, 2026). Capture that demand on your current number before it cools off or moves to a
             competitor.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className={VERTICAL_HERO_CTA_STACK}>
             <a href="/demo/med-spa" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call
@@ -1412,7 +1416,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
             covering consultation calls, after-hours inquiries, and missed-call follow-up on your current number. 46% of
             beauty bookings happen outside operating hours. Consultation intent shouldn&apos;t disappear because no one answered.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className={VERTICAL_HERO_CTA_STACK}>
             <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
               <DemoCtaPhoneIcon width={18} height={18} />
               Try a Live Demo Call

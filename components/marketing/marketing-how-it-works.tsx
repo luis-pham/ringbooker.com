@@ -81,8 +81,8 @@ a{text-decoration:none;color:inherit}
 @keyframes hiwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hiw-hero h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:18px}
 .hiw-hero p{font-size:var(--mk-hero-lead);color:var(--mk-text-desc,#64748B);max-width:650px;margin-bottom:26px;line-height:var(--mk-hero-lead-lh);font-weight:400}
-.hiw-actions{display:flex;gap:12px;flex-wrap:wrap}
-.hiw-btn-dark,.hiw-btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:all .2s}
+.hiw-actions{display:flex;flex-direction:column;align-items:stretch;gap:12px;width:100%;max-width:min(360px,100%)}
+.hiw-btn-dark,.hiw-btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:700;display:flex;width:100%;align-items:center;justify-content:center;gap:10px;transition:all .2s;box-sizing:border-box}
 .hiw-btn-dark{background:linear-gradient(135deg,var(--mk-brand-purple-deep,#5B21B6) 0%,var(--purple-dark) 48%,var(--purple) 100%);color:#fff;box-shadow:var(--mk-shadow-brand)}
 .hiw-btn-dark:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:var(--mk-shadow-brand-hover)}
 .hiw-btn-outline{border:1.5px solid var(--border);color:var(--text-dark);background:#fff}
