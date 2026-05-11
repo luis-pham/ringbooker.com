@@ -334,6 +334,8 @@ button.subtle-link:hover{text-decoration:underline}
   padding:22px 18px;border-radius:14px;border:1px dashed #d1d5db;background:#fafafa;
   font-size:14px;line-height:1.55;color:var(--text-gray);text-align:center;
 }
+.faq-empty-state p{margin:0}
+.faq-empty-state .faq-empty-cta{margin-top:16px;margin-bottom:0}
 .staff-empty{
   display:grid;justify-items:center;gap:8px;padding:42px 22px;margin-bottom:8px;
   background:#fff;border:1px dashed #d1d5db;border-radius:16px;color:var(--text-gray);
@@ -341,7 +343,7 @@ button.subtle-link:hover{text-decoration:underline}
 .staff-empty-icon{color:#9ca3af;opacity:.7;line-height:0}
 .staff-empty strong{font-size:18px;font-weight:600;letter-spacing:-.02em;color:#3f3f46}
 .staff-empty p{margin:0 0 14px;font-size:16px;line-height:1.45;color:#52525b}
-.staff-empty-add{justify-self:start;margin-top:16px}
+.staff-empty-add{justify-self:center;margin-top:16px}
 .staff-card{
   background:#fff;border:1px solid var(--border);border-radius:16px;margin-bottom:10px;overflow:hidden;
   transition:border-color .15s ease,opacity .15s ease,box-shadow .15s ease;
@@ -401,7 +403,7 @@ button.subtle-link:hover{text-decoration:underline}
 .sh-active-row .small-field label{font-size:10px;margin-bottom:6px}
 
 .service-catalog-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-.service-catalog-heading h3{margin:0 0 6px;font-size:15px;font-weight:500;letter-spacing:-.01em;color:var(--text-dark)}
+.service-catalog-heading h3{margin:0 0 6px;font-size:20px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark)}
 .service-catalog-actions{display:flex;gap:10px;flex-wrap:wrap}
 .service-group-list{display:grid;gap:16px}
 .service-group-card{border:1px solid var(--border);border-radius:16px;background:#fff;overflow:hidden}

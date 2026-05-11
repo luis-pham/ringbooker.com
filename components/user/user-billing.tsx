@@ -32,23 +32,41 @@ export const userBillingStyles: string[] = [
 .footer-inline{margin-top:14px}
 
 .billing-subtabs.business-subtabs{
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:24px;
   margin-bottom:18px;
+  padding-bottom:0;
+  border-bottom:1px solid var(--border);
 }
-.business-subtabs{
-  display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
+.billing-subtabs.business-subtabs .business-subtab{
+  appearance:none;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  margin:0;
+  padding:0 0 10px;
+  font-size:14px;
+  line-height:1.35;
+  font-weight:500;
+  color:var(--text-gray);
+  cursor:pointer;
+  font:inherit;
+  border-bottom:2px solid transparent;
+  transition:color .15s ease,border-color .15s ease;
 }
-.business-subtab{
-  border:1px solid var(--border);background:#fff;border-radius:8px;padding:8px 14px;
-  font-size:13px;font-weight:600;color:#4a4455;cursor:pointer;font:inherit;
-  transition:background .15s ease,border-color .15s ease,color .15s ease;
-  box-shadow:none;
+.billing-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
+.billing-subtabs.business-subtabs .business-subtab:focus-visible{
+  outline:2px solid var(--text-dark);
+  outline-offset:3px;
 }
-.business-subtab:hover{background:#f9fafb;border-color:#d1d5db;color:var(--text-dark)}
-.business-subtab:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
-.business-subtab.active{
-  background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;
+.billing-subtabs.business-subtabs .business-subtab.active{
+  color:var(--text-dark);
+  font-weight:600;
+  border-bottom-color:var(--text-dark);
 }
-.business-subtab.active:hover{background:#161b22;border-color:#161b22;color:#fff}
+.billing-subtabs.business-subtabs .business-subtab.active:hover{color:var(--text-dark)}
 .billing-tab-panels{display:flex;flex-direction:column;gap:0}
 
 @media (max-width:1200px){
@@ -56,8 +74,8 @@ export const userBillingStyles: string[] = [
 }
 @media (max-width:860px){
   .billing-status-grid{grid-template-columns:1fr}
-  .business-subtabs{gap:6px}
-  .business-subtab{padding:7px 10px;font-size:11px}
+  .billing-subtabs.business-subtabs{gap:18px}
+  .billing-subtabs.business-subtabs .business-subtab{font-size:14px;padding:0 0 10px}
 }
 
 html[data-user-theme="dark"] .billing-status-card{
@@ -71,18 +89,12 @@ html[data-user-theme="dark"] .billing-alert-strip{
 }
 html[data-user-theme="dark"] .tag.gray{background:#21262d;color:var(--text-gray)}
 html[data-user-theme="dark"] .price-mini{background:var(--surface-card)}
-html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
-html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
-html[data-user-theme="dark"] .business-subtab.active{
-  background:#1f6feb;
-  color:#fff;
-  border-color:#1f6feb;
-  font-weight:600;
-}
-html[data-user-theme="dark"] .business-subtab.active:hover{
-  background:#8957e5;
-  border-color:#8957e5;
-  color:#fff;
+html[data-user-theme="dark"] .billing-subtabs.business-subtabs{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab{color:var(--text-gray)}
+html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
+html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab.active{
+  color:var(--text-dark);
+  border-bottom-color:var(--text-dark);
 }
 `,
 ];

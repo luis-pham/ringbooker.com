@@ -13,7 +13,7 @@ const callsPortalStyles = String.raw`
 .calls-metric-card .bst-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light)}
 .calls-metric-card .bst-value{font-size:17px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
 .calls-metric-card .bst-meta{font-size:12px;color:var(--text-gray);line-height:1.45;margin-top:auto}
-.calls-filter-bar{margin-bottom:16px}
+.calls-filter-bar{margin-top:40px;margin-bottom:16px}
 .calls-list-card{margin-top:18px}
 .calls-list-card .calls-table-wrap{border-radius:12px}
 .calls-table-wrap{overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface-card)}
@@ -35,17 +35,24 @@ const callsPortalStyles = String.raw`
 }
 .calls-pagination .pager-meta{color:var(--text-gray);font-size:13px;line-height:1.45}
 .calls-pagination .pager-actions{display:flex;align-items:center;gap:8px}
-.business-subtabs.calls-filter-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0}
+.business-subtabs.calls-filter-tabs{
+  display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end;
+  margin-bottom:0;border-bottom:1px solid var(--border);
+}
 .business-subtabs.calls-filter-tabs .business-subtab{
-  border:1px solid var(--border);background:var(--surface-card);border-radius:8px;padding:8px 14px;
-  font-size:13px;font-weight:600;color:var(--text-gray);cursor:pointer;font:inherit;
-  transition:background .15s ease,border-color .15s ease,color .15s ease;box-shadow:none;
+  appearance:none;background:transparent;border:none;border-radius:0;margin:0;
+  padding:12px 0 10px;font-size:14px;line-height:1.35;font-weight:500;color:var(--text-gray);
+  cursor:pointer;font:inherit;box-shadow:none;border-bottom:2px solid transparent;
+  transition:color .15s ease,border-color .15s ease;
 }
-.business-subtabs.calls-filter-tabs .business-subtab:hover{background:#f9fafb;border-color:#d1d5db;color:var(--text-dark)}
+.business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
+.business-subtabs.calls-filter-tabs .business-subtab:focus-visible{
+  outline:2px solid var(--text-dark);outline-offset:3px;
+}
 .business-subtabs.calls-filter-tabs .business-subtab.active{
-  background:#0d1117;color:#fff;border-color:#0d1117;font-weight:600;
+  color:var(--text-dark);font-weight:600;border-bottom-color:var(--text-dark);
 }
-.business-subtabs.calls-filter-tabs .business-subtab.active:hover{background:#161b22;border-color:#161b22;color:#fff}
+.business-subtabs.calls-filter-tabs .business-subtab.active:hover{color:var(--text-dark)}
 .intent-filter-count{
   margin-left:6px;background:#b91c1c;color:#fff;font-size:10px;font-weight:600;min-width:18px;height:18px;
   border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;vertical-align:middle;
@@ -55,19 +62,16 @@ const callsPortalStyles = String.raw`
 }
 @media (max-width:860px){
   .calls-metric-grid{grid-template-columns:1fr}
+  .business-subtabs.calls-filter-tabs{gap:18px}
 }
 html[data-user-theme="dark"] .calls-metric-card{
   background:var(--surface-card);border-color:var(--border);
 }
-html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab{
-  background:var(--surface-card);border-color:var(--border);color:var(--text-gray);
-}
-html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{background:#21262d;color:var(--text-dark)}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab{color:var(--text-gray)}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active{
-  background:#1f6feb;border-color:#1f6feb;color:#fff;
-}
-html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active:hover{
-  background:#388bfd;border-color:#388bfd;color:#fff;
+  color:var(--text-dark);border-bottom-color:var(--text-dark);
 }
 .mobile-calls{display:none}
 .desktop-calls{}

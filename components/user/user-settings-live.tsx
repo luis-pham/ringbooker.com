@@ -2593,14 +2593,7 @@ export function UserSettingsLive({
                 <div className="panel-head knowledge-tab-panel-head">
                   <div>
                     <h3>Staff / Technicians</h3>
-                    <p className="sub">Add approved staff names, specialties, and notes so RingBooker does not invent technician details.</p>
-                    <p className="sub" style={{ marginTop: 6 }}>
-                      {effectiveShop.plan === 'starter'
-                        ? 'Staff details stay editable on Starter. Returning caller preferred-provider memory is available on Professional.'
-                        : effectiveShop.plan === 'enterprise'
-                          ? 'Custom accounts can use staff knowledge with managed routing and provider rules.'
-                          : 'Professional can use returning caller notes to remember preferred providers when caller history is available.'}
-                    </p>
+                    <p className="sub">Add staff names and specialties so RingBooker answers accurately. Preferred-provider memory requires Professional.</p>
                   </div>
                   {currentForm.staff.length > 0 ? (
                     <button
@@ -2778,9 +2771,9 @@ export function UserSettingsLive({
 	                    </div>
 	                  </div>
 		                  {currentForm.faqs.length === 0 ? (
-		                    <div className="sh-empty">
+		                    <div className="sh-empty faq-empty-state">
 		                      <p>No FAQs added yet. Add common answers so RingBooker can respond consistently.</p>
-		                      <button type="button" className="btn" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
+		                      <button type="button" className="btn faq-empty-cta" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
 		                        Add FAQ
 		                      </button>
 		                    </div>

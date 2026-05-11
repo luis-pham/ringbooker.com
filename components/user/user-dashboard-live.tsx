@@ -829,10 +829,6 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 Loading overview…
               </div>
             ) : null}
-            <div className="footer-inline">
-              <span>RingBooker business panel</span>
-              <span>Live data + restored shared styling</span>
-            </div>
           </main>
         </div>
         <UserPortalMobileTabbar active="overview" />

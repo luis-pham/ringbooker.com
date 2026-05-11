@@ -205,28 +205,56 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   background:var(--surface-card);border:1px solid var(--border);border-radius:16px;
   overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06);
 }
-.rb-account-frame-head{
-  padding:20px 22px 16px;border-bottom:1px solid var(--border);
+/* Lightweight underline tabs to match Billing/Calls */
+.rb-account-subtabs.business-subtabs{
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  gap:24px;
+  margin-bottom:0;
+  padding:24px 28px 0;
+  border-bottom:1px solid var(--border);
 }
-.rb-account-frame-head h2{
-  margin:0;font-size:18px;font-weight:600;letter-spacing:-.02em;line-height:1.25;color:var(--text-dark);
+.rb-account-subtabs.business-subtabs .business-subtab{
+  appearance:none;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  margin:0;
+  padding:0 0 12px;
+  font-size:14px;
+  line-height:1.35;
+  font-weight:500;
+  color:var(--text-gray);
+  cursor:pointer;
+  font:inherit;
+  border-bottom:2px solid transparent;
+  transition:color .15s ease,border-color .15s ease;
+  box-shadow:none;
 }
-/* Same subtabs as Messaging (SMS automations / Messaging notes) in Settings */
-.rb-account-subtabs.business-subtabs{margin-bottom:0;padding:12px 22px 14px;border-bottom:1px solid var(--border)}
+.rb-account-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
+.rb-account-subtabs.business-subtabs .business-subtab:focus-visible{
+  outline:2px solid var(--text-dark);
+  outline-offset:3px;
+}
+.rb-account-subtabs.business-subtabs .business-subtab.active{
+  color:var(--text-dark);
+  font-weight:600;
+  border-bottom-color:var(--text-dark);
+}
+.rb-account-subtabs.business-subtabs .business-subtab.active:hover{color:var(--text-dark)}
 .rb-account-panel{padding:22px 22px 24px}
 .rb-account-panel-title{
   margin:0 0 18px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
 }
 @media(min-width:861px){
   .rb-account-shell{max-width:760px;padding:26px 0 40px}
-  .rb-account-frame-head{padding:22px 28px 18px}
-  .rb-account-frame-head h2{font-size:19px}
-  .rb-account-subtabs.business-subtabs{padding:14px 28px 16px}
+  .rb-account-subtabs.business-subtabs{padding:24px 28px 0}
   .rb-account-panel{padding:26px 28px 30px}
 }
 @media(max-width:860px){
   .rb-account-shell{padding:18px 0 30px;max-width:100%}
-  .rb-account-subtabs.business-subtabs{padding:10px 18px 12px}
+  .rb-account-subtabs.business-subtabs{gap:18px;padding:18px 18px 0}
 }
 .rb-account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
 .rb-account-card-head-main{display:flex;align-items:center;gap:10px;min-width:0}
@@ -294,8 +322,13 @@ html[data-user-theme="dark"] .rb-account-callout{background:#161b22;border-color
 html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(35,134,54,0.18);color:#3fb950}
 html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){background:#21262d;border-color:#58a6ff}
 html[data-user-theme="dark"] .rb-account-frame{box-shadow:none}
-html[data-user-theme="dark"] .rb-account-frame-head{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab{color:var(--text-gray)}
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active{
+  color:var(--text-dark);
+  border-bottom-color:var(--text-dark);
+}
 .rb-account-skel-head .rb-account-skel-bar{max-width:128px;height:12px}
 .rb-account-skel-bar{
   display:inline-block;height:14px;border-radius:7px;width:100%;max-width:200px;
@@ -418,10 +451,6 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
               ) : null}
 
               <div className="rb-account-frame">
-                <header className="rb-account-frame-head">
-                  <h2>Your account</h2>
-                </header>
-
                 <div className="business-subtabs rb-account-subtabs" role="tablist" aria-label="Account sections">
                   {ACCOUNT_TABS.map((tab) => (
                     <button
