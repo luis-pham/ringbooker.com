@@ -464,7 +464,10 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
     }
   }, [contactNameDraft]);
 
-  const showBillingHint = nav?.ok && !subscriptionLooksHealthy(nav.subscriptionStatus);
+  const showBillingHint =
+    nav?.ok &&
+    !subscriptionLooksHealthy(nav.subscriptionStatus) &&
+    (nav.plan ?? '').toLowerCase() !== 'enterprise';
 
   return (
     <UserLayout styles={accountStyles} scripts={userDashboardScripts} scriptPrefix="user-account-live">

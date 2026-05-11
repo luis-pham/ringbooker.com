@@ -987,27 +987,24 @@ export function UserBillingLive({
                       ) : null}
 
                       {isEnterprisePlan ? (
-                        <section className="card" style={{ marginBottom: 16 }}>
+                        <section className="card enterprise-managed-card" style={{ marginBottom: 16 }}>
                           <h3 style={{ marginTop: 0 }}>
                             {enterpriseApprovalPending
                               ? 'Your Custom setup is being prepared'
                               : 'Custom billing is managed by the RingBooker team'}
                           </h3>
-                          {enterpriseApprovalPending ? (
-                            <ul className="plan-includes-list" style={{ marginTop: 10 }}>
-                              {ENTERPRISE_PENDING_BILLING_STATUS_LINES.map((line) => (
-                                <li key={line}>{line}</li>
-                              ))}
-                            </ul>
-                          ) : (
+                          {!enterpriseApprovalPending ? (
                             <p className="sub">
                               Your Custom account uses managed setup for routing, integrations, call volume planning, and
                               billing changes.
                             </p>
-                          )}
-                          <ul className="plan-includes-list" style={{ marginTop: enterpriseApprovalPending ? 14 : 12 }}>
-                            {CUSTOM_MANAGED_SETUP_ITEMS.map((item) => (
-                              <li key={item}>{item}</li>
+                          ) : null}
+                          <ul className="plan-includes-list" style={{ marginTop: enterpriseApprovalPending ? 10 : 12 }}>
+                            {(enterpriseApprovalPending
+                              ? [...ENTERPRISE_PENDING_BILLING_STATUS_LINES, ...CUSTOM_MANAGED_SETUP_ITEMS]
+                              : CUSTOM_MANAGED_SETUP_ITEMS
+                            ).map((line) => (
+                              <li key={line}>{line}</li>
                             ))}
                           </ul>
                           <div className="portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>

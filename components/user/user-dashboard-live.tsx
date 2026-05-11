@@ -528,27 +528,24 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
               </section>
             ) : null}
             {isEnterprisePlan && !data?.onboardingRequired ? (
-              <section className="card" style={{ marginBottom: 18 }}>
+              <section className="card enterprise-managed-card" style={{ marginBottom: 18 }}>
                 <div className="panel-head">
                   <div>
                     <h3>{enterpriseApprovalPending ? 'Your Custom setup is being prepared' : 'Your Custom setup is managed by RingBooker'}</h3>
-                    {enterpriseApprovalPending ? (
-                      <ul className="plan-includes-list" style={{ marginTop: 10 }}>
-                        {ENTERPRISE_PENDING_OVERVIEW_STATUS_LINES.map((line) => (
-                          <li key={line}>{line}</li>
-                        ))}
-                      </ul>
-                    ) : (
+                    {!enterpriseApprovalPending ? (
                       <p className="sub">
                         Your account can include managed routing, integrations, multilingual routing, higher call volume
                         planning, and implementation support.
                       </p>
-                    )}
+                    ) : null}
                 </div>
                 </div>
-                <ul className="plan-includes-list" style={{ marginTop: enterpriseApprovalPending ? 14 : 12 }}>
-                  {CUSTOM_MANAGED_SETUP_ITEMS.map((item) => (
-                    <li key={item}>{item}</li>
+                <ul className="plan-includes-list" style={{ marginTop: enterpriseApprovalPending ? 10 : 12 }}>
+                  {(enterpriseApprovalPending
+                    ? [...ENTERPRISE_PENDING_OVERVIEW_STATUS_LINES, ...CUSTOM_MANAGED_SETUP_ITEMS]
+                    : CUSTOM_MANAGED_SETUP_ITEMS
+                  ).map((line) => (
+                    <li key={line}>{line}</li>
                   ))}
                 </ul>
                 <div className="dashboard-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>

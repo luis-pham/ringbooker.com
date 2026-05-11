@@ -398,6 +398,10 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
   border-color:#bfdbfe !important;
   background:#eff6ff !important;
 }
+.card.enterprise-managed-card{
+  background:#eff6ff;
+  border-color:#bfdbfe;
+}
 .usage-progress-track{
   height:10px;border-radius:999px;margin-top:14px;overflow:hidden;
   background:linear-gradient(180deg,#ede9fe 0%,#e9d5ff 100%);
@@ -673,6 +677,10 @@ html[data-user-theme="dark"] .tag.red{background:rgba(248,81,73,0.12);color:#f85
 html[data-user-theme="dark"] .dashboard-banner-go-live{
   border-color:#6e40c9 !important;
   background:linear-gradient(180deg,rgba(110,64,201,.18) 0%,rgba(88,28,135,.12) 100%) !important;
+}
+html[data-user-theme="dark"] .card.enterprise-managed-card{
+  border-color:rgba(56,139,253,.38);
+  background:rgba(56,139,253,.1);
 }
 html[data-user-theme="dark"] .usage-progress-track{
   background:#21262d;border-color:#30363d;
