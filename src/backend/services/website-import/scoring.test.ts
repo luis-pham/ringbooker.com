@@ -40,3 +40,15 @@ test('page selection prioritizes multiple service child pages for pricing extrac
   assert.ok(selected.includes('https://x.test/services/extensions'));
   assert.ok(selected.includes('https://x.test/services/haircut'));
 });
+
+test('homepage remains homepage and exact services page wins service hub slot', () => {
+  const homepage = { candidate: { ...candidate('https://x.test'), source: 'homepage' as const }, ...classifyCandidate({ ...candidate('https://x.test'), source: 'homepage' as const }, preview({ h2s: ['Our Services'], serviceKeywordCount: 8, internalServiceLikeLinkCount: 3 })) };
+  const services = { candidate: candidate('https://x.test/services', 'Services'), ...classifyCandidate(candidate('https://x.test/services', 'Services'), preview({ h1: 'Our Services', priceCount: 8, durationCount: 2, serviceKeywordCount: 12 })) };
+  const about = { candidate: candidate('https://x.test/about', 'About'), ...classifyCandidate(candidate('https://x.test/about', 'About'), preview({ h1: 'About us', h2s: ['Our Services'], durationCount: 1, serviceKeywordCount: 12, internalServiceLikeLinkCount: 3 })) };
+  assert.equal(homepage.bucket, 'homepage');
+  assert.equal(services.bucket, 'service_hub');
+  assert.notEqual(about.bucket, 'service_hub');
+  const selected = selectPages([homepage, services, about], 8).map((item) => item.candidate.url);
+  assert.ok(selected.includes('https://x.test'));
+  assert.ok(selected.includes('https://x.test/services'));
+});

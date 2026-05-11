@@ -62,12 +62,28 @@ export function extractLinks(html: string, baseUrl: string): Array<{ href: strin
   return links;
 }
 
+function structuredServiceText($: cheerio.CheerioAPI): string {
+  const rows: string[] = [];
+  $('.service-item, [class*="service-item"]').each((_, el) => {
+    const item = $(el);
+    const name = item.find('.name, [class*="service-name"], h3, h4').first().text().replace(/\s+/g, ' ').trim();
+    const price = item.find('.price, [class*="service-price"]').first().text().replace(/\s+/g, ' ').trim();
+    if (!name || !price) return;
+    const tabContent = item.closest('[id^="elementor-tab-content"], .elementor-tab-content');
+    const labelledBy = tabContent.attr('aria-labelledby');
+    const group = labelledBy ? $(`#${labelledBy}`).first().text().replace(/\s+/g, ' ').trim() : '';
+    rows.push([group, name, price].filter(Boolean).join(' '));
+  });
+  return rows.join('\n');
+}
+
 export function previewHtml(html: string, url: string): PagePreview {
   const $ = cheerio.load(html);
   const title = ($('title').first().text() || $('meta[property="og:title"]').attr('content') || '').trim();
   const h1 = $('h1').first().text().replace(/\s+/g, ' ').trim();
   const h2s = $('h2').slice(0, 8).map((_, el) => $(el).text().replace(/\s+/g, ' ').trim()).get().filter(Boolean);
-  const text = visibleTextFromHtml(html);
+  const structuredServices = structuredServiceText($);
+  const text = [structuredServices, visibleTextFromHtml(html)].filter(Boolean).join('\n');
   const links = extractLinks(html, url);
   const priceCount = (text.match(PRICE_PATTERN) ?? []).length;
   const durationCount = (text.match(DURATION_PATTERN) ?? []).length;

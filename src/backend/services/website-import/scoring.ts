@@ -12,28 +12,32 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
   let score = 0;
   let bucket: CandidateBucket = 'noise';
   const reasons: string[] = [];
+  const staffContext = STAFF_WORDS.test(haystack) || /\/(?:our-)?team|\/staff|\/stylists?/.test(haystack);
+  const primaryPageSignal = `${candidate.url} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''}`.toLowerCase();
 
   if (/privacy|terms|login|cart|checkout|account/.test(haystack)) return { bucket: 'noise', score: -50, reason: 'Excluded utility page' };
   if (/blog|news|article|post|author|tag|category/.test(haystack)) { score -= 25; reasons.push('Blog/news deprioritized'); }
 
-  if (candidate.source === 'homepage') { bucket = 'homepage'; score += 100; reasons.push('Homepage'); }
+  const isHomepage = candidate.source === 'homepage';
+  const isServiceHubChild = candidate.source === 'service_hub_child';
+  if (isHomepage) { bucket = 'homepage'; score += 100; reasons.push('Homepage'); }
   if (/contact|hours|location|directions/.test(haystack)) { bucket = 'contact_hours'; score += 28; reasons.push('Contact/hours signals'); }
-  if (STAFF_WORDS.test(haystack)) { if (bucket === 'noise') bucket = 'staff_team'; score += 20; reasons.push('Staff/team signals'); }
+  if (staffContext) { if (bucket === 'noise') bucket = 'staff_team'; score += 20; reasons.push('Staff/team signals'); }
   if (POLICY_WORDS.test(haystack)) { bucket = bucket === 'noise' ? 'policies' : bucket; score += 18; reasons.push('Policy signals'); }
   if (FAQ_WORDS.test(haystack)) { bucket = bucket === 'noise' ? 'faq' : bucket; score += 18; reasons.push('FAQ signals'); }
   if (PROMO_WORDS.test(haystack)) { bucket = bucket === 'noise' ? 'promotions' : bucket; score += 16; reasons.push('Promotion signals'); }
   if (/about|team|staff|artist|provider/.test(haystack)) { bucket = bucket === 'noise' ? 'about_team' : bucket; score += 12; reasons.push('About/team signals'); }
-  if (/book|appointment|schedule|reserve/.test(haystack)) { bucket = 'booking'; score += 22; reasons.push('Booking signals'); }
+  if (/book|appointment|schedule|reserve/.test(haystack)) { bucket = isHomepage || staffContext ? bucket : 'booking'; score += 22; reasons.push('Booking signals'); }
 
   if ((candidate.anchorText && SPECIFIC_SERVICE.test(candidate.anchorText)) || (preview && SPECIFIC_SERVICE.test(`${preview.title} ${preview.h1}`))) {
-    bucket = 'service_child'; score += 45; reasons.push('Specific service signal');
+    bucket = isHomepage ? bucket : 'service_child'; score += 45; reasons.push('Specific service signal');
   }
-  if (/service|menu|pricing|treatment/.test(haystack) || (preview && preview.internalServiceLikeLinkCount >= 2)) {
-    bucket = bucket === 'service_child' ? bucket : 'service_hub'; score += 35; reasons.push('Service hub/menu signal');
+  if (/service|menu|pricing|treatment/.test(primaryPageSignal) || (preview && preview.priceCount > 0 && preview.internalServiceLikeLinkCount >= 2)) {
+    bucket = bucket === 'service_child' || isHomepage || isServiceHubChild || staffContext ? bucket : 'service_hub'; score += 35; reasons.push('Service hub/menu signal');
   }
   if (SERVICE_WORDS.test(haystack)) { score += 15; reasons.push('Service keyword'); }
   if (preview) {
-    if (preview.serviceKeywordCount >= 4 && (preview.priceCount > 0 || preview.durationCount > 0)) { bucket = bucket === 'service_child' ? bucket : 'service_hub'; score += 24; reasons.push('Service content with prices/durations'); }
+    if (preview.serviceKeywordCount >= 4 && preview.priceCount > 0) { bucket = bucket === 'service_child' || isHomepage || isServiceHubChild || staffContext ? bucket : 'service_hub'; score += 24; reasons.push('Service content with prices'); }
     if (preview.priceCount > 0) { score += 8; reasons.push('Price pattern'); }
     if (preview.durationCount > 0) { score += 5; reasons.push('Duration pattern'); }
     if (preview.contentScore < 5) { score -= 15; reasons.push('Weak content'); }

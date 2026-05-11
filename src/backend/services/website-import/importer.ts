@@ -204,7 +204,11 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const previewMap = new Map<string, PagePreview>([[homepage.url, homepagePreview]]);
   for (const candidate of unique.filter((c) => c.source !== 'homepage').slice(0, 24)) {
     const fetched = await fetchText(candidate.url, opts);
-    if (fetched) previewMap.set(candidate.url, previewHtml(fetched.text, fetched.url));
+    if (fetched) {
+      const preview = previewHtml(fetched.text, fetched.url);
+      previewMap.set(candidate.url, preview);
+      previewMap.set(fetched.url, preview);
+    }
   }
 
   let scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
@@ -223,7 +227,11 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   for (const child of childCandidates.slice(0, opts.maxChildServicePages ?? 3)) {
     if (!previewMap.has(child.url)) {
       const fetched = await fetchText(child.url, opts);
-      if (fetched) previewMap.set(child.url, previewHtml(fetched.text, fetched.url));
+      if (fetched) {
+        const preview = previewHtml(fetched.text, fetched.url);
+        previewMap.set(child.url, preview);
+        previewMap.set(fetched.url, preview);
+      }
     }
     if (!unique.some((c) => c.url === child.url)) unique.push(child);
   }
@@ -234,7 +242,11 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     const existingPreview = previewMap.get(item.candidate.url);
     if (existingPreview && !(item.bucket === 'service_child' && existingPreview.priceCount === 0 && existingPreview.durationCount === 0)) continue;
     const fetched = await fetchText(item.candidate.url, opts);
-    if (fetched) previewMap.set(item.candidate.url, previewHtml(fetched.text, fetched.url));
+    if (fetched) {
+      const preview = previewHtml(fetched.text, fetched.url);
+      previewMap.set(item.candidate.url, preview);
+      previewMap.set(fetched.url, preview);
+    }
   }
 
   const selectedPreviews = selected.map((item) => previewMap.get(item.candidate.url)).filter((p): p is PagePreview => Boolean(p));

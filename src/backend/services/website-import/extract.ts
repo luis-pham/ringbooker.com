@@ -33,6 +33,12 @@ const SERVICE_GROUP_HEADINGS = [
   'Injectables',
   'Laser Services',
   'Skin Treatments',
+  'Cut',
+  'Color',
+  'Extensions',
+  'Style',
+  'Blowout',
+  'Treatments',
 ];
 
 const DAY_ALIASES: Record<string, string> = {
@@ -113,7 +119,7 @@ function applyHoursLine(hours: Record<string, unknown>, line: string): void {
   }
   const dayName = '(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)';
   const time = '(\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)';
-  const match = compact.match(new RegExp(`^${dayName}(?:\\s*(?:-|to)\\s*${dayName})?\\s*:?,?\\s*${time}\\s*(?:-|to)\\s*${time}`, 'i'));
+  const match = compact.match(new RegExp(`^${dayName}(?:\\s*(?:-|to|&|and|,|/)\\s*${dayName})?\\s*:?,?\\s*${time}\\s*(?:-|to)\\s*${time}`, 'i'));
   if (!match) return;
   const start = dayKey(match[1]);
   const end = dayKey(match[2] ?? '');
@@ -200,13 +206,45 @@ export function extractHoursFromJsonLd(previews: PagePreview[]): ImportField<Rec
 }
 
 export function extractHoursFromText(text: string): ImportField<Record<string, unknown>> | null {
-  const normalized = text.replace(/[\u2013\u2014]/g, '-').replace(/([a-z])([A-Z])/g, '$1 $2');
+  const normalized = text
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Za-z])(\d)/g, '$1 $2');
   const dayPattern = /(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b[^.;\n]{0,80}?(?:closed|\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*(?:-|to)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)?)/gi;
-  const closedPrefixPattern = /closed\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b/gi;
+  const closedPrefixPattern = /closed\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thurs|fri|sat|sun)\b(?!\s*\d)/gi;
   const segments = normalized.split(/[.;\n]+/).map((segment) => segment.trim()).filter(Boolean);
-  const lines = segments.flatMap((segment) => [...(segment.match(dayPattern) ?? []), ...(segment.match(closedPrefixPattern) ?? [])]);
+  const lines = segments.flatMap((segment) => {
+    const matched = [...(segment.match(dayPattern) ?? [])];
+    matched.push(...(segment.match(closedPrefixPattern) ?? []));
+    return matched;
+  });
   const parsed = parseHoursText(lines) ?? parseColumnarHoursText(normalized);
   return parsed ? field(parsed, 0.72, 'Website') : null;
+}
+
+function cleanExtractedAddress(value: string): string | null {
+  const cleaned = value
+    .replace(/\s*(?:Telephone|Phone|Email|Hours|Instagram|Facebook|TikTok|Book Now)\b.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+,\s+/g, ', ')
+    .trim();
+  return /\b\d{5}(?:-\d{4})?\b/.test(cleaned) && cleaned.length >= 12 ? cleaned : null;
+}
+
+function extractAddressFromText(text: string): string | null {
+  const normalized = text
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Za-z])(\d)/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const labeled = normalized.match(/\bAddress\s*:?\s*(.{8,180}?\b\d{5}(?:-\d{4})?)(?=\s*(?:Telephone|Phone|Email|Hours|Instagram|Facebook|TikTok|Book Now|$))/i);
+  if (labeled?.[1]) {
+    const address = cleanExtractedAddress(labeled[1]);
+    if (address) return address;
+  }
+  const generic = normalized.match(/\b\d{1,6}\s+[A-Za-z0-9 .'-]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Court|Ct|Place|Pl)\b.{0,90}?\b(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|IA|ID|IL|IN|KS|KY|LA|MA|MD|ME|MI|MN|MO|MS|MT|NC|ND|NE|NH|NJ|NM|NV|NY|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VA|VT|WA|WI|WV|WY)\s+\d{5}(?:-\d{4})?\b/i);
+  return generic?.[0] ? cleanExtractedAddress(generic[0]) : null;
 }
 
 export function inferTimezoneFromAddress(address?: string | null): ImportField<string> | null {
@@ -237,6 +275,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     const name = collapseRepeatedServiceName(cleanServiceName(input.name));
     if (name.length < 3 || name.length > 90) return;
     if (isStylistPricingRowName(name)) return;
+    if (/^(this is|service includes|includes|perfect for|ideal for|not sure|our service|pricing is based)\b/i.test(name)) return;
     const categoryName = input.group?.trim() || inferGroup(name);
     const key = `${categoryName.toLowerCase()}::${name.toLowerCase()}`;
     if (services.has(key)) return;
@@ -258,6 +297,21 @@ export function extractServicesFromText(text: string, source: string): ImportedS
 
   for (const item of extractStylistPricingServices(text)) {
     addService({ ...item, confidence: 0.86 });
+  }
+
+  for (const rawLine of text.split(/\n+/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
+    const match = rawLine.match(SERVICE_LINE_RE);
+    if (!match) continue;
+    const lower = rawLine.toLowerCase();
+    const parsed = splitServiceHeadingPrefix(match[1]);
+    addService({
+      name: parsed.name,
+      priceText: match[2],
+      priceType: /from|starting|starts at|\+/.test(lower) ? 'from' : 'fixed',
+      durationMinutes: match[3] ? Number(match[3]) : null,
+      group: parsed.group,
+      confidence: parsed.group ? 0.88 : 0.84,
+    });
   }
 
   let currentCompressedGroup: string | null = null;
@@ -286,7 +340,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     addService({
       name: parsed.name,
       priceText,
-      priceType: /from|starting at|starts at|\+/.test(lower) ? 'from' : priceText ? 'fixed' : /consult/.test(lower) ? 'consultation' : 'varies',
+      priceType: /from|starting|starts at|\+/.test(lower) ? 'from' : priceText ? 'fixed' : /consult/.test(lower) ? 'consultation' : 'varies',
       durationMinutes: match?.[3] ? Number(match[3]) : null,
       group: parsed.group,
       confidence: match ? 0.82 : 0.62,
@@ -303,6 +357,7 @@ function cleanCompressedServiceText(text: string): string {
     .replace(/\btop of page\b/gi, ' ')
     .replace(/\bbottom of page\b/gi, ' ')
     .replace(/BOOKING/gi, ' ')
+    .replace(/\bBook Now\b/gi, ' ')
     .replace(/\bLoad More\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -379,9 +434,18 @@ function cleanServiceName(name: string): string {
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\u00a0/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/\b(top of page|bottom of page|BOOKING|Load More|Contact Us)\b/gi, ' ')
+    .replace(/\bOR(?=[A-Z])/g, 'OR ')
+    .replace(/([A-Za-z])Involves\b/g, '$1 Involves')
+    .replace(/\b(top of page|bottom of page|Load More|Contact Us)\b/gi, ' ')
+    .replace(/BOOKING/gi, ' ')
+    .replace(/\bBook Now\b/gi, ' ')
+    .replace(/\bInvolves\b.*$/i, '')
+    .replace(/\bPricing is based\b.*$/i, '')
+    .replace(/Pricing\s*is\s*based.*$/i, '')
+    .replace(/Starting\s*at.*$/i, '')
+    .replace(/Starts\s*at.*$/i, '')
     .replace(/^(services|service|treatments|treatment|menu)\s*:?\s*/i, '')
-    .replace(/\b(from|starting at|starts at)\s*$/i, '')
+    .replace(/\b(from|starting at|starts at|starting)\s*$/i, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -416,7 +480,7 @@ function splitServiceHeadingPrefix(rawName: string): { group: string | null; nam
       const compactCleaned = cleaned.replace(/\s+/g, '');
       if (compactCleaned.toLowerCase().startsWith(compactHeading.toLowerCase())) {
         const name = cleaned.slice(heading.length).trim();
-        if (name.length >= 3) {
+        if (name.length >= 3 && !/^&/.test(name)) {
           group = heading;
           cleaned = name;
           stripped = true;
@@ -426,6 +490,7 @@ function splitServiceHeadingPrefix(rawName: string): { group: string | null; nam
     }
     if (!stripped) break;
   }
+  if (group === 'Color' && /^(touch-up|correction|gloss|blocking)$/i.test(cleaned)) cleaned = `Color ${cleaned}`;
   return { group, name: cleaned };
 }
 
@@ -666,14 +731,22 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
 
 function jsonLdFacts(previews: PagePreview[]) {
   const facts: { name?: string; phone?: string; address?: string; hours?: ImportField<Record<string, unknown>> } = {};
+  let bestName: { value: string; score: number } | null = null;
   for (const obj of flattenJsonLd(previews.flatMap((preview) => preview.jsonLd))) {
-    if (!facts.name && typeof obj.name === 'string') facts.name = obj.name;
+    if (typeof obj.name === 'string') {
+      const type = Array.isArray(obj['@type']) ? obj['@type'].join(' ') : String(obj['@type'] ?? '');
+      const isBusiness = /\b(LocalBusiness|Organization|BeautySalon|HairSalon|NailSalon|HealthAndBeautyBusiness|DaySpa|Spa|Store|WebSite)\b/i.test(type);
+      const isPage = /\b(WebPage|Article|BlogPosting)\b/i.test(type);
+      const score = (isBusiness ? 40 : 0) + (type.includes('WebSite') ? 10 : 0) - (isPage ? 30 : 0) - (obj.name.includes('|') ? 8 : 0);
+      if (!bestName || score > bestName.score) bestName = { value: obj.name, score };
+    }
     if (!facts.phone && typeof obj.telephone === 'string') facts.phone = obj.telephone;
     if (!facts.address && obj.address && typeof obj.address === 'object') {
       const addr = obj.address as Record<string, unknown>;
       facts.address = [addr.streetAddress, addr.addressLocality, addr.addressRegion, addr.postalCode].filter((v): v is string => typeof v === 'string').join(', ');
     }
   }
+  if (bestName?.value) facts.name = bestName.value.replace(/\s+\|.*$/, '').trim();
   facts.hours = extractHoursFromJsonLd(previews) ?? undefined;
   return facts;
 }
@@ -715,7 +788,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   const visiblePhone = extractVisiblePhone(input.previews);
   const rawWebsitePhone = visiblePhone?.value ?? facts.phone ?? allText.match(PHONE_RE)?.[0] ?? null;
   const websiteHours = facts.hours ?? extractHoursFromText(allText);
-  const staticAddress = facts.address ?? null;
+  const staticAddress = facts.address ?? extractAddressFromText(allText);
   const websitePhone = normalizePhoneForStorage(rawWebsitePhone, staticAddress ?? allText) ?? rawWebsitePhone;
   const warnings: string[] = [];
   if (visiblePhone?.value && facts.phone && phoneComparableDigits(visiblePhone.value) !== phoneComparableDigits(facts.phone)) {

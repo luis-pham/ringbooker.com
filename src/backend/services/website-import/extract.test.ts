@@ -60,6 +60,7 @@ test('Google Places hours override website hours and phone conflicts warn', () =
       address: '10 Broadway, New York, NY',
       website: 'https://demo.test',
       hours: { mon: { open: '09:00', close: '19:00' } },
+      matchConfidence: 0.9,
     },
   });
   assert.equal(suggestions.businessProfile.phone.source, 'Google Places');
@@ -68,6 +69,45 @@ test('Google Places hours override website hours and phone conflicts warn', () =
   assert.equal(suggestions.businessProfile.timezone.value, 'America/New_York');
   assert.ok(suggestions.warnings.some((warning) => /phone differs/i.test(warning)));
   assert.ok(suggestions.serviceCatalog.services.some((service) => service.name.includes('Gel Manicure')));
+});
+
+test('keeps website data when normal website Google Places match is low confidence', () => {
+  const preview = previewHtml('<script type="application/ld+json">{"@type":"Organization","name":"RAW Hair & Co."}</script><p>Address:223 N Bishop Ave, Dallas, TX 75208 Telephone:(469) 965-8500</p>', 'https://rawhairandco.com');
+  const suggestions = buildSuggestions({
+    sourceUrl: 'https://rawhairandco.com',
+    sourceType: 'normal_website',
+    previews: [preview],
+    googlePlaces: {
+      name: 'Huy Google Account',
+      phone: '555-999-0000',
+      address: '1 Wrong Way, Dallas, TX',
+      matchConfidence: 0.25,
+    },
+  });
+  assert.equal(suggestions.businessProfile.name.value, 'RAW Hair & Co.');
+  assert.equal(suggestions.businessProfile.phone.value, '+14699658500');
+  assert.equal(suggestions.businessProfile.address.value, '223 N Bishop Ave, Dallas, TX 75208');
+  assert.ok(suggestions.warnings.some((warning) => /low confidence/i.test(warning)));
+});
+
+test('extracts RAW Hair style footer hours, address, and JSON-LD organization name', () => {
+  const preview = previewHtml(`
+    <html><head>
+      <title>RAW Hair & Co. | Modern Hair Salon in Dallas</title>
+      <script type="application/ld+json">{"@graph":[{"@type":"WebPage","name":"RAW Hair & Co. | Modern Hair Salon in Dallas"},{"@type":"Organization","name":"RAW Hair & Co."}]}</script>
+    </head><body>
+      <footer>
+        Address:223 N Bishop Ave, Dallas, TX 75208 Telephone:(469) 965-8500
+        Hours Of Operation MondayCLOSED Tuesday10 AM - 5 PM Wednesday10 AM - 8 PM Thursday9 AM - 8 PM Friday & Saturday9 AM - 6 PM Sunday11 AM - 6 PM
+      </footer>
+    </body></html>
+  `, 'https://rawhairandco.com');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://rawhairandco.com', sourceType: 'normal_website', previews: [preview] });
+  assert.equal(suggestions.businessProfile.name.value, 'RAW Hair & Co.');
+  assert.equal(suggestions.businessProfile.address.value, '223 N Bishop Ave, Dallas, TX 75208');
+  assert.equal(suggestions.businessProfile.phone.value, '+14699658500');
+  assert.deepEqual(suggestions.hours.value?.tue, { open: '10:00', close: '17:00' });
+  assert.deepEqual(suggestions.hours.value?.sun, { open: '11:00', close: '18:00' });
 });
 
 test('normalizes imported US phone numbers to E.164 for backend storage', () => {
@@ -118,6 +158,25 @@ test('extracts common WordPress-style service blocks without compressed Wix clea
   assert.ok(names.includes('Signature Pedicure'));
   assert.ok(names.includes('Eyebrow Wax'));
   assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Gel Manicure')?.priceType, 'from');
+});
+
+test('extracts Elementor service-item cards with group, clean names, and prices', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <div id="tab-color" class="elementor-tab-title">Color</div>
+      <div class="elementor-tab-content" aria-labelledby="tab-color">
+        <div class="service-item"><div class="name">All Over Color</div><div class="price">Starting at $138</div></div>
+        <div class="service-item"><div class="name">COLOR TOUCH-UP</div><div class="price">Starting at $118</div></div>
+        <div class="service-item"><div class="name">FULL HIGHLIGHTS OR<br />LOWLIGHTS<br /><small>Involves Foil Technique</small></div><div class="price">Starting at $238</div></div>
+      </div>
+    </body></html>
+  `, 'https://rawhairandco.test/services');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://rawhairandco.test', sourceType: 'normal_website', previews: [preview] });
+  const services = suggestions.serviceCatalog.services;
+  assert.ok(services.some((service) => service.categoryName === 'Color' && service.name === 'All Over Color' && service.priceAmount === 138));
+  assert.ok(services.some((service) => service.categoryName === 'Color' && service.name === 'Color TOUCH-UP' && service.priceAmount === 118));
+  assert.ok(services.some((service) => service.categoryName === 'Color' && service.name === 'FULL HIGHLIGHTS OR LOWLIGHTS' && service.priceAmount === 238));
+  assert.equal(services.some((service) => /Book Now|Involves|Starting/i.test(service.name)), false);
 });
 
 test('extracts WordPress service menu links when service pages have no visible prices', () => {
