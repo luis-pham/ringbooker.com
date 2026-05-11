@@ -4383,6 +4383,8 @@ export function createBackendApp(deps: {
     }
   });
 
+  // Legacy mutating website import endpoint. Do not use this for onboarding review:
+  // `/user/onboarding/import-website` is the suggestions-only flow that waits for user confirmation.
   app.post(path('/user/read-website'), async (c) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;

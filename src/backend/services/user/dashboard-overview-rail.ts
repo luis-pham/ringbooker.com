@@ -15,6 +15,7 @@ export type DashboardOverviewRailChecklistItem = {
   title: string;
   done: boolean;
   href: string;
+  detail?: string;
 };
 
 export type DashboardOverviewRailHealthRow = {
@@ -41,6 +42,12 @@ export type DashboardOverviewRail =
       tip?: string;
     };
 
+export type BusinessKnowledgeStatus = {
+  complete: boolean;
+  missingCore: string[];
+  missingRecommended: string[];
+};
+
 export function resolveCalendarBookingStatus(shop: Shop): { ready: boolean; detail: string } {
   const square = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
   const vagaro = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
@@ -53,6 +60,33 @@ export function resolveCalendarBookingStatus(shop: Shop): { ready: boolean; deta
   if (vagaroReady) return { ready: true, detail: 'Vagaro connected' };
   if (bookingUrlReady) return { ready: true, detail: 'Booking link on file' };
   return { ready: false, detail: 'Connect Square, Vagaro, or add a booking link' };
+}
+
+function hasBusinessHours(shop: Shop): boolean {
+  return Object.values(shop.hours ?? {}).some((value) => 'open' in value && Boolean(value.open && value.close));
+}
+
+function hasServices(shop: Shop): boolean {
+  const catalogServices = shop.service_catalog?.services ?? [];
+  if (catalogServices.some((service) => service.active !== false && service.name.trim().length > 0)) return true;
+  return (shop.services ?? []).some((service) => service.name.trim().length > 0);
+}
+
+export function getBusinessKnowledgeStatus(shop: Shop): BusinessKnowledgeStatus {
+  const missingCore: string[] = [];
+  const missingRecommended: string[] = [];
+
+  if (!shop.name.trim() || !shop.vertical || !shop.timezone.trim()) missingCore.push('profile');
+  if (!hasBusinessHours(shop)) missingCore.push('hours');
+  if (!hasServices(shop)) missingCore.push('services');
+  if (!shop.cancel_policy?.trim()) missingRecommended.push('policy');
+  if ((shop.faqs ?? []).filter((item) => item.question.trim() && item.answer.trim()).length === 0) missingRecommended.push('faq');
+
+  return {
+    complete: missingCore.length === 0 && missingRecommended.length === 0,
+    missingCore,
+    missingRecommended,
+  };
 }
 
 type GoLiveOverviewInput = {
@@ -78,6 +112,16 @@ export function buildDashboardOverviewRail(params: {
 }): DashboardOverviewRail {
   const { shop, onboardingRequired, goLive, usage, recentCalls, totalCallCount } = params;
   const calendar = resolveCalendarBookingStatus(shop);
+  const knowledge = getBusinessKnowledgeStatus(shop);
+  const knowledgeChecklistItem: DashboardOverviewRailChecklistItem | null = knowledge.complete
+    ? null
+    : {
+        id: 'business_knowledge',
+        title: 'Finish your AI knowledge',
+        detail: 'Add hours, services, and FAQs so RingBooker can answer callers accurately.',
+        done: false,
+        href: '/user/knowledge',
+      };
 
   if (goLive?.commercialApprovalRequired) {
     return {
@@ -156,6 +200,7 @@ export function buildDashboardOverviewRail(params: {
         href: '/user/go-live#go-live-forwarding',
       },
     ];
+    if (knowledgeChecklistItem) checklist.push(knowledgeChecklistItem);
 
     return {
       variant: 'setup',
@@ -214,6 +259,18 @@ export function buildDashboardOverviewRail(params: {
       href: '/user/integrations#integrations',
     },
   ];
+
+  if (!knowledge.complete) {
+    health.push({
+      id: 'business_knowledge',
+      label: 'AI knowledge',
+      state: knowledge.missingCore.length > 0 ? 'warn' : 'neutral',
+      detail: knowledge.missingCore.length > 0
+        ? 'Add hours and services so callers get accurate answers'
+        : 'Add FAQs and policies when ready',
+      href: '/user/knowledge',
+    });
+  }
 
   if (usage?.overCapturedCallerLimit || usage?.nearCapturedCallerLimit) {
     health.push({

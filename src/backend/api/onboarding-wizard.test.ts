@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
@@ -68,8 +69,8 @@ test('Legacy step 1 validation requires business name and phone (vertical option
   ]);
 });
 
-test('Find step quick validation requires phone only', () => {
-  assert.deepEqual(validateOnboardingStep1Quick({ businessPhone: '' }), ['Business phone number is required.']);
+test('Find step quick validation allows continuing without business phone', () => {
+  assert.deepEqual(validateOnboardingStep1Quick({ businessPhone: '' }), []);
   assert.deepEqual(validateOnboardingStep1Quick({ businessPhone: '+15551234567' }), []);
 });
 
@@ -116,7 +117,19 @@ test('onboarding import recommended action maps to review copy', () => {
   assert.equal(importRecommendedActionMessage('service_details_incomplete'), 'We found your business details, but services may need review.');
 });
 
-test('Step 1 minimal save persists step without detected vertical or website import fields', async () => {
+test('onboarding copy keeps website import review-only and isolates legacy read-website', () => {
+  const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
+  const app = readFileSync('src/backend/api/app.ts', 'utf8');
+  assert.match(onboardingLive, /Add your website now, then review it before saving/);
+  assert.doesNotMatch(onboardingLive, /We'll save this link today/);
+  assert.match(onboardingLive, /refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge/);
+  assert.ok(onboardingLive.includes('/api/backend/user/onboarding/import-website'));
+  assert.equal(onboardingLive.includes('/api/backend/user/read-website'), false);
+  assert.match(app, /Legacy mutating website import endpoint/);
+  assert.match(app, /suggestions-only flow that waits for user confirmation/);
+});
+
+test('Step 1 minimal save can continue without phone and does not persist import fields', async () => {
   const { app, shopsRepository } = createOnboardingTestApp();
   const cookie = await loginUser(app);
   const before = await shopsRepository.findById('demo-shop');
@@ -131,8 +144,6 @@ test('Step 1 minimal save persists step without detected vertical or website imp
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      phone_number: '+15551234567',
-      user_phone: '+15551234567',
       current_onboarding_step: 2,
     }),
   });
@@ -140,6 +151,8 @@ test('Step 1 minimal save persists step without detected vertical or website imp
   assert.equal(response.status, 200);
   const shop = await shopsRepository.findById('demo-shop');
   assert.equal(shop?.current_onboarding_step, 2);
+  assert.equal(shop?.phone_number, before.phone_number);
+  assert.equal(shop?.user_phone, before.user_phone);
   assert.equal(shop?.vertical, before.vertical);
   assert.equal(shop?.website_url, before.website_url);
 });

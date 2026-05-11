@@ -69,7 +69,7 @@ type UserDashboardOverviewRail =
       variant: 'setup';
       title: string;
       subtitle?: string;
-      checklist: Array<{ id: string; title: string; done: boolean; href: string }>;
+      checklist: Array<{ id: string; title: string; done: boolean; href: string; detail?: string }>;
     }
   | {
       variant: 'live';
@@ -163,7 +163,7 @@ function DashboardOverviewRailCard(props: { rail: UserDashboardOverviewRail; sho
                     <a href={step.href}>{step.title}</a>
                   )}
                 </p>
-                {!step.done ? <p className="overview-rail-step-meta">Tap to open and complete.</p> : null}
+                {!step.done ? <p className="overview-rail-step-meta">{step.detail ?? 'Tap to open and complete.'}</p> : null}
               </div>
             </li>
           ))}

@@ -356,11 +356,10 @@ export function validateOnboardingStep1(input: { businessName: string; vertical:
   return errors;
 }
 
-/** Step 1 quick path (website/GBP optional): business phone required; business type inferred or chosen later. */
+/** Step 1 quick path (website/GBP optional): business phone is reviewed later with imported profile details. */
 export function validateOnboardingStep1Quick(input: { businessPhone: string }): string[] {
-  const errors: string[] = [];
-  if (!input.businessPhone.trim()) errors.push('Business phone number is required.');
-  return errors;
+  void input;
+  return [];
 }
 
 export function validateOnboardingProfileReview(input: { businessName: string }): string[] {
@@ -1007,10 +1006,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setVerticalConfidence(nextConfidence);
 
     const patch: Record<string, unknown> = {
-      phone_number: businessPhone,
-      user_phone: businessPhone,
       current_onboarding_step: 2,
     };
+    if (businessPhone.trim()) {
+      patch.phone_number = businessPhone;
+      patch.user_phone = businessPhone;
+    }
     const ok = await saveSettings(patch);
     if (ok) {
       setCurrentStep(2);
@@ -1131,11 +1132,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     }
     trackOnboarding('onboarding_profile_reviewed');
     const addr = address.trim();
-    const ok = await saveSettings({
+    const profilePatch: Record<string, unknown> = {
       name: businessName,
       user_name: businessName,
-      phone_number: businessPhone,
-      user_phone: businessPhone,
       vertical,
       vertical_detail: vertical === 'beauty_clinic' && beautySubtype ? beautySubtype : null,
       hours: wizardHoursToApi(hours),
@@ -1144,7 +1143,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       ...(addr ? { address: addr } : { address: null }),
       ...(websiteUrl.trim() ? { website_url: normalizeWebsiteUrl(websiteUrl) } : { website_url: '' }),
       current_onboarding_step: 3,
-    });
+    };
+    if (businessPhone.trim()) {
+      profilePatch.phone_number = businessPhone;
+      profilePatch.user_phone = businessPhone;
+    }
+    const ok = await saveSettings(profilePatch);
     if (ok) setCurrentStep(3);
   }
 
@@ -1342,7 +1346,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       <p className="onb-help">RingBooker will try to suggest your business details, hours, services, and booking link.</p>
     ) : (
       <p className="onb-help">
-        We&apos;ll save this link today. Automated website import is rolling out soon.
+        Add your website now, then review it before saving. Automated website import is rolling out soon.
       </p>
     );
 
@@ -1781,6 +1785,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <h1 className="onb-title">Review your services</h1>
         <p className="onb-subtitle">
           Add the services callers ask about most, or skip this for now. You can group them now or refine them later in Business Knowledge.
+        </p>
+        <p className="onb-help">
+          You can refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge.
         </p>
         {servicesFound > 0 ? (
           <p className="read-success">Imported {servicesFound} service suggestions from your website — review and edit below.</p>

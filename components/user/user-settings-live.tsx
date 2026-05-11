@@ -884,6 +884,23 @@ export function UserSettingsLive({
   const showIntegrationsPathPicker = !hasAnyIntegrationSetup && integrationsPath === 'pick';
   const showIntegrationsPathFooter =
     !hasAnyIntegrationSetup && integrationsPath !== 'pick' && integrationsPath !== 'all';
+  const knowledgePortalGuide =
+    portal === 'knowledge'
+      ? [
+          {
+            title: 'AI behavior',
+            body: 'Control how RingBooker speaks, greets callers, and handles transfers in AI Settings.',
+            href: '/user/ai-settings',
+            cta: 'Open AI Settings',
+          },
+          {
+            title: 'Booking setup',
+            body: 'Connect booking links or integrations separately. Business Knowledge stays focused on facts callers ask about.',
+            href: '/user/integrations',
+            cta: 'Open Integrations',
+          },
+        ]
+      : [];
   const squareSectionHeadingFirst = showSquareBlock;
   const bookingSectionHeadingFirst = showBookingLinkBlock && !showSquareBlock;
   const vagaroSectionHeadingFirst = showVagaroBlock && !showSquareBlock && !showBookingLinkBlock;
@@ -1276,6 +1293,31 @@ export function UserSettingsLive({
               </button>
             ))}
           </div>
+          ) : null}
+
+          {portal === 'knowledge' ? (
+            <section className="card soft" style={{ marginBottom: 18 }}>
+              <div className="panel-head">
+                <div>
+                  <h3>Business Knowledge is the facts RingBooker knows</h3>
+                  <p className="sub">
+                    Use this page for profile details, hours, services, staff, policies, and FAQs. Use AI Settings for behavior and
+                    Integrations for booking tools.
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-2" style={{ marginTop: 12 }}>
+                {knowledgePortalGuide.map((item) => (
+                  <div className="option-card" key={item.title}>
+                    <div className="hint-row">
+                      <strong className="option-title">{item.title}</strong>
+                    </div>
+                    <p className="sub" style={{ marginTop: 8 }}>{item.body}</p>
+                    <a className="btn" href={item.href} style={{ marginTop: 12 }}>{item.cta}</a>
+                  </div>
+                ))}
+              </div>
+            </section>
           ) : null}
 
           <div className="section-stack">
