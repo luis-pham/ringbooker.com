@@ -573,12 +573,12 @@ button.subtle-link:hover{text-decoration:underline}
 .sh-hours-wrap .small-field label{display:none}
 @media (min-width:1024px){
   .card-section-form > .settings-tab-content-frame{
-    width:60%;
+    width:100%;
     max-width:100%;
     box-sizing:border-box;
   }
   .integrations-main-frame{
-    width:60%;
+    width:100%;
     max-width:100%;
     box-sizing:border-box;
   }
