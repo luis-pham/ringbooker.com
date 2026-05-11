@@ -421,12 +421,13 @@ function extractBulletServiceRows(text: string): Array<{
       first.descriptionPrefix,
       ...parts.slice(1).filter((part) => part !== durationPart && !/\$\s*\d/.test(part)),
     ].filter((part): part is string => Boolean(part));
+    const parsed = splitServiceHeadingPrefix(first.name);
     rows.push({
-      name: first.name,
+      name: parsed.name,
       description: descriptionParts.length ? descriptionParts.join(' • ') : null,
       durationText: duration.durationText,
       durationMinutes: duration.durationMinutes,
-      group: inferGroup(first.name),
+      group: parsed.group ?? inferGroup(parsed.name),
       priceType: 'varies',
       confidence: 0.72,
     });

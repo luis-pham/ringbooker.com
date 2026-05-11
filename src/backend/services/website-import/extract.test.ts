@@ -290,10 +290,11 @@ test('extracts common WordPress-style service blocks without compressed Wix clea
 
 test('splits bullet service rows into name, description, and duration', () => {
   const services = extractServicesFromText(
-    'Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+',
+    'Blowout Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+',
     'https://rawhairandco.test/services',
   );
   const service = services.find((item) => item.name === 'Essential Blowout');
+  assert.equal(service?.categoryName, 'Blowout');
   assert.equal(service?.description, 'Shampoo & Condition • Smooth Blow Dry');
   assert.equal(service?.durationText, '30 min+');
   assert.equal(service?.durationMinutes, 30);

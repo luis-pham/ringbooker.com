@@ -105,9 +105,47 @@ function inferTimezoneFromAddress(address?: string | null): string | null {
 function choose<T>(...candidates: Array<ImportField<T> | null | undefined>): ImportField<T> { return candidates.find((c) => c && c.value !== null && c.value !== undefined && c.value !== '') ?? field<T>(null, 0, null); }
 function placesField<T>(value: T | null | undefined, confidence: number): ImportField<T> | null { return value === null || value === undefined || value === '' ? null : field(value, confidence, 'Google Places'); }
 function maybeLlm<T>(candidate?: ImportField<T>): ImportField<T> | null { return candidate?.value === null || candidate?.value === undefined || candidate?.value === '' ? null : candidate ?? null; }
+function parseServiceDuration(value: string): { durationText: string; durationMinutes: number | null } | null {
+  const match = value.trim().match(/\b(\d{1,3})\s*(?:min|mins|minutes)(\+)?(?=\s|$)/i);
+  if (!match) return null;
+  const minutes = Number(match[1]);
+  if (!Number.isFinite(minutes) || minutes <= 0) return null;
+  return { durationText: `${minutes} min${match[2] ? '+' : ''}`, durationMinutes: minutes };
+}
+function splitMergedServiceName(service: ImportedServiceSuggestion): ImportedServiceSuggestion {
+  const name = service.name?.trim() ?? '';
+  if (!name.includes('•')) return { ...service, name };
+  const parts = name.split(/\s*•\s*/).map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2) return { ...service, name };
+  const durationPart = parts.find((part) => parseServiceDuration(part));
+  const duration = durationPart ? parseServiceDuration(durationPart) : null;
+  const first = parts[0].replace(/\s+/g, ' ').trim();
+  const descriptionStart = first.search(/\b(shampoo\s*&\s*condition|shampoo\s+and\s+condition|wash\s*&\s*style|wash\s+and\s+style|blow\s+dry|style\s+included)\b/i);
+  let cleanName = descriptionStart > 2 ? first.slice(0, descriptionStart).trim() : first;
+  let categoryName = service.categoryName;
+  const groupPrefixMatch = cleanName.match(/^(Blowout|Color|Cut|Extensions|Style|Treatments)\s+(.{3,80})$/i);
+  if (groupPrefixMatch?.[1] && groupPrefixMatch[2]) {
+    categoryName = groupPrefixMatch[1].replace(/\b\w/g, (char) => char.toUpperCase());
+    cleanName = groupPrefixMatch[2].trim();
+  }
+  const descriptionParts = [
+    descriptionStart > 2 ? first.slice(descriptionStart).trim() : null,
+    ...parts.slice(1).filter((part) => part !== durationPart && !/\$\s*\d/.test(part)),
+  ].filter((part): part is string => Boolean(part));
+  if (cleanName.length < 3) return { ...service, name };
+  return {
+    ...service,
+    categoryName,
+    name: cleanName,
+    description: service.description ?? (descriptionParts.length ? descriptionParts.join(' • ') : null),
+    durationText: service.durationText ?? duration?.durationText ?? null,
+    durationMinutes: service.durationMinutes ?? duration?.durationMinutes ?? null,
+  };
+}
 function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceSuggestion[] {
   const map = new Map<string, ImportedServiceSuggestion>();
-  for (const service of services) {
+  for (const rawService of services) {
+    const service = splitMergedServiceName(rawService);
     const name = service.name?.trim();
     if (!name) continue;
     const category = service.categoryName?.trim() || 'General Services';

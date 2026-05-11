@@ -259,6 +259,7 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
       'Use {value, confidence, sourceEvidence} for profile fields.',
       'For services, return serviceCatalog.categories as service groups and give every service a categoryName matching one group. If you see groupName, map it to categoryName.',
       'Preserve the website service grouping language when available. Do not flatten unrelated service groups.',
+      'Service names must contain only the menu item name. If a line is "Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+", return name "Essential Blowout", description "Shampoo & Condition • Smooth Blow Dry", and durationText "30 min+".',
       'durationText is the caller-facing duration exactly as shown, e.g. "60 min", "1 hour+", "30-45 min", "Varies".',
       'durationMinutes is only the numeric baseline when directly parseable. For "1 hour+" use durationText "1 hour+" and durationMinutes 60. If no duration is shown, use null; never invent 60.',
       'priceType must be fixed/from/varies/consultation. Put "Consultation Required" or booking caveats in bookingNotes, not in service names.',

@@ -272,6 +272,41 @@ test('LLM success merges grouped services and starts-at prices', async () => {
   assert.equal(JSON.stringify(result.suggestions).includes('openai-test'), false);
 });
 
+test('merge cleans LLM service names that include bullet descriptions and duration', async () => {
+  const llmPayload = {
+    serviceCatalog: {
+      confidence: 0.9,
+      categories: [{ name: 'Blowouts', confidence: 0.9, groupKind: 'primary' }],
+      services: [{
+        categoryName: 'General Services',
+        name: 'Blowout Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+',
+        priceAmount: null,
+        priceCurrency: 'USD',
+        priceType: 'varies',
+        aliases: [],
+        bookable: true,
+        confidence: 0.92,
+        sourceEvidence: ['service page'],
+      }],
+    },
+    warnings: [],
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://llm-bullets.test' }, {
+    lookup,
+    llmEnabled: true,
+    openAiApiKey: 'openai-test',
+    fetcher: async (url) => {
+      if (url.includes('api.openai.com')) return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(llmPayload) } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return response(url.endsWith('/robots.txt') ? '' : '<h1>Blowout Salon</h1><p>Blowout services.</p>', url);
+    },
+  });
+  const service = result.suggestions.serviceCatalog.services.find((item) => item.name === 'Essential Blowout');
+  assert.equal(service?.categoryName, 'Blowout');
+  assert.equal(service?.description, 'Shampoo & Condition • Smooth Blow Dry');
+  assert.equal(service?.durationText, '30 min+');
+  assert.equal(result.suggestions.serviceCatalog.services.some((item) => /Smooth Blow Dry|30 min/i.test(item.name)), false);
+});
+
 test('invalid LLM secondary suggestion fields are dropped safely', async () => {
   const result = await importWebsiteForOnboarding({ url: 'https://secondary-invalid.test' }, {
     lookup,
