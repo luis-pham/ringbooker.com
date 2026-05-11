@@ -74,10 +74,20 @@ export function inferGroup(name: string): string {
 
 export function inferPrimaryType(text: string): string | null {
   const lower = text.toLowerCase();
-  if (/botox|injectable|med spa|medical spa|laser/.test(lower)) return 'med_spa';
-  if (/nail|manicure|pedicure/.test(lower)) return 'nail_salon';
-  if (/hair|balayage|haircut|salon/.test(lower)) return 'hair_salon';
-  if (/spa|massage|facial|waxing/.test(lower)) return 'day_spa';
+  const count = (patterns: RegExp[]) => patterns.reduce((sum, pattern) => sum + (lower.match(pattern)?.length ?? 0), 0);
+  const scores = {
+    med_spa: count([/\b(botox|injectable|injectables|filler|med spa|medical spa|laser)\b/g]) * 3,
+    hair_salon: count([/\b(hair|haircut|haircuts|color|colour|balayage|blowout|styling|stylist|extensions|salon|aveda)\b/g]),
+    nail_salon: count([/\b(nail|nails|manicure|pedicure|shellac|acrylic|dip powder)\b/g]),
+    day_spa: count([/\b(spa|massage|facial|facials|waxing|wax)\b/g]),
+  };
+  if (scores.med_spa >= 3 && scores.med_spa >= scores.hair_salon) return 'med_spa';
+  if (scores.hair_salon >= 2 && scores.hair_salon >= scores.nail_salon * 1.2 && scores.hair_salon >= scores.day_spa) return 'hair_salon';
+  if (scores.nail_salon >= 2 && scores.nail_salon > scores.hair_salon) return 'nail_salon';
+  if (scores.day_spa >= 2 && scores.day_spa > scores.hair_salon) return 'day_spa';
+  if (scores.hair_salon > 0) return 'hair_salon';
+  if (scores.nail_salon > 0) return 'nail_salon';
+  if (scores.day_spa > 0) return 'day_spa';
   return null;
 }
 
@@ -758,6 +768,19 @@ function jsonLdFacts(previews: PagePreview[]) {
   return facts;
 }
 
+function cleanBusinessNameCandidate(value?: string | null): string | null {
+  const decoded = (value ?? '')
+    .replace(/&#8211;|&#x2013;|&ndash;/gi, '–')
+    .replace(/&#8212;|&#x2014;|&mdash;/gi, '—')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!decoded) return null;
+  const [primary] = decoded.split(/\s+(?:\||–|—)\s+/);
+  const cleaned = (primary ?? decoded).trim();
+  return cleaned.length >= 2 ? cleaned : decoded;
+}
+
 function phonesFromText(text: string): string[] {
   return [...new Set(text.match(new RegExp(PHONE_RE.source, 'g')) ?? [])];
 }
@@ -801,7 +824,9 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   if (visiblePhone?.value && facts.phone && phoneComparableDigits(visiblePhone.value) !== phoneComparableDigits(facts.phone)) {
     warnings.push('Visible website phone differs from structured website data. Review before saving.');
   }
-  const staticName = facts.name ?? input.previews[0]?.h1 ?? input.previews[0]?.title ?? null;
+  const firstH1 = input.previews[0]?.h1?.trim();
+  const firstTitle = input.previews[0]?.title?.trim();
+  const staticName = cleanBusinessNameCandidate(facts.name || firstH1 || firstTitle || null);
   const websitePrimaryType = inferPrimaryType(allText);
   const bookingLink = input.previews.flatMap((p) => p.links).find((link) => /book|appointment|schedule|reserve|vagaro|booksy|fresha|glossgenius|styleseat/i.test(`${link.text} ${link.href}`))?.href ?? null;
   const secondary = extractSecondaryKnowledge(input.previews);

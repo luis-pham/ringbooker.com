@@ -4,7 +4,6 @@ import { extractLinks, previewHtml } from './html';
 import { commonSitemapUrls, parseRobotsSitemaps, parseSitemapXml, prioritizeChildSitemaps, sitemapUrlsToCandidates } from './sitemap';
 import { buildSuggestions } from './extract';
 import { lookupGooglePlaces } from './google-places';
-import { getWebsiteImportCache, setWebsiteImportCache, websiteImportCacheKey } from './cache';
 import { extractWebsiteImportWithLlm } from './llm';
 import { classifyCandidate, selectPages, toDiagnostic } from './scoring';
 import type { CandidateUrl, PagePreview, WebsiteImportResult } from './types';
@@ -23,9 +22,6 @@ type ImportOptions = {
   openAiApiKey?: string | null;
   llmModel?: string | null;
   llmMaxTokens?: number | null;
-  cacheEnabled?: boolean;
-  cacheTtlSeconds?: number;
-  cacheMaxEntries?: number;
 };
 
 export const DEFAULT_WEBSITE_IMPORT_MAX_BYTES = 1_500_000;
@@ -142,22 +138,6 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   }
 
   const sourceType = detectImportSource(startUrl);
-  const llmActiveForCache = opts.llmEnabled && Boolean(opts.openAiApiKey);
-  const cacheKey = websiteImportCacheKey({
-    normalizedUrl: startUrl.toString(),
-    llmEnabled: llmActiveForCache,
-    llmModel: opts.llmModel,
-    llmMaxTokens: opts.llmMaxTokens,
-    googlePlacesEnabled: Boolean(opts.googlePlacesApiKey),
-    configVersion: `max-bytes:${opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES}`,
-  });
-  if (opts.cacheEnabled) {
-    const cached = getWebsiteImportCache(cacheKey);
-    if (cached) {
-      cached.diagnostics.fallbackUsed = [...new Set([...cached.diagnostics.fallbackUsed, 'cache'])];
-      return cached;
-    }
-  }
   let googlePlaces = sourceType === 'google_maps'
     ? await lookupGooglePlaces({ url: startUrl, sourceType, apiKey: opts.googlePlacesApiKey, fetcher: opts.fetcher, timeoutMs: opts.timeoutMs })
     : null;
@@ -170,7 +150,6 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
         suggestions,
         diagnostics: { selectedPages: [], skippedPagesSummary: [], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: { hours: suggestions.hours.confidence, contact: suggestions.businessProfile.phone.confidence }, warnings: suggestions.warnings, fallbackUsed: ['google_places'] },
       };
-      if (opts.cacheEnabled) setWebsiteImportCache(cacheKey, result, opts.cacheTtlSeconds ?? 86_400, Date.now(), opts.cacheMaxEntries);
       return result;
     }
     return emptyResult(startUrl.toString(), sourceType);
@@ -288,6 +267,5 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
       fallbackUsed: ['static', ...(googlePlaces ? ['google_places'] : []), ...(llmExtraction ? ['llm'] : [])],
     },
   };
-  if (opts.cacheEnabled) setWebsiteImportCache(cacheKey, result, opts.cacheTtlSeconds ?? 86_400, Date.now(), opts.cacheMaxEntries);
   return result;
 }

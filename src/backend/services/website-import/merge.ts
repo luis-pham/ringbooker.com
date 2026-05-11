@@ -39,6 +39,10 @@ function field<T>(value: T | null, confidence: number, source: string | null): I
   return { value, confidence: value === null ? 0 : Math.max(0, Math.min(1, confidence)), source: value === null ? null : source };
 }
 function normalizeText(value?: string | null): string { return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function normalizeDomain(value?: string | null): string {
+  if (!value) return '';
+  try { return new URL(value).hostname.replace(/^www\./, '').toLowerCase(); } catch { return value.replace(/^www\./, '').toLowerCase(); }
+}
 function normalizeAddressForCompare(value?: string | null): string {
   return normalizeText(value)
     .replace(/[.,]/g, '')
@@ -142,9 +146,20 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   if (serviceConfidence > 0 && serviceConfidence < 0.7) warnings.push('Some imported service details need review.');
   const placeConfidence = trustPlaces ? Math.max(0.85, rawPlaceConfidence) : 0;
   const isGoogleMapsImport = input.staticFacts.sourceType === 'google_maps';
+  const placesWebsiteMatchesSubmitted = Boolean(trustedPlaces?.website && normalizeDomain(trustedPlaces.website) === normalizeDomain(input.staticFacts.sourceUrl));
+  const placesPhoneMatchesWebsite = Boolean(trustedPlaces?.phone && input.staticFacts.phone.value && phoneComparableDigits(trustedPlaces.phone) === phoneComparableDigits(input.staticFacts.phone.value));
+  const placesIdentityAllowedForWebsite = Boolean(
+    !isGoogleMapsImport
+    && trustedPlaces?.name
+    && !input.staticFacts.name.value
+    && (placesWebsiteMatchesSubmitted || placesPhoneMatchesWebsite || placesAddressSameAsWebsite),
+  );
+  // For normal websites, Google Places is used to strengthen contact details,
+  // not to define identity unless domain/phone/address corroborates the match.
+  // This avoids wrong account/place names replacing a sparse website import.
   const name = isGoogleMapsImport
     ? choose(placesField(trustedPlaces?.name, placeConfidence ? 0.94 : 0), input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name))
-    : choose(input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, placesField(trustedPlaces?.name, placeConfidence ? 0.88 : 0), maybeLlm(llm?.businessProfile?.name));
+    : choose(input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name), placesIdentityAllowedForWebsite ? placesField(trustedPlaces?.name, placeConfidence ? 0.86 : 0) : null);
   const rawPhone = choose(placesField(trustedPlaces?.phone, placeConfidence ? 0.96 : 0), input.staticFacts.phone, maybeLlm(llm?.businessProfile?.phone));
   const address = choose(placesAddressSameAsWebsite ? input.staticFacts.address : null, placesField(trustedPlaces?.address, placeConfidence ? 0.96 : 0), input.staticFacts.address, maybeLlm(llm?.businessProfile?.address));
   const phone = rawPhone.value ? field(normalizePhoneForStorage(rawPhone.value, address.value ?? trustedPlaces?.address ?? input.staticFacts.address.value) ?? rawPhone.value, rawPhone.confidence, rawPhone.source) : rawPhone;
@@ -154,7 +169,9 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
     : choose<WeeklyHours>(placesHoursSameAsWebsite || websiteHoursIsComplete ? input.staticFacts.hours : null, placesField(trustedPlaces?.hours ?? null, placeConfidence ? 0.95 : 0), input.staticFacts.hours.source === 'JSON-LD' ? input.staticFacts.hours : null, input.staticFacts.hours, maybeLlm(llm?.hours));
   const timezone = choose(placesField(trustedPlaces?.timezone ?? inferTimezoneFromAddress(trustedPlaces?.address), placeConfidence ? 0.9 : 0), input.staticFacts.timezone, maybeLlm(llm?.businessProfile?.timezone));
   const website = choose(placesField(trustedPlaces?.website, placeConfidence ? 0.94 : 0), input.staticFacts.website, maybeLlm(llm?.businessProfile?.website));
-  const primaryType = choose(input.staticFacts.primaryType, placesField(trustedPlaces?.primaryType, placeConfidence ? 0.78 : 0), maybeLlm(llm?.businessProfile?.primaryType));
+  const primaryType = isGoogleMapsImport
+    ? choose(placesField(trustedPlaces?.primaryType, placeConfidence ? 0.78 : 0), input.staticFacts.primaryType, maybeLlm(llm?.businessProfile?.primaryType))
+    : choose(input.staticFacts.primaryType, maybeLlm(llm?.businessProfile?.primaryType));
   const bookingUrl = choose(input.staticFacts.bookingUrl, maybeLlm(llm?.bookingUrl));
   const categories = serviceGroups(services, llm);
   const staffSuggestions = dedupeSuggestions([...(input.staticFacts.staffSuggestions ?? []), ...(llm?.staffSuggestions ?? [])], (item) => item.name, 25);

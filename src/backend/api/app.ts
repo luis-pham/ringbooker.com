@@ -4382,9 +4382,6 @@ export function createBackendApp(deps: {
         openAiApiKey: env.OPENAI_API_KEY,
         llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
         llmMaxTokens: env.WEBSITE_IMPORT_LLM_MAX_TOKENS,
-        cacheEnabled: true,
-        cacheTtlSeconds: env.WEBSITE_IMPORT_CACHE_TTL_SECONDS,
-        cacheMaxEntries: env.WEBSITE_IMPORT_CACHE_MAX_ENTRIES,
         maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
       });
       if (result.diagnostics.warnings.length > 0) {

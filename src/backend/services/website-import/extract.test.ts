@@ -115,6 +115,45 @@ test('keeps website data when normal website Google Places match is low confiden
   assert.ok(suggestions.warnings.some((warning) => /low confidence/i.test(warning)));
 });
 
+test('normal website does not use Google Places identity when website identity is missing', () => {
+  const preview = previewHtml('<p>Hair color, haircuts, extensions, and nail services available.</p><p>Call (440) 510-8230</p>', 'http://env-salon.test');
+  const suggestions = buildSuggestions({
+    sourceUrl: 'http://env-salon.test',
+    sourceType: 'normal_website',
+    previews: [preview],
+    googlePlaces: {
+      name: 'Sunny Shop',
+      phone: '(999) 999-9999',
+      address: '37917 Vine Street, Willoughby, OH 44094',
+      website: 'http://wrong-place.test',
+      primaryType: 'nail_salon',
+      matchConfidence: 0.9,
+    },
+  });
+  assert.equal(suggestions.businessProfile.name.value, null);
+  assert.equal(suggestions.businessProfile.primaryType.value, 'hair_salon');
+  assert.equal(suggestions.businessProfile.phone.source, 'Google Places');
+});
+
+test('normal website can use Google Places name only when match is corroborated', () => {
+  const preview = previewHtml('<p>Call (440) 510-8230</p>', 'http://env-salon.test');
+  const suggestions = buildSuggestions({
+    sourceUrl: 'http://env-salon.test',
+    sourceType: 'normal_website',
+    previews: [preview],
+    googlePlaces: {
+      name: 'enV salon',
+      phone: '(440) 510-8230',
+      address: '37917 Vine Street, Willoughby, OH 44094',
+      website: 'http://env-salon.test',
+      primaryType: 'hair_salon',
+      matchConfidence: 0.9,
+    },
+  });
+  assert.equal(suggestions.businessProfile.name.value, 'enV salon');
+  assert.equal(suggestions.businessProfile.name.source, 'Google Places');
+});
+
 test('extracts RAW Hair style footer hours, address, and JSON-LD organization name', () => {
   const preview = previewHtml(`
     <html><head>
@@ -133,6 +172,29 @@ test('extracts RAW Hair style footer hours, address, and JSON-LD organization na
   assert.equal(suggestions.businessProfile.phone.value, '+14699658500');
   assert.deepEqual(suggestions.hours.value?.tue, { open: '10:00', close: '17:00' });
   assert.deepEqual(suggestions.hours.value?.sun, { open: '11:00', close: '18:00' });
+});
+
+test('infers hair salon when a mixed salon page is hair-service heavy', () => {
+  const preview = previewHtml(
+    `
+      <html><head><title>enV salon &#8211; An Aveda Concept Salon</title></head><body>
+        <h2>Color</h2>
+        <p>Face Frame Retouch Color Retouch Corrective Color Partial Highlight Full Highlight Deposit-Only Color</p>
+        <h2>Hair Cuts</h2>
+        <p>Women Men Children Bang Trim Beard Trim Consultation</p>
+        <h2>Extensions</h2>
+        <p>Hotheads Donna Bella</p>
+        <h2>Treatments</h2>
+        <p>Brazilian Blowout Keratin Treatment Botanical Hair Conditioning</p>
+        <h2>Nails</h2>
+        <p>Manicure Pedicure</p>
+      </body></html>
+    `,
+    'http://env-salon.test/services',
+  );
+  const suggestions = buildSuggestions({ sourceUrl: 'http://env-salon.test', sourceType: 'normal_website', previews: [preview] });
+  assert.equal(suggestions.businessProfile.name.value, 'enV salon');
+  assert.equal(suggestions.businessProfile.primaryType.value, 'hair_salon');
 });
 
 test('normalizes imported US phone numbers to E.164 for backend storage', () => {

@@ -1159,13 +1159,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             setStatus(importResultText);
             const importedServices = servicesFromImport(suggestions);
             setServicesFound(importedServices.length);
-            if (suggestions.businessProfile.name?.value && !businessName.trim()) setBusinessName(suggestions.businessProfile.name.value);
-            if (suggestions.businessProfile.phone?.value && !businessPhone.trim()) setBusinessPhone(formatPhoneForDisplay(suggestions.businessProfile.phone.value));
-            if (suggestions.businessProfile.address?.value && !address.trim()) setAddress(suggestions.businessProfile.address.value);
-            if (suggestions.businessProfile.timezone?.value) setTimezone(suggestions.businessProfile.timezone.value);
+            if (suggestions.businessProfile.name?.value && !userEditedProfileFields.includes('name')) setBusinessName(suggestions.businessProfile.name.value);
+            if (suggestions.businessProfile.phone?.value && !userEditedProfileFields.includes('phone')) setBusinessPhone(formatPhoneForDisplay(suggestions.businessProfile.phone.value));
+            if (suggestions.businessProfile.address?.value && !userEditedProfileFields.includes('address')) setAddress(suggestions.businessProfile.address.value);
+            if (suggestions.businessProfile.timezone?.value && !userEditedProfileFields.includes('timezone')) setTimezone(suggestions.businessProfile.timezone.value);
             if (suggestions.hours?.value) setHours(apiHoursToWizard(suggestions.hours.value));
             const importedVertical = importedVerticalToApp(suggestions.businessProfile.primaryType?.value);
-            if (importedVertical) {
+            if (importedVertical && !userEditedProfileFields.includes('type')) {
               nextVertical = importedVertical;
               nextSubtype = '';
               nextConfidence = (suggestions.businessProfile.primaryType?.confidence ?? 0) >= 0.7 ? 'high' : 'low';

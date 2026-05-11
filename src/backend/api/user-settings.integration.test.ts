@@ -17,7 +17,6 @@ import { payloadHash, pendingSuggestionsFromImport } from '@/src/backend/domain/
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { __resetRateLimitMemoryStoreForTests } from '@/src/backend/security/rate-limit';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
-import { setWebsiteImportCache, websiteImportCacheKey } from '@/src/backend/services/website-import/cache';
 
 applyRequiredTestEnv({
   USER_AUTH_EMAIL: 'user@ringbooker.local',
@@ -843,38 +842,6 @@ test('website import endpoint is disabled when WEBSITE_IMPORT_ENABLED=false', as
   applyRequiredTestEnv({ WEBSITE_IMPORT_ENABLED: 'false' });
   resetEnvCacheForTests();
   __resetRateLimitMemoryStoreForTests();
-  setWebsiteImportCache(
-    websiteImportCacheKey({ normalizedUrl: 'https://93.184.216.34/', googlePlacesEnabled: true, llmEnabled: false }),
-    {
-      ok: true,
-      suggestions: {
-        status: 'success',
-        sourceUrl: 'https://93.184.216.34/',
-        sourceType: 'normal_website',
-        businessProfile: {
-          name: { value: 'Cached Should Not Return', confidence: 1, source: 'Website' },
-          primaryType: { value: null, confidence: 0, source: null },
-          phone: { value: null, confidence: 0, source: null },
-          website: { value: 'https://93.184.216.34/', confidence: 1, source: 'User' },
-          address: { value: null, confidence: 0, source: null },
-          timezone: { value: null, confidence: 0, source: null },
-        },
-        hours: { value: null, confidence: 0, source: null },
-        serviceCatalog: { confidence: 0, source: null, categories: [], services: [] },
-        alsoOffers: [],
-        bookingUrl: { value: null, confidence: 0, source: null },
-        languages: [],
-        staffSuggestions: [],
-        policySuggestions: [],
-        faqSuggestions: [],
-        promotionSuggestions: [],
-        bookingSetupSuggestions: [],
-        warnings: [],
-      },
-      diagnostics: { selectedPages: [], skippedPagesSummary: [], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: {}, warnings: [], fallbackUsed: ['cache'] },
-    },
-    60,
-  );
   const shopsRepository = new InMemoryShopsRepository();
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),

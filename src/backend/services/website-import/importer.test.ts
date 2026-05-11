@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { importWebsiteForOnboarding } from './importer';
-import { clearWebsiteImportCache, getWebsiteImportCache, setWebsiteImportCache, websiteImportCacheKey } from './cache';
 import { buildLlmImportPayload } from './llm';
 import { previewHtml } from './html';
 
@@ -309,69 +308,6 @@ test('completeness scoring marks missing hours and weak services for review', as
   });
   assert.ok(result.suggestions.completeness?.missingFields.includes('hours'));
   assert.equal(result.suggestions.completeness?.recommendedNextAction, 'needs_manual_review');
-});
-
-test('sanitized import cache returns repeated URL without refetching raw sources', async () => {
-  clearWebsiteImportCache();
-  let fetchCount = 0;
-  const opts = {
-    lookup,
-    cacheEnabled: true,
-    cacheTtlSeconds: 60,
-    fetcher: async (url: string) => {
-      fetchCount += 1;
-      return response(url.endsWith('/robots.txt') ? '' : '<h1>Cached Salon</h1><p>Facial $90</p>', url);
-    },
-  };
-  const first = await importWebsiteForOnboarding({ url: 'https://cache.test' }, opts);
-  const second = await importWebsiteForOnboarding({ url: 'https://cache.test' }, opts);
-  assert.equal(first.suggestions.businessProfile.name.value, 'Cached Salon');
-  assert.equal(second.suggestions.businessProfile.name.value, 'Cached Salon');
-  assert.equal(second.diagnostics.fallbackUsed.includes('cache'), true);
-  assert.equal(fetchCount > 0, true);
-  assert.equal(JSON.stringify(second).includes('<h1>'), false);
-});
-
-test('website import cache key changes with LLM config and expires', async () => {
-  clearWebsiteImportCache();
-  const base = { normalizedUrl: 'https://cache-key.test', googlePlacesEnabled: true, llmEnabled: true, llmModel: 'model-a', llmMaxTokens: 1000 };
-  const keyA = websiteImportCacheKey(base);
-  const keySame = websiteImportCacheKey(base);
-  const keyModel = websiteImportCacheKey({ ...base, llmModel: 'model-b' });
-  const keyTokens = websiteImportCacheKey({ ...base, llmMaxTokens: 2000 });
-  const keyDisabled = websiteImportCacheKey({ ...base, llmEnabled: false });
-  assert.equal(keyA, keySame);
-  assert.notEqual(keyA, keyModel);
-  assert.notEqual(keyA, keyTokens);
-  assert.notEqual(keyA, keyDisabled);
-
-  const result = await importWebsiteForOnboarding({ url: 'https://expiry-cache.test' }, {
-    lookup,
-    fetcher: async (url) => response(url.endsWith('/robots.txt') ? '' : '<h1>Expiry Cache Salon</h1><p>Facial $90</p>', url),
-  });
-  setWebsiteImportCache(keyA, result, 1, 1_000);
-  assert.equal(getWebsiteImportCache(keyA, 1_500)?.suggestions.businessProfile.name.value, 'Expiry Cache Salon');
-  assert.equal(getWebsiteImportCache(keyA, 2_001), null);
-});
-
-test('website import cache evicts least recently used entries at max size and remains sanitized', async () => {
-  clearWebsiteImportCache();
-  const baseResult = await importWebsiteForOnboarding({ url: 'https://lru-a.test' }, {
-    lookup,
-    fetcher: async (url) => response(url.endsWith('/robots.txt') ? '' : '<h1>LRU A Salon</h1><p>Facial $90</p>', url),
-  });
-  const resultB = { ...baseResult, suggestions: { ...baseResult.suggestions, sourceUrl: 'https://lru-b.test', businessProfile: { ...baseResult.suggestions.businessProfile, name: { value: 'LRU B Salon', confidence: 0.9, source: 'Website' } } } };
-  const resultC = { ...baseResult, suggestions: { ...baseResult.suggestions, sourceUrl: 'https://lru-c.test', businessProfile: { ...baseResult.suggestions.businessProfile, name: { value: 'LRU C Salon', confidence: 0.9, source: 'Website' } } } };
-  setWebsiteImportCache('a', baseResult, 60, 1_000, 2);
-  setWebsiteImportCache('b', resultB, 60, 1_001, 2);
-  assert.equal(getWebsiteImportCache('a', 1_002)?.suggestions.businessProfile.name.value, 'LRU A Salon');
-  setWebsiteImportCache('c', resultC, 60, 1_003, 2);
-  assert.equal(getWebsiteImportCache('b', 1_004), null);
-  assert.equal(getWebsiteImportCache('a', 1_004)?.suggestions.businessProfile.name.value, 'LRU A Salon');
-  const cached = getWebsiteImportCache('c', 1_004);
-  assert.equal(cached?.suggestions.businessProfile.name.value, 'LRU C Salon');
-  assert.equal(JSON.stringify(cached).includes('<h1>'), false);
-  assert.equal(JSON.stringify(cached).includes('openai-test'), false);
 });
 
 test('fetch follows no more than five redirects', async () => {
