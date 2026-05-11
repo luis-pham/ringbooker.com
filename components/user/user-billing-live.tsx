@@ -1221,7 +1221,6 @@ export function UserBillingLive({
                         <div className="panel-head">
                           <div>
                             <h3>Current plan includes</h3>
-                            <p className="sub">What you get with RingBooker on your current plan tier.</p>
                           </div>
                         </div>
                         <ul className="plan-includes-list">
