@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildSuggestions, extractHoursFromJsonLd, extractHoursFromText, extractServicesFromText, inferTimezoneFromAddress } from './extract';
+import { buildSuggestions, extractHoursFromJsonLd, extractHoursFromText, extractSecondaryKnowledge, extractServicesFromText, inferTimezoneFromAddress } from './extract';
 import { previewHtml } from './html';
 
 test('extracts JSON-LD openingHours', () => {
@@ -88,4 +88,30 @@ test('extracts common WordPress-style service blocks without compressed Wix clea
   assert.ok(names.includes('Signature Pedicure'));
   assert.ok(names.includes('Eyebrow Wax'));
   assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Gel Manicure')?.priceType, 'from');
+});
+
+test('extracts secondary Business Knowledge suggestions from deterministic website evidence', () => {
+  const preview = previewHtml(`
+    <html><head>
+      <script type="application/ld+json">{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Do you accept walk-ins?","acceptedAnswer":{"@type":"Answer","text":"Walk-ins are welcome when available."}}]}</script>
+    </head><body>
+      <h1>Team</h1>
+      <p>Mia Chen - Stylist</p>
+      <h2>Cancellation Policy</h2>
+      <p>Cancellation requires 24 hours notice to avoid a fee.</p>
+      <h2>Specials</h2>
+      <p>Special offer: $20 off first facial this month.</p>
+      <a href="https://vagaro.com/demo">Book now</a>
+    </body></html>
+  `, 'https://knowledge.test/team');
+  const secondary = extractSecondaryKnowledge([preview]);
+  assert.equal(secondary.staffSuggestions[0]?.name, 'Mia Chen');
+  assert.equal(secondary.policySuggestions[0]?.type, 'cancellation');
+  assert.equal(secondary.faqSuggestions[0]?.question, 'Do you accept walk-ins?');
+  assert.equal(secondary.promotionSuggestions.length > 0, true);
+  assert.equal(secondary.bookingSetupSuggestions[0]?.platform, 'vagaro');
+
+  const suggestions = buildSuggestions({ sourceUrl: 'https://knowledge.test', sourceType: 'normal_website', previews: [preview] });
+  assert.equal(suggestions.staffSuggestions.length, 1);
+  assert.equal(JSON.stringify(suggestions).includes('<script>'), false);
 });

@@ -163,6 +163,10 @@ test('LLM success merges grouped services and starts-at prices', async () => {
       categories: [{ name: 'Hair Color', confidence: 0.9, groupKind: 'primary' }],
       services: [{ categoryName: 'Hair Color', name: 'Balayage', priceAmount: 180, priceCurrency: 'USD', priceType: 'from', durationMinutes: 120, aliases: [], bookable: true, confidence: 0.92, sourceEvidence: ['service page'] }],
     },
+    staffSuggestions: [{ name: 'Mia Chen', role: 'Stylist', specialties: ['Color'], confidence: 0.84, evidenceSnippet: 'Mia Chen - Stylist' }],
+    policySuggestions: [{ type: 'cancellation', title: 'Cancellation policy', content: 'Please cancel 24 hours ahead.', confidence: 0.8, evidenceSnippet: 'cancel 24 hours' }],
+    faqSuggestions: [{ question: 'Do you take walk-ins?', answer: 'Walk-ins are welcome when available.', confidence: 0.82, evidenceSnippet: 'Walk-ins are welcome' }],
+    bookingSetupSuggestions: [{ type: 'booking_platform', label: 'Book on Vagaro', value: 'https://vagaro.com/demo', platform: 'vagaro', confidence: 0.86 }],
     warnings: [],
   };
   const result = await importWebsiteForOnboarding({ url: 'https://llm.test' }, {
@@ -177,8 +181,31 @@ test('LLM success merges grouped services and starts-at prices', async () => {
   const service = result.suggestions.serviceCatalog.services.find((item) => item.name === 'Balayage');
   assert.equal(service?.source, 'AI');
   assert.equal(service?.priceType, 'from');
+  assert.equal(result.suggestions.staffSuggestions[0]?.name, 'Mia Chen');
+  assert.equal(result.suggestions.policySuggestions[0]?.type, 'cancellation');
+  assert.equal(result.suggestions.faqSuggestions[0]?.question, 'Do you take walk-ins?');
+  assert.equal(result.suggestions.bookingSetupSuggestions[0]?.platform, 'vagaro');
   assert.equal(result.diagnostics.fallbackUsed.includes('llm'), true);
   assert.equal(JSON.stringify(result.suggestions).includes('openai-test'), false);
+});
+
+test('invalid LLM secondary suggestion fields are dropped safely', async () => {
+  const result = await importWebsiteForOnboarding({ url: 'https://secondary-invalid.test' }, {
+    lookup,
+    llmEnabled: true,
+    openAiApiKey: 'openai-test',
+    fetcher: async (url) => {
+      if (url.includes('api.openai.com')) return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+        businessProfile: { name: { value: 'Secondary Invalid Salon', confidence: 0.8, sourceEvidence: [] } },
+        staffSuggestions: [{ name: 'Valid Stylist', confidence: 0.8 }, { name: '', confidence: 2 }],
+        policySuggestions: [{ type: 'made_up', title: 'Bad', content: 'Bad', confidence: 0.9 }],
+      }) } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return response(url.endsWith('/robots.txt') ? '' : '<h1>Secondary Invalid Salon</h1><p>Haircut $55</p>', url);
+    },
+  });
+  assert.equal(result.suggestions.staffSuggestions[0]?.name, undefined);
+  assert.equal(result.suggestions.policySuggestions.length, 0);
+  assert.equal(result.suggestions.businessProfile.name.value, 'Secondary Invalid Salon');
 });
 
 test('invalid LLM JSON falls back safely to static import', async () => {

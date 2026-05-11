@@ -34,6 +34,7 @@ import { normalizePhoneForStorage } from '@/lib/phone-number';
 import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
 import { mergeImportedServicesIntoCatalog } from '@/src/backend/domain/service-catalog';
 import { importWebsiteForOnboarding } from '@/src/backend/services/website-import/importer';
+import { buildApplyPatchForSuggestions, pendingSuggestionsFromImport, secondarySummary, validateSuggestionPayload } from '@/src/backend/domain/business-knowledge-suggestions';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import { startOrReuseForwardingTestSession } from '@/src/backend/services/go-live/start-forwarding-test-session';
 import type {
@@ -50,6 +51,7 @@ import type {
 import type {
   BlogPostsRepository,
   BookingsRepository,
+  BusinessKnowledgeSuggestionsRepository,
   BillingNotificationsRepository,
   BillingCustomersRepository,
   BillingSubscriptionsRepository,
@@ -541,6 +543,15 @@ const userSettingsUpdateSchema = userSettingsBaseSchema.extend({
   send_review_request_sms: z.boolean().optional(),
   send_missed_call_followup_sms: z.boolean().optional(),
 });
+
+const suggestionIdListSchema = z.object({
+  suggestionIds: z.array(z.string().uuid()).min(1).max(100),
+}).strict();
+
+const applyBusinessKnowledgeSuggestionsSchema = z.object({
+  suggestionIds: z.array(z.string().uuid()).min(1).max(100),
+  editedPayloads: z.record(z.string().uuid(), z.unknown()).optional(),
+}).strict();
 
 const userPasswordChangeSchema = z.object({
   currentPassword: z.string().min(1).max(128),
@@ -1890,6 +1901,7 @@ export function createBackendApp(deps: {
   billingCustomersRepository?: BillingCustomersRepository;
   billingSubscriptionsRepository?: BillingSubscriptionsRepository;
   billingNotificationsRepository?: BillingNotificationsRepository;
+  businessKnowledgeSuggestionsRepository?: BusinessKnowledgeSuggestionsRepository;
   shopAccessStatesRepository?: ShopAccessStatesRepository;
   commercialGoLiveApprovalEventsRepository?: CommercialGoLiveApprovalEventsRepository;
   shopLocationsRepository?: ShopLocationsRepository;
@@ -4375,9 +4387,18 @@ export function createBackendApp(deps: {
       if (result.diagnostics.warnings.length > 0) {
         logger.info({ shopId: shop.id, warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])], selectedPageCount: result.diagnostics.selectedPages.length }, 'website_import_completed_with_warnings');
       }
+      const secondaryCreates = pendingSuggestionsFromImport(result.suggestions);
+      if (secondaryCreates.length > 0 && deps.businessKnowledgeSuggestionsRepository) {
+        try {
+          await deps.businessKnowledgeSuggestionsRepository.createPendingSuggestions(shop.id, result.suggestions.sourceUrl, secondaryCreates);
+        } catch (err) {
+          logger.warn({ err, shopId: shop.id, suggestionCount: secondaryCreates.length }, 'business_knowledge_suggestions_persist_failed');
+        }
+      }
       return c.json({
         ok: result.ok,
         suggestions: result.suggestions,
+        secondarySuggestionsSummary: secondarySummary(result.suggestions),
         warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])],
       });
     } catch (err) {
@@ -4388,6 +4409,83 @@ export function createBackendApp(deps: {
         message: 'We could not read that website right now. You can continue manually.',
       }, 200);
     }
+  });
+
+  app.get(path('/user/business-knowledge/suggestions'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_business_knowledge_suggestions_get');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.businessKnowledgeSuggestionsRepository) return c.json({ ok: false, error: 'suggestions_repository_unavailable' }, 500);
+    const suggestions = await deps.businessKnowledgeSuggestionsRepository.listPendingSuggestions(sessionResult.shopId ?? '');
+    const counts = suggestions.reduce<Record<string, number>>((acc, item) => {
+      acc[item.suggestionType] = (acc[item.suggestionType] ?? 0) + 1;
+      return acc;
+    }, {});
+    return c.json({
+      ok: true,
+      suggestions: suggestions.map((item) => ({
+        id: item.id,
+        sourceUrl: item.sourceUrl,
+        suggestionType: item.suggestionType,
+        payload: item.payload,
+        confidence: item.confidence,
+        source: item.source,
+        evidenceSnippet: item.evidenceSnippet,
+        createdAt: item.createdAt,
+      })),
+      counts,
+    });
+  });
+
+  app.post(path('/user/business-knowledge/suggestions/apply'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_business_knowledge_suggestions_apply');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.businessKnowledgeSuggestionsRepository || !deps.shopsRepository) return c.json({ ok: false, error: 'suggestions_dependencies_unavailable' }, 500);
+    const body = await c.req.json().catch(() => null);
+    const parsed = applyBusinessKnowledgeSuggestionsSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const ids = [...new Set(parsed.data.suggestionIds)];
+    const suggestions = await deps.businessKnowledgeSuggestionsRepository.findByIds(shop.id, ids);
+    if (suggestions.length !== ids.length) return c.json({ ok: false, error: 'suggestion_not_found' }, 404);
+    if (suggestions.some((item) => item.status !== 'pending')) return c.json({ ok: false, error: 'suggestion_not_pending' }, 400);
+    for (const [id, payload] of Object.entries(parsed.data.editedPayloads ?? {})) {
+      const suggestion = suggestions.find((item) => item.id === id);
+      if (!suggestion) return c.json({ ok: false, error: 'invalid_edited_payload' }, 400);
+      if (!validateSuggestionPayload(suggestion.suggestionType, payload)) return c.json({ ok: false, error: 'invalid_edited_payload' }, 400);
+    }
+    const patch = buildApplyPatchForSuggestions(shop, suggestions, parsed.data.editedPayloads);
+    if (patch) {
+      const updated = await deps.shopsRepository.updateUserSettings(shop.id, patch);
+      if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    }
+    const applied = await deps.businessKnowledgeSuggestionsRepository.markApplied(shop.id, ids);
+    return c.json({ ok: true, appliedCount: applied.length });
+  });
+
+  app.post(path('/user/business-knowledge/suggestions/dismiss'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_business_knowledge_suggestions_dismiss');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.businessKnowledgeSuggestionsRepository) return c.json({ ok: false, error: 'suggestions_repository_unavailable' }, 500);
+    const body = await c.req.json().catch(() => null);
+    const parsed = suggestionIdListSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const ids = [...new Set(parsed.data.suggestionIds)];
+    const suggestions = await deps.businessKnowledgeSuggestionsRepository.findByIds(sessionResult.shopId ?? '', ids);
+    if (suggestions.length !== ids.length) return c.json({ ok: false, error: 'suggestion_not_found' }, 404);
+    if (suggestions.some((item) => item.status !== 'pending')) return c.json({ ok: false, error: 'suggestion_not_pending' }, 400);
+    const dismissed = await deps.businessKnowledgeSuggestionsRepository.markDismissed(sessionResult.shopId ?? '', ids);
+    return c.json({ ok: true, dismissedCount: dismissed.length });
   });
 
   // Legacy mutating website import endpoint. Do not use this for onboarding review:

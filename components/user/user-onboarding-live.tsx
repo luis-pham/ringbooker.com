@@ -67,6 +67,11 @@ type ImportedWebsiteSuggestions = {
   };
   alsoOffers?: Array<{ value: string | null; confidence: number; source?: string | null }>;
   bookingUrl?: { value: string | null; confidence: number; source?: string | null };
+  staffSuggestions?: unknown[];
+  policySuggestions?: unknown[];
+  faqSuggestions?: unknown[];
+  promotionSuggestions?: unknown[];
+  bookingSetupSuggestions?: unknown[];
   warnings?: string[];
   completeness?: {
     recommendedNextAction?: string;
@@ -110,6 +115,17 @@ export function importResultMessage(suggestions?: ImportedWebsiteSuggestions | n
   if (failed || suggestions?.status === 'failed') return 'We couldn’t import this automatically. You can still set this up manually.';
   if (suggestions?.status === 'partial' || suggestions?.warnings?.length) return 'Some details need review';
   return 'Ready to review';
+}
+
+export function secondaryImportSuggestionCount(suggestions?: ImportedWebsiteSuggestions | null): number {
+  if (!suggestions) return 0;
+  return [
+    suggestions.staffSuggestions,
+    suggestions.policySuggestions,
+    suggestions.faqSuggestions,
+    suggestions.promotionSuggestions,
+    suggestions.bookingSetupSuggestions,
+  ].reduce((total, items) => total + (Array.isArray(items) ? items.length : 0), 0);
 }
 
 function wait(ms: number): Promise<void> {
@@ -1821,6 +1837,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                   <p key={warning} style={{ margin: 0 }}>{warning}</p>
                 ))}
               </div>
+            ) : null}
+            {secondaryImportSuggestionCount(importSuggestions) > 0 ? (
+              <p className="onb-help" style={{ margin: '10px 0 14px' }}>
+                We also found staff, policies, FAQs, promotions, or booking setup hints you can review later in Business Knowledge.
+              </p>
             ) : null}
           </div>
         ) : null}

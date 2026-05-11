@@ -252,6 +252,27 @@ export interface Shop {
   google_cal_credentials_encrypted?: string | null;
 }
 
+export type BusinessKnowledgeSuggestionType = 'staff' | 'policy' | 'faq' | 'promotion' | 'booking_hint';
+export type BusinessKnowledgeSuggestionSource = 'website' | 'llm' | 'jsonld' | 'deterministic';
+export type BusinessKnowledgeSuggestionStatus = 'pending' | 'applied' | 'dismissed';
+
+export interface BusinessKnowledgeSuggestion {
+  id: string;
+  shopId: string;
+  sourceUrl: string;
+  suggestionType: BusinessKnowledgeSuggestionType;
+  payload: Record<string, unknown>;
+  payloadHash: string;
+  confidence: number;
+  source: BusinessKnowledgeSuggestionSource;
+  evidenceSnippet?: string | null;
+  status: BusinessKnowledgeSuggestionStatus;
+  createdAt: string;
+  updatedAt: string;
+  appliedAt?: string | null;
+  dismissedAt?: string | null;
+}
+
 export interface Customer {
   phone: string;
   shop_id: string;

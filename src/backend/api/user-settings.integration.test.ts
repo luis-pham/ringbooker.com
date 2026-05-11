@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
+import { InMemoryBusinessKnowledgeSuggestionsRepository } from '@/src/backend/adapters/memory/business-knowledge-suggestions-repository';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
 import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
@@ -11,6 +13,7 @@ import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import { resetEnvCacheForTests } from '@/src/backend/config/env';
+import { payloadHash, pendingSuggestionsFromImport } from '@/src/backend/domain/business-knowledge-suggestions';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { __resetRateLimitMemoryStoreForTests } from '@/src/backend/security/rate-limit';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
@@ -44,7 +47,7 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
   return cookie!;
 }
 
-function createUserSettingsTestApp(shopsRepository = new InMemoryShopsRepository()) {
+function createUserSettingsTestApp(shopsRepository = new InMemoryShopsRepository(), businessKnowledgeSuggestionsRepository = new InMemoryBusinessKnowledgeSuggestionsRepository()) {
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
     jobsRepository: new InMemoryJobsRepository(),
@@ -55,8 +58,9 @@ function createUserSettingsTestApp(shopsRepository = new InMemoryShopsRepository
     callLogsRepository: new InMemoryCallLogsRepository(),
     authUsersRepository: new InMemoryAuthUsersRepository(),
     realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+    businessKnowledgeSuggestionsRepository,
   });
-  return { app, shopsRepository };
+  return { app, shopsRepository, businessKnowledgeSuggestionsRepository };
 }
 
 test('starter plan user settings expose capabilities and reject locked fields', async () => {
@@ -602,6 +606,7 @@ test('professional plan user can save professional-tier automation fields', asyn
 
 test('website import endpoint returns review suggestions without mutating shop data', async () => {
   const shopsRepository = new InMemoryShopsRepository();
+  const businessKnowledgeSuggestionsRepository = new InMemoryBusinessKnowledgeSuggestionsRepository();
   const before = await shopsRepository.findById('demo-shop');
   assert.ok(before);
   const originalWebsiteUrl = before.website_url;
@@ -616,6 +621,7 @@ test('website import endpoint returns review suggestions without mutating shop d
     callLogsRepository: new InMemoryCallLogsRepository(),
     authUsersRepository: new InMemoryAuthUsersRepository(),
     realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
+    businessKnowledgeSuggestionsRepository,
   });
   const cookie = await loginUser(app);
   const originalFetch = globalThis.fetch;
@@ -627,7 +633,7 @@ test('website import endpoint returns review suggestions without mutating shop d
         ? '<urlset><url><loc>https://93.184.216.34/services</loc></url></urlset>'
         : url.endsWith('/services')
           ? '<h1>Services</h1><p>Gel Manicure $45 45 minutes</p><p>Deluxe Pedicure starts at $65 60 minutes</p>'
-          : '<h1>Demo Nails</h1><script type="application/ld+json">{"@type":"NailSalon","openingHours":"Mon-Fri 9am-7pm"}</script><a href="/services">Services</a><p>Call (555) 111-2222</p>';
+        : '<h1>Demo Nails</h1><script type="application/ld+json">[{"@type":"NailSalon","openingHours":"Mon-Fri 9am-7pm"},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Do you accept walk-ins?","acceptedAnswer":{"@type":"Answer","text":"Walk-ins are welcome when available."}}]}]</script><a href="/services">Services</a><p>Call (555) 111-2222</p>';
     return new Response(body, { status: 200, headers: { 'content-type': url.endsWith('.xml') ? 'application/xml' : 'text/html' } });
   }) as typeof fetch;
   try {
@@ -642,7 +648,7 @@ test('website import endpoint returns review suggestions without mutating shop d
       body: JSON.stringify({ url: 'https://93.184.216.34' }),
     });
     assert.equal(response.status, 200);
-    const body = (await response.json()) as { ok: boolean; diagnostics?: unknown; selectedPages?: unknown; rawGooglePayload?: unknown; suggestions: { businessProfile: { name: { value: string | null; confidence: number; source: string | null }; phone: { value: string | null; confidence: number; source: string | null } }; hours: { value: Record<string, unknown> | null; confidence: number; source: string | null }; serviceCatalog: { services: Array<{ name: string }> } } };
+    const body = (await response.json()) as { ok: boolean; diagnostics?: unknown; selectedPages?: unknown; rawGooglePayload?: unknown; secondarySuggestionsSummary?: { faqCount: number }; suggestions: { businessProfile: { name: { value: string | null; confidence: number; source: string | null }; phone: { value: string | null; confidence: number; source: string | null } }; hours: { value: Record<string, unknown> | null; confidence: number; source: string | null }; serviceCatalog: { services: Array<{ name: string }> } } };
     assert.equal(body.ok, true);
     assert.equal('diagnostics' in body, false);
     assert.equal('selectedPages' in body, false);
@@ -653,10 +659,15 @@ test('website import endpoint returns review suggestions without mutating shop d
     assert.equal(typeof body.suggestions.businessProfile.phone.confidence, 'number');
     assert.equal(body.suggestions.hours.source, 'JSON-LD');
     assert.ok(body.suggestions.serviceCatalog.services.some((service) => service.name.includes('Gel Manicure')));
+    assert.equal(body.secondarySuggestionsSummary?.faqCount, 1);
+    const pendingSuggestions = await businessKnowledgeSuggestionsRepository.listPendingSuggestions('demo-shop');
+    assert.equal(pendingSuggestions.some((item) => item.suggestionType === 'faq'), true);
     const after = await shopsRepository.findById('demo-shop');
     assert.ok(after);
     assert.equal(after.website_url, originalWebsiteUrl);
     assert.deepEqual(after.services, before.services);
+    assert.deepEqual(after.faqs, before.faqs);
+    assert.deepEqual(after.staff, before.staff);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -707,6 +718,123 @@ test('website import endpoint rejects unauthenticated, CSRF, and unexpected inte
   assert.deepEqual(await unexpectedFields.json(), { ok: false, error: 'invalid_payload' });
 });
 
+test('business knowledge suggestions list, apply edited payloads, and dismiss by current shop only', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const suggestionsRepository = new InMemoryBusinessKnowledgeSuggestionsRepository();
+  const { app } = createUserSettingsTestApp(shopsRepository, suggestionsRepository);
+  const cookie = await loginUser(app);
+
+  const staffPayload = { name: 'Ava', role: 'Stylist', specialties: ['Color'], notes: 'Imported bio', active: true };
+  const faqPayload = { question: 'Do you take walk-ins?', answer: 'Appointments are recommended.' };
+  const policyPayload = { type: 'cancellation', title: 'Cancellation', content: 'Please cancel 24 hours before your appointment.' };
+  const promotionPayload = { title: 'Spring special', description: '10% off facials', expiresAt: null };
+  const bookingPayload = { type: 'booking_link', label: 'Book online', value: 'https://booking.example/demo', platform: 'other' };
+  await suggestionsRepository.createPendingSuggestions('demo-shop', 'https://example.com', [
+    { suggestionType: 'staff', payload: staffPayload, payloadHash: payloadHash(staffPayload), confidence: 0.86, source: 'website', evidenceSnippet: 'Team card' },
+    { suggestionType: 'faq', payload: faqPayload, payloadHash: payloadHash(faqPayload), confidence: 0.84, source: 'llm', evidenceSnippet: 'FAQ section' },
+    { suggestionType: 'policy', payload: policyPayload, payloadHash: payloadHash(policyPayload), confidence: 0.82, source: 'website', evidenceSnippet: 'Policy page' },
+    { suggestionType: 'promotion', payload: promotionPayload, payloadHash: payloadHash(promotionPayload), confidence: 0.8, source: 'website', evidenceSnippet: 'Specials page' },
+    { suggestionType: 'booking_hint', payload: bookingPayload, payloadHash: payloadHash(bookingPayload), confidence: 0.9, source: 'deterministic', evidenceSnippet: 'Book button' },
+  ]);
+  await suggestionsRepository.createPendingSuggestions('other-shop', 'https://example.com', [
+    { suggestionType: 'faq', payload: { question: 'Other?', answer: 'No' }, payloadHash: payloadHash({ question: 'Other?', answer: 'No' }), confidence: 0.9, source: 'website', evidenceSnippet: null },
+  ]);
+
+  const listResponse = await app.request('/user/business-knowledge/suggestions', { headers: { cookie } });
+  assert.equal(listResponse.status, 200);
+  const listBody = (await listResponse.json()) as { ok: boolean; suggestions: Array<{ id: string; suggestionType: string; evidenceSnippet?: string }>; counts: Record<string, number> };
+  assert.equal(listBody.ok, true);
+  assert.equal(listBody.suggestions.length, 5);
+  assert.equal(listBody.counts.staff, 1);
+  assert.equal(listBody.suggestions.some((item) => item.evidenceSnippet?.includes('<script>')), false);
+
+  const staff = listBody.suggestions.find((item) => item.suggestionType === 'staff');
+  const faq = listBody.suggestions.find((item) => item.suggestionType === 'faq');
+  const policy = listBody.suggestions.find((item) => item.suggestionType === 'policy');
+  assert.ok(staff);
+  assert.ok(faq);
+  assert.ok(policy);
+
+  const applyResponse = await app.request('/user/business-knowledge/suggestions/apply', {
+    method: 'POST',
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      suggestionIds: [staff.id, faq.id, policy.id],
+      editedPayloads: {
+        [staff.id]: { name: 'Ava Edited', role: 'Senior stylist', specialties: ['Balayage'], notes: 'Edited bio', active: true },
+        [faq.id]: { question: 'Do you offer consultations?', answer: 'Yes, when providers are available.' },
+      },
+    }),
+  });
+  assert.equal(applyResponse.status, 200);
+  const applyBody = (await applyResponse.json()) as { ok: boolean; appliedCount: number };
+  assert.equal(applyBody.ok, true);
+  assert.equal(applyBody.appliedCount, 3);
+
+  const updatedShop = await shopsRepository.findById('demo-shop');
+  assert.ok(updatedShop);
+  assert.ok(updatedShop.staff?.some((item) => item.name === 'Ava Edited' && item.role === 'Senior stylist'));
+  assert.ok(updatedShop.faqs?.some((item) => item.question === 'Do you offer consultations?' && item.answer.includes('providers')));
+  assert.match(updatedShop.cancel_policy, /Cancellation: Please cancel 24 hours/);
+
+  const pendingAfterApply = await suggestionsRepository.listPendingSuggestions('demo-shop');
+  const remainingIds = pendingAfterApply.map((item) => item.id);
+  assert.equal(remainingIds.length, 2);
+  const dismissResponse = await app.request('/user/business-knowledge/suggestions/dismiss', {
+    method: 'POST',
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({ suggestionIds: remainingIds }),
+  });
+  assert.equal(dismissResponse.status, 200);
+  assert.equal((await suggestionsRepository.listPendingSuggestions('demo-shop')).length, 0);
+});
+
+test('business knowledge suggestions reject cross-shop apply and dedupe retry imports', async () => {
+  const suggestionsRepository = new InMemoryBusinessKnowledgeSuggestionsRepository();
+  const { app } = createUserSettingsTestApp(new InMemoryShopsRepository(), suggestionsRepository);
+  const cookie = await loginUser(app);
+  const payload = { question: 'Do you validate shop scope?', answer: 'Yes.' };
+  const create = { suggestionType: 'faq' as const, payload, payloadHash: payloadHash(payload), confidence: 0.9, source: 'website' as const, evidenceSnippet: 'FAQ' };
+  await suggestionsRepository.createPendingSuggestions('demo-shop', 'https://example.com', [create]);
+  await suggestionsRepository.createPendingSuggestions('demo-shop', 'https://example.com', [create]);
+  assert.equal((await suggestionsRepository.listPendingSuggestions('demo-shop')).length, 1);
+
+  const other = await suggestionsRepository.createPendingSuggestions('other-shop', 'https://example.com', [
+    { suggestionType: 'staff', payload: { name: 'Other Staff', active: true }, payloadHash: payloadHash({ name: 'Other Staff', active: true }), confidence: 0.9, source: 'website', evidenceSnippet: null },
+  ]);
+  const response = await app.request('/user/business-knowledge/suggestions/apply', {
+    method: 'POST',
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({ suggestionIds: [other[0].id] }),
+  });
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { ok: false, error: 'suggestion_not_found' });
+  const dismissResponse = await app.request('/user/business-knowledge/suggestions/dismiss', {
+    method: 'POST',
+    headers: { cookie, origin: 'http://localhost:3000', host: 'localhost:3000', 'content-type': 'application/json' },
+    body: JSON.stringify({ suggestionIds: [other[0].id] }),
+  });
+  assert.equal(dismissResponse.status, 404);
+});
+
+test('business knowledge suggestion helpers sanitize imported HTML-like payloads and UI exposes review card copy', async () => {
+  const creates = pendingSuggestionsFromImport({
+    staffSuggestions: [{ name: '<script>Ava</script> Chen', bio: 'Lead <b>stylist</b>', source: 'website', confidence: 0.8 }],
+    policySuggestions: [],
+    faqSuggestions: [],
+    promotionSuggestions: [],
+    bookingSetupSuggestions: [],
+  } as never);
+  assert.equal(JSON.stringify(creates).includes('<script>'), false);
+  assert.equal(JSON.stringify(creates).includes('<b>'), false);
+  const component = readFileSync('components/user/user-settings-live.tsx', 'utf8');
+  assert.match(component, /Website suggestions/);
+  assert.match(component, /Apply selected/);
+  assert.match(component, /Dismiss/);
+  assert.match(component, /Staff found/);
+  assert.match(component, /Booking hints found/);
+});
+
 
 test('website import endpoint is disabled when WEBSITE_IMPORT_ENABLED=false', async () => {
   applyRequiredTestEnv({ WEBSITE_IMPORT_ENABLED: 'false' });
@@ -733,6 +861,11 @@ test('website import endpoint is disabled when WEBSITE_IMPORT_ENABLED=false', as
         alsoOffers: [],
         bookingUrl: { value: null, confidence: 0, source: null },
         languages: [],
+        staffSuggestions: [],
+        policySuggestions: [],
+        faqSuggestions: [],
+        promotionSuggestions: [],
+        bookingSetupSuggestions: [],
         warnings: [],
       },
       diagnostics: { selectedPages: [], skippedPagesSummary: [], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: {}, warnings: [], fallbackUsed: ['cache'] },

@@ -12,7 +12,18 @@ export type ImportSourceType =
   | 'linktree'
   | 'normal_website';
 
-export type CandidateBucket = 'homepage' | 'service_hub' | 'service_child' | 'contact_hours' | 'about_team' | 'booking' | 'noise';
+export type CandidateBucket =
+  | 'homepage'
+  | 'service_hub'
+  | 'service_child'
+  | 'contact_hours'
+  | 'about_team'
+  | 'staff_team'
+  | 'policies'
+  | 'faq'
+  | 'promotions'
+  | 'booking'
+  | 'noise';
 export type CandidateSource = 'homepage' | 'nav' | 'footer' | 'sitemap' | 'robots_sitemap' | 'canonical' | 'og' | 'jsonld' | 'service_hub_child';
 
 export type ImportField<T> = { value: T | null; confidence: number; source: string | null };
@@ -66,6 +77,65 @@ export type ImportedServiceSuggestion = {
   confidence: number;
 };
 
+export type StaffSuggestion = {
+  name: string;
+  role?: string;
+  specialties?: string[];
+  bio?: string;
+  source: 'website' | 'llm' | 'jsonld';
+  sourceUrl?: string;
+  confidence: number;
+  evidenceSnippet?: string;
+};
+
+export type PolicySuggestion = {
+  type:
+    | 'cancellation'
+    | 'no_show'
+    | 'deposit'
+    | 'late_arrival'
+    | 'walk_ins'
+    | 'refund'
+    | 'appointment_prep'
+    | 'consultation'
+    | 'other';
+  title: string;
+  content: string;
+  source: 'website' | 'llm';
+  sourceUrl?: string;
+  confidence: number;
+  evidenceSnippet?: string;
+};
+
+export type FaqSuggestion = {
+  question: string;
+  answer: string;
+  source: 'website' | 'llm';
+  sourceUrl?: string;
+  confidence: number;
+  evidenceSnippet?: string;
+};
+
+export type PromotionSuggestion = {
+  title: string;
+  description?: string;
+  expiresAt?: string | null;
+  source: 'website' | 'llm';
+  sourceUrl?: string;
+  confidence: number;
+  evidenceSnippet?: string;
+};
+
+export type BookingSetupSuggestion = {
+  type: 'booking_link' | 'booking_platform' | 'provider_booking' | 'consultation_required' | 'call_to_book' | 'other';
+  label: string;
+  value?: string;
+  platform?: 'vagaro' | 'booksy' | 'fresha' | 'glossgenius' | 'square' | 'calendly' | 'other' | null;
+  source: 'website' | 'llm' | 'deterministic';
+  sourceUrl?: string;
+  confidence: number;
+};
+
 export type ImportSuggestions = {
   status: 'success' | 'partial' | 'failed';
   sourceUrl: string;
@@ -88,6 +158,11 @@ export type ImportSuggestions = {
   alsoOffers: Array<ImportField<string>>;
   bookingUrl: ImportField<string>;
   languages: Array<ImportField<string>>;
+  staffSuggestions: StaffSuggestion[];
+  policySuggestions: PolicySuggestion[];
+  faqSuggestions: FaqSuggestion[];
+  promotionSuggestions: PromotionSuggestion[];
+  bookingSetupSuggestions: BookingSetupSuggestion[];
   warnings: string[];
   completeness?: WebsiteImportCompleteness;
 };
@@ -128,6 +203,11 @@ export type LlmImportExtraction = {
   alsoOffers?: Array<ImportField<string>>;
   bookingUrl?: ImportField<string>;
   languages?: Array<ImportField<string>>;
+  staffSuggestions?: StaffSuggestion[];
+  policySuggestions?: PolicySuggestion[];
+  faqSuggestions?: FaqSuggestion[];
+  promotionSuggestions?: PromotionSuggestion[];
+  bookingSetupSuggestions?: BookingSetupSuggestion[];
   warnings?: string[];
 };
 

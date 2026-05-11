@@ -92,6 +92,23 @@ const userSettingsSpecificStyles = String.raw`
 .option-card--bare:hover{transform:none;box-shadow:none}
 .option-title{font-size:14px;font-weight:800;letter-spacing:-.02em}
 .option-copy{font-size:12px;color:var(--text-gray);line-height:1.6}
+.actions-row{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.checkbox-line{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--text-dark)}
+.checkbox-line input{margin:0}
+.grid-span-2{grid-column:1/-1}
+.grid-5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.metric-card{
+  border:1px solid var(--border);border-radius:14px;background:#fff;padding:12px;
+  display:grid;gap:3px;min-width:0;
+}
+.metric-card strong{font-size:18px;font-weight:800;color:var(--text-dark);line-height:1}
+.metric-card span{font-size:11px;font-weight:700;color:var(--text-gray);line-height:1.35}
+.field-label{display:grid;gap:6px;font-size:12px;font-weight:700;color:#374151}
+.field-label input,.field-label select,.field-label textarea{
+  width:100%;border:1px solid var(--border);border-radius:10px;background:#fff;padding:10px 12px;
+  font:inherit;font-size:14px;color:var(--text-dark);box-sizing:border-box;
+}
+.field-label textarea{resize:vertical;min-height:42px}
 .preset-pills{display:flex;flex-wrap:wrap;gap:10px}
 .preset-pill{
   border:1px solid var(--border);background:#fff;border-radius:999px;padding:10px 14px;font-size:12px;font-weight:700;color:#4b5563;
@@ -494,17 +511,53 @@ html[data-user-theme="dark"] .upgrade-panel{
   .option-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:860px){
-  .grid-3,.grid-4,.option-grid,.calendar-int-grid,.services-grid,.service-controls{grid-template-columns:1fr}
-  .user-app-shell .grid.grid-3,.user-app-shell .grid.grid-4{grid-template-columns:1fr}
-  .tab-strip{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  .tab-button{flex-direction:column;align-items:center;text-align:center;padding:11px 8px;gap:3px}
+  .grid-3,.grid-4,.grid-5,.option-grid,.calendar-int-grid,.services-grid,.service-controls{grid-template-columns:1fr}
+  .user-app-shell .grid.grid-3,.user-app-shell .grid.grid-4,.user-app-shell .grid.grid-5{grid-template-columns:1fr}
+  .tab-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .tab-button{
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:11px 10px;
+    gap:4px;
+  }
   .tab-button-icon{width:30px;height:30px;border-radius:10px}
   .tab-button-icon svg{width:20px;height:20px}
-  .tab-button-body{align-items:center;width:100%}
+  .tab-button-body{
+    align-items:center;
+    justify-content:center;
+    width:100%;
+    text-align:center;
+  }
+  .tab-button-body strong{
+    display:block;
+    width:100%;
+    text-align:center;
+  }
   .tab-button strong{font-size:11px;font-weight:750;line-height:1.25}
   .hours-row{grid-template-columns:1fr}
-  .business-subtabs{gap:6px}
-  .business-subtab{padding:7px 10px;font-size:11px}
+  .business-subtabs{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    flex-wrap:unset;
+  }
+  .business-subtabs:has(> :nth-child(3):last-child) > .business-subtab:nth-child(3){
+    grid-column:1 / -1;
+  }
+  .business-subtab{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:10px 12px;
+    font-size:12px;
+    font-weight:650;
+    min-width:0;
+    width:100%;
+    box-sizing:border-box;
+  }
   .card-section-form{padding:0}
   .sh-catalog-grid{grid-template-columns:1fr}
   .sh-active-thead{display:none}

@@ -1,4 +1,15 @@
-import type { ImportedServiceSuggestion, ImportField, ImportSourceType, ImportSuggestions, PagePreview } from './types';
+import type {
+  BookingSetupSuggestion,
+  FaqSuggestion,
+  ImportedServiceSuggestion,
+  ImportField,
+  ImportSourceType,
+  ImportSuggestions,
+  PagePreview,
+  PolicySuggestion,
+  PromotionSuggestion,
+  StaffSuggestion,
+} from './types';
 import type { GooglePlacesSuggestion } from './google-places';
 import type { LlmImportExtraction } from './types';
 import { normalizePhoneForStorage } from '@/lib/phone-number';
@@ -309,6 +320,159 @@ function aliasFor(name: string): string[] {
   return aliases;
 }
 
+function sanitizeSnippet(value: string | null | undefined, maxLength = 220): string | undefined {
+  const cleaned = (value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned ? cleaned.slice(0, maxLength) : undefined;
+}
+
+function cleanStaffName(value: string): string {
+  return value.replace(/^(team|staff|meet|our)\s+/i, '').replace(/\s+/g, ' ').trim();
+}
+
+function pageText(preview: PagePreview): string {
+  return `${preview.title}\n${preview.h1}\n${preview.h2s.join('\n')}\n${preview.firstTextChars}`;
+}
+
+function dedupeBy<T>(items: T[], keyFn: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const item of items) {
+    const key = keyFn(item).toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function detectBookingPlatform(url: string): BookingSetupSuggestion['platform'] {
+  if (/vagaro/i.test(url)) return 'vagaro';
+  if (/booksy/i.test(url)) return 'booksy';
+  if (/fresha/i.test(url)) return 'fresha';
+  if (/glossgenius/i.test(url)) return 'glossgenius';
+  if (/squareup|square\.site/i.test(url)) return 'square';
+  if (/calendly/i.test(url)) return 'calendly';
+  return null;
+}
+
+export function extractSecondaryKnowledge(previews: PagePreview[]): {
+  staffSuggestions: StaffSuggestion[];
+  policySuggestions: PolicySuggestion[];
+  faqSuggestions: FaqSuggestion[];
+  promotionSuggestions: PromotionSuggestion[];
+  bookingSetupSuggestions: BookingSetupSuggestion[];
+} {
+  const staffSuggestions: StaffSuggestion[] = [];
+  const policySuggestions: PolicySuggestion[] = [];
+  const faqSuggestions: FaqSuggestion[] = [];
+  const promotionSuggestions: PromotionSuggestion[] = [];
+  const bookingSetupSuggestions: BookingSetupSuggestion[] = [];
+
+  for (const preview of previews) {
+    const text = pageText(preview);
+    const lowerContext = `${preview.url} ${preview.title} ${preview.h1} ${preview.h2s.join(' ')}`.toLowerCase();
+
+    for (const node of flattenJsonLd(preview.jsonLd)) {
+      const type = String(node['@type'] ?? '').toLowerCase();
+      if (type.includes('person') && typeof node.name === 'string') {
+        staffSuggestions.push({
+          name: node.name.trim(),
+          role: typeof node.jobTitle === 'string' ? node.jobTitle.trim() : undefined,
+          bio: sanitizeSnippet(typeof node.description === 'string' ? node.description : null, 300),
+          source: 'jsonld',
+          sourceUrl: preview.url,
+          confidence: 0.82,
+          evidenceSnippet: sanitizeSnippet(`${node.name} ${typeof node.jobTitle === 'string' ? node.jobTitle : ''}`),
+        });
+      }
+      if (type.includes('faqpage')) {
+        const entities = Array.isArray(node.mainEntity) ? node.mainEntity : [];
+        for (const entity of entities) {
+          if (!entity || typeof entity !== 'object') continue;
+          const raw = entity as Record<string, unknown>;
+          const accepted = raw.acceptedAnswer && typeof raw.acceptedAnswer === 'object' ? raw.acceptedAnswer as Record<string, unknown> : null;
+          const question = typeof raw.name === 'string' ? sanitizeSnippet(raw.name, 180) : undefined;
+          const answer = typeof accepted?.text === 'string' ? sanitizeSnippet(accepted.text, 500) : undefined;
+          if (question && answer) faqSuggestions.push({ question, answer, source: 'website', sourceUrl: preview.url, confidence: 0.9, evidenceSnippet: sanitizeSnippet(`${question} ${answer}`) });
+        }
+      }
+    }
+
+    if (/(staff|team|stylist|artist|provider|injector|esthetician|barber)/i.test(lowerContext)) {
+      const staffLineRe = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:[-–—,|]\s*)?(Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Massage Therapist)\b/g;
+      for (const match of text.matchAll(staffLineRe)) {
+        const name = cleanStaffName(match[1]);
+        if (!name) continue;
+        staffSuggestions.push({
+          name,
+          role: match[2].trim(),
+          specialties: [],
+          source: 'website',
+          sourceUrl: preview.url,
+          confidence: 0.68,
+          evidenceSnippet: sanitizeSnippet(match[0]),
+        });
+      }
+    }
+
+    const policyTypePatterns: Array<[PolicySuggestion['type'], RegExp, string]> = [
+      ['cancellation', /\b(cancellation|cancel)\b[^.\n]{20,420}/gi, 'Cancellation policy'],
+      ['no_show', /\b(no-show|no show)\b[^.\n]{20,420}/gi, 'No-show policy'],
+      ['deposit', /\b(deposit)\b[^.\n]{20,420}/gi, 'Deposit policy'],
+      ['late_arrival', /\b(late arrival|late)\b[^.\n]{20,420}/gi, 'Late arrival policy'],
+      ['walk_ins', /\b(walk-ins|walk ins|walkin)\b[^.\n]{20,420}/gi, 'Walk-ins'],
+      ['refund', /\b(refund)\b[^.\n]{20,420}/gi, 'Refund policy'],
+      ['appointment_prep', /\b(prep|preparation|aftercare)\b[^.\n]{20,420}/gi, 'Appointment preparation'],
+      ['consultation', /\b(consultation required|consultation)\b[^.\n]{20,420}/gi, 'Consultation'],
+    ];
+    for (const [type, pattern, title] of policyTypePatterns) {
+      for (const match of text.matchAll(pattern)) {
+        const content = sanitizeSnippet(match[0], 500);
+        if (content) policySuggestions.push({ type, title, content, source: 'website', sourceUrl: preview.url, confidence: 0.66, evidenceSnippet: sanitizeSnippet(content) });
+      }
+    }
+
+    const promoRe = /\b(special|promotion|offer|deal|membership|package)\b[^.\n]{15,260}/gi;
+    for (const match of text.matchAll(promoRe)) {
+      const description = sanitizeSnippet(match[0], 260);
+      if (description) promotionSuggestions.push({ title: description.split(/[:.-]/)[0]?.slice(0, 80) || 'Website offer', description, expiresAt: null, source: 'website', sourceUrl: preview.url, confidence: 0.58, evidenceSnippet: description });
+    }
+
+    for (const link of preview.links) {
+      const platform = detectBookingPlatform(link.href);
+      if (/book|booking|appointment|schedule|reserve|vagaro|booksy|fresha|glossgenius|square|calendly/i.test(`${link.text} ${link.href}`)) {
+        bookingSetupSuggestions.push({
+          type: platform ? 'booking_platform' : 'booking_link',
+          label: sanitizeSnippet(link.text, 100) || (platform ? `${platform} booking` : 'Booking link'),
+          value: link.href,
+          platform: platform ?? null,
+          source: 'deterministic',
+          sourceUrl: preview.url,
+          confidence: platform ? 0.86 : 0.72,
+        });
+      }
+    }
+    if (/\b(call to book|call us to book|book by phone)\b/i.test(text)) {
+      bookingSetupSuggestions.push({ type: 'call_to_book', label: 'Call to book', source: 'website', sourceUrl: preview.url, confidence: 0.72 });
+    }
+    if (/\bconsultation required\b/i.test(text)) {
+      bookingSetupSuggestions.push({ type: 'consultation_required', label: 'Consultation required', source: 'website', sourceUrl: preview.url, confidence: 0.68 });
+    }
+  }
+
+  return {
+    staffSuggestions: dedupeBy(staffSuggestions.filter((item) => item.name.trim()), (item) => item.name).slice(0, 20),
+    policySuggestions: dedupeBy(policySuggestions.filter((item) => item.content.trim()), (item) => `${item.type}:${item.content}`).slice(0, 20),
+    faqSuggestions: dedupeBy(faqSuggestions.filter((item) => item.question.trim() && item.answer.trim()), (item) => item.question).slice(0, 30),
+    promotionSuggestions: dedupeBy(promotionSuggestions.filter((item) => item.title.trim()), (item) => item.title).slice(0, 12),
+    bookingSetupSuggestions: dedupeBy(bookingSetupSuggestions, (item) => `${item.type}:${item.value ?? item.label}`).slice(0, 12),
+  };
+}
+
 function jsonLdFacts(previews: PagePreview[]) {
   const facts: { name?: string; phone?: string; address?: string; hours?: ImportField<Record<string, unknown>> } = {};
   for (const obj of flattenJsonLd(previews.flatMap((preview) => preview.jsonLd))) {
@@ -335,6 +499,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   const staticName = facts.name ?? input.previews[0]?.h1 ?? input.previews[0]?.title ?? null;
   const websitePrimaryType = inferPrimaryType(allText);
   const bookingLink = input.previews.flatMap((p) => p.links).find((link) => /book|appointment|schedule|reserve|vagaro|booksy|fresha|glossgenius|styleseat/i.test(`${link.text} ${link.href}`))?.href ?? null;
+  const secondary = extractSecondaryKnowledge(input.previews);
   return mergeImportSuggestions({
     staticFacts: {
       sourceUrl: input.sourceUrl,
@@ -349,6 +514,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
       services: deduped,
       bookingUrl: field(bookingLink, bookingLink ? 0.8 : 0, bookingLink ? 'Website' : null),
       languages: [],
+      ...secondary,
       warnings: [],
     },
     googlePlaces: input.googlePlaces,

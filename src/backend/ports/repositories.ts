@@ -10,6 +10,10 @@ import type {
   BillingNotificationChannel,
   BillingNotificationType,
   BillingSubscriptionStatus,
+  BusinessKnowledgeSuggestion,
+  BusinessKnowledgeSuggestionSource,
+  BusinessKnowledgeSuggestionStatus,
+  BusinessKnowledgeSuggestionType,
   CommercialAccount,
   CommercialGoLiveApprovalEvent,
   ShopActiveCallSession,
@@ -471,6 +475,27 @@ export interface ShopsRepository {
   findServiceCatalogByShopId(shopId: string): Promise<Shop['service_catalog'] | null>;
   saveServiceCatalog(shopId: string, catalog: NonNullable<Shop['service_catalog']>): Promise<Shop['service_catalog'] | null>;
   deleteServiceCategory(params: { shopId: string; categoryId: string }): Promise<Shop['service_catalog'] | null>;
+}
+
+export interface BusinessKnowledgeSuggestionsRepository {
+  listPendingSuggestions(shopId: string, filters?: { suggestionType?: BusinessKnowledgeSuggestionType }): Promise<BusinessKnowledgeSuggestion[]>;
+  createPendingSuggestions(
+    shopId: string,
+    sourceUrl: string,
+    suggestions: Array<{
+      suggestionType: BusinessKnowledgeSuggestionType;
+      payload: Record<string, unknown>;
+      payloadHash: string;
+      confidence: number;
+      source: BusinessKnowledgeSuggestionSource;
+      evidenceSnippet?: string | null;
+    }>,
+  ): Promise<BusinessKnowledgeSuggestion[]>;
+  findByIds(shopId: string, ids: string[]): Promise<BusinessKnowledgeSuggestion[]>;
+  markApplied(shopId: string, ids: string[], now?: Date): Promise<BusinessKnowledgeSuggestion[]>;
+  markDismissed(shopId: string, ids: string[], now?: Date): Promise<BusinessKnowledgeSuggestion[]>;
+  dedupeSuggestions(shopId: string, sourceUrl: string, suggestionType: BusinessKnowledgeSuggestionType, payloadHash: string): Promise<BusinessKnowledgeSuggestion | null>;
+  listByStatus?(shopId: string, status: BusinessKnowledgeSuggestionStatus): Promise<BusinessKnowledgeSuggestion[]>;
 }
 
 export interface BillingCustomersRepository {

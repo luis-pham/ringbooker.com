@@ -16,6 +16,7 @@ import {
   importProgressStepIndex,
   importResultMessage,
   IMPORT_PROGRESS_STEPS,
+  secondaryImportSuggestionCount,
 } from '@/components/user/user-onboarding-live';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
@@ -139,6 +140,7 @@ test('onboarding website import progress copy uses phased states without percent
   assert.equal(importResultMessage({ status: 'success', sourceUrl: 'https://demo.test', businessProfile: {} }), 'Ready to review');
   assert.equal(importResultMessage({ status: 'partial', sourceUrl: 'https://demo.test', businessProfile: {} }), 'Some details need review');
   assert.equal(importResultMessage(null, true), 'We couldn’t import this automatically. You can still set this up manually.');
+  assert.equal(secondaryImportSuggestionCount({ status: 'success', sourceUrl: 'https://demo.test', businessProfile: {}, staffSuggestions: [{}], faqSuggestions: [{}, {}] }), 3);
   assert.equal(IMPORT_PROGRESS_STEPS.some((label) => /%/.test(label)), false);
 });
 
@@ -153,6 +155,7 @@ test('onboarding copy keeps website import review-only and isolates legacy read-
   assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml/);
   assert.doesNotMatch(onboardingLive, /I&apos;ll enter details manually/);
   assert.match(onboardingLive, /refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge/);
+  assert.match(onboardingLive, /staff, policies, FAQs, promotions, or booking setup hints you can review later in Business Knowledge/);
   assert.ok(onboardingLive.includes('/api/backend/user/onboarding/import-website'));
   assert.equal(onboardingLive.includes('/api/backend/user/read-website'), false);
   assert.match(app, /Legacy mutating website import endpoint/);

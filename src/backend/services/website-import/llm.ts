@@ -1,7 +1,17 @@
 import { z } from 'zod';
 
 import type { GooglePlacesSuggestion } from './google-places';
-import type { ImportedServiceSuggestion, LlmImportExtraction, PagePreview, SelectedPageDiagnostic } from './types';
+import type {
+  BookingSetupSuggestion,
+  FaqSuggestion,
+  ImportedServiceSuggestion,
+  LlmImportExtraction,
+  PagePreview,
+  PolicySuggestion,
+  PromotionSuggestion,
+  SelectedPageDiagnostic,
+  StaffSuggestion,
+} from './types';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 export type LlmExtractionOptions = { enabled?: boolean; apiKey?: string | null; model?: string | null; maxTokens?: number | null; fetcher?: Fetcher; timeoutMs?: number };
@@ -35,6 +45,47 @@ const categorySchema = z.object({
   confidence: confidenceSchema,
   groupKind: z.enum(['primary', 'addon', 'custom']).nullable().optional(),
 }).strict();
+const snippetSchema = z.string().max(260).optional();
+const staffSuggestionSchema = z.object({
+  name: z.string().min(1).max(120),
+  role: z.string().max(120).optional(),
+  specialties: z.array(z.string().max(80)).optional().default([]),
+  bio: z.string().max(500).optional(),
+  sourceUrl: z.string().url().optional(),
+  confidence: confidenceSchema,
+  evidenceSnippet: snippetSchema,
+}).strict();
+const policySuggestionSchema = z.object({
+  type: z.enum(['cancellation', 'no_show', 'deposit', 'late_arrival', 'walk_ins', 'refund', 'appointment_prep', 'consultation', 'other']),
+  title: z.string().min(1).max(160),
+  content: z.string().min(1).max(1200),
+  sourceUrl: z.string().url().optional(),
+  confidence: confidenceSchema,
+  evidenceSnippet: snippetSchema,
+}).strict();
+const faqSuggestionSchema = z.object({
+  question: z.string().min(1).max(240),
+  answer: z.string().min(1).max(1200),
+  sourceUrl: z.string().url().optional(),
+  confidence: confidenceSchema,
+  evidenceSnippet: snippetSchema,
+}).strict();
+const promotionSuggestionSchema = z.object({
+  title: z.string().min(1).max(180),
+  description: z.string().max(800).optional(),
+  expiresAt: z.string().nullable().optional(),
+  sourceUrl: z.string().url().optional(),
+  confidence: confidenceSchema,
+  evidenceSnippet: snippetSchema,
+}).strict();
+const bookingSetupSuggestionSchema = z.object({
+  type: z.enum(['booking_link', 'booking_platform', 'provider_booking', 'consultation_required', 'call_to_book', 'other']),
+  label: z.string().min(1).max(160),
+  value: z.string().max(500).optional(),
+  platform: z.enum(['vagaro', 'booksy', 'fresha', 'glossgenius', 'square', 'calendly', 'other']).nullable().optional(),
+  sourceUrl: z.string().url().optional(),
+  confidence: confidenceSchema,
+}).strict();
 const llmImportSchema = z.object({
   businessProfile: z.object({
     name: nullableStringFieldSchema.optional(),
@@ -53,6 +104,11 @@ const llmImportSchema = z.object({
   alsoOffers: z.array(nullableStringFieldSchema).optional().default([]),
   bookingUrl: nullableStringFieldSchema.optional(),
   languages: z.array(nullableStringFieldSchema).optional().default([]),
+  staffSuggestions: z.array(staffSuggestionSchema).optional().default([]).catch([]),
+  policySuggestions: z.array(policySuggestionSchema).optional().default([]).catch([]),
+  faqSuggestions: z.array(faqSuggestionSchema).optional().default([]).catch([]),
+  promotionSuggestions: z.array(promotionSuggestionSchema).optional().default([]).catch([]),
+  bookingSetupSuggestions: z.array(bookingSetupSuggestionSchema).optional().default([]).catch([]),
   warnings: z.array(z.string()).optional().default([]),
 }).strict();
 
@@ -76,6 +132,31 @@ function toService(raw: z.infer<typeof serviceSchema>): ImportedServiceSuggestio
     confidence: raw.confidence,
     source: 'AI',
   };
+}
+
+function sanitizeSnippet(value?: string): string | undefined {
+  const cleaned = (value ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned ? cleaned.slice(0, 240) : undefined;
+}
+
+function toStaffSuggestion(raw: z.infer<typeof staffSuggestionSchema>): StaffSuggestion {
+  return { name: raw.name.trim(), role: raw.role?.trim(), specialties: raw.specialties.slice(0, 8), bio: raw.bio?.trim(), source: 'llm', sourceUrl: raw.sourceUrl, confidence: raw.confidence, evidenceSnippet: sanitizeSnippet(raw.evidenceSnippet) };
+}
+
+function toPolicySuggestion(raw: z.infer<typeof policySuggestionSchema>): PolicySuggestion {
+  return { type: raw.type, title: raw.title.trim(), content: raw.content.trim(), source: 'llm', sourceUrl: raw.sourceUrl, confidence: raw.confidence, evidenceSnippet: sanitizeSnippet(raw.evidenceSnippet) };
+}
+
+function toFaqSuggestion(raw: z.infer<typeof faqSuggestionSchema>): FaqSuggestion {
+  return { question: raw.question.trim(), answer: raw.answer.trim(), source: 'llm', sourceUrl: raw.sourceUrl, confidence: raw.confidence, evidenceSnippet: sanitizeSnippet(raw.evidenceSnippet) };
+}
+
+function toPromotionSuggestion(raw: z.infer<typeof promotionSuggestionSchema>): PromotionSuggestion {
+  return { title: raw.title.trim(), description: raw.description?.trim(), expiresAt: raw.expiresAt ?? null, source: 'llm', sourceUrl: raw.sourceUrl, confidence: raw.confidence, evidenceSnippet: sanitizeSnippet(raw.evidenceSnippet) };
+}
+
+function toBookingSetupSuggestion(raw: z.infer<typeof bookingSetupSuggestionSchema>): BookingSetupSuggestion {
+  return { type: raw.type, label: raw.label.trim(), value: raw.value?.trim(), platform: raw.platform ?? null, source: 'llm', sourceUrl: raw.sourceUrl, confidence: raw.confidence };
 }
 
 export function parseLlmImportJson(rawText: string): LlmImportExtraction | null {
@@ -104,6 +185,11 @@ export function parseLlmImportJson(rawText: string): LlmImportExtraction | null 
     alsoOffers: raw.alsoOffers.map(toImportField).filter((item): item is NonNullable<ReturnType<typeof toImportField>> => Boolean(item)),
     bookingUrl: toImportField(raw.bookingUrl),
     languages: raw.languages.map(toImportField).filter((item): item is NonNullable<ReturnType<typeof toImportField>> => Boolean(item)),
+    staffSuggestions: raw.staffSuggestions.map(toStaffSuggestion),
+    policySuggestions: raw.policySuggestions.map(toPolicySuggestion),
+    faqSuggestions: raw.faqSuggestions.map(toFaqSuggestion),
+    promotionSuggestions: raw.promotionSuggestions.map(toPromotionSuggestion),
+    bookingSetupSuggestions: raw.bookingSetupSuggestions.map(toBookingSetupSuggestion),
     warnings: raw.warnings.slice(0, 8),
   };
 }
@@ -143,7 +229,7 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
   });
   return {
     task: 'Extract reviewable business knowledge for an AI receptionist. Return JSON only. Do not invent missing fields or prices.',
-    schemaHint: 'Use {value, confidence, sourceEvidence} for profile fields. priceType must be fixed/from/varies/consultation.',
+    schemaHint: 'Use {value, confidence, sourceEvidence} for profile fields. priceType must be fixed/from/varies/consultation. Optional secondary arrays: staffSuggestions, policySuggestions, faqSuggestions, promotionSuggestions, bookingSetupSuggestions. Extract only evidence-backed website facts; do not auto-apply.',
     sourceUrl: input.sourceUrl,
     deterministicFacts: {
       jsonLd: input.previews.flatMap((page) => page.jsonLd).slice(0, 10),
@@ -176,7 +262,7 @@ export async function extractWebsiteImportWithLlm(input: LlmPayloadInput, opts: 
         max_tokens: opts.maxTokens ?? 1800,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: 'You extract salon/spa business knowledge. Return valid JSON only. Never invent missing facts.' },
+          { role: 'system', content: 'You extract salon/spa business knowledge for user review. Return valid JSON only. Never invent missing facts, staff, policies, FAQs, promotions, prices, or booking integrations. Keep evidence snippets short and sanitized.' },
           { role: 'user', content: buildLlmImportPrompt(input) },
         ],
       }),

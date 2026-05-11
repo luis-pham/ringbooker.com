@@ -2,6 +2,10 @@ import type { CandidateBucket, CandidateUrl, PagePreview, SelectedPageDiagnostic
 
 const SERVICE_WORDS = /\b(service|services|menu|pricing|price|treatment|treatments|salon|spa|beauty|hair|haircut|color|balayage|manicure|pedicure|waxing|massage|facial|botox|laser|injectable|lashes|brow)\b/i;
 const SPECIFIC_SERVICE = /\b(balayage|hydrafacial|botox|filler|gel manicure|deluxe pedicure|eyebrow wax|waxing|massage|facial|hair color|highlights|acrylic|dip powder)\b/i;
+const STAFF_WORDS = /\b(staff|team|stylist|stylists|providers|artists|technicians|experts|injectors|estheticians|barbers)\b/i;
+const POLICY_WORDS = /\b(policy|policies|cancellation|no-show|no show|deposit|refund|terms|appointment|late|prep|aftercare)\b/i;
+const FAQ_WORDS = /\b(faq|faqs|questions|help)\b/i;
+const PROMO_WORDS = /\b(specials|promotions|offers|deals|membership|packages)\b/i;
 
 export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview): { bucket: CandidateBucket; score: number; reason: string } {
   const haystack = `${candidate.url} ${candidate.anchorText ?? ''} ${preview?.title ?? ''} ${preview?.h1 ?? ''} ${preview?.h2s.join(' ') ?? ''}`.toLowerCase();
@@ -14,6 +18,10 @@ export function classifyCandidate(candidate: CandidateUrl, preview?: PagePreview
 
   if (candidate.source === 'homepage') { bucket = 'homepage'; score += 100; reasons.push('Homepage'); }
   if (/contact|hours|location|directions/.test(haystack)) { bucket = 'contact_hours'; score += 28; reasons.push('Contact/hours signals'); }
+  if (STAFF_WORDS.test(haystack)) { if (bucket === 'noise') bucket = 'staff_team'; score += 20; reasons.push('Staff/team signals'); }
+  if (POLICY_WORDS.test(haystack)) { bucket = bucket === 'noise' ? 'policies' : bucket; score += 18; reasons.push('Policy signals'); }
+  if (FAQ_WORDS.test(haystack)) { bucket = bucket === 'noise' ? 'faq' : bucket; score += 18; reasons.push('FAQ signals'); }
+  if (PROMO_WORDS.test(haystack)) { bucket = bucket === 'noise' ? 'promotions' : bucket; score += 16; reasons.push('Promotion signals'); }
   if (/about|team|staff|artist|provider/.test(haystack)) { bucket = bucket === 'noise' ? 'about_team' : bucket; score += 12; reasons.push('About/team signals'); }
   if (/book|appointment|schedule|reserve/.test(haystack)) { bucket = 'booking'; score += 22; reasons.push('Booking signals'); }
 
@@ -43,7 +51,7 @@ export function selectPages(scored: Array<{ candidate: CandidateUrl; bucket: Can
       if (selected.length < maxPages && !selected.some((s) => s.candidate.url === item.candidate.url)) selected.push(item);
     }
   };
-  add('homepage', 1); add('service_hub', 2); add('service_child', 3); add('contact_hours', 1); add('booking', 1); add('about_team', 1);
+  add('homepage', 1); add('service_hub', 2); add('service_child', 2); add('contact_hours', 1); add('booking', 1); add('policies', 1); add('faq', 1); add('staff_team', 1); add('promotions', 1); add('about_team', 1);
   return selected.slice(0, maxPages);
 }
 

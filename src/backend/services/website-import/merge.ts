@@ -1,4 +1,16 @@
-import type { ImportedServiceSuggestion, ImportField, ImportSuggestions, LlmImportExtraction, WebsiteImportCompleteness, WeeklyHours } from './types';
+import type {
+  BookingSetupSuggestion,
+  FaqSuggestion,
+  ImportedServiceSuggestion,
+  ImportField,
+  ImportSuggestions,
+  LlmImportExtraction,
+  PolicySuggestion,
+  PromotionSuggestion,
+  StaffSuggestion,
+  WebsiteImportCompleteness,
+  WeeklyHours,
+} from './types';
 import type { GooglePlacesSuggestion } from './google-places';
 import { normalizePhoneForStorage, phoneComparableDigits } from '@/lib/phone-number';
 
@@ -15,6 +27,11 @@ export type StaticImportFacts = {
   services: ImportedServiceSuggestion[];
   bookingUrl: ImportField<string>;
   languages?: Array<ImportField<string>>;
+  staffSuggestions?: StaffSuggestion[];
+  policySuggestions?: PolicySuggestion[];
+  faqSuggestions?: FaqSuggestion[];
+  promotionSuggestions?: PromotionSuggestion[];
+  bookingSetupSuggestions?: BookingSetupSuggestion[];
   warnings?: string[];
 };
 
@@ -55,6 +72,14 @@ function serviceGroups(services: ImportedServiceSuggestion[], llm?: LlmImportExt
     if (!groups.has(name.toLowerCase())) groups.set(name.toLowerCase(), { name, source: service.source || 'Website', confidence: Math.max(0.65, service.confidence ?? 0.65), groupKind: name === 'General Services' ? 'custom' : 'addon' });
   }
   return [...groups.values()];
+}
+function dedupeSuggestions<T>(items: T[], keyFn: (item: T) => string, max = 40): T[] {
+  const map = new Map<string, T>();
+  for (const item of items) {
+    const key = keyFn(item).trim().toLowerCase();
+    if (key && !map.has(key)) map.set(key, item);
+  }
+  return [...map.values()].slice(0, max);
 }
 export function computeCompleteness(suggestions: Omit<ImportSuggestions, 'completeness'>): WebsiteImportCompleteness {
   const missingFields: string[] = [];
@@ -103,6 +128,11 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   const primaryType = choose(input.staticFacts.primaryType, placesField(places?.primaryType, 0.78), maybeLlm(llm?.businessProfile?.primaryType));
   const bookingUrl = choose(input.staticFacts.bookingUrl, maybeLlm(llm?.bookingUrl));
   const categories = serviceGroups(services, llm);
+  const staffSuggestions = dedupeSuggestions([...(input.staticFacts.staffSuggestions ?? []), ...(llm?.staffSuggestions ?? [])], (item) => item.name, 25);
+  const policySuggestions = dedupeSuggestions([...(input.staticFacts.policySuggestions ?? []), ...(llm?.policySuggestions ?? [])], (item) => `${item.type}:${item.title}:${item.content}`, 25);
+  const faqSuggestions = dedupeSuggestions([...(input.staticFacts.faqSuggestions ?? []), ...(llm?.faqSuggestions ?? [])], (item) => item.question, 40);
+  const promotionSuggestions = dedupeSuggestions([...(input.staticFacts.promotionSuggestions ?? []), ...(llm?.promotionSuggestions ?? [])], (item) => item.title, 20);
+  const bookingSetupSuggestions = dedupeSuggestions([...(input.staticFacts.bookingSetupSuggestions ?? []), ...(llm?.bookingSetupSuggestions ?? [])], (item) => `${item.type}:${item.value ?? item.label}`, 20);
   const base: Omit<ImportSuggestions, 'completeness'> = {
     status: name.value || phone.value || address.value || hours.value || services.length ? (services.length || phone.value || address.value || hours.value ? 'success' : 'partial') : 'failed',
     sourceUrl: input.staticFacts.sourceUrl,
@@ -113,6 +143,11 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
     alsoOffers: categories.map((category) => field(category.name, Math.max(0.7, category.confidence), 'Service catalog')),
     bookingUrl,
     languages: llm?.languages ?? input.staticFacts.languages ?? [],
+    staffSuggestions,
+    policySuggestions,
+    faqSuggestions,
+    promotionSuggestions,
+    bookingSetupSuggestions,
     warnings: [...new Set(warnings)],
   };
   return { ...base, completeness: computeCompleteness(base) };

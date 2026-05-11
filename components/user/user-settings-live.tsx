@@ -84,6 +84,22 @@ type BusinessFaqItem = {
   question: string;
   answer: string;
 };
+type BusinessKnowledgeSuggestionType = 'staff' | 'policy' | 'faq' | 'promotion' | 'booking_hint';
+type BusinessKnowledgeSuggestion = {
+  id: string;
+  sourceUrl: string;
+  suggestionType: BusinessKnowledgeSuggestionType;
+  payload: Record<string, unknown>;
+  confidence: number;
+  source: string;
+  evidenceSnippet?: string | null;
+};
+type BusinessKnowledgeSuggestionsResponse = {
+  ok?: boolean;
+  suggestions?: BusinessKnowledgeSuggestion[];
+  counts?: Record<string, number>;
+  error?: string;
+};
 type ShopSettings = {
   id: string;
   name: string;
@@ -703,6 +719,11 @@ export function UserSettingsLive({
   const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('voice');
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
   const [businessKnowledgeSubTab, setBusinessKnowledgeSubTab] = useState<'info' | 'cancellation' | 'promotion'>('info');
+  const [websiteSuggestions, setWebsiteSuggestions] = useState<BusinessKnowledgeSuggestion[]>([]);
+  const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
+  const [suggestionEdits, setSuggestionEdits] = useState<Record<string, Record<string, unknown>>>({});
+  const [suggestionStatus, setSuggestionStatus] = useState<string | null>(null);
+  const [savingSuggestions, setSavingSuggestions] = useState(false);
 
   const activateSettingsTab = useCallback((tabId: SettingsTabId) => {
     setActiveTab(tabId);
@@ -714,6 +735,24 @@ export function UserSettingsLive({
       window.history.replaceState(null, '', base);
     }
   }, []);
+
+  const loadWebsiteSuggestions = useCallback(async () => {
+    if (portal !== 'knowledge') return;
+    try {
+      const response = await fetch('/api/backend/user/business-knowledge/suggestions');
+      const body = (await response.json()) as BusinessKnowledgeSuggestionsResponse;
+      if (!response.ok || !body.ok) {
+        setSuggestionStatus(body.error ?? 'suggestions_load_failed');
+        return;
+      }
+      setWebsiteSuggestions(body.suggestions ?? []);
+      setSelectedSuggestionIds([]);
+      setSuggestionEdits({});
+    } catch {
+      setSuggestionStatus('suggestions_network_error');
+    }
+  }, [portal]);
+
 
   useEffect(() => {
     if (initialData) return;
@@ -986,6 +1025,20 @@ export function UserSettingsLive({
   const bilingualAnsweringUx = getBilingualAnsweringPlanUx(effectiveShop.plan);
   const returningCallerNotesUx = getReturningCallerNotesPlanUx(effectiveShop.plan);
 
+  useEffect(() => {
+    if (settingsReady && portal === 'knowledge') void loadWebsiteSuggestions();
+  }, [settingsReady, portal, loadWebsiteSuggestions]);
+
+  const websiteSuggestionCounts = useMemo(() => {
+    return websiteSuggestions.reduce<Record<BusinessKnowledgeSuggestionType, number>>(
+      (acc, item) => {
+        acc[item.suggestionType] += 1;
+        return acc;
+      },
+      { staff: 0, policy: 0, faq: 0, promotion: 0, booking_hint: 0 },
+    );
+  }, [websiteSuggestions]);
+
   const serviceChoices = useMemo(() => {
     const selected = new Map(currentForm.services.map((item) => [item.name, item]));
     return SERVICE_CATALOG.map((item) => ({
@@ -1237,6 +1290,167 @@ export function UserSettingsLive({
     }
   }
 
+  function suggestionPayload(suggestion: BusinessKnowledgeSuggestion): Record<string, unknown> {
+    return suggestionEdits[suggestion.id] ?? suggestion.payload;
+  }
+
+  function updateSuggestionPayload(id: string, patch: Record<string, unknown>) {
+    setSuggestionEdits((current) => ({
+      ...current,
+      [id]: { ...(current[id] ?? websiteSuggestions.find((item) => item.id === id)?.payload ?? {}), ...patch },
+    }));
+  }
+
+  function toggleSuggestionSelected(id: string, checked: boolean) {
+    setSelectedSuggestionIds((current) => checked ? [...new Set([...current, id])] : current.filter((item) => item !== id));
+  }
+
+  async function applySelectedSuggestions() {
+    if (selectedSuggestionIds.length === 0) {
+      setSuggestionStatus('Choose at least one suggestion to apply.');
+      return;
+    }
+    setSavingSuggestions(true);
+    setSuggestionStatus(null);
+    try {
+      const editedPayloads = Object.fromEntries(selectedSuggestionIds.map((id) => [id, suggestionEdits[id]]).filter(([, payload]) => payload));
+      const response = await fetch('/api/backend/user/business-knowledge/suggestions/apply', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ suggestionIds: selectedSuggestionIds, editedPayloads }),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setSuggestionStatus(body?.error ?? 'suggestion_apply_failed');
+        return;
+      }
+      setSuggestionStatus('Suggestions applied.');
+      await loadWebsiteSuggestions();
+    } catch {
+      setSuggestionStatus('suggestion_apply_network_error');
+    } finally {
+      setSavingSuggestions(false);
+    }
+  }
+
+  async function dismissSelectedSuggestions() {
+    if (selectedSuggestionIds.length === 0) {
+      setSuggestionStatus('Choose at least one suggestion to dismiss.');
+      return;
+    }
+    setSavingSuggestions(true);
+    setSuggestionStatus(null);
+    try {
+      const response = await fetch('/api/backend/user/business-knowledge/suggestions/dismiss', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ suggestionIds: selectedSuggestionIds }),
+      });
+      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !body?.ok) {
+        setSuggestionStatus(body?.error ?? 'suggestion_dismiss_failed');
+        return;
+      }
+      setSuggestionStatus('Suggestions dismissed.');
+      await loadWebsiteSuggestions();
+    } catch {
+      setSuggestionStatus('suggestion_dismiss_network_error');
+    } finally {
+      setSavingSuggestions(false);
+    }
+  }
+
+  function renderSuggestionEditor(suggestion: BusinessKnowledgeSuggestion) {
+    const payload = suggestionPayload(suggestion);
+    const inputStyle = { marginTop: 8 } as const;
+    if (suggestion.suggestionType === 'staff') {
+      return (
+        <div className="grid grid-2" style={{ marginTop: 10 }}>
+          <label className="field-label">
+            Name
+            <input style={inputStyle} value={String(payload.name ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { name: event.target.value })} />
+          </label>
+          <label className="field-label">
+            Role
+            <input style={inputStyle} value={String(payload.role ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { role: event.target.value })} />
+          </label>
+          <label className="field-label grid-span-2">
+            Notes
+            <textarea style={inputStyle} rows={2} value={String(payload.notes ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { notes: event.target.value })} />
+          </label>
+        </div>
+      );
+    }
+    if (suggestion.suggestionType === 'policy') {
+      return (
+        <div className="grid grid-2" style={{ marginTop: 10 }}>
+          <label className="field-label">
+            Title
+            <input style={inputStyle} value={String(payload.title ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { title: event.target.value })} />
+          </label>
+          <label className="field-label">
+            Type
+            <select style={inputStyle} value={String(payload.type ?? 'other')} onChange={(event) => updateSuggestionPayload(suggestion.id, { type: event.target.value })}>
+              <option value="cancellation">Cancellation</option>
+              <option value="no_show">No-show</option>
+              <option value="deposit">Deposit</option>
+              <option value="late_arrival">Late arrival</option>
+              <option value="walk_ins">Walk-ins</option>
+              <option value="refund">Refund</option>
+              <option value="appointment_prep">Appointment prep</option>
+              <option value="consultation">Consultation</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label className="field-label grid-span-2">
+            Content
+            <textarea style={inputStyle} rows={3} value={String(payload.content ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { content: event.target.value })} />
+          </label>
+        </div>
+      );
+    }
+    if (suggestion.suggestionType === 'faq') {
+      return (
+        <div className="grid grid-2" style={{ marginTop: 10 }}>
+          <label className="field-label">
+            Question
+            <input style={inputStyle} value={String(payload.question ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { question: event.target.value })} />
+          </label>
+          <label className="field-label">
+            Answer
+            <textarea style={inputStyle} rows={2} value={String(payload.answer ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { answer: event.target.value })} />
+          </label>
+        </div>
+      );
+    }
+    if (suggestion.suggestionType === 'promotion') {
+      return (
+        <div className="grid grid-2" style={{ marginTop: 10 }}>
+          <label className="field-label">
+            Title
+            <input style={inputStyle} value={String(payload.title ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { title: event.target.value })} />
+          </label>
+          <label className="field-label">
+            Description
+            <textarea style={inputStyle} rows={2} value={String(payload.description ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { description: event.target.value })} />
+          </label>
+        </div>
+      );
+    }
+    return (
+      <div className="grid grid-2" style={{ marginTop: 10 }}>
+        <label className="field-label">
+          Label
+          <input style={inputStyle} value={String(payload.label ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { label: event.target.value })} />
+        </label>
+        <label className="field-label">
+          Value
+          <input style={inputStyle} value={String(payload.value ?? '')} onChange={(event) => updateSuggestionPayload(suggestion.id, { value: event.target.value })} />
+        </label>
+      </div>
+    );
+  }
+
   function isLocked(capability: keyof ShopCapabilities) {
     return !currentCapabilities[capability];
   }
@@ -1314,6 +1528,60 @@ export function UserSettingsLive({
                     </div>
                     <p className="sub" style={{ marginTop: 8 }}>{item.body}</p>
                     <a className="btn" href={item.href} style={{ marginTop: 12 }}>{item.cta}</a>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          {portal === 'knowledge' && websiteSuggestions.length > 0 ? (
+            <section className="card" style={{ marginBottom: 18 }}>
+              <div className="panel-head">
+                <div>
+                  <h3>Website suggestions</h3>
+                  <p className="sub">We found details from your website that can help RingBooker answer callers more accurately.</p>
+                </div>
+                <div className="actions-row">
+                  <button type="button" className="btn" onClick={() => void dismissSelectedSuggestions()} disabled={savingSuggestions || selectedSuggestionIds.length === 0}>
+                    Dismiss
+                  </button>
+                  <button type="button" className="btn user-save" onClick={() => void applySelectedSuggestions()} disabled={savingSuggestions || selectedSuggestionIds.length === 0}>
+                    Apply selected
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-5" style={{ marginTop: 12 }}>
+                {[
+                  ['Staff found', websiteSuggestionCounts.staff],
+                  ['Policies found', websiteSuggestionCounts.policy],
+                  ['FAQs found', websiteSuggestionCounts.faq],
+                  ['Promotions found', websiteSuggestionCounts.promotion],
+                  ['Booking hints found', websiteSuggestionCounts.booking_hint],
+                ].map(([label, count]) => (
+                  <div className="metric-card" key={String(label)}>
+                    <strong>{count}</strong>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+              {suggestionStatus ? <p className="sub" style={{ marginTop: 12 }}>{suggestionStatus}</p> : null}
+              <div className="section-stack" style={{ marginTop: 14 }}>
+                {websiteSuggestions.map((suggestion) => (
+                  <div className="option-card" key={suggestion.id}>
+                    <div className="hint-row">
+                      <label className="checkbox-line" style={{ margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedSuggestionIds.includes(suggestion.id)}
+                          onChange={(event) => toggleSuggestionSelected(suggestion.id, event.target.checked)}
+                        />
+                        <strong className="option-title">{suggestion.suggestionType.replace('_', ' ')}</strong>
+                      </label>
+                      <span className="pill">{suggestion.source}</span>
+                      <span className="pill">{Math.round(suggestion.confidence * 100)}%</span>
+                    </div>
+                    {suggestion.evidenceSnippet ? <p className="sub" style={{ marginTop: 8 }}>{suggestion.evidenceSnippet}</p> : null}
+                    {renderSuggestionEditor(suggestion)}
                   </div>
                 ))}
               </div>

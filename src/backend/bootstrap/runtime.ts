@@ -8,6 +8,7 @@ import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookin
 import { InMemoryBillingCustomersRepository } from '@/src/backend/adapters/memory/billing-customers-repository';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
 import { InMemoryBillingNotificationsRepository } from '@/src/backend/adapters/memory/billing-notifications-repository';
+import { InMemoryBusinessKnowledgeSuggestionsRepository } from '@/src/backend/adapters/memory/business-knowledge-suggestions-repository';
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
 import { InMemoryOutboundMessagesRepository } from '@/src/backend/adapters/memory/outbound-messages-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
@@ -37,6 +38,7 @@ import { SupabaseBookingsRepository } from '@/src/backend/adapters/supabase/book
 import { SupabaseBillingCustomersRepository } from '@/src/backend/adapters/supabase/billing-customers-repository';
 import { SupabaseBillingSubscriptionsRepository } from '@/src/backend/adapters/supabase/billing-subscriptions-repository';
 import { SupabaseBillingNotificationsRepository } from '@/src/backend/adapters/supabase/billing-notifications-repository';
+import { SupabaseBusinessKnowledgeSuggestionsRepository } from '@/src/backend/adapters/supabase/business-knowledge-suggestions-repository';
 import { SupabaseCallbacksRepository } from '@/src/backend/adapters/supabase/callbacks-repository';
 import { SupabaseOutboundMessagesRepository } from '@/src/backend/adapters/supabase/outbound-messages-repository';
 import { SupabaseProviderEventsRepository } from '@/src/backend/adapters/supabase/provider-events-repository';
@@ -165,6 +167,7 @@ export function createBackendRuntime() {
             billingCustomersRepository: new SupabaseBillingCustomersRepository(supabase),
             billingSubscriptionsRepository: new SupabaseBillingSubscriptionsRepository(supabase),
             billingNotificationsRepository: new SupabaseBillingNotificationsRepository(supabase),
+            businessKnowledgeSuggestionsRepository: new SupabaseBusinessKnowledgeSuggestionsRepository(supabase),
             shopAccessStatesRepository: new SupabaseShopAccessStatesRepository(supabase),
             commercialGoLiveApprovalEventsRepository: new SupabaseCommercialGoLiveApprovalEventsRepository(supabase),
             shopLocationsRepository: new SupabaseShopLocationsRepository(supabase),
@@ -194,6 +197,7 @@ export function createBackendRuntime() {
           billingCustomersRepository: new InMemoryBillingCustomersRepository(),
           billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
           billingNotificationsRepository: new InMemoryBillingNotificationsRepository(),
+          businessKnowledgeSuggestionsRepository: new InMemoryBusinessKnowledgeSuggestionsRepository(),
           shopAccessStatesRepository: new InMemoryShopAccessStatesRepository(),
           commercialGoLiveApprovalEventsRepository: new InMemoryCommercialGoLiveApprovalEventsRepository(),
           shopLocationsRepository: new InMemoryShopLocationsRepository(),
