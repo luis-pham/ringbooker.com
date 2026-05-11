@@ -1199,46 +1199,6 @@ export function UserSettingsLive({
     );
   }
 
-  function applySuggestedGroups() {
-    const examples = SERVICE_GROUP_EXAMPLES[effectiveShop.vertical ?? ''] ?? [];
-    const existing = new Set(currentForm.service_catalog.categories.map((category) => category.name.trim().toLowerCase()));
-    const toAdd = examples.filter((name) => !existing.has(name.toLowerCase()));
-    if (toAdd.length === 0) {
-      setStatus('Suggested groups are already added.');
-      return;
-    }
-    const next = ensureEditableCatalog(currentForm.service_catalog, effectiveShop.id);
-    patchServiceCatalog({
-      ...next,
-      categories: [
-        ...next.categories,
-        ...toAdd.map((name, index) => ({
-          id: clientId('service-category'),
-          shopId: effectiveShop.id,
-          name,
-          description: null,
-          sortOrder: next.categories.length + index,
-          active: true,
-        })),
-      ],
-    });
-  }
-
-  function addNotOfferedService() {
-    patchState('not_offered_services', [...currentForm.not_offered_services, '']);
-  }
-
-  function updateNotOfferedService(index: number, value: string) {
-    patchState(
-      'not_offered_services',
-      currentForm.not_offered_services.map((item, itemIndex) => (itemIndex === index ? value : item)),
-    );
-  }
-
-  function removeNotOfferedService(index: number) {
-    patchState('not_offered_services', currentForm.not_offered_services.filter((_, itemIndex) => itemIndex !== index));
-  }
-
   function updateStaff(index: number, patch: Partial<StaffMember>) {
     patchState(
       'staff',
@@ -1492,7 +1452,7 @@ export function UserSettingsLive({
       <div className="app-shell user-app-shell">
         <UserPortalSidebar active={sidebarNav} />
 
-        <main className={`main${portal === 'knowledge' ? ' knowledge-portal-main' : ''}`}>
+        <main className={`main${portal === 'knowledge' ? ' knowledge-portal-main' : ''}${portal === 'integrations' ? ' integrations-portal-main' : ''}`}>
           <UserPortalTopbar
             title={portalHead.title}
             subtitle={portalHead.subtitle}
@@ -2248,7 +2208,6 @@ export function UserSettingsLive({
                     serviceCatalogEnabled
                       ? {
                           service_catalog: currentForm.service_catalog,
-                          not_offered_services: currentForm.not_offered_services.map((service) => service.trim()).filter(Boolean),
                         }
                       : {
                           services: currentForm.services
@@ -2258,7 +2217,6 @@ export function UserSettingsLive({
                               duration_min: Number.isFinite(service.duration_min) && service.duration_min > 0 ? service.duration_min : 60,
                               price: Number.isFinite(service.price) && service.price > 0 ? service.price : 0,
                             })),
-                          not_offered_services: currentForm.not_offered_services.map((service) => service.trim()).filter(Boolean),
                         },
                   );
                 }}
@@ -2335,22 +2293,32 @@ export function UserSettingsLive({
                     </>
                   ) : (
                     <>
+                    {(() => {
+                      const editableCatalog = ensureEditableCatalog(currentForm.service_catalog, effectiveShop.id);
+                      const activeServiceCount = editableCatalog.services.filter((service) => service.active !== false && service.name.trim()).length;
+                      return (
 	                  <div className="panel-head knowledge-tab-panel-head service-catalog-heading">
 	                    <div>
 	                      <h3>Services</h3>
 	                      <p className="sub">
-	                        Group your services so the AI can answer questions naturally and ask the right follow-up questions.
+	                        {editableCatalog.categories.length} groups · {activeServiceCount} services
 	                      </p>
 	                    </div>
                     <div className="service-catalog-actions">
-                      <button type="button" className="btn" onClick={() => applySuggestedGroups()}>
-                        Add suggested groups
-                      </button>
                       <button type="button" className="btn" onClick={() => addServiceGroup()}>
-                        Add service group
+                        <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                          <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H9l2 2h7.5A2.5 2.5 0 0 1 21 8.5v1" />
+                          <path d="M12 16h8" />
+                          <path d="M16 12v8" />
+                          <path d="M3 9h10" />
+                          <path d="M3 9v8.5A2.5 2.5 0 0 0 5.5 20H12" />
+                        </svg>
+                        Add group
                       </button>
                     </div>
                   </div>
+                      );
+                    })()}
 
                   {currentForm.service_catalog.services.length === 0 ? (
                     <div className="sh-empty service-catalog-empty">
@@ -2368,9 +2336,14 @@ export function UserSettingsLive({
                         return (
 	                          <details key={category.id} className="service-group-card service-group-card--compact" open>
 	                            <summary>
-	                              <div>
+	                              <div className="service-group-summary-inner">
 	                                <strong>{category.name || 'Service group'}</strong>
-                                <span>{groupServices.length} services</span>
+                                <span className="service-group-count">
+                                  {groupServices.length} services
+                                  <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                                    <path d="m6 9 6 6 6-6" />
+                                  </svg>
+                                </span>
                               </div>
 	                            </summary>
 	                            <div className="service-group-body">
@@ -2466,8 +2439,8 @@ export function UserSettingsLive({
 	                                  ) : null}
 	                                </div>
 	                              ))}
-                              <button type="button" className="add-service-btn" onClick={() => addServiceToGroup(category.id)}>
-                                + Add service in {category.name || 'this group'}
+                              <button type="button" className="btn service-group-add-service" onClick={() => addServiceToGroup(category.id)}>
+                                + Add service
                               </button>
                             </div>
                           </details>
@@ -2479,41 +2452,6 @@ export function UserSettingsLive({
                   </div>
                     </>
                   )}
-                  <div className="option-card" style={{ marginTop: 18 }}>
-                    <div className="panel-head" style={{ alignItems: 'flex-start', marginBottom: 12 }}>
-                      <div>
-                        <h3>Services not offered</h3>
-                        <p className="sub">
-                          Add services you definitely do not offer so the AI can answer clearly when callers ask. If a service is not listed here or in your catalog, RingBooker should offer team follow-up instead of guessing.
-                        </p>
-                      </div>
-                      <button type="button" className="btn" onClick={addNotOfferedService}>
-                        Add not-offered service
-                      </button>
-                    </div>
-                    {currentForm.not_offered_services.length === 0 ? (
-                      <div className="sh-empty">Optional. Example: “acrylics” if your salon only does natural nails.</div>
-                    ) : null}
-                    <div className="service-group-list">
-                      {currentForm.not_offered_services.map((service, index) => (
-                        <div className="service-item-card" key={`not-offered-${index}`}>
-                          <div className="service-item-head">
-                            <div className="field">
-                              <label>Service not offered</label>
-                              <input
-                                value={service}
-                                onChange={(event) => updateNotOfferedService(index, event.target.value)}
-                                placeholder="Acrylic nails"
-                              />
-                            </div>
-                          </div>
-                          <button type="button" className="subtle-link" onClick={() => removeNotOfferedService(index)}>
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </div>
                 <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>

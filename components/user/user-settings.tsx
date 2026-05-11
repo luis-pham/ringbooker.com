@@ -481,9 +481,11 @@ button.subtle-link:hover{text-decoration:underline}
 .sh-active-row .small-field{margin-bottom:0}
 .sh-active-row .small-field label{font-size:10px;margin-bottom:6px}
 
-.service-catalog-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.service-catalog-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap}
 .service-catalog-heading h3{margin:0 0 6px;font-size:20px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark)}
-.service-catalog-actions{display:flex;gap:10px;flex-wrap:wrap}
+.service-catalog-actions{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
+.service-catalog-actions .btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.service-catalog-actions .btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .service-group-list{display:grid;gap:16px}
 .service-group-card{border:1px solid var(--border);border-radius:16px;background:#fff;overflow:hidden}
 .service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f5f3ee;border-bottom:1px solid var(--border)}
@@ -491,8 +493,6 @@ button.subtle-link:hover{text-decoration:underline}
 .service-group-card summary div{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .service-group-card summary strong{font-size:16px;font-weight:600;color:var(--text-dark);letter-spacing:-.02em}
 .service-group-card summary span{font-size:13px;color:var(--text-gray);font-weight:500}
-.service-group-card summary div::before{content:'+';display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:999px;border:1px solid var(--border);color:var(--text-gray);font-size:16px;font-weight:600;line-height:1}
-.service-group-card[open] summary div::before{content:'−'}
 .service-group-card summary div strong{margin-right:auto}
 .service-group-body{display:grid;gap:0;padding:28px 24px 20px}
 .service-group-card--compact{
@@ -506,6 +506,7 @@ button.subtle-link:hover{text-decoration:underline}
   border-bottom:1px solid #e7e2d8;
 }
 .service-group-card--compact summary div{gap:12px}
+.service-group-summary-inner{width:100%}
 .service-group-card--compact summary strong{
   font-size:15px;
   font-weight:600;
@@ -519,14 +520,9 @@ button.subtle-link:hover{text-decoration:underline}
   line-height:1.25;
   color:#3f3f46;
 }
-.service-group-card--compact summary div::before{
-  width:20px;
-  height:20px;
-  font-size:14px;
-  border-color:#cfc9bd;
-  color:#52525b;
-  background:#fff;
-}
+.service-group-count{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}
+.service-group-count svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:transform .16s ease}
+.service-group-card[open] .service-group-count svg{transform:rotate(180deg)}
 .service-group-card--compact .service-group-body{
   padding:26px 24px 20px;
   background:#fff;
@@ -545,7 +541,7 @@ button.subtle-link:hover{text-decoration:underline}
 .service-edit-icon:hover{background:#f3f4f6;color:var(--text-dark)}
 .service-edit-icon svg{stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .service-inline-editor{display:grid;gap:14px;margin:8px 0 18px;padding:16px;border:1px solid var(--border);border-radius:16px;background:#fff}
-.service-group-card .add-service-btn{width:260px;max-width:100%;margin-top:16px}
+.service-group-card .service-group-add-service{margin-top:16px}
 .inline-check{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--text-dark)}
 .inline-check input{width:16px;height:16px}
 .service-catalog-note{font-size:13px;line-height:1.55;color:var(--text-gray);padding:12px 14px;background:#f9fafb;border:1px solid var(--border);border-radius:12px}
@@ -754,6 +750,11 @@ html[data-user-theme="dark"] .upgrade-panel{
   .option-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:860px){
+  .integrations-portal-main .topbar{
+    margin:0 -18px 10px;
+    padding:8px 18px 6px;
+    min-height:auto;
+  }
   .settings-business-profile-layout{grid-template-columns:1fr}
   .settings-business-profile-helper{display:none}
   .grid-3,.grid-4,.grid-5,.option-grid,.calendar-int-grid,.services-grid,.service-controls{grid-template-columns:1fr}

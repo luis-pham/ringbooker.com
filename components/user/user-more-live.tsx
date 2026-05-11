@@ -16,8 +16,9 @@ const userMoreStyles = [
   String.raw`
 @media (max-width:860px){
   .more-page .topbar{
-    margin:0 -18px 14px;
-    padding:10px 18px 8px;
+    margin:0 -18px 10px;
+    padding:8px 18px 6px;
+    min-height:auto;
   }
 }
 `,
