@@ -577,6 +577,11 @@ button.subtle-link:hover{text-decoration:underline}
     max-width:100%;
     box-sizing:border-box;
   }
+  .integrations-main-frame{
+    width:60%;
+    max-width:100%;
+    box-sizing:border-box;
+  }
 }
 
 .plan-chip{display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:#f5f3ff;color:var(--purple-dark);font-size:11px;font-weight:500}

@@ -89,7 +89,7 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
 
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load bookings: {error}</div> : null}
 
-          <section className="grid grid-3">
+          <section className="grid grid-3 bookings-stats">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">Total</span></div><div className="stat-value">{metrics.total}</div><div className="stat-meta">Appointments returned by the live bookings API</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.5-4.5A8 8 0 1 1 21 12Z" /></svg></div><span className="tag orange">Pending</span></div><div className="stat-value">{metrics.pending}</div><div className="stat-meta">Appointments still waiting for confirmation</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M7 15l3-3 3 2 4-5" /></svg></div><span className="tag green">Confirmed</span></div><div className="stat-value">{metrics.confirmed}</div><div className="stat-meta">Requests or bookings marked confirmed</div></div>

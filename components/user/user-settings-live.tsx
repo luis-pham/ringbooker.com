@@ -1585,7 +1585,7 @@ export function UserSettingsLive({
 
           <div className="section-stack">
             {activeTab === 'integrations' ? (
-            <section className="card">
+            <section className="card integrations-main-frame">
               <div className="panel-head">
                 <div>
                   <h3>Integrations</h3>

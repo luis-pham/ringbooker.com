@@ -1,7 +1,15 @@
 import { UserLayout } from '@/components/user/user-layout';
 import { userDashboardStyles } from '@/components/user/user-dashboard';
 
-const styles: string[] = [...userDashboardStyles];
+const styles: string[] = [
+  ...userDashboardStyles,
+  String.raw`
+.bookings-stats .stat-card{border-radius:22px}
+@media (max-width:860px){
+  .bookings-stats .stat-card{border-radius:16px}
+}
+`,
+];
 
 const scripts: string[] = [];
 
@@ -29,7 +37,7 @@ export function UserBookingsTemplate() {
             <div className="page-title"><h1>Bookings and calendar flow.</h1><p>See appointment requests and bookings RingBooker has captured or created.</p></div>
             <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
           </div>
-          <section className="grid grid-3">
+          <section className="grid grid-3 bookings-stats">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">This week</span></div><div className="stat-value">42</div><div className="stat-meta">Upcoming bookings</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.5-4.5A8 8 0 1 1 21 12Z" /></svg></div><span className="tag orange">Needs attention</span></div><div className="stat-value">8</div><div className="stat-meta">Pending confirmations</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M7 15l3-3 3 2 4-5" /></svg></div><span className="tag green">Recovered</span></div><div className="stat-value">11</div><div className="stat-meta">Bookings from missed-call text back</div></div>
