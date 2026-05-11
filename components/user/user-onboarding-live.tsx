@@ -870,6 +870,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [selectedServiceGroups, setSelectedServiceGroups] = useState<string[]>(
     [...new Set(initialServices.map((service) => service.group?.trim()).filter((group): group is string => Boolean(group)))],
   );
+  const [collapsedServiceGroups, setCollapsedServiceGroups] = useState<string[]>([]);
   const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(initialData?.ok ? initialData.serviceCatalogEnabled === true : false);
   const [importSource, setImportSource] = useState<ImportSource>(
     initialShop?.website_url?.trim()
@@ -1406,6 +1407,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     );
   }
 
+  function toggleServiceGroupCollapsed(group: string) {
+    setCollapsedServiceGroups((current) =>
+      current.includes(group) ? current.filter((item) => item !== group) : [...current, group],
+    );
+  }
+
   function setServiceRow(index: number, value: ServiceItem) {
     setServices(services.map((item, itemIndex) => (itemIndex === index ? value : item)));
   }
@@ -1498,6 +1505,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .service-group-card{border:1px solid #e2e8f0;border-radius:14px;background:#fff;margin-top:14px;overflow:hidden}
 .service-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important;border-bottom:1px solid #e2e8f0}
 .service-group-kicker{display:block;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.service-group-title{margin:2px 0 0;color:#111827;font-size:16px;font-weight:800}
+.service-group-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.service-collapse-btn{width:30px;height:30px;border-radius:999px;border:1px solid #d9deea;background:#fff;color:#5b21b6;font-size:18px;font-weight:800;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:none}.service-collapse-btn:hover{background:#faf5ff;border-color:#7c3aed}
 .service-group-body{display:grid;gap:10px;padding:14px}
 .service-item-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(100px,.65fr) minmax(100px,.65fr);gap:10px;align-items:center}
 .service-item-row input{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;color:#111827;box-sizing:border-box;width:100%}
@@ -2059,27 +2067,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           )}
         </div>
 
-        {websiteImportAttempted && selectedServiceGroups.length > 0 ? (
-          <div style={{ marginTop: 18 }}>
-            <p className="onb-section-title">Also offers</p>
-            <p className="onb-help" style={{ marginTop: 4 }}>
-              Review what RingBooker detected. Add or remove anything before continuing.
-            </p>
-            <div className="preset-row" style={{ marginTop: 10 }}>
-              {MIXED_SERVICE_GROUPS.map((group) => (
-                <button
-                  key={group}
-                  type="button"
-                  className={`preset-chip mixed-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
-                  onClick={() => toggleServiceGroup(group)}
-                >
-                  <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[group]}</span>
-                  {group}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
         <div className="onb-note" style={{ marginTop: 18, marginBottom: 24 }}>
           <span>ⓘ</span>
           <span>Hours and contact are what callers ask most. Fix them now for the best test.</span>
@@ -2217,18 +2204,31 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             ))}
           </div>
         </div>
-        {groupedServices.map(({ group, items }) => (
+        {groupedServices.map(({ group, items }) => {
+          const collapsed = collapsedServiceGroups.includes(group);
+          return (
           <div className="service-group-card" key={group}>
             <div className="service-group-head">
               <div>
                 <span className="service-group-kicker">Service group</span>
                 <h3 className="service-group-title">{group}</h3>
               </div>
-              <button className="onb-help-link" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group }])}>
-                + Add service
-              </button>
+              <div className="service-group-actions">
+                <button
+                  className="service-collapse-btn"
+                  type="button"
+                  onClick={() => toggleServiceGroupCollapsed(group)}
+                  aria-expanded={!collapsed}
+                  aria-label={`${collapsed ? 'Show' : 'Hide'} services in ${group}`}
+                >
+                  {collapsed ? '+' : '-'}
+                </button>
+                <button className="onb-help-link" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group }])}>
+                  + Add service
+                </button>
+              </div>
             </div>
-            <div className="service-group-body">
+            {!collapsed ? <div className="service-group-body">
               {items.length === 0 ? (
                 <div className="service-empty">No services in this group yet. Add one callers usually ask about.</div>
               ) : null}
@@ -2262,9 +2262,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                   </div>
                 </div>
               ))}
-            </div>
+            </div> : null}
           </div>
-        ))}
+          );
+        })}
         <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group: groupNames[0] ?? 'General Services' }])}>
           + Add service
         </button>
