@@ -63,6 +63,17 @@ test('oversized response is rejected before extraction', async () => {
   assert.equal(result.suggestions.status, 'failed');
 });
 
+test('default response-size cap accepts large Wix-style pages under configured limit', async () => {
+  const largeWixLikePage = '<html><head><title>Large Wix Salon</title></head><body><h1>Large Wix Salon</h1><p>Call (555) 444-5555</p></body></html>'.padEnd(900_000, ' ');
+  const result = await importWebsiteForOnboarding({ url: 'https://large-wix.test' }, {
+    lookup,
+    fetcher: async (url) => response(url.endsWith('/robots.txt') || url.endsWith('.xml') ? '' : largeWixLikePage, url, url.endsWith('.xml') ? 'application/xml' : 'text/html'),
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.suggestions.businessProfile.name.value, 'Large Wix Salon');
+  assert.equal(result.suggestions.businessProfile.phone.value, '(555) 444-5555');
+});
+
 test('Google Places unavailable does not fail static import', async () => {
   const result = await importWebsiteForOnboarding({ url: 'https://demo.test' }, {
     lookup,

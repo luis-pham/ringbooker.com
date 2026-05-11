@@ -48,6 +48,7 @@ function createValidatedEnv() {
       WEBSITE_IMPORT_LLM_MAX_TOKENS: optionalPositiveIntEnv,
       WEBSITE_IMPORT_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).default(86_400),
       WEBSITE_IMPORT_CACHE_MAX_ENTRIES: z.coerce.number().int().min(1).default(500),
+      WEBSITE_IMPORT_MAX_BYTES: z.coerce.number().int().min(100_000).max(5_000_000).default(1_500_000),
       AGENT_RUNTIME_MODE: z.enum(['mock', 'livekit_gemini', 'livekit_native_gemini', 'livekit_openai', 'livekit_native_openai']).default('mock'),
       AGENT_TRANSPORT: z.enum(['mock', 'livekit']).default('mock'),
       AGENT_VOICE_PROVIDER: z.enum(['none', 'gemini_live', 'openai_realtime']).default('none'),

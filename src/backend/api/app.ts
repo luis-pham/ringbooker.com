@@ -4364,6 +4364,7 @@ export function createBackendApp(deps: {
         cacheEnabled: true,
         cacheTtlSeconds: env.WEBSITE_IMPORT_CACHE_TTL_SECONDS,
         cacheMaxEntries: env.WEBSITE_IMPORT_CACHE_MAX_ENTRIES,
+        maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
       });
       if (result.diagnostics.warnings.length > 0) {
         logger.info({ shopId: shop.id, warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])], selectedPageCount: result.diagnostics.selectedPages.length }, 'website_import_completed_with_warnings');

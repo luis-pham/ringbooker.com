@@ -1,6 +1,6 @@
 import type { WebsiteImportResult } from './types';
 
-const IMPORTER_VERSION = 'website-import-p2-v1';
+const IMPORTER_VERSION = 'website-import-p2-v2';
 type CacheEntry = { expiresAt: number; result: WebsiteImportResult };
 const memoryCache = new Map<string, CacheEntry>();
 export const DEFAULT_WEBSITE_IMPORT_CACHE_MAX_ENTRIES = 500;

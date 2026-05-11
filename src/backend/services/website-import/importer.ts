@@ -28,6 +28,8 @@ type ImportOptions = {
   cacheMaxEntries?: number;
 };
 
+export const DEFAULT_WEBSITE_IMPORT_MAX_BYTES = 1_500_000;
+
 async function readResponseTextWithLimit(response: Response, maxBytes: number): Promise<string> {
   if (!response.body) {
     throw new Error('response_body_unavailable');
@@ -74,7 +76,7 @@ async function fetchText(url: string, opts: ImportOptions): Promise<{ url: strin
       if (!response.ok) return null;
       const contentType = response.headers.get('content-type') ?? '';
       if (!/html|xml|text|markdown/i.test(contentType) && contentType) return null;
-      const raw = await readResponseTextWithLimit(response, opts.maxBytes ?? 750_000);
+      const raw = await readResponseTextWithLimit(response, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
       return { url: finalUrl, text: raw };
     }
     return null;
@@ -145,6 +147,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     llmModel: opts.llmModel,
     llmMaxTokens: opts.llmMaxTokens,
     googlePlacesEnabled: Boolean(opts.googlePlacesApiKey),
+    configVersion: `max-bytes:${opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES}`,
   });
   if (opts.cacheEnabled) {
     const cached = getWebsiteImportCache(cacheKey);

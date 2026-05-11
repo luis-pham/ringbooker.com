@@ -493,6 +493,16 @@ export function importReviewBadgeState(field?: { value?: unknown; confidence?: n
   };
 }
 
+function profileReviewCardState(
+  field?: { value?: unknown; confidence?: number; source?: string | null } | null,
+): 'verified' | 'needs-review' | 'missing' | 'review' {
+  const { label } = importReviewBadgeState(field);
+  if (label === 'AI verified') return 'verified';
+  if (label === 'Missing') return 'missing';
+  if (label === 'Needs review') return 'needs-review';
+  return 'review';
+}
+
 function importFieldState(field?: { value?: unknown; confidence?: number; source?: string | null } | null): ReactNode {
   const { label, source } = importReviewBadgeState(field);
   const verified = label === 'AI verified';
@@ -1461,7 +1471,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-import-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:#ecfdf5;color:#166534;padding:5px 12px;font-size:13px;font-weight:700;margin:18px 0 16px}
 .profile-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .profile-review-card{border:1px solid #d9deea;border-radius:12px;background:#fff;padding:14px 16px;min-height:78px}
-.profile-review-card.verified{border-color:#86efac}.profile-review-card.wide{grid-column:1 / -1}
+.profile-review-card.verified{border-color:#86efac}.profile-review-card.needs-review,.profile-review-card.missing{border-color:#fdba74;background:#fff7ed}.profile-review-card.wide{grid-column:1 / -1}
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#2563eb;padding:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.profile-review-edit:hover{text-decoration:underline;text-underline-offset:2px}
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
@@ -1605,7 +1615,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
     return (
       <div>
-        <h1 className="onb-title">Let AI set up your profile</h1>
+        <h1 className="onb-title">Let's set up your business profile</h1>
         <p className="onb-subtitle">
           Paste your website or Google Maps link. RingBooker will try to suggest business details for you to review.
         </p>
@@ -1788,8 +1798,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       const editing = profileEditField === field;
       const hasUserValue = value.trim().length > 0;
       const showImportState = websiteImportAttempted && options.imported && (!userEditedProfileFields.includes(field) || !hasUserValue);
+      const cardState = showImportState ? profileReviewCardState(options.imported) : '';
       return (
-        <div className={`profile-review-card ${options.wide ? 'wide' : ''} ${websiteImportAttempted ? 'verified' : ''}`}>
+        <div className={`profile-review-card ${options.wide ? 'wide' : ''} ${cardState}`}>
           <div className="profile-review-top">
             <span className="profile-review-label">{label}</span>
             <button type="button" className="profile-review-edit" onClick={() => setProfileEditField(editing ? null : field)}>
