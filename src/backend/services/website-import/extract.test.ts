@@ -152,6 +152,9 @@ test('normal website can use Google Places name only when match is corroborated'
   });
   assert.equal(suggestions.businessProfile.name.value, 'enV salon');
   assert.equal(suggestions.businessProfile.name.source, 'Google Places');
+  assert.equal(suggestions.businessProfile.primaryType.value, 'hair_salon');
+  assert.equal(suggestions.businessProfile.primaryType.source, 'Google Places');
+  assert.equal(suggestions.businessProfile.timezone.value, 'America/New_York');
 });
 
 test('extracts RAW Hair style footer hours, address, and JSON-LD organization name', () => {

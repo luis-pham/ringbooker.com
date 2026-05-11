@@ -692,6 +692,12 @@ function defaultHours(): WizardHours {
   };
 }
 
+function emptyHours(): WizardHours {
+  return Object.fromEntries(
+    DAYS.map(([day]) => [day, { open: false, from: '09:00', to: '18:00' }]),
+  ) as WizardHours;
+}
+
 function presetWeekendClosed(h: WizardHours): WizardHours {
   return {
     ...h,
@@ -832,6 +838,7 @@ function formatTimeLabel(value: string): string {
 }
 
 function summarizeHours(hours: WizardHours): string {
+  if (DAYS.every(([day]) => !hours[day].open)) return 'Not set';
   const parts = DAYS.map(([day, label]) => {
     const row = hours[day];
     if (!row.open) return `${label}: Closed`;
@@ -1159,11 +1166,18 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             setStatus(importResultText);
             const importedServices = servicesFromImport(suggestions);
             setServicesFound(importedServices.length);
-            if (suggestions.businessProfile.name?.value && !userEditedProfileFields.includes('name')) setBusinessName(suggestions.businessProfile.name.value);
-            if (suggestions.businessProfile.phone?.value && !userEditedProfileFields.includes('phone')) setBusinessPhone(formatPhoneForDisplay(suggestions.businessProfile.phone.value));
-            if (suggestions.businessProfile.address?.value && !userEditedProfileFields.includes('address')) setAddress(suggestions.businessProfile.address.value);
-            if (suggestions.businessProfile.timezone?.value && !userEditedProfileFields.includes('timezone')) setTimezone(suggestions.businessProfile.timezone.value);
-            if (suggestions.hours?.value) setHours(apiHoursToWizard(suggestions.hours.value));
+            if (!userEditedProfileFields.includes('name')) setBusinessName(suggestions.businessProfile.name?.value ?? '');
+            if (!userEditedProfileFields.includes('phone')) {
+              setBusinessPhone(suggestions.businessProfile.phone?.value ? formatPhoneForDisplay(suggestions.businessProfile.phone.value) : '');
+              setBusinessPhoneNeedsRealEntry(false);
+            }
+            if (!userEditedProfileFields.includes('address')) setAddress(suggestions.businessProfile.address?.value ?? '');
+            if (!userEditedProfileFields.includes('timezone')) {
+              const importedTimezone = suggestions.businessProfile.timezone?.value ?? '';
+              setTimezone(importedTimezone);
+              setSelectedCountry(importedTimezone ? findCountryForTimezone(importedTimezone)?.country ?? '' : '');
+            }
+            if (!userEditedProfileFields.includes('hours')) setHours(suggestions.hours?.value ? apiHoursToWizard(suggestions.hours.value) : emptyHours());
             const importedVertical = importedVerticalToApp(suggestions.businessProfile.primaryType?.value);
             if (importedVertical && !userEditedProfileFields.includes('type')) {
               nextVertical = importedVertical;

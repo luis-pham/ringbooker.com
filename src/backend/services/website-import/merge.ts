@@ -63,7 +63,7 @@ function hoursDayCount(value?: WeeklyHours | null): number {
 function inferTimezoneFromAddress(address?: string | null): string | null {
   if (!address) return null;
   if (/\b(california|ca|los angeles|san francisco|san diego|san jose|sacramento|washington|oregon|nevada|seattle|portland|las vegas)\b/i.test(address)) return 'America/Los_Angeles';
-  if (/\b(new york|ny|new jersey|nj|florida|fl|massachusetts|ma|pennsylvania|pa|washington dc|district of columbia|boston|miami|orlando|philadelphia)\b/i.test(address)) return 'America/New_York';
+  if (/\b(new york|ny|new jersey|nj|florida|fl|massachusetts|ma|pennsylvania|pa|ohio|oh|washington dc|district of columbia|boston|miami|orlando|philadelphia|cleveland|columbus)\b/i.test(address)) return 'America/New_York';
   if (/\b(texas|tx|illinois|il|chicago|dallas|houston|austin|minnesota|mn|wisconsin|wi)\b/i.test(address)) return 'America/Chicago';
   if (/\b(colorado|co|denver|utah|ut|arizona|az|phoenix|new mexico|nm)\b/i.test(address)) return 'America/Denver';
   return null;
@@ -171,7 +171,7 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   const website = choose(placesField(trustedPlaces?.website, placeConfidence ? 0.94 : 0), input.staticFacts.website, maybeLlm(llm?.businessProfile?.website));
   const primaryType = isGoogleMapsImport
     ? choose(placesField(trustedPlaces?.primaryType, placeConfidence ? 0.78 : 0), input.staticFacts.primaryType, maybeLlm(llm?.businessProfile?.primaryType))
-    : choose(input.staticFacts.primaryType, maybeLlm(llm?.businessProfile?.primaryType));
+    : choose(input.staticFacts.primaryType, maybeLlm(llm?.businessProfile?.primaryType), placesIdentityAllowedForWebsite ? placesField(trustedPlaces?.primaryType, placeConfidence ? 0.72 : 0) : null);
   const bookingUrl = choose(input.staticFacts.bookingUrl, maybeLlm(llm?.bookingUrl));
   const categories = serviceGroups(services, llm);
   const staffSuggestions = dedupeSuggestions([...(input.staticFacts.staffSuggestions ?? []), ...(llm?.staffSuggestions ?? [])], (item) => item.name, 25);

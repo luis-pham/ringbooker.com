@@ -261,7 +261,7 @@ export function inferTimezoneFromAddress(address?: string | null): ImportField<s
   if (!address) return null;
   const mappings: Array<{ timezone: string; pattern: RegExp }> = [
     { timezone: 'America/Los_Angeles', pattern: /\b(california|ca|los angeles|san francisco|san diego|san jose|sacramento|washington|oregon|nevada|seattle|portland|las vegas)\b/i },
-    { timezone: 'America/New_York', pattern: /\b(new york|ny|new jersey|nj|florida|fl|massachusetts|ma|pennsylvania|pa|washington dc|district of columbia|boston|miami|orlando|philadelphia)\b/i },
+    { timezone: 'America/New_York', pattern: /\b(new york|ny|new jersey|nj|florida|fl|massachusetts|ma|pennsylvania|pa|ohio|oh|washington dc|district of columbia|boston|miami|orlando|philadelphia|cleveland|columbus)\b/i },
     { timezone: 'America/Chicago', pattern: /\b(texas|tx|illinois|il|chicago|dallas|houston|austin|minnesota|mn|wisconsin|wi)\b/i },
     { timezone: 'America/Denver', pattern: /\b(colorado|co|denver|utah|ut|arizona|az|phoenix|new mexico|nm)\b/i },
   ];
