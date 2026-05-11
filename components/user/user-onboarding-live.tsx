@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
@@ -1300,18 +1300,18 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     () => [
       ...userSettingsStyles,
       String.raw`
-.onb-shell{max-width:1120px;margin:0 auto;padding:18px;padding-bottom:110px;box-sizing:border-box}
+.onb-shell{max-width:1120px;margin:0 auto;padding:0;padding-bottom:110px;box-sizing:border-box}
 .onb-card{background:transparent;border:none;box-shadow:none;border-radius:0;padding:32px;max-width:816px;margin:0 auto;width:100%}
 .onb-card.wide{max-width:864px}
-.onb-progress{display:flex;align-items:center;gap:16px;margin-bottom:32px}
+.onb-progress{display:flex;align-items:center;gap:14px;margin-bottom:32px}
 .onb-back-inline{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;background:#000;color:#fff;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0}.onb-back-inline:hover{background:#1a1a1a}.onb-back-inline.hidden{visibility:hidden}
-.onb-progress-divider{width:1px;height:24px;background:#e2e8f0;flex-shrink:0}
-.onb-progress-main{display:flex;justify-content:flex-end;flex:1;min-width:0}
-.onb-progress-pills{display:flex;justify-content:flex-end;gap:8px;flex-wrap:nowrap;flex-shrink:0;min-width:0;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
-.onb-progress-pill{display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid #d9deea;border-radius:999px;padding:6px 14px;color:#64748b;background:#fff;font-size:13px;font-weight:800;white-space:nowrap;flex-shrink:0;min-width:auto;box-shadow:none}
-.onb-progress-pill.done{background:transparent;border-color:#8b5cf6;color:#5b21b6;box-shadow:none}
-.onb-progress-pill.current{background:#6d28d9;border-color:#6d28d9;color:#fff;box-shadow:none}
-.onb-progress-mark{width:auto;min-width:1em;height:auto;border-radius:0;display:inline-flex;align-items:center;justify-content:center;background:transparent!important;color:inherit;box-shadow:none!important;border:0;font-size:13px;line-height:1}
+.onb-progress-divider{display:none}
+.onb-progress-main{display:flex;justify-content:center;flex:1;min-width:0}
+.onb-progress-track{display:grid;grid-template-columns:44px minmax(48px,1fr) 44px minmax(48px,1fr) 44px minmax(48px,1fr) 44px;align-items:center;gap:10px;width:100%;max-width:760px}
+.onb-progress-node{width:34px;height:34px;border-radius:999px;border:2px solid #d9deea;background:#fff;color:#475569;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:none}
+.onb-progress-node.done{border-color:#3f7d2f;background:#eef7e8;color:#235f1f}
+.onb-progress-node.current{border-color:#3b82f6;background:#dbeafe;color:#1d4ed8}
+.onb-progress-line{height:2px;background:#d9deea;border-radius:999px}.onb-progress-line.done{background:#3f7d2f}.onb-progress-line.current{background:#3b82f6}
 .onb-title{margin:0;color:#020617;font-size:1.5rem;line-height:1.3;letter-spacing:-.02em;font-weight:500}
 .onb-subtitle{margin:8px 0 10px;color:var(--text-gray);font-size:14px;line-height:1.6;max-width:760px;font-weight:400}
 .onb-section-title{display:block;margin:0 0 8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
@@ -1327,10 +1327,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-field input:focus,.onb-field select:focus,.onb-field textarea:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-help-link{border:0;background:transparent;padding:8px 0;cursor:pointer;text-decoration:none;font-family:inherit;font-weight:400;line-height:1.5;text-align:inherit;transition:color .15s ease}.onb-help-link:hover{color:#334155;text-decoration:underline;text-underline-offset:2px}
 .onb-import-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px}
-.onb-import-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+.onb-import-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
 .onb-import-panel .onb-field{margin-bottom:0}.onb-import-panel .onb-help{margin-top:8px}
-.onb-import-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#111827;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap}
-.onb-import-button:hover:not(:disabled){border-color:#7c3aed;color:#5b21b6;background:#faf5ff}.onb-import-button:disabled{opacity:.6;cursor:not-allowed}
+.onb-import-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid #000;border-radius:8px;background:#000;color:#fff;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 8px 18px rgba(0,0,0,.18)}
+.onb-import-button:hover:not(:disabled){border-color:#1f1f1f;color:#fff;background:#1f1f1f;box-shadow:0 12px 24px rgba(0,0,0,.24)}.onb-import-button:disabled{opacity:.6;cursor:not-allowed}
 .onb-manual-toggle-row{text-align:center;margin:-4px 0 2px}.onb-manual-toggle-row .onb-help-link{padding:0;color:#111827;text-decoration:underline;text-underline-offset:3px}
 .onb-manual-panel{border-top:1px solid #e2e8f0;padding-top:18px}
 .onb-compact-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -1373,7 +1373,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress-pills{justify-content:flex-start}.onb-progress-pill span:not(.onb-progress-mark){display:none}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row,.service-item-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions:not(.onb-actions-desktop){display:none}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row,.service-item-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions:not(.onb-actions-desktop){display:none}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -1609,15 +1609,17 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           ) : null}
         </div>
         {websiteLoading && importProgress ? <p className="onb-help">{importProgress}</p> : null}
-        <div className="onb-actions onb-actions-desktop">
-          <span />
-          <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Importing…' : manualEntryOpen ? 'Next →' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import and continue' : 'Next →'}
-          </button>
-        </div>
+        {manualEntryOpen ? (
+          <div className="onb-actions onb-actions-desktop">
+            <span />
+            <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
+              Next →
+            </button>
+          </div>
+        ) : null}
         <div className="onb-sticky-cta">
           <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Importing…' : manualEntryOpen ? 'Next →' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import and continue' : 'Next →'}
+            {websiteLoading ? 'Importing…' : manualEntryOpen ? 'Next →' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import' : 'Next →'}
           </button>
           <button
             className="onb-btn-secondary"
@@ -2187,14 +2189,21 @@ function Progress({
       >
         ← <span className="onb-back-text">Back</span>
       </button>
-      <div className="onb-progress-divider" />
       <div className="onb-progress-main">
-        <div className="onb-progress-pills" aria-label={`Step ${currentStep} of 4`}>
+        <div className="onb-progress-track" aria-label={`Step ${currentStep} of 4`}>
           {[1, 2, 3, 4].map((step) => (
-            <span key={step} className={`onb-progress-pill ${step < currentStep ? 'done' : ''} ${step === currentStep ? 'current' : ''}`}>
-              <span className="onb-progress-mark">{step < currentStep ? '✓' : step === currentStep ? '●' : '○'}</span>
-              <span>{STEP_LABELS[step - 1]}</span>
-            </span>
+            <Fragment key={step}>
+              <span
+                className={`onb-progress-node ${step < currentStep ? 'done' : ''} ${step === currentStep ? 'current' : ''}`}
+                aria-current={step === currentStep ? 'step' : undefined}
+                title={STEP_LABELS[step - 1]}
+              >
+                {step}
+              </span>
+              {step < 4 ? (
+                <span className={`onb-progress-line ${step < currentStep ? 'done' : ''} ${step === currentStep ? 'current' : ''}`} />
+              ) : null}
+            </Fragment>
           ))}
         </div>
       </div>

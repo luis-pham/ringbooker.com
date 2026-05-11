@@ -127,11 +127,19 @@ a{text-decoration:none;color:inherit}
 .hiw-list{list-style:none;display:grid;gap:10px;margin-top:16px}
 .hiw-list li{display:flex;gap:10px;font-size:var(--mk-body);color:#374151;line-height:1.55}
 .hiw-list li::before{content:"✓";width:20px;height:20px;color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;background:transparent;border:none;box-shadow:none}
-/* 3-step flow — match hub .step cards (works-with / trust step_track, no circular badge) */
-.hiw-grid-3.hiw-flow{gap:24px}
+/* 3-step flow — hub-style cards: fixed column width (shorter lines), taller min-height */
+.hiw-grid-3.hiw-flow{
+  gap:24px;
+  grid-template-columns:repeat(3,minmax(0,248px));
+  justify-content:center;
+}
 .hiw-grid-3.hiw-flow .hiw-step{
   position:relative;
-  padding:24px;
+  display:flex;
+  flex-direction:column;
+  box-sizing:border-box;
+  min-height:13.2rem;
+  padding:29px 22px 31px;
   background:#fff;
   border:1px solid var(--border);
   border-radius:var(--r-lg);
@@ -154,7 +162,7 @@ a{text-decoration:none;color:inherit}
 .hiw-grid-3.hiw-flow .hiw-step p{
   font-size:13px;
   color:var(--mk-text-muted,#4B5563);
-  line-height:1.5;
+  line-height:1.58;
   margin:0;
   text-align:left;
 }
@@ -273,6 +281,12 @@ a{text-decoration:none;color:inherit}
 @media(max-width:960px){
   .hiw-hero,.hiw-section{padding-left:22px;padding-right:22px}
   .hiw-hero-grid,.hiw-grid-2,.hiw-grid-3,.hiw-handle-grid,.hiw-no-replace,.hiw-experience,.hiw-cta-box{grid-template-columns:1fr}
+  .hiw-grid-3.hiw-flow .hiw-step{
+    max-width:400px;
+    width:100%;
+    margin-left:auto;
+    margin-right:auto;
+  }
   .hiw-hero{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:52px}
   .hiw-summary{padding:22px}
   .hiw-no-replace,.hiw-cta-box{padding:28px}
@@ -300,7 +314,12 @@ a{text-decoration:none;color:inherit}
     overscroll-behavior-x:contain;
     -webkit-overflow-scrolling:touch;
   }
-  .hiw-grid-3.hiw-flow .hiw-step{flex:0 0 auto;min-width:84%;scroll-snap-align:center}
+  .hiw-grid-3.hiw-flow .hiw-step{
+    flex:0 0 auto;
+    min-width:78%;
+    max-width:min(340px,92vw);
+    scroll-snap-align:center;
+  }
   .hiw-no-replace,.hiw-cta-box{padding:24px 20px}
 }
 `,

@@ -862,12 +862,19 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .tool-arrow{position:absolute;top:20px;right:20px;color:var(--purple);font-size:16px;opacity:0;transition:opacity .2s}
 .html-hub-page .tool-card:hover .tool-arrow{opacity:1}
 
-.html-hub-page .steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:24px;counter-reset:step}
+/* Step cards: narrower columns, taller min-height (~+20% vertical rhythm vs flat 24px padding) */
+.html-hub-page .steps{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,min(248px,100%)));
+  justify-content:center;
+  gap:24px;
+  counter-reset:step;
+}
 /* Four steps — centered block (works-with Getting Started) */
 .html-hub-page .steps.steps--centered-4{
-  grid-template-columns:repeat(4,minmax(0,240px));
+  grid-template-columns:repeat(4,minmax(0,200px));
   justify-content:center;
-  max-width:1100px;
+  max-width:920px;
   margin-left:auto;
   margin-right:auto;
 }
@@ -883,7 +890,17 @@ export const HTML_HUB_SCOPED_CSS = `
     max-width:100%;
   }
 }
-.html-hub-page .step{position:relative;padding:24px;background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg)}
+.html-hub-page .step{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  min-height:13.2rem;
+  padding:29px 22px 31px;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:var(--radius-lg);
+  box-sizing:border-box;
+}
 .html-hub-page .step::before{counter-increment:step;content:counter(step);position:absolute;top:-14px;left:20px;background:var(--purple);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
 /* Center step number badge on top of each card (works-with Getting Started, trust rollout, etc.) */
 .html-hub-page .steps.steps--centered-4 .step::before{
@@ -895,7 +912,9 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .steps.steps--no-numbers .step::before{display:none;content:none}
 .html-hub-page .steps.steps--no-numbers .step h4{padding-top:0}
 .html-hub-page .step h4{font-size:15px;font-weight:700;margin-bottom:8px;padding-top:8px;color:var(--navy)}
-.html-hub-page .step p{font-size:13px;color:var(--gray-600);line-height:1.5}
+.html-hub-page .step h4:last-child{margin-bottom:0}
+.html-hub-page .step p{font-size:13px;color:var(--gray-600);line-height:1.5;margin-top:0}
+.html-hub-page .step p:last-child{margin-bottom:0}
 .html-hub-page .step-track-mobile-nav{display:none}
 .html-hub-page .step-track-mobile-nav-btn{
   display:inline-flex;align-items:center;justify-content:center;
@@ -929,7 +948,8 @@ export const HTML_HUB_SCOPED_CSS = `
     overscroll-behavior-x:contain;
   }
   .html-hub-page .step{
-    min-width:84%;
+    min-width:78%;
+    max-width:min(340px,92vw);
     scroll-snap-align:center;
   }
 }
