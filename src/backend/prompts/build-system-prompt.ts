@@ -97,7 +97,7 @@ function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
           category: category?.name ?? 'General Services',
           price: service.priceAmount,
           priceType: service.priceType,
-          duration: service.durationMinutes ? `${service.durationMinutes} min` : null,
+          duration: service.durationText || (service.durationMinutes ? `${service.durationMinutes} min` : null),
           notes: [
             service.bookingNotes ?? service.description ?? null,
             service.aliases.length ? `Customers may call this: ${service.aliases.join(', ')}` : null,

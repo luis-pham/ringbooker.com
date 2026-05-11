@@ -83,6 +83,7 @@ type ShopServiceRow = {
   category_id: string | null;
   name: string;
   description: string | null;
+  duration_text?: string | null;
   duration_minutes: number | null;
   price_amount: number | string | null;
   price_currency: string | null;
@@ -155,6 +156,7 @@ function toShopService(row: ShopServiceRow): ShopService {
     categoryId: row.category_id,
     name: row.name,
     description: row.description,
+    durationText: row.duration_text ?? null,
     durationMinutes: row.duration_minutes,
     priceAmount: Number.isFinite(priceAmount) ? priceAmount : null,
     priceCurrency: row.price_currency ?? 'USD',
@@ -761,7 +763,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
       this.supabase
         .from('shop_services')
         .select(
-          'id,shop_id,category_id,name,description,duration_minutes,price_amount,price_currency,price_type,bookable,active,sort_order,aliases,booking_notes,external_provider,external_service_id,external_location_id,external_staff_required,external_metadata,created_at,updated_at',
+          'id,shop_id,category_id,name,description,duration_text,duration_minutes,price_amount,price_currency,price_type,bookable,active,sort_order,aliases,booking_notes,external_provider,external_service_id,external_location_id,external_staff_required,external_metadata,created_at,updated_at',
         )
         .eq('shop_id', shopId)
         .order('sort_order', { ascending: true })
@@ -833,6 +835,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         category_id: service.categoryId && (categoryIds.has(service.categoryId) || normalizedCategoryIds.has(service.categoryId)) ? service.categoryId : null,
         name: service.name.trim(),
         description: service.description ?? null,
+        duration_text: service.durationText ?? null,
         duration_minutes: service.durationMinutes ?? null,
         price_amount: service.priceAmount ?? null,
         price_currency: service.priceCurrency || 'USD',
@@ -869,6 +872,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           category_id: row.category_id,
           name: row.name,
           description: row.description,
+          duration_text: row.duration_text,
           duration_minutes: row.duration_minutes,
           price_amount: row.price_amount,
           price_currency: row.price_currency,

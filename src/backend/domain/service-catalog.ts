@@ -53,6 +53,7 @@ export function buildGeneralServiceCatalog(params: {
           categoryId: category.id,
           name: service.name.trim(),
           description: null,
+          durationText: Number.isFinite(service.duration_min) ? `${service.duration_min} min` : null,
           durationMinutes: Number.isFinite(service.duration_min) ? service.duration_min : 60,
           priceAmount: price,
           priceCurrency: 'USD',
@@ -78,6 +79,7 @@ export type ImportedServiceSuggestion = {
   name: string;
   category?: string | null;
   description?: string | null;
+  durationText?: string | null;
   durationMinutes?: number | null;
   priceAmount?: number | null;
   priceType?: ShopService['priceType'];
@@ -170,6 +172,7 @@ export function mergeImportedServicesIntoCatalog(params: {
       categoryId: category.id,
       name,
       description: imported.description ?? null,
+      durationText: imported.durationText ?? (imported.durationMinutes ? `${imported.durationMinutes} min` : null),
       durationMinutes: imported.durationMinutes ?? null,
       priceAmount: imported.priceAmount ?? null,
       priceCurrency: 'USD',

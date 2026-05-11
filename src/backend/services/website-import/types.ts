@@ -66,6 +66,7 @@ export type ImportedServiceSuggestion = {
   categoryName: string;
   name: string;
   description?: string | null;
+  durationText?: string | null;
   durationMinutes?: number | null;
   priceAmount?: number | null;
   priceCurrency?: string;

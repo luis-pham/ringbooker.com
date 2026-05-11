@@ -267,6 +267,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     priceText?: string | null;
     priceAmount?: number | null;
     priceType?: ImportedServiceSuggestion['priceType'];
+    durationText?: string | null;
     durationMinutes?: number | null;
     group?: string | null;
     bookingNotes?: string | null;
@@ -286,6 +287,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
       priceAmount,
       priceCurrency: CURRENCY,
       priceType: input.priceType ?? (priceAmount ? 'fixed' : /consult/i.test(name) ? 'consultation' : 'varies'),
+      durationText: input.durationText ?? (input.durationMinutes ? `${input.durationMinutes} min` : null),
       durationMinutes: input.durationMinutes ?? null,
       aliases: aliasFor(name),
       bookingNotes: input.bookingNotes ?? null,
@@ -308,6 +310,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
       name: parsed.name,
       priceText: match[2],
       priceType: /from|starting|starts at|\+/.test(lower) ? 'from' : 'fixed',
+      durationText: match[3] ? `${Number(match[3])} min` : null,
       durationMinutes: match[3] ? Number(match[3]) : null,
       group: parsed.group,
       confidence: parsed.group ? 0.88 : 0.84,
@@ -341,6 +344,7 @@ export function extractServicesFromText(text: string, source: string): ImportedS
       name: parsed.name,
       priceText,
       priceType: /from|starting|starts at|\+/.test(lower) ? 'from' : priceText ? 'fixed' : /consult/.test(lower) ? 'consultation' : 'varies',
+      durationText: match?.[3] ? `${Number(match[3])} min` : null,
       durationMinutes: match?.[3] ? Number(match[3]) : null,
       group: parsed.group,
       confidence: match ? 0.82 : 0.62,
@@ -358,6 +362,7 @@ function cleanCompressedServiceText(text: string): string {
     .replace(/\bbottom of page\b/gi, ' ')
     .replace(/BOOKING/gi, ' ')
     .replace(/\bBook Now\b/gi, ' ')
+    .replace(/\bConsultation Required\b/gi, ' ')
     .replace(/\bLoad More\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -439,6 +444,7 @@ function cleanServiceName(name: string): string {
     .replace(/\b(top of page|bottom of page|Load More|Contact Us)\b/gi, ' ')
     .replace(/BOOKING/gi, ' ')
     .replace(/\bBook Now\b/gi, ' ')
+    .replace(/\bConsultation Required\b/gi, ' ')
     .replace(/\bInvolves\b.*$/i, '')
     .replace(/\bPricing is based\b.*$/i, '')
     .replace(/Pricing\s*is\s*based.*$/i, '')
@@ -544,6 +550,7 @@ function extractServiceLinks(previews: PagePreview[]): ImportedServiceSuggestion
         priceAmount: null,
         priceCurrency: CURRENCY,
         priceType: 'varies',
+        durationText: null,
         durationMinutes: null,
         aliases: aliasFor(name),
         bookable: true,

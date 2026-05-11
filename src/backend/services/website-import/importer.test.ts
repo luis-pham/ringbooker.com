@@ -195,7 +195,7 @@ test('LLM success merges grouped services and starts-at prices', async () => {
     serviceCatalog: {
       confidence: 0.9,
       categories: [{ name: 'Hair Color', confidence: 0.9, groupKind: 'primary' }],
-      services: [{ categoryName: 'Hair Color', name: 'Balayage', priceAmount: 180, priceCurrency: 'USD', priceType: 'from', durationMinutes: 120, aliases: [], bookable: true, confidence: 0.92, sourceEvidence: ['service page'] }],
+      services: [{ groupName: 'Hair Color', name: 'Balayage', priceAmount: 180, priceCurrency: 'USD', priceType: 'from', durationText: '1 hour+', durationMinutes: 60, aliases: [], bookable: true, confidence: 0.92, sourceEvidence: ['service page'] }],
     },
     staffSuggestions: [{ name: 'Mia Chen', role: 'Stylist', specialties: ['Color'], confidence: 0.84, evidenceSnippet: 'Mia Chen - Stylist' }],
     policySuggestions: [{ type: 'cancellation', title: 'Cancellation policy', content: 'Please cancel 24 hours ahead.', confidence: 0.8, evidenceSnippet: 'cancel 24 hours' }],
@@ -214,7 +214,10 @@ test('LLM success merges grouped services and starts-at prices', async () => {
   });
   const service = result.suggestions.serviceCatalog.services.find((item) => item.name === 'Balayage');
   assert.equal(service?.source, 'AI');
+  assert.equal(service?.categoryName, 'Hair Color');
   assert.equal(service?.priceType, 'from');
+  assert.equal(service?.durationText, '1 hour+');
+  assert.equal(service?.durationMinutes, 60);
   assert.equal(result.suggestions.staffSuggestions[0]?.name, 'Mia Chen');
   assert.equal(result.suggestions.policySuggestions[0]?.type, 'cancellation');
   assert.equal(result.suggestions.faqSuggestions[0]?.question, 'Do you take walk-ins?');

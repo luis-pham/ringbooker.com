@@ -64,11 +64,36 @@ test('Google Places hours override website hours and phone conflicts warn', () =
     },
   });
   assert.equal(suggestions.businessProfile.phone.source, 'Google Places');
-  assert.deepEqual(suggestions.hours.value?.mon, { open: '09:00', close: '19:00' });
-  assert.equal(suggestions.hours.source, 'Google Places');
+  assert.equal(suggestions.businessProfile.name.value, 'Website Salon');
+  assert.deepEqual(suggestions.hours.value?.mon, { open: '10:00', close: '17:00' });
+  assert.equal(suggestions.hours.source, 'JSON-LD');
   assert.equal(suggestions.businessProfile.timezone.value, 'America/New_York');
   assert.ok(suggestions.warnings.some((warning) => /phone differs/i.test(warning)));
   assert.ok(suggestions.serviceCatalog.services.some((service) => service.name.includes('Gel Manicure')));
+});
+
+test('normal website import keeps website address formatting when Places only adds country suffix', () => {
+  const preview = previewHtml('<script type="application/ld+json">{"@type":"Organization","name":"RAW Hair & Co."}</script><p>Address:223 N Bishop Ave, Dallas, TX 75208 Telephone:(469) 965-8500 Hours Of Operation MondayCLOSED Tuesday10 AM - 5 PM Wednesday10 AM - 8 PM Thursday9 AM - 8 PM Friday & Saturday9 AM - 6 PM Sunday11 AM - 6 PM</p>', 'https://rawhairandco.com');
+  const suggestions = buildSuggestions({
+    sourceUrl: 'https://rawhairandco.com',
+    sourceType: 'normal_website',
+    previews: [preview],
+    googlePlaces: {
+      name: 'Sunny Shop',
+      phone: '(469) 965-8500',
+      address: '223 N Bishop Ave, Dallas, TX 75208, USA',
+      website: 'https://rawhairandco.com',
+      hours: { sun: { closed: true } },
+      matchConfidence: 0.9,
+    },
+  });
+  assert.equal(suggestions.businessProfile.name.value, 'RAW Hair & Co.');
+  assert.equal(suggestions.businessProfile.address.value, '223 N Bishop Ave, Dallas, TX 75208');
+  assert.equal(suggestions.businessProfile.address.source, 'JSON-LD');
+  assert.deepEqual(suggestions.hours.value?.sun, { open: '11:00', close: '18:00' });
+  assert.equal(suggestions.hours.source, 'Website');
+  assert.equal(suggestions.warnings.some((warning) => /address differs/i.test(warning)), false);
+  assert.equal(suggestions.warnings.some((warning) => /hours differ/i.test(warning)), true);
 });
 
 test('keeps website data when normal website Google Places match is low confidence', () => {
@@ -177,6 +202,29 @@ test('extracts Elementor service-item cards with group, clean names, and prices'
   assert.ok(services.some((service) => service.categoryName === 'Color' && service.name === 'Color TOUCH-UP' && service.priceAmount === 118));
   assert.ok(services.some((service) => service.categoryName === 'Color' && service.name === 'FULL HIGHLIGHTS OR LOWLIGHTS' && service.priceAmount === 238));
   assert.equal(services.some((service) => /Book Now|Involves|Starting/i.test(service.name)), false);
+});
+
+test('cleans hourly consultation service names while keeping starts-at pricing', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <div id="tab-color" class="elementor-tab-title">Color</div>
+      <div class="elementor-tab-content" aria-labelledby="tab-color">
+        <div class="service-item"><div class="name">CREATIVE HAIR COLOR<br /><small>Pricing is based on an hourly rate</small></div><div class="price">starting at $153</div><p>Consultation Required</p></div>
+        <div class="service-item"><div class="name">HAIR COLOR CORRECTION<br /><small>Pricing is based on an hourly rate</small></div><div class="price">starting at $153</div><p>Consultation Required</p></div>
+      </div>
+    </body></html>
+  `, 'https://rawhairandco.test/services');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://rawhairandco.test', sourceType: 'normal_website', previews: [preview] });
+  const creative = suggestions.serviceCatalog.services.find((service) => service.name === 'CREATIVE HAIR COLOR');
+  const correction = suggestions.serviceCatalog.services.find((service) => service.name === 'HAIR COLOR CORRECTION');
+  assert.equal(creative?.priceAmount, 153);
+  assert.equal(creative?.priceType, 'from');
+  assert.equal(creative?.durationMinutes, null);
+  assert.equal(creative?.durationText, null);
+  assert.equal(correction?.priceAmount, 153);
+  assert.equal(correction?.priceType, 'from');
+  assert.equal(correction?.durationMinutes, null);
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /Pricing is based|Consultation Required|Book Now/i.test(service.name)), false);
 });
 
 test('extracts WordPress service menu links when service pages have no visible prices', () => {

@@ -19,13 +19,14 @@ export type BeautySubtype =
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type WizardStep = 1 | 2 | 3 | 4;
 type ServicePriceType = 'fixed' | 'from' | 'varies' | 'consultation';
-type ServiceItem = { name: string; duration_min: number; price: number; group?: string; aliases?: string[]; price_type?: ServicePriceType; bookable?: boolean };
+type ServiceItem = { name: string; duration_min?: number | null; duration_text?: string | null; price: number; group?: string; aliases?: string[]; price_type?: ServicePriceType; bookable?: boolean };
 type ServiceCatalogResponse = {
   categories: Array<{ id: string; name: string; sortOrder: number; active: boolean }>;
   services: Array<{
     id: string;
     categoryId?: string | null;
     name: string;
+    durationText?: string | null;
     durationMinutes?: number | null;
     priceAmount?: number | null;
     priceType?: ServicePriceType;
@@ -57,6 +58,7 @@ type ImportedWebsiteSuggestions = {
     services: Array<{
       categoryName: string;
       name: string;
+      durationText?: string | null;
       durationMinutes?: number | null;
       priceAmount?: number | null;
       priceType?: ServicePriceType;
@@ -467,10 +469,11 @@ function isProbablyGoogleBusinessUrl(raw: string): boolean {
   );
 }
 
-function isHttpsWebsiteUrl(raw: string): boolean {
+export function isHttpWebsiteUrl(raw: string): boolean {
   try {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(raw.trim()) && !/^https?:\/\//i.test(raw.trim())) return false;
     const url = new URL(normalizeWebsiteUrl(raw));
-    return url.protocol === 'https:';
+    return url.protocol === 'https:' || url.protocol === 'http:';
   } catch {
     return false;
   }
@@ -537,13 +540,30 @@ function importedVerticalToApp(value?: string | null): Vertical | '' {
   return '';
 }
 
+function parseDurationTextToMinutes(value?: string | null): number | null {
+  const text = (value ?? '').trim().toLowerCase();
+  if (!text) return null;
+  const range = text.match(/(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)\s*(hours?|hrs?|hr|h|minutes?|mins?|min|m)?/);
+  const match = range ?? text.match(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|hr|h|minutes?|mins?|min|m)?\+?/);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const unit = match[3] || match[2] || '';
+  return /h|hour|hr/.test(unit) ? Math.round(amount * 60) : Math.round(amount);
+}
+
+function serviceDurationText(service: Pick<ServiceItem, 'duration_text' | 'duration_min'>): string {
+  return service.duration_text?.trim() || (service.duration_min ? `${service.duration_min} min` : '');
+}
+
 function servicesFromImport(suggestions?: ImportedWebsiteSuggestions): ServiceItem[] {
   const imported = suggestions?.serviceCatalog?.services ?? [];
   return imported
     .filter((service) => service.name.trim().length > 0)
     .map((service) => ({
       name: service.name.trim(),
-      duration_min: service.durationMinutes ?? 60,
+      duration_min: service.durationMinutes ?? null,
+      duration_text: service.durationText ?? (service.durationMinutes ? `${service.durationMinutes} min` : null),
       price: service.priceAmount ?? 0,
       group: service.categoryName?.trim() || 'General Services',
       aliases: service.aliases ?? [],
@@ -717,7 +737,8 @@ function cleanServices(rows: ServiceItem[]): ServiceItem[] {
     .filter((item) => item.name.trim().length > 0)
     .map((item) => ({
       name: item.name.trim(),
-      duration_min: item.duration_min && item.duration_min > 0 ? item.duration_min : 60,
+      duration_min: item.duration_min && item.duration_min > 0 ? item.duration_min : parseDurationTextToMinutes(item.duration_text),
+      duration_text: item.duration_text?.trim() || (item.duration_min ? `${item.duration_min} min` : null),
       price: Number.isFinite(item.price) ? item.price : 0,
       group: item.group?.trim() || 'General Services',
       aliases: item.aliases ?? [],
@@ -751,7 +772,8 @@ function servicesFromCatalog(catalog?: ServiceCatalogResponse | null): ServiceIt
       const category = catalog.categories.find((item) => item.id === service.categoryId);
       return {
         name: service.name,
-        duration_min: service.durationMinutes ?? 60,
+        duration_min: service.durationMinutes ?? null,
+        duration_text: service.durationText ?? (service.durationMinutes ? `${service.durationMinutes} min` : null),
         price: service.priceAmount ?? 0,
         group: category?.name ?? 'General Services',
         aliases: service.aliases ?? [],
@@ -784,6 +806,7 @@ function serviceCatalogFromRows(rows: ServiceItem[], extraGroups: string[] = [])
         categoryId: category?.id ?? null,
         name: service.name,
         durationMinutes: service.duration_min,
+        durationText: service.duration_text ?? (service.duration_min ? `${service.duration_min} min` : null),
         priceAmount: service.price,
         priceCurrency: 'USD',
         priceType: service.price_type ?? (service.price > 0 ? 'fixed' : 'varies'),
@@ -838,9 +861,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           ? catalogServices
           : initialShop.services.length > 0
             ? initialShop.services
-            : [{ name: '', duration_min: 60, price: 0, group: 'General Services' }];
+            : [{ name: '', duration_min: null, duration_text: '', price: 0, group: 'General Services' }];
       })()
-    : [{ name: '', duration_min: 60, price: 0 }];
+    : [{ name: '', duration_min: null, duration_text: '', price: 0 }];
 
   const [loading, setLoading] = useState(!initialData);
   const [saving, setSaving] = useState(false);
@@ -1052,7 +1075,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     else setImportSource('none');
     const catalogServices = servicesFromCatalog(body.shop.service_catalog);
     setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
-    const nextServices = catalogServices.length > 0 ? catalogServices : body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: 60, price: 0, group: 'General Services' }];
+    const nextServices = catalogServices.length > 0 ? catalogServices : body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: null, duration_text: '', price: 0, group: 'General Services' }];
     setServices(nextServices);
     setSelectedServiceGroups([...new Set(nextServices.map((service) => service.group?.trim()).filter((group): group is string => Boolean(group)))]);
     setCurrentStep(normalizeStep(body.shop.current_onboarding_step));
@@ -1103,8 +1126,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     let nextConfidence: VerticalConfidence = 'none';
 
     if (trimmed) {
-      if (!isHttpsWebsiteUrl(trimmed)) {
-        setStatus('Enter a valid https:// website URL or Google Maps link, leave blank, or use manual setup.');
+      if (!isHttpWebsiteUrl(trimmed)) {
+        setStatus('Enter a valid website URL or Google Maps link, leave blank, or use manual setup.');
         return;
       }
       const canonicalUrl = normalizeWebsiteUrl(trimmed);
@@ -1242,7 +1265,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     }
 
     const trimmed = websiteUrl.trim();
-    if (trimmed && isHttpsWebsiteUrl(trimmed)) {
+    if (trimmed && isHttpWebsiteUrl(trimmed)) {
       const canonicalUrl = normalizeWebsiteUrl(trimmed);
       setWebsiteUrl(canonicalUrl);
       setWebsiteImportAttempted(false);
@@ -1381,7 +1404,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     const existing = new Set(services.map((s) => s.name.trim().toLowerCase()).filter(Boolean));
     const toAdd = preset
       .filter((name) => !existing.has(name.toLowerCase()))
-      .map((name) => ({ name, duration_min: 60, price: 0, group: suggestedGroupsForVertical(vertical, beautySubtype)[0] ?? 'General Services' }));
+      .map((name) => ({ name, duration_min: null, duration_text: '', price: 0, group: suggestedGroupsForVertical(vertical, beautySubtype)[0] ?? 'General Services' }));
     if (toAdd.length === 0) {
       setStatus('Those preset services are already on your list.');
       return;
@@ -1395,7 +1418,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setSelectedServiceGroups((current) => [...new Set([...current, ...groups])]);
     setServices((current) => {
       const filled = current.filter((item) => item.name.trim().length > 0);
-      if (filled.length === 0) return [{ name: '', duration_min: 60, price: 0, group: groups[0] ?? 'General Services' }];
+      if (filled.length === 0) return [{ name: '', duration_min: null, duration_text: '', price: 0, group: groups[0] ?? 'General Services' }];
       return filled.map((item, index) => ({ ...item, group: item.group || groups[index % groups.length] || 'General Services' }));
     });
     setStatus('Suggested service groups added. You can refine this later in Business Knowledge.');
@@ -2022,7 +2045,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                 setWebsiteUrl(event.target.value);
                 markProfileFieldEdited('website');
               }}
-              placeholder="https://yourbusiness.com"
+              placeholder="yourbusiness.com or http://yourbusiness.com"
             />,
             { imported: importSuggestions?.businessProfile.website ?? { value: websiteUrl || null, confidence: websiteUrl ? 0.95 : 0, source: websiteUrl ? 'User' : null } },
           )}
@@ -2250,7 +2273,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                 >
                   {collapsed ? '+' : '-'}
                 </button>
-                <button className="onb-help-link" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group }])}>
+                <button className="onb-help-link" type="button" onClick={() => setServices([...services, { name: '', duration_min: null, duration_text: '', price: 0, group }])}>
                   + Add service
                 </button>
               </div>
@@ -2276,15 +2299,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     />
                   </div>
                   <div className="duration-wrap">
-                    <span>Min</span>
+                    <span>Time</span>
                     <input
-                      type="number"
-                      min={1}
-                      value={service.duration_min || ''}
-                      placeholder="60"
-                      onChange={(event) =>
-                        setServiceRow(index, { ...service, duration_min: event.target.value === '' ? 0 : Number(event.target.value) })
-                      }
+                      value={serviceDurationText(service)}
+                      placeholder="60 min, 1 hour+"
+                      onChange={(event) => {
+                        const durationText = event.target.value;
+                        setServiceRow(index, { ...service, duration_text: durationText, duration_min: parseDurationTextToMinutes(durationText) });
+                      }}
                     />
                   </div>
                 </div>
@@ -2293,7 +2315,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           </div>
           );
         })}
-        <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: 60, price: 0, group: groupNames[0] ?? 'General Services' }])}>
+        <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: null, duration_text: '', price: 0, group: groupNames[0] ?? 'General Services' }])}>
           + Add service
         </button>
         <div className="onb-actions onb-actions-desktop" style={{ marginTop: 28 }}>

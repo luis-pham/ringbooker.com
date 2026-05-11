@@ -88,6 +88,7 @@ export interface ShopService {
   categoryId?: string | null;
   name: string;
   description?: string | null;
+  durationText?: string | null;
   durationMinutes?: number | null;
   priceAmount?: number | null;
   priceCurrency: string;

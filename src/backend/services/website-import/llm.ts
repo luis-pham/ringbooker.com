@@ -28,8 +28,10 @@ const primaryTypeFieldSchema = z.object({
 const hoursFieldSchema = z.object({ value: z.record(z.string(), z.unknown()).nullable(), confidence: confidenceSchema, sourceEvidence: sourceEvidenceSchema }).strict();
 const serviceSchema = z.object({
   categoryName: z.string().nullable().optional(),
+  groupName: z.string().nullable().optional(),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
+  durationText: z.string().max(80).nullable().optional(),
   durationMinutes: z.number().int().positive().nullable().optional(),
   priceAmount: z.number().nonnegative().nullable().optional(),
   priceCurrency: z.string().optional().default('USD'),
@@ -118,10 +120,12 @@ function toImportField(value: { value: string | null; confidence: number } | und
 }
 
 function toService(raw: z.infer<typeof serviceSchema>): ImportedServiceSuggestion {
+  const categoryName = raw.categoryName?.trim() || raw.groupName?.trim() || 'General Services';
   return {
-    categoryName: raw.categoryName?.trim() || 'General Services',
+    categoryName,
     name: raw.name.trim(),
     description: raw.description ?? null,
+    durationText: raw.durationText?.trim() || (raw.durationMinutes ? `${raw.durationMinutes} min` : null),
     durationMinutes: raw.durationMinutes ?? null,
     priceAmount: raw.priceAmount ?? null,
     priceCurrency: raw.priceCurrency || 'USD',
@@ -229,7 +233,16 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
   });
   return {
     task: 'Extract reviewable business knowledge for an AI receptionist. Return JSON only. Do not invent missing fields or prices.',
-    schemaHint: 'Use {value, confidence, sourceEvidence} for profile fields. priceType must be fixed/from/varies/consultation. Optional secondary arrays: staffSuggestions, policySuggestions, faqSuggestions, promotionSuggestions, bookingSetupSuggestions. Extract only evidence-backed website facts; do not auto-apply.',
+    schemaHint: [
+      'Use {value, confidence, sourceEvidence} for profile fields.',
+      'For services, return serviceCatalog.categories as service groups and give every service a categoryName matching one group. If you see groupName, map it to categoryName.',
+      'Preserve the website service grouping language when available. Do not flatten unrelated service groups.',
+      'durationText is the caller-facing duration exactly as shown, e.g. "60 min", "1 hour+", "30-45 min", "Varies".',
+      'durationMinutes is only the numeric baseline when directly parseable. For "1 hour+" use durationText "1 hour+" and durationMinutes 60. If no duration is shown, use null; never invent 60.',
+      'priceType must be fixed/from/varies/consultation. Put "Consultation Required" or booking caveats in bookingNotes, not in service names.',
+      'Optional secondary arrays: staffSuggestions, policySuggestions, faqSuggestions, promotionSuggestions, bookingSetupSuggestions.',
+      'Extract only evidence-backed website facts; do not auto-apply.',
+    ].join(' '),
     sourceUrl: input.sourceUrl,
     deterministicFacts: {
       jsonLd: input.previews.flatMap((page) => page.jsonLd).slice(0, 10),

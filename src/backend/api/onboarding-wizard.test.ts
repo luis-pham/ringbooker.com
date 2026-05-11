@@ -15,6 +15,7 @@ import {
   importProgressDelayMessage,
   importProgressStepIndex,
   importResultMessage,
+  isHttpWebsiteUrl,
   IMPORT_PROGRESS_STEPS,
   secondaryImportSuggestionCount,
 } from '@/components/user/user-onboarding-live';
@@ -77,6 +78,13 @@ test('Legacy step 1 validation requires business name and phone (vertical option
 test('Find step quick validation allows continuing without business phone', () => {
   assert.deepEqual(validateOnboardingStep1Quick({ businessPhone: '' }), []);
   assert.deepEqual(validateOnboardingStep1Quick({ businessPhone: '+15551234567' }), []);
+});
+
+test('website URL validation accepts http and https links', () => {
+  assert.equal(isHttpWebsiteUrl('https://example.com'), true);
+  assert.equal(isHttpWebsiteUrl('http://example.com'), true);
+  assert.equal(isHttpWebsiteUrl('example.com'), true);
+  assert.equal(isHttpWebsiteUrl('mailto:test@example.com'), false);
 });
 
 test('Profile review validation requires business name', () => {
@@ -148,13 +156,14 @@ test('onboarding copy keeps website import review-only and isolates legacy read-
   const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
   const app = readFileSync('src/backend/api/app.ts', 'utf8');
   assert.match(onboardingLive, /Paste your website or Google Maps link — we'll fill in the details/);
+  assert.match(onboardingLive, /Enter a valid website URL or Google Maps link/);
   assert.doesNotMatch(onboardingLive, /We'll save this link today/);
   assert.match(onboardingLive, /No website\? Fill in manually/);
   assert.match(onboardingLive, /Set up manually instead/);
   assert.match(onboardingLive, /You’ll review and edit everything before saving/);
   assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml/);
   assert.doesNotMatch(onboardingLive, /I&apos;ll enter details manually/);
-  assert.match(onboardingLive, /refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge/);
+  assert.doesNotMatch(onboardingLive, /refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge/);
   assert.match(onboardingLive, /staff, policies, FAQs, promotions, or booking setup hints you can review later in Business Knowledge/);
   assert.ok(onboardingLive.includes('/api/backend/user/onboarding/import-website'));
   assert.equal(onboardingLive.includes('/api/backend/user/read-website'), false);

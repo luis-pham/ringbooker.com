@@ -239,6 +239,7 @@ test('user can save grouped service catalog and legacy services are derived for 
             id: '33333333-3333-4333-8333-333333333333',
             categoryId: manicureCategoryId,
             name: 'Gel Manicure',
+            durationText: '45 min',
             durationMinutes: 45,
             priceAmount: 45,
             priceType: 'from',
@@ -248,6 +249,7 @@ test('user can save grouped service catalog and legacy services are derived for 
             id: '44444444-4444-4444-8444-444444444444',
             categoryId: pedicureCategoryId,
             name: 'Deluxe Pedicure',
+            durationText: '1 hour+',
             durationMinutes: 60,
             priceAmount: null,
             priceType: 'varies',
@@ -265,7 +267,7 @@ test('user can save grouped service catalog and legacy services are derived for 
       services: Array<{ name: string; duration_min: number; price: number }>;
       service_catalog: {
         categories: Array<{ name: string }>;
-        services: Array<{ name: string; priceType: string; bookable: boolean }>;
+        services: Array<{ name: string; durationText?: string | null; priceType: string; bookable: boolean }>;
       };
     };
   };
@@ -274,6 +276,7 @@ test('user can save grouped service catalog and legacy services are derived for 
   assert.deepEqual(body.shop.services.map((service) => service.name), ['Gel Manicure', 'Deluxe Pedicure']);
   assert.equal(body.shop.services[0]?.duration_min, 45);
   assert.equal(body.shop.services[0]?.price, 45);
+  assert.equal(body.shop.service_catalog.services[1]?.durationText, '1 hour+');
   assert.equal(body.shop.service_catalog.services[1]?.priceType, 'varies');
   assert.equal(body.shop.service_catalog.services[1]?.bookable, false);
 });

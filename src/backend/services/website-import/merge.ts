@@ -39,6 +39,23 @@ function field<T>(value: T | null, confidence: number, source: string | null): I
   return { value, confidence: value === null ? 0 : Math.max(0, Math.min(1, confidence)), source: value === null ? null : source };
 }
 function normalizeText(value?: string | null): string { return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
+function normalizeAddressForCompare(value?: string | null): string {
+  return normalizeText(value)
+    .replace(/[.,]/g, '')
+    .replace(/\b(united states of america|united states|usa|us)\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function normalizeHoursForCompare(value?: WeeklyHours | null): string {
+  if (!value) return '';
+  return JSON.stringify(Object.keys(value).sort().reduce<Record<string, unknown>>((out, key) => {
+    out[key] = value[key];
+    return out;
+  }, {}));
+}
+function hoursDayCount(value?: WeeklyHours | null): number {
+  return value ? Object.keys(value).length : 0;
+}
 function inferTimezoneFromAddress(address?: string | null): string | null {
   if (!address) return null;
   if (/\b(california|ca|los angeles|san francisco|san diego|san jose|sacramento|washington|oregon|nevada|seattle|portland|las vegas)\b/i.test(address)) return 'America/Los_Angeles';
@@ -114,19 +131,27 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   const trustedPlaces = trustPlaces ? places : null;
   if (places && !trustPlaces && rawPlaceConfidence > 0) warnings.push('Google Places match was low confidence. Website details were kept for review.');
   if (trustedPlaces?.phone && input.staticFacts.phone.value && phoneComparableDigits(trustedPlaces.phone) !== phoneComparableDigits(input.staticFacts.phone.value)) warnings.push('Google Places phone differs from website phone. Review before saving.');
-  if (trustedPlaces?.address && input.staticFacts.address.value && normalizeText(trustedPlaces.address) !== normalizeText(input.staticFacts.address.value)) warnings.push('Google Places address differs from website address. Review before saving.');
-  if (trustedPlaces?.hours && input.staticFacts.hours.value && JSON.stringify(trustedPlaces.hours) !== JSON.stringify(input.staticFacts.hours.value)) warnings.push('Google Places hours differ from website hours. Review before saving.');
+  const placesAddressSameAsWebsite = Boolean(trustedPlaces?.address && input.staticFacts.address.value && normalizeAddressForCompare(trustedPlaces.address) === normalizeAddressForCompare(input.staticFacts.address.value));
+  const placesHoursSameAsWebsite = Boolean(trustedPlaces?.hours && input.staticFacts.hours.value && normalizeHoursForCompare(trustedPlaces.hours as WeeklyHours) === normalizeHoursForCompare(input.staticFacts.hours.value));
+  if (trustedPlaces?.address && input.staticFacts.address.value && !placesAddressSameAsWebsite) warnings.push('Google Places address differs from website address. Review before saving.');
+  if (trustedPlaces?.hours && input.staticFacts.hours.value && !placesHoursSameAsWebsite) warnings.push('Google Places hours differ from website hours. Review before saving.');
   const llmServices = llm?.serviceCatalog?.services ?? [];
   const staticServices = input.staticFacts.services;
   const services = dedupeServices(llmServices.length ? [...llmServices, ...staticServices] : staticServices);
   const serviceConfidence = services.length >= 3 ? Math.max(llm?.serviceCatalog?.confidence ?? 0, 0.78) : services.length > 0 ? Math.max(llm?.serviceCatalog?.confidence ?? 0, 0.55) : 0;
   if (serviceConfidence > 0 && serviceConfidence < 0.7) warnings.push('Some imported service details need review.');
   const placeConfidence = trustPlaces ? Math.max(0.85, rawPlaceConfidence) : 0;
-  const name = choose(placesField(trustedPlaces?.name, placeConfidence ? 0.94 : 0), input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name));
+  const isGoogleMapsImport = input.staticFacts.sourceType === 'google_maps';
+  const name = isGoogleMapsImport
+    ? choose(placesField(trustedPlaces?.name, placeConfidence ? 0.94 : 0), input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name))
+    : choose(input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, placesField(trustedPlaces?.name, placeConfidence ? 0.88 : 0), maybeLlm(llm?.businessProfile?.name));
   const rawPhone = choose(placesField(trustedPlaces?.phone, placeConfidence ? 0.96 : 0), input.staticFacts.phone, maybeLlm(llm?.businessProfile?.phone));
-  const address = choose(placesField(trustedPlaces?.address, placeConfidence ? 0.96 : 0), input.staticFacts.address, maybeLlm(llm?.businessProfile?.address));
+  const address = choose(placesAddressSameAsWebsite ? input.staticFacts.address : null, placesField(trustedPlaces?.address, placeConfidence ? 0.96 : 0), input.staticFacts.address, maybeLlm(llm?.businessProfile?.address));
   const phone = rawPhone.value ? field(normalizePhoneForStorage(rawPhone.value, address.value ?? trustedPlaces?.address ?? input.staticFacts.address.value) ?? rawPhone.value, rawPhone.confidence, rawPhone.source) : rawPhone;
-  const hours = choose<WeeklyHours>(placesField(trustedPlaces?.hours ?? null, placeConfidence ? 0.95 : 0), input.staticFacts.hours.source === 'JSON-LD' ? input.staticFacts.hours : null, input.staticFacts.hours, maybeLlm(llm?.hours));
+  const websiteHoursIsComplete = hoursDayCount(input.staticFacts.hours.value) >= 5 && input.staticFacts.hours.confidence >= 0.7;
+  const hours = isGoogleMapsImport
+    ? choose<WeeklyHours>(placesField(trustedPlaces?.hours ?? null, placeConfidence ? 0.95 : 0), input.staticFacts.hours.source === 'JSON-LD' ? input.staticFacts.hours : null, input.staticFacts.hours, maybeLlm(llm?.hours))
+    : choose<WeeklyHours>(placesHoursSameAsWebsite || websiteHoursIsComplete ? input.staticFacts.hours : null, placesField(trustedPlaces?.hours ?? null, placeConfidence ? 0.95 : 0), input.staticFacts.hours.source === 'JSON-LD' ? input.staticFacts.hours : null, input.staticFacts.hours, maybeLlm(llm?.hours));
   const timezone = choose(placesField(trustedPlaces?.timezone ?? inferTimezoneFromAddress(trustedPlaces?.address), placeConfidence ? 0.9 : 0), input.staticFacts.timezone, maybeLlm(llm?.businessProfile?.timezone));
   const website = choose(placesField(trustedPlaces?.website, placeConfidence ? 0.94 : 0), input.staticFacts.website, maybeLlm(llm?.businessProfile?.website));
   const primaryType = choose(input.staticFacts.primaryType, placesField(trustedPlaces?.primaryType, placeConfidence ? 0.78 : 0), maybeLlm(llm?.businessProfile?.primaryType));

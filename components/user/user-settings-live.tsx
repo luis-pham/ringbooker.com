@@ -59,6 +59,7 @@ type ShopService = {
   categoryId?: string | null;
   name: string;
   description?: string | null;
+  durationText?: string | null;
   durationMinutes?: number | null;
   priceAmount?: number | null;
   priceCurrency: string;
@@ -492,6 +493,22 @@ function clientId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function parseDurationTextToMinutes(value?: string | null): number | null {
+  const text = (value ?? '').trim().toLowerCase();
+  if (!text) return null;
+  const range = text.match(/(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)\s*(hours?|hrs?|hr|h|minutes?|mins?|min|m)?/);
+  const match = range ?? text.match(/(\d+(?:\.\d+)?)\s*(hours?|hrs?|hr|h|minutes?|mins?|min|m)?\+?/);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const unit = match[3] || match[2] || '';
+  return /h|hour|hr/.test(unit) ? Math.round(amount * 60) : Math.round(amount);
+}
+
+function serviceDurationText(service: Pick<ShopService, 'durationText' | 'durationMinutes'>): string {
+  return service.durationText?.trim() || (service.durationMinutes ? `${service.durationMinutes} min` : '');
+}
+
 function catalogFromLegacyServices(services: ServiceItem[], shopId = ''): ShopServiceCatalog {
   const categoryId = clientId('service-category');
   return {
@@ -506,6 +523,7 @@ function catalogFromLegacyServices(services: ServiceItem[], shopId = ''): ShopSe
         categoryId,
         name: service.name.trim(),
         description: null,
+        durationText: service.duration_min ? `${service.duration_min} min` : null,
         durationMinutes: service.duration_min || 60,
         priceAmount: Number.isFinite(service.price) ? service.price : 0,
         priceCurrency: 'USD',
@@ -1150,7 +1168,8 @@ export function UserSettingsLive({
           categoryId,
           name: '',
           description: null,
-          durationMinutes: 60,
+          durationText: null,
+          durationMinutes: null,
           priceAmount: 0,
           priceCurrency: 'USD',
           priceType: 'varies',
@@ -2354,7 +2373,7 @@ export function UserSettingsLive({
 	                                <div key={service.id} className={`service-summary-item ${service.active === false ? 'archived' : ''}`}>
 	                                  <div className="service-summary-row">
 	                                    <span className="service-summary-name">{service.name || 'Untitled service'}</span>
-	                                    <span className="service-summary-meta">{formatServicePriceSummary(service)} · {service.durationMinutes ?? 60} min</span>
+	                                    <span className="service-summary-meta">{formatServicePriceSummary(service)} · {serviceDurationText(service) || 'No duration'}</span>
 	                                    <button
 	                                      type="button"
 	                                      className="service-edit-icon"
@@ -2387,9 +2406,17 @@ export function UserSettingsLive({
 	                                        </div>
 	                                        <div className="field">
 	                                          <label>Duration</label>
-	                                          <select value={String(service.durationMinutes ?? 60)} onChange={(event) => updateCatalogService(service.id, { durationMinutes: Number(event.target.value) })}>
-	                                            {[15, 30, 45, 60, 75, 90, 120, 150, 180].map((minutes) => <option key={minutes} value={minutes}>{minutes} min</option>)}
-	                                          </select>
+	                                          <input
+	                                            value={serviceDurationText(service)}
+	                                            onChange={(event) => {
+	                                              const durationText = event.target.value;
+	                                              updateCatalogService(service.id, {
+	                                                durationText: durationText.trim() ? durationText : null,
+	                                                durationMinutes: parseDurationTextToMinutes(durationText),
+	                                              });
+	                                            }}
+	                                            placeholder="60 min, 1 hour+, Varies"
+	                                          />
 	                                        </div>
 	                                        <div className="field">
 	                                          <label>Price type</label>
