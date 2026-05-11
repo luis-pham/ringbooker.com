@@ -995,7 +995,7 @@ export function UserBillingLive({
                               <li key={item}>{item}</li>
                             ))}
                           </ul>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
+                          <div className="portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>
                             <a className="btn user-save" href="/contact?topic=sales">
                               Contact sales
                             </a>
@@ -1199,11 +1199,6 @@ export function UserBillingLive({
                                     ? 'Upgrade to Professional'
                                     : planDisplayName(plan.plan)}
                                 </h4>
-                                {plan.plan === 'professional' && currentPlan === 'starter' ? (
-                                  <p className="sub" style={{ margin: '8px 0 0' }}>
-                                    Unlock reminder and review SMS, returning caller notes, bilingual answering where configured, and owner transfer.
-                                  </p>
-                                ) : null}
                                 <div className="amt">{plan.priceLine}</div>
                                 <ul>
                                   {plan.features.map((feature) => (

@@ -12,7 +12,7 @@ import type {
 } from './types';
 import type { GooglePlacesSuggestion } from './google-places';
 import type { LlmImportExtraction } from './types';
-import { normalizePhoneForStorage } from '@/lib/phone-number';
+import { normalizePhoneForStorage, phoneComparableDigits } from '@/lib/phone-number';
 import { mergeImportSuggestions } from './merge';
 
 const CURRENCY = 'USD';
@@ -52,6 +52,7 @@ export function inferGroup(name: string): string {
   const lower = name.toLowerCase();
   if (/manicure/.test(lower)) return 'Manicure';
   if (/pedicure/.test(lower)) return 'Pedicure';
+  if (/hair\s*extension|extensions?.*hair/.test(lower)) return 'Hair Extensions';
   if (/acrylic|extension|dip powder|nail/.test(lower)) return 'Acrylics / Extensions';
   if (/balayage|highlight|root|color|colour/.test(lower)) return 'Hair Color';
   if (/haircut|blowout|keratin|hair/.test(lower)) return 'Haircuts';
@@ -61,6 +62,7 @@ export function inferGroup(name: string): string {
   if (/botox|dysport|filler|inject/.test(lower)) return 'Injectables';
   if (/laser/.test(lower)) return 'Laser';
   if (/lash|brow|eyebrow/.test(lower)) return 'Brows & Lashes';
+  if (/makeup|make-up/.test(lower)) return 'Makeup';
   return 'General Services';
 }
 
@@ -225,29 +227,38 @@ export function extractServicesFromText(text: string, source: string): ImportedS
   const addService = (input: {
     name: string;
     priceText?: string | null;
+    priceAmount?: number | null;
     priceType?: ImportedServiceSuggestion['priceType'];
     durationMinutes?: number | null;
     group?: string | null;
+    bookingNotes?: string | null;
     confidence: number;
   }) => {
-    const name = cleanServiceName(input.name);
+    const name = collapseRepeatedServiceName(cleanServiceName(input.name));
     if (name.length < 3 || name.length > 90) return;
+    if (isStylistPricingRowName(name)) return;
     const categoryName = input.group?.trim() || inferGroup(name);
     const key = `${categoryName.toLowerCase()}::${name.toLowerCase()}`;
     if (services.has(key)) return;
+    const priceAmount = input.priceAmount ?? (input.priceText ? Number(input.priceText) : null);
     services.set(key, {
       categoryName,
       name,
-      priceAmount: input.priceText ? Number(input.priceText) : null,
+      priceAmount,
       priceCurrency: CURRENCY,
-      priceType: input.priceType ?? (input.priceText ? 'fixed' : /consult/i.test(name) ? 'consultation' : 'varies'),
+      priceType: input.priceType ?? (priceAmount ? 'fixed' : /consult/i.test(name) ? 'consultation' : 'varies'),
       durationMinutes: input.durationMinutes ?? null,
       aliases: aliasFor(name),
+      bookingNotes: input.bookingNotes ?? null,
       bookable: true,
       source,
       confidence: input.confidence,
     });
   };
+
+  for (const item of extractStylistPricingServices(text)) {
+    addService({ ...item, confidence: 0.86 });
+  }
 
   let currentCompressedGroup: string | null = null;
   const compressedText = cleanCompressedServiceText(text);
@@ -297,16 +308,93 @@ function cleanCompressedServiceText(text: string): string {
     .trim();
 }
 
+function isStylistPricingRowName(name: string): boolean {
+  return /^(assistant|level\s*\d|all levels?)\s+stylists?\b/i.test(name)
+    || /\bpricing\s+(assistant|level\s*\d|all levels?)\s+stylists?\b/i.test(name);
+}
+
+function normalizePricingServiceName(value: string): string {
+  return cleanServiceName(value)
+    .replace(/\bpricing\b/gi, ' ')
+    .replace(/\b(in|near)\s+[A-Z][A-Za-z\s,-]{2,40}$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseSplitDollarAmount(dollars: string, cents?: string): number {
+  const base = Number(dollars);
+  if (!Number.isFinite(base)) return 0;
+  if (!cents) return base;
+  return Number(`${dollars}.${cents}`);
+}
+
+function extractStylistPricingServices(text: string): Array<{
+  name: string;
+  priceAmount: number | null;
+  priceType: ImportedServiceSuggestion['priceType'];
+  group: string | null;
+  bookingNotes: string | null;
+}> {
+  const normalized = cleanCompressedServiceText(text);
+  const headings = [...normalized.matchAll(/\b([A-Z][A-Za-z’'\/&\-\s]{2,80}?\s+Pricing)\b/g)]
+    .map((match) => ({ raw: match[1], index: match.index ?? 0 }))
+    .filter((item) => !/pricing\s+(assistant|level\s*\d|all levels?)\s+stylists?/i.test(item.raw));
+  const services: Array<{
+    name: string;
+    priceAmount: number | null;
+    priceType: ImportedServiceSuggestion['priceType'];
+    group: string | null;
+    bookingNotes: string | null;
+  }> = [];
+
+  for (let i = 0; i < headings.length; i += 1) {
+    const heading = headings[i];
+    const nextIndex = headings[i + 1]?.index ?? normalized.length;
+    const block = normalized.slice(heading.index + heading.raw.length, Math.min(nextIndex, heading.index + heading.raw.length + 650));
+    const levels = [...block.matchAll(/\b(Assistant\s+Stylists?|Level\s+\d\s+Stylists?|All\s+Levels?)\b\s*\$\s*(\d{2,4})(?:\s+(\d{2})(?=\s+(?:Level|Assistant|All|Contact|$)))?/gi)]
+      .map((match) => ({
+        label: match[1].replace(/\s+/g, ' ').trim(),
+        amount: parseSplitDollarAmount(match[2], match[3]),
+      }))
+      .filter((level) => level.amount > 0);
+    if (!levels.length) continue;
+    const name = normalizePricingServiceName(heading.raw);
+    if (name.length < 3 || isStylistPricingRowName(name)) continue;
+    const minimum = Math.min(...levels.map((level) => level.amount));
+    const notes = `Website pricing by stylist level: ${levels.map((level) => `${level.label} $${Number.isInteger(level.amount) ? level.amount : level.amount.toFixed(2)}`).join('; ')}`;
+    services.push({
+      name,
+      priceAmount: minimum,
+      priceType: levels.length > 1 ? 'from' : 'fixed',
+      group: inferGroup(name),
+      bookingNotes: notes,
+    });
+  }
+
+  return services;
+}
+
 function cleanServiceName(name: string): string {
   return name
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/\u00a0/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/\b(top of page|bottom of page|BOOKING|Load More)\b/gi, ' ')
+    .replace(/\b(top of page|bottom of page|BOOKING|Load More|Contact Us)\b/gi, ' ')
     .replace(/^(services|service|treatments|treatment|menu)\s*:?\s*/i, '')
     .replace(/\b(from|starting at|starts at)\s*$/i, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function collapseRepeatedServiceName(name: string): string {
+  const words = name.split(/\s+/).filter(Boolean);
+  for (let size = 1; size <= Math.floor(words.length / 2); size += 1) {
+    const phrase = words.slice(0, size).join(' ').toLowerCase();
+    let offset = size;
+    while (words.slice(offset, offset + size).join(' ').toLowerCase() === phrase) offset += size;
+    if (offset > size) return words.slice(0, size).concat(words.slice(offset)).join(' ').trim();
+  }
+  return name;
 }
 
 function splitServiceHeadingPrefix(rawName: string): { group: string | null; name: string } {
@@ -349,6 +437,59 @@ function aliasFor(name: string): string[] {
   return aliases;
 }
 
+function normalizeServiceLinkName(value: string): string {
+  return cleanServiceName(value)
+    .replace(/\b(in|near)\s+[A-Z][A-Za-z\s,-]{2,40}$/i, '')
+    .replace(/^(dallas|houston|fort worth|miami|boca raton|scottsdale)\s+/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function serviceNameFromLink(link: PagePreview['links'][number]): string | null {
+  let name = normalizeServiceLinkName(link.text);
+  if (!name || /^(home|overview|services?|online booking|book now|free consult|contact|locations?|stylists?|blog|before & after)$/i.test(name)) {
+    const pathParts = new URL(link.href).pathname.split('/').filter(Boolean);
+    const serviceIndex = pathParts.findIndex((part) => /^services?$/i.test(part));
+    if (serviceIndex < 0 || !pathParts[serviceIndex + 1]) return null;
+    name = normalizeServiceLinkName(
+      decodeURIComponent(pathParts[serviceIndex + 1])
+        .replace(/[-_]+/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase()),
+    );
+  }
+  if (name.length < 3 || name.length > 80) return null;
+  const lower = name.toLowerCase();
+  if (!/(balayage|hair|color|highlight|blowout|extension|haircut|bridal|make|manicure|pedicure|massage|facial|wax|lash|brow|botox|filler|laser|skin|consult)/i.test(lower)) return null;
+  return name;
+}
+
+function extractServiceLinks(previews: PagePreview[]): ImportedServiceSuggestion[] {
+  const services = new Map<string, ImportedServiceSuggestion>();
+  for (const preview of previews) {
+    for (const link of preview.links) {
+      if (!/\/services?\//i.test(new URL(link.href).pathname) && !/services?/i.test(link.href)) continue;
+      const name = serviceNameFromLink(link);
+      if (!name) continue;
+      const categoryName = inferGroup(name);
+      const key = `${categoryName}:${name}`.toLowerCase();
+      if (services.has(key)) continue;
+      services.set(key, {
+        categoryName,
+        name,
+        priceAmount: null,
+        priceCurrency: CURRENCY,
+        priceType: 'varies',
+        durationMinutes: null,
+        aliases: aliasFor(name),
+        bookable: true,
+        source: link.href,
+        confidence: 0.62,
+      });
+    }
+  }
+  return [...services.values()].slice(0, 40);
+}
+
 function sanitizeSnippet(value: string | null | undefined, maxLength = 220): string | undefined {
   const cleaned = (value ?? '')
     .replace(/<[^>]*>/g, ' ')
@@ -376,6 +517,27 @@ function dedupeBy<T>(items: T[], keyFn: (item: T) => string): T[] {
     out.push(item);
   }
   return out;
+}
+
+function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceSuggestion[] {
+  const byKey = new Map<string, ImportedServiceSuggestion>();
+  for (const service of services) {
+    const key = `${service.categoryName}:${service.name}`.toLowerCase();
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, service);
+      continue;
+    }
+    const existingHasPrice = typeof existing.priceAmount === 'number';
+    const serviceHasPrice = typeof service.priceAmount === 'number';
+    if (
+      (serviceHasPrice && !existingHasPrice)
+      || ((service.confidence ?? 0) > (existing.confidence ?? 0) && serviceHasPrice === existingHasPrice)
+    ) {
+      byKey.set(key, service);
+    }
+  }
+  return [...byKey.values()];
 }
 
 function detectBookingPlatform(url: string): BookingSetupSuggestion['platform'] {
@@ -516,15 +678,49 @@ function jsonLdFacts(previews: PagePreview[]) {
   return facts;
 }
 
+function phonesFromText(text: string): string[] {
+  return [...new Set(text.match(new RegExp(PHONE_RE.source, 'g')) ?? [])];
+}
+
+function extractVisiblePhone(previews: PagePreview[]): { value: string; source: string } | null {
+  const scored: Array<{ value: string; score: number; source: string }> = [];
+  for (const preview of previews) {
+    const text = pageText(preview);
+    const context = `${preview.url} ${preview.title} ${preview.h1}`.toLowerCase();
+    const isContactLike = /contact|location|hours|directions/.test(context);
+    for (const value of phonesFromText(text)) {
+      scored.push({ value, score: isContactLike ? 20 : 10, source: isContactLike ? 'Contact page' : 'Website' });
+    }
+  }
+  if (!scored.length) return null;
+  const byDigits = new Map<string, { value: string; score: number; source: string }>();
+  for (const candidate of scored) {
+    const key = phoneComparableDigits(candidate.value);
+    if (!key) continue;
+    const existing = byDigits.get(key);
+    if (!existing || candidate.score > existing.score) byDigits.set(key, candidate);
+    else if (existing && candidate.score === existing.score) existing.score += 1;
+  }
+  return [...byDigits.values()].sort((a, b) => b.score - a.score)[0] ?? null;
+}
+
 export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportSourceType; previews: PagePreview[]; googlePlaces?: GooglePlacesSuggestion | null; llmExtraction?: LlmImportExtraction | null }): ImportSuggestions {
   const allText = input.previews.map((p) => `${p.title}\n${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`).join('\n');
   const facts = jsonLdFacts(input.previews);
-  const services = input.previews.flatMap((p) => extractServicesFromText(`${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`, p.url));
-  const deduped = [...new Map(services.map((s) => [`${s.categoryName}:${s.name}`.toLowerCase(), s])).values()];
-  const rawWebsitePhone = facts.phone ?? allText.match(PHONE_RE)?.[0] ?? null;
+  const services = [
+    ...input.previews.flatMap((p) => extractServicesFromText(`${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`, p.url)),
+    ...extractServiceLinks(input.previews),
+  ];
+  const deduped = dedupeServices(services);
+  const visiblePhone = extractVisiblePhone(input.previews);
+  const rawWebsitePhone = visiblePhone?.value ?? facts.phone ?? allText.match(PHONE_RE)?.[0] ?? null;
   const websiteHours = facts.hours ?? extractHoursFromText(allText);
   const staticAddress = facts.address ?? null;
   const websitePhone = normalizePhoneForStorage(rawWebsitePhone, staticAddress ?? allText) ?? rawWebsitePhone;
+  const warnings: string[] = [];
+  if (visiblePhone?.value && facts.phone && phoneComparableDigits(visiblePhone.value) !== phoneComparableDigits(facts.phone)) {
+    warnings.push('Visible website phone differs from structured website data. Review before saving.');
+  }
   const staticName = facts.name ?? input.previews[0]?.h1 ?? input.previews[0]?.title ?? null;
   const websitePrimaryType = inferPrimaryType(allText);
   const bookingLink = input.previews.flatMap((p) => p.links).find((link) => /book|appointment|schedule|reserve|vagaro|booksy|fresha|glossgenius|styleseat/i.test(`${link.text} ${link.href}`))?.href ?? null;
@@ -535,7 +731,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
       sourceType: input.sourceType,
       name: field(staticName, facts.name ? 0.92 : staticName ? 0.68 : 0, facts.name ? 'JSON-LD' : staticName ? 'Website' : null),
       primaryType: field(websitePrimaryType, websitePrimaryType ? 0.74 : 0, websitePrimaryType ? 'Website' : null),
-      phone: field(websitePhone, facts.phone ? 0.9 : websitePhone ? 0.7 : 0, facts.phone ? 'JSON-LD' : websitePhone ? 'Website' : null),
+      phone: field(websitePhone, visiblePhone ? 0.82 : facts.phone ? 0.9 : websitePhone ? 0.7 : 0, visiblePhone?.source ?? (facts.phone ? 'JSON-LD' : websitePhone ? 'Website' : null)),
       website: field(input.sourceUrl, 0.95, 'User'),
       address: field(staticAddress, staticAddress ? 0.86 : 0, staticAddress ? 'JSON-LD' : null),
       timezone: inferTimezoneFromAddress(staticAddress)?.value ? inferTimezoneFromAddress(staticAddress)! : field<string>(null, 0, null),
@@ -544,7 +740,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
       bookingUrl: field(bookingLink, bookingLink ? 0.8 : 0, bookingLink ? 'Website' : null),
       languages: [],
       ...secondary,
-      warnings: [],
+      warnings,
     },
     googlePlaces: input.googlePlaces,
     llm: input.llmExtraction,

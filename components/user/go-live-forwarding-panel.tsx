@@ -372,7 +372,7 @@ export function GoLiveForwardingPanel({
         </div>
         {copy.blockingReason ? <p className="sub" style={{ marginTop: 12, color: '#92400e' }}>{copy.blockingReason}</p> : null}
         {message ? <p className="sub" style={{ marginTop: 12, color: message.includes('error') ? '#b91c1c' : '#1e3a8a' }}>{message}</p> : null}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+        <div className="portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
           {renderAction(copy.primaryLabel, copy.primaryTarget, true)}
           {copy.secondaryLabel && copy.secondaryTarget ? renderAction(copy.secondaryLabel, copy.secondaryTarget) : null}
         </div>
@@ -405,7 +405,7 @@ export function GoLiveForwardingPanel({
         <section className="card soft">
           <h3 style={{ marginTop: 0 }}>Live answering controls</h3>
           <p className="sub">Use test calls to confirm the experience. If you need to pause live answering, contact support until self-serve pause is available.</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+          <div className="portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {renderAction('Run a test call', 'test_call')}
             <a className="btn" href="/user/calls">View call logs</a>
             <a className="btn" href="/contact?topic=pause-live-answering">Pause live answering</a>

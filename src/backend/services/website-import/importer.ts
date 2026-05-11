@@ -68,7 +68,9 @@ async function fetchText(url: string, opts: ImportOptions): Promise<{ url: strin
         if (!location) return null;
         if (redirectsFollowed >= 5) return null;
         redirectsFollowed += 1;
-        current = (await preflightUrl(new URL(location, current).toString(), { lookup: opts.lookup })).toString();
+        const redirectTarget = new URL(location, current).toString();
+        await preflightUrl(redirectTarget, { lookup: opts.lookup });
+        current = redirectTarget;
         continue;
       }
       const finalUrl = response.url || current;
@@ -227,6 +229,13 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   }
   scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
   selected = selectPages(scored, opts.maxPages ?? 8);
+
+  for (const item of selected) {
+    const existingPreview = previewMap.get(item.candidate.url);
+    if (existingPreview && !(item.bucket === 'service_child' && existingPreview.priceCount === 0 && existingPreview.durationCount === 0)) continue;
+    const fetched = await fetchText(item.candidate.url, opts);
+    if (fetched) previewMap.set(item.candidate.url, previewHtml(fetched.text, fetched.url));
+  }
 
   const selectedPreviews = selected.map((item) => previewMap.get(item.candidate.url)).filter((p): p is PagePreview => Boolean(p));
   const finalPreviews = selectedPreviews.length ? selectedPreviews : [homepagePreview];

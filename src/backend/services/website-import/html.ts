@@ -82,7 +82,7 @@ export function previewHtml(html: string, url: string): PagePreview {
     title,
     h1,
     h2s,
-    firstTextChars: text.slice(0, 2500),
+    firstTextChars: text.slice(0, 8000),
     priceCount,
     durationCount,
     serviceKeywordCount,

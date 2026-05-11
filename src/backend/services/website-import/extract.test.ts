@@ -76,6 +76,21 @@ test('normalizes imported US phone numbers to E.164 for backend storage', () => 
   assert.equal(suggestions.businessProfile.phone.value, '+14694264308');
 });
 
+test('visible contact phone overrides stale JSON-LD phone and warns for review', () => {
+  const preview = previewHtml(`
+    <html><head>
+      <script type="application/ld+json">{"@type":"HairSalon","name":"Unicorn Hair Queen","telephone":"+1 817-505-5236","address":{"streetAddress":"2811 McKinney Avenue","addressLocality":"Dallas","addressRegion":"TX"}}</script>
+    </head><body>
+      <h1>Contact</h1>
+      <p>Get In Touch 214-919-3055 service@example.test</p>
+    </body></html>
+  `, 'https://unicorn.test/contact-us');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://unicorn.test', sourceType: 'normal_website', previews: [preview] });
+  assert.equal(suggestions.businessProfile.phone.value, '+12149193055');
+  assert.equal(suggestions.businessProfile.phone.source, 'Contact page');
+  assert.ok(suggestions.warnings.some((warning) => /visible website phone differs/i.test(warning)));
+});
+
 test('extracts compressed Wix service menu without navigation noise', () => {
   const services = extractServicesFromText(
     'top of pageBOOKINGStyling ServicesHaircut $78+ ​​ Blowout & Style $60+ Color ServicesFace Frame $150+ Partial Highlight $170+ Tint $70+ Foilayage $200+ Full Highlight $200+ Toner/Gloss $50+ Balayage $180+ Hair SpecialtiesKeratin Complex $350+ Deep Conditioning $50+ Perm $250+ Extensions $599+ Brazilian Blowout $380+ Magic Sleek $380+ bottom of page',
@@ -103,6 +118,76 @@ test('extracts common WordPress-style service blocks without compressed Wix clea
   assert.ok(names.includes('Signature Pedicure'));
   assert.ok(names.includes('Eyebrow Wax'));
   assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Gel Manicure')?.priceType, 'from');
+});
+
+test('extracts WordPress service menu links when service pages have no visible prices', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <h1>Hair Extensions in Dallas</h1>
+      <nav>
+        <a href="/services/">Overview</a>
+        <a href="/services/balayage/">Balayage in Dallas</a>
+        <a href="/services/hair-color-services/">Hair Color in Dallas</a>
+        <a href="/services/brazilian-blowout-in-dallas/">Brazilian Blowout</a>
+        <a href="/services/highlights/">Highlights</a>
+        <a href="/services/hairextensions/">Hair Extensions</a>
+        <a href="/services/hair-cut-stylist/">Dallas Haircuts</a>
+        <a href="/services/bridal-hair-2/">Bridal Hair</a>
+        <a href="/services/make-up/">Make-up</a>
+      </nav>
+      <p>We offer balayage, Brazilian blow-outs, haircuts, make-up, bridal hair, and more.</p>
+    </body></html>
+  `, 'https://unicorn.test');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://unicorn.test', sourceType: 'normal_website', previews: [preview] });
+  const names = suggestions.serviceCatalog.services.map((service) => service.name);
+  assert.ok(names.includes('Balayage'));
+  assert.ok(names.includes('Hair Color'));
+  assert.ok(names.includes('Brazilian Blowout'));
+  assert.ok(names.includes('Hair Extensions'));
+  assert.ok(names.includes('Haircuts'));
+  assert.equal(names.includes('Overview'), false);
+  assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Balayage')?.priceType, 'varies');
+  assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Hair Extensions')?.categoryName, 'Hair Extensions');
+  assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Make-up')?.categoryName, 'Makeup');
+});
+
+test('collapses WordPress stylist-level pricing into the service instead of level rows', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <h1>Balayage in Dallas</h1>
+      <a href="/services/balayage/">Balayage in Dallas</a>
+      <h2>Balayage Pricing</h2>
+      <p>Assistant stylists $ 167 50</p>
+      <p>Level 1 stylists $ 335</p>
+      <p>Level 2 stylists $ 345</p>
+      <p>Level 3 stylists $ 355</p>
+    </body></html>
+  `, 'https://unicorn.test/services/balayage');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://unicorn.test', sourceType: 'normal_website', previews: [preview] });
+  const services = suggestions.serviceCatalog.services;
+  const balayage = services.find((service) => service.name === 'Balayage');
+  assert.equal(balayage?.categoryName, 'Hair Color');
+  assert.equal(balayage?.priceAmount, 167.5);
+  assert.equal(balayage?.priceType, 'from');
+  assert.match(balayage?.bookingNotes ?? '', /Level 1 stylists \$335/);
+  assert.equal(services.some((service) => /Level 1|Assistant stylists/i.test(service.name)), false);
+});
+
+test('extracts service pricing that appears below long WordPress page copy', () => {
+  const filler = '<p>Hair extensions salon copy.</p>'.repeat(180);
+  const preview = previewHtml(`
+    <html><body>
+      <h1>Hair Extensions</h1>
+      ${filler}
+      <h2>Hair Extensions Pricing</h2>
+      <p>Assistant Stylists $ 599</p>
+      <p>Level 1 Stylists $ 799</p>
+    </body></html>
+  `, 'https://unicorn.test/services/hairextensions');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://unicorn.test', sourceType: 'normal_website', previews: [preview] });
+  const extensions = suggestions.serviceCatalog.services.find((service) => service.name === 'Hair Extensions');
+  assert.equal(extensions?.priceAmount, 599);
+  assert.equal(extensions?.priceType, 'from');
 });
 
 test('extracts secondary Business Knowledge suggestions from deterministic website evidence', () => {

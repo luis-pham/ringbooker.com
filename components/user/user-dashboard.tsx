@@ -853,6 +853,90 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
     text-align:center;
     box-shadow:none;
   }
+  /* Primary action rows inside cards (Go Live, Billing enterprise CTAs, etc.) */
+  .user-app-shell .portal-card-actions{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    gap:10px !important;
+  }
+  .user-app-shell .portal-card-actions > .btn,
+  .user-app-shell .portal-card-actions > a.btn,
+  .user-app-shell .portal-card-actions > button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+    padding:14px 18px;
+    font-size:15px;
+    font-weight:500;
+    line-height:1.2;
+  }
+  .user-app-shell .price-mini-cta{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+  .user-app-shell .price-mini-cta > .btn,
+  .user-app-shell .price-mini-cta > a.btn,
+  .user-app-shell .price-mini-cta > span.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+    padding:14px 18px;
+    font-size:15px;
+    font-weight:500;
+    line-height:1.2;
+  }
+  /* Billing overview / body CTAs not in panel-head or portal-card-actions */
+  .user-app-shell .card button.btn.user-save,
+  .user-app-shell .card a.btn.user-save{
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .user-app-shell .card > a.btn{
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .user-app-shell [aria-label='Billing interval']{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    width:100%;
+    gap:8px;
+  }
+  .user-app-shell [aria-label='Billing interval'] > button{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .user-app-shell .rb-account-inline-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .user-app-shell .rb-account-inline-actions > .btn,
+  .user-app-shell .rb-account-inline-actions > .btn.user-save,
+  .user-app-shell .rb-account-inline-actions > button.rb-account-btn-ghost{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
   .page-title h1{font-size:20px}
   .page-title p{color:#111827}
   .app-shell{grid-template-columns:1fr}

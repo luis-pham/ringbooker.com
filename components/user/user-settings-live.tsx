@@ -2393,7 +2393,7 @@ export function UserSettingsLive({
 	                                  </div>
 	                                  {editingCatalogServiceId === service.id ? (
 	                                    <div className="service-inline-editor">
-	                                      <div className="service-item-head">
+	                                      <div className="service-item-head service-item-head--catalog-pair">
 	                                        <div className="field">
 	                                          <label>Service name</label>
 	                                          <input value={service.name} onChange={(event) => updateCatalogService(service.id, { name: event.target.value })} placeholder="Gel Manicure" />
@@ -2623,20 +2623,22 @@ export function UserSettingsLive({
                     <h3>Staff / Technicians</h3>
                     <p className="sub">Add staff names and specialties so RingBooker answers accurately. Preferred-provider memory requires Professional.</p>
                   </div>
-                  {currentForm.staff.length > 0 ? (
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        patchState('staff', [...currentForm.staff, emptyStaffMember()]);
-                        setExpandedStaffIndex(currentForm.staff.length);
-                      }}
-                    >
-                      Add staff
-                    </button>
-                  ) : null}
                 </div>
                 <div className="card-section settings-tab-content-frame">
+                  {currentForm.staff.length > 0 ? (
+                    <div className="staff-section-toolbar">
+                      <button
+                        type="button"
+                        className="btn"
+                        onClick={() => {
+                          patchState('staff', [...currentForm.staff, emptyStaffMember()]);
+                          setExpandedStaffIndex(currentForm.staff.length);
+                        }}
+                      >
+                        Add staff
+                      </button>
+                    </div>
+                  ) : null}
                   {currentForm.staff.length === 0 ? (
                     <div className="sh-empty empty staff-empty">
                       <div className="staff-empty-icon" aria-hidden="true">

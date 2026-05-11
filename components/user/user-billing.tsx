@@ -30,7 +30,7 @@ export const userBillingStyles: string[] = [
 }
 .price-mini{
   display:flex;flex-direction:column;min-height:100%;padding:20px 18px;border-radius:20px;border:1px solid var(--border);background:#fff;
-  flex:0 1 240px;min-width:230px;max-width:300px;width:100%;
+  flex:0 1 240px;min-width:300px;max-width:300px;width:100%;
 }
 .price-mini.featured{border-color:var(--purple);border-width:2px;box-shadow:none}
 .price-mini .price-mini-body{flex:1}
@@ -142,8 +142,45 @@ export const userBillingStyles: string[] = [
   .billing-status-grid{grid-template-columns:1fr}
   .billing-subtabs.business-subtabs{gap:18px}
   .billing-subtabs.business-subtabs .business-subtab{font-size:14px;padding:0 0 10px}
-  .pricing-mini{gap:14px}
-  .price-mini{max-width:100%}
+  /* Stack plan cards full-width so horizontal inset matches .card sections above (no centered narrow column). */
+  .pricing-mini{
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:flex-start;
+    gap:14px;
+  }
+  .price-mini{
+    flex:1 1 auto;
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    box-sizing:border-box;
+  }
+  .billing-alert-strip{
+    flex-direction:column;
+    align-items:stretch;
+    gap:12px;
+  }
+  .billing-alert-strip .btn,
+  .billing-alert-strip a.btn,
+  .billing-alert-strip button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .billing-alert-strip > div{
+    max-width:100%;
+  }
+  .billing-alert-strip > div[style]{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    justify-content:flex-start !important;
+    width:100%;
+    gap:10px;
+  }
 }
 
 html[data-user-theme="dark"] .billing-status-card{

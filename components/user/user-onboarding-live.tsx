@@ -1499,7 +1499,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .profile-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .profile-review-card{border:1px solid #d9deea;border-radius:12px;background:#fff;padding:14px 16px;min-height:78px}
 .profile-review-card.wide{grid-column:1 / -1}
-.profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#2563eb;padding:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.profile-review-edit:hover{text-decoration:underline;text-underline-offset:2px}
+.profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#475569;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box}.profile-review-edit:hover{background:#f1f5f9;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
 .service-group-card{border:1px solid #e2e8f0;border-radius:14px;background:#fff;margin-top:14px;overflow:hidden}
@@ -1529,7 +1529,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row,.service-item-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions:not(.onb-actions-desktop){display:none}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row,.service-item-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -1651,7 +1651,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     inputMode="url"
                   />
                 </div>
-                <button className="onb-import-button" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
+                <button
+                  className="onb-import-button onb-actions-desktop"
+                  type="button"
+                  onClick={() => void saveQuickContinue()}
+                  disabled={saving || websiteLoading}
+                >
                   ✧ {websiteLoading ? 'Importing…' : 'Import'}
                 </button>
               </div>
@@ -1818,8 +1823,30 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <div className={`profile-review-card ${options.wide ? 'wide' : ''}`}>
           <div className="profile-review-top">
             <span className="profile-review-label">{label}</span>
-            <button type="button" className="profile-review-edit" onClick={() => setProfileEditField(editing ? null : field)}>
-              {editing ? 'done' : 'edit'}
+            <button
+              type="button"
+              className={editing ? 'profile-review-edit profile-review-edit--text' : 'profile-review-edit'}
+              aria-label={editing ? `Done editing ${label}` : `Edit ${label}`}
+              onClick={() => setProfileEditField(editing ? null : field)}
+            >
+              {editing ? (
+                'done'
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  width="18"
+                  height="18"
+                  aria-hidden="true"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              )}
             </button>
           </div>
           {editing ? <div className="profile-review-editor">{editor}</div> : <div className="profile-review-value">{value || 'Missing'}</div>}
@@ -2302,7 +2329,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                 <h3>Web voice test</h3>
                 <p>Talk to RingBooker in your browser using your business setup.</p>
                 <a
-                  className="onb-btn-primary"
+                  className="onb-btn-primary onb-actions-desktop"
                   href={webDemoHref}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2317,13 +2344,18 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               <div className="test-card">
                 <h3>Call me for a test</h3>
                 <p>RingBooker will call your saved phone number so you can hear how it sounds on a real call.</p>
-                <button className="onb-btn-primary" style={{ marginTop: 'auto', alignSelf: 'flex-start' }} type="button" onClick={() => void requestTestCall()}>
+                <button
+                  className="onb-btn-primary onb-actions-desktop"
+                  style={{ marginTop: 'auto', alignSelf: 'flex-start' }}
+                  type="button"
+                  onClick={() => void requestTestCall()}
+                >
                   Call me now
                 </button>
                 {testCallStatus ? <p className="onb-help">{testCallStatus}</p> : null}
               </div>
             </div>
-            <div style={{ marginTop: 20 }}>
+            <div className="onb-actions-desktop" style={{ marginTop: 20 }}>
               <button type="button" className="onb-btn-secondary" style={{ marginRight: 12 }} onClick={markOnboardingWrapped}>
                 I tried the web demo — continue
               </button>
@@ -2342,7 +2374,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             <p className="onb-subtitle" style={{ marginTop: 8 }}>
               Open your dashboard to finish going live when you&apos;re ready. Start your 14-day trial from Billing — live answering stays off until billing and phone forwarding are complete.
             </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+            <div className="onb-actions-desktop" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
               <button className="onb-btn-primary" type="button" onClick={completeSetup}>
                 Open dashboard
               </button>

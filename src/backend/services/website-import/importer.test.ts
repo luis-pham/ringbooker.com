@@ -31,6 +31,40 @@ test('normal website import discovers service hub and child service pages', asyn
   assert.ok(result.diagnostics.childServicePagesFound.some((url) => url.includes('/salon/balayage')));
 });
 
+test('selected service child pages are fetched even when outside initial preview window', async () => {
+  const fillerLinks = Array.from({ length: 30 }, (_, index) => `<a href="/page-${index}">About ${index}</a>`).join('');
+  const html: Record<string, string> = {
+    'https://late-child.test/': `<html><head><title>Late Child Salon</title></head><body><h1>Late Child Salon</h1>${fillerLinks}<a href="/services/balayage">Balayage</a></body></html>`,
+    'https://late-child.test/robots.txt': '',
+    'https://late-child.test/services/balayage': '<h1>Balayage</h1><p>Balayage starts at $180 120 minutes.</p>',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://late-child.test' }, {
+    lookup,
+    fetcher: async (url) => response(html[url] ?? '<h1>About</h1>', url),
+  });
+  const balayage = result.suggestions.serviceCatalog.services.find((service) => service.name === 'Balayage');
+  assert.equal(balayage?.priceAmount, 180);
+});
+
+test('WordPress-style trailing slash redirects are followed without normalization loops', async () => {
+  const html: Record<string, string> = {
+    'https://slash.test/': '<h1>Slash Salon</h1><a href="/services/balayage">Balayage</a>',
+    'https://slash.test/robots.txt': '',
+    'https://slash.test/services/balayage/': '<h1>Balayage</h1><h2>Balayage Pricing</h2><p>Assistant stylists $ 180</p><p>Level 1 stylists $ 220</p>',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://slash.test' }, {
+    lookup,
+    fetcher: async (url) => {
+      if (url === 'https://slash.test/services/balayage') {
+        return new Response('', { status: 301, headers: { location: 'https://slash.test/services/balayage/' } });
+      }
+      return response(html[url] ?? '<h1>Other</h1>', url);
+    },
+  });
+  const balayage = result.suggestions.serviceCatalog.services.find((service) => service.name === 'Balayage');
+  assert.equal(balayage?.priceAmount, 180);
+});
+
 test('platform domains skip deep crawl and preserve platform URL as booking URL fallback', async () => {
   const result = await importWebsiteForOnboarding({ url: 'https://booksy.com/shop/example' }, {
     lookup,

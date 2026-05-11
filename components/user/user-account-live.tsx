@@ -316,8 +316,14 @@ button.rb-account-link:hover{text-decoration:underline}
 .rb-account-btn-ghost:hover:not(:disabled){background:#f9fafb;border-color:#d1d5db}
 .rb-account-btn-ghost:disabled{opacity:.55;cursor:not-allowed}
 .rb-account-password-actions{margin-top:18px}
-@media(min-width:521px){
-  .rb-account-password-actions .btn.user-save{width:100%}
+@media(max-width:860px){
+  .rb-account-password-actions .btn.user-save{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
 }
 @media(min-width:1024px){
   .account-password-inner > .field{

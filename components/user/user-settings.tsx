@@ -447,6 +447,7 @@ button.subtle-link:hover{text-decoration:underline}
 .staff-spec-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
 .staff-spec{padding:3px 8px;background:#f5f3ee;border-radius:999px;font-size:12px;color:#52525b}
 .staff-card-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.staff-section-toolbar{display:flex;justify-content:flex-end;margin-bottom:14px}
 .staff-toggle{
   width:36px;height:20px;border-radius:999px;border:0;position:relative;cursor:pointer;flex-shrink:0;
   transition:background .15s ease;
@@ -590,6 +591,12 @@ button.subtle-link:hover{text-decoration:underline}
   .knowledge-portal-main .page-title p{
     max-width:none;
     white-space:nowrap;
+  }
+}
+@media (min-width:861px){
+  .service-item-head.service-item-head--catalog-pair{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:16px;
   }
 }
 
@@ -795,6 +802,102 @@ html[data-user-theme="dark"] .upgrade-panel{
     min-width:0;
     width:100%;
     box-sizing:border-box;
+  }
+  .user-app-shell .settings-save-footer{
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:flex-start;
+  }
+  .user-app-shell .settings-save-footer > .btn,
+  .user-app-shell .settings-save-footer > button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+    padding:14px 18px;
+    font-size:15px;
+    font-weight:500;
+    line-height:1.2;
+  }
+  .user-app-shell .actions-row{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .user-app-shell .actions-row > .btn,
+  .user-app-shell .actions-row > button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .user-app-shell .integrations-inline-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .user-app-shell .integrations-inline-actions > .btn,
+  .user-app-shell .integrations-inline-actions > button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .user-app-shell .integrations-vagaro-booking-actions,
+  .user-app-shell .integrations-vagaro-primary-actions{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+  .user-app-shell .integrations-vagaro-booking-actions .btn,
+  .user-app-shell .integrations-vagaro-booking-actions button.btn,
+  .user-app-shell .integrations-vagaro-primary-actions .btn,
+  .user-app-shell .integrations-vagaro-primary-actions button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .user-app-shell .calendar-int-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .user-app-shell .calendar-int-actions > .btn,
+  .user-app-shell .calendar-int-actions > a.btn,
+  .user-app-shell .calendar-int-actions > button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .user-app-shell .integrations-square-connect-row{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .user-app-shell .integrations-square-connect-row > .btn,
+  .user-app-shell .integrations-square-connect-row > a.btn,
+  .user-app-shell .integrations-square-connect-row > button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
+  }
+  .user-app-shell .integrations-path-picker{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .user-app-shell .integrations-path-picker > .btn,
+  .user-app-shell .integrations-path-picker > button.btn{
+    width:100%;
+    box-sizing:border-box;
+    justify-content:center;
+    min-height:48px;
+    height:auto;
   }
   .card-section-form{padding:0}
   .sh-catalog-grid{grid-template-columns:1fr}

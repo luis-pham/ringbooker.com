@@ -87,6 +87,46 @@ function formatPhone(value?: string) {
   return `${value.slice(0, Math.min(3, value.length - 4))}•••${value.slice(-4)}`;
 }
 
+/** Desktop table avatar: initials from saved caller name when present, else last two digits of phone. */
+function callerAvatarGlyph(call: Call): string {
+  const rawName = call.summaryCallerName?.trim();
+  if (rawName) {
+    const parts = rawName.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      const a = parts[0][0];
+      const b = parts[parts.length - 1][0];
+      if (a && b) return `${a}${b}`.toUpperCase();
+    }
+    if (parts.length === 1 && parts[0].length >= 2) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    if (parts.length === 1 && parts[0].length === 1) {
+      return `${parts[0][0]}?`.toUpperCase();
+    }
+  }
+  const digits = call.callerPhone?.replace(/\D/g, '') ?? '';
+  if (digits.length >= 2) return digits.slice(-2);
+  const fallback = call.callerPhone ?? '?';
+  return fallback.slice(-2).toUpperCase();
+}
+
+function callerKindBadge(call: Call, isVip: boolean): { label: string; className: string } {
+  if (call.outcome === 'missed') return { label: 'Missed', className: 'calls-caller-kind calls-caller-kind--missed' };
+  if (isVip) return { label: 'Repeat caller', className: 'calls-caller-kind calls-caller-kind--repeat' };
+  return { label: 'New caller', className: 'calls-caller-kind calls-caller-kind--new' };
+}
+
+/** Visual-only pill mapping for the calls table status column (API outcome values unchanged). */
+function outcomePillMeta(outcome?: string | null): { className: string; label: string } {
+  if (outcome === 'missed') return { className: 'calls-status-pill calls-status-pill--missed', label: 'Missed' };
+  if (outcome === 'booked') return { className: 'calls-status-pill calls-status-pill--captured', label: 'Captured' };
+  if (outcome === 'error') return { className: 'calls-status-pill calls-status-pill--followup', label: 'Follow-up' };
+  if (!outcome || outcome === 'in_progress') {
+    return { className: 'calls-status-pill calls-status-pill--inprogress', label: 'In progress' };
+  }
+  return { className: 'calls-status-pill calls-status-pill--inprogress', label: formatOutcomeLabel(outcome) };
+}
+
 function formatOutcomeLabel(outcome?: string | null) {
   if (outcome === 'booked') return 'Booked';
   if (outcome === 'missed') return 'Missed';
@@ -487,58 +527,63 @@ export function UserCallsLive({
                   </div>
                 ) : null}
                 {calls.length > 0 ? (
-                <div className="desktop-calls calls-table-wrap">
-	                  <table className="table calls-table">
-	                    <thead>
-	                      <tr>
-	                        <th>Caller</th>
-	                        <th>Date &amp; Time</th>
-	                        <th>Status</th>
-	                        <th>Transcript</th>
-	                      </tr>
+                  <table className="table calls-table calls-table-desktop">
+                    <thead>
+                      <tr>
+                        <th scope="col">Caller</th>
+                        <th scope="col">Date &amp; Time</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Transcript</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {calls.map((call) => {
                         const isVip = call.callerPhone ? vipSignals.get(call.callerPhone) === true : false;
+                        const kind = callerKindBadge(call, isVip);
+                        const statusPill = outcomePillMeta(call.outcome);
                         return (
                           <tr key={call.providerCallId}>
                             <td>
-                              <div className="name-row">
-	                                <div className="mini-avatar">{(call.callerPhone ?? '?').slice(-2).toUpperCase()}</div>
-	                                <div className="stack">
-	                                  <span className="value-strong">
-	                                    {formatPhone(call.callerPhone)}
-	                                    {isVip ? <span className="tag purple vip-inline">Repeat caller</span> : null}
-	                                  </span>
-	                                  <span className="subline">
-                                    Routed to {call.destinationPhone ? formatPhone(call.destinationPhone) : call.providerCallId}
-                                  </span>
-	                                </div>
-	                              </div>
-	                            </td>
-	                            <td>
-	                              {formatShopDate(call.startedAt, shopTimezone)} · {formatShopTime(call.startedAt, shopTimezone)}
-	                            </td>
-	                            <td>
-                              <span className="call-status-pill">
-                                <svg viewBox="0 0 24 24" aria-hidden>
-                                  <circle cx="12" cy="12" r="9" />
-                                  <path d="M12 7v5l3 2" />
-                                </svg>
-                                {formatOutcomeLabel(call.outcome)}
-                              </span>
+                              <div className="calls-row-caller">
+                                <div className="calls-caller-avatar" aria-hidden>
+                                  {callerAvatarGlyph(call)}
+                                </div>
+                                <div className="calls-caller-body">
+                                  <div className="calls-caller-line1">
+                                    <span className="calls-caller-phone">{formatPhone(call.callerPhone)}</span>
+                                    <span className={kind.className}>{kind.label}</span>
+                                  </div>
+                                  <div className="calls-caller-routed">
+                                    → {call.destinationPhone ? formatPhone(call.destinationPhone) : '—'}
+                                  </div>
+                                </div>
+                              </div>
                             </td>
-	                            <td>
-	                              <button className="btn ghost transcript-view-btn" type="button" onClick={() => { setActiveCall(call); setShowTranscript(false); }}>
-	                                View
-	                              </button>
-	                            </td>
+                            <td>
+                              <div className="calls-table-datetime">
+                                {formatShopDate(call.startedAt, shopTimezone)} · {formatShopTime(call.startedAt, shopTimezone)}
+                              </div>
+                            </td>
+                            <td>
+                              <span className={statusPill.className}>{statusPill.label}</span>
+                            </td>
+                            <td>
+                              <button
+                                className="calls-transcript-view-btn"
+                                type="button"
+                                onClick={() => {
+                                  setActiveCall(call);
+                                  setShowTranscript(false);
+                                }}
+                              >
+                                View
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-                </div>
                 ) : null}
 
                 {calls.length > 0 ? (

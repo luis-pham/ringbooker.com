@@ -1,7 +1,7 @@
 import type { CandidateBucket, CandidateUrl, PagePreview, SelectedPageDiagnostic } from './types';
 
 const SERVICE_WORDS = /\b(service|services|menu|pricing|price|treatment|treatments|salon|spa|beauty|hair|haircut|color|balayage|manicure|pedicure|waxing|massage|facial|botox|laser|injectable|lashes|brow)\b/i;
-const SPECIFIC_SERVICE = /\b(balayage|hydrafacial|botox|filler|gel manicure|deluxe pedicure|eyebrow wax|waxing|massage|facial|hair color|highlights|acrylic|dip powder)\b/i;
+const SPECIFIC_SERVICE = /\b(balayage|hydrafacial|botox|filler|gel manicure|deluxe pedicure|eyebrow wax|waxing|massage|facial|hair color|highlights|haircut|hair cut|hair extensions?|brazilian blowout|bridal hair|make-?up|acrylic|dip powder)\b/i;
 const STAFF_WORDS = /\b(staff|team|stylist|stylists|providers|artists|technicians|experts|injectors|estheticians|barbers)\b/i;
 const POLICY_WORDS = /\b(policy|policies|cancellation|no-show|no show|deposit|refund|terms|appointment|late|prep|aftercare)\b/i;
 const FAQ_WORDS = /\b(faq|faqs|questions|help)\b/i;
@@ -51,7 +51,7 @@ export function selectPages(scored: Array<{ candidate: CandidateUrl; bucket: Can
       if (selected.length < maxPages && !selected.some((s) => s.candidate.url === item.candidate.url)) selected.push(item);
     }
   };
-  add('homepage', 1); add('service_hub', 2); add('service_child', 2); add('contact_hours', 1); add('booking', 1); add('policies', 1); add('faq', 1); add('staff_team', 1); add('promotions', 1); add('about_team', 1);
+  add('homepage', 1); add('service_hub', 1); add('service_child', 5); add('contact_hours', 1); add('booking', 1); add('policies', 1); add('faq', 1); add('staff_team', 1); add('promotions', 1); add('about_team', 1);
   return selected.slice(0, maxPages);
 }
 
