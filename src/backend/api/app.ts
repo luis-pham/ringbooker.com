@@ -30,6 +30,7 @@ import {
   type ShopSettingCapability,
 } from '@/src/backend/domain/shop-plan-capabilities';
 import { createSignupPlaceholderBusinessPhoneE164 } from '@/src/backend/domain/signup-placeholder-phone';
+import { normalizePhoneForStorage } from '@/lib/phone-number';
 import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
 import { mergeImportedServicesIntoCatalog } from '@/src/backend/domain/service-catalog';
 import { importWebsiteForOnboarding } from '@/src/backend/services/website-import/importer';
@@ -935,6 +936,11 @@ function splitUserSettingsPatchByPlan(
       key === 'send_missed_call_followup_sms'
     ) {
       dynamicPatch[key] = value;
+      continue;
+    }
+
+    if ((key === 'phone_number' || key === 'user_phone' || key === 'backup_phone') && typeof value === 'string') {
+      basicPatch[key] = normalizePhoneForStorage(value, typeof patch.address === 'string' ? patch.address : typeof shop.address === 'string' ? shop.address : undefined) ?? value;
       continue;
     }
 

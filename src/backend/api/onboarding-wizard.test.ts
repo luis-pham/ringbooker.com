@@ -241,8 +241,8 @@ test('Confirmed profile review saves user-edited values over imported suggestion
       name: 'Owner Edited Salon',
       user_name: 'Owner Edited Salon',
       vertical: 'nail_salon',
-      phone_number: '+15550001111',
-      user_phone: '+15550001111',
+      phone_number: '469-426-4308',
+      user_phone: '4694264308',
       timezone: 'America/New_York',
       languages: ['en'],
       address: 'Owner Edited Address, New York, NY',
@@ -254,7 +254,8 @@ test('Confirmed profile review saves user-edited values over imported suggestion
   assert.equal(response.status, 200);
   const shop = await shopsRepository.findById('demo-shop');
   assert.equal(shop?.name, 'Owner Edited Salon');
-  assert.equal(shop?.phone_number, '+15550001111');
+  assert.equal(shop?.phone_number, '+14694264308');
+  assert.equal(shop?.user_phone, '+14694264308');
   assert.equal(shop?.vertical, 'nail_salon');
   assert.equal(shop?.timezone, 'America/New_York');
   assert.equal(shop?.address, 'Owner Edited Address, New York, NY');

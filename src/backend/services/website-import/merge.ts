@@ -1,5 +1,6 @@
 import type { ImportedServiceSuggestion, ImportField, ImportSuggestions, LlmImportExtraction, WebsiteImportCompleteness, WeeklyHours } from './types';
 import type { GooglePlacesSuggestion } from './google-places';
+import { normalizePhoneForStorage, phoneComparableDigits } from '@/lib/phone-number';
 
 export type StaticImportFacts = {
   sourceUrl: string;
@@ -20,7 +21,6 @@ export type StaticImportFacts = {
 function field<T>(value: T | null, confidence: number, source: string | null): ImportField<T> {
   return { value, confidence: value === null ? 0 : Math.max(0, Math.min(1, confidence)), source: value === null ? null : source };
 }
-function normalizePhone(value?: string | null): string { return (value ?? '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''); }
 function normalizeText(value?: string | null): string { return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
 function inferTimezoneFromAddress(address?: string | null): string | null {
   if (!address) return null;
@@ -84,7 +84,7 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   const warnings = [...(input.staticFacts.warnings ?? []), ...(input.googlePlaces?.warnings ?? []), ...(input.llm?.warnings ?? [])];
   const places = input.googlePlaces ?? null;
   const llm = input.llm ?? null;
-  if (places?.phone && input.staticFacts.phone.value && normalizePhone(places.phone) !== normalizePhone(input.staticFacts.phone.value)) warnings.push('Google Places phone differs from website phone. Review before saving.');
+  if (places?.phone && input.staticFacts.phone.value && phoneComparableDigits(places.phone) !== phoneComparableDigits(input.staticFacts.phone.value)) warnings.push('Google Places phone differs from website phone. Review before saving.');
   if (places?.address && input.staticFacts.address.value && normalizeText(places.address) !== normalizeText(input.staticFacts.address.value)) warnings.push('Google Places address differs from website address. Review before saving.');
   if (places?.hours && input.staticFacts.hours.value && JSON.stringify(places.hours) !== JSON.stringify(input.staticFacts.hours.value)) warnings.push('Google Places hours differ from website hours. Review before saving.');
   const llmServices = llm?.serviceCatalog?.services ?? [];
@@ -94,8 +94,9 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   if (serviceConfidence > 0 && serviceConfidence < 0.7) warnings.push('Some imported service details need review.');
   const placeConfidence = Math.max(0.85, places?.matchConfidence ?? 0);
   const name = choose(placesField(places?.name, placeConfidence >= 0.82 ? 0.94 : 0.72), input.staticFacts.name.source === 'JSON-LD' ? input.staticFacts.name : null, input.staticFacts.name, maybeLlm(llm?.businessProfile?.name));
-  const phone = choose(placesField(places?.phone, placeConfidence >= 0.82 ? 0.96 : 0.72), input.staticFacts.phone, maybeLlm(llm?.businessProfile?.phone));
+  const rawPhone = choose(placesField(places?.phone, placeConfidence >= 0.82 ? 0.96 : 0.72), input.staticFacts.phone, maybeLlm(llm?.businessProfile?.phone));
   const address = choose(placesField(places?.address, placeConfidence >= 0.82 ? 0.96 : 0.72), input.staticFacts.address, maybeLlm(llm?.businessProfile?.address));
+  const phone = rawPhone.value ? field(normalizePhoneForStorage(rawPhone.value, address.value ?? places?.address ?? input.staticFacts.address.value) ?? rawPhone.value, rawPhone.confidence, rawPhone.source) : rawPhone;
   const hours = choose<WeeklyHours>(placesField(places?.hours ?? null, placeConfidence >= 0.82 ? 0.95 : 0.72), input.staticFacts.hours.source === 'JSON-LD' ? input.staticFacts.hours : null, input.staticFacts.hours, maybeLlm(llm?.hours));
   const timezone = choose(placesField(places?.timezone ?? inferTimezoneFromAddress(places?.address), placeConfidence >= 0.82 ? 0.9 : 0.68), input.staticFacts.timezone, maybeLlm(llm?.businessProfile?.timezone));
   const website = choose(placesField(places?.website, placeConfidence >= 0.82 ? 0.94 : 0.68), input.staticFacts.website, maybeLlm(llm?.businessProfile?.website));

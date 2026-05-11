@@ -1,4 +1,5 @@
 import type { ImportSourceType } from './types';
+import { phoneComparableDigits } from '@/lib/phone-number';
 
 export type GooglePlacesSuggestion = {
   name?: string | null;
@@ -152,9 +153,6 @@ function buildPlacesQuery(input: { url: URL; sourceType: ImportSourceType; hints
   return parts.length ? parts.join(' ') : domain || null;
 }
 
-function normalizePhone(value?: string | null): string {
-  return (value ?? '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
-}
 
 function normalizeDomain(value?: string | null): string {
   if (!value) return '';
@@ -180,7 +178,7 @@ function scorePlaceMatch(place: Record<string, unknown>, input: { url: URL; sour
   const warnings: string[] = [];
   let score = 0;
   if (placeWebsite && normalizeDomain(placeWebsite) === normalizeDomain(hints.website ?? input.url.toString())) score += 0.45;
-  if (placePhone && hints.phone && normalizePhone(placePhone) === normalizePhone(hints.phone)) score += 0.3;
+  if (placePhone && hints.phone && phoneComparableDigits(placePhone) === phoneComparableDigits(hints.phone)) score += 0.3;
   score += Math.min(0.2, tokenSimilarity(displayName?.text, hints.name) * 0.2);
   score += Math.min(0.15, tokenSimilarity(placeAddress, hints.address) * 0.15);
   if (placeWebsite && normalizeDomain(placeWebsite) !== normalizeDomain(input.url.toString())) warnings.push('Google Places website differs from submitted website. Review before saving.');

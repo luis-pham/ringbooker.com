@@ -1,6 +1,7 @@
 import type { ImportedServiceSuggestion, ImportField, ImportSourceType, ImportSuggestions, PagePreview } from './types';
 import type { GooglePlacesSuggestion } from './google-places';
 import type { LlmImportExtraction } from './types';
+import { normalizePhoneForStorage } from '@/lib/phone-number';
 import { mergeImportSuggestions } from './merge';
 
 const CURRENCY = 'USD';
@@ -327,9 +328,10 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   const facts = jsonLdFacts(input.previews);
   const services = input.previews.flatMap((p) => extractServicesFromText(`${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`, p.url));
   const deduped = [...new Map(services.map((s) => [`${s.categoryName}:${s.name}`.toLowerCase(), s])).values()];
-  const websitePhone = facts.phone ?? allText.match(PHONE_RE)?.[0] ?? null;
+  const rawWebsitePhone = facts.phone ?? allText.match(PHONE_RE)?.[0] ?? null;
   const websiteHours = facts.hours ?? extractHoursFromText(allText);
   const staticAddress = facts.address ?? null;
+  const websitePhone = normalizePhoneForStorage(rawWebsitePhone, staticAddress ?? allText) ?? rawWebsitePhone;
   const staticName = facts.name ?? input.previews[0]?.h1 ?? input.previews[0]?.title ?? null;
   const websitePrimaryType = inferPrimaryType(allText);
   const bookingLink = input.previews.flatMap((p) => p.links).find((link) => /book|appointment|schedule|reserve|vagaro|booksy|fresha|glossgenius|styleseat/i.test(`${link.text} ${link.href}`))?.href ?? null;

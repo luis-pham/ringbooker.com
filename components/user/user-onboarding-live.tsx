@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { formatPhoneForDisplay, normalizePhoneForStorage } from '@/lib/phone-number';
 import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
 import { UserLayout } from '@/components/user/user-layout';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
@@ -833,7 +834,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [businessName, setBusinessName] = useState(initialShop?.name ?? '');
   const [address, setAddress] = useState(typeof initialShop?.address === 'string' ? initialShop.address : '');
   const [vertical, setVertical] = useState<Vertical | ''>(initialVertical);
-  const [businessPhone, setBusinessPhone] = useState(initialSyntheticPhone ? '' : initialRawPhone);
+  const [businessPhone, setBusinessPhone] = useState(initialSyntheticPhone ? '' : formatPhoneForDisplay(initialRawPhone));
   const [businessPhoneNeedsRealEntry, setBusinessPhoneNeedsRealEntry] = useState(initialSyntheticPhone);
   const [hours, setHours] = useState<WizardHours>(() => initialShop ? apiHoursToWizard(initialShop.hours ?? {}) : defaultHours());
   const [hoursExpanded, setHoursExpanded] = useState(false);
@@ -1119,7 +1120,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             const importedServices = servicesFromImport(suggestions);
             setServicesFound(importedServices.length);
             if (suggestions.businessProfile.name?.value && !businessName.trim()) setBusinessName(suggestions.businessProfile.name.value);
-            if (suggestions.businessProfile.phone?.value && !businessPhone.trim()) setBusinessPhone(suggestions.businessProfile.phone.value);
+            if (suggestions.businessProfile.phone?.value && !businessPhone.trim()) setBusinessPhone(formatPhoneForDisplay(suggestions.businessProfile.phone.value));
             if (suggestions.businessProfile.address?.value && !address.trim()) setAddress(suggestions.businessProfile.address.value);
             if (suggestions.businessProfile.timezone?.value) setTimezone(suggestions.businessProfile.timezone.value);
             if (suggestions.hours?.value) setHours(apiHoursToWizard(suggestions.hours.value));
@@ -1174,8 +1175,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       current_onboarding_step: 2,
     };
     if (businessPhone.trim()) {
-      patch.phone_number = businessPhone;
-      patch.user_phone = businessPhone;
+      const normalizedPhone = normalizePhoneForStorage(businessPhone, address || undefined) ?? businessPhone;
+      patch.phone_number = normalizedPhone;
+      patch.user_phone = normalizedPhone;
     }
     const ok = await saveSettings(patch);
     if (ok) {
@@ -1217,8 +1219,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       patch.user_name = businessName.trim();
     }
     if (businessPhone.trim()) {
-      patch.phone_number = businessPhone.trim();
-      patch.user_phone = businessPhone.trim();
+      const normalizedPhone = normalizePhoneForStorage(businessPhone, address || undefined) ?? businessPhone.trim();
+      patch.phone_number = normalizedPhone;
+      patch.user_phone = normalizedPhone;
     }
 
     const trimmed = websiteUrl.trim();
@@ -1299,8 +1302,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       current_onboarding_step: 3,
     };
     if (businessPhone.trim()) {
-      profilePatch.phone_number = businessPhone;
-      profilePatch.user_phone = businessPhone;
+      const normalizedPhone = normalizePhoneForStorage(businessPhone, addr || undefined) ?? businessPhone;
+      profilePatch.phone_number = normalizedPhone;
+      profilePatch.user_phone = normalizedPhone;
     }
     const ok = await saveSettings(profilePatch);
     if (ok) setCurrentStep(3);
@@ -1899,7 +1903,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           {profileCard(
             'phone',
             'Phone',
-            businessPhone,
+            formatPhoneForDisplay(businessPhone),
             <input
               type="tel"
               value={businessPhone}

@@ -71,7 +71,7 @@ test('default response-size cap accepts large Wix-style pages under configured l
   });
   assert.equal(result.ok, true);
   assert.equal(result.suggestions.businessProfile.name.value, 'Large Wix Salon');
-  assert.equal(result.suggestions.businessProfile.phone.value, '(555) 444-5555');
+  assert.equal(result.suggestions.businessProfile.phone.value, '+15554445555');
 });
 
 test('Google Places unavailable does not fail static import', async () => {
@@ -108,12 +108,12 @@ test('normal website with matching domain uses Google Places for contact and kee
     googlePlacesApiKey: 'test-key',
     fetcher: async (url) => {
       if (url.includes('places.googleapis.com')) {
-        return new Response(JSON.stringify({ places: [{ displayName: { text: 'Glow Nail Spa' }, nationalPhoneNumber: '(555) 999-0000', formattedAddress: '123 Main St, Los Angeles, CA', websiteUri: 'https://glow.test', primaryTypeDisplayName: { text: 'Nail salon' }, types: ['nail_salon'], regularOpeningHours: { periods: [{ open: { day: 1, hour: 9, minute: 0 }, close: { day: 1, hour: 19, minute: 0 } }] } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+        return new Response(JSON.stringify({ places: [{ displayName: { text: 'Glow Nail Spa' }, nationalPhoneNumber: '+15559990000', formattedAddress: '123 Main St, Los Angeles, CA', websiteUri: 'https://glow.test', primaryTypeDisplayName: { text: 'Nail salon' }, types: ['nail_salon'], regularOpeningHours: { periods: [{ open: { day: 1, hour: 9, minute: 0 }, close: { day: 1, hour: 19, minute: 0 } }] } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
       }
       return response(url.endsWith('/robots.txt') ? '' : '<h1>Glow Nail Spa</h1><p>Call (555) 111-2222</p><p>Gel Manicure $45 45 minutes</p>', url);
     },
   });
-  assert.equal(result.suggestions.businessProfile.phone.value, '(555) 999-0000');
+  assert.equal(result.suggestions.businessProfile.phone.value, '+15559990000');
   assert.equal(result.suggestions.businessProfile.phone.source, 'Google Places');
   assert.equal(result.suggestions.hours.source, 'Google Places');
   assert.ok(result.suggestions.warnings.some((warning) => /phone differs/i.test(warning)));
@@ -135,7 +135,7 @@ test('ambiguous normal website Places matches do not blindly overwrite static de
       return response(url.endsWith('/robots.txt') ? '' : '<h1>Ambiguous Salon</h1><p>Call (555) 111-1111</p><p>Facial $90</p>', url);
     },
   });
-  assert.equal(result.suggestions.businessProfile.phone.value, '(555) 111-1111');
+  assert.equal(result.suggestions.businessProfile.phone.value, '+15551111111');
   assert.equal(result.suggestions.businessProfile.phone.source, 'Website');
   assert.ok(result.suggestions.warnings.some((warning) => /Multiple possible Google Places/i.test(warning)));
 });

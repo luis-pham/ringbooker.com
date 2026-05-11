@@ -55,6 +55,12 @@ test('Google Places hours override website hours and phone conflicts warn', () =
   assert.ok(suggestions.serviceCatalog.services.some((service) => service.name.includes('Gel Manicure')));
 });
 
+test('normalizes imported US phone numbers to E.164 for backend storage', () => {
+  const preview = previewHtml('<script type="application/ld+json">{"@type":"HairSalon","name":"Salon 5014","telephone":"4694264308","address":{"streetAddress":"5014 Ross Ave","addressLocality":"Dallas","addressRegion":"TX"}}</script>', 'https://salon5014.test');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://salon5014.test', sourceType: 'normal_website', previews: [preview] });
+  assert.equal(suggestions.businessProfile.phone.value, '+14694264308');
+});
+
 test('extracts compressed Wix service menu without navigation noise', () => {
   const services = extractServicesFromText(
     'top of pageBOOKINGStyling ServicesHaircut $78+ ​​ Blowout & Style $60+ Color ServicesFace Frame $150+ Partial Highlight $170+ Tint $70+ Foilayage $200+ Full Highlight $200+ Toner/Gloss $50+ Balayage $180+ Hair SpecialtiesKeratin Complex $350+ Deep Conditioning $50+ Perm $250+ Extensions $599+ Brazilian Blowout $380+ Magic Sleek $380+ bottom of page',
