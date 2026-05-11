@@ -800,6 +800,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       : 'none',
   );
   const [step1View, setStep1View] = useState<Step1View>('quick');
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [manualPrimaryPick, setManualPrimaryPick] = useState<Vertical | 'beauty_umbrella' | ''>('');
   const [beautySubtype, setBeautySubtype] = useState<BeautySubtype | ''>(initialBeautySubtype);
   const [verticalConfidence, setVerticalConfidence] = useState<VerticalConfidence>(initialVertical ? 'high' : 'none');
@@ -899,6 +900,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setShopPlan(body.shop.plan ?? 'starter');
     if (normalizeStep(body.shop.current_onboarding_step) === 1) {
       setStep1View('quick');
+      setManualEntryOpen(false);
       setManualPrimaryPick('');
     }
     if (!silent) setLoading(false);
@@ -928,10 +930,15 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       return;
     }
 
+    const trimmed = websiteUrl.trim();
+    if (manualEntryOpen) {
+      await continueManualVerticalSelection();
+      return;
+    }
+
     trackOnboarding('business_import_started', { mode: 'quick' });
     setStatus(null);
 
-    const trimmed = websiteUrl.trim();
     let nextVertical: Vertical | '' = '';
     let nextSubtype: BeautySubtype | '' = '';
     let nextConfidence: VerticalConfidence = 'none';
@@ -947,58 +954,55 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         setWebsiteUrl(canonicalUrl);
         setImportSource('manual');
       } else {
-      setWebsiteLoading(true);
-      try {
-        setImportProgress('Finding business details...');
-        const response = await fetch('/api/backend/user/onboarding/import-website', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: canonicalUrl }),
-        });
-        const body = (await response.json().catch(() => null)) as ImportWebsiteResponse | null;
-        setWebsiteImportAttempted(true);
-        if (response.ok && body?.suggestions) {
-          const suggestions = body.suggestions;
-          setImportSuggestions(suggestions);
-          const importedServices = servicesFromImport(suggestions);
-          setServicesFound(importedServices.length);
-          if (suggestions.businessProfile.name?.value && !businessName.trim()) setBusinessName(suggestions.businessProfile.name.value);
-          if (suggestions.businessProfile.phone?.value && !businessPhone.trim()) setBusinessPhone(suggestions.businessProfile.phone.value);
-          if (suggestions.businessProfile.address?.value && !address.trim()) setAddress(suggestions.businessProfile.address.value);
-          if (suggestions.businessProfile.timezone?.value) setTimezone(suggestions.businessProfile.timezone.value);
-          if (suggestions.hours?.value) setHours(apiHoursToWizard(suggestions.hours.value));
-          const importedVertical = importedVerticalToApp(suggestions.businessProfile.primaryType?.value);
-          if (importedVertical) {
-            nextVertical = importedVertical;
-            nextSubtype = '';
-            nextConfidence = (suggestions.businessProfile.primaryType?.confidence ?? 0) >= 0.7 ? 'high' : 'low';
+        setWebsiteLoading(true);
+        try {
+          setImportProgress('Finding business details...');
+          const response = await fetch('/api/backend/user/onboarding/import-website', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: canonicalUrl }),
+          });
+          const body = (await response.json().catch(() => null)) as ImportWebsiteResponse | null;
+          setWebsiteImportAttempted(true);
+          if (response.ok && body?.suggestions) {
+            const suggestions = body.suggestions;
+            setImportSuggestions(suggestions);
+            const importedServices = servicesFromImport(suggestions);
+            setServicesFound(importedServices.length);
+            if (suggestions.businessProfile.name?.value && !businessName.trim()) setBusinessName(suggestions.businessProfile.name.value);
+            if (suggestions.businessProfile.phone?.value && !businessPhone.trim()) setBusinessPhone(suggestions.businessProfile.phone.value);
+            if (suggestions.businessProfile.address?.value && !address.trim()) setAddress(suggestions.businessProfile.address.value);
+            if (suggestions.businessProfile.timezone?.value) setTimezone(suggestions.businessProfile.timezone.value);
+            if (suggestions.hours?.value) setHours(apiHoursToWizard(suggestions.hours.value));
+            const importedVertical = importedVerticalToApp(suggestions.businessProfile.primaryType?.value);
+            if (importedVertical) {
+              nextVertical = importedVertical;
+              nextSubtype = '';
+              nextConfidence = (suggestions.businessProfile.primaryType?.confidence ?? 0) >= 0.7 ? 'high' : 'low';
+            }
+            if (importedServices.length > 0) {
+              setServices(importedServices);
+              setSelectedServiceGroups([...new Set(importedServices.map((service) => service.group || 'General Services'))]);
+            } else if (suggestions.alsoOffers?.length) {
+              setSelectedServiceGroups([...new Set(suggestions.alsoOffers.map((item) => item.value).filter((value): value is string => Boolean(value)))]);
+            }
+            trackOnboarding('business_import_success', { servicesFound: importedServices.length });
+          } else {
+            setImportSuggestions(null);
+            trackOnboarding('business_import_failed', { reason: body?.error ?? 'import_website' });
           }
-          if (importedServices.length > 0) {
-            setServices(importedServices);
-            setSelectedServiceGroups([...new Set(importedServices.map((service) => service.group || 'General Services'))]);
-          } else if (suggestions.alsoOffers?.length) {
-            setSelectedServiceGroups([...new Set(suggestions.alsoOffers.map((item) => item.value).filter((value): value is string => Boolean(value)))]);
-          }
-          trackOnboarding('business_import_success', { servicesFound: importedServices.length });
-        } else {
-          setImportSuggestions(null);
-          trackOnboarding('business_import_failed', { reason: body?.error ?? 'import_website' });
+        } catch {
+          trackOnboarding('business_import_failed', { reason: 'network' });
+          setWebsiteImportAttempted(true);
         }
-      } catch {
-        trackOnboarding('business_import_failed', { reason: 'network' });
-        setWebsiteImportAttempted(true);
-      }
-      setWebsiteLoading(false);
-      setImportProgress(null);
-      setWebsiteUrl(canonicalUrl);
-      setImportSource(isProbablyGoogleBusinessUrl(trimmed) ? 'google_business' : 'website');
+        setWebsiteLoading(false);
+        setImportProgress(null);
+        setWebsiteUrl(canonicalUrl);
+        setImportSource(isProbablyGoogleBusinessUrl(trimmed) ? 'google_business' : 'website');
       }
     } else {
-      setImportSource('none');
-      setWebsiteImportAttempted(false);
-      nextVertical = '';
-      nextSubtype = '';
-      nextConfidence = 'none';
+      setStatus('Paste your website or Google Maps link, or choose “No website? Fill in manually.”');
+      return;
     }
 
     setVertical(nextVertical);
@@ -1023,29 +1027,35 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }
 
   function enterManualSetup() {
-    const errors = validateOnboardingStep1Quick({ businessPhone });
-    if (errors.length > 0) {
-      setStatus(errors.join(' '));
-      return;
-    }
     trackOnboarding('business_import_started', { mode: 'manual_wizard' });
     setImportSource('manual');
+    setWebsiteImportAttempted(false);
+    setImportSuggestions(null);
     setVerticalConfidence('none');
-    setVertical('');
-    setBeautySubtype('');
-    setManualPrimaryPick('');
-    setStep1View('manual_vertical');
+    if (vertical === 'beauty_clinic' && beautySubtype) {
+      setManualPrimaryPick('beauty_umbrella');
+    } else if (vertical) {
+      setManualPrimaryPick(vertical);
+    }
+    setManualEntryOpen(true);
+    setStep1View('quick');
     setStatus(null);
   }
 
   async function finalizeManualStep1AndGoProfile(v: Vertical, subtype: BeautySubtype | '') {
     const patch: Record<string, unknown> = {
-      phone_number: businessPhone,
-      user_phone: businessPhone,
       vertical: v,
       vertical_detail: v === 'beauty_clinic' && subtype ? subtype : null,
       current_onboarding_step: 2,
     };
+    if (businessName.trim()) {
+      patch.name = businessName.trim();
+      patch.user_name = businessName.trim();
+    }
+    if (businessPhone.trim()) {
+      patch.phone_number = businessPhone.trim();
+      patch.user_phone = businessPhone.trim();
+    }
 
     const trimmed = websiteUrl.trim();
     if (trimmed && isHttpsWebsiteUrl(trimmed)) {
@@ -1063,6 +1073,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     if (ok) {
       setCurrentStep(2);
       setStep1View('quick');
+      setManualEntryOpen(false);
       setManualPrimaryPick('');
       setProfileTypeEditOpen(false);
       setProfilePickPrimary('');
@@ -1076,8 +1087,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       return;
     }
     if (manualPrimaryPick === 'beauty_umbrella') {
-      setStep1View('manual_beauty_subtype');
-      setBeautySubtype('');
+      if (!beautySubtype) {
+        setStatus('Choose the option that best describes your business.');
+        return;
+      }
+      await finalizeManualStep1AndGoProfile('beauty_clinic', beautySubtype);
       setStatus(null);
       return;
     }
@@ -1238,6 +1252,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   async function handleBack() {
     if (currentStep === 1) {
+      if (manualEntryOpen) {
+        setManualEntryOpen(false);
+        setStatus(null);
+        return;
+      }
       if (step1View === 'manual_beauty_subtype') {
         setStep1View('manual_vertical');
         setBeautySubtype('');
@@ -1420,54 +1439,143 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
     return (
       <div>
-        <h1 className="onb-title">Set up your AI receptionist</h1>
+        <h1 className="onb-title">Let AI set up your profile</h1>
         <p className="onb-subtitle">
-          Add your website or Google Business Profile if you have one. RingBooker will try to suggest setup details when available.
+          Paste your website or Google Maps link. RingBooker will try to suggest business details for you to review.
         </p>
         <div className="onb-stack" style={{ marginTop: 24 }}>
-          <div className="onb-field">
-            <label>Website or Google Business Profile URL (optional)</label>
-            <input
-              value={websiteUrl}
-              onChange={(event) => setWebsiteUrl(event.target.value)}
-              placeholder="https://yourbusiness.com or Google Maps link"
-              inputMode="url"
-            />
-            {urlHelper}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 16, padding: 18 }}>
+            <div className="onb-field" style={{ marginBottom: 8 }}>
+              <label>Website or Google Maps link</label>
+              <input
+                value={websiteUrl}
+                onChange={(event) => setWebsiteUrl(event.target.value)}
+                placeholder="https://yourbusiness.com or maps.google.com/..."
+                inputMode="url"
+              />
+              {urlHelper}
+            </div>
           </div>
-          <div className="onb-field">
-            <label>Business phone number</label>
-            <input
-              type="tel"
-              value={businessPhone}
-              onChange={(event) => {
-                setBusinessPhone(event.target.value);
-                setBusinessPhoneNeedsRealEntry(false);
+          <div style={{ textAlign: 'center', margin: '-4px 0 2px' }}>
+            <button
+              type="button"
+              className="onb-help-link"
+              style={{ padding: 0 }}
+              onClick={() => {
+                if (manualEntryOpen) {
+                  setManualEntryOpen(false);
+                  setStatus(null);
+                } else {
+                  enterManualSetup();
+                }
               }}
-              placeholder="(555) 123-4567"
-            />
-            <p className="onb-help">
-              {businessPhoneNeedsRealEntry
-                ? 'Enter the main line your clients call. Signup did not include a verified business number yet.'
-                : 'This is the number clients call today. You are not changing it here.'}
-            </p>
+            >
+              {manualEntryOpen ? 'Hide manual form ↑' : 'No website? Fill in manually'}
+            </button>
           </div>
+          {manualEntryOpen ? (
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 18 }}>
+              <div className="onb-field">
+                <label>Business name</label>
+                <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Glamour Hair Studio" />
+              </div>
+              <div className="onb-field">
+                <label>What best describes your business?</label>
+                <div className="onb-grid" style={{ gap: 10 }}>
+                  {MANUAL_PRIMARY_VERTICAL.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`choice-card ${manualPrimaryPick === item.id ? 'active' : ''}`}
+                      style={{ minHeight: 76, padding: 14 }}
+                      onClick={() => {
+                        setManualPrimaryPick(item.id);
+                        if (item.id !== 'beauty_umbrella') setBeautySubtype('');
+                      }}
+                    >
+                      <span className="emoji" style={{ fontSize: '1.35rem' }}>{item.emoji}</span>
+                      <h4 style={{ marginTop: 8 }}>{item.label}</h4>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {manualPrimaryPick === 'beauty_umbrella' ? (
+                <div className="onb-field">
+                  <label>Beauty specialty</label>
+                  <div className="preset-row">
+                    {BEAUTY_SUBTYPE_OPTIONS.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`preset-chip ${beautySubtype === item.id ? 'active' : ''}`}
+                        onClick={() => setBeautySubtype(item.id)}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <div>
+                <p className="onb-section-title">Also offer any of these?</p>
+                <p className="onb-help" style={{ marginTop: 4 }}>
+                  Select all that apply. Many businesses offer services across categories.
+                </p>
+                <div className="preset-row" style={{ marginTop: 10 }}>
+                  {MIXED_SERVICE_GROUPS.map((group) => (
+                    <button
+                      key={group}
+                      type="button"
+                      className={`preset-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
+                      onClick={() => toggleServiceGroup(group)}
+                    >
+                      {selectedServiceGroups.includes(group) ? '✓ ' : ''}
+                      {group}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="onb-field">
+                <label>Phone number <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(optional)</span></label>
+                <input
+                  type="tel"
+                  value={businessPhone}
+                  onChange={(event) => {
+                    setBusinessPhone(event.target.value);
+                    setBusinessPhoneNeedsRealEntry(false);
+                  }}
+                  placeholder="(555) 123-4567"
+                />
+                <p className="onb-help">
+                  {businessPhoneNeedsRealEntry
+                    ? 'You can add the main business line now or review it later in Profile.'
+                    : 'This is the number clients call today. You are not changing it here.'}
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
         {websiteLoading && importProgress ? <p className="onb-help">{importProgress}</p> : null}
         <div className="onb-actions onb-actions-desktop">
-          <button className="onb-btn-secondary" type="button" onClick={() => enterManualSetup()} disabled={saving || websiteLoading}>
-            I&apos;ll enter details manually
-          </button>
+          <span />
           <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Importing…' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import and continue' : 'Continue manually'}
+            {websiteLoading ? 'Importing…' : WEBSITE_IMPORT_EXTRACTION_ACTIVE && !manualEntryOpen ? 'Import and continue' : 'Continue to profile'}
           </button>
         </div>
         <div className="onb-sticky-cta">
           <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
-            {websiteLoading ? 'Importing…' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import and continue' : 'Continue manually'}
+            {websiteLoading ? 'Importing…' : WEBSITE_IMPORT_EXTRACTION_ACTIVE && !manualEntryOpen ? 'Import and continue' : 'Continue to profile'}
           </button>
-          <button className="onb-btn-secondary" type="button" onClick={() => enterManualSetup()} disabled={saving || websiteLoading}>
-            I&apos;ll enter details manually
+          <button
+            className="onb-btn-secondary"
+            type="button"
+            onClick={() => {
+              if (manualEntryOpen) setManualEntryOpen(false);
+              else enterManualSetup();
+            }}
+            disabled={saving || websiteLoading}
+          >
+            {manualEntryOpen ? 'Hide manual form' : 'No website? Fill in manually'}
           </button>
         </div>
       </div>
@@ -1620,6 +1728,27 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                 </div>
               )}
             </div>
+            {websiteImportAttempted && selectedServiceGroups.length > 0 ? (
+              <div>
+                <p className="onb-section-title">Also offers</p>
+                <p className="onb-help" style={{ marginTop: 4 }}>
+                  Review what RingBooker detected. Add or remove anything before continuing.
+                </p>
+                <div className="preset-row" style={{ marginTop: 10 }}>
+                  {MIXED_SERVICE_GROUPS.map((group) => (
+                    <button
+                      key={group}
+                      type="button"
+                      className={`preset-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
+                      onClick={() => toggleServiceGroup(group)}
+                    >
+                      {selectedServiceGroups.includes(group) ? '✓ ' : ''}
+                      {group}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <div className="onb-field">
               <label>Address (optional)</label>
               <textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, city, region (if you want it mentioned on calls)" />

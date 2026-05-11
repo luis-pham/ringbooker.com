@@ -122,6 +122,8 @@ test('onboarding copy keeps website import review-only and isolates legacy read-
   const app = readFileSync('src/backend/api/app.ts', 'utf8');
   assert.match(onboardingLive, /Add your website now, then review it before saving/);
   assert.doesNotMatch(onboardingLive, /We'll save this link today/);
+  assert.match(onboardingLive, /No website\? Fill in manually/);
+  assert.doesNotMatch(onboardingLive, /I&apos;ll enter details manually/);
   assert.match(onboardingLive, /refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge/);
   assert.ok(onboardingLive.includes('/api/backend/user/onboarding/import-website'));
   assert.equal(onboardingLive.includes('/api/backend/user/read-website'), false);
