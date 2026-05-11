@@ -544,7 +544,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
+                <div className="dashboard-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
                   <a className="btn user-save" href="/contact?topic=implementation">
                     Contact implementation support
                   </a>
@@ -577,7 +577,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     ) : null}
                   </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
+                <div className="dashboard-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
                   {renderGoLivePrimaryControl()}
                   <button type="button" className="btn" disabled={testCallLoading} onClick={() => void requestDashboardTestCall()}>
                     {testCallLoading ? 'Calling…' : 'Run another test call'}

@@ -723,6 +723,7 @@ export function UserSettingsLive({
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
   const [editingLegacyServiceIndex, setEditingLegacyServiceIndex] = useState<number | null>(null);
   const [editingCatalogServiceId, setEditingCatalogServiceId] = useState<string | null>(null);
+  const [expandedStaffIndex, setExpandedStaffIndex] = useState<number | null>(null);
   const [websiteSuggestions, setWebsiteSuggestions] = useState<BusinessKnowledgeSuggestion[]>([]);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
   const [suggestionEdits, setSuggestionEdits] = useState<Record<string, Record<string, unknown>>>({});
@@ -2601,27 +2602,100 @@ export function UserSettingsLive({
                           : 'Professional can use returning caller notes to remember preferred providers when caller history is available.'}
                     </p>
                   </div>
-                  <button type="button" className="btn" onClick={() => patchState('staff', [...currentForm.staff, emptyStaffMember()])}>
-                    Add staff
-                  </button>
+                  {currentForm.staff.length > 0 ? (
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => {
+                        patchState('staff', [...currentForm.staff, emptyStaffMember()]);
+                        setExpandedStaffIndex(currentForm.staff.length);
+                      }}
+                    >
+                      Add staff
+                    </button>
+                  ) : null}
                 </div>
                 <div className="card-section settings-tab-content-frame">
                   {currentForm.staff.length === 0 ? (
-                    <div className="sh-empty">No staff added yet. Add names callers may request, like Sarah for nail art or Jenny for pedicures.</div>
+                    <div className="sh-empty empty staff-empty">
+                      <div className="staff-empty-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+                          <circle cx="9.5" cy="7" r="4" />
+                          <path d="M19 8v6" />
+                          <path d="M22 11h-6" />
+                        </svg>
+                      </div>
+                      <strong>No staff added yet.</strong>
+                      <p>Add providers so callers can request them by name.</p>
+                      <button
+                        type="button"
+                        className="btn staff-empty-add"
+                        onClick={() => {
+                          patchState('staff', [...currentForm.staff, emptyStaffMember()]);
+                          setExpandedStaffIndex(0);
+                        }}
+                      >
+                        + Add staff member
+                      </button>
+                    </div>
                   ) : null}
                   {currentForm.staff.map((member, index) => (
-                    <div className="option-card" key={`${member.name}-${index}`}>
-                      <div className="form-grid settings-tab-content-frame">
-                        <div className="field"><label>Name</label><input value={member.name} onChange={(event) => updateStaff(index, { name: event.target.value })} placeholder="Sarah" /></div>
-                        <div className="field"><label>Role</label><input value={member.role ?? ''} onChange={(event) => updateStaff(index, { role: event.target.value })} placeholder="Nail technician" /></div>
-                        <div className="field" style={{ gridColumn: '1 / -1' }}><label>Specialties</label><input value={(member.specialties ?? []).join(', ')} onChange={(event) => updateStaff(index, { specialties: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} placeholder="Gel nails, nail art, pedicure" /></div>
-                        <div className="field" style={{ gridColumn: '1 / -1' }}><label>Notes</label><textarea value={member.notes ?? ''} onChange={(event) => updateStaff(index, { notes: event.target.value })} placeholder="Optional. Example: Available Tuesday-Friday. Best for detailed nail art." /></div>
+                    <div className={`staff-card ${member.active === false ? 'inactive' : ''}`} key={`staff-${index}`}>
+                      <div className="staff-card-main" role="button" tabIndex={0} onClick={() => setExpandedStaffIndex(expandedStaffIndex === index ? null : index)} onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setExpandedStaffIndex(expandedStaffIndex === index ? null : index);
+                        }
+                      }}>
+                        <div className={`staff-avatar staff-avatar-${(index % 4) + 1}`}>
+                          {(member.name.trim() || 'S').slice(0, 1).toUpperCase()}
+                        </div>
+                        <div className="staff-info">
+                          <div className="staff-name">
+                            {member.name.trim() || 'New staff member'}
+                            {member.active === false ? <span> · inactive</span> : null}
+                          </div>
+                          <div className="staff-role">{member.role?.trim() || 'Provider'}</div>
+                          {(member.specialties ?? []).length > 0 ? (
+                            <div className="staff-spec-tags">
+                              {(member.specialties ?? []).slice(0, 4).map((specialty, specialtyIndex) => (
+                                <span className="staff-spec" key={`${specialty}-${specialtyIndex}`}>{specialty}</span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="staff-card-actions">
+                          <button
+                            type="button"
+                            className={`staff-toggle ${member.active === false ? 'off' : 'on'}`}
+                            aria-label={member.active === false ? 'Mark staff active' : 'Mark staff inactive'}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              updateStaff(index, { active: member.active === false });
+                            }}
+                          />
+                          <span className="staff-chevron" aria-hidden="true">{expandedStaffIndex === index ? '⌃' : '⌄'}</span>
+                        </div>
                       </div>
-                      <div className="settings-save-footer settings-tab-content-frame" style={{ marginTop: 10 }}>
-                        <button type="button" className="subtle-link" onClick={() => patchState('staff', currentForm.staff.filter((_, itemIndex) => itemIndex !== index))}>
-                          Remove
-                        </button>
-                      </div>
+                      {expandedStaffIndex === index ? (
+                        <div className="staff-card-detail">
+                          <div className="form-grid">
+                            <div className="field"><label>Name</label><input value={member.name} onChange={(event) => updateStaff(index, { name: event.target.value })} placeholder="Sarah" /></div>
+                            <div className="field"><label>Role / title</label><input value={member.role ?? ''} onChange={(event) => updateStaff(index, { role: event.target.value })} placeholder="Nail technician" /></div>
+                            <div className="field" style={{ gridColumn: '1 / -1' }}><label>Specialties</label><input value={(member.specialties ?? []).join(', ')} onChange={(event) => updateStaff(index, { specialties: event.target.value.split(',').map((value) => value.trim()).filter(Boolean) })} placeholder="Gel nails, nail art, pedicure" /></div>
+                            <div className="field" style={{ gridColumn: '1 / -1' }}><label>Notes for AI</label><textarea value={member.notes ?? ''} onChange={(event) => updateStaff(index, { notes: event.target.value })} placeholder="Optional. Example: Available Tuesday-Friday. Best for detailed nail art." /></div>
+                          </div>
+                          <div className="staff-detail-actions">
+                            <button type="button" className="subtle-link" onClick={() => {
+                              patchState('staff', currentForm.staff.filter((_, itemIndex) => itemIndex !== index));
+                              setExpandedStaffIndex(null);
+                            }}>
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -2654,9 +2728,11 @@ export function UserSettingsLive({
 	                    <h3>Policies & FAQ</h3>
 	                    <p className="sub">Approved policies and answers for common caller questions: deposits, cancellations, parking, walk-ins, payment methods, gift cards, or group bookings.</p>
 	                  </div>
-	                  <button type="button" className="btn" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
-	                    Add FAQ
-	                  </button>
+		                  {currentForm.faqs.length > 0 ? (
+		                    <button type="button" className="btn" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
+		                      Add FAQ
+		                    </button>
+		                  ) : null}
 	                </div>
 	                <div className="card-section settings-tab-content-frame">
 	                  <div className="option-card option-card--bare">
@@ -2701,11 +2777,16 @@ export function UserSettingsLive({
 	                      }} placeholder="Optional. Leave blank if you are not running a promotion." />
 	                    </div>
 	                  </div>
-	                  {currentForm.faqs.length === 0 ? (
-	                    <div className="sh-empty">No FAQs added yet. Add common answers so RingBooker can respond consistently.</div>
-	                  ) : null}
-                  {currentForm.faqs.map((item, index) => (
-                    <div className="option-card option-card--bare" key={`${item.question}-${index}`}>
+		                  {currentForm.faqs.length === 0 ? (
+		                    <div className="sh-empty">
+		                      <p>No FAQs added yet. Add common answers so RingBooker can respond consistently.</p>
+		                      <button type="button" className="btn" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
+		                        Add FAQ
+		                      </button>
+		                    </div>
+		                  ) : null}
+	                  {currentForm.faqs.map((item, index) => (
+	                    <div className="option-card option-card--bare" key={`faq-${index}`}>
                       <div className="field"><label>Question</label><input value={item.question} onChange={(event) => updateFaq(index, { question: event.target.value })} placeholder="Do you accept walk-ins?" /></div>
                       <div className="field"><label>Approved answer</label><textarea value={item.answer} onChange={(event) => updateFaq(index, { answer: event.target.value })} placeholder="Walk-ins are welcome when staff are available, but appointments are recommended." /></div>
                       <div className="settings-save-footer settings-tab-content-frame" style={{ marginTop: 10 }}>
@@ -2753,39 +2834,41 @@ export function UserSettingsLive({
                   void commitSettingsPatch('call-handling', patch);
                 }}
               >
-                <div className="switch-list">
-                  <div className={`switch-row ${ownerTransferUx.locked ? 'locked' : ''}`}>
-                    <div className="switch-copy">
-                      <h4>{ownerTransferUx.title}</h4>
-                      <p>{ownerTransferUx.description}</p>
-                      {ownerTransferUx.locked ? <span className="lock-copy">{ownerTransferUx.badge}</span> : null}
+                <div className="card-section settings-tab-content-frame">
+                  <div className="switch-list">
+                    <div className={`switch-row ${ownerTransferUx.locked ? 'locked' : ''}`}>
+                      <div className="switch-copy">
+                        <h4>{ownerTransferUx.title}</h4>
+                        <p>{ownerTransferUx.description}</p>
+                        {ownerTransferUx.locked ? <span className="lock-copy">{ownerTransferUx.badge}</span> : null}
+                      </div>
+                      <div className="switch-stack">
+                        <button
+                          type="button"
+                          className={`switch ${currentForm.allow_transfers && !ownerTransferUx.locked ? 'on' : ''} ${ownerTransferUx.locked ? 'locked' : ''}`}
+                          disabled={ownerTransferUx.locked}
+                          aria-disabled={ownerTransferUx.locked}
+                          onClick={() => {
+                            if (ownerTransferUx.locked) return;
+                            patchState('allow_transfers', !currentForm.allow_transfers);
+                          }}
+                        >
+                          <span className="sr-only">{ownerTransferUx.locked ? 'Owner transfer is locked' : 'Toggle transfers'}</span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="switch-stack">
-                      <button
-                        type="button"
-                        className={`switch ${currentForm.allow_transfers && !ownerTransferUx.locked ? 'on' : ''} ${ownerTransferUx.locked ? 'locked' : ''}`}
-                        disabled={ownerTransferUx.locked}
-                        aria-disabled={ownerTransferUx.locked}
-                        onClick={() => {
-                          if (ownerTransferUx.locked) return;
-                          patchState('allow_transfers', !currentForm.allow_transfers);
-                        }}
-                      >
-                        <span className="sr-only">{ownerTransferUx.locked ? 'Owner transfer is locked' : 'Toggle transfers'}</span>
-                      </button>
+                    <div className="switch-row">
+                      <div className="switch-copy"><h4>Offer callbacks</h4><p>When the team is busy, the AI can queue a callback instead of losing the lead.</p></div>
+                      <div className="switch-stack"><button type="button" className={`switch ${currentForm.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !currentForm.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>
                     </div>
                   </div>
-                  <div className="switch-row">
-                    <div className="switch-copy"><h4>Offer callbacks</h4><p>When the team is busy, the AI can queue a callback instead of losing the lead.</p></div>
-                    <div className="switch-stack"><button type="button" className={`switch ${currentForm.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !currentForm.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>
+                  <div className={`option-card ${returningCallerNotesUx.locked ? 'locked' : ''}`}>
+                    <div className="hint-row">
+                      <strong className="option-title">{returningCallerNotesUx.title}</strong>
+                      <span className={`tag ${returningCallerNotesUx.locked ? 'orange' : 'green'}`}>{returningCallerNotesUx.badge}</span>
+                    </div>
+                    <p className="sub" style={{ marginTop: 8 }}>{returningCallerNotesUx.description}</p>
                   </div>
-                </div>
-                <div className={`option-card ${returningCallerNotesUx.locked ? 'locked' : ''}`} style={{ marginTop: 16 }}>
-                  <div className="hint-row">
-                    <strong className="option-title">{returningCallerNotesUx.title}</strong>
-                    <span className={`tag ${returningCallerNotesUx.locked ? 'orange' : 'green'}`}>{returningCallerNotesUx.badge}</span>
-                  </div>
-                  <p className="sub" style={{ marginTop: 8 }}>{returningCallerNotesUx.description}</p>
                 </div>
                 <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>

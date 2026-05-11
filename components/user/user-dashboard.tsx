@@ -832,6 +832,27 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
     color:#fff;
   }
   .user-app-shell .panel-head > .badge-right{align-self:flex-start;order:2}
+  .user-app-shell .card .dashboard-card-actions{
+    flex-direction:column;
+    align-items:stretch !important;
+    gap:10px !important;
+  }
+  .user-app-shell .card .dashboard-card-actions > .btn,
+  .user-app-shell .card .dashboard-card-actions > a.btn,
+  .user-app-shell .card .dashboard-card-actions > button.btn{
+    width:100%;
+    min-height:48px;
+    height:auto;
+    justify-content:center;
+    box-sizing:border-box;
+    padding:14px 18px;
+    border-radius:8px;
+    font-size:15px;
+    font-weight:600;
+    line-height:1.2;
+    text-align:center;
+    box-shadow:none;
+  }
   .page-title h1{font-size:22px}
   .page-title p{color:#111827}
   .app-shell{grid-template-columns:1fr}
