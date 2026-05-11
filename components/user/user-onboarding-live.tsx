@@ -83,6 +83,34 @@ type ImportWebsiteResponse = {
   message?: string;
 };
 
+export const IMPORT_PROGRESS_STEPS = [
+  'Checking your link',
+  'Finding useful pages',
+  'Reading services and hours',
+  'Comparing business details',
+  'Preparing your review',
+] as const;
+
+export function importProgressStepIndex(elapsedMs: number): number {
+  if (elapsedMs >= 6500) return 4;
+  if (elapsedMs >= 4800) return 3;
+  if (elapsedMs >= 3000) return 2;
+  if (elapsedMs >= 1200) return 1;
+  return 0;
+}
+
+export function importProgressDelayMessage(elapsedMs: number): string | null {
+  if (elapsedMs >= 20000) return 'This is taking longer than expected. You can continue manually and edit everything later.';
+  if (elapsedMs >= 8500) return 'Still working... Some websites take longer to read.';
+  return null;
+}
+
+export function importResultMessage(suggestions?: ImportedWebsiteSuggestions | null, failed = false): string {
+  if (failed || suggestions?.status === 'failed') return 'We couldn’t import this automatically. You can still set this up manually.';
+  if (suggestions?.status === 'partial' || suggestions?.warnings?.length) return 'Some details need review';
+  return 'Ready to review';
+}
+
 export type OnboardingStatusResponse = {
   ok: boolean;
   onboardingRequired?: boolean;
@@ -457,7 +485,7 @@ export function importReviewBadgeState(field?: { value?: unknown; confidence?: n
   const missing = !field || field.value === null || field.value === undefined || field.value === '';
   return {
     label: missing ? 'Missing' : confidenceLabel(field.confidence),
-    source: missing ? 'Missing' : importSourceLabel(field.source),
+    source: missing ? '' : importSourceLabel(field.source),
   };
 }
 
@@ -468,7 +496,7 @@ function importFieldState(field?: { value?: unknown; confidence?: number; source
   return (
     <p className="onb-help" style={{ marginTop: 6 }}>
       <span className="onb-source-badge" style={{ background: verified ? '#ecfdf5' : needsReview ? '#fff7ed' : '#eef2ff', color: verified ? '#047857' : needsReview ? '#c2410c' : '#3730a3' }}>{label}</span>{' '}
-      <span className="onb-source-badge">Source: {source}</span>
+      {source ? <span className="onb-source-badge">Source: {source}</span> : null}
     </p>
   );
 }
@@ -806,6 +834,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [servicesFound, setServicesFound] = useState(0);
   const [importSuggestions, setImportSuggestions] = useState<ImportedWebsiteSuggestions | null>(null);
   const [importProgress, setImportProgress] = useState<string | null>(null);
+  const [importProgressStep, setImportProgressStep] = useState(0);
+  const [importDelayMessage, setImportDelayMessage] = useState<string | null>(null);
   const [services, setServices] = useState<ServiceItem[]>(initialServices);
   const [selectedServiceGroups, setSelectedServiceGroups] = useState<string[]>(
     [...new Set(initialServices.map((service) => service.group?.trim()).filter((group): group is string => Boolean(group)))],
@@ -821,6 +851,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [step1View, setStep1View] = useState<Step1View>('quick');
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [profileEditField, setProfileEditField] = useState<ProfileEditField>(null);
+  const [userEditedProfileFields, setUserEditedProfileFields] = useState<Array<Exclude<ProfileEditField, null>>>([]);
   const [manualPrimaryPick, setManualPrimaryPick] = useState<Vertical | 'beauty_umbrella' | ''>('');
   const [beautySubtype, setBeautySubtype] = useState<BeautySubtype | ''>(initialBeautySubtype);
   const [verticalConfidence, setVerticalConfidence] = useState<VerticalConfidence>(initialVertical ? 'high' : 'none');
@@ -833,6 +864,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     languages: false,
   });
   const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
+  const importTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const importRequestRef = useRef(0);
   const [step4Phase, setStep4Phase] = useState<'try' | 'done'>('try');
   const prevStepRef = useRef<WizardStep>(1);
 
@@ -874,10 +907,73 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }, []);
 
   useEffect(() => {
+    return () => {
+      importTimersRef.current.forEach((timer) => clearTimeout(timer));
+      importTimersRef.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
     if (vertical === 'nail_salon') {
       setLanguages((current) => applyVerticalLanguageSelection(vertical, current));
     }
   }, [vertical]);
+
+  function clearImportProgressTimers() {
+    importTimersRef.current.forEach((timer) => clearTimeout(timer));
+    importTimersRef.current = [];
+  }
+
+  function startImportProgressTimers() {
+    clearImportProgressTimers();
+    setImportProgress('Checking your link');
+    setImportProgressStep(0);
+    setImportDelayMessage(null);
+    const checkpoints = [1200, 3000, 4800, 6500, 8500, 20000];
+    importTimersRef.current = checkpoints.map((delay) =>
+      setTimeout(() => {
+        setImportProgressStep(importProgressStepIndex(delay));
+        setImportProgress(IMPORT_PROGRESS_STEPS[importProgressStepIndex(delay)]);
+        setImportDelayMessage(importProgressDelayMessage(delay));
+      }, delay),
+    );
+  }
+
+  function stopImportProgressTimers() {
+    clearImportProgressTimers();
+    setImportProgressStep(0);
+    setImportProgress(null);
+    setImportDelayMessage(null);
+  }
+
+  function renderImportProgressCard() {
+    return (
+      <div className="onb-import-progress" role="status" aria-live="polite">
+        <div>
+          <p className="onb-import-progress-title">{importProgress ?? IMPORT_PROGRESS_STEPS[importProgressStep]}</p>
+          <p className="onb-import-progress-sub">
+            RingBooker will try to suggest details from your website. You’ll review and edit everything before saving.
+          </p>
+        </div>
+        <div className="onb-import-steps">
+          {IMPORT_PROGRESS_STEPS.map((step, index) => (
+            <div key={step} className={`onb-import-step ${index < importProgressStep ? 'done' : ''} ${index === importProgressStep ? 'active' : ''}`}>
+              <span className="onb-import-step-mark">
+                {index < importProgressStep ? '✓' : index === importProgressStep ? <span className="onb-spinner" /> : index + 1}
+              </span>
+              <span>{step}</span>
+            </div>
+          ))}
+        </div>
+        {importDelayMessage ? <div className="onb-import-delay">{importDelayMessage}</div> : null}
+        <div className="onb-import-progress-actions">
+          <button type="button" className="onb-help-link" onClick={() => enterManualSetup()}>
+            Set up manually instead
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   async function loadOnboarding(options?: { silent?: boolean }) {
     const silent = options?.silent === true;
@@ -974,19 +1070,24 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         setWebsiteUrl(canonicalUrl);
         setImportSource('manual');
       } else {
+        const importRequestId = importRequestRef.current + 1;
+        importRequestRef.current = importRequestId;
         setWebsiteLoading(true);
+        startImportProgressTimers();
+        let importFailed = false;
         try {
-          setImportProgress('Finding business details...');
           const response = await fetch('/api/backend/user/onboarding/import-website', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ url: canonicalUrl }),
           });
           const body = (await response.json().catch(() => null)) as ImportWebsiteResponse | null;
+          if (importRequestRef.current !== importRequestId) return;
           setWebsiteImportAttempted(true);
           if (response.ok && body?.suggestions) {
             const suggestions = body.suggestions;
             setImportSuggestions(suggestions);
+            setStatus(importResultMessage(suggestions));
             const importedServices = servicesFromImport(suggestions);
             setServicesFound(importedServices.length);
             if (suggestions.businessProfile.name?.value && !businessName.trim()) setBusinessName(suggestions.businessProfile.name.value);
@@ -1009,16 +1110,24 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             trackOnboarding('business_import_success', { servicesFound: importedServices.length });
           } else {
             setImportSuggestions(null);
+            importFailed = true;
+            setStatus(importResultMessage(null, true));
             trackOnboarding('business_import_failed', { reason: body?.error ?? 'import_website' });
           }
         } catch {
+          if (importRequestRef.current !== importRequestId) return;
           trackOnboarding('business_import_failed', { reason: 'network' });
           setWebsiteImportAttempted(true);
+          setImportSuggestions(null);
+          importFailed = true;
+          setStatus(importResultMessage(null, true));
         }
+        if (importRequestRef.current !== importRequestId) return;
         setWebsiteLoading(false);
-        setImportProgress(null);
+        stopImportProgressTimers();
         setWebsiteUrl(canonicalUrl);
         setImportSource(isProbablyGoogleBusinessUrl(trimmed) ? 'google_business' : 'website');
+        if (importFailed) return;
       }
     } else {
       setStatus('Paste your website or Google Maps link, or choose “No website? Fill in manually.”');
@@ -1047,6 +1156,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }
 
   function enterManualSetup() {
+    importRequestRef.current += 1;
+    setWebsiteLoading(false);
+    stopImportProgressTimers();
     trackOnboarding('business_import_started', { mode: 'manual_wizard' });
     setImportSource('manual');
     setWebsiteImportAttempted(false);
@@ -1126,30 +1238,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     await finalizeManualStep1AndGoProfile('beauty_clinic', beautySubtype);
   }
 
-  function applyProfileBusinessType() {
-    if (!profilePickPrimary) {
-      setStatus('Choose a business type.');
-      return;
-    }
-    if (profilePickPrimary === 'beauty_umbrella') {
-      if (!profilePickSubtype) {
-        setStatus('Choose the option that best describes your business.');
-        return;
-      }
-      setVertical('beauty_clinic');
-      setBeautySubtype(profilePickSubtype);
-      setVerticalConfidence('high');
-      setProfileTypeEditOpen(false);
-      setStatus(null);
-      return;
-    }
-    setVertical(profilePickPrimary);
-    setBeautySubtype('');
-    setVerticalConfidence('high');
-    setProfileTypeEditOpen(false);
-    setStatus(null);
-  }
-
   async function continueProfileReview() {
     const errors = validateOnboardingProfileReview({ businessName });
     if (errors.length > 0) {
@@ -1173,7 +1261,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       vertical_detail: vertical === 'beauty_clinic' && beautySubtype ? beautySubtype : null,
       hours: wizardHoursToApi(hours),
       timezone,
-      languages: applyVerticalLanguageSelection(vertical, languages),
+      languages: shopPlan === 'starter' ? ['en'] : applyVerticalLanguageSelection(vertical, languages),
       ...(addr ? { address: addr } : { address: null }),
       ...(websiteUrl.trim() ? { website_url: normalizeWebsiteUrl(websiteUrl) } : { website_url: '' }),
       current_onboarding_step: 3,
@@ -1326,11 +1414,18 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-field input,.onb-field select,.onb-field textarea,.hours-row select{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit;box-sizing:border-box}.onb-field textarea{min-height:72px;resize:vertical}
 .onb-field input:focus,.onb-field select:focus,.onb-field textarea:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-help-link{border:0;background:transparent;padding:8px 0;cursor:pointer;text-decoration:none;font-family:inherit;font-weight:400;line-height:1.5;text-align:inherit;transition:color .15s ease}.onb-help-link:hover{color:#334155;text-decoration:underline;text-underline-offset:2px}
-.onb-import-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:16px}
+.onb-import-panel{background:#bfdbfe!important;border:1px solid #e2e8f0;border-radius:14px;padding:16px}
 .onb-import-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
 .onb-import-panel .onb-field{margin-bottom:0}.onb-import-panel .onb-help{margin-top:8px}
 .onb-import-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid #000;border-radius:8px;background:#000;color:#fff;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 8px 18px rgba(0,0,0,.18)}
 .onb-import-button:hover:not(:disabled){border-color:#1f1f1f;color:#fff;background:#1f1f1f;box-shadow:0 12px 24px rgba(0,0,0,.24)}.onb-import-button:disabled{opacity:.6;cursor:not-allowed}
+.onb-import-progress{border:1px solid #e2e8f0;border-radius:14px;background:#fff;padding:16px;display:grid;gap:12px}
+.onb-import-progress-title{margin:0;color:#111827;font-size:15px;font-weight:800}.onb-import-progress-sub{margin:0;color:#64748b;font-size:13px;line-height:1.5}
+.onb-import-steps{display:grid;gap:8px;margin:2px 0}.onb-import-step{display:flex;align-items:center;gap:10px;color:#64748b;font-size:13px;font-weight:700}.onb-import-step.done{color:#166534}.onb-import-step.active{color:#111827}
+.onb-import-step-mark{width:22px;height:22px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:#64748b}.onb-import-step.done .onb-import-step-mark{border-color:#86efac;background:#ecfdf5;color:#166534}.onb-import-step.active .onb-import-step-mark{border-color:#111827;color:#111827}
+.onb-spinner{width:12px;height:12px;border:2px solid #d1d5db;border-top-color:#111827;border-radius:999px;animation:onbSpin .8s linear infinite}
+.onb-import-delay{border-radius:10px;background:#fff7ed;color:#9a3412;padding:10px 12px;font-size:13px;line-height:1.45}.onb-import-progress-actions{display:flex;justify-content:flex-start}.onb-import-progress-actions .onb-help-link{color:#111827;text-decoration:underline;text-underline-offset:3px}
+@keyframes onbSpin{to{transform:rotate(360deg)}}
 .onb-manual-toggle-row{text-align:center;margin:-4px 0 2px}.onb-manual-toggle-row .onb-help-link{padding:0;color:#111827;text-decoration:underline;text-underline-offset:3px}
 .onb-manual-panel{border-top:1px solid #e2e8f0;padding-top:18px}
 .onb-compact-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
@@ -1345,10 +1440,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .profile-review-card{border:1px solid #d9deea;border-radius:12px;background:#fff;padding:14px 16px;min-height:78px}
 .profile-review-card.verified{border-color:#86efac}.profile-review-card.wide{grid-column:1 / -1}
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#2563eb;padding:0;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.profile-review-edit:hover{text-decoration:underline;text-underline-offset:2px}
-.profile-review-value{color:#111827;font-size:17px;font-weight:800;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
+.profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
 .service-group-card{border:1px solid #e2e8f0;border-radius:14px;background:#fff;margin-top:14px;overflow:hidden}
-.service-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+.service-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#bfdbfe!important;border-bottom:1px solid #e2e8f0}
 .service-group-kicker{display:block;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.service-group-title{margin:2px 0 0;color:#111827;font-size:16px;font-weight:800}
 .service-group-body{display:grid;gap:10px;padding:14px}
 .service-item-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(100px,.65fr) minmax(100px,.65fr);gap:10px;align-items:center}
@@ -1357,9 +1452,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:0;border-radius:8px;background:#000;color:#fff;padding:10px 18px;font-size:15px;font-weight:600;box-shadow:0 8px 18px rgba(0,0,0,.18);cursor:pointer;text-decoration:none;transition:background .15s ease,transform .15s ease,box-shadow .15s ease}.onb-btn-primary:hover:not(:disabled){background:#1f1f1f;transform:translateY(-1px);box-shadow:0 12px 24px rgba(0,0,0,.24)}
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
-.hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9}.hours-row:last-child{border-bottom:0}.hours-row.closed{background:#f9fafb}.hours-row.closed select{opacity:.4;background:#f1f5f9}
+.hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9}.hours-row:last-child{border-bottom:0}.hours-row.closed{background:#bfdbfe!important}.hours-row.closed select{opacity:.4;background:#bfdbfe!important}
 .hours-day{font-weight:900;color:#111827;min-width:40px}.toggle-pill{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid #dbe2ee;border-radius:999px;padding:8px 12px;background:#fff;font-weight:800;color:#64748b;cursor:pointer;box-shadow:none}.toggle-pill input{position:absolute;opacity:0;pointer-events:none}.toggle-dot{width:28px;height:16px;border-radius:999px;background:#cbd5e1;position:relative;transition:.18s ease;box-shadow:none}.toggle-dot:after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:none;transition:.18s ease}.toggle-pill.active{border-color:#8b5cf6;color:#5b21b6;background:transparent}.toggle-pill.active .toggle-dot{background:#7c3aed}.toggle-pill.active .toggle-dot:after{transform:translateX(12px)}
-.lang-list{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.lang-pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:999px;padding:10px 15px;background:#fff;color:#374151;font-weight:900;cursor:pointer;box-shadow:none}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#7c3aed;border-color:#7c3aed;color:#fff;box-shadow:none}.lang-pill.locked{background:#f1f5f9;color:#9ca3af;cursor:not-allowed;flex-direction:column;gap:2px}.required-badge{border-radius:999px;background:transparent;color:#9ca3af;padding:0;font-size:10px;font-weight:800}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:900}
+.lang-list{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.lang-pill{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #e2e8f0;border-radius:999px;padding:9px 14px;background:#fff;color:#374151;font-size:16px;font-weight:500;cursor:pointer;box-shadow:none}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#faf5ff;border-color:#7c3aed;color:#111827;box-shadow:none}.lang-pill.locked{background:#bfdbfe!important;color:#9ca3af;cursor:not-allowed;flex-direction:row;gap:6px}.required-badge{border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:12px;font-weight:700}.plan-badge{border-radius:999px;background:#bfdbfe!important;color:#64748b;padding:2px 8px;font-size:12px;font-weight:700}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:900}
 .preset-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}.preset-chip{border:1px solid #e2e8f0;border-radius:999px;background:#fff;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:none;transition:border-color .15s ease,background .15s ease}.preset-chip:hover{border-color:#c4b5fd;background:#faf5ff}.preset-chip:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
 .hours-summary{font-size:14px;color:#334155;line-height:1.5;margin:0 0 12px}
 .acc{border:1px solid #e2e8f0;border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}.acc-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;background:#fff;font:inherit;font-weight:800;text-align:left;cursor:pointer}.acc-body{padding:0 16px 16px;border-top:1px solid #f1f5f9}
@@ -1368,7 +1463,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .service-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.6fr) 72px 72px;gap:10px;align-items:center;margin-bottom:10px}
 .price-wrap{position:relative}.price-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b}.price-wrap input{padding-left:28px!important}
 .add-service-btn{border:1.5px dashed #a78bfa;border-radius:10px;background:#fff;color:#6d28d9;padding:0 13px;font-weight:900;cursor:pointer;width:100%;height:44px}
-.onb-status{margin-top:14px;padding:12px 14px;border-radius:16px;background:#f8fafc;color:#475569;font-size:14px}
+.onb-status{margin-top:14px;padding:12px 14px;border-radius:16px;background:#bfdbfe!important;color:#475569;font-size:14px}
 .read-success{color:#047857;font-weight:800}
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
@@ -1513,6 +1608,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               </div>
             </div>
           ) : null}
+          {websiteLoading ? renderImportProgressCard() : null}
+          {!websiteLoading ? (
           <div className="onb-manual-toggle-row">
             <button
               type="button"
@@ -1529,6 +1626,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               {manualEntryOpen ? 'Hide manual form ↑' : 'No website? Fill in manually'}
             </button>
           </div>
+          ) : null}
           {manualEntryOpen ? (
             <div className="onb-manual-panel">
               <div className="onb-field">
@@ -1610,7 +1708,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             </div>
           ) : null}
         </div>
-        {websiteLoading && importProgress ? <p className="onb-help">{importProgress}</p> : null}
         {manualEntryOpen ? (
           <div className="onb-actions onb-actions-desktop">
             <span />
@@ -1666,6 +1763,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       options: { wide?: boolean; imported?: { value?: unknown; confidence?: number; source?: string | null } | null } = {},
     ) => {
       const editing = profileEditField === field;
+      const hasUserValue = value.trim().length > 0;
+      const showImportState = websiteImportAttempted && options.imported && (!userEditedProfileFields.includes(field) || !hasUserValue);
       return (
         <div className={`profile-review-card ${options.wide ? 'wide' : ''} ${websiteImportAttempted ? 'verified' : ''}`}>
           <div className="profile-review-top">
@@ -1675,9 +1774,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             </button>
           </div>
           {editing ? <div className="profile-review-editor">{editor}</div> : <div className="profile-review-value">{value || 'Missing'}</div>}
-          {websiteImportAttempted && options.imported ? importFieldState(options.imported) : null}
+          {showImportState ? importFieldState(options.imported) : null}
         </div>
       );
+    };
+    const markProfileFieldEdited = (field: Exclude<ProfileEditField, null>) => {
+      setUserEditedProfileFields((fields) => (fields.includes(field) ? fields : [...fields, field]));
     };
 
     return (
@@ -1708,7 +1810,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             'name',
             'Business name',
             businessName,
-            <input value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Happy Nails & Spa" />,
+            <input
+              value={businessName}
+              onChange={(event) => {
+                setBusinessName(event.target.value);
+                markProfileFieldEdited('name');
+              }}
+              placeholder="Happy Nails & Spa"
+            />,
             { imported: importSuggestions?.businessProfile.name ?? null },
           )}
           {profileCard(
@@ -1724,7 +1833,17 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     className={`choice-card compact ${profilePickPrimary === item.id ? 'active' : ''}`}
                     onClick={() => {
                       setProfilePickPrimary(item.id);
-                      if (item.id !== 'beauty_umbrella') setProfilePickSubtype('');
+                      if (item.id === 'beauty_umbrella') {
+                        setVertical('beauty_clinic');
+                        setBeautySubtype(profilePickSubtype || 'other_beauty');
+                      } else {
+                        setProfilePickSubtype('');
+                        setVertical(item.id);
+                        setBeautySubtype('');
+                      }
+                      setVerticalConfidence('high');
+                      markProfileFieldEdited('type');
+                      setStatus(null);
                     }}
                   >
                     <span className="emoji">{item.emoji}</span>
@@ -1739,16 +1858,20 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                       key={item.id}
                       type="button"
                       className={`preset-chip ${profilePickSubtype === item.id ? 'active' : ''}`}
-                      onClick={() => setProfilePickSubtype(item.id)}
+                      onClick={() => {
+                        setProfilePickSubtype(item.id);
+                        setVertical('beauty_clinic');
+                        setBeautySubtype(item.id);
+                        setVerticalConfidence('high');
+                        markProfileFieldEdited('type');
+                        setStatus(null);
+                      }}
                     >
                       {item.label}
                     </button>
                   ))}
                 </div>
               ) : null}
-              <button className="onb-btn-secondary" type="button" onClick={() => { applyProfileBusinessType(); setProfileEditField(null); }}>
-                Apply
-              </button>
             </div>,
             { imported: importSuggestions?.businessProfile.primaryType ?? null },
           )}
@@ -1762,6 +1885,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               onChange={(event) => {
                 setBusinessPhone(event.target.value);
                 setBusinessPhoneNeedsRealEntry(false);
+                markProfileFieldEdited('phone');
               }}
             />,
             { imported: importSuggestions?.businessProfile.phone ?? null },
@@ -1782,6 +1906,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     if (nextCountryMeta && !nextCountryMeta.timezones.some((zone) => zone.value === timezone)) {
                       setTimezone(nextCountryMeta.timezones[0].value);
                     }
+                    markProfileFieldEdited('timezone');
                   }}
                 >
                   <option value="">Select your country...</option>
@@ -1791,7 +1916,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                 </select>
               </div>
               {countryTimezones ? (
-                <select value={timezone} onChange={(event) => setTimezone(event.target.value)}>
+                <select
+                  value={timezone}
+                  onChange={(event) => {
+                    setTimezone(event.target.value);
+                    markProfileFieldEdited('timezone');
+                  }}
+                >
                   {countryTimezones.timezones.map((zone) => (
                     <option key={zone.value} value={zone.value}>{zone.label} ({zone.offset})</option>
                   ))}
@@ -1804,14 +1935,28 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             'website',
             'Website',
             websiteUrl,
-            <input value={websiteUrl} onChange={(event) => setWebsiteUrl(event.target.value)} placeholder="https://yourbusiness.com" />,
+            <input
+              value={websiteUrl}
+              onChange={(event) => {
+                setWebsiteUrl(event.target.value);
+                markProfileFieldEdited('website');
+              }}
+              placeholder="https://yourbusiness.com"
+            />,
             { wide: true, imported: importSuggestions?.businessProfile.website ?? { value: websiteUrl || null, confidence: websiteUrl ? 0.95 : 0, source: websiteUrl ? 'User' : null } },
           )}
           {profileCard(
             'address',
             'Address',
             address,
-            <textarea value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, city, region" />,
+            <textarea
+              value={address}
+              onChange={(event) => {
+                setAddress(event.target.value);
+                markProfileFieldEdited('address');
+              }}
+              placeholder="Street, city, region"
+            />,
             { wide: true, imported: importSuggestions?.businessProfile.address ?? null },
           )}
           {profileCard(
@@ -1820,9 +1965,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             summarizeHours(hours),
             <div>
               <div className="preset-row">
-                <button type="button" className="preset-chip" onClick={() => setHours(defaultHours())}>Standard salon hours</button>
-                <button type="button" className="preset-chip" onClick={() => setHours((h) => presetWeekendClosed({ ...h }))}>Weekend closed</button>
-                <button type="button" className="preset-chip" onClick={() => setHours(presetOpen7Days(defaultHours()))}>Open 7 days</button>
+                <button type="button" className="preset-chip" onClick={() => { setHours(defaultHours()); markProfileFieldEdited('hours'); }}>Standard salon hours</button>
+                <button type="button" className="preset-chip" onClick={() => { setHours((h) => presetWeekendClosed({ ...h })); markProfileFieldEdited('hours'); }}>Weekend closed</button>
+                <button type="button" className="preset-chip" onClick={() => { setHours(presetOpen7Days(defaultHours())); markProfileFieldEdited('hours'); }}>Open 7 days</button>
               </div>
               <div className="hours-list">
                 {DAYS.map(([day, label]) => (
@@ -1832,15 +1977,32 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                       <input
                         type="checkbox"
                         checked={hours[day].open}
-                        onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], open: event.target.checked } })}
+                        onChange={(event) => {
+                          setHours({ ...hours, [day]: { ...hours[day], open: event.target.checked } });
+                          markProfileFieldEdited('hours');
+                        }}
                       />
                       <span className="toggle-dot" />
                       {hours[day].open ? 'Open' : 'Closed'}
                     </label>
-                    <select disabled={!hours[day].open} value={hours[day].from} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], from: event.target.value } })}>
+                    <select
+                      disabled={!hours[day].open}
+                      value={hours[day].from}
+                      onChange={(event) => {
+                        setHours({ ...hours, [day]: { ...hours[day], from: event.target.value } });
+                        markProfileFieldEdited('hours');
+                      }}
+                    >
                       {TIME_OPTIONS.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}
                     </select>
-                    <select disabled={!hours[day].open} value={hours[day].to} onChange={(event) => setHours({ ...hours, [day]: { ...hours[day], to: event.target.value } })}>
+                    <select
+                      disabled={!hours[day].open}
+                      value={hours[day].to}
+                      onChange={(event) => {
+                        setHours({ ...hours, [day]: { ...hours[day], to: event.target.value } });
+                        markProfileFieldEdited('hours');
+                      }}
+                    >
                       {TIME_OPTIONS.map((time) => <option key={time} value={time}>{formatTimeLabel(time)}</option>)}
                     </select>
                   </div>
@@ -1872,7 +2034,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             </div>
           </div>
         ) : null}
-        <div className="onb-note" style={{ marginTop: 18 }}>
+        <div className="onb-note" style={{ marginTop: 18, marginBottom: 24 }}>
           <span>ⓘ</span>
           <span>Hours and contact are what callers ask most. Fix them now for the best test.</span>
         </div>
@@ -1888,17 +2050,31 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             </p>
             <div className="lang-list">
               <label className="lang-pill locked">
-                <input type="checkbox" checked disabled /> EN ✓ <span className="required-badge">Required</span>
+                <input type="checkbox" checked disabled /> EN ✓
               </label>
-              <label className={`lang-pill ${languages.includes('vi') ? 'selected' : ''}`}>
-                <input type="checkbox" checked={languages.includes('vi')} onChange={(event) => setLanguages(toggleLanguage(languages, 'vi', event.target.checked))} />
-                VI {languages.includes('vi') ? '✓' : ''}
-              </label>
-              {vertical === 'nail_salon' ? <span className="mini-badge">✓ Auto-selected for nail salons</span> : null}
-              <label className={`lang-pill ${languages.includes('es') ? 'selected' : ''}`}>
-                <input type="checkbox" checked={languages.includes('es')} onChange={(event) => setLanguages(toggleLanguage(languages, 'es', event.target.checked))} />
-                ES {languages.includes('es') ? '✓' : ''}
-              </label>
+              <span className="required-badge">Required</span>
+              {shopPlan === 'starter' ? (
+                <>
+                  <label className="lang-pill locked">
+                    <input type="checkbox" checked={false} disabled /> VI <span className="plan-badge">Pro + Enterprise</span>
+                  </label>
+                  <label className="lang-pill locked">
+                    <input type="checkbox" checked={false} disabled /> ES <span className="plan-badge">Pro + Enterprise</span>
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className={`lang-pill ${languages.includes('vi') ? 'selected' : ''}`}>
+                    <input type="checkbox" checked={languages.includes('vi')} onChange={(event) => setLanguages(toggleLanguage(languages, 'vi', event.target.checked))} />
+                    VI {languages.includes('vi') ? '✓' : ''}
+                  </label>
+                  {vertical === 'nail_salon' ? <span className="mini-badge">✓ Auto-selected for nail salons</span> : null}
+                  <label className={`lang-pill ${languages.includes('es') ? 'selected' : ''}`}>
+                    <input type="checkbox" checked={languages.includes('es')} onChange={(event) => setLanguages(toggleLanguage(languages, 'es', event.target.checked))} />
+                    ES {languages.includes('es') ? '✓' : ''}
+                  </label>
+                </>
+              )}
             </div>
           </div>,
         )}

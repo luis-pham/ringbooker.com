@@ -464,7 +464,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
         return (
           <button
             type="button"
-            className="btn purple"
+            className="btn user-save"
             disabled={forwardingTestLoading}
             onClick={() => void runForwardingConnectivityCheck()}
           >

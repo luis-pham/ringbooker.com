@@ -12,6 +12,10 @@ import {
   confidenceLabel,
   importReviewBadgeState,
   importRecommendedActionMessage,
+  importProgressDelayMessage,
+  importProgressStepIndex,
+  importResultMessage,
+  IMPORT_PROGRESS_STEPS,
 } from '@/components/user/user-onboarding-live';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
@@ -91,7 +95,7 @@ test('onboarding import confidence labels map to review states', () => {
 test('onboarding import review badge state maps rendered labels and sources', () => {
   assert.deepEqual(importReviewBadgeState({ value: 'Demo Salon', confidence: 0.94, source: 'Google Places' }), { label: 'AI verified', source: 'Google' });
   assert.deepEqual(importReviewBadgeState({ value: 'Demo Salon', confidence: 0.62, source: 'Website' }), { label: 'Needs review', source: 'Website' });
-  assert.deepEqual(importReviewBadgeState({ value: null, confidence: 0, source: null }), { label: 'Missing', source: 'Missing' });
+  assert.deepEqual(importReviewBadgeState({ value: null, confidence: 0, source: null }), { label: 'Missing', source: '' });
   assert.deepEqual(importReviewBadgeState({ value: 'https://demo.test', confidence: 0.95, source: 'User' }), { label: 'AI verified', source: 'User' });
   assert.deepEqual(importReviewBadgeState({ value: 'Balayage', confidence: 0.91, source: 'AI' }), { label: 'AI verified', source: 'Website analysis' });
 });
@@ -117,12 +121,36 @@ test('onboarding import recommended action maps to review copy', () => {
   assert.equal(importRecommendedActionMessage('service_details_incomplete'), 'We found your business details, but services may need review.');
 });
 
+test('onboarding website import progress copy uses phased states without percentages', () => {
+  assert.deepEqual([...IMPORT_PROGRESS_STEPS], [
+    'Checking your link',
+    'Finding useful pages',
+    'Reading services and hours',
+    'Comparing business details',
+    'Preparing your review',
+  ]);
+  assert.equal(importProgressStepIndex(0), 0);
+  assert.equal(importProgressStepIndex(1300), 1);
+  assert.equal(importProgressStepIndex(3200), 2);
+  assert.equal(importProgressStepIndex(5000), 3);
+  assert.equal(importProgressStepIndex(7000), 4);
+  assert.equal(importProgressDelayMessage(8500), 'Still working... Some websites take longer to read.');
+  assert.equal(importProgressDelayMessage(20000), 'This is taking longer than expected. You can continue manually and edit everything later.');
+  assert.equal(importResultMessage({ status: 'success', sourceUrl: 'https://demo.test', businessProfile: {} }), 'Ready to review');
+  assert.equal(importResultMessage({ status: 'partial', sourceUrl: 'https://demo.test', businessProfile: {} }), 'Some details need review');
+  assert.equal(importResultMessage(null, true), 'We couldn’t import this automatically. You can still set this up manually.');
+  assert.equal(IMPORT_PROGRESS_STEPS.some((label) => /%/.test(label)), false);
+});
+
 test('onboarding copy keeps website import review-only and isolates legacy read-website', () => {
   const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
   const app = readFileSync('src/backend/api/app.ts', 'utf8');
   assert.match(onboardingLive, /Add your website now, then review it before saving/);
   assert.doesNotMatch(onboardingLive, /We'll save this link today/);
   assert.match(onboardingLive, /No website\? Fill in manually/);
+  assert.match(onboardingLive, /Set up manually instead/);
+  assert.match(onboardingLive, /You’ll review and edit everything before saving/);
+  assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml/);
   assert.doesNotMatch(onboardingLive, /I&apos;ll enter details manually/);
   assert.match(onboardingLive, /refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge/);
   assert.ok(onboardingLive.includes('/api/backend/user/onboarding/import-website'));

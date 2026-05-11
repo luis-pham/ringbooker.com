@@ -145,10 +145,13 @@ a{text-decoration:none;color:inherit}
   border-radius:var(--r-lg);
   transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
 }
-.hiw-grid-3.hiw-flow .hiw-step:hover{
-  border-color:rgba(167,139,250,.45);
-  box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));
-  transform:translateY(-2px);
+/* Hover only on devices with real hover (no lift/shadow while scrolling cards on touch phones) */
+@media (hover: hover) and (pointer: fine){
+  .hiw-grid-3.hiw-flow .hiw-step:hover{
+    border-color:rgba(167,139,250,.45);
+    box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));
+    transform:translateY(-2px);
+  }
 }
 .hiw-grid-3.hiw-flow .hiw-step h3{
   font-size:15px;
