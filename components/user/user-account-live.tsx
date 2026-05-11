@@ -209,13 +209,13 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   padding:20px 22px 16px;border-bottom:1px solid var(--border);
 }
 .rb-account-frame-head h2{
-  margin:0;font-size:18px;font-weight:780;letter-spacing:-.03em;line-height:1.25;color:var(--text-dark);
+  margin:0;font-size:18px;font-weight:600;letter-spacing:-.02em;line-height:1.25;color:var(--text-dark);
 }
 /* Same subtabs as Messaging (SMS automations / Messaging notes) in Settings */
 .rb-account-subtabs.business-subtabs{margin-bottom:0;padding:12px 22px 14px;border-bottom:1px solid var(--border)}
 .rb-account-panel{padding:22px 22px 24px}
 .rb-account-panel-title{
-  margin:0 0 18px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
+  margin:0 0 18px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
 }
 @media(min-width:861px){
   .rb-account-shell{max-width:760px;padding:26px 0 40px}
@@ -244,11 +244,11 @@ button.rb-account-link:hover{text-decoration:underline}
   .rb-account-row{flex-direction:row;align-items:center;gap:16px}
 }
 .rb-account-row:last-child{border-bottom:none;padding-bottom:0}
-.rb-account-row dt{margin:0;width:12rem;flex-shrink:0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-gray)}
+.rb-account-row dt{margin:0;width:12rem;flex-shrink:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-gray)}
 .rb-account-row dd{margin:0;font-size:15px;font-weight:500;color:var(--text-dark);line-height:1.45;word-break:break-word}
 .rb-account-plan-pill{
   display:inline-flex;align-items:center;margin-left:8px;padding:2px 10px;border-radius:999px;
-  font-size:11px;font-weight:700;background:#ecfdf5;color:#047857;vertical-align:middle;
+  font-size:11px;font-weight:500;background:#ecfdf5;color:#047857;vertical-align:middle;
 }
 .rb-account-billing-warn{color:var(--red-deep);font-weight:600}
 .rb-account-callout{
@@ -259,7 +259,7 @@ button.rb-account-link:hover{text-decoration:underline}
 .rb-account-subsection{margin-top:28px;padding-top:22px;border-top:1px solid var(--border)}
 .rb-account-subsection:first-of-type{margin-top:0;padding-top:0;border-top:none}
 .rb-account-subsection-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
-.rb-account-subsection-title{margin:0;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray)}
+.rb-account-subsection-title{margin:0;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray)}
 .rb-account-inline-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
 .rb-account-contact-name-field.field{margin-bottom:0;width:100%;max-width:100%}
 @media(min-width:641px){

@@ -9,8 +9,8 @@ export const userBillingStyles: string[] = [
   background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:none;
   padding:22px;min-width:0;min-height:100%;display:flex;flex-direction:column;gap:6px;
 }
-.billing-status-card .bst-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light)}
-.billing-status-card .bst-value{font-size:17px;font-weight:780;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
+.billing-status-card .bst-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-light)}
+.billing-status-card .bst-value{font-size:17px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
 .billing-status-card .bst-meta{font-size:12px;color:var(--text-gray);line-height:1.45;margin-top:auto}
 .billing-alert-strip{
   display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;

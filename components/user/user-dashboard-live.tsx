@@ -490,7 +490,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
   function getGoLiveBannerCopy() {
     switch (data?.goLive?.primaryCta) {
       case 'add_payment_method':
-        return 'You can keep using setup and test calls without a card. Start your 14-day trial when you are ready to connect your business phone. RingBooker will not answer real calls until billing and phone forwarding are complete.';
+        return "No card needed during setup. Add billing and phone forwarding when you're ready to go live — your business number stays unchanged until then.";
       case 'set_up_call_forwarding':
         return 'Your billing is ready. Next, set up call forwarding so callers to your current business number can reach RingBooker behind the scenes.';
       case 'test_forwarding_setup':
@@ -561,7 +561,8 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     <h3>RingBooker is set up, but not live yet.</h3>
 	                    <p className="sub">
 	                      {getGoLiveBannerCopy()}
-	                      {data?.goLive?.primaryCta === 'test_forwarding_setup'
+	                      {data?.goLive?.primaryCta === 'test_forwarding_setup' ||
+	                      data?.goLive?.primaryCta === 'add_payment_method'
 	                        ? ''
 	                        : ' Your customers keep calling your current business number until you complete the remaining go-live steps below.'}
 	                    </p>
