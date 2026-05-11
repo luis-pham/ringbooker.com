@@ -494,7 +494,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
       case 'set_up_call_forwarding':
         return 'Your billing is ready. Next, set up call forwarding so callers to your current business number can reach RingBooker behind the scenes.';
       case 'test_forwarding_setup':
-        return 'Your forwarding number is ready. Place the forwarding test so RingBooker can confirm calls are reaching the correct line before live answering is enabled.';
+        return 'Run a quick test to confirm calls are routing correctly. Your business number stays unchanged until you go live.';
       case 'enable_live_answering':
         return 'Billing and forwarding are ready. Enable live answering when you want RingBooker to start answering real callers on your business number.';
       default:
@@ -559,10 +559,12 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 <div className="panel-head">
                   <div>
                     <h3>RingBooker is set up, but not live yet.</h3>
-                    <p className="sub">
-                      {getGoLiveBannerCopy()} Your customers keep calling your current business number until you complete the remaining
-                      go-live steps below.
-                    </p>
+	                    <p className="sub">
+	                      {getGoLiveBannerCopy()}
+	                      {data?.goLive?.primaryCta === 'test_forwarding_setup'
+	                        ? ''
+	                        : ' Your customers keep calling your current business number until you complete the remaining go-live steps below.'}
+	                    </p>
                     {goLiveActionMessage ? (
                       <p className="sub" style={{ color: '#b45309', marginTop: 8 }}>
                         {goLiveActionMessage}
