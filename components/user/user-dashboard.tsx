@@ -133,8 +133,8 @@ button,input,select,textarea{font:inherit}
 .nav-icon svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none}
 .nav-item.active .nav-icon svg{stroke-width:2.35}
 .nav-attention-dot{
-  width:7px;height:7px;border-radius:999px;background:#f59e0b;
-  display:inline-flex;flex-shrink:0;margin-left:-4px;box-shadow:0 0 0 3px rgba(245,158,11,.14);
+  width:7px;height:7px;border-radius:999px;background:#ef4444;
+  display:inline-flex;flex-shrink:0;margin-left:-4px;box-shadow:0 0 0 3px rgba(239,68,68,.14);
 }
 .nav-go-live-placeholder{pointer-events:none;opacity:.72}
 .nav-go-live-placeholder-track{display:block;width:100%;box-sizing:border-box;padding:0 2px}
@@ -694,7 +694,7 @@ html[data-user-theme="dark"] .plan-chip{
 html[data-user-theme="dark"] .rb-account-action:hover{background:#21262d}
 html[data-user-theme="dark"] .rb-account-callout{background:#21262d;border-color:var(--border)}
 html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(56,139,253,0.12);color:#79c0ff}
-html[data-user-theme="dark"] .nav-attention-dot{background:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.16)}
+html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.16)}
 
 @media (max-width:1200px){
   .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}

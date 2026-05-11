@@ -115,7 +115,9 @@ function IconIntegrations() {
 function IconGoLive() {
   return (
     <svg viewBox="0 0 24 24">
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.682.305 1.348.53 1.99M9 18h4.17M14.21 9.09 15.25 7.05a2 2 0 0 1 2.83-.09l2.12 2.12a2 2 0 0 1 .09 2.83l-2.3 2.3M10.59 13.59 12 15l1.41 1.41" />
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.13 12.13 0 0 0 .7 1.99l-1 1.24a16 16 0 0 0 6 6l1.27-1a12 12 0 0 0 2 .7 2 2 0 0 1 1.72 2z" />
+      <path d="M14.05 2a9 9 0 0 1 8 7.94" />
+      <path d="M14.05 6A5 5 0 0 1 18 10" />
     </svg>
   );
 }
@@ -229,7 +231,6 @@ export function UserPortalNav({ active }: UserPortalNavProps) {
         <div className="nav-label">Setup</div>
         {goLiveRow}
         {navLink('knowledge', '/user/knowledge', 'Business Knowledge', <IconKnowledge />, active)}
-        {navLink('ai-settings', '/user/ai-settings', 'AI Settings', <IconSettings />, active)}
         {navLink('integrations', '/user/integrations', 'Integrations', <IconIntegrations />, active)}
         <div className="nav-label">Account</div>
         {navLink('billing', '/user/billing', 'Billing', <IconBilling />, active)}

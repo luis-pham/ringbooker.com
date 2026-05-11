@@ -6,9 +6,6 @@ export const USER_PORTAL_TOPBAR_ACTIONS_CLASS = 'overview-top-actions';
 export function UserPortalStandardTopActions() {
   return (
     <>
-      <a className="btn" href="/user/ai-settings">
-        AI Settings
-      </a>
       <a className="btn" href="/user/knowledge">
         Business Knowledge
       </a>

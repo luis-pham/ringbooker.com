@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 
-/** Canonical AI Settings URL is `/user/ai-settings`. */
+/** Canonical settings surface is Business Knowledge. */
 export default function UserSettingsLegacyRedirectPage() {
-  redirect('/user/ai-settings');
+  redirect('/user/knowledge');
 }

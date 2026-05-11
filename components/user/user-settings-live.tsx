@@ -224,6 +224,7 @@ type SettingsState = {
 
 type SettingsTabId =
   | 'business'
+  | 'hours'
   | 'services-hours'
   | 'staff'
   | 'faq'
@@ -393,11 +394,19 @@ function SettingsTabIcon({ tabId }: { tabId: SettingsTabId }): ReactNode {
           <polyline points="9 22 9 12 15 12 15 22" />
         </>,
       );
+    case 'hours':
+      return wrap(
+        <>
+          <circle cx={12} cy={12} r={9} />
+          <path d="M12 7v5l3 2" />
+        </>,
+      );
     case 'services-hours':
       return wrap(
         <>
-          <rect x={3} y={4} width={18} height={18} rx={2} />
-          <path d="M16 2v4M8 2v4M3 10h18" />
+          <path d="M4 7h16" />
+          <path d="M4 12h16" />
+          <path d="M4 17h10" />
         </>,
       );
     case 'staff':
@@ -435,28 +444,23 @@ function SettingsTabIcon({ tabId }: { tabId: SettingsTabId }): ReactNode {
 }
 
 const SETTINGS_TAB_META: Record<SettingsTabId, { label: string; description: string }> = {
-  business: { label: 'Business', description: 'Profile, policy, and promo details.' },
-  'services-hours': { label: 'Services & Hours', description: 'What you offer and when you are open.' },
+  business: { label: 'Business profile', description: 'Name, type, website, phone, timezone, and address.' },
+  hours: { label: 'Hours', description: 'Weekly schedule and closure notes.' },
+  'services-hours': { label: 'Services', description: 'Service groups, prices, duration, and request rules.' },
   staff: { label: 'Staff', description: 'Technicians, specialists, and provider preferences.' },
-  faq: { label: 'FAQ', description: 'Common caller questions and approved answers.' },
-  'ai-call-behavior': { label: 'AI Call Behavior', description: 'Voice, greeting, and call handling.' },
+  faq: { label: 'Policies & FAQ', description: 'Policies, promotions, and approved answers.' },
+  'ai-call-behavior': { label: 'AI behavior & Call handling', description: 'Voice, greeting, instructions, and call handling.' },
   messaging: { label: 'Messaging', description: 'Reminders, reviews, and follow-up SMS.' },
   integrations: { label: 'Integrations', description: 'Square, Vagaro, or booking page links.' },
 };
 
 const SETTINGS_PORTAL_TAB_ORDER: Record<UserSettingsPortal, SettingsTabId[]> = {
   'ai-settings': ['ai-call-behavior', 'messaging'],
-  knowledge: ['business', 'services-hours', 'staff', 'faq'],
+  knowledge: ['business', 'hours', 'services-hours', 'staff', 'faq', 'ai-call-behavior'],
   integrations: ['integrations'],
 };
 
 function tabCopyForPortal(portal: UserSettingsPortal, id: SettingsTabId): { label: string; description: string } {
-  if (portal === 'knowledge' && id === 'business') {
-    return {
-      label: 'Business info',
-      description: 'Name, address, contact lines, policies, and promos.',
-    };
-  }
   if (portal === 'ai-settings' && id === 'ai-call-behavior') {
     return {
       label: 'AI voice & tone',
@@ -657,7 +661,7 @@ export function UserSettingsLive({
       ? {
           title: 'Business Knowledge',
           subtitle:
-            'This is what RingBooker uses to answer every caller: business info, services, hours, staff, FAQs, and policies.',
+            'This is what RingBooker uses to answer every caller: profile, hours, services, staff, policies, FAQs, and call handling.',
         }
       : portal === 'integrations'
         ? {
@@ -715,10 +719,8 @@ export function UserSettingsLive({
   const [bookingLinkErrors, setBookingLinkErrors] = useState<Partial<Record<BookingLinkProviderId, string>>>({});
   const [editingBookingLinkProvider, setEditingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [savingBookingLinkProvider, setSavingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
-  const [servicesHoursSubTab, setServicesHoursSubTab] = useState<'services' | 'hours'>('services');
   const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('voice');
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
-  const [businessKnowledgeSubTab, setBusinessKnowledgeSubTab] = useState<'info' | 'cancellation' | 'promotion'>('info');
   const [websiteSuggestions, setWebsiteSuggestions] = useState<BusinessKnowledgeSuggestion[]>([]);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
   const [suggestionEdits, setSuggestionEdits] = useState<Record<string, Record<string, unknown>>>({});
@@ -780,8 +782,9 @@ export function UserSettingsLive({
         const allowedIds = new Set(SETTINGS_PORTAL_TAB_ORDER[portal]);
         const h = typeof window !== 'undefined' ? window.location.hash : '';
         let nextTab: SettingsTabId = defaultTabForPortal();
-        if (h === '#integrations' && allowedIds.has('integrations')) {
-          nextTab = 'integrations';
+        const hashTab = h.startsWith('#') ? (h.slice(1) as SettingsTabId) : null;
+        if (hashTab && allowedIds.has(hashTab)) {
+          nextTab = hashTab;
         }
         setActiveTab(nextTab);
       })
@@ -811,11 +814,12 @@ export function UserSettingsLive({
     const syncHash = () => {
       if (typeof window === 'undefined') return;
       const h = window.location.hash;
-      if (h === '#integrations' && allowedIds.has('integrations')) {
-        setActiveTab('integrations');
+      const hashTab = h.startsWith('#') ? (h.slice(1) as SettingsTabId) : null;
+      if (hashTab && allowedIds.has(hashTab)) {
+        setActiveTab(hashTab);
         return;
       }
-      if (h === '#integrations' && !allowedIds.has('integrations')) {
+      if (hashTab && !allowedIds.has(hashTab)) {
         const base = `${window.location.pathname}${window.location.search}`;
         window.history.replaceState(null, '', base);
       }
@@ -927,10 +931,10 @@ export function UserSettingsLive({
     portal === 'knowledge'
       ? [
           {
-            title: 'AI behavior',
-            body: 'Control how RingBooker speaks, greets callers, and handles transfers in AI Settings.',
-            href: '/user/ai-settings',
-            cta: 'Open AI Settings',
+            title: 'AI behavior & Call handling',
+            body: 'Control how RingBooker speaks, greets callers, and handles transfers from the Business Knowledge tab above.',
+            href: '#ai-call-behavior',
+            cta: 'Open tab',
           },
           {
             title: 'Booking setup',
@@ -1515,8 +1519,8 @@ export function UserSettingsLive({
                 <div>
                   <h3>Business Knowledge is the facts RingBooker knows</h3>
                   <p className="sub">
-                    Use this page for profile details, hours, services, staff, policies, and FAQs. Use AI Settings for behavior and
-                    Integrations for booking tools.
+	                    Use this page for profile details, hours, services, staff, policies, FAQs, AI behavior, and call handling.
+	                    Integrations stay separate for booking tools.
                   </p>
                 </div>
               </div>
@@ -2149,112 +2153,28 @@ export function UserSettingsLive({
                     name: currentForm.name,
                     user_name: currentForm.user_name,
                     user_phone: currentForm.user_phone,
-                    backup_phone: currentForm.backup_phone || null,
-                    address: currentForm.address || null,
-                    timezone: currentForm.timezone,
-                    website_url: currentForm.website_url.trim() ? currentForm.website_url.trim() : '',
-                    cancel_policy: currentForm.cancel_policy,
-                    promotions: currentForm.promotions || null,
-                  });
-                }}
-              >
-                <div className="business-subtabs" role="tablist" aria-label="Business knowledge sections">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={businessKnowledgeSubTab === 'info'}
-                    className={`business-subtab ${businessKnowledgeSubTab === 'info' ? 'active' : ''}`}
-                    onClick={() => setBusinessKnowledgeSubTab('info')}
-                  >
-                    Business info
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={businessKnowledgeSubTab === 'cancellation'}
-                    className={`business-subtab ${businessKnowledgeSubTab === 'cancellation' ? 'active' : ''}`}
-                    onClick={() => setBusinessKnowledgeSubTab('cancellation')}
-                  >
-                    Cancellation policy
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={businessKnowledgeSubTab === 'promotion'}
-                    className={`business-subtab ${businessKnowledgeSubTab === 'promotion' ? 'active' : ''}`}
-                    onClick={() => setBusinessKnowledgeSubTab('promotion')}
-                  >
-                    Promotion
-                  </button>
-                </div>
-
-                <div className="card-section">
-                  {businessKnowledgeSubTab === 'info' ? (
-                    <div>
-                      <div className="hint-row">
-                        <strong className="option-title">Business info</strong>
-                        <span className="hint-copy">Core details RingBooker can use when callers ask who you are, where you are, or how to reach the team.</span>
-                      </div>
-                      <div className="form-grid" style={{ marginTop: 14 }}>
-                        <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
-                        <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
-                        <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
-                        <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
-                        <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
-                        <div className="field"><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
-                        <div className="field"><label>Website</label><input value={currentForm.website_url} onChange={(event) => patchState('website_url', event.target.value)} placeholder="https://..." /></div>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {businessKnowledgeSubTab === 'cancellation' ? (
-                    <div>
-                      <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit only if your business needs a special case.</span></div>
-                      <div className="preset-pills" style={{ marginTop: 12 }}>
-                        {CANCEL_POLICY_PRESETS.map((item) => (
-                          <button key={item} type="button" className={`preset-pill ${cancelPreset === item ? 'active' : ''}`} onClick={() => {
-                            setCancelPreset(item);
-                            patchState('cancel_policy', item);
-                          }}>
-                            {item.includes('2 hours') ? '2-hour notice' : item.includes('24 hours') ? '24-hour notice' : item.includes('No cancellation') ? 'No fee' : 'Phone-only changes'}
-                          </button>
-                        ))}
-                        <button type="button" className={`preset-pill ${cancelPreset === 'custom' ? 'active' : ''}`} onClick={() => setCancelPreset('custom')}>Custom</button>
-                      </div>
-                      <div className="field" style={{ marginTop: 14, width: '60%', maxWidth: '100%' }}>
-                        <label>Policy text</label>
-                        <textarea value={currentForm.cancel_policy} onChange={(event) => {
-                          setCancelPreset('custom');
-                          patchState('cancel_policy', event.target.value);
-                        }} />
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {businessKnowledgeSubTab === 'promotion' ? (
-                    <div>
-                      <div className="hint-row"><strong className="option-title">Promotion</strong><span className="hint-copy">Pick one active offer so the AI never invents a discount.</span></div>
-                      <div className="preset-pills" style={{ marginTop: 12 }}>
-                        {PROMOTION_PRESETS.map((item, index) => (
-                          <button key={`${item}-${index}`} type="button" className={`preset-pill ${promoPreset === item ? 'active' : ''}`} onClick={() => {
-                            setPromoPreset(item);
-                            patchState('promotions', item);
-                          }}>
-                            {index === 0 ? 'No promotion' : index === 1 ? '10% first visit' : index === 2 ? 'Free consult' : 'Weekday offer'}
-                          </button>
-                        ))}
-                        <button type="button" className={`preset-pill ${promoPreset === 'custom' ? 'active' : ''}`} onClick={() => setPromoPreset('custom')}>Custom</button>
-                      </div>
-                      <div className="field" style={{ marginTop: 14, width: '60%', maxWidth: '100%' }}>
-                        <label>Promotion text</label>
-                        <textarea value={currentForm.promotions} onChange={(event) => {
-                          setPromoPreset('custom');
-                          patchState('promotions', event.target.value);
-                        }} placeholder="Optional. Leave blank if you are not running a promotion." />
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
+	                    backup_phone: currentForm.backup_phone || null,
+	                    address: currentForm.address || null,
+	                    timezone: currentForm.timezone,
+	                    website_url: currentForm.website_url.trim() ? currentForm.website_url.trim() : '',
+	                  });
+	                }}
+	              >
+	                <div className="card-section">
+	                  <div className="hint-row">
+	                    <strong className="option-title">Business profile</strong>
+	                    <span className="hint-copy">Core details RingBooker can use when callers ask who you are, where you are, or how to reach the team.</span>
+	                  </div>
+	                  <div className="form-grid" style={{ marginTop: 14 }}>
+	                    <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
+	                    <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
+	                    <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
+	                    <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
+	                    <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
+	                    <div className="field"><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
+	                    <div className="field"><label>Website</label><input value={currentForm.website_url} onChange={(event) => patchState('website_url', event.target.value)} placeholder="https://..." /></div>
+	                  </div>
+	                </div>
                 <div className="settings-save-footer">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'business-knowledge-info' ? 'Saving...' : 'Save business knowledge'}
@@ -2298,15 +2218,6 @@ export function UserSettingsLive({
 
             {activeTab === 'services-hours' ? (
             <section className="card">
-              <div className="business-subtabs" role="tablist" aria-label="Services and hours sections">
-                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'services'} className={`business-subtab ${servicesHoursSubTab === 'services' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('services')}>
-                  Services
-                </button>
-                <button type="button" role="tab" aria-selected={servicesHoursSubTab === 'hours'} className={`business-subtab ${servicesHoursSubTab === 'hours' ? 'active' : ''}`} onClick={() => setServicesHoursSubTab('hours')}>
-                  Business hours
-                </button>
-              </div>
-              {servicesHoursSubTab === 'services' ? (
               <form
                 className="card-section-form"
                 onSubmit={(event) => {
@@ -2558,10 +2469,12 @@ export function UserSettingsLive({
                     {savingSection === 'services' ? 'Saving...' : 'Save services'}
                   </button>
                 </div>
-              </form>
-              ) : null}
+	              </form>
+            </section>
+            ) : null}
 
-              {servicesHoursSubTab === 'hours' ? (
+            {activeTab === 'hours' ? (
+            <section className="card">
               <form
                 className="card-section-form sh-business-hours-form"
                 onSubmit={(event) => {
@@ -2625,8 +2538,7 @@ export function UserSettingsLive({
                     {savingSection === 'hours' ? 'Saving...' : 'Save hours'}
                   </button>
                 </div>
-              </form>
-              ) : null}
+	              </form>
             </section>
             ) : null}
 
@@ -2699,28 +2611,72 @@ export function UserSettingsLive({
             <section className="card">
               <form
                 className="card-section-form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void commitSettingsPatch('faqs', {
-                    faqs: currentForm.faqs
-                      .map((item) => ({ question: item.question.trim(), answer: item.answer.trim() }))
-                      .filter((item) => item.question && item.answer),
+	                onSubmit={(event) => {
+	                  event.preventDefault();
+	                  void commitSettingsPatch('faqs', {
+	                    cancel_policy: currentForm.cancel_policy,
+	                    promotions: currentForm.promotions || null,
+	                    faqs: currentForm.faqs
+	                      .map((item) => ({ question: item.question.trim(), answer: item.answer.trim() }))
+	                      .filter((item) => item.question && item.answer),
                   });
                 }}
               >
-                <div className="panel-head">
-                  <div>
-                    <h3>FAQ</h3>
-                    <p className="sub">Approved answers for common caller questions: parking, walk-ins, deposits, payment methods, gift cards, or group bookings.</p>
-                  </div>
-                  <button type="button" className="btn" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
-                    Add FAQ
-                  </button>
-                </div>
-                <div className="card-section">
-                  {currentForm.faqs.length === 0 ? (
-                    <div className="sh-empty">No FAQs added yet. Add common answers so RingBooker can respond consistently.</div>
-                  ) : null}
+	                <div className="panel-head">
+	                  <div>
+	                    <h3>Policies & FAQ</h3>
+	                    <p className="sub">Approved policies and answers for common caller questions: deposits, cancellations, parking, walk-ins, payment methods, gift cards, or group bookings.</p>
+	                  </div>
+	                  <button type="button" className="btn" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
+	                    Add FAQ
+	                  </button>
+	                </div>
+	                <div className="card-section">
+	                  <div className="option-card option-card--bare">
+	                    <div className="hint-row"><strong className="option-title">Cancellation policy</strong><span className="hint-copy">Choose a preset, then edit if your business needs a special case.</span></div>
+	                    <div className="preset-pills" style={{ marginTop: 12 }}>
+	                      {CANCEL_POLICY_PRESETS.map((item) => (
+	                        <button key={item} type="button" className={`preset-pill ${cancelPreset === item ? 'active' : ''}`} onClick={() => {
+	                          setCancelPreset(item);
+	                          patchState('cancel_policy', item);
+	                        }}>
+	                          {item.includes('2 hours') ? '2-hour notice' : item.includes('24 hours') ? '24-hour notice' : item.includes('No cancellation') ? 'No fee' : 'Phone-only changes'}
+	                        </button>
+	                      ))}
+	                      <button type="button" className={`preset-pill ${cancelPreset === 'custom' ? 'active' : ''}`} onClick={() => setCancelPreset('custom')}>Custom</button>
+	                    </div>
+	                    <div className="field" style={{ marginTop: 14 }}>
+	                      <label>Policy text</label>
+	                      <textarea value={currentForm.cancel_policy} onChange={(event) => {
+	                        setCancelPreset('custom');
+	                        patchState('cancel_policy', event.target.value);
+	                      }} placeholder="e.g. 24-hour notice required. Late cancellations may be charged a fee." />
+	                    </div>
+	                  </div>
+	                  <div className="option-card option-card--bare">
+	                    <div className="hint-row"><strong className="option-title">Promotion</strong><span className="hint-copy">Optional. Add one active offer so the AI never invents a discount.</span></div>
+	                    <div className="preset-pills" style={{ marginTop: 12 }}>
+	                      {PROMOTION_PRESETS.map((item, index) => (
+	                        <button key={`${item}-${index}`} type="button" className={`preset-pill ${promoPreset === item ? 'active' : ''}`} onClick={() => {
+	                          setPromoPreset(item);
+	                          patchState('promotions', item);
+	                        }}>
+	                          {index === 0 ? 'No promotion' : index === 1 ? '10% first visit' : index === 2 ? 'Free consult' : 'Weekday offer'}
+	                        </button>
+	                      ))}
+	                      <button type="button" className={`preset-pill ${promoPreset === 'custom' ? 'active' : ''}`} onClick={() => setPromoPreset('custom')}>Custom</button>
+	                    </div>
+	                    <div className="field" style={{ marginTop: 14 }}>
+	                      <label>Promotion text</label>
+	                      <textarea value={currentForm.promotions} onChange={(event) => {
+	                        setPromoPreset('custom');
+	                        patchState('promotions', event.target.value);
+	                      }} placeholder="Optional. Leave blank if you are not running a promotion." />
+	                    </div>
+	                  </div>
+	                  {currentForm.faqs.length === 0 ? (
+	                    <div className="sh-empty">No FAQs added yet. Add common answers so RingBooker can respond consistently.</div>
+	                  ) : null}
                   {currentForm.faqs.map((item, index) => (
                     <div className="option-card option-card--bare" key={`${item.question}-${index}`}>
                       <div className="field"><label>Question</label><input value={item.question} onChange={(event) => updateFaq(index, { question: event.target.value })} placeholder="Do you accept walk-ins?" /></div>
@@ -2733,10 +2689,10 @@ export function UserSettingsLive({
                     </div>
                   ))}
                 </div>
-                <div className="settings-save-footer">
-                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
-                    {savingSection === 'faqs' ? 'Saving...' : 'Save FAQ'}
-                  </button>
+	                <div className="settings-save-footer">
+	                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
+	                    {savingSection === 'faqs' ? 'Saving...' : 'Save policies & FAQ'}
+	                  </button>
                 </div>
               </form>
             </section>
@@ -2744,6 +2700,12 @@ export function UserSettingsLive({
 
             {activeTab === 'ai-call-behavior' ? (
             <section className="card">
+              <div className="panel-head" style={{ marginBottom: 12 }}>
+                <div>
+                  <h3>AI behavior & Call handling</h3>
+                  <p className="sub">Control how your AI receptionist speaks, greets callers, follows instructions, and handles edge cases.</p>
+                </div>
+              </div>
               <div className="business-subtabs" role="tablist" aria-label="AI call behavior sections">
                 <button type="button" role="tab" aria-selected={behaviorSubTab === 'voice'} className={`business-subtab ${behaviorSubTab === 'voice' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('voice')}>
                   AI tone and voice
