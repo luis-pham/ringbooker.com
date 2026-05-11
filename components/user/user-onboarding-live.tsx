@@ -111,6 +111,10 @@ export function importResultMessage(suggestions?: ImportedWebsiteSuggestions | n
   return 'Ready to review';
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export type OnboardingStatusResponse = {
   ok: boolean;
   onboardingRequired?: boolean;
@@ -946,6 +950,18 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setImportDelayMessage(null);
   }
 
+  async function completeImportProgress(requestId: number, startedAt: number, resultText: string) {
+    const elapsed = Date.now() - startedAt;
+    if (elapsed < 900) await wait(900 - elapsed);
+    if (importRequestRef.current !== requestId) return false;
+    clearImportProgressTimers();
+    setImportProgressStep(4);
+    setImportProgress(resultText);
+    setImportDelayMessage(null);
+    await wait(650);
+    return importRequestRef.current === requestId;
+  }
+
   function renderImportProgressCard() {
     return (
       <div className="onb-import-progress" role="status" aria-live="polite">
@@ -1072,9 +1088,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       } else {
         const importRequestId = importRequestRef.current + 1;
         importRequestRef.current = importRequestId;
+        const importStartedAt = Date.now();
         setWebsiteLoading(true);
         startImportProgressTimers();
         let importFailed = false;
+        let importResultText = '';
         try {
           const response = await fetch('/api/backend/user/onboarding/import-website', {
             method: 'POST',
@@ -1086,8 +1104,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           setWebsiteImportAttempted(true);
           if (response.ok && body?.suggestions) {
             const suggestions = body.suggestions;
+            importResultText = importResultMessage(suggestions);
             setImportSuggestions(suggestions);
-            setStatus(importResultMessage(suggestions));
+            setStatus(importResultText);
             const importedServices = servicesFromImport(suggestions);
             setServicesFound(importedServices.length);
             if (suggestions.businessProfile.name?.value && !businessName.trim()) setBusinessName(suggestions.businessProfile.name.value);
@@ -1111,7 +1130,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           } else {
             setImportSuggestions(null);
             importFailed = true;
-            setStatus(importResultMessage(null, true));
+            importResultText = importResultMessage(null, true);
+            setStatus(importResultText);
             trackOnboarding('business_import_failed', { reason: body?.error ?? 'import_website' });
           }
         } catch {
@@ -1120,9 +1140,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           setWebsiteImportAttempted(true);
           setImportSuggestions(null);
           importFailed = true;
-          setStatus(importResultMessage(null, true));
+          importResultText = importResultMessage(null, true);
+          setStatus(importResultText);
         }
         if (importRequestRef.current !== importRequestId) return;
+        const progressCompleted = await completeImportProgress(importRequestId, importStartedAt, importResultText || importResultMessage(null, importFailed));
+        if (!progressCompleted) return;
         setWebsiteLoading(false);
         stopImportProgressTimers();
         setWebsiteUrl(canonicalUrl);
@@ -1389,7 +1412,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       ...userSettingsStyles,
       String.raw`
 .onb-shell{max-width:1120px;margin:0 auto;padding:0;padding-bottom:110px;box-sizing:border-box}
-.onb-card{background:transparent;border:none;box-shadow:none;border-radius:0;padding:32px;max-width:816px;margin:0 auto;width:100%}
+.onb-card{background:transparent;border:none;box-shadow:none;border-radius:0;padding:32px 0;max-width:816px;margin:0 auto;width:100%}
 .onb-card.wide{max-width:864px}
 .onb-progress{display:flex;align-items:center;gap:14px;margin-bottom:32px}
 .onb-back-inline{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;background:#000;color:#fff;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0}.onb-back-inline:hover{background:#1a1a1a}.onb-back-inline.hidden{visibility:hidden}
@@ -1398,8 +1421,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-progress-track{display:grid;grid-template-columns:44px minmax(48px,1fr) 44px minmax(48px,1fr) 44px minmax(48px,1fr) 44px;align-items:center;gap:10px;width:100%;max-width:760px}
 .onb-progress-node{width:34px;height:34px;border-radius:999px;border:2px solid #d9deea;background:#fff;color:#475569;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;box-shadow:none}
 .onb-progress-node.done{border-color:#3f7d2f;background:#eef7e8;color:#235f1f}
-.onb-progress-node.current{border-color:#3b82f6;background:#dbeafe;color:#1d4ed8}
-.onb-progress-line{height:2px;background:#d9deea;border-radius:999px}.onb-progress-line.done{background:#3f7d2f}.onb-progress-line.current{background:#3b82f6}
+.onb-progress-node.current{border-color:#7c3aed;background:#faf5ff;color:#5b21b6}
+.onb-progress-line{height:2px;background:#d9deea;border-radius:999px}.onb-progress-line.done{background:#3f7d2f}.onb-progress-line.current{background:#7c3aed}
 .onb-title{margin:0;color:#020617;font-size:1.5rem;line-height:1.3;letter-spacing:-.02em;font-weight:500}
 .onb-subtitle{margin:8px 0 10px;color:var(--text-gray);font-size:14px;line-height:1.6;max-width:760px;font-weight:400}
 .onb-section-title{display:block;margin:0 0 8px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
@@ -1414,7 +1437,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-field input,.onb-field select,.onb-field textarea,.hours-row select{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit;box-sizing:border-box}.onb-field textarea{min-height:72px;resize:vertical}
 .onb-field input:focus,.onb-field select:focus,.onb-field textarea:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-help-link{border:0;background:transparent;padding:8px 0;cursor:pointer;text-decoration:none;font-family:inherit;font-weight:400;line-height:1.5;text-align:inherit;transition:color .15s ease}.onb-help-link:hover{color:#334155;text-decoration:underline;text-underline-offset:2px}
-.onb-import-panel{background:#bfdbfe!important;border:1px solid #e2e8f0;border-radius:14px;padding:16px}
+.onb-import-panel{background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important;border:1px solid #e2e8f0;border-radius:14px;padding:16px}
 .onb-import-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
 .onb-import-panel .onb-field{margin-bottom:0}.onb-import-panel .onb-help{margin-top:8px}
 .onb-import-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid #000;border-radius:8px;background:#000;color:#fff;padding:8px 18px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 8px 18px rgba(0,0,0,.18)}
@@ -1443,7 +1466,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
 .service-group-card{border:1px solid #e2e8f0;border-radius:14px;background:#fff;margin-top:14px;overflow:hidden}
-.service-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:#bfdbfe!important;border-bottom:1px solid #e2e8f0}
+.service-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important;border-bottom:1px solid #e2e8f0}
 .service-group-kicker{display:block;color:#64748b;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em}.service-group-title{margin:2px 0 0;color:#111827;font-size:16px;font-weight:800}
 .service-group-body{display:grid;gap:10px;padding:14px}
 .service-item-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(100px,.65fr) minmax(100px,.65fr);gap:10px;align-items:center}
@@ -1452,23 +1475,23 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:0;border-radius:8px;background:#000;color:#fff;padding:10px 18px;font-size:15px;font-weight:600;box-shadow:0 8px 18px rgba(0,0,0,.18);cursor:pointer;text-decoration:none;transition:background .15s ease,transform .15s ease,box-shadow .15s ease}.onb-btn-primary:hover:not(:disabled){background:#1f1f1f;transform:translateY(-1px);box-shadow:0 12px 24px rgba(0,0,0,.24)}
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
-.hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9}.hours-row:last-child{border-bottom:0}.hours-row.closed{background:#bfdbfe!important}.hours-row.closed select{opacity:.4;background:#bfdbfe!important}
+.hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9}.hours-row:last-child{border-bottom:0}.hours-row.closed{background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important}.hours-row.closed select{opacity:.4;background:#f8fafc!important}
 .hours-day{font-weight:900;color:#111827;min-width:40px}.toggle-pill{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid #dbe2ee;border-radius:999px;padding:8px 12px;background:#fff;font-weight:800;color:#64748b;cursor:pointer;box-shadow:none}.toggle-pill input{position:absolute;opacity:0;pointer-events:none}.toggle-dot{width:28px;height:16px;border-radius:999px;background:#cbd5e1;position:relative;transition:.18s ease;box-shadow:none}.toggle-dot:after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:none;transition:.18s ease}.toggle-pill.active{border-color:#8b5cf6;color:#5b21b6;background:transparent}.toggle-pill.active .toggle-dot{background:#7c3aed}.toggle-pill.active .toggle-dot:after{transform:translateX(12px)}
-.lang-list{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.lang-pill{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #e2e8f0;border-radius:999px;padding:9px 14px;background:#fff;color:#374151;font-size:16px;font-weight:500;cursor:pointer;box-shadow:none}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#faf5ff;border-color:#7c3aed;color:#111827;box-shadow:none}.lang-pill.locked{background:#bfdbfe!important;color:#9ca3af;cursor:not-allowed;flex-direction:row;gap:6px}.required-badge{border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:12px;font-weight:700}.plan-badge{border-radius:999px;background:#bfdbfe!important;color:#64748b;padding:2px 8px;font-size:12px;font-weight:700}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:900}
+.lang-list{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}.lang-option{display:grid;gap:6px;justify-items:center;align-content:start}.lang-pill{min-width:72px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #e2e8f0;border-radius:999px;padding:9px 14px;background:#fff;color:#374151;font-size:16px;font-weight:500;cursor:pointer;box-shadow:none}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#faf5ff;border-color:#7c3aed;color:#111827;box-shadow:none}.lang-pill.required{background:#faf5ff;border-color:#7c3aed;color:#5b21b6;cursor:not-allowed}.lang-pill.locked{background:#f1f5f9!important;color:#64748b;cursor:not-allowed}.required-badge{display:block;color:#16a34a;background:transparent;padding:0;font-size:12px;font-weight:700;line-height:1.2}.plan-badge{display:block;color:#64748b;background:transparent!important;padding:0;font-size:12px;font-weight:700;line-height:1.2}.lang-badge-spacer{display:block;height:14px}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:900}
 .preset-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}.preset-chip{border:1px solid #e2e8f0;border-radius:999px;background:#fff;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:none;transition:border-color .15s ease,background .15s ease}.preset-chip:hover{border-color:#c4b5fd;background:#faf5ff}.preset-chip:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
 .hours-summary{font-size:14px;color:#334155;line-height:1.5;margin:0 0 12px}
 .acc{border:1px solid #e2e8f0;border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}.acc-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;background:#fff;font:inherit;font-weight:800;text-align:left;cursor:pointer}.acc-body{padding:0 16px 16px;border-top:1px solid #f1f5f9}
 .test-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:20px}.test-card{border:1px solid #e2e8f0;border-radius:16px;padding:20px;background:#fff;display:flex;flex-direction:column;gap:10px;min-height:160px;box-shadow:none}.test-card h3{margin:0;font-size:17px}.test-card p{margin:0;font-size:14px;color:#64748b;line-height:1.55}
 .manual-header{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.6fr) 72px 72px;gap:10px;color:#6b7280;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
 .service-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.6fr) 72px 72px;gap:10px;align-items:center;margin-bottom:10px}
-.price-wrap{position:relative}.price-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b}.price-wrap input{padding-left:28px!important}
+.price-wrap,.duration-wrap{position:relative}.price-wrap span,.duration-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:13px;font-weight:700;pointer-events:none}.price-wrap input{padding-left:28px!important}.duration-wrap input{padding-left:46px!important}
 .add-service-btn{border:1.5px dashed #a78bfa;border-radius:10px;background:#fff;color:#6d28d9;padding:0 13px;font-weight:900;cursor:pointer;width:100%;height:44px}
-.onb-status{margin-top:14px;padding:12px 14px;border-radius:16px;background:#bfdbfe!important;color:#475569;font-size:14px}
+.onb-status{margin-top:14px;padding:12px 14px;border-radius:16px;background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important;color:#475569;font-size:14px}
 .read-success{color:#047857;font-weight:800}
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row,.service-item-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions:not(.onb-actions-desktop){display:none}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row,.service-item-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions:not(.onb-actions-desktop){display:none}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -2049,30 +2072,44 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                 : 'Beyond English, RingBooker can respond in the languages you enable here during live calls.'}
             </p>
             <div className="lang-list">
-              <label className="lang-pill locked">
-                <input type="checkbox" checked disabled /> EN ✓
-              </label>
-              <span className="required-badge">Required</span>
+              <div className="lang-option">
+                <label className="lang-pill required">
+                  <input type="checkbox" checked disabled /> EN ✓
+                </label>
+                <span className="required-badge">Required</span>
+              </div>
               {shopPlan === 'starter' ? (
                 <>
-                  <label className="lang-pill locked">
-                    <input type="checkbox" checked={false} disabled /> VI <span className="plan-badge">Pro + Enterprise</span>
-                  </label>
-                  <label className="lang-pill locked">
-                    <input type="checkbox" checked={false} disabled /> ES <span className="plan-badge">Pro + Enterprise</span>
-                  </label>
+                  <div className="lang-option">
+                    <label className="lang-pill locked">
+                      <input type="checkbox" checked={false} disabled /> VI
+                    </label>
+                    <span className="plan-badge">Pro + Enterprise</span>
+                  </div>
+                  <div className="lang-option">
+                    <label className="lang-pill locked">
+                      <input type="checkbox" checked={false} disabled /> ES
+                    </label>
+                    <span className="plan-badge">Pro + Enterprise</span>
+                  </div>
                 </>
               ) : (
                 <>
-                  <label className={`lang-pill ${languages.includes('vi') ? 'selected' : ''}`}>
-                    <input type="checkbox" checked={languages.includes('vi')} onChange={(event) => setLanguages(toggleLanguage(languages, 'vi', event.target.checked))} />
-                    VI {languages.includes('vi') ? '✓' : ''}
-                  </label>
+                  <div className="lang-option">
+                    <label className={`lang-pill ${languages.includes('vi') ? 'selected' : ''}`}>
+                      <input type="checkbox" checked={languages.includes('vi')} onChange={(event) => setLanguages(toggleLanguage(languages, 'vi', event.target.checked))} />
+                      VI {languages.includes('vi') ? '✓' : ''}
+                    </label>
+                    <span className="lang-badge-spacer" aria-hidden="true" />
+                  </div>
                   {vertical === 'nail_salon' ? <span className="mini-badge">✓ Auto-selected for nail salons</span> : null}
-                  <label className={`lang-pill ${languages.includes('es') ? 'selected' : ''}`}>
-                    <input type="checkbox" checked={languages.includes('es')} onChange={(event) => setLanguages(toggleLanguage(languages, 'es', event.target.checked))} />
-                    ES {languages.includes('es') ? '✓' : ''}
-                  </label>
+                  <div className="lang-option">
+                    <label className={`lang-pill ${languages.includes('es') ? 'selected' : ''}`}>
+                      <input type="checkbox" checked={languages.includes('es')} onChange={(event) => setLanguages(toggleLanguage(languages, 'es', event.target.checked))} />
+                      ES {languages.includes('es') ? '✓' : ''}
+                    </label>
+                    <span className="lang-badge-spacer" aria-hidden="true" />
+                  </div>
                 </>
               )}
             </div>
@@ -2191,15 +2228,18 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                       placeholder="Price"
                     />
                   </div>
-                  <input
-                    type="number"
-                    min={1}
-                    value={service.duration_min || ''}
-                    placeholder="Minutes"
-                    onChange={(event) =>
-                      setServiceRow(index, { ...service, duration_min: event.target.value === '' ? 0 : Number(event.target.value) })
-                    }
-                  />
+                  <div className="duration-wrap">
+                    <span>Min</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={service.duration_min || ''}
+                      placeholder="60"
+                      onChange={(event) =>
+                        setServiceRow(index, { ...service, duration_min: event.target.value === '' ? 0 : Number(event.target.value) })
+                      }
+                    />
+                  </div>
                 </div>
               ))}
             </div>
