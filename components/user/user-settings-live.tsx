@@ -1492,7 +1492,7 @@ export function UserSettingsLive({
       <div className="app-shell user-app-shell">
         <UserPortalSidebar active={sidebarNav} />
 
-        <main className="main">
+        <main className={`main${portal === 'knowledge' ? ' knowledge-portal-main' : ''}`}>
           <UserPortalTopbar
             title={portalHead.title}
             subtitle={portalHead.subtitle}
