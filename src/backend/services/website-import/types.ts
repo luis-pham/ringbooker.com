@@ -53,9 +53,10 @@ export type PagePreview = {
     priceText?: string | null;
     durationText?: string | null;
     sourceText?: string | null;
-    sourceHint?: 'semantic' | 'heading_sibling' | 'repeated_card' | 'service_menu_list';
+    sourceHint?: 'semantic' | 'heading_sibling' | 'repeated_card' | 'service_menu_list' | 'service_matrix_table';
     confidence?: number;
     evidenceSnippet?: string | null;
+    variants?: ServiceVariantSuggestion[];
   }>;
   priceCount: number;
   durationCount: number;
@@ -74,6 +75,18 @@ export type SelectedPageDiagnostic = {
   reason: string;
 };
 
+export type ServiceVariantSuggestion = {
+  id?: string;
+  label: string;
+  durationMinutes?: number | null;
+  durationText?: string | null;
+  priceAmount?: number | null;
+  priceCurrency?: string;
+  priceType?: 'fixed' | 'from' | 'varies' | 'consultation';
+  sortOrder?: number;
+  notes?: string | null;
+};
+
 export type ImportedServiceSuggestion = {
   categoryName: string;
   name: string;
@@ -86,7 +99,9 @@ export type ImportedServiceSuggestion = {
   aliases?: string[];
   bookingNotes?: string | null;
   bookable?: boolean;
+  variants?: ServiceVariantSuggestion[];
   source: string;
+  sourceHint?: string | null;
   confidence: number;
   needsReview?: boolean;
   evidenceSnippet?: string | null;

@@ -243,6 +243,26 @@ test('user can save grouped service catalog and legacy services are derived for 
             priceAmount: 45,
             priceType: 'from',
             sortOrder: 0,
+            variants: [
+              {
+                label: '30 min',
+                durationText: '30 min',
+                durationMinutes: 30,
+                priceAmount: 65,
+                priceCurrency: 'USD',
+                priceType: 'from',
+                sortOrder: 0,
+              },
+              {
+                label: '60 min',
+                durationText: '60 min',
+                durationMinutes: 60,
+                priceAmount: 95,
+                priceCurrency: 'USD',
+                priceType: 'from',
+                sortOrder: 1,
+              },
+            ],
           },
           {
             id: '44444444-4444-4444-8444-444444444444',
@@ -266,7 +286,7 @@ test('user can save grouped service catalog and legacy services are derived for 
       services: Array<{ name: string; duration_min: number; price: number }>;
       service_catalog: {
         categories: Array<{ name: string }>;
-        services: Array<{ name: string; durationText?: string | null; priceType: string; bookable: boolean }>;
+        services: Array<{ name: string; durationText?: string | null; priceType: string; bookable: boolean; variants?: Array<{ label: string; priceAmount: number }> }>;
       };
     };
   };
@@ -278,6 +298,8 @@ test('user can save grouped service catalog and legacy services are derived for 
   assert.equal(body.shop.service_catalog.services[1]?.durationText, '1 hour+');
   assert.equal(body.shop.service_catalog.services[1]?.priceType, 'varies');
   assert.equal(body.shop.service_catalog.services[1]?.bookable, false);
+  assert.equal(body.shop.service_catalog.services[0]?.variants?.length, 2);
+  assert.equal(body.shop.service_catalog.services[0]?.variants?.[1]?.priceAmount, 95);
 });
 
 test('normal user service catalog API strips external booking mapping fields', async () => {

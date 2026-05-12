@@ -553,6 +553,11 @@ button.subtle-link:hover{text-decoration:underline}
 .service-edit-icon svg{stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .service-inline-editor{display:grid;gap:14px;margin:8px 0 18px;padding:16px;border:1px solid var(--border);border-radius:16px;background:#fff}
 .service-group-card .service-group-add-service{margin-top:16px}
+.service-variants-editor{display:grid;gap:10px;margin-top:6px}
+.service-variant-row{display:grid;grid-template-columns:minmax(0,1fr) 110px 90px 130px auto;gap:8px;align-items:center}
+.service-variant-row input,.service-variant-row select{min-height:38px}
+.field-help{margin:0 0 8px;color:var(--text-muted);font-size:13px;line-height:1.4}
+@media(max-width:760px){.service-variant-row{grid-template-columns:1fr 1fr}.service-variant-row .subtle-link{justify-self:start}}
 .inline-check{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--text-dark)}
 .inline-check input{width:16px;height:16px}
 .service-catalog-note{font-size:13px;line-height:1.55;color:var(--text-gray);padding:12px 14px;background:#f9fafb;border:1px solid var(--border);border-radius:12px}

@@ -59,6 +59,8 @@ export type UserDashboardResponse = {
     blockReason?: string;
     commercialGoLiveApproved?: boolean;
     commercialApprovalRequired?: boolean;
+    /** ISO timestamp when live answering was enabled — optional until API provides it */
+    activatedAt?: string | null;
   } | null;
   overviewRail?: UserDashboardOverviewRail;
   error?: string;
@@ -129,6 +131,59 @@ function truncateOverviewText(text: string, max: number): string {
   const t = text.trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max - 1)}…`;
+}
+
+function IconCheckSmall() {
+  return (
+    <svg viewBox="0 0 24 24" width={12} height={12} aria-hidden>
+      <path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+    </svg>
+  );
+}
+
+function IconBrain() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M12 5a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V8a3 3 0 0 0-3-3Z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 10v2a7 7 0 0 0 14 0v-2M9 21h6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconPlug() {
+  return (
+    <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M12 22v-7M9 8V2M15 8V2" strokeLinecap="round" />
+      <path d="M9 8a3 3 0 0 0 6 0v6a5 5 0 0 1-10 0V8Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+type ActivationChecklistRow = { id: string; name: string; desc: string | null; done: boolean; href: string };
+
+function buildActivationChecklist(
+  goLive: NonNullable<UserDashboardResponse['goLive']>,
+  rail: UserDashboardOverviewRail | undefined,
+): ActivationChecklistRow[] {
+  const hasBilling = goLive.paymentMethodValid && goLive.subscriptionActiveLike;
+  let knowledgeDone = true;
+  if (rail?.variant === 'setup') {
+    const row = rail.checklist.find((i) => i.id === 'business_knowledge');
+    knowledgeDone = row ? row.done : true;
+  }
+  return [
+    { id: 'billing', name: 'Add a payment method', desc: null, done: hasBilling, href: '/user/billing' },
+    { id: 'forwarding_number', name: 'Confirm your forwarding number', desc: null, done: goLive.hasForwardingNumber, href: '/user/go-live#go-live-forwarding' },
+    { id: 'forwarding_test', name: 'Test call forwarding', desc: null, done: goLive.forwardingSetupVerified, href: '/user/go-live#go-live-forwarding' },
+    { id: 'live_answering', name: 'Enable live answering', desc: null, done: goLive.liveCallsEnabled, href: '/user/go-live#go-live-forwarding' },
+    {
+      id: 'knowledge',
+      name: 'Complete Business Knowledge',
+      desc: 'Add hours, services, and FAQs so AI answers callers accurately.',
+      done: knowledgeDone,
+      href: '/user/knowledge',
+    },
+  ];
 }
 
 /** Full KPI dashboard only after live answering is on — keeps onboarding / go-live focused on next steps. */
@@ -250,30 +305,10 @@ function IconQuickCalls() {
   );
 }
 
-function IconQuickSettings() {
-  return (
-    <svg viewBox="0 0 24 24" width={22} height={22} aria-hidden>
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        d="M4 21v-7M4 10V3M12 21v-9M12 13V3M20 21v-5M20 16V3"
-      />
-      <circle cx={4} cy={14} r={2} fill="none" stroke="currentColor" strokeWidth={2} />
-      <circle cx={12} cy={8} r={2} fill="none" stroke="currentColor" strokeWidth={2} />
-      <circle cx={20} cy={17} r={2} fill="none" stroke="currentColor" strokeWidth={2} />
-    </svg>
-  );
-}
-
 export function UserDashboardLive({ initialData = null }: { initialData?: UserDashboardResponse | null }) {
   const { setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserDashboardResponse | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(false);
-  const [forwardingTestLoading, setForwardingTestLoading] = useState(false);
-  const [enableLiveLoading, setEnableLiveLoading] = useState(false);
   const [goLiveActionMessage, setGoLiveActionMessage] = useState<string | null>(null);
   const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
   const [testCallLoading, setTestCallLoading] = useState(false);
@@ -298,24 +333,6 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
       active = false;
     };
   }, [initialData, loadDashboard]);
-
-  useEffect(() => {
-    if (!data?.ok || !data.shop || data.onboardingRequired) return;
-    if (!data.goLive?.liveCallsEnabled) {
-      setShowWelcomeBanner(false);
-      return;
-    }
-    const startedKey = `ringbooker_welcome_started_${data.shop.id}`;
-    const dismissedKey = `ringbooker_welcome_dismissed_${data.shop.id}`;
-    try {
-      const startedAt = Number(localStorage.getItem(startedKey) ?? '0');
-      const dismissedAt = Number(localStorage.getItem(dismissedKey) ?? '0');
-      const within24Hours = startedAt > 0 && Date.now() - startedAt < 24 * 60 * 60 * 1000;
-      setShowWelcomeBanner(within24Hours && dismissedAt < startedAt);
-    } catch {
-      setShowWelcomeBanner(false);
-    }
-  }, [data]);
 
   const shopName = data?.shop?.name ?? (loading ? 'Overview' : 'Your business');
   const planLabel = useMemo(() => {
@@ -350,53 +367,6 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     });
   }, [data, setWorkspace]);
 
-  function dismissWelcomeBanner() {
-    if (data?.shop?.id) {
-      try {
-        localStorage.setItem(`ringbooker_welcome_dismissed_${data.shop.id}`, String(Date.now()));
-      } catch {
-        // ignore localStorage failures
-      }
-    }
-    setShowWelcomeBanner(false);
-  }
-
-  async function runForwardingConnectivityCheck() {
-    setGoLiveActionMessage(null);
-    setForwardingTestLoading(true);
-    try {
-      const response = await fetch('/api/backend/user/go-live/start-forwarding-test', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const body = (await response.json().catch(() => null)) as {
-        ok?: boolean;
-        error?: string;
-        message?: string;
-        instruction?: string;
-      } | null;
-      if (!response.ok || !body?.ok) {
-        if (body?.error === 'forwarding_number_required') {
-          setGoLiveActionMessage(body.message ?? 'Provision your RingBooker forwarding number first.');
-        } else if (body?.error === 'payment_method_required') {
-          setGoLiveActionMessage(body.message ?? 'Add a valid payment method on the Billing page first.');
-        } else {
-          setGoLiveActionMessage(body?.message ?? 'Forwarding test could not start. Try again from your dashboard.');
-        }
-        return;
-      }
-      setGoLiveActionMessage(
-        `${body.instruction ?? 'Call your current business number from another phone and let it forward to RingBooker.'} This page updates when RingBooker receives the forwarded call.`,
-      );
-      await loadDashboard();
-    } catch {
-      setGoLiveActionMessage('Network error. Please try again.');
-    } finally {
-      setForwardingTestLoading(false);
-    }
-  }
 
   async function requestDashboardTestCall() {
     setTestCallStatus(null);
@@ -421,94 +391,52 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     }
   }
 
-  async function enableLiveAnswering() {
-    setGoLiveActionMessage(null);
-    setEnableLiveLoading(true);
-    try {
-      const response = await fetch('/api/backend/user/go-live/enable', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; message?: string; error?: string } | null;
-      if (!response.ok || !body?.ok) {
-        setGoLiveActionMessage(body?.message ?? 'Could not enable live answering yet.');
-        return;
-      }
-      await loadDashboard();
-    } catch {
-      setGoLiveActionMessage('Network error. Please try again.');
-    } finally {
-      setEnableLiveLoading(false);
-    }
-  }
+  const activationChecklist = useMemo(() => {
+    if (!data?.goLive) return [];
+    return buildActivationChecklist(data.goLive, data.overviewRail);
+  }, [data, data?.overviewRail]);
 
-  function renderGoLivePrimaryControl() {
-    const cta = data?.goLive?.primaryCta;
-    if (!cta) return null;
-    switch (cta) {
-      case 'add_payment_method':
-        return (
-          <a className="btn user-save" href="/user/billing">
-            Start 14-day trial
-          </a>
-        );
-      case 'set_up_call_forwarding':
-        return (
-          <a className="btn purple" href="/user/go-live#go-live-forwarding">
-            Set up call forwarding
-          </a>
-        );
-      case 'test_forwarding_setup':
-        return (
-          <button
-            type="button"
-            className="btn user-save"
-            disabled={forwardingTestLoading}
-            onClick={() => void runForwardingConnectivityCheck()}
-          >
-            {forwardingTestLoading ? 'Starting forwarding test…' : 'Test forwarding setup'}
-          </button>
-        );
-      case 'enable_live_answering':
-        return (
-          <button
-            type="button"
-            className="btn purple"
-            disabled={enableLiveLoading}
-            onClick={() => void enableLiveAnswering()}
-          >
-            {enableLiveLoading ? 'Enabling…' : 'Enable live answering'}
-          </button>
-        );
-      default:
-        return null;
-    }
-  }
+  const shopTimezone = useMemo(() => getShopTimezone(data?.shop), [data?.shop]);
 
-  function getGoLiveBannerCopy() {
-    switch (data?.goLive?.primaryCta) {
-      case 'add_payment_method':
-        return "No card needed during setup. Add billing and phone forwarding when you're ready to go live — your business number stays unchanged until then.";
-      case 'set_up_call_forwarding':
-        return 'Your billing is ready. Next, set up call forwarding so callers to your current business number can reach RingBooker behind the scenes.';
-      case 'test_forwarding_setup':
-        return 'Run a quick test to confirm calls are routing correctly. Your business number stays unchanged until you go live.';
-      case 'enable_live_answering':
-        return 'Billing and forwarding are ready. Enable live answering when you want RingBooker to start answering real callers on your business number.';
-      default:
-        return 'Finish the remaining go-live steps below when you are ready for RingBooker to answer real callers on your business number.';
+  const postLiveBannerSubtitle = useMemo(() => {
+    const name = data?.shop?.name ?? 'Your business';
+    const iso = data?.goLive?.activatedAt?.trim();
+    if (iso) {
+      const when = formatOverviewWhen(iso, shopTimezone);
+      if (when) return `Answering calls since ${when} · ${name}`;
     }
-  }
+    return `Answering calls on your business line · ${name}`;
+  }, [data?.goLive?.activatedAt, data?.shop?.name, shopTimezone]);
 
-  const showGoLiveBanner =
-    data?.ok &&
-    !data.onboardingRequired &&
-    data.goLive &&
-    data.goLive.primaryCta !== null &&
-    !data.goLive.liveCallsEnabled &&
-    !enterpriseApprovalPending;
+  const overviewShortcutRows = useMemo(
+    () => [
+      {
+        icon: <IconQuickBookings />,
+        name: 'Open bookings',
+        desc: 'Review upcoming appointments',
+        href: '/user/bookings',
+      },
+      {
+        icon: <IconQuickCalls />,
+        name: 'Review call logs',
+        desc: 'Calls, transcripts, missed recovery',
+        href: '/user/calls',
+      },
+      {
+        icon: <IconBrain />,
+        name: 'Business Knowledge',
+        desc: 'Refine what AI knows',
+        href: '/user/knowledge',
+      },
+      {
+        icon: <IconPlug />,
+        name: 'Integrations',
+        desc: 'Connect your booking system',
+        href: '/user/integrations',
+      },
+    ],
+    [],
+  );
 
   return (
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
@@ -558,53 +486,132 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 </div>
               </section>
             ) : null}
-            {showGoLiveBanner ? (
-              <section className="card dashboard-banner-go-live" style={{ marginBottom: 18 }}>
-                <div className="panel-head">
-                  <div>
-                    <h3>RingBooker is set up, but not live yet.</h3>
-	                    <p className="sub">
-	                      {getGoLiveBannerCopy()}
-	                      {data?.goLive?.primaryCta === 'test_forwarding_setup' ||
-	                      data?.goLive?.primaryCta === 'add_payment_method'
-	                        ? ''
-	                        : ' Your customers keep calling your current business number until you complete the remaining go-live steps below.'}
-	                    </p>
+            {dashboardReady && data.goLive ? (
+              <div className="overview-page">
+                {liveAnsweringOn ? (
+                  <div className="overview-banner post-live">
+                    <div className="banner-dot green pulse" aria-hidden />
+                    <div className="banner-text">
+                      <span className="banner-title">RingBooker is live on your business line.</span>
+                      <span className="banner-sub">{postLiveBannerSubtitle}</span>
+                    </div>
+                    <div className="banner-actions">
+                      <button
+                        type="button"
+                        className="btn-ghost-sm"
+                        disabled={testCallLoading}
+                        onClick={() => void requestDashboardTestCall()}
+                      >
+                        {testCallLoading ? 'Calling…' : 'Run test call'}
+                      </button>
+                    </div>
+                  </div>
+                ) : !enterpriseApprovalPending ? (
+                  <div className="overview-banner pre-live">
+                    <div className="banner-dot amber" aria-hidden />
+                    <div className="banner-text">
+                      <span className="banner-title">RingBooker is set up, but not live yet.</span>
+                      <span className="banner-sub">
+                        No card needed during setup — your business number stays unchanged until you go live.
+                      </span>
+                    </div>
+                    <div className="banner-actions">
+                      <button
+                        type="button"
+                        className="btn-ghost-sm"
+                        disabled={testCallLoading}
+                        onClick={() => void requestDashboardTestCall()}
+                      >
+                        {testCallLoading ? 'Calling…' : 'Run test call'}
+                      </button>
+                      <a className="btn-primary-sm" href="/user/billing">
+                        Start 14-day trial
+                      </a>
+                    </div>
+                  </div>
+                ) : null}
+                {goLiveActionMessage || testCallStatus ? (
+                  <div style={{ marginBottom: 16 }}>
                     {goLiveActionMessage ? (
-                      <p className="sub" style={{ color: '#b45309', marginTop: 8 }}>
+                      <p className="overview-banner-footnote" style={{ margin: 0 }}>
                         {goLiveActionMessage}
                       </p>
                     ) : null}
                     {testCallStatus ? (
-                      <p className="sub" style={{ marginTop: 8 }}>
+                      <p className="sub" style={{ fontSize: 12, color: '#374151', marginTop: goLiveActionMessage ? 8 : 0, marginBottom: 0 }}>
                         {testCallStatus}
                       </p>
                     ) : null}
                   </div>
-                </div>
-                <div className="dashboard-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginTop: 12 }}>
-                  {renderGoLivePrimaryControl()}
-                  <button type="button" className="btn" disabled={testCallLoading} onClick={() => void requestDashboardTestCall()}>
-                    {testCallLoading ? 'Calling…' : 'Run another test call'}
-                  </button>
-                </div>
-              </section>
-            ) : null}
-            {showWelcomeBanner && liveAnsweringOn ? (
-              <section className="card" style={{ marginBottom: 18, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
-                <div className="panel-head">
-                  <div>
-                    <h3>🎉 Live answering is on</h3>
-                    <p className="sub">
-                      RingBooker can pick up forwarded calls on your current business number. You can keep refining services and rules
-                      anytime.
-                    </p>
+                ) : null}
+                <div className="overview-grid">
+                  <div className="overview-left">
+                    {liveAnsweringOn ? (
+                      <div className="shortcuts-card quick-actions-card">
+                        <div className="card-title">Quick actions</div>
+                        {overviewShortcutRows.map((s) => (
+                          <a key={s.href} className="sc-item" href={s.href}>
+                            <div className="sc-icon">{s.icon}</div>
+                            <div className="sc-body">
+                              <div className="sc-name">{s.name}</div>
+                              <div className="sc-desc">{s.desc}</div>
+                            </div>
+                            <div className="sc-go" aria-hidden>
+                              ›
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="checklist-card">
+                        <div className="card-title">Go-live checklist</div>
+                        <div className="card-sub">
+                          Complete these steps to activate live answering on your business number.
+                        </div>
+                        {activationChecklist.map((item) => (
+                          <a key={item.id} className="cl-item" href={item.href}>
+                            <div className={`cl-circle ${item.done ? 'done' : ''}`}>
+                              {item.done ? <IconCheckSmall /> : null}
+                            </div>
+                            <div className="cl-body">
+                              <div className="cl-name">{item.name}</div>
+                              {item.desc ? <div className="cl-desc">{item.desc}</div> : null}
+                            </div>
+                            <div className="cl-arrow" aria-hidden>
+                              ›
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <button className="btn" type="button" onClick={dismissWelcomeBanner}>
-                    Dismiss ×
-                  </button>
+                  <div className="overview-right overview-rail">
+                    {liveAnsweringOn ? (
+                      data.overviewRail ? (
+                        <div className="overview-rail-mount">
+                          <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={shopTimezone} />
+                        </div>
+                      ) : null
+                    ) : (
+                      <div className="shortcuts-card">
+                        <div className="card-title">Quick access</div>
+                        {overviewShortcutRows.map((s) => (
+                          <a key={`acc-${s.href}`} className="sc-item" href={s.href}>
+                            <div className="sc-icon">{s.icon}</div>
+                            <div className="sc-body">
+                              <div className="sc-name">{s.name}</div>
+                              <div className="sc-desc">{s.desc}</div>
+                            </div>
+                            <div className="sc-go" aria-hidden>
+                              ›
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </section>
+              </div>
             ) : null}
             {dashboardReady && !simplifiedOverview ? (
               <section className="grid grid-4">
@@ -699,136 +706,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 </p>
               </section>
             ) : null}
-            {dashboardReady ? (
-            <section
-              className={`call-grid${simplifiedOverview ? ' call-grid-phase-simple' : ''}`}
-              style={{ marginTop: simplifiedOverview ? 12 : 18 }}
-            >
-              {simplifiedOverview ? (
-                <>
-                  {data?.overviewRail ? (
-                    <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={getShopTimezone(data.shop)} />
-                  ) : null}
-                  <div className="card soft">
-                    <div className="panel-head">
-                      <div>
-                        <h3>Shortcuts</h3>
-                        <p className="sub">
-                          {overviewPhase === 'onboarding'
-                            ? 'Optional — finish the checklist above first.'
-                            : 'Optional — your go-live steps above are the priority.'}
-                        </p>
-                      </div>
-                      <span className="badge-right">User portal</span>
-                    </div>
-                    <div className="list">
-                      <div className="list-item">
-                        <div className="item-main">
-                          <div className="avatar quick-avatar--bookings" aria-hidden title="Bookings">
-                            <IconQuickBookings />
-                          </div>
-                          <div>
-                            <h4>Open bookings</h4>
-                            <p>Review upcoming appointments and confirmations.</p>
-                          </div>
-                        </div>
-                        <a className="btn" href="/user/bookings">
-                          Go
-                        </a>
-                      </div>
-                      <div className="list-item">
-                        <div className="item-main">
-                          <div className="avatar quick-avatar--calls" aria-hidden title="Calls">
-                            <IconQuickCalls />
-                          </div>
-                          <div>
-                            <h4>Review call logs</h4>
-                            <p>Inspect calls, transcripts, and missed-call recovery.</p>
-                          </div>
-                        </div>
-                        <a className="btn" href="/user/calls">
-                          Go
-                        </a>
-                      </div>
-                      <div className="list-item">
-                        <div className="item-main">
-                          <div className="avatar quick-avatar--settings" aria-hidden title="Business Knowledge">
-                            <IconQuickSettings />
-                          </div>
-                          <div>
-                            <h4>Business Knowledge</h4>
-                            <p>Services, hours, policies, and how your AI sounds on calls.</p>
-                          </div>
-                        </div>
-                        <a className="btn" href="/user/knowledge">
-                          Go
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="card soft">
-                    <div className="panel-head">
-                      <div>
-                        <h3>Quick actions</h3>
-                        <p className="sub">Jump straight into the business controls that matter most.</p>
-                      </div>
-                      <span className="badge-right">User portal</span>
-                    </div>
-                    <div className="list">
-                      <div className="list-item">
-                        <div className="item-main">
-                          <div className="avatar quick-avatar--bookings" aria-hidden title="Bookings">
-                            <IconQuickBookings />
-                          </div>
-                          <div>
-                            <h4>Open bookings</h4>
-                            <p>Review upcoming appointments and confirmations.</p>
-                          </div>
-                        </div>
-                        <a className="btn" href="/user/bookings">
-                          Go
-                        </a>
-                      </div>
-                      <div className="list-item">
-                        <div className="item-main">
-                          <div className="avatar quick-avatar--calls" aria-hidden title="Calls">
-                            <IconQuickCalls />
-                          </div>
-                          <div>
-                            <h4>Review call logs</h4>
-                            <p>Inspect calls, transcripts, and missed-call recovery.</p>
-                          </div>
-                        </div>
-                        <a className="btn" href="/user/calls">
-                          Go
-                        </a>
-                      </div>
-                      <div className="list-item">
-                        <div className="item-main">
-                          <div className="avatar quick-avatar--settings" aria-hidden title="Business Knowledge">
-                            <IconQuickSettings />
-                          </div>
-                          <div>
-                            <h4>Business Knowledge</h4>
-                            <p>Services, hours, policies, and how your AI sounds on calls.</p>
-                          </div>
-                        </div>
-                        <a className="btn" href="/user/knowledge">
-                          Go
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                  {data?.overviewRail ? (
-                    <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={getShopTimezone(data.shop)} />
-                  ) : null}
-                </>
-              )}
-            </section>
-            ) : loading ? (
+            {loading ? (
               <div className="note" style={{ marginTop: 18 }} aria-busy="true">
                 Loading overview…
               </div>

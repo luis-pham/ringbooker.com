@@ -484,6 +484,18 @@ const serviceCategorySchema = z.object({
   active: z.boolean().optional(),
 });
 
+const serviceVariantSchema = z.object({
+  id: z.string().uuid().optional(),
+  label: z.string().trim().max(80).optional(),
+  durationMinutes: z.coerce.number().int().min(1).max(600).nullable().optional(),
+  durationText: z.string().trim().max(80).nullable().optional(),
+  priceAmount: z.coerce.number().min(0).max(100000).nullable().optional(),
+  priceCurrency: z.string().trim().min(3).max(3).optional(),
+  priceType: z.enum(['fixed', 'from', 'varies', 'consultation']).optional(),
+  sortOrder: z.coerce.number().int().min(0).max(10000).optional(),
+  notes: z.string().trim().max(240).nullable().optional(),
+}).strict();
+
 const shopServiceSchema = z.object({
   id: z.string().uuid().optional(),
   categoryId: z.string().uuid().nullable().optional(),
@@ -499,6 +511,7 @@ const shopServiceSchema = z.object({
   sortOrder: z.coerce.number().int().min(0).max(10000).optional(),
   aliases: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   bookingNotes: z.string().trim().max(1000).nullable().optional(),
+  variants: z.array(serviceVariantSchema).max(20).optional(),
 });
 
 const serviceCatalogSchema = z.object({
@@ -1037,6 +1050,17 @@ function normalizeServiceCatalogForShop(
       sortOrder: service.sortOrder ?? index,
       aliases: service.aliases ?? [],
       bookingNotes: service.bookingNotes ?? null,
+      variants: (service.variants ?? []).slice(0, 20).map((variant, variantIndex) => ({
+        id: variant.id ?? randomUUID(),
+        label: variant.label?.trim() || variant.durationText?.trim() || (variant.priceAmount !== null && variant.priceAmount !== undefined ? `$${variant.priceAmount}` : `Option ${variantIndex + 1}`),
+        durationMinutes: variant.durationMinutes ?? null,
+        durationText: variant.durationText?.trim() || (variant.durationMinutes ? `${variant.durationMinutes} min` : null),
+        priceAmount: variant.priceAmount ?? null,
+        priceCurrency: (variant.priceCurrency ?? 'USD').toUpperCase(),
+        priceType: variant.priceType ?? 'fixed',
+        sortOrder: variant.sortOrder ?? variantIndex,
+        notes: variant.notes ?? null,
+      })).filter((variant) => variant.label || variant.durationText || variant.priceAmount !== null),
       externalMetadata: {},
       createdAt: now,
       updatedAt: now,

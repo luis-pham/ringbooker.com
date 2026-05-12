@@ -183,6 +183,9 @@ test('onboarding services UI keeps row content focused on name price duration an
   assert.match(onboardingLive, /removeServiceRow/);
   assert.match(onboardingLive, /onb-service-sheet-overlay/);
   assert.match(onboardingLive, /onb-service-edit-row/);
+  assert.match(onboardingLive, /onb-service-variants-preview/);
+  assert.match(onboardingLive, /onb-service-variant-edit/);
+  assert.match(onboardingLive, /formatServiceVariant/);
   assert.doesNotMatch(onboardingLive, /service-review-badge|service-review-source|service-evidence/);
   assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml|rawGoogle|rawLlm/);
 });

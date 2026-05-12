@@ -98,6 +98,13 @@ function buildRuntimeServices(shop: Shop): RuntimeBusinessConfig['services'] {
           price: service.priceAmount,
           priceType: service.priceType,
           duration: service.durationText || (service.durationMinutes ? `${service.durationMinutes} min` : null),
+          variants: service.variants?.map((variant) => ({
+            label: variant.label,
+            price: variant.priceAmount,
+            priceType: variant.priceType,
+            duration: variant.durationText || (variant.durationMinutes ? `${variant.durationMinutes} min` : null),
+            notes: variant.notes ?? null,
+          })),
           notes: [
             service.bookingNotes ?? service.description ?? null,
             service.aliases.length ? `Customers may call this: ${service.aliases.join(', ')}` : null,

@@ -153,7 +153,7 @@ function isLikelyServiceName(value: string): boolean {
   if (!value || value.length < 3 || value.length > 120) return false;
   if (/^[a-z]\s+\w/.test(value)) return false;
   if (/^(home|services?|book|booking|contact|about|hours|pricing)$/i.test(value)) return false;
-  return /\b(blow\s*out|blowout|color|lightening|tint|retouch|touch\s*-?\s*up|cut|haircut|style|package|scrub|treatment|extensions?|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlights?|lowlights?|keratin|essential|signature|deluxe|curly|men'?s|women'?s|children'?s|up-?do)\b/i.test(value);
+  return /\b(blow\s*out|blowout|color|lightening|tint|retouch|touch\s*-?\s*up|cut|haircut|style|package|scrub|treatment|extensions?|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlights?|lowlights?|keratin|essential|signature|deluxe|curly|men'?s|women'?s|children'?s|up-?do|relaxing|therapeutic|reflexology|stone|body)\b/i.test(value);
 }
 
 function isLikelySpecificServiceHeading(value: string): boolean {
@@ -299,6 +299,90 @@ function repeatedCardServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
   return blocks.slice(0, 80);
 }
 
+function durationFromHeader(value: string): { label: string; minutes: number | null } | null {
+  const text = cleanBlockText(value).toLowerCase();
+  const min = text.match(/\b(\d{1,3})\s*(?:min|mins|minute|minutes)\+?\b/);
+  if (min) return { label: `${Number(min[1])} min${/\+/.test(text) ? '+' : ''}`, minutes: Number(min[1]) };
+  const hour = text.match(/\b(\d(?:\.\d)?)\s*(?:hr|hrs|hour|hours)\+?\b/);
+  if (hour) {
+    const minutes = Math.round(Number(hour[1]) * 60);
+    return Number.isFinite(minutes) && minutes > 0 ? { label: `${minutes} min${/\+/.test(text) ? '+' : ''}`, minutes } : null;
+  }
+  return null;
+}
+
+function priceFromCell(value: string): { amount: number | null; type: 'fixed' | 'from' | 'varies' | 'consultation'; raw: string } | null {
+  const text = cleanBlockText(value);
+  if (!text || /^[-–—]+$/.test(text)) return null;
+  if (/consultation/i.test(text)) return { amount: null, type: 'consultation', raw: text };
+  if (/varies|call/i.test(text)) return { amount: null, type: 'varies', raw: text };
+  const match = text.match(/\$?\s*(\d{1,5})(?:\.\d{1,2})?\s*\+?/);
+  if (!match) return null;
+  return {
+    amount: Number(match[1]),
+    type: /from|starting|starts|\+/i.test(text) ? 'from' : 'fixed',
+    raw: text,
+  };
+}
+
+function serviceMatrixTableBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
+  const blocks: ServiceBlock[] = [];
+  const seen = new Set<string>();
+  $('table').each((_, tableEl) => {
+    const table = $(tableEl);
+    const tableText = cleanElementText(table);
+    if (!tableText || looksLikeNonServiceBlock(tableText) || isEcommerceContext($)) return;
+    const rows = table.find('tr').toArray().map((rowEl) =>
+      $(rowEl).children('th,td').toArray().map((cellEl) => cleanElementText($(cellEl))),
+    ).filter((row) => row.filter(Boolean).length >= 2);
+    if (rows.length < 2) return;
+
+    let headerIndex = rows.findIndex((row) => row.slice(1).filter((cell) => durationFromHeader(cell)).length >= 1);
+    if (headerIndex < 0) headerIndex = 0;
+    const headers = rows[headerIndex] ?? [];
+    const durationHeaders = headers.map((cell, index) => ({ index, duration: durationFromHeader(cell) })).filter((item) => item.index > 0 && item.duration);
+    if (durationHeaders.length === 0) return;
+    const group = nearestSectionHeading($, table) ?? cleanBlockText(table.prevAll('h1,h2,h3').first().text());
+    const groupHeading = group && isLikelyServiceGroup(group) ? group : null;
+    for (const row of rows.slice(headerIndex + 1)) {
+      const serviceName = splitBlockNameDescription(row[0] ?? '').name.replace(/\s+/g, ' ').trim();
+      if (!isLikelyServiceName(serviceName) || looksLikeNonServiceBlock(serviceName)) continue;
+      const variants = durationHeaders.flatMap((item, variantIndex) => {
+        const price = priceFromCell(row[item.index] ?? '');
+        if (!price || !item.duration) return [];
+        return [{
+          label: item.duration.label,
+          durationMinutes: item.duration.minutes,
+          durationText: item.duration.label,
+          priceAmount: price.amount,
+          priceCurrency: 'USD',
+          priceType: price.type,
+          sortOrder: variantIndex,
+          notes: null,
+        }];
+      });
+      if (variants.length === 0) continue;
+      const key = `${groupHeading ?? ''}:${serviceName}:${variants.map((variant) => `${variant.label}:${variant.priceAmount}`).join('|')}`.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const evidence = `${headers.join(' | ')} / ${row.join(' | ')}`;
+      blocks.push({
+        groupHeading,
+        serviceName,
+        descriptionText: null,
+        priceText: variants[0]?.priceAmount !== null && variants[0]?.priceAmount !== undefined ? `$${variants[0].priceAmount}` : null,
+        durationText: variants[0]?.durationText ?? null,
+        sourceText: evidence.slice(0, 600),
+        sourceHint: 'service_matrix_table',
+        confidence: 0.86,
+        evidenceSnippet: evidence.slice(0, 220),
+        variants,
+      });
+    }
+  });
+  return blocks.slice(0, 80);
+}
+
 function structuredServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
   const blocks: ServiceBlock[] = [];
   const ecommerceContext = isEcommerceContext($);
@@ -376,6 +460,11 @@ function structuredServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
     let cursor = $(headingEl).next();
     let scanned = 0;
     while (cursor.length && scanned < 12 && !/h2|h3/i.test(cursor.get(0)?.tagName ?? '')) {
+      if (cursor.is('table')) {
+        cursor = cursor.next();
+        scanned += 1;
+        continue;
+      }
       const rawText = cleanBlockText(cursor.text());
       if (cursor.children().length >= 2 && cursor.find('h3,h4,h5,.name,[class*="service-name"]').length > 1) {
         cursor = cursor.next();
@@ -400,6 +489,7 @@ function structuredServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
     }
   });
 
+  for (const block of serviceMatrixTableBlocks($)) pushBlock(block);
   for (const block of repeatedCardServiceBlocks($)) pushBlock(block);
   return blocks.slice(0, 80);
 }

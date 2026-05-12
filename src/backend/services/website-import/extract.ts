@@ -410,7 +410,33 @@ function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSugg
       if (parsed.name.length < 3 || parsed.name.length > 90) continue;
       if (invalidServiceName(parsed.name)) continue;
       const key = `${group}:${parsed.name}`.toLowerCase();
-      if (services.has(key)) continue;
+      const blockVariants = (block.variants ?? []).map((variant, index) => ({
+        label: variant.label?.trim() || variant.durationText?.trim() || (variant.priceAmount !== null && variant.priceAmount !== undefined ? `$${variant.priceAmount}` : `Option ${index + 1}`),
+        durationMinutes: variant.durationMinutes ?? null,
+        durationText: variant.durationText ?? (variant.durationMinutes ? `${variant.durationMinutes} min` : null),
+        priceAmount: variant.priceAmount ?? null,
+        priceCurrency: variant.priceCurrency ?? CURRENCY,
+        priceType: variant.priceType ?? 'fixed',
+        sortOrder: variant.sortOrder ?? index,
+        notes: variant.notes ?? null,
+      })).filter((variant) => variant.label || variant.durationText || variant.priceAmount !== null).slice(0, 20);
+      if (services.has(key)) {
+        const existing = services.get(key);
+        if (existing && blockVariants.length) {
+          const variantKeys = new Set((existing.variants ?? []).map((variant) => `${variant.durationText ?? variant.label}:${variant.priceAmount ?? ''}:${variant.priceType ?? ''}`.toLowerCase()));
+          existing.variants = [
+            ...(existing.variants ?? []),
+            ...blockVariants.filter((variant) => {
+              const variantKey = `${variant.durationText ?? variant.label}:${variant.priceAmount ?? ''}:${variant.priceType ?? ''}`.toLowerCase();
+              if (variantKeys.has(variantKey)) return false;
+              variantKeys.add(variantKey);
+              return true;
+            }),
+          ].slice(0, 20);
+          existing.needsReview = true;
+        }
+        continue;
+      }
       const confidence = Math.max(0.45, Math.min(0.92, block.confidence ?? 0.88));
       const hasRangeOrPlusPrice = Boolean(block.sourceText?.match(/\$\s*\d{1,4}\s*-\s*\$?\s*\d{1,4}\+?|\$\s*\d{1,4}\+/));
       services.set(key, {
@@ -425,9 +451,11 @@ function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSugg
         aliases: aliasFor(parsed.name),
         bookingNotes: null,
         bookable: true,
+        variants: blockVariants,
         source: block.sourceHint === 'repeated_card' ? 'block_detector' : block.sourceHint === 'service_menu_list' ? 'website' : preview.url,
+        sourceHint: block.sourceHint ?? null,
         confidence,
-        needsReview: confidence < 0.7 || block.sourceHint === 'service_menu_list' || (!priceAmount && !duration),
+        needsReview: confidence < 0.7 || block.sourceHint === 'service_menu_list' || block.sourceHint === 'service_matrix_table' || (!priceAmount && !duration && blockVariants.length === 0),
         evidenceSnippet: block.evidenceSnippet ?? block.sourceText?.slice(0, 220) ?? null,
       });
     }
@@ -1130,7 +1158,8 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   const services = [
     ...extractServicesFromBlocks(input.previews),
     ...input.previews.flatMap((p) => {
-      return (p.serviceBlocks?.length ?? 0) >= 3 ? [] : extractServicesFromText(`${p.h1}\n${p.firstTextChars}`, p.url);
+      const hasStructuredServiceEvidence = (p.serviceBlocks?.length ?? 0) >= 3 || (p.serviceBlocks ?? []).some((block) => block.sourceHint === 'service_matrix_table');
+      return hasStructuredServiceEvidence ? [] : extractServicesFromText(`${p.h1}\n${p.firstTextChars}`, p.url);
     }),
     ...extractServiceLinks(input.previews),
   ];

@@ -24,6 +24,13 @@ export type RuntimeService = {
   category?: string | null;
   notes?: string | null;
   bookable?: boolean | null;
+  variants?: Array<{
+    label: string;
+    price?: number | null;
+    priceType?: 'fixed' | 'from' | 'varies' | 'consultation' | null;
+    duration?: string | number | null;
+    notes?: string | null;
+  }>;
 };
 
 export type RuntimeBusinessConfig = {

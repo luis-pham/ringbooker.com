@@ -437,6 +437,32 @@ test('extracts structured DOM service blocks with group, child name, description
   assert.equal(suggestions.serviceCatalog.services.some((service) => service.name === '30 min+'), false);
 });
 
+test('extracts Avalon-style service matrix as one service with duration and price variants', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <h2>Body Treatments</h2>
+      <table>
+        <tr><th></th><th>30 min</th><th>60 min</th><th>90 min</th></tr>
+        <tr><td>Relaxing</td><td>$65+</td><td>$95+</td><td>$140+</td></tr>
+        <tr><td>Therapeutic</td><td>-</td><td>$105+</td><td>$150+</td></tr>
+      </table>
+      <footer>Book your appointment today</footer>
+    </body></html>
+  `, 'https://avalon.test/spa/body');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://avalon.test', sourceType: 'normal_website', previews: [preview] });
+  const relaxing = suggestions.serviceCatalog.services.find((service) => service.name === 'Relaxing');
+  assert.equal(relaxing?.categoryName, 'Body Treatments');
+  assert.equal(relaxing?.variants?.length, 3);
+  assert.equal(relaxing?.variants?.[0]?.durationText, '30 min');
+  assert.equal(relaxing?.variants?.[0]?.priceAmount, 65);
+  assert.equal(relaxing?.variants?.[0]?.priceType, 'from');
+  assert.equal(relaxing?.variants?.[2]?.durationText, '90 min');
+  assert.equal(relaxing?.variants?.[2]?.priceAmount, 140);
+  assert.equal(relaxing?.needsReview, true);
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /30 min|65/i.test(service.name)), false);
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /Book your appointment/i.test(service.name)), false);
+});
+
 test('extracts Elementor service-item cards with group, clean names, and prices', () => {
   const preview = previewHtml(`
     <html><body>

@@ -18,8 +18,8 @@ export function serviceCatalogToLegacyServices(catalog?: ShopServiceCatalog | nu
     })
     .map((service) => ({
       name: service.name,
-      duration_min: service.durationMinutes ?? 60,
-      price: service.priceAmount ?? 0,
+      duration_min: service.durationMinutes ?? service.variants?.find((variant) => typeof variant.durationMinutes === 'number')?.durationMinutes ?? 60,
+      price: service.priceAmount ?? service.variants?.find((variant) => typeof variant.priceAmount === 'number')?.priceAmount ?? 0,
     }));
 }
 
@@ -63,6 +63,7 @@ export function buildGeneralServiceCatalog(params: {
           sortOrder: index,
           aliases: [],
           bookingNotes: null,
+          variants: [],
           externalProvider: null,
           externalServiceId: null,
           externalLocationId: null,

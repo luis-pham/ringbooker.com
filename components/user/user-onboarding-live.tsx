@@ -20,6 +20,17 @@ export type BeautySubtype =
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type WizardStep = 1 | 2 | 3 | 4;
 type ServicePriceType = 'fixed' | 'from' | 'varies' | 'consultation';
+type ServiceVariant = {
+  id?: string;
+  label: string;
+  durationMinutes?: number | null;
+  durationText?: string | null;
+  priceAmount?: number | null;
+  priceCurrency?: string;
+  priceType?: ServicePriceType;
+  sortOrder?: number;
+  notes?: string | null;
+};
 type ServiceItem = {
   name: string;
   duration_min?: number | null;
@@ -34,6 +45,7 @@ type ServiceItem = {
   source?: string | null;
   sourceHint?: string | null;
   evidenceSnippet?: string | null;
+  variants?: ServiceVariant[];
 };
 type ServiceCatalogResponse = {
   categories: Array<{ id: string; name: string; sortOrder: number; active: boolean }>;
@@ -49,6 +61,7 @@ type ServiceCatalogResponse = {
     aliases?: string[];
     sortOrder: number;
     active: boolean;
+    variants?: ServiceVariant[];
   }>;
 };
 type ApiHours = Record<string, { closed: true } | { open: string; close: string }>;
@@ -84,6 +97,7 @@ type ImportedWebsiteSuggestions = {
       source?: string | null;
       sourceHint?: string | null;
       evidenceSnippet?: string | null;
+      variants?: ServiceVariant[];
     }>;
   };
   alsoOffers?: Array<{ value: string | null; confidence: number; source?: string | null }>;
@@ -766,6 +780,7 @@ function serviceGroupIcon(group: string): { icon: string; bg: string } {
 }
 
 function formatServicePrice(service: ServiceItem): string {
+  if (service.variants?.length) return `${service.variants.length} option${service.variants.length === 1 ? '' : 's'}`;
   if (service.price_type === 'consultation') return 'Consultation';
   if (service.price_type === 'varies' && service.price <= 0) return 'Varies';
   if (!Number.isFinite(service.price) || service.price <= 0) return '$0';
@@ -773,7 +788,20 @@ function formatServicePrice(service: ServiceItem): string {
   return service.price_type === 'from' ? `from ${amount}` : amount;
 }
 
+function formatServiceVariant(variant: ServiceVariant): string {
+  const duration = variant.durationText || (variant.durationMinutes ? `${variant.durationMinutes} min` : '');
+  const price = variant.priceType === 'consultation'
+    ? 'consultation'
+    : variant.priceType === 'varies'
+      ? 'varies'
+      : variant.priceAmount !== null && variant.priceAmount !== undefined
+        ? `${variant.priceType === 'from' ? 'starts at ' : ''}$${variant.priceAmount}`
+        : '';
+  return [duration || variant.label, price, variant.notes].filter(Boolean).join(' · ');
+}
+
 function serviceNeedsAttention(service: ServiceItem): boolean {
+  if (service.variants?.length) return service.needsReview === true || service.variants.some((variant) => variant.priceAmount === null || variant.priceAmount === undefined || !((variant.durationText ?? '').trim() || variant.durationMinutes));
   return service.price === 0 || !serviceDurationText(service).trim() || service.needsReview === true;
 }
 
@@ -795,6 +823,7 @@ function servicesFromImport(suggestions?: ImportedWebsiteSuggestions): ServiceIt
       source: service.source ?? null,
       sourceHint: service.sourceHint ?? null,
       evidenceSnippet: service.evidenceSnippet?.trim() || null,
+      variants: service.variants ?? [],
     }));
 }
 
@@ -976,6 +1005,17 @@ function cleanServices(rows: ServiceItem[]): ServiceItem[] {
       aliases: item.aliases ?? [],
       price_type: item.price_type ?? (item.price > 0 ? 'fixed' : 'varies'),
       bookable: item.bookable ?? true,
+      variants: (item.variants ?? []).slice(0, 20).map((variant, index) => ({
+        ...variant,
+        label: variant.label?.trim() || variant.durationText?.trim() || (variant.priceAmount !== null && variant.priceAmount !== undefined ? `$${variant.priceAmount}` : `Option ${index + 1}`),
+        durationText: variant.durationText?.trim() || (variant.durationMinutes ? `${variant.durationMinutes} min` : null),
+        durationMinutes: variant.durationMinutes ?? null,
+        priceAmount: variant.priceAmount ?? null,
+        priceCurrency: variant.priceCurrency ?? 'USD',
+        priceType: variant.priceType ?? 'fixed',
+        sortOrder: variant.sortOrder ?? index,
+        notes: variant.notes ?? null,
+      })),
     }));
 }
 
@@ -1011,6 +1051,7 @@ function servicesFromCatalog(catalog?: ServiceCatalogResponse | null): ServiceIt
         aliases: service.aliases ?? [],
         price_type: service.priceType ?? 'fixed',
         bookable: service.bookable ?? true,
+        variants: service.variants ?? [],
       };
     });
 }
@@ -1046,6 +1087,7 @@ function serviceCatalogFromRows(rows: ServiceItem[], extraGroups: string[] = [])
         active: true,
         sortOrder: index,
         aliases: service.aliases ?? [],
+        variants: service.variants ?? [],
       };
     }),
   };
@@ -1998,6 +2040,32 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setServiceEditor((current) => (current ? { ...current, draft: { ...current.draft, ...patch } } : current));
   }
 
+  function updateServiceDraftVariant(index: number, patch: Partial<ServiceVariant>) {
+    setServiceEditor((current) => {
+      if (!current) return current;
+      const variants = [...(current.draft.variants ?? [])];
+      variants[index] = { ...variants[index], ...patch } as ServiceVariant;
+      return { ...current, draft: { ...current.draft, variants } };
+    });
+  }
+
+  function removeServiceDraftVariant(index: number) {
+    setServiceEditor((current) => current ? { ...current, draft: { ...current.draft, variants: (current.draft.variants ?? []).filter((_, itemIndex) => itemIndex !== index) } } : current);
+  }
+
+  function addServiceDraftVariant() {
+    setServiceEditor((current) => current ? {
+      ...current,
+      draft: {
+        ...current.draft,
+        variants: [
+          ...(current.draft.variants ?? []),
+          { label: '', durationMinutes: null, durationText: '', priceAmount: null, priceCurrency: 'USD', priceType: 'from', sortOrder: current.draft.variants?.length ?? 0, notes: null },
+        ],
+      },
+    } : current);
+  }
+
   function saveServiceEditor() {
     if (!serviceEditor) return;
     const draft: ServiceItem = {
@@ -2227,10 +2295,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .service-group-body{display:grid;gap:0;padding:12px 16px 16px}
 .onb-service-row-wrap{position:relative;border-bottom:1px solid #f3f4f6}.onb-service-row-wrap:last-of-type{border-bottom:0}
 .onb-service-row{width:100%;border:0;background:transparent;padding:11px 0;display:flex;align-items:center;gap:14px;text-align:left;font:inherit;cursor:pointer;color:#111}
-.onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{color:#9ca3af;font-size:12px;font-weight:500;opacity:0;transition:opacity .15s ease}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1}
+.onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-service-variants-preview{display:block;margin-top:3px;color:#6b7280;font-size:12px;text-transform:none;white-space:normal}.svc-variants{margin:0 0 3px;color:#9ca3af;font-size:12px;line-height:1.35}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{color:#9ca3af;font-size:12px;font-weight:500;opacity:0;transition:opacity .15s ease}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1}
 .onb-service-row-mobile{display:none}.onb-service-mobile-meta{color:#6b7280;font-size:12px;text-align:right;white-space:nowrap}.onb-service-mobile-arrow{color:#9ca3af;font-size:22px;line-height:1}
 .svc-row{display:none}.svc-body{flex:1;min-width:0}.svc-name{font-size:13px;font-weight:400;color:#111;text-transform:capitalize;line-height:1.35;margin-bottom:3px;overflow-wrap:anywhere}.svc-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af;flex-wrap:nowrap;min-width:0}.svc-price{color:#374151;font-weight:500;white-space:nowrap}.svc-price.zero{color:#dc2626}.svc-duration{white-space:nowrap}.svc-duration.missing{color:#f59e0b}.svc-remove{margin-left:auto;font-size:12px;color:#9ca3af;background:none;border:none;padding:0;cursor:pointer;flex-shrink:0}.svc-remove:active{color:#dc2626}.svc-arrow{color:#d1d5db;font-size:16px;flex-shrink:0;align-self:flex-start;margin-top:1px}
-.onb-service-edit-row{display:grid;grid-template-columns:minmax(0,1fr) 90px 90px 28px 28px;gap:8px;align-items:center;padding:8px 0}.onb-service-edit-row input,.onb-service-sheet-fields input{min-height:34px;border:1px solid #7c3aed;border-radius:8px;padding:6px 10px;font-size:16px;font-family:inherit;color:#111827;box-sizing:border-box;background:#fff;width:100%}.onb-service-price-input{position:relative}.onb-service-price-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px}.onb-service-price-input input{padding-left:24px!important}
+.onb-service-edit-row{display:grid;grid-template-columns:minmax(0,1fr) 90px 90px 28px 28px;gap:8px;align-items:center;padding:8px 0}.onb-service-edit-row input,.onb-service-sheet-fields input{min-height:34px;border:1px solid #7c3aed;border-radius:8px;padding:6px 10px;font-size:16px;font-family:inherit;color:#111827;box-sizing:border-box;background:#fff;width:100%}.onb-service-price-input{position:relative}.onb-service-price-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px}.onb-service-price-input input{padding-left:24px!important}.onb-service-variants-editor{grid-column:1 / -1;display:grid;gap:8px;border:1px solid #ede9fe;border-radius:10px;background:#faf5ff;padding:10px}.onb-service-variants-label{font-size:12px;font-weight:700;color:#6d28d9}.onb-service-variant-edit{display:grid;grid-template-columns:minmax(0,1fr) 100px 90px 28px;gap:8px}.onb-service-variant-edit button{border:0;border-radius:999px;background:#f3f4f6;color:#6b7280;cursor:pointer}.onb-service-add-option{grid-column:1 / -1;border:1px dashed #ddd6fe;border-radius:8px;background:#fff;color:#7c3aed;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer}
 .onb-service-save-dot,.onb-service-cancel-dot{width:28px;height:28px;border-radius:999px;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-weight:600}.onb-service-save-dot{background:#111;color:#fff}.onb-service-cancel-dot{background:#f3f4f6;color:#6b7280}
 .onb-group-add-service{margin-top:12px;width:100%;min-height:40px;border:1px dashed #e5e7eb;border-radius:8px;background:transparent;color:#7c3aed;font-size:14px;font-weight:500;cursor:pointer;text-align:center}.onb-group-add-service:hover{border-color:#c4b5fd;background:#faf5ff}.onb-group-add-service-mobile{display:none}
 .service-remove-btn{min-height:32px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}.service-remove-btn:hover{border-color:#fecaca;background:#fff1f2;color:#be123c}.onb-service-remove-compact{position:absolute;right:0;bottom:4px;opacity:0;pointer-events:none}.onb-service-row-wrap:hover .onb-service-remove-compact{opacity:1;pointer-events:auto}
@@ -3457,6 +3525,36 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             placeholder="Duration"
             aria-label="Duration"
           />
+          {draft.variants?.length ? (
+            <div className="onb-service-variants-editor">
+              <span className="onb-service-variants-label">Options</span>
+              {draft.variants.map((variant, variantIndex) => (
+                <div className="onb-service-variant-edit" key={`${variant.label}-${variantIndex}`}>
+                  <input
+                    value={variant.label}
+                    onChange={(event) => updateServiceDraftVariant(variantIndex, { label: event.target.value })}
+                    placeholder="Option"
+                    aria-label="Option label"
+                  />
+                  <input
+                    value={variant.durationText ?? ''}
+                    onChange={(event) => updateServiceDraftVariant(variantIndex, { durationText: event.target.value, durationMinutes: parseDurationTextToMinutes(event.target.value) })}
+                    placeholder="30 min"
+                    aria-label="Option duration"
+                  />
+                  <input
+                    type="number"
+                    value={variant.priceAmount ?? ''}
+                    onChange={(event) => updateServiceDraftVariant(variantIndex, { priceAmount: event.target.value === '' ? null : Number(event.target.value) })}
+                    placeholder="Price"
+                    aria-label="Option price"
+                  />
+                  <button type="button" onClick={() => removeServiceDraftVariant(variantIndex)} aria-label="Remove option">×</button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <button type="button" className="onb-service-add-option" onClick={addServiceDraftVariant}>+ Add option</button>
           {mode === 'inline' ? (
             <>
               <button type="button" className="onb-service-save-dot" onClick={saveServiceEditor} aria-label="Save service">✓</button>
@@ -3574,7 +3672,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     ) : (
                       <>
                         <button type="button" className="onb-service-row onb-service-row-desktop" onClick={() => openServiceEditor(index, group, 'inline')}>
-                          <span className="onb-service-name">{service.name || 'Untitled service'}</span>
+                          <span className="onb-service-name">
+                            {service.name || 'Untitled service'}
+                            {service.variants?.length ? (
+                              <span className="onb-service-variants-preview">
+                                {service.variants.slice(0, 4).map(formatServiceVariant).join(' · ')}
+                              </span>
+                            ) : null}
+                          </span>
                           <span className={`onb-service-price ${service.price === 0 ? 'warn' : ''}`} title={service.price === 0 ? "This service has no price. AI will say 'price on consultation'." : undefined}>
                             {service.price === 0 ? '⚠ ' : ''}
                             {formatServicePrice(service)}
@@ -3598,6 +3703,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                         >
                           <div className="svc-body">
                             <div className="svc-name">{service.name || 'Untitled service'}</div>
+                            {service.variants?.length ? (
+                              <div className="svc-variants">{service.variants.slice(0, 3).map(formatServiceVariant).join(' · ')}</div>
+                            ) : null}
                             <div className="svc-meta">
                               <span className={`svc-price ${service.price === 0 ? 'zero' : ''}`}>{service.price === 0 ? '$0 ⚠' : formatServicePrice(service)}</span>
                               <span>·</span>

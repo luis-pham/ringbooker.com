@@ -71,6 +71,18 @@ export interface ServiceItem {
 
 export type ShopServicePriceType = 'fixed' | 'from' | 'varies' | 'consultation';
 
+export interface ShopServiceVariant {
+  id: string;
+  label: string;
+  durationMinutes?: number | null;
+  durationText?: string | null;
+  priceAmount?: number | null;
+  priceCurrency: string;
+  priceType: ShopServicePriceType;
+  sortOrder: number;
+  notes?: string | null;
+}
+
 export interface ServiceCategory {
   id: string;
   shopId: string;
@@ -98,6 +110,7 @@ export interface ShopService {
   sortOrder: number;
   aliases: string[];
   bookingNotes?: string | null;
+  variants?: ShopServiceVariant[];
   externalProvider?: string | null;
   externalServiceId?: string | null;
   externalLocationId?: string | null;

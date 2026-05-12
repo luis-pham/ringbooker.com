@@ -483,13 +483,15 @@ test('LLM service normalizer drops rejected and invalid service blocks', () => {
       categories: [{ name: 'Services', confidence: 0.8, groupKind: 'primary' }],
       services: [
         { categoryName: 'Services', name: 'Balayage', priceAmount: 180, priceCurrency: 'USD', priceType: 'from', durationMinutes: null, durationText: null, aliases: [], bookable: true, confidence: 0.82, sourceEvidence: ['Balayage Starting at $180'] },
+        { categoryName: 'Services', name: 'Relaxing', priceAmount: null, priceCurrency: 'USD', priceType: 'from', durationMinutes: null, durationText: null, aliases: [], bookable: true, confidence: 0.86, sourceEvidence: ['Relaxing row'], variants: [{ label: '30 min', durationText: '30 min', durationMinutes: 30, priceAmount: 65, priceCurrency: 'USD', priceType: 'from', sortOrder: 0 }] },
         { categoryName: 'Services', name: '30 min+', priceAmount: null, priceCurrency: 'USD', priceType: 'varies', durationMinutes: 30, durationText: '30 min+', aliases: [], bookable: true, confidence: 0.8, sourceEvidence: ['30 min+'] },
         { categoryName: 'FAQ', name: 'Do you take walk-ins?', priceAmount: null, priceCurrency: 'USD', priceType: 'varies', aliases: [], bookable: true, confidence: 0.8, rejectReason: 'FAQ block', sourceEvidence: ['Do you take walk-ins?'] },
       ],
     },
   }));
-  assert.equal(parsed?.serviceCatalog?.services?.length, 1);
+  assert.equal(parsed?.serviceCatalog?.services?.length, 2);
   assert.equal(parsed?.serviceCatalog?.services?.[0]?.name, 'Balayage');
+  assert.equal(parsed?.serviceCatalog?.services?.[1]?.variants?.[0]?.priceAmount, 65);
 });
 
 test('LLM payload includes staff page hints for artist analysis', () => {

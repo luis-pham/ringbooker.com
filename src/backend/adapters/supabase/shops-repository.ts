@@ -93,6 +93,7 @@ type ShopServiceRow = {
   sort_order: number | null;
   aliases: unknown;
   booking_notes: string | null;
+  variants_json?: unknown;
   external_provider?: string | null;
   external_service_id?: string | null;
   external_location_id?: string | null;
@@ -128,6 +129,39 @@ function normalizeServices(value: unknown): ServiceItem[] {
 function normalizePriceType(value: string | null): ShopService['priceType'] {
   if (value === 'fixed' || value === 'from' || value === 'varies' || value === 'consultation') return value;
   return 'fixed';
+}
+
+function normalizeServiceVariants(value: unknown): ShopService['variants'] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((raw, index) => {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+      const item = raw as Record<string, unknown>;
+      const label = typeof item.label === 'string' ? item.label.trim().slice(0, 80) : '';
+      const durationMinutes = typeof item.durationMinutes === 'number' && Number.isFinite(item.durationMinutes) && item.durationMinutes > 0
+        ? Math.round(item.durationMinutes)
+        : null;
+      const durationText = typeof item.durationText === 'string' && item.durationText.trim()
+        ? item.durationText.trim().slice(0, 80)
+        : durationMinutes ? `${durationMinutes} min` : null;
+      const priceAmount = typeof item.priceAmount === 'number' && Number.isFinite(item.priceAmount) && item.priceAmount >= 0
+        ? item.priceAmount
+        : null;
+      if (!label && !durationText && priceAmount === null) return null;
+      return {
+        id: typeof item.id === 'string' && item.id.trim() ? item.id : randomUUID(),
+        label: label || durationText || (priceAmount !== null ? `$${priceAmount}` : `Option ${index + 1}`),
+        durationMinutes,
+        durationText,
+        priceAmount,
+        priceCurrency: typeof item.priceCurrency === 'string' && item.priceCurrency.trim().length === 3 ? item.priceCurrency.trim().toUpperCase() : 'USD',
+        priceType: normalizePriceType(typeof item.priceType === 'string' ? item.priceType : null),
+        sortOrder: typeof item.sortOrder === 'number' && Number.isFinite(item.sortOrder) ? Math.max(0, Math.round(item.sortOrder)) : index,
+        notes: typeof item.notes === 'string' && item.notes.trim() ? item.notes.trim().slice(0, 240) : null,
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    .slice(0, 20);
 }
 
 function toServiceCategory(row: ShopServiceCategoryRow): ServiceCategory {
@@ -166,6 +200,7 @@ function toShopService(row: ShopServiceRow): ShopService {
     sortOrder: row.sort_order ?? 0,
     aliases: Array.isArray(row.aliases) ? row.aliases.filter((alias): alias is string => typeof alias === 'string') : [],
     bookingNotes: row.booking_notes,
+    variants: normalizeServiceVariants(row.variants_json),
     externalProvider: row.external_provider ?? null,
     externalServiceId: row.external_service_id ?? null,
     externalLocationId: row.external_location_id ?? null,
@@ -763,7 +798,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
       this.supabase
         .from('shop_services')
         .select(
-          'id,shop_id,category_id,name,description,duration_text,duration_minutes,price_amount,price_currency,price_type,bookable,active,sort_order,aliases,booking_notes,external_provider,external_service_id,external_location_id,external_staff_required,external_metadata,created_at,updated_at',
+          'id,shop_id,category_id,name,description,duration_text,duration_minutes,price_amount,price_currency,price_type,bookable,active,sort_order,aliases,booking_notes,variants_json,external_provider,external_service_id,external_location_id,external_staff_required,external_metadata,created_at,updated_at',
         )
         .eq('shop_id', shopId)
         .order('sort_order', { ascending: true })
@@ -845,6 +880,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         sort_order: Number.isFinite(service.sortOrder) ? service.sortOrder : index,
         aliases: service.aliases ?? [],
         booking_notes: service.bookingNotes ?? null,
+        variants_json: service.variants?.length ? service.variants : null,
         external_provider: service.externalProvider ?? null,
         external_service_id: service.externalServiceId ?? null,
         external_location_id: service.externalLocationId ?? null,
@@ -882,6 +918,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           sort_order: row.sort_order,
           aliases: row.aliases,
           booking_notes: row.booking_notes,
+          variants_json: row.variants_json,
           external_provider: row.external_provider,
           external_service_id: row.external_service_id,
           external_location_id: row.external_location_id,

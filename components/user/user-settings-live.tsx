@@ -45,6 +45,17 @@ type ServiceItem = {
   price: number;
 };
 type ServicePriceType = 'fixed' | 'from' | 'varies' | 'consultation';
+type ServiceVariant = {
+  id?: string;
+  label: string;
+  durationMinutes?: number | null;
+  durationText?: string | null;
+  priceAmount?: number | null;
+  priceCurrency?: string;
+  priceType?: ServicePriceType;
+  sortOrder?: number;
+  notes?: string | null;
+};
 type ServiceCategory = {
   id: string;
   shopId?: string;
@@ -69,6 +80,7 @@ type ShopService = {
   sortOrder: number;
   aliases: string[];
   bookingNotes?: string | null;
+  variants?: ServiceVariant[];
 };
 type ShopServiceCatalog = {
   categories: ServiceCategory[];
@@ -533,6 +545,7 @@ function catalogFromLegacyServices(services: ServiceItem[], shopId = ''): ShopSe
         sortOrder: index,
         aliases: [],
         bookingNotes: null,
+        variants: [],
       })),
   };
 }
@@ -558,6 +571,7 @@ function legacyServicesFromCatalog(catalog: ShopServiceCatalog): ServiceItem[] {
       name: service.name,
       duration_min: service.durationMinutes ?? 60,
       price: service.priceAmount ?? 0,
+      // Legacy flat services cannot represent variants; the service catalog keeps them.
     }));
 }
 
@@ -1178,6 +1192,7 @@ export function UserSettingsLive({
           sortOrder: groupCount,
           aliases: [],
           bookingNotes: null,
+          variants: [],
         },
       ],
     });
@@ -1190,6 +1205,31 @@ export function UserSettingsLive({
         service.id === serviceId ? { ...service, ...patch } : service,
       ),
     });
+  }
+
+  function updateCatalogServiceVariant(serviceId: string, variantIndex: number, patch: Partial<ServiceVariant>) {
+    const service = currentForm.service_catalog.services.find((item) => item.id === serviceId);
+    if (!service) return;
+    const variants = [...(service.variants ?? [])];
+    variants[variantIndex] = { ...variants[variantIndex], ...patch } as ServiceVariant;
+    updateCatalogService(serviceId, { variants });
+  }
+
+  function addCatalogServiceVariant(serviceId: string) {
+    const service = currentForm.service_catalog.services.find((item) => item.id === serviceId);
+    if (!service) return;
+    updateCatalogService(serviceId, {
+      variants: [
+        ...(service.variants ?? []),
+        { label: '', durationMinutes: null, durationText: '', priceAmount: null, priceCurrency: 'USD', priceType: 'from', sortOrder: service.variants?.length ?? 0, notes: null },
+      ],
+    });
+  }
+
+  function removeCatalogServiceVariant(serviceId: string, variantIndex: number) {
+    const service = currentForm.service_catalog.services.find((item) => item.id === serviceId);
+    if (!service) return;
+    updateCatalogService(serviceId, { variants: (service.variants ?? []).filter((_, index) => index !== variantIndex) });
   }
 
   function removeCatalogService(serviceId: string) {
@@ -1207,6 +1247,18 @@ export function UserSettingsLive({
     if (!Number.isFinite(amount) || amount <= 0) return service.priceType === 'from' ? 'Starts at' : 'Price TBD';
     const formatted = `$${Math.round(amount)}`;
     return service.priceType === 'from' ? `from ${formatted}` : formatted;
+  }
+
+  function formatVariantSummary(variant: ServiceVariant) {
+    const duration = variant.durationText || (variant.durationMinutes ? `${variant.durationMinutes} min` : '');
+    const price = variant.priceType === 'consultation'
+      ? 'consultation'
+      : variant.priceType === 'varies'
+        ? 'varies'
+        : variant.priceAmount !== null && variant.priceAmount !== undefined
+          ? `${variant.priceType === 'from' ? 'starts at ' : ''}$${variant.priceAmount}`
+          : '';
+    return [duration || variant.label, price].filter(Boolean).join(' · ');
   }
 
   function renderEditIcon() {
@@ -2375,7 +2427,11 @@ export function UserSettingsLive({
 	                                <div key={service.id} className={`service-summary-item ${service.active === false ? 'archived' : ''}`}>
 	                                  <div className="service-summary-row">
 	                                    <span className="service-summary-name">{service.name || 'Untitled service'}</span>
-	                                    <span className="service-summary-meta">{formatServicePriceSummary(service)} · {serviceDurationText(service) || 'No duration'}</span>
+	                                    <span className="service-summary-meta">
+                                        {service.variants?.length
+                                          ? `${service.variants.length} options · ${service.variants.slice(0, 2).map(formatVariantSummary).join(' / ')}`
+                                          : `${formatServicePriceSummary(service)} · ${serviceDurationText(service) || 'No duration'}`}
+                                      </span>
 	                                    <button
 	                                      type="button"
 	                                      className="service-edit-icon"
@@ -2447,6 +2503,27 @@ export function UserSettingsLive({
 	                                          placeholder="Anything the AI should know before capturing this request."
 	                                        />
 	                                      </div>
+                                        <div className="field">
+                                          <label>Options / variants</label>
+                                          <p className="field-help">Use options when a service has different lengths or prices.</p>
+                                          <div className="service-variants-editor">
+                                            {(service.variants ?? []).map((variant, variantIndex) => (
+                                              <div className="service-variant-row" key={`${service.id}-variant-${variantIndex}`}>
+                                                <input value={variant.label} onChange={(event) => updateCatalogServiceVariant(service.id, variantIndex, { label: event.target.value })} placeholder="30 min" />
+                                                <input value={variant.durationText ?? ''} onChange={(event) => {
+                                                  const durationText = event.target.value;
+                                                  updateCatalogServiceVariant(service.id, variantIndex, { durationText: durationText || null, durationMinutes: parseDurationTextToMinutes(durationText) });
+                                                }} placeholder="Duration" />
+                                                <input type="number" min={0} value={variant.priceAmount ?? ''} onChange={(event) => updateCatalogServiceVariant(service.id, variantIndex, { priceAmount: event.target.value === '' ? null : Number(event.target.value) })} placeholder="Price" />
+                                                <select value={variant.priceType ?? 'from'} onChange={(event) => updateCatalogServiceVariant(service.id, variantIndex, { priceType: event.target.value as ServicePriceType })}>
+                                                  {PRICE_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                                </select>
+                                                <button type="button" className="subtle-link" onClick={() => removeCatalogServiceVariant(service.id, variantIndex)}>Remove</button>
+                                              </div>
+                                            ))}
+                                            <button type="button" className="btn ghost" onClick={() => addCatalogServiceVariant(service.id)}>+ Add option</button>
+                                          </div>
+                                        </div>
 	                                      <div className="service-item-footer">
 	                                        <label className="inline-check">
 	                                          <input type="checkbox" checked={service.bookable} onChange={(event) => updateCatalogService(service.id, { bookable: event.target.checked })} />

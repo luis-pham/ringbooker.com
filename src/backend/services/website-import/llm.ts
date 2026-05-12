@@ -26,6 +26,16 @@ const primaryTypeFieldSchema = z.object({
   sourceEvidence: sourceEvidenceSchema,
 }).strict();
 const hoursFieldSchema = z.object({ value: z.record(z.string(), z.unknown()).nullable(), confidence: confidenceSchema, sourceEvidence: sourceEvidenceSchema }).strict();
+const serviceVariantSchema = z.object({
+  label: z.string().max(80).optional().default(''),
+  durationText: z.string().max(80).nullable().optional(),
+  durationMinutes: z.number().int().positive().nullable().optional(),
+  priceAmount: z.number().nonnegative().nullable().optional(),
+  priceCurrency: z.string().optional().default('USD'),
+  priceType: z.enum(['fixed', 'from', 'varies', 'consultation']).optional().default('fixed'),
+  sortOrder: z.number().int().nonnegative().optional(),
+  notes: z.string().max(240).nullable().optional(),
+}).strict();
 const serviceSchema = z.object({
   categoryName: z.string().nullable().optional(),
   groupName: z.string().nullable().optional(),
@@ -39,6 +49,7 @@ const serviceSchema = z.object({
   aliases: z.array(z.string()).optional().default([]),
   bookingNotes: z.string().nullable().optional(),
   bookable: z.boolean().optional().default(true),
+  variants: z.array(serviceVariantSchema).max(20).optional().default([]),
   confidence: confidenceSchema,
   rejectReason: z.string().max(240).nullable().optional(),
   sourceEvidence: sourceEvidenceSchema,
@@ -143,6 +154,16 @@ function toService(raw: z.infer<typeof serviceSchema>): ImportedServiceSuggestio
     aliases: raw.aliases.slice(0, 8),
     bookingNotes: raw.bookingNotes ?? null,
     bookable: raw.bookable,
+    variants: raw.variants.map((variant, index) => ({
+      label: variant.label?.trim() || variant.durationText?.trim() || (variant.priceAmount !== null && variant.priceAmount !== undefined ? `$${variant.priceAmount}` : `Option ${index + 1}`),
+      durationText: variant.durationText?.trim() || (variant.durationMinutes ? `${variant.durationMinutes} min` : null),
+      durationMinutes: variant.durationMinutes ?? null,
+      priceAmount: variant.priceAmount ?? null,
+      priceCurrency: variant.priceCurrency || 'USD',
+      priceType: variant.priceType,
+      sortOrder: variant.sortOrder ?? index,
+      notes: variant.notes ?? null,
+    })).filter((variant) => variant.label || variant.durationText || variant.priceAmount !== null),
     confidence,
     source: 'AI',
     needsReview: confidence < 0.7,
@@ -274,6 +295,9 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
       'You are given candidate service blocks extracted from a salon/spa website. Normalize real services and reject non-services with rejectReason.',
       'Reject policy, FAQ, contact, marketing, duration-only, price-only, or CTA-only blocks. Do not turn descriptions into service names.',
       'For services, return serviceCatalog.categories as service groups and give every service a categoryName matching one group. If you see groupName, map it to categoryName.',
+      'If one service has multiple duration/price options, return one service with variants. Do not flatten variants into separate services.',
+      'For matrix/table pricing, duration headers like 30 min, 60 min, 90 min must become variant durationText/durationMinutes. Price cells become variant priceAmount/priceType.',
+      'Never create duration headers or price cells as service names.',
       'Preserve the website service grouping language when available. Do not flatten unrelated service groups.',
       'Service names must contain only the menu item name. If a line is "Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+", return name "Essential Blowout", description "Shampoo & Condition • Smooth Blow Dry", and durationText "30 min+".',
       'durationText is the caller-facing duration exactly as shown, e.g. "60 min", "1 hour+", "30-45 min", "Varies".',

@@ -176,9 +176,47 @@ function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceS
     const category = canonicalServiceGroupName(service.categoryName);
     const key = `${category}:${name}`.toLowerCase();
     const current = map.get(key);
-    if (!current || (service.confidence ?? 0) > (current.confidence ?? 0)) map.set(key, { ...service, categoryName: category, name });
+    if (!current) {
+      map.set(key, { ...service, categoryName: category, name, variants: normalizeServiceVariantsForMerge(service.variants) });
+      continue;
+    }
+    const mergedVariants = mergeServiceVariants(current.variants, service.variants);
+    if ((service.confidence ?? 0) > (current.confidence ?? 0)) {
+      map.set(key, { ...service, categoryName: category, name, variants: mergedVariants });
+    } else {
+      current.variants = mergedVariants;
+      if (mergedVariants.length) current.needsReview = current.needsReview || service.needsReview;
+    }
   }
   return [...map.values()].slice(0, 80);
+}
+
+function normalizeServiceVariantsForMerge(variants?: ImportedServiceSuggestion['variants']): NonNullable<ImportedServiceSuggestion['variants']> {
+  return (variants ?? [])
+    .map((variant, index) => ({
+      label: variant.label?.trim() || variant.durationText?.trim() || (variant.priceAmount !== null && variant.priceAmount !== undefined ? `$${variant.priceAmount}` : `Option ${index + 1}`),
+      durationMinutes: variant.durationMinutes ?? null,
+      durationText: variant.durationText?.trim() || (variant.durationMinutes ? `${variant.durationMinutes} min` : null),
+      priceAmount: variant.priceAmount ?? null,
+      priceCurrency: variant.priceCurrency ?? 'USD',
+      priceType: variant.priceType ?? 'fixed',
+      sortOrder: variant.sortOrder ?? index,
+      notes: variant.notes ?? null,
+    }))
+    .filter((variant) => variant.label || variant.durationText || variant.priceAmount !== null)
+    .slice(0, 20);
+}
+
+function mergeServiceVariants(a?: ImportedServiceSuggestion['variants'], b?: ImportedServiceSuggestion['variants']): NonNullable<ImportedServiceSuggestion['variants']> {
+  const out: NonNullable<ImportedServiceSuggestion['variants']> = [];
+  const seen = new Set<string>();
+  for (const variant of [...normalizeServiceVariantsForMerge(a), ...normalizeServiceVariantsForMerge(b)]) {
+    const key = `${variant.durationText ?? variant.label}:${variant.priceAmount ?? ''}:${variant.priceType ?? ''}`.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...variant, sortOrder: out.length });
+  }
+  return out.slice(0, 20);
 }
 function serviceGroups(services: ImportedServiceSuggestion[], llm?: LlmImportExtraction | null) {
   const groups = new Map<string, { name: string; source: string; confidence: number; groupKind: 'primary' | 'addon' | 'custom' | null }>();

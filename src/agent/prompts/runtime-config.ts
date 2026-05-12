@@ -69,10 +69,23 @@ function renderServicePrice(service: RuntimeService): string | null {
 
 function renderService(service: RuntimeService): string {
   const parts = [service.name];
+  if (service.variants?.length) {
+    const options = service.variants
+      .slice(0, 12)
+      .map((variant) => {
+        const price = renderServicePrice({ name: variant.label, price: variant.price, priceType: variant.priceType });
+        const duration = variant.duration ? String(variant.duration) : '';
+        const label = variant.label && variant.label !== duration ? variant.label : '';
+        return [label || duration, label ? duration : null, price, variant.notes].filter(Boolean).join(': ').replace(': starts', ' starts');
+      })
+      .join('; ');
+    parts.push(`Options: ${options}`);
+  } else {
   const price = renderServicePrice(service);
   if (price) parts.push(price);
   if (service.duration !== undefined && service.duration !== null && service.duration !== '') {
     parts.push(`${service.duration}`);
+  }
   }
   if (service.notes) parts.push(compactPromptLine(service.notes, 120));
   if (service.bookable === false) parts.push('capture request only; do not imply direct booking');
@@ -108,6 +121,7 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
     config.hours ? `HOURS: ${compactPromptLine(config.hours, 700)}` : null,
     config.providers?.length ? `PROVIDERS / STAFF: ${config.providers.slice(0, 12).join(', ')}` : null,
     services.length ? ['SERVICES / PRICING:', ...services].join('\n') : 'SERVICES / PRICING: Not configured. Use consultation or callback framing.',
+    config.services?.some((service) => service.variants?.length) ? 'SERVICE OPTION RULE: When a service has options, explain the available durations/prices and ask which option the caller prefers; do not quote only the cheapest option as the full answer.' : null,
     config.notOfferedServices?.length ? `NOT OFFERED SERVICES: ${config.notOfferedServices.slice(0, 30).join(', ')}` : null,
     [
       'SERVICE SCOPE RULES:',

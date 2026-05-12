@@ -177,6 +177,10 @@ test('Production prompt renders service catalog grouped by service group', () =>
         sortOrder: 0,
         aliases: ['gel mani', 'shellac'],
         bookingNotes: 'Popular service',
+        variants: [
+          { id: '55555555-5555-4555-8555-555555555555', label: '30 min', durationText: '30 min', durationMinutes: 30, priceAmount: 65, priceCurrency: 'USD', priceType: 'from', sortOrder: 0 },
+          { id: '66666666-6666-4666-8666-666666666666', label: '60 min', durationText: '60 min', durationMinutes: 60, priceAmount: 95, priceCurrency: 'USD', priceType: 'from', sortOrder: 1 },
+        ],
         externalProvider: 'square',
         externalServiceId: 'svc_secret',
         externalLocationId: 'loc_secret',
@@ -206,7 +210,9 @@ test('Production prompt renders service catalog grouped by service group', () =>
     mode: 'inbound',
   });
 
-  assert.match(prompt, /SERVICES \/ PRICING:\nManicure:\n- Gel Manicure \| starts at \$45 \| 45 min \| Popular service/);
+  assert.match(prompt, /SERVICES \/ PRICING:\nManicure:\n- Gel Manicure \| Options: 30 min/);
+  assert.match(prompt, /60 min starts at \$95/);
+  assert.match(prompt, /SERVICE OPTION RULE: When a service has options/);
   assert.match(prompt, /Customers may call this: gel mani, shellac/);
   assert.match(prompt, /Pedicure:\n- Deluxe Pedicure \| price varies \| 60 min \| capture request only; do not imply direct booking/);
   assert.match(prompt, /NOT OFFERED SERVICES: Acrylic nails/);
