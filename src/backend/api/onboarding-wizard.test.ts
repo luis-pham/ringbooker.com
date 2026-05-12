@@ -179,6 +179,11 @@ test('onboarding services UI keeps row content focused on name price duration an
   assert.match(onboardingLive, /onb-service-duration/);
   assert.match(onboardingLive, /onb-service-edit-link/);
   assert.match(onboardingLive, /service-remove-btn/);
+  assert.match(onboardingLive, /className="svc-row"/);
+  assert.match(onboardingLive, /className="svc-body"/);
+  assert.match(onboardingLive, /className="svc-meta"/);
+  assert.match(onboardingLive, /className="svc-remove"/);
+  assert.match(onboardingLive, /event\.stopPropagation\(\)/);
   assert.match(onboardingLive, /removeServiceRow/);
   assert.match(onboardingLive, /onb-service-sheet-overlay/);
   assert.match(onboardingLive, /onb-service-edit-row/);
