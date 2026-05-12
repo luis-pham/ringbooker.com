@@ -12,6 +12,7 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { knowledgePortalTabPageClass, UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 import {
@@ -1519,6 +1520,12 @@ export function UserSettingsLive({
     return <span className="tag orange knowledge-plan-lock-badge">{label}</span>;
   }
 
+  const pageContentClass = useMemo(() => {
+    if (portal === 'integrations') return 'page-integrations';
+    if (portal === 'ai-settings') return 'page-ai-behavior';
+    return knowledgePortalTabPageClass(activeTab);
+  }, [portal, activeTab]);
+
   return (
     <UserLayout styles={userSettingsStyles} scripts={userSettingsScripts} scriptPrefix="user-settings-live">
       <>
@@ -1526,6 +1533,7 @@ export function UserSettingsLive({
         <UserPortalSidebar active={sidebarNav} />
 
         <main className={`main${portal === 'knowledge' ? ' knowledge-portal-main' : ''}${portal === 'integrations' ? ' integrations-portal-main' : ''}`}>
+          <UserPortalPageContent pageClass={pageContentClass}>
           <UserPortalTopbar
             title={portalHead.title}
             subtitle={portalHead.subtitle}
@@ -3139,6 +3147,7 @@ export function UserSettingsLive({
 
           </div>
 
+          </UserPortalPageContent>
         </main>
       </div>
       <UserPortalMobileTabbar active={sidebarNav} />

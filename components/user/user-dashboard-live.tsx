@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
+import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
@@ -444,6 +445,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="overview" />
           <main className="main">
+            <UserPortalPageContent pageClass="page-overview">
             <UserPortalTopbar
               title={shopName}
               subtitle={topbarSubtitle}
@@ -711,6 +713,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 Loading overview…
               </div>
             ) : null}
+            </UserPortalPageContent>
           </main>
         </div>
         <UserPortalMobileTabbar active="overview" />

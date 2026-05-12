@@ -8,21 +8,11 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { userDashboardScripts } from '@/components/user/user-dashboard';
 import { userSettingsStyles } from '@/components/user/user-settings';
 
-const userMoreStyles = [
-  ...userSettingsStyles,
-  String.raw`
-@media (max-width:860px){
-  .more-page .topbar{
-    margin:0 -18px 10px;
-    padding:8px 18px 6px;
-    min-height:auto;
-  }
-}
-`,
-];
+const userMoreStyles = [...userSettingsStyles];
 
 const moreItems = [
   {
@@ -54,6 +44,7 @@ export function UserMoreLive() {
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="more" />
           <main className="main more-page">
+            <UserPortalPageContent pageClass="page-more">
             <UserPortalTopbar
               title="More"
               subtitle="Business setup, integrations, billing, and account."
@@ -68,6 +59,7 @@ export function UserMoreLive() {
                 </a>
               ))}
             </section>
+            </UserPortalPageContent>
           </main>
         </div>
         <UserPortalMobileTabbar active="more" />

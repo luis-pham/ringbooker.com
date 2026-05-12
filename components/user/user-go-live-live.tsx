@@ -10,6 +10,7 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { userDashboardScripts, userDashboardStyles } from '@/components/user/user-dashboard';
 
 /**
@@ -30,13 +31,15 @@ export function UserGoLiveLive({
           <UserPortalSidebar active="go-live" />
 
           <main className="main">
-            <UserPortalTopbar
-              title="Connect Phone"
-              subtitle="Current business number, RingBooker forwarding number, verification, and live answering."
-              actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
-              actions={<UserPortalStandardTopActions />}
-            />
-            <GoLiveForwardingPanel initialBilling={initialBilling} initialStatus={initialStatus} />
+            <UserPortalPageContent pageClass="page-go-live">
+              <UserPortalTopbar
+                title="Connect Phone"
+                subtitle="Current business number, RingBooker forwarding number, verification, and live answering."
+                actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
+                actions={<UserPortalStandardTopActions />}
+              />
+              <GoLiveForwardingPanel initialBilling={initialBilling} initialStatus={initialStatus} />
+            </UserPortalPageContent>
           </main>
         </div>
         <UserPortalMobileTabbar active="go-live" />

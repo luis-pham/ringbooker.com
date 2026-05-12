@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
+import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { userCallsScripts, userCallsStyles } from '@/components/user/user-calls';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
@@ -463,6 +464,7 @@ export function UserCallsLive({
         <UserPortalSidebar active="calls" />
 
         <main className="main">
+          <UserPortalPageContent pageClass="page-calls">
           <UserPortalTopbar
             title="Calls, transcripts, and missed revenue recovery."
             subtitle={`Browse calls by outcome, then open a transcript when you need the full text.${metrics.transcriptsReady > 0 ? ` ${metrics.transcriptsReady} transcript${metrics.transcriptsReady === 1 ? '' : 's'} ready to review.` : ''}`}
@@ -659,6 +661,7 @@ export function UserCallsLive({
               <div className="note">Loading call list…</div>
             ) : null}
           </div>
+          </UserPortalPageContent>
         </main>
       </div>
       <UserPortalMobileTabbar active="calls" />

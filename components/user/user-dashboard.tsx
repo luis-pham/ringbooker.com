@@ -150,12 +150,51 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 }
 .sidebar-spacer{flex:1}
 
-.main{padding:0 24px 34px;min-width:0;background:var(--surface-page)}
+.main{padding:0;padding-bottom:34px;min-width:0;background:var(--surface-page)}
+.page-content{
+  width:100%;
+  margin-left:auto;
+  margin-right:auto;
+  padding:24px;
+  box-sizing:border-box;
+}
+@media (min-width:1281px){
+  .page-content.page-overview,
+  .page-content.page-calls,
+  .page-content.page-bookings{max-width:960px;}
+  .page-content.page-business-profile,
+  .page-content.page-hours,
+  .page-content.page-staff,
+  .page-content.page-policies,
+  .page-content.page-ai-behavior,
+  .page-content.page-account,
+  .page-content.page-billing{max-width:800px;}
+  .page-content.page-go-live,
+  .page-content.page-integrations{max-width:760px;}
+  .page-content.page-services{max-width:860px;}
+  .page-content.page-more{max-width:960px;}
+}
+@media (max-width:1280px){
+  .user-app-shell .main > .page-content{
+    max-width:100%;
+    padding:24px 20px;
+  }
+}
+@media (max-width:1024px){
+  .user-app-shell .main > .page-content{
+    padding:16px;
+  }
+}
+@media (max-width:768px){
+  .user-app-shell .main > .page-content{
+    padding:12px 16px;
+  }
+}
 .topbar{
   display:flex;align-items:center;justify-content:space-between;gap:18px;
   flex-wrap:wrap;
   position:relative;z-index:1;
-  min-height:64px;margin:0 -24px 24px;padding:12px 24px;
+  min-height:64px;margin:0 0 24px;padding:12px 0;
   background:var(--surface-page);
   border-bottom:1px solid var(--border);
   box-shadow:none;
@@ -825,8 +864,8 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
   }
 }
 @media (max-width:860px){
-  .main{padding:0 18px;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
-  .topbar{margin:0 -18px 20px;padding:12px 18px;border-bottom:none}
+  .main{padding:0;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
+  .topbar{margin:0 0 20px;padding:12px 0;border-bottom:none}
   .grid-2,.form-grid{grid-template-columns:1fr}
   .grid.grid-3,.grid.grid-4{
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -1090,6 +1129,7 @@ export function UserDashboardTemplate() {
           </div>
         </aside>
         <main className="main">
+          <div className="page-content page-overview">
           <div className="topbar">
             <div className="page-title"><h1>Overview</h1><p>Track calls, bookings, and reminders.</p></div>
             <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
@@ -1141,6 +1181,7 @@ export function UserDashboardTemplate() {
             </div>
           </section>
           <div className="footer-inline"><span>RingBooker user portal concept · aligned to the public landing page styling.</span><span>Mona Sans Variable · Stable layout · Shared design system</span></div>
+          </div>
         </main>
       </div>
 

@@ -11,6 +11,7 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import {
   BILLING_PLAN_CARD_FEATURES,
@@ -752,6 +753,7 @@ export function UserBillingLive({
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="billing" />
           <main className="main">
+            <UserPortalPageContent pageClass="page-billing">
             <UserPortalTopbar
               title="Billing"
               subtitle="View usage, plans, and billing activity. Set up forwarding under Go Live."
@@ -1357,6 +1359,7 @@ export function UserBillingLive({
             <div className="footer-inline">
               <span>RingBooker · {data?.shop?.name ?? 'Your business'}</span>
             </div>
+            </UserPortalPageContent>
           </main>
         </div>
         <UserPortalMobileTabbar active="billing" />

@@ -11,6 +11,7 @@ import {
   UserPortalStandardTopActions,
 } from '@/components/user/user-portal-standard-top-actions';
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
+import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { userSettingsStyles } from '@/components/user/user-settings';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { userDashboardScripts } from '@/components/user/user-dashboard';
@@ -199,7 +200,7 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
 .rb-account-page{margin-top:0}
 /* Centered shell — widened on desktop; compact on mobile */
 .rb-account-shell{
-  width:100%;max-width:680px;margin:0 auto;padding:22px 0 36px;box-sizing:border-box;
+  width:100%;max-width:none;margin:0;padding:22px 0 36px;box-sizing:border-box;
 }
 .rb-account-frame{
   background:var(--surface-card);border:1px solid var(--border);border-radius:16px;
@@ -476,6 +477,7 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
           <UserPortalSidebar active="account" />
 
           <main className="main account-page rb-account-page">
+            <UserPortalPageContent pageClass="page-account">
             <UserPortalTopbar
               title="Your account"
               subtitle={undefined}
@@ -719,6 +721,7 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                 ) : null}
               </div>
             </div>
+            </UserPortalPageContent>
           </main>
         </div>
         <UserPortalMobileTabbar active="account" />

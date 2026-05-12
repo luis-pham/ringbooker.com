@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
+import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { userBookingsScripts, userBookingsStyles } from '@/components/user/user-bookings';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
 import { UserPortalSidebar } from '@/components/user/user-portal-sidebar';
@@ -80,6 +81,7 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
       <div className="app-shell user-app-shell">
         <UserPortalSidebar active="bookings" />
         <main className="main">
+          <UserPortalPageContent pageClass="page-bookings">
           <UserPortalTopbar
             title="Bookings and calendar flow."
             subtitle="See appointment requests and bookings RingBooker has captured or created."
@@ -128,6 +130,7 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
             </div>
           </section>
 
+          </UserPortalPageContent>
         </main>
       </div>
       <UserPortalMobileTabbar active="bookings" />
