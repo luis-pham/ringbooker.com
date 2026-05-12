@@ -110,18 +110,16 @@ type ImportWebsiteResponse = {
 };
 
 export const IMPORT_PROGRESS_STEPS = [
-  'Checking your link',
-  'Finding useful pages',
-  'Reading services and hours',
-  'Comparing business details',
-  'Preparing your review',
+  'Reading your website',
+  'Finding your services page',
+  'Extracting services and hours',
+  'Building your profile',
 ] as const;
 
 export function importProgressStepIndex(elapsedMs: number): number {
-  if (elapsedMs >= 6500) return 4;
-  if (elapsedMs >= 4800) return 3;
-  if (elapsedMs >= 3000) return 2;
-  if (elapsedMs >= 1200) return 1;
+  if (elapsedMs >= 6500) return 3;
+  if (elapsedMs >= 4000) return 2;
+  if (elapsedMs >= 1800) return 1;
   return 0;
 }
 
@@ -1137,14 +1135,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   function startImportProgressTimers() {
     clearImportProgressTimers();
-    setImportProgress('Checking your link');
+    setImportProgress('Preparing your review');
     setImportProgressStep(0);
     setImportDelayMessage(null);
-    const checkpoints = [1200, 3000, 4800, 6500, 8500, 20000, 120000];
+    const checkpoints = [1800, 4000, 6500, 8500, 20000, 120000];
     importTimersRef.current = checkpoints.map((delay) =>
       setTimeout(() => {
         setImportProgressStep(importProgressStepIndex(delay));
-        setImportProgress(IMPORT_PROGRESS_STEPS[importProgressStepIndex(delay)]);
+        setImportProgress('Preparing your review');
         setImportDelayMessage(importProgressDelayMessage(delay));
       }, delay),
     );
@@ -1175,7 +1173,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <div>
           <p className="onb-import-progress-title">{importProgress ?? IMPORT_PROGRESS_STEPS[importProgressStep]}</p>
           <p className="onb-import-progress-sub">
-            RingBooker will try to suggest details from your website. You’ll review and edit everything before saving.
+            We&apos;re reading your website and filling in your profile. You’ll review and edit everything before saving.
           </p>
         </div>
         <div className="onb-import-steps">

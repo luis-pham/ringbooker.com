@@ -201,17 +201,15 @@ test('onboarding import recommended action maps to review copy', () => {
 
 test('onboarding website import progress copy uses phased states without percentages', () => {
   assert.deepEqual([...IMPORT_PROGRESS_STEPS], [
-    'Checking your link',
-    'Finding useful pages',
-    'Reading services and hours',
-    'Comparing business details',
-    'Preparing your review',
+    'Reading your website',
+    'Finding your services page',
+    'Extracting services and hours',
+    'Building your profile',
   ]);
   assert.equal(importProgressStepIndex(0), 0);
-  assert.equal(importProgressStepIndex(1300), 1);
-  assert.equal(importProgressStepIndex(3200), 2);
-  assert.equal(importProgressStepIndex(5000), 3);
-  assert.equal(importProgressStepIndex(7000), 4);
+  assert.equal(importProgressStepIndex(1900), 1);
+  assert.equal(importProgressStepIndex(4200), 2);
+  assert.equal(importProgressStepIndex(7000), 3);
   assert.equal(importProgressDelayMessage(8500), 'Still working... Some websites take longer to read.');
   assert.equal(importProgressDelayMessage(20000), 'We’re still importing your website. Please wait a little longer.');
   assert.equal(importProgressDelayMessage(120000), 'This is taking longer than expected. You can continue manually and edit everything later.');
