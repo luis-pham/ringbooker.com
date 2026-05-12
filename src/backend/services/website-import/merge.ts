@@ -45,6 +45,7 @@ function normalizeDomain(value?: string | null): string {
 }
 function normalizeAddressForCompare(value?: string | null): string {
   return normalizeText(value)
+    .replace(/#\s*([a-z0-9-]+)/g, ' ste $1')
     .replace(/[.,]/g, '')
     .replace(/\b(united states of america|united states|usa|us)\b/g, '')
     .replace(/\b(street)\b/g, 'st')
@@ -56,10 +57,16 @@ function normalizeAddressForCompare(value?: string | null): string {
     .replace(/\b(court)\b/g, 'ct')
     .replace(/\b(place)\b/g, 'pl')
     .replace(/\b(suite)\b/g, 'ste')
+    .replace(/\b(unit|apt|apartment)\b/g, 'ste')
     .replace(/\b(north)\b/g, 'n')
     .replace(/\b(south)\b/g, 's')
     .replace(/\b(east)\b/g, 'e')
     .replace(/\b(west)\b/g, 'w')
+    .replace(/\b(texas)\b/g, 'tx')
+    .replace(/\b(california)\b/g, 'ca')
+    .replace(/\b(ohio)\b/g, 'oh')
+    .replace(/\b(new york)\b/g, 'ny')
+    .replace(/\b(florida)\b/g, 'fl')
     .replace(/\s+/g, ' ')
     .trim();
 }

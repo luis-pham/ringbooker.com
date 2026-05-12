@@ -154,6 +154,24 @@ test('normal website import treats common address suffix variants as the same ad
   assert.equal(suggestions.warnings.some((warning) => /address differs/i.test(warning)), false);
 });
 
+test('normal website import treats suite number and state-name variants as the same address', () => {
+  const preview = previewHtml('<script type="application/ld+json">{"@type":"LocalBusiness","name":"Suite Salon","telephone":"(214) 555-0100","address":{"streetAddress":"3699 McKinney Ave, Ste 412","addressLocality":"Dallas","addressRegion":"Texas","postalCode":"75204"}}</script><p>Phone: (214) 555-0100</p>', 'https://suite-salon.test');
+  const suggestions = buildSuggestions({
+    sourceUrl: 'https://suite-salon.test',
+    sourceType: 'normal_website',
+    previews: [preview],
+    googlePlaces: {
+      name: 'Suite Salon',
+      phone: '(214) 555-0100',
+      address: '3699 McKinney Ave #412, Dallas, TX 75204, USA',
+      website: 'https://suite-salon.test',
+      matchConfidence: 0.9,
+    },
+  });
+  assert.equal(suggestions.businessProfile.address.value, '3699 McKinney Ave, Ste 412, Dallas, Texas, 75204');
+  assert.equal(suggestions.warnings.some((warning) => /address differs/i.test(warning)), false);
+});
+
 test('keeps website data when normal website Google Places match is low confidence', () => {
   const preview = previewHtml('<script type="application/ld+json">{"@type":"Organization","name":"RAW Hair & Co."}</script><p>Address:223 N Bishop Ave, Dallas, TX 75208 Telephone:(469) 965-8500</p>', 'https://rawhairandco.com');
   const suggestions = buildSuggestions({

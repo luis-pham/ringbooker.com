@@ -236,6 +236,7 @@ const WEBSITE_IMPORT_EXTRACTION_ACTIVE = process.env.NEXT_PUBLIC_WEBSITE_IMPORT_
 
 type Step1View = 'quick' | 'manual_vertical' | 'manual_beauty_subtype';
 type ProfileEditField = 'name' | 'phone' | 'website' | 'type' | 'address' | 'hours' | 'timezone' | null;
+type ProfileReviewRequiredField = Exclude<ProfileEditField, null>;
 type Step2SheetKind = 'type' | 'timezone' | 'address' | 'hours';
 
 const MIXED_SERVICE_GROUPS = [
@@ -597,6 +598,11 @@ export function validateOnboardingProfileReview(input: { businessName: string })
   const errors: string[] = [];
   if (!input.businessName.trim()) errors.push('Business name is required.');
   return errors;
+}
+
+function friendlySaveError(error?: string | null): string {
+  if (error === 'invalid_payload') return 'Some details need a quick check before saving.';
+  return error || 'Unable to save. Please check your details and try again.';
 }
 
 export function applyVerticalLanguageSelection(vertical: string, languages: string[]): string[] {
@@ -1148,6 +1154,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [loading, setLoading] = useState(!initialData);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<string | null>(initialData && !initialData.ok ? initialData.error ?? 'Unable to load onboarding.' : null);
+  const [profileReviewMessage, setProfileReviewMessage] = useState<string | null>(null);
+  const [profileReviewInvalidFields, setProfileReviewInvalidFields] = useState<ProfileReviewRequiredField[]>([]);
   const [shopId, setShopId] = useState(initialShop?.id ?? '');
   const [currentStep, setCurrentStep] = useState<WizardStep>(normalizeStep(initialShop?.current_onboarding_step));
   const [businessName, setBusinessName] = useState(initialShop?.name ?? '');
@@ -1520,7 +1528,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
     setSaving(false);
     if (!response.ok || !body?.ok) {
-      setStatus(body?.error ?? 'Unable to save.');
+      const message = friendlySaveError(body?.error);
+      if (currentStep === 2) {
+        setProfileReviewMessage(message);
+        setStatus(null);
+      } else {
+        setStatus(message);
+      }
       return false;
     }
     return true;
@@ -1745,19 +1759,26 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }
 
   async function continueProfileReview() {
-    const errors = validateOnboardingProfileReview({ businessName });
-    if (errors.length > 0) {
-      setStatus(errors.join(' '));
+    const invalidFields: ProfileReviewRequiredField[] = [];
+    if (!businessName.trim()) invalidFields.push('name');
+    if (!vertical || verticalConfidence !== 'high') invalidFields.push('type');
+    if (vertical === 'beauty_clinic' && !beautySubtype) invalidFields.push('type');
+    if (websiteUrl.trim() && !isHttpWebsiteUrl(websiteUrl)) invalidFields.push('website');
+
+    if (invalidFields.length > 0) {
+      setProfileReviewInvalidFields([...new Set(invalidFields)]);
+      setProfileReviewMessage(
+        invalidFields.includes('name')
+          ? 'Please add your business name before continuing.'
+          : invalidFields.includes('type')
+            ? 'Please choose the business type before continuing.'
+            : 'Please enter a valid website link before continuing.',
+      );
+      setStatus(null);
       return;
     }
-    if (!vertical || verticalConfidence !== 'high') {
-      setStatus('Choose your business type so RingBooker can suggest the right services.');
-      return;
-    }
-    if (vertical === 'beauty_clinic' && !beautySubtype) {
-      setStatus('Choose your beauty specialty so we can tailor service suggestions.');
-      return;
-    }
+    setProfileReviewInvalidFields([]);
+    setProfileReviewMessage(null);
     trackOnboarding('onboarding_profile_reviewed');
     const addr = address.trim();
     const profilePatch: Record<string, unknown> = {
@@ -1787,8 +1808,15 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   async function continueServices() {
     const nextServices = cleanServices(services);
     trackOnboarding('onboarding_services_reviewed');
-    const patch: Record<string, unknown> = { current_onboarding_step: 4, services: nextServices };
-    if (serviceCatalogEnabled) patch.service_catalog = serviceCatalogFromRows(nextServices, selectedServiceGroups);
+    const patch: Record<string, unknown> = { current_onboarding_step: 4 };
+    if (serviceCatalogEnabled) {
+      patch.service_catalog = serviceCatalogFromRows(nextServices, selectedServiceGroups);
+    } else {
+      patch.services = nextServices.map((service) => ({
+        ...service,
+        duration_min: service.duration_min ?? 60,
+      }));
+    }
     if (websiteUrl.trim()) patch.website_url = normalizeWebsiteUrl(websiteUrl);
     const ok = await saveSettings(patch);
     if (ok) {
@@ -2114,7 +2142,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-service-import-badge{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:#ecfdf5;color:#15803d;padding:7px 13px;font-size:14px;font-weight:500;margin:18px 0 16px}
 .profile-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .profile-review-card{border:1px solid #d9deea;border-radius:12px;background:#fff;padding:14px 16px;min-height:78px}
+.profile-review-card.invalid{border-color:#f97316;box-shadow:0 0 0 1px rgba(249,115,22,.18)}
 .profile-review-card.wide{grid-column:1 / -1}
+.profile-review-alert{margin:8px 0 12px;color:#c2410c;font-size:14px;font-weight:500;line-height:1.45}
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#475569;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box}.profile-review-edit:hover{background:#f1f5f9;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-profile-source-footnote{font-size:11px;color:#9ca3af;margin:6px 0 0;line-height:1.35}
@@ -2508,6 +2538,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
     const markProfileFieldEdited = (field: Exclude<ProfileEditField, null>) => {
       setUserEditedProfileFields((fields) => (fields.includes(field) ? fields : [...fields, field]));
+      setProfileReviewInvalidFields((fields) => fields.filter((item) => item !== field));
+      setProfileReviewMessage(null);
     };
 
     const applyMobileInline = (field: 'name' | 'phone' | 'website') => {
@@ -2623,13 +2655,15 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     ) => {
       const hasUserValue = value.trim().length > 0;
       const showImportState = websiteImportAttempted && options.imported && (!userEditedProfileFields.includes(field) || !hasUserValue);
+      const isInvalid = profileReviewInvalidFields.includes(field);
+      const cardClassName = `profile-review-card ${options.wide ? 'wide' : ''}${isInvalid ? ' invalid' : ''}`;
 
       if (isStep2Mobile && (field === 'name' || field === 'phone' || field === 'website')) {
         const editing = mobileInlineEdit === field;
         return (
           <div
             ref={editing ? mobileInlineCardRef : undefined}
-            className={`profile-review-card ${options.wide ? 'wide' : ''}${editing ? ' onb-step2-field-card-editing' : ''}`}
+            className={`${cardClassName}${editing ? ' onb-step2-field-card-editing' : ''}`}
           >
             <div className="profile-review-top">
               <span className="profile-review-label">{label}</span>
@@ -2695,7 +2729,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       if (isStep2Mobile && (field === 'type' || field === 'timezone' || field === 'address' || field === 'hours')) {
         const sk = field as Step2SheetKind;
         return (
-          <div className={`profile-review-card ${options.wide ? 'wide' : ''}`}>
+          <div className={cardClassName}>
             <div className="profile-review-top">
               <span className="profile-review-label">{label}</span>
               <button type="button" className="profile-review-edit" aria-label={`Edit ${label}`} onClick={() => openMobileSheet(sk)}>
@@ -2726,7 +2760,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
       const editing = profileEditField === field;
       return (
-        <div className={`profile-review-card ${options.wide ? 'wide' : ''}`}>
+        <div className={cardClassName}>
           <div className="profile-review-top">
             <span className="profile-review-label">{label}</span>
             <button
@@ -2793,6 +2827,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         {importSource === 'manual' ? (
           <p className="onb-help" style={{ margin: '14px 0' }}>
             No website link saved — you can add one later from the dashboard.
+          </p>
+        ) : null}
+
+        {profileReviewMessage ? (
+          <p className="profile-review-alert" role="alert">
+            {profileReviewMessage}
           </p>
         ) : null}
 
@@ -3100,6 +3140,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                         setBeautySubtype('');
                       }
                       setVerticalConfidence('high');
+                      markProfileFieldEdited('type');
                       setStatus(null);
                     }}
                   >
@@ -3120,6 +3161,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                         setVertical('beauty_clinic');
                         setBeautySubtype(item.id);
                         setVerticalConfidence('high');
+                        markProfileFieldEdited('type');
                         setStatus(null);
                       }}
                     >
@@ -3872,7 +3914,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             {currentStep === 2 ? renderStep2() : null}
             {currentStep === 3 ? renderStep3() : null}
             {currentStep === 4 ? renderStep4() : null}
-            {status ? <div className="onb-status">{status}</div> : null}
+            {status && currentStep !== 2 ? <div className="onb-status">{status}</div> : null}
           </div>
         </section>
       </main>

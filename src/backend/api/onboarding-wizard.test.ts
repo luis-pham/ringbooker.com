@@ -165,15 +165,11 @@ test('imported service text renders escaped in React text nodes', () => {
 
 test('onboarding services UI keeps row content focused on name price duration and edit', () => {
   const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
-  assert.match(onboardingLive, /Review imported services before saving/);
-  assert.match(onboardingLive, /Some imported services may need review/);
-  assert.match(onboardingLive, /Check names, prices, and durations before saving/);
-  assert.match(onboardingLive, /You can remove anything that does not belong/);
-  assert.match(onboardingLive, /const showAlsoOffers = manualSetup \|\| importedServiceCount < 5 \|\| !hasNamedGroups/);
+  assert.match(onboardingLive, /const thinImport = !manualSetup && \(importedServiceCount < 5 \|\| !hasNamedGroups\)/);
+  assert.match(onboardingLive, /const fullImport = !manualSetup && importedServiceCount >= 5 && hasNamedGroups/);
   assert.match(onboardingLive, /Review your services/);
   assert.match(onboardingLive, /click any row to edit/);
   assert.match(onboardingLive, /tap any to edit/);
-  assert.match(onboardingLive, /Pick the categories you offer/);
   assert.match(onboardingLive, /onb-service-name/);
   assert.match(onboardingLive, /onb-service-price/);
   assert.match(onboardingLive, /onb-service-duration/);
@@ -189,6 +185,22 @@ test('onboarding services UI keeps row content focused on name price duration an
   assert.match(onboardingLive, /onb-service-edit-row/);
   assert.doesNotMatch(onboardingLive, /service-review-badge|service-review-source|service-evidence/);
   assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml|rawGoogle|rawLlm/);
+});
+
+test('profile review validation uses inline warning copy instead of raw invalid payload', () => {
+  const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
+  assert.match(onboardingLive, /profile-review-alert/);
+  assert.match(onboardingLive, /profile-review-card\.invalid/);
+  assert.match(onboardingLive, /Please add your business name before continuing/);
+  assert.match(onboardingLive, /Some details need a quick check before saving/);
+  assert.match(onboardingLive, /status && currentStep !== 2/);
+});
+
+test('services review sends service catalog without legacy services when catalog is enabled', () => {
+  const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
+  assert.match(onboardingLive, /if \(serviceCatalogEnabled\) \{\s*patch\.service_catalog = serviceCatalogFromRows\(nextServices, selectedServiceGroups\);/s);
+  assert.match(onboardingLive, /} else \{\s*patch\.services = nextServices\.map/s);
+  assert.doesNotMatch(onboardingLive, /current_onboarding_step: 4, services: nextServices/);
 });
 
 test('onboarding import recommended action maps to review copy', () => {
@@ -232,7 +244,7 @@ test('onboarding copy keeps website import review-only and isolates legacy read-
   assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml/);
   assert.doesNotMatch(onboardingLive, /I&apos;ll enter details manually/);
   assert.doesNotMatch(onboardingLive, /refine prices, aliases, booking notes, and capture-request rules later in Business Knowledge/);
-  assert.match(onboardingLive, /staff, policies, FAQs, promotions, or booking setup hints you can review later in Business Knowledge/);
+  assert.match(onboardingLive, /Staff, policies, and FAQs are ready to review in Business Knowledge/);
   assert.ok(onboardingLive.includes('/api/backend/user/onboarding/import-website'));
   assert.equal(onboardingLive.includes('/api/backend/user/read-website'), false);
   assert.match(app, /Legacy mutating website import endpoint/);
