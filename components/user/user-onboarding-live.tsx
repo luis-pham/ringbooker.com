@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { formatPhoneForDisplay, normalizePhoneForStorage } from '@/lib/phone-number';
 import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
 import { UserLayout } from '@/components/user/user-layout';
+import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-sheet';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 
 type Vertical = 'nail_salon' | 'hair_salon' | 'day_spa' | 'med_spa' | 'beauty_clinic';
@@ -292,6 +293,29 @@ const MIXED_SERVICE_GROUP_ICONS: Record<(typeof MIXED_SERVICE_GROUPS)[number], s
   Other: '⋯',
 };
 
+/** Step 3 chip pre-selection from Step 1 business type (`beauty_umbrella` = mixed → none). */
+const STEP3_VERTICAL_PRESELECT_CHIPS: Partial<Record<Vertical | 'beauty_umbrella', readonly string[]>> = {
+  hair_salon: ['Haircuts', 'Hair Color'],
+  nail_salon: ['Manicure', 'Pedicure'],
+  day_spa: ['Massage', 'Facials'],
+  med_spa: ['Injectables', 'Skin Treatments'],
+  beauty_clinic: ['Facials', 'Brows & Lashes'],
+  beauty_umbrella: [],
+};
+
+function resolveStep3PreselctChips(vertical: Vertical | '', step1Pick: Vertical | 'beauty_umbrella' | ''): string[] {
+  if (step1Pick === 'beauty_umbrella') return [];
+  if (step1Pick && STEP3_VERTICAL_PRESELECT_CHIPS[step1Pick]) {
+    const row = STEP3_VERTICAL_PRESELECT_CHIPS[step1Pick];
+    return row ? [...row] : [];
+  }
+  if (vertical && STEP3_VERTICAL_PRESELECT_CHIPS[vertical]) {
+    const row = STEP3_VERTICAL_PRESELECT_CHIPS[vertical];
+    return row ? [...row] : [];
+  }
+  return [];
+}
+
 const MANUAL_SERVICE_PRESETS: Record<string, ServiceItem[]> = {
   Haircuts: [
     { name: "Women's haircut", price: 55, duration_min: 45, duration_text: '45min', group: 'Haircuts' },
@@ -329,6 +353,14 @@ const MANUAL_SERVICE_PRESETS: Record<string, ServiceItem[]> = {
     { name: 'Lash fill', price: 65, duration_min: 60, duration_text: '60min', group: 'Brows & Lashes' },
   ],
 };
+
+function manualPresetServicesForGroupName(name: string): ServiceItem[] | undefined {
+  const preset = MANUAL_SERVICE_PRESETS[name];
+  if (preset) return preset;
+  const lower = name.trim().toLowerCase();
+  const key = Object.keys(MANUAL_SERVICE_PRESETS).find((k) => k.toLowerCase() === lower);
+  return key ? MANUAL_SERVICE_PRESETS[key] : undefined;
+}
 
 const VERTICAL_LABELS: Record<Vertical, string> = {
   nail_salon: 'Nail Salon',
@@ -1082,6 +1114,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     [...new Set(initialServices.map((service) => service.group?.trim()).filter((group): group is string => Boolean(group)))],
   );
   const [collapsedServiceGroups, setCollapsedServiceGroups] = useState<string[]>([]);
+  const [pendingScrollServiceGroup, setPendingScrollServiceGroup] = useState<string | null>(null);
   const [serviceEditor, setServiceEditor] = useState<{
     index: number | null;
     group: string;
@@ -1146,6 +1179,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const serviceNameInputRef = useRef<HTMLInputElement | null>(null);
   const [step4Phase, setStep4Phase] = useState<'try' | 'done'>('try');
   const prevStepRef = useRef<WizardStep>(1);
+  /** Captures Step 1 manual primary vertical before finalize clears `manualPrimaryPick` (needed for Step 3 chip pre-select; `beauty_umbrella` = mixed). */
+  const step1ManualPrimaryRef = useRef<Vertical | 'beauty_umbrella' | ''>('');
+  const step3ChipPresetsAppliedRef = useRef(false);
+  const [addGroupSheetConfig, setAddGroupSheetConfig] = useState<{ title: string; placeholder: string } | null>(null);
 
   useEffect(() => {
     const enteredProfile = currentStep === 2 && prevStepRef.current !== 2;
@@ -1233,7 +1270,60 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     } else {
       setCollapsedServiceGroups(isMobile ? groups : groups.slice(1));
     }
-  }, [services, selectedServiceGroups.join('|')]);
+  }, [services]);
+
+  useEffect(() => {
+    if (!pendingScrollServiceGroup || typeof document === 'undefined') return;
+    const name = pendingScrollServiceGroup;
+    setPendingScrollServiceGroup(null);
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const escaped = typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(name) : name.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        document.querySelector(`[data-service-group="${escaped}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [pendingScrollServiceGroup]);
+
+  useEffect(() => {
+    if (currentStep !== 3) {
+      step3ChipPresetsAppliedRef.current = false;
+      return;
+    }
+    if (step3ChipPresetsAppliedRef.current) return;
+    const hasContext = Boolean(vertical || step1ManualPrimaryRef.current);
+    if (!hasContext) return;
+    step3ChipPresetsAppliedRef.current = true;
+    const chips = resolveStep3PreselctChips(vertical, step1ManualPrimaryRef.current);
+    setSelectedServiceGroups((prev) => {
+      let next = prev.filter((g) => g !== 'Other');
+      const setLower = new Set(next.map((g) => g.toLowerCase()));
+      for (const c of chips) {
+        if (!setLower.has(c.toLowerCase())) {
+          next = [...next, c];
+          setLower.add(c.toLowerCase());
+        }
+      }
+      return next;
+    });
+    if (chips.length === 0) return;
+    setServices((current) => {
+      let next = current.filter((service) => service.name.trim().length > 0);
+      const existing = new Set(next.map((service) => `${service.group || 'General Services'}:${service.name}`.toLowerCase()));
+      for (const group of chips) {
+        const preset = MANUAL_SERVICE_PRESETS[group];
+        if (!preset) continue;
+        for (const service of preset) {
+          const key = `${service.group || 'General Services'}:${service.name}`.toLowerCase();
+          if (!existing.has(key)) {
+            next = [...next, service];
+            existing.add(key);
+          }
+        }
+      }
+      return next;
+    });
+  }, [currentStep, vertical]);
 
   useEffect(() => {
     if (groupRenameDesktop) {
@@ -1574,10 +1664,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         setStatus('Choose the option that best describes your business.');
         return;
       }
+      step1ManualPrimaryRef.current = 'beauty_umbrella';
       await finalizeManualStep1AndGoProfile('beauty_clinic', beautySubtype);
       setStatus(null);
       return;
     }
+    step1ManualPrimaryRef.current = manualPrimaryPick;
     await finalizeManualStep1AndGoProfile(manualPrimaryPick, '');
   }
 
@@ -1586,6 +1678,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       setStatus('Choose the option that best describes your business.');
       return;
     }
+    step1ManualPrimaryRef.current = 'beauty_umbrella';
     await finalizeManualStep1AndGoProfile('beauty_clinic', beautySubtype);
   }
 
@@ -1677,11 +1770,51 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setStep4Phase('done');
   }
 
+  function handleAddGroup(name: string) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSelectedServiceGroups((prev) => {
+      if (prev.some((g) => g.toLowerCase() === trimmed.toLowerCase())) return prev;
+      return [...prev, trimmed];
+    });
+    setCollapsedServiceGroups((prev) => prev.filter((g) => g !== trimmed));
+    setPendingScrollServiceGroup(trimmed);
+    setAddGroupSheetConfig(null);
+    const preset = manualPresetServicesForGroupName(trimmed);
+    if (!preset) return;
+    setServices((current) => {
+      const existing = new Set(current.map((service) => `${service.group || 'General Services'}:${service.name}`.toLowerCase()));
+      const additions = preset.filter((service) => !existing.has(`${service.group || 'General Services'}:${service.name}`.toLowerCase()));
+      if (additions.length === 0) return current;
+      return [...current.filter((service) => service.name.trim().length > 0), ...additions];
+    });
+  }
+
   function toggleServiceGroup(group: string) {
+    const manualPath = importSource === 'manual' || !websiteUrl.trim();
     const preset = MANUAL_SERVICE_PRESETS[group];
-    setSelectedServiceGroups((current) =>
-      current.includes(group) ? current.filter((item) => item !== group) : [...current, group],
-    );
+    setSelectedServiceGroups((current) => {
+      const wasOn = current.includes(group);
+      const next = wasOn ? current.filter((item) => item !== group) : [...current, group];
+      if (!wasOn && !preset) {
+        queueMicrotask(() => {
+          if (group === 'Other' && !manualPath) {
+            const names = [
+              ...new Set(
+                [
+                  ...next,
+                  ...services.map((service) => service.group || 'General Services'),
+                  services.length === 0 ? 'General Services' : '',
+                ].filter(Boolean),
+              ),
+            ];
+            setCollapsedServiceGroups(names.filter((g) => g !== 'Other'));
+          }
+          setPendingScrollServiceGroup(group);
+        });
+      }
+      return next;
+    });
     if (!preset) return;
     setServices((current) => {
       const existing = new Set(current.map((service) => `${service.group || 'General Services'}:${service.name}`.toLowerCase()));
@@ -1980,7 +2113,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 @media(min-width:641px){.onb-group-title-mobile{display:none!important}}
 .onb-group-rename-pencil{border:0;background:transparent;padding:0 2px;margin-left:5px;color:#9ca3af;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
 .onb-group-rename-pencil svg{display:block;flex-shrink:0}
-.onb-group-add-header-desktop{margin-left:auto;display:none;align-items:center;justify-content:center;padding:6px 12px;font-size:13px;font-weight:500;color:#7c3aed;background:transparent;border:1px dashed #e5e7eb;border-radius:8px;cursor:pointer;font:inherit;white-space:nowrap}
+.onb-group-add-header-desktop{margin-left:auto;display:none;align-items:center;justify-content:center;padding:6px 12px;font-size:14px;font-weight:500;color:#7c3aed;background:transparent;border:1px dashed #e5e7eb;border-radius:8px;cursor:pointer;font:inherit;white-space:nowrap}
 @media(min-width:641px){.onb-group-add-header-desktop{display:inline-flex}}
 .service-group-collapse-btn{border:0;background:transparent;padding:4px 6px;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;flex-shrink:0;margin-left:4px}
 .onb-step3-section-label{display:block;margin:16px 0 6px;color:#9ca3af;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
@@ -2006,10 +2139,26 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .svc-row{display:none}.svc-body{flex:1;min-width:0}.svc-name{font-size:13px;font-weight:400;color:#111;text-transform:capitalize;line-height:1.35;margin-bottom:3px;overflow-wrap:anywhere}.svc-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af;flex-wrap:nowrap;min-width:0}.svc-price{color:#374151;font-weight:500;white-space:nowrap}.svc-price.zero{color:#dc2626}.svc-duration{white-space:nowrap}.svc-duration.missing{color:#f59e0b}.svc-remove{margin-left:auto;font-size:12px;color:#9ca3af;background:none;border:none;padding:0;cursor:pointer;flex-shrink:0}.svc-remove:active{color:#dc2626}.svc-arrow{color:#d1d5db;font-size:16px;flex-shrink:0;align-self:flex-start;margin-top:1px}
 .onb-service-edit-row{display:grid;grid-template-columns:minmax(0,1fr) 90px 90px 28px 28px;gap:8px;align-items:center;padding:8px 0}.onb-service-edit-row input,.onb-service-sheet-fields input{min-height:34px;border:1px solid #7c3aed;border-radius:8px;padding:6px 10px;font-size:16px;font-family:inherit;color:#111827;box-sizing:border-box;background:#fff;width:100%}.onb-service-price-input{position:relative}.onb-service-price-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px}.onb-service-price-input input{padding-left:24px!important}
 .onb-service-save-dot,.onb-service-cancel-dot{width:28px;height:28px;border-radius:999px;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-weight:600}.onb-service-save-dot{background:#111;color:#fff}.onb-service-cancel-dot{background:#f3f4f6;color:#6b7280}
-.onb-group-add-service{margin-top:12px;width:100%;min-height:40px;border:1px dashed #e5e7eb;border-radius:8px;background:transparent;color:#7c3aed;font-size:13px;font-weight:500;cursor:pointer;text-align:center}.onb-group-add-service:hover{border-color:#c4b5fd;background:#faf5ff}.onb-group-add-service-mobile{display:none}
+.onb-group-add-service{margin-top:12px;width:100%;min-height:40px;border:1px dashed #e5e7eb;border-radius:8px;background:transparent;color:#7c3aed;font-size:14px;font-weight:500;cursor:pointer;text-align:center}.onb-group-add-service:hover{border-color:#c4b5fd;background:#faf5ff}.onb-group-add-service-mobile{display:none}
 .service-remove-btn{min-height:32px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}.service-remove-btn:hover{border-color:#fecaca;background:#fff1f2;color:#be123c}.onb-service-remove-compact{position:absolute;right:0;bottom:4px;opacity:0;pointer-events:none}.onb-service-row-wrap:hover .onb-service-remove-compact{opacity:1;pointer-events:auto}
 .service-group-select-label{display:inline-flex;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:500}.service-group-select-label select{width:auto;min-width:150px;min-height:34px;padding:6px 10px;font-size:16px}
-.service-empty{border:1px dashed #cbd5e1;border-radius:10px;padding:12px;color:#64748b;font-size:13px;margin-bottom:10px}
+.service-empty{font-size:13px;color:#9ca3af;padding:14px 16px;margin-bottom:10px;border:none;background:transparent}
+.onb-sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-end;font-family:inherit}
+.onb-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;box-sizing:border-box;font-family:'Inter',sans-serif}
+.onb-sheet-handle{width:36px;height:4px;background:#e5e7eb;border-radius:2px;margin:0 auto 20px}
+.onb-sheet-title{font-size:15px;font-weight:600;color:#111;margin-bottom:16px;font-family:'Inter',sans-serif}
+.onb-sheet-field{margin-bottom:0}
+.onb-sheet-label{font-size:11px;font-weight:500;color:#6b7280;margin-bottom:5px;font-family:'Inter',sans-serif}
+.onb-sheet-input{width:100%;font-size:16px;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;font-family:'Inter',sans-serif;color:#111;outline:none;box-sizing:border-box}
+.onb-sheet-input:focus{border-color:#7c3aed}
+.onb-sheet-actions{display:flex;gap:10px;margin-top:16px}
+.onb-sheet-cancel{flex:1;padding:13px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;color:#6b7280;background:#fff;cursor:pointer;font-family:'Inter',sans-serif}
+.onb-sheet-save{flex:2;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:500;color:#fff;background:#111;cursor:pointer;font-family:'Inter',sans-serif}
+.onb-sheet-save:disabled{background:#d1d5db;cursor:not-allowed}
+@media(min-width:768px){.onb-sheet-overlay{align-items:center;justify-content:center}.onb-sheet{border-radius:14px;max-width:420px;padding:24px}.onb-sheet-handle{display:none}}
+.onb-add-service-group-btn{width:100%;padding:14px;margin-top:8px;border:1.5px dashed #e5e7eb;border-radius:12px;background:transparent;font-size:14px;font-weight:500;color:#7c3aed;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Inter',sans-serif;box-sizing:border-box}
+.onb-add-service-group-btn:active{background:#f5f3ff;border-color:#7c3aed}
+@media(min-width:768px){.onb-add-service-group-btn{padding:10px;margin-top:8px;border-radius:10px;font-size:13px;transition:all .15s}.onb-add-service-group-btn:hover{background:#f5f3ff;border-color:#7c3aed}}
 .onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:0;border-radius:8px;background:#000;color:#fff;padding:10px 18px;font-size:15px;font-weight:600;box-shadow:0 8px 18px rgba(0,0,0,.18);cursor:pointer;text-decoration:none;transition:background .15s ease,transform .15s ease,box-shadow .15s ease}.onb-btn-primary:hover:not(:disabled){background:#1f1f1f;transform:translateY(-1px);box-shadow:0 12px 24px rgba(0,0,0,.24)}
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
@@ -2214,22 +2363,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     </div>
                   </div>
                 ) : null}
-                <div className="onb-step1-section">
-                  <span className="onb-section-label">Also offer any of these?</span>
-                  <div className="onb-step1-also-chips">
-                    {MIXED_SERVICE_GROUPS.map((group) => (
-                      <button
-                        key={group}
-                        type="button"
-                        className={`preset-chip mixed-chip ${selectedServiceGroups.includes(group) ? 'active' : ''}`}
-                        onClick={() => toggleServiceGroup(group)}
-                      >
-                        <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[group]}</span>
-                        {group}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <div className="onb-step1-section">
                   <label className="onb-section-label" htmlFor="onb-step1-phone">
                     Phone number<span className="onb-step1-optional-badge">optional</span>
@@ -3211,8 +3344,15 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       const groupNeedsReview = items.some(({ service }) => serviceNeedsAttention(service));
       const editingDesktopName = groupRenameDesktop === group;
 
+      const openDesktopGroupRename = () => {
+        setGroupRenameMobile(null);
+        setGroupRenameMobileDraft('');
+        setGroupRenameDesktop(group);
+        setGroupRenameDraft(titleCaseServiceLabel(group));
+      };
+
       return (
-        <div className="service-group-card" key={group}>
+        <div className="service-group-card" key={group} data-service-group={group}>
           <div className="service-group-head">
             <span className="service-group-icon" style={{ background: groupVisual.bg }} aria-hidden>{groupVisual.icon}</span>
             <span className="service-group-main">
@@ -3242,18 +3382,17 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     </span>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    className="service-group-title--btn"
-                    onClick={() => {
-                      setGroupRenameMobile(null);
-                      setGroupRenameMobileDraft('');
-                      setGroupRenameDesktop(group);
-                      setGroupRenameDraft(titleCaseServiceLabel(group));
-                    }}
-                  >
-                    {titleCaseServiceLabel(group)}
-                  </button>
+                  <>
+                    <button type="button" className="service-group-title--btn" onClick={openDesktopGroupRename}>
+                      {titleCaseServiceLabel(group)}
+                    </button>
+                    <button type="button" className="onb-group-rename-pencil onb-group-rename-pencil--desktop" aria-label="Rename group" onClick={openDesktopGroupRename}>
+                      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </button>
+                  </>
                 )}
               </span>
               <span className="onb-group-title-mobile service-group-title-row">
@@ -3294,7 +3433,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           {!collapsed ? (
             <div className="service-group-body">
               {items.length === 0 ? (
-                <div className="service-empty">No services in this group yet. Add one callers usually ask about.</div>
+                <div className="service-empty">No services yet.</div>
               ) : null}
               {items.map(({ service, index }) => {
                 const editingInline = serviceEditor?.mode === 'inline' && serviceEditor.index === index;
@@ -3401,17 +3540,28 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               <p className="onb-step3-section-hint">Tap to add — we&apos;ll create example services with prices to fill in.</p>
             ) : null}
             <div className="preset-row" style={{ marginTop: thinImport ? 0 : 10 }}>
-              {MIXED_SERVICE_GROUPS.map((chipGroup) => (
-                <button
-                  key={chipGroup}
-                  type="button"
-                  className={`preset-chip mixed-chip ${selectedServiceGroups.includes(chipGroup) ? 'active' : ''}`}
-                  onClick={() => toggleServiceGroup(chipGroup)}
-                >
-                  <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[chipGroup]}</span>
-                  {chipGroup}
-                </button>
-              ))}
+              {MIXED_SERVICE_GROUPS.map((chipGroup) => {
+                const isManualOther = manualSetup && chipGroup === 'Other';
+                const isActive = !isManualOther && selectedServiceGroups.includes(chipGroup);
+                return (
+                  <button
+                    key={chipGroup}
+                    type="button"
+                    className={`preset-chip mixed-chip ${isActive ? 'active' : ''}`}
+                    onClick={() =>
+                      isManualOther
+                        ? setAddGroupSheetConfig({
+                            title: 'Name your category',
+                            placeholder: 'e.g. Waxing, Lashes, Threading...',
+                          })
+                        : toggleServiceGroup(chipGroup)
+                    }
+                  >
+                    <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[chipGroup]}</span>
+                    {chipGroup}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}
@@ -3436,6 +3586,27 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             {groupedServices.map(({ group, items }) => renderGroupCard(group, items))}
           </div>
         )}
+        {thinImport || fullImport ? (
+          <button
+            type="button"
+            className="onb-add-service-group-btn"
+            onClick={() =>
+              setAddGroupSheetConfig({
+                title: 'New service group',
+                placeholder: 'e.g. Waxing, Facials, Extensions...',
+              })
+            }
+          >
+            + Add service group
+          </button>
+        ) : null}
+        <OnboardingAddGroupSheet
+          isOpen={addGroupSheetConfig !== null}
+          onClose={() => setAddGroupSheetConfig(null)}
+          onConfirm={handleAddGroup}
+          title={addGroupSheetConfig?.title ?? ''}
+          placeholder={addGroupSheetConfig?.placeholder ?? ''}
+        />
         {serviceEditor?.mode === 'sheet' ? (
           <div className="onb-service-sheet-overlay" role="presentation" onClick={() => setServiceEditor(null)}>
             <div className="onb-service-sheet" role="dialog" aria-modal="true" aria-label="Edit service" onClick={(event) => event.stopPropagation()}>
