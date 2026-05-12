@@ -18,6 +18,8 @@ import {
   isHttpWebsiteUrl,
   IMPORT_PROGRESS_STEPS,
   secondaryImportSuggestionCount,
+  serviceReviewBadgeState,
+  serviceSourceLabel,
 } from '@/components/user/user-onboarding-live';
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryAuthUsersRepository } from '@/src/backend/adapters/memory/auth-users-repository';
@@ -53,10 +55,17 @@ function createOnboardingTestApp() {
   return { app, shopsRepository };
 }
 
+let onboardingLoginCounter = 0;
+
 async function loginUser(app: ReturnType<typeof createBackendApp>) {
+  onboardingLoginCounter += 1;
   const response = await app.request('/auth/user/login', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:3000' },
+    headers: {
+      'content-type': 'application/json',
+      origin: 'http://localhost:3000',
+      'x-forwarded-for': `127.10.0.${onboardingLoginCounter}`,
+    },
     body: JSON.stringify({
       email: 'user@ringbooker.local',
       password: 'change_me_user_password',
@@ -109,6 +118,29 @@ test('onboarding import review badge state maps rendered labels and sources', ()
   assert.deepEqual(importReviewBadgeState({ value: 'Balayage', confidence: 0.91, source: 'AI' }), { label: 'AI verified', source: 'Website analysis' });
 });
 
+test('onboarding imported service metadata maps to review badges and source labels', () => {
+  assert.deepEqual(serviceReviewBadgeState({ needsReview: true, confidence: 0.92, source: 'Website', sourceHint: 'repeated_card' }), {
+    label: 'Needs review',
+    source: 'Website',
+  });
+  assert.deepEqual(serviceReviewBadgeState({ needsReview: false, confidence: 0.94, source: 'Website', sourceHint: 'jsonld' }), {
+    label: 'AI verified',
+    source: 'Website',
+  });
+  assert.deepEqual(serviceReviewBadgeState({ needsReview: false, confidence: 0.66, source: 'AI', sourceHint: 'llm_block_normalizer' }), {
+    label: 'Needs review',
+    source: 'Website analysis',
+  });
+  assert.deepEqual(serviceReviewBadgeState({ needsReview: false, confidence: 0.8, source: 'text_fallback', sourceHint: 'text_fallback' }), {
+    label: 'Review',
+    source: 'Imported',
+  });
+  assert.equal(serviceReviewBadgeState({}), null);
+  assert.equal(serviceSourceLabel('block_detector', 'repeated_card'), 'Website');
+  assert.equal(serviceSourceLabel('llm', 'llm_block_normalizer'), 'Website analysis');
+  assert.equal(serviceSourceLabel(null, null), 'Imported');
+});
+
 test('imported website text renders escaped in React text nodes', () => {
   // Closest non-browser coverage for the onboarding review path: imported warnings/services are rendered as JSX text.
   const malicious = '<script>window.__xss = true</script><img src=x onerror=alert(1)>';
@@ -120,6 +152,35 @@ test('imported website text renders escaped in React text nodes', () => {
   assert.equal(html.includes('<img'), false);
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /&lt;img/);
+});
+
+test('imported service evidence snippet renders escaped in React text nodes', () => {
+  const maliciousEvidence = 'Evidence: <script>alert("x")</script><b>Balayage</b>';
+  const html = renderToStaticMarkup(React.createElement('span', { className: 'service-evidence' }, maliciousEvidence));
+  assert.equal(html.includes('<script>'), false);
+  assert.equal(html.includes('<b>Balayage</b>'), false);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /&lt;b&gt;Balayage&lt;\/b&gt;/);
+});
+
+test('onboarding services UI exposes review metadata, removal, and conservative copy', () => {
+  const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
+  assert.match(onboardingLive, /Review imported services before saving/);
+  assert.match(onboardingLive, /Some imported services may need review/);
+  assert.match(onboardingLive, /Check names, prices, and durations before saving/);
+  assert.match(onboardingLive, /You can remove anything that does not belong/);
+  assert.match(onboardingLive, /const showAlsoOffers = manualSetup \|\| importedServiceCount < 5 \|\| !hasNamedGroups/);
+  assert.match(onboardingLive, /Review your services/);
+  assert.match(onboardingLive, /click any row to edit/);
+  assert.match(onboardingLive, /tap any to edit/);
+  assert.match(onboardingLive, /Pick the categories you offer/);
+  assert.match(onboardingLive, /serviceReviewBadgeState/);
+  assert.match(onboardingLive, /service-evidence/);
+  assert.match(onboardingLive, /service-remove-btn/);
+  assert.match(onboardingLive, /removeServiceRow/);
+  assert.match(onboardingLive, /onb-service-sheet-overlay/);
+  assert.match(onboardingLive, /onb-service-edit-row/);
+  assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml|rawGoogle|rawLlm/);
 });
 
 test('onboarding import recommended action maps to review copy', () => {
@@ -346,4 +407,43 @@ test('Onboarding can complete without services after reaching test step', async 
   const body = (await status.json()) as { ok: boolean; onboardingRequired: boolean };
   assert.equal(body.ok, true);
   assert.equal(body.onboardingRequired, false);
+});
+
+test('Confirmed services review saves user-edited imported service values', async () => {
+  const { app, shopsRepository } = createOnboardingTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      services: [
+        {
+          name: 'Edited Balayage',
+          duration_min: 75,
+          duration_text: '75 min',
+          price: 180,
+          group: 'Hair Color',
+          confidence: 0.42,
+          needsReview: true,
+          evidenceSnippet: '<script>raw</script>',
+        },
+      ],
+      current_onboarding_step: 4,
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.services[0]?.name, 'Edited Balayage');
+  assert.equal(shop?.services[0]?.duration_min, 75);
+  assert.equal(shop?.services[0]?.price, 180);
+  const savedService = shop?.services[0] as unknown as Record<string, unknown>;
+  assert.equal(savedService.confidence, undefined);
+  assert.equal(savedService.evidenceSnippet, undefined);
 });

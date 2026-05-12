@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { importWebsiteForOnboarding } from './importer';
-import { buildLlmImportPayload } from './llm';
+import { buildLlmImportPayload, parseLlmImportJson } from './llm';
 import { previewHtml } from './html';
 
 function response(body: string, url: string, type = 'text/html') {
@@ -59,6 +59,52 @@ test('normal website import probes common services path when homepage does not l
   assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Color' && service.name === 'Color Retouch'));
   assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Hair Cuts' && service.name === 'Women'));
   assert.ok(result.diagnostics.serviceHubPagesFound.some((url) => url.includes('/services')));
+});
+
+test('normal website import prefers appointment services page over ecommerce shop products', async () => {
+  const html: Record<string, string> = {
+    'https://ritual.test/': '<html><head><title>Ritual Hair Co.</title></head><body><h1>Ritual Hair Co.</h1><a href="/services">Services</a><a href="/shop">Shop</a><a href="/contact-1">Contact</a></body></html>',
+    'https://ritual.test/robots.txt': '',
+    'https://ritual.test/services': `<html><head><title>Services — Ritual Hair Co.</title></head><body><h2>Services</h2><h2>Haircuts</h2><p>► Short to Medium Length Haircut ► Medium to Long Haircut ► Curly Haircut ► Men's Haircut</p><h2>Color</h2><p>► Fair Color Consultation ► Root Color ► Full Highlight ► Full Balayage</p><h2>Styling</h2><p>► Blow Out Short To Medium Length ► Up-do</p><h2>Smoothing/Straightening Treatments</h2><p>► Organic Keratin Smoothing Treatment</p><h2>Hair Extensions</h2><p>► Hair Extension Consultation ► Tape Extensions Installation</p><h2>Signature Ritual Deep Conditioning Treatments</h2><p>► Signature Ritual Deep Conditioning Treatment</p></body></html>`,
+    'https://ritual.test/shop': '<html><head><title>Shop — Ritual Hair Co.</title></head><body><h2>Shop</h2><div><h3>Instant Bonding Glow</h3><p>$48.00</p><button>Add to cart</button></div><div><h3>Silkening Shampoo</h3><p>$18.00</p><button>Add to cart</button></div><div><h3>Rich Conditioner</h3><p>$15.00</p><button>Add to cart</button></div><div><h3>Intense Treatment</h3><p>$18.00</p><button>Add to cart</button></div></body></html>',
+    'https://ritual.test/contact-1': '<h1>Contact</h1><p>Call 214.814.1938</p>',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://ritual.test' }, {
+    lookup,
+    fetcher: async (url) => response(html[url] ?? '<h1>Not found</h1>', url),
+  });
+  const serviceNames = result.suggestions.serviceCatalog.services.map((service) => service.name);
+  assert.ok(result.diagnostics.serviceHubPagesFound.some((url) => url.endsWith('/services')));
+  assert.equal(result.diagnostics.serviceHubPagesFound.some((url) => url.endsWith('/shop')), false);
+  assert.ok(result.suggestions.serviceCatalog.categories.some((category) => category.name === 'Haircuts'));
+  assert.ok(result.suggestions.serviceCatalog.categories.some((category) => category.name === 'Color'));
+  assert.ok(result.suggestions.serviceCatalog.categories.some((category) => category.name === 'Hair Extensions'));
+  assert.ok(serviceNames.includes('Short to Medium Length Haircut'));
+  assert.ok(serviceNames.includes('Root Color'));
+  assert.ok(serviceNames.includes('Signature Ritual Deep Conditioning Treatment'));
+  assert.equal(serviceNames.some((name) => /Instant Bonding Glow|Silkening Shampoo|Rich Conditioner|Intense Treatment/i.test(name)), false);
+  const haircut = result.suggestions.serviceCatalog.services.find((service) => service.name === 'Short to Medium Length Haircut');
+  assert.equal(haircut?.priceAmount, null);
+  assert.equal(haircut?.durationMinutes, null);
+  assert.equal(haircut?.needsReview, true);
+});
+
+test('service menu page outranks blog posts that only mention service in the URL', async () => {
+  const html: Record<string, string> = {
+    'https://indigo.test/': '<html><head><title>Indigo Child</title></head><body><h1>Indigo Child</h1><h2>Your cart is empty</h2><a href="/pages/service-menu">Service Menu</a><a href="/blogs/news/5-tips-on-how-to-prep-for-your-lightening-service">Prep for your lightening service</a></body></html>',
+    'https://indigo.test/robots.txt': 'Sitemap: https://indigo.test/sitemap.xml',
+    'https://indigo.test/sitemap.xml': '<urlset><url><loc>https://indigo.test/blogs/news/5-tips-on-how-to-prep-for-your-lightening-service</loc></url><url><loc>https://indigo.test/pages/service-menu</loc></url></urlset>',
+    'https://indigo.test/pages/service-menu': '<html><head><title>Service Menu - Indigo Child</title></head><body><h2>Your cart is empty</h2><h2>Service Menu</h2><section><h2>Lightening + Color</h2><div class="multicolumn-card"><div><h3>Custom Lightening</h3><p>Price: $304 - $354+</p><p>Description: Highlighting service.</p><a>Book A Custom Lightening</a></div></div><div class="multicolumn-card"><div><h3>Tint Retouch</h3><p>Price $92 - $131+</p><p>Description: Root color maintenance.</p><a>Book A Tint Retouch</a></div></div></section></body></html>',
+    'https://indigo.test/blogs/news/5-tips-on-how-to-prep-for-your-lightening-service': '<h1>5 tips on how to prep for your lightening service</h1><p>This article explains how to prepare for your appointment.</p>',
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://indigo.test' }, {
+    lookup,
+    fetcher: async (url) => response(html[url] ?? '<h1>Not found</h1>', url, url.endsWith('.xml') ? 'application/xml' : 'text/html'),
+  });
+  assert.ok(result.diagnostics.serviceHubPagesFound.some((url) => url.endsWith('/pages/service-menu')));
+  assert.equal(result.diagnostics.serviceHubPagesFound.some((url) => url.includes('/blogs/news/')), false);
+  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.name === 'Custom Lightening' && service.priceAmount === 304));
+  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.name === 'Tint Retouch' && service.priceType === 'from'));
 });
 
 test('normal website import from a services URL still reads root homepage footer hours', async () => {
@@ -393,6 +439,23 @@ test('LLM payload includes structured service blocks before flattened text', () 
   assert.equal(payload.pages[0]?.serviceBlocks?.[0]?.groupHeading, 'Blowout');
   assert.equal(payload.pages[0]?.serviceBlocks?.[0]?.serviceName, 'Essential Blowout');
   assert.match(payload.schemaHint, /Prefer structured serviceBlocks/i);
+  assert.match(payload.schemaHint, /reject non-services/i);
+});
+
+test('LLM service normalizer drops rejected and invalid service blocks', () => {
+  const parsed = parseLlmImportJson(JSON.stringify({
+    serviceCatalog: {
+      confidence: 0.8,
+      categories: [{ name: 'Services', confidence: 0.8, groupKind: 'primary' }],
+      services: [
+        { categoryName: 'Services', name: 'Balayage', priceAmount: 180, priceCurrency: 'USD', priceType: 'from', durationMinutes: null, durationText: null, aliases: [], bookable: true, confidence: 0.82, sourceEvidence: ['Balayage Starting at $180'] },
+        { categoryName: 'Services', name: '30 min+', priceAmount: null, priceCurrency: 'USD', priceType: 'varies', durationMinutes: 30, durationText: '30 min+', aliases: [], bookable: true, confidence: 0.8, sourceEvidence: ['30 min+'] },
+        { categoryName: 'FAQ', name: 'Do you take walk-ins?', priceAmount: null, priceCurrency: 'USD', priceType: 'varies', aliases: [], bookable: true, confidence: 0.8, rejectReason: 'FAQ block', sourceEvidence: ['Do you take walk-ins?'] },
+      ],
+    },
+  }));
+  assert.equal(parsed?.serviceCatalog?.services?.length, 1);
+  assert.equal(parsed?.serviceCatalog?.services?.[0]?.name, 'Balayage');
 });
 
 test('LLM payload includes staff page hints for artist analysis', () => {

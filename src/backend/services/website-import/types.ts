@@ -23,6 +23,7 @@ export type CandidateBucket =
   | 'faq'
   | 'promotions'
   | 'booking'
+  | 'ecommerce_product'
   | 'noise';
 export type CandidateSource = 'homepage' | 'nav' | 'footer' | 'sitemap' | 'robots_sitemap' | 'canonical' | 'og' | 'jsonld' | 'service_hub_child';
 
@@ -52,6 +53,9 @@ export type PagePreview = {
     priceText?: string | null;
     durationText?: string | null;
     sourceText?: string | null;
+    sourceHint?: 'semantic' | 'heading_sibling' | 'repeated_card' | 'service_menu_list';
+    confidence?: number;
+    evidenceSnippet?: string | null;
   }>;
   priceCount: number;
   durationCount: number;
@@ -84,6 +88,8 @@ export type ImportedServiceSuggestion = {
   bookable?: boolean;
   source: string;
   confidence: number;
+  needsReview?: boolean;
+  evidenceSnippet?: string | null;
 };
 
 export type StaffSuggestion = {

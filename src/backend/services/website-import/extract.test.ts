@@ -311,6 +311,78 @@ test('extracts common WordPress-style service blocks without compressed Wix clea
   assert.equal(suggestions.serviceCatalog.services.find((service) => service.name === 'Gel Manicure')?.priceType, 'from');
 });
 
+test('detects generic repeated service cards without semantic service classes', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <section>
+        <h2>Hair Services</h2>
+        <div class="grid">
+          <div class="tile"><h3>Balayage</h3><p>Dimensional color service.</p><span>Starting at $180</span><span>120 min</span><a>Book Now</a></div>
+          <div class="tile"><h3>Root Touch Up</h3><p>Single-process root color.</p><span>$95</span><span>75 min</span><a>Book Now</a></div>
+          <div class="tile"><h3>Blowout</h3><p>Shampoo and smooth blow dry.</p><span>from $58</span><span>30 min+</span></div>
+        </div>
+      </section>
+    </body></html>
+  `, 'https://generic-cards.test/services');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://generic-cards.test/services', sourceType: 'normal_website', previews: [preview] });
+  const services = suggestions.serviceCatalog.services;
+  assert.ok(services.some((service) => service.categoryName === 'Hair Services' && service.name === 'Balayage' && service.priceAmount === 180 && service.durationText === '120 min'));
+  assert.ok(services.some((service) => service.name === 'Root Touch Up' && service.priceAmount === 95 && service.durationText === '75 min'));
+  assert.ok(services.some((service) => service.name === 'Blowout' && service.priceType === 'from' && service.durationText === '30 min+'));
+});
+
+test('detects Shopify-style service menu cards even when cart text appears on the page', () => {
+  const preview = previewHtml(`
+    <html><head><title>Service Menu - Indigo Child</title></head><body>
+      <h2>Your cart is empty</h2>
+      <h2>Service Menu</h2>
+      <section>
+        <h2>Lightening + Color</h2>
+        <div class="multicolumn-card"><div class="multicolumn-card__info"><h3>Custom Lightening</h3><div class="rte"><p>Price: $304 - $354+</p><p><strong>Description:</strong> Highlighting service for a transformation.</p></div><a>Book A Custom Lightening</a></div></div>
+        <div class="multicolumn-card"><div class="multicolumn-card__info"><h3>Tint Retouch</h3><div class="rte"><p>Price $92 - $131+</p><p>Description: Maintenance root color service.</p></div><a>Book A Tint Retouch</a></div></div>
+      </section>
+      <section>
+        <h2>Cutting + Styling</h2>
+        <div class="multicolumn-card"><div class="multicolumn-card__info"><h3>Below Chin Haircut</h3><div class="rte"><p>Price $79 - $104+</p><p>Description: Customized haircut with styling included.</p></div><a>Book A Below Chin Haircut</a></div></div>
+        <div class="multicolumn-card"><div class="multicolumn-card__info"><h3>Signature Blowout</h3><div class="rte"><p>Price $64 - $89+</p><p>Description: Shampoo and bouncy blowout.</p></div><a>Book A Signature Blowout</a></div></div>
+      </section>
+    </body></html>
+  `, 'https://indigo.test/pages/service-menu');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://indigo.test/pages/service-menu', sourceType: 'normal_website', previews: [preview] });
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Custom Lightening' && service.priceAmount === 304 && service.priceType === 'from'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Tint Retouch' && service.priceAmount === 92));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Below Chin Haircut' && service.categoryName === 'Cutting + Styling'));
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /cart is empty/i.test(service.name)), false);
+});
+
+test('generic repeated cards avoid policies, FAQs, contact blocks, and mark weak services for review', () => {
+  const preview = previewHtml(`
+    <html><body>
+      <section>
+        <h2>Services</h2>
+        <div class="cards">
+          <div class="box"><h3>Hair Extensions</h3><p>Consultation required before install.</p></div>
+          <div class="box"><h3>Keratin Treatment</h3><p>Smoothing treatment for frizz.</p></div>
+        </div>
+      </section>
+      <section>
+        <h2>Policies</h2>
+        <div class="box"><h3>Cancellation policy</h3><p>$50 fee for late cancellations.</p></div>
+        <div class="box"><h3>Refund policy</h3><p>No refunds after service.</p></div>
+      </section>
+      <section>
+        <h2>FAQ</h2>
+        <div class="box"><h3>Do you accept walk-ins?</h3><p>Call us first.</p></div>
+        <div class="box"><h3>Where are you located?</h3><p>123 Main St Dallas TX 75208</p></div>
+      </section>
+    </body></html>
+  `, 'https://generic-cards.test/services');
+  const suggestions = buildSuggestions({ sourceUrl: 'https://generic-cards.test/services', sourceType: 'normal_website', previews: [preview] });
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Hair Extensions' && service.priceType === 'consultation'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.name === 'Keratin Treatment' && service.needsReview === true));
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /policy|walk-ins|located/i.test(service.name)), false);
+});
+
 test('splits bullet service rows into name, description, and duration', () => {
   const services = extractServicesFromText(
     'Blowout Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+',

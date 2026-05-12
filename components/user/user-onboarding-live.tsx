@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { formatPhoneForDisplay, normalizePhoneForStorage } from '@/lib/phone-number';
@@ -19,7 +19,21 @@ export type BeautySubtype =
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type WizardStep = 1 | 2 | 3 | 4;
 type ServicePriceType = 'fixed' | 'from' | 'varies' | 'consultation';
-type ServiceItem = { name: string; duration_min?: number | null; duration_text?: string | null; price: number; group?: string; aliases?: string[]; price_type?: ServicePriceType; bookable?: boolean };
+type ServiceItem = {
+  name: string;
+  duration_min?: number | null;
+  duration_text?: string | null;
+  price: number;
+  group?: string;
+  aliases?: string[];
+  price_type?: ServicePriceType;
+  bookable?: boolean;
+  confidence?: number;
+  needsReview?: boolean;
+  source?: string | null;
+  sourceHint?: string | null;
+  evidenceSnippet?: string | null;
+};
 type ServiceCatalogResponse = {
   categories: Array<{ id: string; name: string; sortOrder: number; active: boolean }>;
   services: Array<{
@@ -65,6 +79,10 @@ type ImportedWebsiteSuggestions = {
       aliases?: string[];
       bookable?: boolean;
       confidence?: number;
+      needsReview?: boolean;
+      source?: string | null;
+      sourceHint?: string | null;
+      evidenceSnippet?: string | null;
     }>;
   };
   alsoOffers?: Array<{ value: string | null; confidence: number; source?: string | null }>;
@@ -259,6 +277,44 @@ const MIXED_SERVICE_GROUP_ICONS: Record<(typeof MIXED_SERVICE_GROUPS)[number], s
   'Skin Treatments': '♢',
   Consultations: '□',
   Other: '…',
+};
+
+const MANUAL_SERVICE_PRESETS: Record<string, ServiceItem[]> = {
+  Haircuts: [
+    { name: "Women's haircut", price: 55, duration_min: 45, duration_text: '45min', group: 'Haircuts' },
+    { name: "Men's haircut", price: 35, duration_min: 30, duration_text: '30min', group: 'Haircuts' },
+    { name: "Children's haircut", price: 25, duration_min: 20, duration_text: '20min', group: 'Haircuts' },
+  ],
+  'Hair Color': [
+    { name: 'All over color', price: 120, duration_min: 90, duration_text: '90min', group: 'Hair Color' },
+    { name: 'Highlights', price: 150, duration_min: 120, duration_text: '2hrs', group: 'Hair Color', price_type: 'from' },
+    { name: 'Color touch-up', price: 95, duration_min: 60, duration_text: '60min', group: 'Hair Color' },
+  ],
+  Waxing: [
+    { name: 'Eyebrow wax', price: 18, duration_min: 15, duration_text: '15min', group: 'Waxing' },
+    { name: 'Lip wax', price: 12, duration_min: 10, duration_text: '10min', group: 'Waxing' },
+    { name: 'Full leg wax', price: 65, duration_min: 45, duration_text: '45min', group: 'Waxing' },
+  ],
+  Massage: [
+    { name: '60-min massage', price: 95, duration_min: 60, duration_text: '60min', group: 'Massage' },
+    { name: '90-min massage', price: 130, duration_min: 90, duration_text: '90min', group: 'Massage' },
+  ],
+  Facials: [
+    { name: 'Signature facial', price: 85, duration_min: 60, duration_text: '60min', group: 'Facials' },
+    { name: 'Express facial', price: 55, duration_min: 30, duration_text: '30min', group: 'Facials' },
+  ],
+  Manicure: [
+    { name: 'Classic manicure', price: 35, duration_min: 30, duration_text: '30min', group: 'Manicure' },
+    { name: 'Gel manicure', price: 50, duration_min: 45, duration_text: '45min', group: 'Manicure' },
+  ],
+  Pedicure: [
+    { name: 'Classic pedicure', price: 45, duration_min: 45, duration_text: '45min', group: 'Pedicure' },
+    { name: 'Gel pedicure', price: 60, duration_min: 60, duration_text: '60min', group: 'Pedicure' },
+  ],
+  'Brows & Lashes': [
+    { name: 'Classic lash set', price: 120, duration_min: 90, duration_text: '90min', group: 'Brows & Lashes' },
+    { name: 'Lash fill', price: 65, duration_min: 60, duration_text: '60min', group: 'Brows & Lashes' },
+  ],
 };
 
 const VERTICAL_LABELS: Record<Vertical, string> = {
@@ -514,6 +570,29 @@ export function importReviewBadgeState(field?: { value?: unknown; confidence?: n
   };
 }
 
+export function serviceSourceLabel(source?: string | null, sourceHint?: string | null): 'Website' | 'Website analysis' | 'Imported' {
+  const combined = `${source ?? ''} ${sourceHint ?? ''}`.trim();
+  if (!combined) return 'Imported';
+  if (/llm|ai|analysis|normalizer/i.test(combined)) return 'Website analysis';
+  if (/website|json-?ld|repeated_card|block_detector|semantic|heading_sibling/i.test(combined)) return 'Website';
+  return 'Imported';
+}
+
+export function serviceReviewBadgeState(service?: Pick<ServiceItem, 'confidence' | 'needsReview' | 'source' | 'sourceHint'> | null): { label: 'AI verified' | 'Needs review' | 'Review'; source: 'Website' | 'Website analysis' | 'Imported' } | null {
+  const hasMetadata = Boolean(service && (service.needsReview !== undefined || service.confidence !== undefined || service.source || service.sourceHint));
+  if (!service || !hasMetadata) return null;
+  const confidence = typeof service.confidence === 'number' ? service.confidence : undefined;
+  const label = service.needsReview || (confidence !== undefined && confidence < 0.7)
+    ? 'Needs review'
+    : confidence !== undefined && confidence > 0.9
+      ? 'AI verified'
+      : 'Review';
+  return {
+    label,
+    source: serviceSourceLabel(service.source, service.sourceHint),
+  };
+}
+
 function importFieldState(field?: { value?: unknown; confidence?: number; source?: string | null } | null): ReactNode {
   const { label, source } = importReviewBadgeState(field);
   const verified = label === 'AI verified';
@@ -557,6 +636,47 @@ function serviceDurationText(service: Pick<ServiceItem, 'duration_text' | 'durat
   return service.duration_text?.trim() || (service.duration_min ? `${service.duration_min} min` : '');
 }
 
+function titleCaseServiceLabel(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (char) => char.toUpperCase())
+    .replace(/\bAnd\b/g, 'and')
+    .replace(/\bOr\b/g, 'or')
+    .replace(/\bOf\b/g, 'of')
+    .replace(/\bWith\b/g, 'with');
+}
+
+function serviceGroupIcon(group: string): { icon: string; bg: string } {
+  const value = group.toLowerCase();
+  if (/color|highlight|balayage/.test(value)) return { icon: '🎨', bg: '#fef3c7' };
+  if (/haircut|cut|trim/.test(value)) return { icon: '✂️', bg: '#f0fdf4' };
+  if (/style|blowout|iron/.test(value)) return { icon: '💨', bg: '#eff6ff' };
+  if (/extension|keratin/.test(value)) return { icon: '✨', bg: '#f5f3ff' };
+  if (/wax/.test(value)) return { icon: '🔥', bg: '#fff7ed' };
+  if (/massage|body/.test(value)) return { icon: '💆', bg: '#f0fdfa' };
+  if (/facial|skin/.test(value)) return { icon: '💧', bg: '#eff6ff' };
+  if (/nail|mani|pedi/.test(value)) return { icon: '💅', bg: '#fdf2f8' };
+  if (/lash|brow/.test(value)) return { icon: '👁', bg: '#faf5ff' };
+  if (/makeup/.test(value)) return { icon: '💄', bg: '#fff1f2' };
+  if (/injectable|botox|filler/.test(value)) return { icon: '💉', bg: '#f0fdf4' };
+  if (/laser/.test(value)) return { icon: '⚡', bg: '#fffbeb' };
+  if (/consultation/.test(value)) return { icon: '💬', bg: '#f8fafc' };
+  return { icon: '📋', bg: '#f9fafb' };
+}
+
+function formatServicePrice(service: ServiceItem): string {
+  if (service.price_type === 'consultation') return 'Consultation';
+  if (service.price_type === 'varies' && service.price <= 0) return 'Varies';
+  if (!Number.isFinite(service.price) || service.price <= 0) return '$0';
+  const amount = `$${service.price}`;
+  return service.price_type === 'from' ? `from ${amount}` : amount;
+}
+
+function serviceNeedsAttention(service: ServiceItem): boolean {
+  return service.price === 0 || !serviceDurationText(service).trim() || service.needsReview === true;
+}
+
 function servicesFromImport(suggestions?: ImportedWebsiteSuggestions): ServiceItem[] {
   const imported = suggestions?.serviceCatalog?.services ?? [];
   return imported
@@ -570,6 +690,11 @@ function servicesFromImport(suggestions?: ImportedWebsiteSuggestions): ServiceIt
       aliases: service.aliases ?? [],
       price_type: service.priceType ?? ((service.priceAmount ?? 0) > 0 ? 'fixed' : 'varies'),
       bookable: service.bookable ?? true,
+      confidence: service.confidence,
+      needsReview: service.needsReview,
+      source: service.source ?? null,
+      sourceHint: service.sourceHint ?? null,
+      evidenceSnippet: service.evidenceSnippet?.trim() || null,
     }));
 }
 
@@ -902,6 +1027,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     [...new Set(initialServices.map((service) => service.group?.trim()).filter((group): group is string => Boolean(group)))],
   );
   const [collapsedServiceGroups, setCollapsedServiceGroups] = useState<string[]>([]);
+  const [serviceEditor, setServiceEditor] = useState<{
+    index: number | null;
+    group: string;
+    draft: ServiceItem;
+    mode: 'inline' | 'sheet';
+  } | null>(null);
   const [serviceCatalogEnabled, setServiceCatalogEnabled] = useState(initialData?.ok ? initialData.serviceCatalogEnabled === true : false);
   const [importSource, setImportSource] = useState<ImportSource>(
     initialShop?.website_url?.trim()
@@ -928,6 +1059,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
   const importTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const importRequestRef = useRef(0);
+  const serviceNameInputRef = useRef<HTMLInputElement | null>(null);
   const [step4Phase, setStep4Phase] = useState<'try' | 'done'>('try');
   const prevStepRef = useRef<WizardStep>(1);
 
@@ -980,6 +1112,23 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       setLanguages((current) => applyVerticalLanguageSelection(vertical, current));
     }
   }, [vertical]);
+
+  useEffect(() => {
+    serviceNameInputRef.current?.focus();
+  }, [serviceEditor?.index, serviceEditor?.mode]);
+
+  useEffect(() => {
+    const groups = [...new Set(services.map((service) => service.group?.trim() || 'General Services'))];
+    const totalServices = services.filter((service) => service.name.trim().length > 0).length;
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
+    if (totalServices <= 8) {
+      setCollapsedServiceGroups([]);
+    } else if (totalServices <= 20) {
+      setCollapsedServiceGroups(isMobile ? groups : []);
+    } else {
+      setCollapsedServiceGroups(isMobile ? groups : groups.slice(1));
+    }
+  }, [services.length, selectedServiceGroups.join('|')]);
 
   function clearImportProgressTimers() {
     importTimersRef.current.forEach((timer) => clearTimeout(timer));
@@ -1040,7 +1189,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           ))}
         </div>
         {importDelayMessage ? <div className="onb-import-delay">{importDelayMessage}</div> : null}
-        <div className="onb-import-progress-actions">
+        <div className="onb-import-progress-actions onb-import-manual-desktop-row">
           <button type="button" className="onb-help-link" onClick={() => enterManualSetup()}>
             Set up manually instead
           </button>
@@ -1413,36 +1562,18 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setStep4Phase('done');
   }
 
-  function applyPresetServices() {
-    if (!vertical) return;
-    const preset = getPresetServiceNames(vertical, beautySubtype);
-    const existing = new Set(services.map((s) => s.name.trim().toLowerCase()).filter(Boolean));
-    const toAdd = preset
-      .filter((name) => !existing.has(name.toLowerCase()))
-      .map((name) => ({ name, duration_min: null, duration_text: '', price: 0, group: suggestedGroupsForVertical(vertical, beautySubtype)[0] ?? 'General Services' }));
-    if (toAdd.length === 0) {
-      setStatus('Those preset services are already on your list.');
-      return;
-    }
-    setServices([...services.filter((s) => s.name.trim().length > 0), ...toAdd]);
-    setStatus(null);
-  }
-
-  function applySuggestedServiceGroups() {
-    const groups = suggestedGroupsForVertical(vertical, beautySubtype);
-    setSelectedServiceGroups((current) => [...new Set([...current, ...groups])]);
-    setServices((current) => {
-      const filled = current.filter((item) => item.name.trim().length > 0);
-      if (filled.length === 0) return [{ name: '', duration_min: null, duration_text: '', price: 0, group: groups[0] ?? 'General Services' }];
-      return filled.map((item, index) => ({ ...item, group: item.group || groups[index % groups.length] || 'General Services' }));
-    });
-    setStatus('Suggested service groups added. You can refine this later in Business Knowledge.');
-  }
-
   function toggleServiceGroup(group: string) {
+    const preset = MANUAL_SERVICE_PRESETS[group];
     setSelectedServiceGroups((current) =>
       current.includes(group) ? current.filter((item) => item !== group) : [...current, group],
     );
+    if (!preset) return;
+    setServices((current) => {
+      const existing = new Set(current.map((service) => `${service.group || 'General Services'}:${service.name}`.toLowerCase()));
+      const additions = preset.filter((service) => !existing.has(`${service.group || 'General Services'}:${service.name}`.toLowerCase()));
+      if (additions.length === 0) return current;
+      return [...current.filter((service) => service.name.trim().length > 0), ...additions];
+    });
   }
 
   function toggleServiceGroupCollapsed(group: string) {
@@ -1453,6 +1584,71 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   function setServiceRow(index: number, value: ServiceItem) {
     setServices(services.map((item, itemIndex) => (itemIndex === index ? value : item)));
+  }
+
+  function removeServiceRow(index: number) {
+    setServices((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    if (serviceEditor?.index === index) setServiceEditor(null);
+  }
+
+  function openServiceEditor(index: number | null, group: string, mode: 'inline' | 'sheet') {
+    const service = index === null ? { name: '', duration_min: null, duration_text: '', price: 0, group } : services[index];
+    setServiceEditor({
+      index,
+      group,
+      mode,
+      draft: {
+        ...service,
+        group: service.group || group || 'General Services',
+        duration_text: serviceDurationText(service),
+      },
+    });
+    setCollapsedServiceGroups((current) => current.filter((item) => item !== group));
+  }
+
+  function addBlankService(group: string, mode: 'inline' | 'sheet') {
+    const next: ServiceItem = { name: '', duration_min: null, duration_text: '', price: 0, group };
+    const cleaned = services.filter((service) => service.name.trim().length > 0);
+    setServices([...cleaned, next]);
+    setServiceEditor({ index: cleaned.length, group, mode, draft: next });
+    setSelectedServiceGroups((current) => current.includes(group) ? current : [...current, group]);
+    setCollapsedServiceGroups((current) => current.filter((item) => item !== group));
+  }
+
+  function updateServiceDraft(patch: Partial<ServiceItem>) {
+    setServiceEditor((current) => (current ? { ...current, draft: { ...current.draft, ...patch } } : current));
+  }
+
+  function saveServiceEditor() {
+    if (!serviceEditor) return;
+    const draft: ServiceItem = {
+      ...serviceEditor.draft,
+      name: serviceEditor.draft.name.trim(),
+      group: serviceEditor.draft.group?.trim() || serviceEditor.group || 'General Services',
+      price: Number.isFinite(Number(serviceEditor.draft.price)) ? Number(serviceEditor.draft.price) : 0,
+      duration_min: parseDurationTextToMinutes(serviceEditor.draft.duration_text) ?? serviceEditor.draft.duration_min ?? null,
+      duration_text: serviceEditor.draft.duration_text?.trim() || null,
+      needsReview: false,
+    };
+    if (!draft.name) return;
+    if (serviceEditor.index === null) {
+      setServices((current) => [...current.filter((service) => service.name.trim().length > 0), draft]);
+      setSelectedServiceGroups((current) => current.includes(draft.group || 'General Services') ? current : [...current, draft.group || 'General Services']);
+    } else {
+      setServiceRow(serviceEditor.index, draft);
+    }
+    setServiceEditor(null);
+  }
+
+  function handleServiceEditorKeyDown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      saveServiceEditor();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setServiceEditor(null);
+    }
   }
 
   async function handleBack() {
@@ -1511,9 +1707,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-field input,.onb-field select,.onb-field textarea,.hours-row select{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit;box-sizing:border-box}.onb-field textarea{min-height:72px;resize:vertical}
 .onb-field input:focus,.onb-field select:focus,.onb-field textarea:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-help-link{border:0;background:transparent;padding:8px 0;cursor:pointer;text-decoration:none;font-family:inherit;font-weight:400;line-height:1.5;text-align:inherit;transition:color .15s ease}.onb-help-link:hover{color:#334155;text-decoration:underline;text-underline-offset:2px}
-.onb-import-panel{background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important;border:1px solid #e2e8f0;border-radius:14px;padding:16px}
+.onb-import-panel{background-color:#7c3aed!important;border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:16px}
 .onb-import-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}
-.onb-import-panel .onb-field{margin-bottom:0}.onb-import-panel .onb-help{margin-top:8px}
+.onb-import-panel .onb-field{margin-bottom:0}.onb-import-panel .onb-help{margin-top:8px;color:rgba(255,255,255,.9)}.onb-import-panel .onb-field label{color:rgba(255,255,255,.88)}
 .onb-import-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;border:1px solid #000;border-radius:8px;background:#000;color:#fff;padding:8px 18px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;box-shadow:0 8px 18px rgba(0,0,0,.18)}
 .onb-import-button:hover:not(:disabled){border-color:#1f1f1f;color:#fff;background:#1f1f1f;box-shadow:0 12px 24px rgba(0,0,0,.24)}.onb-import-button:disabled{opacity:.6;cursor:not-allowed}
 .onb-import-progress{border:1px solid #e2e8f0;border-radius:14px;background:#fff;padding:16px;display:grid;gap:12px}
@@ -1540,14 +1736,28 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#475569;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box}.profile-review-edit:hover{background:#f1f5f9;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
-.service-group-card{border:1px solid #e2e8f0;border-radius:14px;background:#fff;margin-top:14px;overflow:hidden}
-.service-group-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important;border-bottom:1px solid #e2e8f0}
-.service-group-kicker{display:block;color:#9ca3af;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}.service-group-title{margin:2px 0 0;color:#111827;font-size:15px;font-weight:500}
-.service-group-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}.service-collapse-btn{width:30px;height:30px;border-radius:999px;border:1px solid #d9deea;background:#fff;color:#5b21b6;font-size:18px;font-weight:600;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:none}.service-collapse-btn:hover{background:#faf5ff;border-color:#7c3aed}
-.service-group-body{display:grid;gap:10px;padding:14px}
-.service-item-row{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(100px,.65fr) minmax(100px,.65fr);gap:10px;align-items:center}
-.service-item-row input{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;color:#111827;box-sizing:border-box;width:100%}
-.service-empty{border:1px dashed #cbd5e1;border-radius:10px;padding:12px;color:#64748b;font-size:13px}
+.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups{max-width:780px;margin-left:auto;margin-right:auto}
+.onb-desktop-copy{display:inline}.onb-mobile-copy{display:none}
+.service-group-card{border:1px solid #e5e7eb;border-radius:12px;background:#fff;margin-top:14px;overflow:hidden;max-width:780px;margin-left:auto;margin-right:auto}
+.service-group-head{width:100%;min-height:56px;display:flex;align-items:center;gap:12px;padding:12px 16px;background:#f9fafb;border:0;border-bottom:1px solid #f3f4f6;text-align:left;cursor:pointer;font:inherit;color:#111827}
+.service-group-icon{width:32px;height:32px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.service-group-main{display:grid;gap:2px;min-width:0;flex:1}.service-group-title{margin:0;color:#111827;font-size:15px;font-weight:500;line-height:1.25}.service-group-meta{color:#9ca3af;font-size:12px;font-weight:400;line-height:1.25}
+.service-group-warning{border-radius:999px;background:#fffbeb;color:#f59e0b;padding:3px 8px;font-size:11px;font-weight:500;white-space:nowrap}.service-group-chevron{color:#6b7280;font-size:18px;line-height:1;transition:transform .18s ease}.service-group-chevron.open{transform:rotate(180deg)}
+.service-group-body{display:grid;gap:0;padding:12px 16px 16px}
+.service-review-copy{margin:-6px 0 14px;max-width:760px}
+.onb-service-row-wrap{position:relative;border-bottom:1px solid #f3f4f6}.onb-service-row-wrap:last-of-type{border-bottom:0}
+.onb-service-row{width:100%;border:0;background:transparent;padding:11px 0;display:flex;align-items:center;gap:14px;text-align:left;font:inherit;cursor:pointer;color:#111}
+.onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{color:#9ca3af;font-size:12px;font-weight:500;opacity:0;transition:opacity .15s ease}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1}
+.onb-service-row-mobile{display:none}.onb-service-mobile-meta{color:#6b7280;font-size:12px;text-align:right;white-space:nowrap}.onb-service-mobile-arrow{color:#9ca3af;font-size:22px;line-height:1}
+.onb-service-edit-row{display:grid;grid-template-columns:minmax(0,1fr) 90px 90px 28px 28px;gap:8px;align-items:center;padding:8px 0}.onb-service-edit-row input,.onb-service-sheet-fields input{min-height:34px;border:1px solid #7c3aed;border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;color:#111827;box-sizing:border-box;background:#fff;width:100%}.onb-service-price-input{position:relative}.onb-service-price-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px}.onb-service-price-input input{padding-left:24px!important}
+.onb-service-save-dot,.onb-service-cancel-dot{width:28px;height:28px;border-radius:999px;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-weight:600}.onb-service-save-dot{background:#111;color:#fff}.onb-service-cancel-dot{background:#f3f4f6;color:#6b7280}
+.onb-group-add-service{margin-top:12px;width:100%;min-height:40px;border:1px dashed #e5e7eb;border-radius:8px;background:transparent;color:#7c3aed;font-size:13px;font-weight:500;cursor:pointer;text-align:center}.onb-group-add-service:hover{border-color:#c4b5fd;background:#faf5ff}.onb-group-add-service-mobile{display:none}
+.service-remove-btn{min-height:32px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}.service-remove-btn:hover{border-color:#fecaca;background:#fff1f2;color:#be123c}.onb-service-remove-compact{position:absolute;right:0;bottom:4px;opacity:0;pointer-events:none}.onb-service-row-wrap:hover .onb-service-remove-compact{opacity:1;pointer-events:auto}
+.service-review-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.service-review-row--manual{justify-content:flex-start}
+.service-group-select-label{display:inline-flex;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:500}.service-group-select-label select{width:auto;min-width:150px;min-height:34px;padding:6px 10px;font-size:13px}
+.service-review-badge,.service-review-source{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:500}.service-review-badge.verified{background:#ecfdf5;color:#047857}.service-review-badge.needs-review{background:#fff7ed;color:#c2410c}.service-review-badge.review{background:#eef2ff;color:#3730a3}.service-review-source{background:#eef2ff;color:#3730a3}
+.service-evidence{display:block;flex-basis:100%;color:#64748b;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.service-empty{border:1px dashed #cbd5e1;border-radius:10px;padding:12px;color:#64748b;font-size:13px;margin-bottom:10px}
 .onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:0;border-radius:8px;background:#000;color:#fff;padding:10px 18px;font-size:15px;font-weight:600;box-shadow:0 8px 18px rgba(0,0,0,.18);cursor:pointer;text-decoration:none;transition:background .15s ease,transform .15s ease,box-shadow .15s ease}.onb-btn-primary:hover:not(:disabled){background:#1f1f1f;transform:translateY(-1px);box-shadow:0 12px 24px rgba(0,0,0,.24)}
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
@@ -1561,13 +1771,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .manual-header{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.6fr) 72px 72px;gap:10px;color:#9ca3af;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
 .service-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.6fr) 72px 72px;gap:10px;align-items:center;margin-bottom:10px}
 .price-wrap,.duration-wrap{position:relative}.price-wrap span,.duration-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:13px;font-weight:500;pointer-events:none}.price-wrap input{padding-left:28px!important}.duration-wrap input{padding-left:46px!important}
-.add-service-btn{border:1.5px dashed #a78bfa;border-radius:10px;background:#fff;color:#6d28d9;padding:0 13px;font-weight:500;cursor:pointer;width:100%;height:44px}
+.onb-service-sheet-overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center}.onb-service-sheet{width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;padding:14px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -18px 40px rgba(15,23,42,.18)}.onb-service-sheet-handle{width:36px;height:4px;border-radius:999px;background:#e5e7eb;margin:0 auto 16px}.onb-service-sheet h3{margin:0 0 14px;color:#111827;font-size:15px;font-weight:600;line-height:1.35}.onb-service-sheet-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.onb-service-sheet-fields>input:first-child{grid-column:1 / -1;min-height:46px;font-size:15px;padding:12px 14px}.onb-service-sheet-fields .onb-service-price-input input,.onb-service-sheet-fields>input:not(:first-child){min-height:46px;font-size:15px;padding:12px 14px}.onb-service-sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.onb-service-sheet-actions .onb-btn-primary,.onb-service-sheet-actions .onb-btn-secondary{width:100%;height:48px;border-radius:10px}
 .onb-status{margin-top:14px;padding:12px 14px;border-radius:16px;background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important;color:#475569;font-size:14px}
 .read-success{color:#047857;font-weight:600}
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row,.service-item-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-manual-toggle-row{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:1px solid #f9fafb}.onb-service-row-desktop{display:none}.onb-service-row-mobile{display:flex;min-height:48px;padding:0 16px}.onb-service-name{font-size:13px}.service-review-row{padding:0 16px 8px}.onb-service-remove-compact{position:static;opacity:1;pointer-events:auto;margin:0 16px 10px}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:block;width:auto;border:0;border-radius:0;text-align:left;padding:12px 16px;margin:0;color:#7c3aed;background:transparent}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -2208,8 +2418,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }
 
   function renderStep3() {
-    const presetLabel =
-      vertical === 'beauty_clinic' && beautySubtype ? BEAUTY_SUBTYPE_LABELS[beautySubtype] : vertical ? VERTICAL_LABELS[vertical] : 'industry';
+    const importedServiceCount = servicesFound;
+    const manualSetup = importSource === 'manual' || !websiteUrl.trim();
+    const hasNamedGroups = services.some((service) => {
+      const group = (service.group || '').trim().toLowerCase();
+      return Boolean(group) && group !== 'general services';
+    });
+    const showAlsoOffers = manualSetup || importedServiceCount < 5 || !hasNamedGroups;
+    const modeA = !showAlsoOffers;
     const groupNames = [
       ...new Set([
         ...selectedServiceGroups,
@@ -2221,15 +2437,72 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       group,
       items: services.map((service, index) => ({ service, index })).filter(({ service }) => (service.group || 'General Services') === group),
     }));
+    const totalServices = services.filter((service) => service.name.trim().length > 0).length;
+    const importNote = totalServices === 1 ? '✓ 1 service imported' : `✓ ${totalServices} services imported`;
+
+    const renderServiceEditor = (group: string, index: number | null, mode: 'inline' | 'sheet') => {
+      const draft = serviceEditor?.draft;
+      if (!draft || serviceEditor.mode !== mode || serviceEditor.group !== group || serviceEditor.index !== index) return null;
+      return (
+        <div className={mode === 'inline' ? 'onb-service-edit-row' : 'onb-service-sheet-fields'} onKeyDown={handleServiceEditorKeyDown}>
+          <input
+            ref={serviceNameInputRef}
+            value={draft.name}
+            onChange={(event) => updateServiceDraft({ name: event.target.value })}
+            placeholder="Service name"
+            aria-label="Service name"
+          />
+          <div className="onb-service-price-input">
+            <span>$</span>
+            <input
+              type="number"
+              value={draft.price}
+              onChange={(event) => updateServiceDraft({ price: Number(event.target.value) })}
+              placeholder="Price"
+              aria-label="Price"
+            />
+          </div>
+          <input
+            value={serviceDurationText(draft)}
+            onChange={(event) => updateServiceDraft({ duration_text: event.target.value, duration_min: parseDurationTextToMinutes(event.target.value) })}
+            placeholder="Duration"
+            aria-label="Duration"
+          />
+          {mode === 'inline' ? (
+            <>
+              <button type="button" className="onb-service-save-dot" onClick={saveServiceEditor} aria-label="Save service">✓</button>
+              <button type="button" className="onb-service-cancel-dot" onClick={() => setServiceEditor(null)} aria-label="Cancel editing">×</button>
+            </>
+          ) : null}
+        </div>
+      );
+    };
 
     return (
       <div>
-        <h1 className="onb-title">Add a few services <span style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>optional</span></h1>
-        <p className="onb-subtitle">
-          So AI can answer pricing questions. You can skip this and add everything later in Business Knowledge.
-        </p>
-        {servicesFound > 0 ? (
-          <p className="onb-service-import-badge">✓ {servicesFound} {servicesFound === 1 ? 'service' : 'services'} imported from your website — review below</p>
+        <div className="onb-services-review-shell">
+          <h1 className="onb-title">
+            {modeA ? 'Review your services' : 'Add your services'} <span style={{ color: '#64748b', fontSize: '1rem', fontWeight: 500 }}>optional</span>
+          </h1>
+          <p className="onb-subtitle">
+            {modeA
+              ? 'Fix anything that looks wrong. You can refine everything later in Business Knowledge.'
+              : "Select what you offer — we'll add example services. Edit prices to match yours."}
+          </p>
+          {modeA && totalServices > 0 ? (
+            <p className="onb-service-import-badge">
+              <span className="onb-desktop-copy">{importNote} — click any row to edit</span>
+              <span className="onb-mobile-copy">{importNote} — tap any to edit</span>
+            </p>
+          ) : null}
+        </div>
+        {servicesFound > 0 && !modeA ? (
+          <>
+            <p className="onb-service-import-badge">✓ {servicesFound} {servicesFound === 1 ? 'service' : 'services'} imported from your website — review below</p>
+            <p className="onb-help service-review-copy">
+              Review imported services before saving. Some imported services may need review. Check names, prices, and durations before saving. You can remove anything that does not belong.
+            </p>
+          </>
         ) : websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
           <p className="onb-help">
             {WEBSITE_IMPORT_EXTRACTION_ACTIVE
@@ -2242,20 +2515,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             RingBooker can capture consultation requests and follow-up details. Your licensed team confirms treatment recommendations.
           </p>
         )}
-        <div className="preset-row">
-          <button type="button" className="preset-chip" onClick={applyPresetServices} disabled={!vertical || (vertical === 'beauty_clinic' && !beautySubtype)}>
-            Add {presetLabel} presets
-          </button>
-          <button type="button" className="preset-chip" onClick={applySuggestedServiceGroups} disabled={!vertical}>
-            Group services
-          </button>
-        </div>
-        <div style={{ marginTop: 18 }}>
-          <p className="onb-section-title">Also offers</p>
-          <p className="onb-help" style={{ marginTop: 4 }}>
-            Select all that apply. Many businesses offer services across categories, and you can edit this later.
-          </p>
-          <div className="preset-row" style={{ marginTop: 10 }}>
+        {showAlsoOffers ? (
+          <div className="onb-service-mode-b">
+            <p className="onb-section-title">Also offers</p>
+            <p className="onb-help" style={{ marginTop: 4 }}>
+              Pick the categories you offer — we'll add example services to get you started.
+            </p>
+            <div className="preset-row onb-also-offers-row" style={{ marginTop: 10 }}>
             {MIXED_SERVICE_GROUPS.map((group) => (
               <button
                 key={group}
@@ -2267,72 +2533,101 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                 {group}
               </button>
             ))}
+            </div>
           </div>
-        </div>
+        ) : null}
+        <div className="onb-service-groups" aria-label="Service groups">
         {groupedServices.map(({ group, items }) => {
           const collapsed = collapsedServiceGroups.includes(group);
+          const groupVisual = serviceGroupIcon(group);
+          const groupNeedsReview = items.some(({ service }) => serviceNeedsAttention(service));
           return (
           <div className="service-group-card" key={group}>
-            <div className="service-group-head">
-              <div>
-                <span className="service-group-kicker">Service group</span>
-                <h3 className="service-group-title">{group}</h3>
-              </div>
-              <div className="service-group-actions">
-                <button
-                  className="service-collapse-btn"
-                  type="button"
-                  onClick={() => toggleServiceGroupCollapsed(group)}
-                  aria-expanded={!collapsed}
-                  aria-label={`${collapsed ? 'Show' : 'Hide'} services in ${group}`}
-                >
-                  {collapsed ? '+' : '-'}
-                </button>
-                <button className="onb-help-link" type="button" onClick={() => setServices([...services, { name: '', duration_min: null, duration_text: '', price: 0, group }])}>
-                  + Add service
-                </button>
-              </div>
-            </div>
+            <button
+              type="button"
+              className="service-group-head"
+              onClick={() => toggleServiceGroupCollapsed(group)}
+              aria-expanded={!collapsed}
+            >
+              <span className="service-group-icon" style={{ background: groupVisual.bg }} aria-hidden>{groupVisual.icon}</span>
+              <span className="service-group-main">
+                <span className="service-group-title">{titleCaseServiceLabel(group)}</span>
+                <span className="service-group-meta">{items.length} {items.length === 1 ? 'service' : 'services'}</span>
+              </span>
+              {groupNeedsReview ? <span className="service-group-warning">needs review</span> : null}
+              <span className={`service-group-chevron ${collapsed ? '' : 'open'}`} aria-hidden>⌄</span>
+            </button>
             {!collapsed ? <div className="service-group-body">
               {items.length === 0 ? (
                 <div className="service-empty">No services in this group yet. Add one callers usually ask about.</div>
               ) : null}
-              {items.map(({ service, index }) => (
-                <div className="service-item-row" key={index}>
-                  <input
-                    value={service.name}
-                    onChange={(event) => setServiceRow(index, { ...service, name: event.target.value })}
-                    placeholder="Service name"
-                  />
-                  <div className="price-wrap">
-                    <span>$</span>
-                    <input
-                      type="number"
-                      value={service.price}
-                      onChange={(event) => setServiceRow(index, { ...service, price: Number(event.target.value) })}
-                      placeholder="Price"
-                    />
-                  </div>
-                  <div className="duration-wrap">
-                    <span>Time</span>
-                    <input
-                      value={serviceDurationText(service)}
-                      placeholder="60 min, 1 hour+"
-                      onChange={(event) => {
-                        const durationText = event.target.value;
-                        setServiceRow(index, { ...service, duration_text: durationText, duration_min: parseDurationTextToMinutes(durationText) });
-                      }}
-                    />
-                  </div>
+              {items.map(({ service, index }) => {
+                const editingInline = serviceEditor?.mode === 'inline' && serviceEditor.index === index;
+                const review = serviceReviewBadgeState(service);
+                const duration = serviceDurationText(service);
+                return (
+                <div className="onb-service-row-wrap" key={`${group}-${index}`}>
+                  {editingInline ? renderServiceEditor(group, index, 'inline') : (
+                    <>
+                      <button type="button" className="onb-service-row onb-service-row-desktop" onClick={() => openServiceEditor(index, group, 'inline')}>
+                        <span className="onb-service-name">{service.name || 'Untitled service'}</span>
+                        <span className={`onb-service-price ${service.price === 0 ? 'warn' : ''}`} title={service.price === 0 ? "This service has no price. AI will say 'price on consultation'." : undefined}>
+                          {service.price === 0 ? '⚠ ' : ''}{formatServicePrice(service)}
+                        </span>
+                        <span className={`onb-service-duration ${duration ? '' : 'warn'}`} title={!duration ? "No duration set. AI won't estimate appointment length." : undefined}>
+                          {duration || 'Add time ⚠'}
+                        </span>
+                        <span className="onb-service-edit-link">Edit</span>
+                      </button>
+                      <button type="button" className="onb-service-row onb-service-row-mobile" onClick={() => openServiceEditor(index, group, 'sheet')}>
+                        <span className="onb-service-name">{service.name || 'Untitled service'}</span>
+                        <span className="onb-service-mobile-meta">
+                          {formatServicePrice(service)}{duration ? ` · ${duration}` : ' · Add time'}
+                        </span>
+                        <span className="onb-service-mobile-arrow">›</span>
+                      </button>
+                    </>
+                  )}
+                  {review || service.evidenceSnippet?.trim() ? (
+                    <div className="service-review-row">
+                      {review ? (
+                        <>
+                          <span className={`service-review-badge ${review.label === 'AI verified' ? 'verified' : review.label === 'Needs review' ? 'needs-review' : 'review'}`}>{review.label}</span>
+                          <span className="service-review-source">{review.source}</span>
+                        </>
+                      ) : null}
+                      {service.evidenceSnippet?.trim() ? <span className="service-evidence">{service.evidenceSnippet.trim()}</span> : null}
+                    </div>
+                  ) : null}
+                  <button type="button" className="service-remove-btn onb-service-remove-compact" onClick={() => removeServiceRow(index)} aria-label={`Remove ${service.name || 'service'}`}>
+                    Remove
+                  </button>
                 </div>
-              ))}
+              )})}
+              <button className="onb-group-add-service onb-group-add-service-desktop" type="button" onClick={() => addBlankService(group, 'inline')}>
+                + Add service
+              </button>
+              <button className="onb-group-add-service onb-group-add-service-mobile" type="button" onClick={() => addBlankService(group, 'sheet')}>
+                + Add service
+              </button>
             </div> : null}
           </div>
           );
         })}
-        <button className="add-service-btn" type="button" onClick={() => setServices([...services, { name: '', duration_min: null, duration_text: '', price: 0, group: groupNames[0] ?? 'General Services' }])}>
-          + Add service
-        </button>
+        </div>
+        {serviceEditor?.mode === 'sheet' ? (
+          <div className="onb-service-sheet-overlay" role="presentation" onClick={() => setServiceEditor(null)}>
+            <div className="onb-service-sheet" role="dialog" aria-modal="true" aria-label="Edit service" onClick={(event) => event.stopPropagation()}>
+              <div className="onb-service-sheet-handle" />
+              <h3>{serviceEditor.draft.name || 'New service'}</h3>
+              {renderServiceEditor(serviceEditor.group, serviceEditor.index, 'sheet')}
+              <div className="onb-service-sheet-actions">
+                <button type="button" className="onb-btn-secondary" onClick={() => setServiceEditor(null)}>Cancel</button>
+                <button type="button" className="onb-btn-primary" onClick={saveServiceEditor}>Save</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <div className="onb-actions onb-actions-desktop" style={{ marginTop: 28 }}>
           <button className="onb-btn-secondary" type="button" onClick={() => void continueServices()} disabled={saving}>
             Skip services for now

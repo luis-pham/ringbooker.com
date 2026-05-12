@@ -40,6 +40,7 @@ const serviceSchema = z.object({
   bookingNotes: z.string().nullable().optional(),
   bookable: z.boolean().optional().default(true),
   confidence: confidenceSchema,
+  rejectReason: z.string().max(240).nullable().optional(),
   sourceEvidence: sourceEvidenceSchema,
 }).strict();
 const categorySchema = z.object({
@@ -119,12 +120,21 @@ function toImportField(value: { value: string | null; confidence: number } | und
   return { value: value.value, confidence: value.value === null ? 0 : value.confidence, source: value.value === null ? null : 'AI' };
 }
 
-function toService(raw: z.infer<typeof serviceSchema>): ImportedServiceSuggestion {
+function isInvalidServiceName(value: string): boolean {
+  const name = value.trim();
+  return !name
+    || /^(?:\d+\s*(?:min|mins|minutes|hour|hours|hr)\+?|\$?\s*\d+|book now|book online|schedule|reserve|appointment|consultation required)$/i.test(name)
+    || /\b(cancellation|refund|privacy|policy|faq|address|directions|contact us)\b/i.test(name);
+}
+
+function toService(raw: z.infer<typeof serviceSchema>): ImportedServiceSuggestion | null {
+  if (raw.rejectReason || isInvalidServiceName(raw.name)) return null;
   const categoryName = raw.categoryName?.trim() || raw.groupName?.trim() || 'General Services';
+  const confidence = raw.confidence;
   return {
     categoryName,
     name: raw.name.trim(),
-    description: raw.description ?? null,
+    description: raw.description && raw.description.trim().toLowerCase() !== raw.name.trim().toLowerCase() ? raw.description : null,
     durationText: raw.durationText?.trim() || (raw.durationMinutes ? `${raw.durationMinutes} min` : null),
     durationMinutes: raw.durationMinutes ?? null,
     priceAmount: raw.priceAmount ?? null,
@@ -133,8 +143,10 @@ function toService(raw: z.infer<typeof serviceSchema>): ImportedServiceSuggestio
     aliases: raw.aliases.slice(0, 8),
     bookingNotes: raw.bookingNotes ?? null,
     bookable: raw.bookable,
-    confidence: raw.confidence,
+    confidence,
     source: 'AI',
+    needsReview: confidence < 0.7,
+    evidenceSnippet: raw.sourceEvidence.slice(0, 2).join(' • ').slice(0, 220) || null,
   };
 }
 
@@ -184,7 +196,7 @@ export function parseLlmImportJson(rawText: string): LlmImportExtraction | null 
       confidence: raw.serviceCatalog.confidence,
       source: 'AI',
       categories: raw.serviceCatalog.categories.map((category) => ({ name: category.name.trim(), source: 'AI', confidence: category.confidence, groupKind: category.groupKind ?? null })),
-      services: raw.serviceCatalog.services.map(toService),
+      services: raw.serviceCatalog.services.map(toService).filter((service): service is ImportedServiceSuggestion => Boolean(service)),
     } : undefined,
     alsoOffers: raw.alsoOffers.map(toImportField).filter((item): item is NonNullable<ReturnType<typeof toImportField>> => Boolean(item)),
     bookingUrl: toImportField(raw.bookingUrl),
@@ -259,6 +271,8 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
     schemaHint: [
       'Use {value, confidence, sourceEvidence} for profile fields.',
       'Prefer structured serviceBlocks over flattened page text when serviceBlocks are present.',
+      'You are given candidate service blocks extracted from a salon/spa website. Normalize real services and reject non-services with rejectReason.',
+      'Reject policy, FAQ, contact, marketing, duration-only, price-only, or CTA-only blocks. Do not turn descriptions into service names.',
       'For services, return serviceCatalog.categories as service groups and give every service a categoryName matching one group. If you see groupName, map it to categoryName.',
       'Preserve the website service grouping language when available. Do not flatten unrelated service groups.',
       'Service names must contain only the menu item name. If a line is "Essential Blowout Shampoo & Condition • Smooth Blow Dry • 30 min+", return name "Essential Blowout", description "Shampoo & Condition • Smooth Blow Dry", and durationText "30 min+".',

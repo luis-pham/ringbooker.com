@@ -37,9 +37,16 @@ const SERVICE_GROUP_HEADINGS = [
   'Color',
   'Extensions',
   'Style',
+  'Styling',
   'Blowout',
   'Treatments',
+  'Haircuts',
+  'Smoothing/Straightening Treatments',
+  'Hair Extensions',
+  'Signature Ritual Deep Conditioning Treatments',
 ];
+const SERVICE_MENU_SOURCE_RE = /\b(source|skip to content|open menu|close menu|copyright|social media|get in touch|book now|quick view|home|about|contact|careers|blog|shop|cart|folder:|back|policy|policies|faq|questions?|located|walk-ins?)\b/i;
+const ECOMMERCE_CONTEXT_RE = /\b(shop|store|products?|collections?|cart|checkout|add to cart|retail|merch|gift cards?)\b/i;
 
 const DAY_ALIASES: Record<string, string> = {
   mo: 'mon', mon: 'mon', monday: 'mon',
@@ -60,8 +67,8 @@ export function inferGroup(name: string): string {
   if (/pedicure/.test(lower)) return 'Pedicure';
   if (/hair\s*extension|extensions?.*hair/.test(lower)) return 'Hair Extensions';
   if (/acrylic|extension|dip powder|nail/.test(lower)) return 'Acrylics / Extensions';
-  if (/balayage|highlight|root|color|colour/.test(lower)) return 'Hair Color';
-  if (/haircut|blowout|keratin|hair/.test(lower)) return 'Haircuts';
+  if (/balayage|highlight|lightening|tint|retouch|root|color|colour/.test(lower)) return 'Hair Color';
+  if (/haircut|\bcut\b|blowout|blow\s*out|styling|updo|keratin|hair/.test(lower)) return 'Haircuts';
   if (/wax/.test(lower)) return 'Waxing';
   if (/massage/.test(lower)) return 'Massage';
   if (/facial|hydrafacial|peel/.test(lower)) return 'Facials';
@@ -286,13 +293,14 @@ export function extractServicesFromText(text: string, source: string): ImportedS
   }) => {
     const name = collapseRepeatedServiceName(cleanServiceName(input.name));
     if (name.length < 3 || name.length > 90) return;
+    if (/^[a-z]\s+\w/.test(name)) return;
+    if (SERVICE_MENU_SOURCE_RE.test(name)) return;
     if (isStylistPricingRowName(name)) return;
     if (/^(this is|service includes|includes|perfect for|ideal for|not sure|our service|pricing is based)\b/i.test(name)) return;
     const categoryName = input.group?.trim() || inferGroup(name);
     const key = `${categoryName.toLowerCase()}::${name.toLowerCase()}`;
-    if (services.has(key)) return;
     const priceAmount = input.priceAmount ?? (input.priceText ? Number(input.priceText) : null);
-    services.set(key, {
+    const next: ImportedServiceSuggestion = {
       categoryName,
       name,
       description: input.description ?? null,
@@ -306,7 +314,15 @@ export function extractServicesFromText(text: string, source: string): ImportedS
       bookable: true,
       source,
       confidence: input.confidence,
-    });
+      needsReview: input.confidence < 0.7 || (!priceAmount && !input.durationMinutes && !input.durationText),
+    };
+    const existing = services.get(key);
+    if (existing) {
+      const existingEvidence = (existing.priceAmount ? 2 : 0) + (existing.durationMinutes || existing.durationText ? 1 : 0) + existing.confidence;
+      const nextEvidence = (next.priceAmount ? 2 : 0) + (next.durationMinutes || next.durationText ? 1 : 0) + next.confidence;
+      if (nextEvidence <= existingEvidence) return;
+    }
+    services.set(key, next);
   };
 
   for (const item of extractBulletServiceRows(text)) {
@@ -319,6 +335,10 @@ export function extractServicesFromText(text: string, source: string): ImportedS
 
   for (const item of extractGroupedMenuListServices(text)) {
     addService({ ...item, confidence: 0.68 });
+  }
+
+  for (const item of extractDynamicServiceMenuListServices(text)) {
+    addService({ ...item, confidence: item.confidence });
   }
 
   for (const rawLine of text.split(/\n+/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
@@ -375,6 +395,11 @@ export function extractServicesFromText(text: string, source: string): ImportedS
 
 function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSuggestion[] {
   const services = new Map<string, ImportedServiceSuggestion>();
+  const invalidServiceName = (value: string) => /^(?:price\b.*|\d+\s*(?:min|mins|minutes|hour|hours|hr)\+?|\$?\s*\d+|book now|schedule|reserve|appointment|consultation required)$/i.test(value.trim())
+    || /^[a-z]\s+\w/.test(value.trim())
+    || SERVICE_MENU_SOURCE_RE.test(value)
+    || ECOMMERCE_CONTEXT_RE.test(value)
+    || /\b(cancellation|refund|privacy|policy|faq|address|directions|contact us)\b/i.test(value);
   for (const preview of previews) {
     for (const block of preview.serviceBlocks ?? []) {
       const parsed = splitServiceHeadingPrefix(block.serviceName);
@@ -383,22 +408,27 @@ function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSugg
       const priceMatch = block.priceText?.match(/\$?\s*(\d{2,4})/);
       const priceAmount = priceMatch ? Number(priceMatch[1]) : null;
       if (parsed.name.length < 3 || parsed.name.length > 90) continue;
+      if (invalidServiceName(parsed.name)) continue;
       const key = `${group}:${parsed.name}`.toLowerCase();
       if (services.has(key)) continue;
+      const confidence = Math.max(0.45, Math.min(0.92, block.confidence ?? 0.88));
+      const hasRangeOrPlusPrice = Boolean(block.sourceText?.match(/\$\s*\d{1,4}\s*-\s*\$?\s*\d{1,4}\+?|\$\s*\d{1,4}\+/));
       services.set(key, {
         categoryName: group,
         name: parsed.name,
-        description: block.descriptionText ?? null,
+        description: block.descriptionText && block.descriptionText.toLowerCase() !== parsed.name.toLowerCase() ? block.descriptionText : null,
         priceAmount,
         priceCurrency: CURRENCY,
-        priceType: block.priceText && /consultation/i.test(block.priceText) ? 'consultation' : block.priceText && /from|starting|\+/i.test(block.priceText) ? 'from' : priceAmount ? 'fixed' : 'varies',
+        priceType: block.priceText && /consultation/i.test(block.priceText) ? 'consultation' : block.priceText && (hasRangeOrPlusPrice || /from|starting|\+/i.test(block.priceText)) ? 'from' : priceAmount ? 'fixed' : 'varies',
         durationText: duration?.durationText ?? block.durationText ?? null,
         durationMinutes: duration?.durationMinutes ?? null,
         aliases: aliasFor(parsed.name),
         bookingNotes: null,
         bookable: true,
-        source: preview.url,
-        confidence: 0.88,
+        source: block.sourceHint === 'repeated_card' ? 'block_detector' : block.sourceHint === 'service_menu_list' ? 'website' : preview.url,
+        confidence,
+        needsReview: confidence < 0.7 || block.sourceHint === 'service_menu_list' || (!priceAmount && !duration),
+        evidenceSnippet: block.evidenceSnippet ?? block.sourceText?.slice(0, 220) ?? null,
       });
     }
   }
@@ -524,6 +554,98 @@ function extractGroupedMenuListServices(text: string): Array<{ name: string; gro
   return out;
 }
 
+function isServiceMenuGroupHeading(value: string): boolean {
+  const cleaned = cleanServiceName(value);
+  if (cleaned.length < 3 || cleaned.length > 90) return false;
+  if (SERVICE_MENU_SOURCE_RE.test(cleaned) || ECOMMERCE_CONTEXT_RE.test(cleaned)) return false;
+  return /\b(haircuts?|cuts?|color|colour|styling|blowout|extensions?|treatments?|smoothing|straightening|facials?|massage|waxing|nails?|manicure|pedicure|lashes|brows|makeup|injectables?|laser|skin|services?)\b/i.test(cleaned);
+}
+
+function isServiceMenuItemName(value: string): boolean {
+  const cleaned = cleanServiceName(value);
+  if (cleaned.length < 3 || cleaned.length > 100) return false;
+  if (SERVICE_MENU_SOURCE_RE.test(cleaned) || ECOMMERCE_CONTEXT_RE.test(cleaned)) return false;
+  if (/^\d+$/.test(cleaned) || /\?$/.test(cleaned)) return false;
+  return /\b(haircut|cut|curly|men'?s|women'?s|medium|long|short|color|colour|highlight|balayage|toner|root|smudge|shadow|platinum|blow\s*out|up-?do|style|styling|keratin|straightening|conditioner|conditioning|extensions?|weft|i-?tip|tape|installation|removal|consultation|treatment|ritual)\b/i.test(cleaned);
+}
+
+function serviceMenuGroupHeadings(text: string): string[] {
+  const fromLines = text
+    .split(/\n+/)
+    .map((line) => cleanServiceName(line))
+    .filter((line) => isServiceMenuGroupHeading(line));
+  const fromKnown = SERVICE_GROUP_HEADINGS.filter((heading) => {
+    const pattern = new RegExp(`\\b${heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+')}\\b`, 'i');
+    return pattern.test(text);
+  });
+  const groups = [...new Set([...fromLines, ...fromKnown])];
+  return groups
+    .filter((group) => !(group === 'Extensions' && groups.includes('Hair Extensions')))
+    .filter((group) => !(group === 'Treatments' && groups.some((item) => item !== 'Treatments' && /treatments/i.test(item))))
+    .slice(0, 24);
+}
+
+function exactServiceMenuGroup(value: string, groups: string[]): string | null {
+  const cleaned = cleanServiceName(value.replace(/^services?\s+/i, ''));
+  return groups.find((group) => group.toLowerCase() === cleaned.toLowerCase()) ?? null;
+}
+
+function splitTrailingServiceGroup(value: string, groups: string[]): { serviceName: string; nextGroup: string } | null {
+  const cleaned = cleanServiceName(value.replace(/^services?\s+/i, ''));
+  const sortedGroups = [...groups].sort((a, b) => b.length - a.length);
+  for (const group of sortedGroups) {
+    const escapedGroup = group.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+    const match = cleaned.match(new RegExp(`^(.*?)\\s+(${escapedGroup})$`, 'i'));
+    if (!match) continue;
+    const serviceName = cleanServiceName(match[1]);
+    if (!serviceName || serviceName.toLowerCase() === group.toLowerCase()) continue;
+
+    const multiWordGroup = group.trim().split(/\s+/).length > 1;
+    const boundaryLikeService = /\b(haircuts?|cut|blow\s*out|up-?do|style|styling|add\s*on|extensions?|installation|removal|consultation|treatments?|keratin|conditioner|conditioning)\b/i.test(serviceName);
+    const likelyEmbeddedTerm = group.trim().split(/\s+/).length === 1 && serviceName.trim().split(/\s+/).length <= 1;
+    if ((multiWordGroup || boundaryLikeService) && !likelyEmbeddedTerm) {
+      return { serviceName, nextGroup: group };
+    }
+  }
+  return null;
+}
+
+function extractDynamicServiceMenuListServices(text: string): Array<{ name: string; group: string; priceType: ImportedServiceSuggestion['priceType']; confidence: number }> {
+  let normalized = cleanCompressedServiceText(text);
+  const menuStart = normalized.search(/\bServices\s+(?:Haircuts?|Color|Styling|Smoothing|Hair Extensions|Signature Ritual|Treatments?|Extensions?)\b/i);
+  if (menuStart >= 0) normalized = normalized.slice(menuStart);
+  if (/\$\s?\d{1,4}|\bfrom\s+\$?\d{1,4}|\bstarting at\s+\$?\d{1,4}/i.test(normalized)) return [];
+  const intro = normalized.slice(0, 500);
+  if (ECOMMERCE_CONTEXT_RE.test(intro) && !/\bservices?\b/i.test(intro)) return [];
+  const groups = serviceMenuGroupHeadings(normalized);
+  const out: Array<{ name: string; group: string; priceType: ImportedServiceSuggestion['priceType']; confidence: number }> = [];
+  let currentGroup: string | null = null;
+  const parts = normalized
+    .split(/\s*(?:►|•|\u2022|\n|;)\s*/g)
+    .map((item) => cleanServiceName(item.replace(/\bBook Now\b.*$/i, '').replace(/^services?\s+/i, '')))
+    .filter(Boolean);
+  for (const part of parts) {
+    const exactGroup = exactServiceMenuGroup(part, groups);
+    if (exactGroup) {
+      currentGroup = exactGroup;
+      continue;
+    }
+
+    const boundary = splitTrailingServiceGroup(part, groups);
+    const item = boundary?.serviceName ?? part;
+    if (currentGroup && isServiceMenuItemName(item) && !groups.some((group) => group.toLowerCase() === item.toLowerCase())) {
+      out.push({
+        name: item,
+        group: currentGroup,
+        priceType: /consultation/i.test(item) ? 'consultation' : 'varies',
+        confidence: 0.66,
+      });
+    }
+    if (boundary) currentGroup = boundary.nextGroup;
+  }
+  return out;
+}
+
 function cleanCompressedServiceText(text: string): string {
   return text
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -545,11 +667,13 @@ function isStylistPricingRowName(name: string): boolean {
 }
 
 function normalizePricingServiceName(value: string): string {
-  return cleanServiceName(value)
+  const cleaned = cleanServiceName(value)
     .replace(/\bpricing\b/gi, ' ')
+    .replace(/\b(in|near)\s+[A-Z][A-Za-z]+(?:,\s*[A-Z]{2})?\b/g, ' ')
     .replace(/\b(in|near)\s+[A-Z][A-Za-z\s,-]{2,40}$/i, '')
     .replace(/\s+/g, ' ')
     .trim();
+  return collapseRepeatedServiceName(cleaned);
 }
 
 function parseSplitDollarAmount(dollars: string, cents?: string): number {
@@ -1006,7 +1130,9 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   const facts = jsonLdFacts(input.previews);
   const services = [
     ...extractServicesFromBlocks(input.previews),
-    ...input.previews.flatMap((p) => (p.serviceBlocks?.length ? [] : extractServicesFromText(`${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`, p.url))),
+    ...input.previews.flatMap((p) => {
+      return (p.serviceBlocks?.length ?? 0) >= 3 ? [] : extractServicesFromText(`${p.h1}\n${p.firstTextChars}`, p.url);
+    }),
     ...extractServiceLinks(input.previews),
   ];
   const deduped = dedupeServices(services);

@@ -89,6 +89,10 @@ function candidateFromUrl(url: string, source: CandidateUrl['source'], anchorTex
   try {
     const parsed = new URL(url);
     parsed.hash = '';
+    for (const key of [...parsed.searchParams.keys()]) {
+      const lower = key.toLowerCase();
+      if (/^utm_/.test(lower) || ['fbclid', 'gclid', 'itemid', 'variantid', 'productid', 'sku'].includes(lower)) parsed.searchParams.delete(key);
+    }
     return { url: parsed.toString(), source, anchorText, pathTokens: parsed.pathname.split(/[\/\-_]+/).filter(Boolean), discoveredFrom };
   } catch {
     return null;
@@ -97,9 +101,14 @@ function candidateFromUrl(url: string, source: CandidateUrl['source'], anchorTex
 
 function commonServicePageCandidates(origin: string, discoveredFrom: string): CandidateUrl[] {
   return [
+    ['/pages/service-menu', 'Service Menu'],
+    ['/pages/service-menu/', 'Service Menu'],
+    ['/pages/services', 'Services'],
+    ['/pages/services/', 'Services'],
+    ['/service-menu/', 'Service Menu'],
+    ['/service-menu', 'Service Menu'],
     ['/services/', 'Services'],
     ['/services', 'Services'],
-    ['/service-menu/', 'Services'],
     ['/menu/', 'Menu'],
     ['/salon-services/', 'Services'],
     ['/our-services/', 'Services'],

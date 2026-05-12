@@ -39,6 +39,10 @@ export function sitemapUrlsToCandidates(urls: Array<{ loc: string; lastmod?: str
       const url = new URL(entry.loc);
       if (url.origin !== origin) continue;
       url.hash = '';
+      for (const key of [...url.searchParams.keys()]) {
+        const lower = key.toLowerCase();
+        if (/^utm_/.test(lower) || ['fbclid', 'gclid', 'itemid', 'variantid', 'productid', 'sku'].includes(lower)) url.searchParams.delete(key);
+      }
       const normalized = url.toString();
       if (seen.has(normalized)) continue;
       seen.add(normalized);
