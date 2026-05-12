@@ -136,6 +136,27 @@ html[data-user-theme="dark"] .calls-list-card .calls-table.calls-table-desktop t
 @media (max-width:860px){
   .calls-metric-grid{grid-template-columns:1fr}
   .calls-table-desktop{display:none!important}
+  /* Keep filter tabs one horizontal row (avoid full-width stacked pills from global portal styles). */
+  .calls-filter-bar{width:100%;min-width:0;overflow:hidden}
+  .business-subtabs.calls-filter-tabs{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    align-items:flex-end!important;
+    gap:12px!important;
+    width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+  }
+  .business-subtabs.calls-filter-tabs::-webkit-scrollbar{display:none}
+  .business-subtabs.calls-filter-tabs .business-subtab{
+    flex:0 0 auto!important;
+    width:auto!important;
+    max-width:none!important;
+    align-self:center!important;
+  }
 }
 html[data-user-theme="dark"] .calls-metric-card{
   background:var(--surface-card);border-color:var(--border);

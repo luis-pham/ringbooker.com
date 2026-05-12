@@ -238,14 +238,23 @@ button.subtle-link:hover{text-decoration:underline}
   cursor:pointer;font:inherit;box-shadow:none;border-bottom:3px solid transparent;
   transition:color .15s ease,border-color .15s ease,font-weight .15s ease;
 }
-.business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
+/* Neutral tab hovers must win over generic .business-subtab pill styles (same as /user/calls) */
+.business-subtabs.calls-filter-tabs .business-subtab:hover{
+  color:var(--text-dark);
+  background:transparent;
+  border-color:transparent;
+}
 .business-subtabs.calls-filter-tabs .business-subtab:focus-visible{
   outline:2px solid var(--purple-dark);outline-offset:3px;
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active{
   color:var(--purple-dark);font-weight:650;letter-spacing:-.01em;border-bottom-color:var(--purple-dark);
 }
-.business-subtabs.calls-filter-tabs .business-subtab.active:hover{color:var(--purple-dark)}
+.business-subtabs.calls-filter-tabs .business-subtab.active:hover{
+  color:var(--purple-dark);
+  background:transparent;
+  border-color:transparent;
+}
 .business-subtabs{
   display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
 }
@@ -700,9 +709,19 @@ html[data-user-theme="dark"] .tab-button.active:hover{
 }
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab{color:var(--text-gray)}
-html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{
+  color:var(--text-dark);
+  background:transparent;
+  border-color:transparent;
+}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active{
   color:var(--purple-dark);border-bottom-color:var(--purple-dark);
+}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active:hover{
+  color:var(--purple-dark);
+  background:transparent;
+  border-color:transparent;
+  border-bottom-color:var(--purple-dark);
 }
 html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
@@ -837,16 +856,16 @@ html[data-user-theme="dark"] .upgrade-panel{
   }
   .tab-button strong{font-size:11px;font-weight:600;line-height:1.25}
   .hours-row{grid-template-columns:1fr}
-  .business-subtabs{
+  .business-subtabs:not(.calls-filter-tabs){
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:8px;
     flex-wrap:unset;
   }
-  .business-subtabs:has(> :nth-child(3):last-child) > .business-subtab:nth-child(3){
+  .business-subtabs:not(.calls-filter-tabs):has(> :nth-child(3):last-child) > .business-subtab:nth-child(3){
     grid-column:1 / -1;
   }
-  .business-subtab{
+  .business-subtabs:not(.calls-filter-tabs) > .business-subtab{
     display:flex;
     align-items:center;
     justify-content:center;
@@ -857,6 +876,54 @@ html[data-user-theme="dark"] .upgrade-panel{
     min-width:0;
     width:100%;
     box-sizing:border-box;
+  }
+  /* Underline filter tabs (Calls / Knowledge desktop): horizontal row, compact chips */
+  .business-subtabs.calls-filter-tabs{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    align-items:flex-end!important;
+    gap:12px!important;
+    width:100%!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:none!important;
+  }
+  .business-subtabs.calls-filter-tabs::-webkit-scrollbar{display:none}
+  .business-subtabs.calls-filter-tabs .business-subtab{
+    flex:0 0 auto!important;
+    width:auto!important;
+    max-width:none!important;
+    padding:12px 0 9px!important;
+    border:none!important;
+    border-radius:0!important;
+    background:transparent!important;
+    border-bottom:3px solid transparent!important;
+    font-size:14px!important;
+    font-weight:500!important;
+    text-align:left!important;
+    justify-content:flex-start!important;
+  }
+  .business-subtabs.calls-filter-tabs .business-subtab.active{
+    border-bottom-color:var(--purple-dark)!important;
+    color:var(--purple-dark)!important;
+    font-weight:650!important;
+  }
+  .knowledge-portal-main .knowledge-tabs-mobile-only.tab-strip{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:10px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+  .knowledge-portal-main .knowledge-tabs-mobile-only .tab-button{
+    min-width:0!important;
+    width:100%!important;
+    max-width:100%!important;
+    box-sizing:border-box!important;
   }
   .user-app-shell .settings-save-footer{
     flex-direction:column;

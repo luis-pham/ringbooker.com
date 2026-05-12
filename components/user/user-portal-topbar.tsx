@@ -14,6 +14,7 @@ export type UserPortalTopbarUserSummary = {
 type UserPortalTopbarProps = {
   title: string;
   subtitle?: string;
+  /** Desktop-only on narrow viewports when using portal account shortcut — CSS hides below 861px. */
   actions?: ReactNode;
   actionsClassName?: string;
   /** Shown on desktop only (hidden below 861px) — matches enterprise header chip pattern. */

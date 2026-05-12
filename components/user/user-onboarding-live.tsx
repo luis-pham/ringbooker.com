@@ -2128,16 +2128,21 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     () => [
       ...userSettingsStyles,
       String.raw`
-.onb-shell{max-width:1120px;margin:0 auto;padding:0;padding-bottom:110px;box-sizing:border-box}
+.onb-shell{
+  max-width:1120px;margin:0 auto;padding:0;padding-bottom:110px;
+  box-sizing:border-box;width:100%;min-width:0;
+}
+/* Prevent horizontal scroll on narrow viewports (wide grids, sticky CTA, etc.) */
+.main.onboarding-main{min-width:0;overflow-x:hidden}
 .onboarding-flow input,.onboarding-flow select,.onboarding-flow textarea{font-size:16px!important;-webkit-text-size-adjust:100%}
 .onboarding-flow input:focus,.onboarding-flow select:focus,.onboarding-flow textarea:focus{transform:none!important}
 .onb-card{background:transparent;border:none;box-shadow:none;border-radius:0;padding:32px 0;max-width:816px;margin:0 auto;width:100%}
 .onb-card.wide{max-width:864px}
-.onb-progress{display:flex;align-items:center;gap:14px;margin-bottom:32px}
+.onb-progress{display:flex;align-items:center;gap:14px;margin-bottom:32px;min-width:0;width:100%}
 .onb-back-inline{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;background:#000;color:#fff;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0}.onb-back-inline:hover{background:#1a1a1a}.onb-back-inline.hidden{visibility:hidden}
 .onb-progress-divider{display:none}
 .onb-progress-main{display:flex;justify-content:center;flex:1;min-width:0}
-.onb-progress-track{display:grid;grid-template-columns:44px minmax(48px,1fr) 44px minmax(48px,1fr) 44px minmax(48px,1fr) 44px;align-items:center;gap:10px;width:100%;max-width:760px}
+.onb-progress-track{display:grid;grid-template-columns:44px minmax(48px,1fr) 44px minmax(48px,1fr) 44px minmax(48px,1fr) 44px;align-items:center;gap:10px;width:100%;max-width:760px;min-width:0}
 .onb-progress-node{width:34px;height:34px;border-radius:999px;border:2px solid #d9deea;background:#fff;color:#475569;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;box-shadow:none}
 .onb-progress-node.done{border-color:#3f7d2f;background:#eef7e8;color:#235f1f}
 .onb-progress-node.current{border-color:#7c3aed;background:#faf5ff;color:#5b21b6}
@@ -2339,7 +2344,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:0}.onb-service-row-desktop,.onb-service-row-mobile{display:none}.svc-row{display:flex;align-items:center;padding:12px 16px;border-top:1px solid #f9fafb;cursor:pointer;gap:8px}.svc-row:active{background:#fafafa}.onb-service-name{font-size:13px}.onb-service-remove-compact{display:none}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:block;width:auto;border:0;border-radius:0;text-align:left;padding:12px 16px;margin:0;color:#7c3aed;background:transparent}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px;padding-left:max(16px, env(safe-area-inset-left));padding-right:max(16px, env(safe-area-inset-right));overflow-x:hidden}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:0}.onb-service-row-desktop,.onb-service-row-mobile{display:none}.svc-row{display:flex;align-items:center;padding:12px 16px;border-top:1px solid #f9fafb;cursor:pointer;gap:8px}.svc-row:active{background:#fafafa}.onb-service-name{font-size:13px}.onb-service-remove-compact{display:none}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:block;width:auto;border:0;border-radius:0;text-align:left;padding:12px 16px;margin:0;color:#7c3aed;background:transparent}.onb-service-edit-row{grid-template-columns:minmax(0,1fr)!important;gap:10px}.onb-service-variant-edit{grid-template-columns:minmax(0,1fr)!important;gap:8px}.onb-step2-hours-editor-row{grid-template-columns:minmax(0,1fr);gap:8px}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -2349,10 +2354,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   if (loading) {
     return (
       <UserLayout styles={mergedStyles} scripts={userSettingsScripts} scriptPrefix="user-onboarding-live">
-        <main className="main">
-          <section className="onb-shell onboarding-flow">
-            <div className="onb-card">
-              <p>Loading onboarding...</p>
+      <main className="main onboarding-main">
+        <section className="onb-shell onboarding-flow">
+          <div className="onb-card">
+            <p>Loading onboarding...</p>
             </div>
           </section>
         </main>
@@ -4014,7 +4019,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   return (
     <UserLayout styles={mergedStyles} scripts={userSettingsScripts} scriptPrefix="user-onboarding-live">
-      <main className="main">
+      <main className="main onboarding-main">
         <section className="onb-shell onboarding-flow">
           <div className={`onb-card ${currentStep === 4 ? 'wide' : ''}`}>
             <Progress currentStep={currentStep} step1View={step1View} onBack={() => void handleBack()} />

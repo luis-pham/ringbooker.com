@@ -971,7 +971,8 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
     gap:10px;
   }
   .topbar-trailing > .portal-notif,
-  .topbar-trailing > .user-theme-toggle{display:none}
+  .topbar-trailing > .user-theme-toggle,
+  .topbar-trailing > .top-actions.portal-top-account{display:none}
   .topbar-user-chip{display:none !important}
   /* Card section headers: marketing-style full-width black CTAs on mobile (not topbar shortcuts). */
   .user-app-shell .panel-head{
