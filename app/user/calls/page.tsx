@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+
 import { UserCallsLive } from '@/components/user/user-calls-live';
 import type { CallsResponse, IntentSummaryResponse } from '@/components/user/user-calls-live';
 import { fetchUserBackendJsonMap } from '@/app/user/server-data';
@@ -12,9 +14,11 @@ export default async function UserCallsPage() {
     summary: '/user/calls/summary',
   });
   return (
-    <UserCallsLive
-      initialData={data.calls as CallsResponse | null}
-      initialIntentSummary={data.summary as IntentSummaryResponse | null}
-    />
+    <Suspense fallback={null}>
+      <UserCallsLive
+        initialData={data.calls as CallsResponse | null}
+        initialIntentSummary={data.summary as IntentSummaryResponse | null}
+      />
+    </Suspense>
   );
 }
