@@ -222,9 +222,10 @@ button.subtle-link:hover{text-decoration:underline}
   .knowledge-tabs-mobile-only{display:none !important}
 }
 .knowledge-portal-tab-bar{margin-bottom:18px;min-width:0}
+/* Match /user/calls filter tabs: underline row, neutral active (not pills) */
 .business-subtabs.calls-filter-tabs{
-  display:flex;gap:18px;flex-wrap:nowrap;align-items:flex-end;
-  margin-bottom:0;border-bottom:1px solid var(--border);
+  display:flex;gap:24px;flex-wrap:nowrap;align-items:flex-end;
+  margin-bottom:0;border-bottom:1.5px solid #e5e7eb;
   overflow-x:auto;overflow-y:hidden;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-x:contain;
@@ -234,26 +235,23 @@ button.subtle-link:hover{text-decoration:underline}
 .business-subtabs.calls-filter-tabs .business-subtab{
   flex:0 0 auto;white-space:nowrap;
   appearance:none;background:transparent;border:none;border-radius:0;margin:0;
-  padding:12px 0 9px;font-size:14px;line-height:1.35;font-weight:500;color:var(--text-gray);
+  padding:0 0 10px;font-size:14px;line-height:1.35;font-weight:500;color:#6b7280;
   cursor:pointer;font:inherit;box-shadow:none;border-bottom:2px solid transparent;
-  transition:color .15s ease,border-color .15s ease,font-weight .15s ease;
+  transition:color .15s ease,border-color .15s ease;
 }
-/* Neutral tab hovers must win over generic .business-subtab pill styles (same as /user/calls) */
 .business-subtabs.calls-filter-tabs .business-subtab:hover{
   color:var(--text-dark);
   background:transparent;
-  border-color:transparent;
 }
 .business-subtabs.calls-filter-tabs .business-subtab:focus-visible{
   outline:2px solid var(--purple-dark);outline-offset:3px;
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active{
-  color:var(--purple-dark);font-weight:500;letter-spacing:-.01em;border-bottom-color:var(--purple-dark);
+  color:#111;font-weight:500;border-bottom-color:#111;
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active:hover{
-  color:var(--purple-dark);
+  color:#111;
   background:transparent;
-  border-color:transparent;
 }
 .business-subtabs{
   display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
@@ -709,19 +707,13 @@ html[data-user-theme="dark"] .tab-button.active:hover{
 }
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab{color:var(--text-gray)}
-html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{
-  color:var(--text-dark);
-  background:transparent;
-  border-color:transparent;
-}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active{
-  color:var(--purple-dark);border-bottom-color:var(--purple-dark);
+  color:var(--text-dark);border-bottom-color:var(--text-dark);
 }
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active:hover{
-  color:var(--purple-dark);
+  color:var(--text-dark);
   background:transparent;
-  border-color:transparent;
-  border-bottom-color:var(--purple-dark);
 }
 html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
@@ -877,14 +869,15 @@ html[data-user-theme="dark"] .upgrade-panel{
     width:100%;
     box-sizing:border-box;
   }
-  /* Underline filter tabs (Calls / Knowledge desktop): horizontal row, compact chips */
+  /* Knowledge filter tabs — same row + underline as /user/calls (scroll on narrow) */
   .business-subtabs.calls-filter-tabs{
     display:flex!important;
     flex-direction:row!important;
     flex-wrap:nowrap!important;
     align-items:flex-end!important;
-    gap:12px!important;
+    gap:24px!important;
     width:100%!important;
+    border-bottom:1.5px solid var(--border)!important;
     overflow-x:auto!important;
     overflow-y:hidden!important;
     -webkit-overflow-scrolling:touch!important;
@@ -895,19 +888,20 @@ html[data-user-theme="dark"] .upgrade-panel{
     flex:0 0 auto!important;
     width:auto!important;
     max-width:none!important;
-    padding:12px 0 9px!important;
+    padding:0 0 10px!important;
     border:none!important;
     border-radius:0!important;
     background:transparent!important;
     border-bottom:2px solid transparent!important;
     font-size:14px!important;
     font-weight:500!important;
+    color:var(--text-gray);
     text-align:left!important;
     justify-content:flex-start!important;
   }
   .business-subtabs.calls-filter-tabs .business-subtab.active{
-    border-bottom-color:var(--purple-dark)!important;
-    color:var(--purple-dark)!important;
+    border-bottom-color:var(--text-dark);
+    color:var(--text-dark);
     font-weight:500!important;
   }
   .knowledge-portal-main .knowledge-tabs-mobile-only.tab-strip{

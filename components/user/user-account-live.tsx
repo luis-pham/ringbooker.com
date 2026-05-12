@@ -206,31 +206,37 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   background:var(--surface-card);border:1px solid var(--border);border-radius:16px;
   overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06);
 }
-/* Lightweight underline tabs to match Billing/Calls */
+/* Underline tabs — match /user/calls (.calls-filter-tabs + .calls-filter-tab) */
 .rb-account-subtabs.business-subtabs{
   display:flex;
   align-items:flex-end;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   gap:24px;
   margin-bottom:0;
   padding:24px 28px 0;
-  border-bottom:1px solid var(--border);
+  border-bottom:1.5px solid #e5e7eb;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
 }
+.rb-account-subtabs.business-subtabs::-webkit-scrollbar{display:none}
 .rb-account-subtabs.business-subtabs .business-subtab{
+  flex:0 0 auto;
   appearance:none;
   background:transparent;
   border:none;
   border-radius:0;
   margin:0;
-  padding:0 0 11px;
+  padding:0 0 10px;
   font-size:14px;
   line-height:1.35;
   font-weight:500;
-  color:var(--text-gray);
+  color:#6b7280;
+  white-space:nowrap;
   cursor:pointer;
   font:inherit;
-  border-bottom:3px solid transparent;
-  transition:color .15s ease,border-color .15s ease,background .15s ease,font-weight .15s ease;
+  border-bottom:2px solid transparent;
+  transition:color .15s ease,border-color .15s ease;
   box-shadow:none;
 }
 .rb-account-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
@@ -239,12 +245,11 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   outline-offset:3px;
 }
 .rb-account-subtabs.business-subtabs .business-subtab.active{
-  color:var(--purple-dark);
-  font-weight:650;
-  letter-spacing:-.01em;
-  border-bottom-color:var(--purple-dark);
+  color:#111;
+  font-weight:500;
+  border-bottom-color:#111;
 }
-.rb-account-subtabs.business-subtabs .business-subtab.active:hover{color:var(--purple-dark)}
+.rb-account-subtabs.business-subtabs .business-subtab.active:hover{color:#111}
 .rb-account-panel{padding:18px 18px 22px}
 .rb-account-panel-title{
   margin:0 0 18px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
@@ -257,35 +262,33 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
 @media(max-width:860px){
   .rb-account-shell{padding:0 0 30px;max-width:100%}
   .rb-account-subtabs.business-subtabs{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:8px;
-    align-items:stretch;
+    flex-wrap:nowrap;
+    gap:24px;
     padding:18px 18px 0;
-    border-bottom:none;
+    border-bottom:1.5px solid var(--border);
+    overflow-x:auto;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
   }
+  .rb-account-subtabs.business-subtabs::-webkit-scrollbar{display:none}
   .rb-account-subtabs.business-subtabs .business-subtab{
-    width:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    text-align:center;
-    padding:11px 12px;
-    border-radius:12px;
-    border:1px solid var(--border);
-    background:var(--surface-card);
+    flex:0 0 auto;
+    width:auto;
+    padding:0 0 10px;
+    border-radius:0;
+    border:none;
+    border-bottom:2px solid transparent;
+    background:transparent;
+    text-align:left;
+    justify-content:flex-start;
+    font-weight:500;
+    color:var(--text-gray);
   }
   .rb-account-subtabs.business-subtabs .business-subtab.active{
-    color:var(--purple-dark);
-    font-weight:650;
-    letter-spacing:-.01em;
-    background:var(--purple-ultra);
-    border-color:rgba(99,14,212,.28);
-    border-bottom-color:rgba(99,14,212,.28);
-  }
-  html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active{
-    border-color:rgba(88,166,255,.35);
-    border-bottom-color:rgba(88,166,255,.35);
+    color:var(--text-dark);
+    font-weight:500;
+    border-bottom-color:var(--text-dark);
+    background:transparent;
   }
 }
 .rb-account-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px}
@@ -364,8 +367,8 @@ html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs{border-bottom-
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab{color:var(--text-gray)}
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active{
-  color:var(--purple-dark);
-  border-bottom-color:var(--purple-dark);
+  color:var(--text-dark);
+  border-bottom-color:var(--text-dark);
 }
 .rb-account-skel-head .rb-account-skel-bar{max-width:128px;height:12px}
 .rb-account-skel-bar{
