@@ -1753,10 +1753,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-service-save-dot,.onb-service-cancel-dot{width:28px;height:28px;border-radius:999px;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-weight:600}.onb-service-save-dot{background:#111;color:#fff}.onb-service-cancel-dot{background:#f3f4f6;color:#6b7280}
 .onb-group-add-service{margin-top:12px;width:100%;min-height:40px;border:1px dashed #e5e7eb;border-radius:8px;background:transparent;color:#7c3aed;font-size:13px;font-weight:500;cursor:pointer;text-align:center}.onb-group-add-service:hover{border-color:#c4b5fd;background:#faf5ff}.onb-group-add-service-mobile{display:none}
 .service-remove-btn{min-height:32px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}.service-remove-btn:hover{border-color:#fecaca;background:#fff1f2;color:#be123c}.onb-service-remove-compact{position:absolute;right:0;bottom:4px;opacity:0;pointer-events:none}.onb-service-row-wrap:hover .onb-service-remove-compact{opacity:1;pointer-events:auto}
-.service-review-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.service-review-row--manual{justify-content:flex-start}
 .service-group-select-label{display:inline-flex;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:500}.service-group-select-label select{width:auto;min-width:150px;min-height:34px;padding:6px 10px;font-size:13px}
-.service-review-badge,.service-review-source{display:inline-flex;align-items:center;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:500}.service-review-badge.verified{background:#ecfdf5;color:#047857}.service-review-badge.needs-review{background:#fff7ed;color:#c2410c}.service-review-badge.review{background:#eef2ff;color:#3730a3}.service-review-source{background:#eef2ff;color:#3730a3}
-.service-evidence{display:block;flex-basis:100%;color:#64748b;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
 .service-empty{border:1px dashed #cbd5e1;border-radius:10px;padding:12px;color:#64748b;font-size:13px;margin-bottom:10px}
 .onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:0;border-radius:8px;background:#000;color:#fff;padding:10px 18px;font-size:15px;font-weight:600;box-shadow:0 8px 18px rgba(0,0,0,.18);cursor:pointer;text-decoration:none;transition:background .15s ease,transform .15s ease,box-shadow .15s ease}.onb-btn-primary:hover:not(:disabled){background:#1f1f1f;transform:translateY(-1px);box-shadow:0 12px 24px rgba(0,0,0,.24)}
@@ -1777,7 +1774,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-manual-toggle-row{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:1px solid #f9fafb}.onb-service-row-desktop{display:none}.onb-service-row-mobile{display:flex;min-height:48px;padding:0 16px}.onb-service-name{font-size:13px}.service-review-row{padding:0 16px 8px}.onb-service-remove-compact{position:static;opacity:1;pointer-events:auto;margin:0 16px 10px}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:block;width:auto;border:0;border-radius:0;text-align:left;padding:12px 16px;margin:0;color:#7c3aed;background:transparent}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-manual-toggle-row{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:1px solid #f9fafb}.onb-service-row-desktop{display:none}.onb-service-row-mobile{display:flex;min-height:48px;padding:0 16px}.onb-service-name{font-size:13px}.onb-service-remove-compact{position:static;opacity:1;pointer-events:auto;margin:0 16px 10px}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:block;width:auto;border:0;border-radius:0;text-align:left;padding:12px 16px;margin:0;color:#7c3aed;background:transparent}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -2563,7 +2560,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               ) : null}
               {items.map(({ service, index }) => {
                 const editingInline = serviceEditor?.mode === 'inline' && serviceEditor.index === index;
-                const review = serviceReviewBadgeState(service);
                 const duration = serviceDurationText(service);
                 return (
                 <div className="onb-service-row-wrap" key={`${group}-${index}`}>
@@ -2588,17 +2584,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                       </button>
                     </>
                   )}
-                  {review || service.evidenceSnippet?.trim() ? (
-                    <div className="service-review-row">
-                      {review ? (
-                        <>
-                          <span className={`service-review-badge ${review.label === 'AI verified' ? 'verified' : review.label === 'Needs review' ? 'needs-review' : 'review'}`}>{review.label}</span>
-                          <span className="service-review-source">{review.source}</span>
-                        </>
-                      ) : null}
-                      {service.evidenceSnippet?.trim() ? <span className="service-evidence">{service.evidenceSnippet.trim()}</span> : null}
-                    </div>
-                  ) : null}
                   <button type="button" className="service-remove-btn onb-service-remove-compact" onClick={() => removeServiceRow(index)} aria-label={`Remove ${service.name || 'service'}`}>
                     Remove
                   </button>

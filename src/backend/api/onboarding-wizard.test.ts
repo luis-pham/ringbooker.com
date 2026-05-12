@@ -154,16 +154,16 @@ test('imported website text renders escaped in React text nodes', () => {
   assert.match(html, /&lt;img/);
 });
 
-test('imported service evidence snippet renders escaped in React text nodes', () => {
+test('imported service text renders escaped in React text nodes', () => {
   const maliciousEvidence = 'Evidence: <script>alert("x")</script><b>Balayage</b>';
-  const html = renderToStaticMarkup(React.createElement('span', { className: 'service-evidence' }, maliciousEvidence));
+  const html = renderToStaticMarkup(React.createElement('span', null, maliciousEvidence));
   assert.equal(html.includes('<script>'), false);
   assert.equal(html.includes('<b>Balayage</b>'), false);
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /&lt;b&gt;Balayage&lt;\/b&gt;/);
 });
 
-test('onboarding services UI exposes review metadata, removal, and conservative copy', () => {
+test('onboarding services UI keeps row content focused on name price duration and edit', () => {
   const onboardingLive = readFileSync('components/user/user-onboarding-live.tsx', 'utf8');
   assert.match(onboardingLive, /Review imported services before saving/);
   assert.match(onboardingLive, /Some imported services may need review/);
@@ -174,12 +174,15 @@ test('onboarding services UI exposes review metadata, removal, and conservative 
   assert.match(onboardingLive, /click any row to edit/);
   assert.match(onboardingLive, /tap any to edit/);
   assert.match(onboardingLive, /Pick the categories you offer/);
-  assert.match(onboardingLive, /serviceReviewBadgeState/);
-  assert.match(onboardingLive, /service-evidence/);
+  assert.match(onboardingLive, /onb-service-name/);
+  assert.match(onboardingLive, /onb-service-price/);
+  assert.match(onboardingLive, /onb-service-duration/);
+  assert.match(onboardingLive, /onb-service-edit-link/);
   assert.match(onboardingLive, /service-remove-btn/);
   assert.match(onboardingLive, /removeServiceRow/);
   assert.match(onboardingLive, /onb-service-sheet-overlay/);
   assert.match(onboardingLive, /onb-service-edit-row/);
+  assert.doesNotMatch(onboardingLive, /service-review-badge|service-review-source|service-evidence/);
   assert.doesNotMatch(onboardingLive, /selectedPages|rawHtml|rawGoogle|rawLlm/);
 });
 
