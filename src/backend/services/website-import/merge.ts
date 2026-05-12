@@ -115,6 +115,21 @@ function parseServiceDuration(value: string): { durationText: string; durationMi
   if (!Number.isFinite(minutes) || minutes <= 0) return null;
   return { durationText: `${minutes} min${match[2] ? '+' : ''}`, durationMinutes: minutes };
 }
+
+function canonicalServiceGroupName(value?: string | null): string {
+  const raw = (value ?? '').trim();
+  if (!raw) return 'General Services';
+  const cleaned = raw
+    .replace(/\s+/g, ' ')
+    .trim();
+  const compact = cleaned.replace(/\s+services?$/i, '').trim();
+  const lower = compact.toLowerCase().replace(/[&+]/g, 'and');
+  if (/^(hair\s*)?colou?r$/.test(lower)) return 'Hair Color';
+  if (/^(hair\s*)?cuts?$/.test(lower) || /^hair\s+cuts?$/.test(lower) || /^cutting$/.test(lower)) return 'Haircuts';
+  if (/^(hair\s*)?treatments?$/.test(lower) || /^conditioning treatments?$/.test(lower) || /^deep conditioning treatments?$/.test(lower)) return 'Treatments';
+  return cleaned || 'General Services';
+}
+
 function splitMergedServiceName(service: ImportedServiceSuggestion): ImportedServiceSuggestion {
   const name = service.name?.trim() ?? '';
   if (!name.includes('•')) return { ...service, name };
@@ -128,7 +143,7 @@ function splitMergedServiceName(service: ImportedServiceSuggestion): ImportedSer
   let categoryName = service.categoryName;
   const groupPrefixMatch = cleanName.match(/^(Blowout|Color|Cut|Extensions|Style|Treatments)\s+(.{3,80})$/i);
   if (groupPrefixMatch?.[1] && groupPrefixMatch[2]) {
-    categoryName = groupPrefixMatch[1].replace(/\b\w/g, (char) => char.toUpperCase());
+    categoryName = canonicalServiceGroupName(groupPrefixMatch[1].replace(/\b\w/g, (char) => char.toUpperCase()));
     cleanName = groupPrefixMatch[2].trim();
   }
   const descriptionParts = [
@@ -151,7 +166,7 @@ function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceS
     const service = splitMergedServiceName(rawService);
     const name = service.name?.trim();
     if (!name) continue;
-    const category = service.categoryName?.trim() || 'General Services';
+    const category = canonicalServiceGroupName(service.categoryName);
     const key = `${category}:${name}`.toLowerCase();
     const current = map.get(key);
     if (!current || (service.confidence ?? 0) > (current.confidence ?? 0)) map.set(key, { ...service, categoryName: category, name });
@@ -161,10 +176,15 @@ function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceS
 function serviceGroups(services: ImportedServiceSuggestion[], llm?: LlmImportExtraction | null) {
   const groups = new Map<string, { name: string; source: string; confidence: number; groupKind: 'primary' | 'addon' | 'custom' | null }>();
   for (const category of llm?.serviceCatalog?.categories ?? []) {
-    if (category.name.trim()) groups.set(category.name.trim().toLowerCase(), { name: category.name.trim(), source: category.source ?? 'AI', confidence: category.confidence, groupKind: category.groupKind ?? null });
+    const name = canonicalServiceGroupName(category.name);
+    if (!name.trim()) continue;
+    const key = name.toLowerCase();
+    const existing = groups.get(key);
+    const next = { name, source: category.source ?? 'AI', confidence: category.confidence, groupKind: category.groupKind ?? null };
+    if (!existing || next.confidence > existing.confidence) groups.set(key, next);
   }
   for (const service of services) {
-    const name = service.categoryName?.trim() || 'General Services';
+    const name = canonicalServiceGroupName(service.categoryName);
     if (!groups.has(name.toLowerCase())) groups.set(name.toLowerCase(), { name, source: service.source || 'Website', confidence: Math.max(0.65, service.confidence ?? 0.65), groupKind: name === 'General Services' ? 'custom' : 'addon' });
   }
   return [...groups.values()];

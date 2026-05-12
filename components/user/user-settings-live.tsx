@@ -1455,14 +1455,16 @@ export function UserSettingsLive({
   }
 
   function renderLockCopy(capability: keyof ShopCapabilities) {
+    if (!isLocked(capability)) return null;
     const requiredPlan = REQUIRED_PLAN_BY_CAPABILITY[capability];
     if (!requiredPlan) return null;
-    return (
-      <span className="lock-copy">
-        Unlock with {requiredPlan[0].toUpperCase()}
-        {requiredPlan.slice(1)}
-      </span>
-    );
+    const label =
+      requiredPlan === 'enterprise'
+        ? 'Available on Enterprise'
+        : requiredPlan === 'professional'
+          ? 'Available on Professional'
+          : `Available on ${requiredPlan[0].toUpperCase()}${requiredPlan.slice(1)}`;
+    return <span className="tag orange knowledge-plan-lock-badge">{label}</span>;
   }
 
   return (
@@ -2826,9 +2828,13 @@ export function UserSettingsLive({
                   <div className="switch-list">
                     <div className={`switch-row ${ownerTransferUx.locked ? 'locked' : ''}`}>
                       <div className="switch-copy">
-                        <h4>{ownerTransferUx.title}</h4>
+                        <div className="switch-title-row">
+                          <h4>{ownerTransferUx.title}</h4>
+                          {ownerTransferUx.locked ? (
+                            <span className="tag orange knowledge-plan-lock-badge">{ownerTransferUx.badge}</span>
+                          ) : null}
+                        </div>
                         <p>{ownerTransferUx.description}</p>
-                        {ownerTransferUx.locked ? <span className="lock-copy">{ownerTransferUx.badge}</span> : null}
                       </div>
                       <div className="switch-stack">
                         <button
@@ -2853,7 +2859,7 @@ export function UserSettingsLive({
                   <div className={`option-card ${returningCallerNotesUx.locked ? 'locked' : ''}`}>
                     <div className="hint-row">
                       <strong className="option-title">{returningCallerNotesUx.title}</strong>
-                      <span className={`tag ${returningCallerNotesUx.locked ? 'orange' : 'green'}`}>{returningCallerNotesUx.badge}</span>
+                      <span className={`tag knowledge-plan-lock-badge ${returningCallerNotesUx.locked ? 'orange' : 'green'}`}>{returningCallerNotesUx.badge}</span>
                     </div>
                     <p className="sub" style={{ marginTop: 8 }}>{returningCallerNotesUx.description}</p>
                   </div>
@@ -2884,15 +2890,20 @@ export function UserSettingsLive({
               >
                 <div className="card-section settings-tab-content-frame">
                   <div className="field">
-                    <label>Voice style</label>
+                    <div className="field-plan-lock-head">
+                      <label>Voice style</label>
+                      {renderLockCopy('edit_ai_voice')}
+                    </div>
                     <select value={currentForm.ai_voice} disabled={isLocked('edit_ai_voice')} onChange={(event) => patchState('ai_voice', event.target.value)}>
                       {AI_VOICE_OPTIONS.map((voice) => <option key={voice.value} value={voice.value}>{voice.label}</option>)}
                     </select>
-                    {renderLockCopy('edit_ai_voice')}
                   </div>
 
                   <div>
-                    <div className="hint-row"><strong className="option-title">Greeting preset</strong>{renderLockCopy('edit_ai_greeting')}</div>
+                    <div className="hint-row">
+                      <strong className="option-title">Greeting preset</strong>
+                      {renderLockCopy('edit_ai_greeting')}
+                    </div>
                     <div className="preset-pills" style={{ marginTop: 12 }}>
                       {AI_GREETING_PRESETS.map((preset, index) => {
                         const resolved = normalizeGreeting(preset, effectiveShop.name);
@@ -2925,7 +2936,9 @@ export function UserSettingsLive({
                   <div className={`option-card ${bilingualAnsweringUx.locked ? 'locked' : ''}`}>
                     <div className="hint-row">
                       <strong className="option-title">{bilingualAnsweringUx.title}</strong>
-                      <span className={`tag ${bilingualAnsweringUx.locked ? 'orange' : effectiveShop.plan === 'enterprise' ? 'purple' : 'green'}`}>
+                      <span
+                        className={`tag knowledge-plan-lock-badge ${bilingualAnsweringUx.locked ? 'orange' : effectiveShop.plan === 'enterprise' ? 'purple' : 'green'}`}
+                      >
                         {bilingualAnsweringUx.badge}
                       </span>
                     </div>
@@ -2958,9 +2971,11 @@ export function UserSettingsLive({
                   </div>
 
                   <div className="field">
-                    <label>Advanced AI instructions</label>
+                    <div className="field-plan-lock-head">
+                      <label>Advanced AI instructions</label>
+                      {renderLockCopy('edit_ai_custom_instructions')}
+                    </div>
                     <textarea value={currentForm.ai_custom_instructions} disabled={isLocked('edit_ai_custom_instructions')} onChange={(event) => patchState('ai_custom_instructions', event.target.value)} placeholder="Only show for Enterprise businesses." />
-                    {renderLockCopy('edit_ai_custom_instructions')}
                   </div>
                 </div>
                 <div className="settings-save-footer settings-tab-content-frame">
@@ -3003,17 +3018,27 @@ export function UserSettingsLive({
                     </div>
                   </div>
                   <div className="switch-row">
-                    <div className="switch-copy"><h4>Reminder SMS</h4><p>Automatic appointment reminders that reduce no-shows.</p></div>
+                    <div className="switch-copy">
+                      <div className="switch-title-row">
+                        <h4>Reminder SMS</h4>
+                        {renderLockCopy('edit_reminder_sms')}
+                      </div>
+                      <p>Automatic appointment reminders that reduce no-shows.</p>
+                    </div>
                     <div className="switch-stack">
                       <button type="button" className={`switch ${currentForm.send_reminder_sms ? 'on' : ''}`} disabled={isLocked('edit_reminder_sms')} onClick={() => patchState('send_reminder_sms', !currentForm.send_reminder_sms)} />
-                      {renderLockCopy('edit_reminder_sms')}
                     </div>
                   </div>
                   <div className="switch-row">
-                    <div className="switch-copy"><h4>Review request SMS</h4><p>Follow up completed appointments with a review request.</p></div>
+                    <div className="switch-copy">
+                      <div className="switch-title-row">
+                        <h4>Review request SMS</h4>
+                        {renderLockCopy('edit_review_request_sms')}
+                      </div>
+                      <p>Follow up completed appointments with a review request.</p>
+                    </div>
                     <div className="switch-stack">
                       <button type="button" className={`switch ${currentForm.send_review_request_sms ? 'on' : ''}`} disabled={isLocked('edit_review_request_sms')} onClick={() => patchState('send_review_request_sms', !currentForm.send_review_request_sms)} />
-                      {renderLockCopy('edit_review_request_sms')}
                     </div>
                   </div>
                 </div>

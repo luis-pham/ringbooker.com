@@ -56,8 +56,8 @@ test('normal website import probes common services path when homepage does not l
     lookup,
     fetcher: async (url) => response(html[url] ?? '<h1>Not found</h1>', url),
   });
-  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Color' && service.name === 'Color Retouch'));
-  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Hair Cuts' && service.name === 'Women'));
+  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Hair Color' && service.name === 'Color Retouch'));
+  assert.ok(result.suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Haircuts' && service.name === 'Women'));
   assert.ok(result.diagnostics.serviceHubPagesFound.some((url) => url.includes('/services')));
 });
 
@@ -77,7 +77,7 @@ test('normal website import prefers appointment services page over ecommerce sho
   assert.ok(result.diagnostics.serviceHubPagesFound.some((url) => url.endsWith('/services')));
   assert.equal(result.diagnostics.serviceHubPagesFound.some((url) => url.endsWith('/shop')), false);
   assert.ok(result.suggestions.serviceCatalog.categories.some((category) => category.name === 'Haircuts'));
-  assert.ok(result.suggestions.serviceCatalog.categories.some((category) => category.name === 'Color'));
+  assert.ok(result.suggestions.serviceCatalog.categories.some((category) => category.name === 'Hair Color'));
   assert.ok(result.suggestions.serviceCatalog.categories.some((category) => category.name === 'Hair Extensions'));
   assert.ok(serviceNames.includes('Short to Medium Length Haircut'));
   assert.ok(serviceNames.includes('Root Color'));
@@ -351,6 +351,40 @@ test('merge cleans LLM service names that include bullet descriptions and durati
   assert.equal(service?.description, 'Shampoo & Condition • Smooth Blow Dry');
   assert.equal(service?.durationText, '30 min+');
   assert.equal(result.suggestions.serviceCatalog.services.some((item) => /Smooth Blow Dry|30 min/i.test(item.name)), false);
+});
+
+test('merge canonicalizes equivalent hair service groups without dropping treatments', async () => {
+  const llmPayload = {
+    serviceCatalog: {
+      confidence: 0.9,
+      categories: [
+        { name: 'Color', confidence: 0.86, groupKind: 'primary' },
+        { name: 'Hair Color', confidence: 0.84, groupKind: 'primary' },
+        { name: 'Cut', confidence: 0.84, groupKind: 'primary' },
+      ],
+      services: [
+        { categoryName: 'Color', name: 'All Over Color', priceAmount: 138, priceCurrency: 'USD', priceType: 'from', durationText: null, durationMinutes: null, aliases: [], bookable: true, confidence: 0.9, sourceEvidence: ['service page'] },
+        { categoryName: 'Hair Color', name: 'Creative Hair Color', priceAmount: 153, priceCurrency: 'USD', priceType: 'from', durationText: null, durationMinutes: null, aliases: [], bookable: true, confidence: 0.88, sourceEvidence: ['service page'] },
+        { categoryName: 'Cut', name: 'Signature Haircut', priceAmount: 75, priceCurrency: 'USD', priceType: 'fixed', durationText: null, durationMinutes: null, aliases: [], bookable: true, confidence: 0.88, sourceEvidence: ['service page'] },
+      ],
+    },
+    warnings: [],
+  };
+  const result = await importWebsiteForOnboarding({ url: 'https://group-alias.test' }, {
+    lookup,
+    llmEnabled: true,
+    openAiApiKey: 'openai-test',
+    fetcher: async (url) => {
+      if (url.includes('api.openai.com')) return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(llmPayload) } }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return response(url.endsWith('/robots.txt') ? '' : '<h1>RAW Hair</h1><h2>Treatments</h2><p>Keratin Treatment Botanical Hair Conditioning</p>', url);
+    },
+  });
+  const groups = new Set(result.suggestions.serviceCatalog.services.map((service) => service.categoryName));
+  assert.equal(groups.has('Color'), false);
+  assert.equal(groups.has('Cut'), false);
+  assert.equal(groups.has('Hair Color'), true);
+  assert.equal(groups.has('Haircuts'), true);
+  assert.equal(groups.has('Treatments'), true);
 });
 
 test('invalid LLM secondary suggestion fields are dropped safely', async () => {

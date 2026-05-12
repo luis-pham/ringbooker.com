@@ -119,10 +119,21 @@ const userSettingsSpecificStyles = String.raw`
 .switch-list{display:grid;gap:12px}
 .switch-row{
   display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
-  border:1px solid #f0f1f3;border-radius:18px;padding:15px 16px;background:#fff;
+  border:1px solid var(--border);border-radius:16px;padding:15px 16px;background:var(--surface-card);
 }
 .switch-copy h4{margin:0 0 4px;font-size:14px;letter-spacing:-.02em}
+.switch-title-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  width:100%;margin:0 0 4px;box-sizing:border-box;
+}
+.switch-title-row h4{margin:0;font-size:14px;letter-spacing:-.02em;line-height:1.25}
 .switch-copy p{margin:0;color:var(--text-gray);font-size:12px;line-height:1.55}
+.field-plan-lock-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-bottom:6px;width:100%;box-sizing:border-box;
+}
+.field-plan-lock-head label{margin-bottom:0}
+.knowledge-plan-lock-badge{flex-shrink:0;white-space:nowrap;align-self:center}
 .switch-stack{display:flex;align-items:flex-end;gap:10px;flex-direction:column}
 .switch{
   position:relative;display:inline-flex;width:54px;height:31px;border-radius:999px;background:#e5e7eb;
@@ -134,8 +145,8 @@ const userSettingsSpecificStyles = String.raw`
 .switch.on{background:var(--purple)}
 .switch.on::after{transform:translateX(23px)}
 .switch:disabled{opacity:.55;cursor:not-allowed}
-.lock-copy{font-size:11px;color:var(--text-light);font-weight:500}
 .hint-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hint-row .option-title{flex:1;min-width:0}
 .hint-copy{font-size:12px;color:var(--text-gray);line-height:1.6}
 .subtle-link{color:var(--purple-dark);font-weight:500}
 button.subtle-link{font:inherit;border:none;background:none;padding:0;cursor:pointer;text-align:left}
@@ -487,8 +498,8 @@ button.subtle-link:hover{text-decoration:underline}
 .service-catalog-actions .btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .service-catalog-actions .btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .service-group-list{display:grid;gap:16px}
-.service-group-card{border:1px solid var(--border);border-radius:16px;background:#fff;overflow:hidden}
-.service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f5f3ee;border-bottom:1px solid var(--border)}
+.service-group-card{border:1px solid var(--border);border-radius:16px;background:var(--surface-card);overflow:hidden}
+.service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f9fafb;border-bottom:1px solid var(--border)}
 .service-group-card summary::-webkit-details-marker{display:none}
 .service-group-card summary div{display:flex;align-items:center;justify-content:space-between;gap:14px}
 .service-group-card summary strong{font-size:16px;font-weight:600;color:var(--text-dark);letter-spacing:-.02em}
@@ -496,14 +507,14 @@ button.subtle-link:hover{text-decoration:underline}
 .service-group-card summary div strong{margin-right:auto}
 .service-group-body{display:grid;gap:0;padding:28px 24px 20px}
 .service-group-card--compact{
-  border-color:#dedbd2;
+  border:1px solid var(--border);
   border-radius:16px;
   box-shadow:none;
 }
 .service-group-card--compact summary{
   padding:18px 24px;
-  background:#f8f9fa;
-  border-bottom:1px solid #e7e2d8;
+  background:#f9fafb;
+  border-bottom:1px solid var(--border);
 }
 .service-group-card--compact summary div{gap:12px}
 .service-group-summary-inner{width:100%}
@@ -512,13 +523,13 @@ button.subtle-link:hover{text-decoration:underline}
   font-weight:600;
   line-height:1.25;
   letter-spacing:-.02em;
-  color:#0f172a;
+  color:var(--text-dark);
 }
 .service-group-card--compact summary span{
   font-size:13px;
   font-weight:500;
   line-height:1.25;
-  color:#3f3f46;
+  color:var(--text-gray);
 }
 .service-group-count{display:inline-flex;align-items:center;gap:10px;white-space:nowrap}
 .service-group-count svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:transform .16s ease}

@@ -581,7 +581,6 @@ function serviceMenuGroupHeadings(text: string): string[] {
   const groups = [...new Set([...fromLines, ...fromKnown])];
   return groups
     .filter((group) => !(group === 'Extensions' && groups.includes('Hair Extensions')))
-    .filter((group) => !(group === 'Treatments' && groups.some((item) => item !== 'Treatments' && /treatments/i.test(item))))
     .slice(0, 24);
 }
 

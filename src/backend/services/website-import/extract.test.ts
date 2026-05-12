@@ -256,9 +256,10 @@ test('infers hair salon when a mixed salon page is hair-service heavy', () => {
   const suggestions = buildSuggestions({ sourceUrl: 'http://env-salon.test', sourceType: 'normal_website', previews: [preview] });
   assert.equal(suggestions.businessProfile.name.value, 'enV salon');
   assert.equal(suggestions.businessProfile.primaryType.value, 'hair_salon');
-  assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Color' && service.name === 'Color Retouch'));
-  assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Hair Cuts' && service.name === 'Women'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Hair Color' && service.name === 'Color Retouch'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Haircuts' && service.name === 'Women'));
   assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Nails' && service.name === 'Pedicure'));
+  assert.ok(suggestions.serviceCatalog.services.some((service) => service.categoryName === 'Treatments' && service.name === 'Keratin Treatment'));
 });
 
 test('normalizes imported US phone numbers to E.164 for backend storage', () => {
@@ -431,9 +432,9 @@ test('extracts Elementor service-item cards with group, clean names, and prices'
   `, 'https://rawhairandco.test/services');
   const suggestions = buildSuggestions({ sourceUrl: 'https://rawhairandco.test', sourceType: 'normal_website', previews: [preview] });
   const services = suggestions.serviceCatalog.services;
-  assert.ok(services.some((service) => service.categoryName === 'Color' && service.name === 'All Over Color' && service.priceAmount === 138));
-  assert.ok(services.some((service) => service.categoryName === 'Color' && service.name === 'Color TOUCH-UP' && service.priceAmount === 118));
-  assert.ok(services.some((service) => service.categoryName === 'Color' && service.name === 'FULL HIGHLIGHTS OR LOWLIGHTS' && service.priceAmount === 238));
+  assert.ok(services.some((service) => service.categoryName === 'Hair Color' && service.name === 'All Over Color' && service.priceAmount === 138));
+  assert.ok(services.some((service) => service.categoryName === 'Hair Color' && service.name === 'Color TOUCH-UP' && service.priceAmount === 118));
+  assert.ok(services.some((service) => service.categoryName === 'Hair Color' && service.name === 'FULL HIGHLIGHTS OR LOWLIGHTS' && service.priceAmount === 238));
   assert.equal(services.some((service) => /Book Now|Involves|Starting/i.test(service.name)), false);
 });
 
