@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { CallForwardingSetup } from '@/components/user/call-forwarding-setup';
-import { getPhoneSetupCopy, resolvePhoneSetupState, type PhoneSetupState } from '@/components/user/go-live-phone-setup-state';
+import { CARRIER_DATA, FORWARDING_TYPE_META, findCarrier, type Carrier, type ForwardingType } from '@/lib/call-forwarding/carrier-data';
+import { useGoLive, type GoLiveStatusResponse, type KnowledgeGateItem } from '@/hooks/useGoLive';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
@@ -18,33 +18,10 @@ export type GoLiveBillingResponse = {
   error?: string;
 };
 
-export type GoLiveStatusResponse = {
-  ok: boolean;
-  businessPhone?: string | null;
-  paymentMethodStatus?: string | null;
-  subscriptionStatus?: string | null;
-  providerCustomerId?: string | null;
-  providerSubscriptionId?: string | null;
-  hasPaymentMethod?: boolean;
-  forwardingNumber?: string | null;
-  hasForwardingNumber?: boolean;
-  forwardingSetupVerified?: boolean;
-  forwardingSetupVerifiedAt?: string | null;
-  forwardingSetupVerifiedVia?: string | null;
-  forwardingTestStatus?: 'none' | 'pending' | 'passed' | 'expired' | 'failed';
-  forwardingTestExpiresAt?: string | null;
-  liveCallsEnabled?: boolean;
-  canGoLive?: boolean;
-  primaryCta?: string | null;
-  blockReason?: string | null;
-  commercialApprovalRequired?: boolean;
-  error?: string;
-};
+export type { GoLiveStatusResponse };
 
-type PhoneSetupData = {
-  billing: GoLiveBillingResponse | null;
-  status: GoLiveStatusResponse | null;
-};
+type StepId = 1 | 2 | 3 | 4;
+type StepState = 'done' | 'active' | 'locked';
 
 function formatPhone(phone: string | null | undefined): string {
   if (!phone?.trim()) return 'Not set';
@@ -57,34 +34,169 @@ function formatPhone(phone: string | null | undefined): string {
   return phone;
 }
 
-function checkoutUnavailableCopy(reason?: string | null): string {
-  if (reason === 'billing_checkout_disabled') return 'Payment setup is not enabled yet. Contact support when you are ready to go live.';
-  return 'Payment setup is temporarily unavailable. Contact support when you are ready to go live.';
+function formatDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function goLiveSetupStatusVariant(state: PhoneSetupState): 'live' | 'blocked' | 'ready' | 'next' {
-  if (state === 'live_answering_active') return 'live';
-  if (state === 'billing_issue') return 'blocked';
-  if (state === 'ready_to_enable_live') return 'ready';
-  return 'next';
+function carrierInitials(name: string) {
+  return name.split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
 }
 
-function toneBadgeLabel(variant: ReturnType<typeof goLiveSetupStatusVariant>): string {
-  switch (variant) {
-    case 'live':
-      return 'Live';
-    case 'blocked':
-      return 'Blocked';
-    case 'ready':
-      return 'Ready';
-    default:
-      return 'Next step';
+function CopyButton({ value }: { value: string | null | undefined }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
   }
+  return <button type="button" className="btn" disabled={!value} onClick={copy}>{copied ? 'Copied!' : 'Copy'}</button>;
 }
 
-/**
- * Phone forwarding / go-live steps: payment gate, managed forwarding number, carrier instructions, verification, enable live.
- */
+function KnowledgeGateBanner({ items }: { items: KnowledgeGateItem[] }) {
+  const blocking = items.filter((item) => item.blocking);
+  const optional = items.filter((item) => !item.blocking);
+  if (blocking.every((item) => item.passed)) return null;
+  return (
+    <section className="card gl-gate-card" aria-label="Go Live readiness">
+      <div className="panel-head">
+        <div>
+          <span className="tag orange">Required before Go Live</span>
+          <h3>Finish your AI knowledge</h3>
+          <p className="sub">RingBooker needs the basics before answering real callers.</p>
+        </div>
+      </div>
+      <div className="gl-gate-list">
+        {[...blocking, ...optional].map((item) => (
+          <div className={`gl-gate-item ${item.passed ? 'done' : item.blocking ? 'missing' : 'warn'}`} key={item.key}>
+            <span className="gl-gate-dot">{item.passed ? '✓' : item.blocking ? '!' : 'i'}</span>
+            <span>{item.label}{!item.blocking ? ' (optional)' : ''}</span>
+            {!item.passed ? <a href={item.fixPath}>Fix →</a> : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function GoLiveStepCard({
+  step,
+  title,
+  meta,
+  state,
+  expanded,
+  onSelect,
+  children,
+}: {
+  step: StepId;
+  title: string;
+  meta: string;
+  state: StepState;
+  expanded: boolean;
+  onSelect: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className={`card gl-step-card gl-step-card--${state} ${expanded ? 'expanded' : ''}`}>
+      <button type="button" className="gl-step-head" disabled={state === 'locked'} onClick={onSelect}>
+        <span className="gl-step-num">{state === 'done' ? '✓' : step}</span>
+        <span className="gl-step-copy">
+          <strong>{title}</strong>
+          <small>{meta}</small>
+        </span>
+        <span className="gl-step-chevron">⌄</span>
+      </button>
+      {expanded && state !== 'locked' ? <div className="gl-step-body">{children}</div> : null}
+    </section>
+  );
+}
+
+function NumberDisplayRow({ businessPhone, ringbookerNumber, provisionStatus }: {
+  businessPhone: string | null;
+  ringbookerNumber: string | null;
+  provisionStatus: string;
+}) {
+  return (
+    <div className="gl-number-grid">
+      <div className="card soft gl-number-card">
+        <span className="gl-section-label">Your business number</span>
+        <strong>{formatPhone(businessPhone)}</strong>
+        <p className="sub">Customers keep calling this number.</p>
+      </div>
+      <div className="card soft gl-number-card">
+        <span className="gl-section-label">RingBooker number</span>
+        <div className="gl-number-row">
+          <strong>{provisionStatus === 'provisioning' ? 'Setting up...' : formatPhone(ringbookerNumber)}</strong>
+          <CopyButton value={ringbookerNumber} />
+        </div>
+        <p className="sub">Used behind the scenes for call forwarding.</p>
+      </div>
+    </div>
+  );
+}
+
+function CarrierLogo({ carrier }: { carrier: Carrier }) {
+  if (carrier.logoPath) return <img src={carrier.logoPath} alt={`${carrier.name} logo`} className="gl-carrier-logo" />;
+  return <span className="gl-carrier-fallback" aria-hidden>{carrierInitials(carrier.name)}</span>;
+}
+
+function CarrierPicker({ selected, onSelect }: { selected: string | null; onSelect: (id: string) => void }) {
+  const carriers = CARRIER_DATA.find((country) => country.countryCode === 'us')?.carriers.filter((carrier) => ['verizon', 'att', 'tmobile', 'googlevoice', 'other', 'openphone'].includes(carrier.id)) ?? [];
+  return (
+    <div className="gl-carrier-grid">
+      {carriers.map((carrier) => (
+        <button key={carrier.id} type="button" className={`gl-carrier-card ${selected === carrier.id ? 'selected' : ''}`} onClick={() => onSelect(carrier.id)}>
+          <CarrierLogo carrier={carrier} />
+          <span>{carrier.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DialCodeBlock({
+  dialCode,
+  turnOffCode,
+  instructions,
+}: {
+  dialCode: string | null;
+  turnOffCode: string | null;
+  instructions: string[];
+}) {
+  if (!dialCode && !instructions.length) return null;
+  return (
+    <div className="gl-dial-wrap">
+      {dialCode ? (
+        <div className="gl-dial-code">
+          <code>{dialCode}</code>
+          <CopyButton value={dialCode} />
+        </div>
+      ) : null}
+      {turnOffCode ? <p className="sub gl-turn-off">To turn off: dial {turnOffCode}</p> : null}
+      <ol className="gl-instructions">
+        {(instructions.length ? instructions : ['Open your phone dialer, paste the code above', "Press call - you'll hear a confirmation tone", 'Come back and tap Done']).slice(0, 4).map((step, index) => (
+          <li key={`${index}-${step}`}><span>{index + 1}</span>{step}</li>
+        ))}
+      </ol>
+      <a className="gl-guide-link" href="/current-number/call-forwarding" target="_blank" rel="noreferrer">Need help? View full carrier guide →</a>
+    </div>
+  );
+}
+
+function GoLiveStyles() {
+  return (
+    <style>{`
+.gl-hero{display:grid;gap:12px}.gl-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px}.gl-sidebar{position:sticky;top:82px;align-self:start;display:grid;gap:8px}.gl-sidebar-btn{width:100%;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;display:flex;gap:10px;align-items:flex-start;color:var(--text-gray);cursor:pointer}.gl-sidebar-btn.active{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--text-dark)}.gl-sidebar-btn:disabled{opacity:.45;cursor:not-allowed}.gl-sidebar-num{width:24px;height:24px;border-radius:999px;background:#f3f4f6;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-sidebar-btn.active .gl-sidebar-num{background:var(--purple-light);color:var(--purple-dark)}.gl-sidebar-copy{display:grid;gap:3px}.gl-sidebar-copy strong{font-size:13px;font-weight:600}.gl-sidebar-copy small{font-size:11px;line-height:1.35}.gl-mobile-steps{display:none}.gl-desktop-panel{min-width:0}.gl-step-card{padding:0;overflow:hidden}.gl-step-card--active{border-color:var(--purple-dark)}.gl-step-card--locked{opacity:.48}.gl-step-head{width:100%;border:0;background:transparent;padding:16px 18px;display:flex;align-items:center;gap:12px;text-align:left;color:inherit;cursor:pointer}.gl-step-head:disabled{cursor:not-allowed}.gl-step-num{width:30px;height:30px;border-radius:999px;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-step-card--active .gl-step-num{border-color:var(--purple-dark);color:var(--purple-dark);background:var(--purple-ultra)}.gl-step-card--done .gl-step-num{border-color:var(--green);background:#ecfdf5;color:#047857}.gl-step-copy{display:grid;gap:4px;min-width:0}.gl-step-copy strong{font-size:15px;font-weight:600;color:var(--text-dark)}.gl-step-copy small{font-size:12px;color:var(--text-gray);line-height:1.35}.gl-step-chevron{margin-left:auto;color:var(--text-light)}.gl-step-card.expanded .gl-step-chevron{transform:rotate(180deg)}.gl-step-body{border-top:1px solid var(--border);padding:18px}.gl-gate-card{border-color:#fed7aa;background:#fff7ed}.gl-gate-list{display:grid;gap:8px}.gl-gate-item{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-gray)}.gl-gate-item a{margin-left:auto;color:var(--purple-dark);font-weight:500}.gl-gate-dot{width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#f3f4f6;color:var(--text-gray);flex-shrink:0}.gl-gate-item.done .gl-gate-dot{background:#ecfdf5;color:#047857}.gl-gate-item.missing .gl-gate-dot{background:#fef2f2;color:#b91c1c}.gl-gate-item.warn .gl-gate-dot{background:#fff7ed;color:#c2410c}.gl-section-label{display:block;margin:0 0 7px;color:var(--text-light);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}.gl-number-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gl-number-card{margin:0;padding:16px}.gl-number-card strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px}.gl-number-card p.sub{margin:8px 0 0}.gl-number-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.gl-carrier-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.gl-carrier-card{height:54px;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;cursor:pointer;color:var(--text-dark);font-size:12px;font-weight:500}.gl-carrier-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--purple-dark)}.gl-carrier-logo{width:34px;height:22px;object-fit:contain}.gl-carrier-fallback{width:34px;height:22px;border-radius:6px;background:#f3f4f6;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}.gl-type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.gl-type-card{border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;cursor:pointer}.gl-type-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra)}.gl-type-card strong{display:block;font-size:13px;font-weight:600}.gl-type-card small{display:block;margin-top:4px;color:var(--text-gray);font-size:12px;line-height:1.35}.gl-dial-wrap{display:grid;gap:12px}.gl-dial-code{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#18181b;color:#fff;border-radius:12px;padding:14px}.gl-dial-code code{font-size:18px;font-weight:600;overflow-wrap:anywhere}.gl-dial-code .btn{background:#fff;color:#111827;border-color:#fff}.gl-turn-off{margin:0!important}.gl-instructions{display:grid;gap:10px;margin:0;padding:0;list-style:none}.gl-instructions li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text-gray);line-height:1.5}.gl-instructions span{width:24px;height:24px;border-radius:999px;background:var(--purple-light);color:var(--purple-dark);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-guide-link{color:var(--purple-dark);font-size:13px;font-weight:500}.gl-action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.gl-message{font-size:13px;line-height:1.5;color:var(--text-gray);margin:12px 0 0}.gl-message.error{color:#b91c1c}.gl-live-banner{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.gl-live-banner h3{color:#166534}.gl-empty-note{margin:0;color:var(--text-gray);font-size:13px;line-height:1.6}.gl-loading{padding:30px;text-align:center}.gl-spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:var(--purple-dark);border-radius:999px;animation:glSpin 1s linear infinite;margin:0 auto 10px}@keyframes glSpin{to{transform:rotate(360deg)}}@media(max-width:767px){.gl-layout{display:block}.gl-sidebar,.gl-desktop-panel{display:none}.gl-mobile-steps{display:grid;gap:12px}.gl-number-grid,.gl-carrier-grid,.gl-type-grid{grid-template-columns:1fr}.gl-step-body{padding:16px}.gl-action-row{flex-direction:column}.gl-action-row .btn{width:100%;min-height:48px}.gl-dial-code{align-items:flex-start;flex-direction:column}.gl-carrier-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}`}</style>
+  );
+}
+
 export function GoLiveForwardingPanel({
   initialBilling = null,
   initialStatus = null,
@@ -93,325 +205,194 @@ export function GoLiveForwardingPanel({
   initialStatus?: GoLiveStatusResponse | null;
 }) {
   const { setWorkspace } = useUserWorkspace();
-  const [data, setData] = useState<PhoneSetupData>({ billing: initialBilling, status: initialStatus });
-  const [loading, setLoading] = useState(!(initialBilling || initialStatus));
+  const goLive = useGoLive(initialStatus);
+  const [selectedStep, setSelectedStep] = useState<StepId>(1);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 10000);
-    try {
-      const [billingResponse, statusResponse] = await Promise.all([
-        fetch('/api/backend/user/billing', { signal: controller.signal }),
-        fetch('/api/backend/user/go-live/status', { signal: controller.signal }),
-      ]);
-      const [billing, status] = await Promise.all([
-        billingResponse.json() as Promise<GoLiveBillingResponse>,
-        statusResponse.json() as Promise<GoLiveStatusResponse>,
-      ]);
-      setData({ billing, status });
-      if (billing.ok && billing.shop) {
-        setWorkspace({ shopName: billing.shop.name, plan: billing.shop.plan, active: billing.shop.active });
-      }
-    } finally {
-      window.clearTimeout(timeout);
-    }
-  }, [setWorkspace]);
+  const [dialCode, setDialCode] = useState<string | null>(null);
+  const [turnOffCode, setTurnOffCode] = useState<string | null>(null);
+  const [instructions, setInstructions] = useState<string[]>([]);
 
   useEffect(() => {
-    if (initialBilling || initialStatus) return;
+    if (initialBilling?.ok && initialBilling.shop) {
+      setWorkspace({ shopName: initialBilling.shop.name, plan: initialBilling.shop.plan, active: initialBilling.shop.active });
+    }
+  }, [initialBilling, setWorkspace]);
+
+  const billingReady = goLive.status.billing.paymentMethodAdded && ['trial', 'active'].includes(goLive.status.billing.status);
+  const numberReady = goLive.status.provision.status === 'ready' && Boolean(goLive.status.provision.ringbookerNumber);
+  const forwardingConfigured = goLive.status.forwarding.status === 'configured' || goLive.status.forwarding.status === 'verified';
+  const forwardingVerified = goLive.status.forwarding.status === 'verified';
+  const liveEnabled = goLive.status.liveAnswering.enabled;
+
+  const steps = useMemo(() => {
+    const active: StepId = !billingReady ? 1 : !forwardingConfigured ? 2 : !forwardingVerified ? 3 : 4;
+    return [
+      { step: 1 as StepId, title: 'Start your trial', meta: billingReady ? `Trial active${formatDate(goLive.status.billing.trialEndsAt) ? ` until ${formatDate(goLive.status.billing.trialEndsAt)}` : ''}` : 'Add a card to activate live answering', done: billingReady, locked: false },
+      { step: 2 as StepId, title: 'Set up call forwarding', meta: 'Select carrier → dial code → done', done: forwardingConfigured, locked: !billingReady },
+      { step: 3 as StepId, title: 'Verify forwarding', meta: 'Run a test call to confirm routing', done: forwardingVerified, locked: !billingReady || !forwardingConfigured },
+      { step: 4 as StepId, title: 'Enable live answering', meta: 'Flip the switch to go live', done: liveEnabled, locked: !billingReady || !forwardingVerified || !goLive.canGoLive },
+    ].map((item) => ({ ...item, state: item.done ? 'done' as StepState : item.locked ? 'locked' as StepState : item.step === active ? 'active' as StepState : 'active' as StepState }));
+  }, [billingReady, forwardingConfigured, forwardingVerified, liveEnabled, goLive.canGoLive, goLive.status.billing.trialEndsAt]);
+
+  useEffect(() => {
+    if (!billingReady) setSelectedStep(1);
+    else if (!forwardingConfigured) setSelectedStep(2);
+    else if (!forwardingVerified) setSelectedStep(3);
+    else setSelectedStep(4);
+  }, [billingReady, forwardingConfigured, forwardingVerified]);
+
+  const selectedCarrier = goLive.selectedCarrier;
+  const selectedCarrierRecord = findCarrier('us', selectedCarrier ?? undefined);
+
+  useEffect(() => {
+    if (!numberReady || !selectedCarrier) {
+      setDialCode(null);
+      setTurnOffCode(null);
+      setInstructions([]);
+      return;
+    }
     let active = true;
-    void refresh()
-      .catch(() => {
-        if (active) setData({ billing: { ok: false, error: 'network_error' }, status: { ok: false, error: 'network_error' } });
+    void goLive.getDialCode()
+      .then((result) => {
+        if (!active) return;
+        setDialCode(result.dialCode);
+        setTurnOffCode(result.turnOffCode);
+        setInstructions(result.instructions);
       })
-      .finally(() => {
-        if (active) setLoading(false);
+      .catch(() => {
+        if (!active) return;
+        setDialCode(null);
+        setTurnOffCode(null);
+        setInstructions(selectedCarrierRecord?.appSteps ?? []);
       });
     return () => {
       active = false;
     };
-  }, [initialBilling, initialStatus, refresh]);
+  }, [goLive, numberReady, selectedCarrier, selectedCarrierRecord?.appSteps]);
 
-  useEffect(() => {
-    if (!data.billing?.ok || !data.billing.shop) return;
-    setWorkspace({
-      shopName: data.billing.shop.name,
-      plan: data.billing.shop.plan,
-      active: data.billing.shop.active,
-    });
-  }, [data.billing?.ok, data.billing?.shop, setWorkspace]);
-
-  const billing = data.billing;
-  const status = data.status;
-  const checkoutAvailable = billing?.billing?.checkoutAvailable === true;
-  const forwardingNumber = status?.forwardingNumber?.trim() ?? '';
-  const businessPhone = status?.businessPhone ?? null;
-  const state = useMemo(
-    () =>
-      resolvePhoneSetupState({
-        onboardingRequired: status?.blockReason === 'onboarding_incomplete',
-        subscriptionStatus: status?.subscriptionStatus,
-        paymentMethodStatus: status?.paymentMethodStatus,
-        providerCustomerId: status?.providerCustomerId,
-        providerSubscriptionId: status?.providerSubscriptionId,
-        hasPaymentMethod: status?.hasPaymentMethod,
-        hasForwardingNumber: status?.hasForwardingNumber,
-        forwardingSetupVerified: status?.forwardingSetupVerified,
-        liveCallsEnabled: status?.liveCallsEnabled,
-        primaryCta: status?.primaryCta,
-        blockReason: status?.blockReason,
-        commercialApprovalRequired: status?.commercialApprovalRequired,
-      }),
-    [status],
-  );
-  const copy = getPhoneSetupCopy(state);
-  const statusVariant = goLiveSetupStatusVariant(state);
-
-  async function openPaymentSetup() {
-    setBusyAction('checkout');
+  async function run(label: string, action: () => Promise<void>, success?: string) {
+    setBusyAction(label);
     setMessage(null);
     try {
-      const response = await fetch('/api/backend/user/billing/checkout', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ billing_interval: 'monthly' }),
-      });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; checkoutUrl?: string; error?: string; message?: string } | null;
-      if (!response.ok || !body?.ok || !body.checkoutUrl) {
-        setMessage(body?.message ?? body?.error ?? 'Payment setup could not start. Open Billing or contact support.');
-        return;
-      }
-      window.location.href = body.checkoutUrl;
-    } catch {
-      setMessage('Network error. Please try again or open Billing.');
+      await action();
+      if (success) setMessage(success);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
       setBusyAction(null);
     }
   }
 
-  async function provisionForwardingNumber() {
-    setBusyAction('provision_forwarding_number');
-    setMessage(null);
-    try {
-      const response = await fetch('/api/backend/user/phone-numbers/provision-forwarding-number', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmGoLiveIntent: true }),
-      });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
-      if (!response.ok || !body?.ok) {
-        setMessage(body?.message ?? body?.error ?? 'Could not create your RingBooker forwarding number.');
-        return;
-      }
-      setMessage('Your RingBooker forwarding number is ready. Follow the steps below to connect your phone.');
-      await refresh();
-    } catch {
-      setMessage('Network error. Please try again.');
-    } finally {
-      setBusyAction(null);
+  function renderStepContent(step: StepId) {
+    if (step === 1) {
+      return (
+        <div>
+          <NumberDisplayRow businessPhone={goLive.businessPhone} ringbookerNumber={goLive.status.provision.ringbookerNumber} provisionStatus={goLive.status.provision.status} />
+          {billingReady ? (
+            <p className="gl-message">Payment method is added. {numberReady ? 'Your RingBooker number is ready.' : 'Create your forwarding number next.'}</p>
+          ) : (
+            <p className="gl-message">No charge for 14 days · Cancel anytime. Live answering stays off until forwarding is verified and you enable it.</p>
+          )}
+          <div className="gl-action-row">
+            {!billingReady ? <button type="button" className="btn user-save" disabled={busyAction === 'trial'} onClick={() => run('trial', goLive.startTrial)}>{busyAction === 'trial' ? 'Opening...' : 'Add payment method'}</button> : null}
+            {billingReady && !numberReady ? <button type="button" className="btn user-save" disabled={busyAction === 'provision'} onClick={() => run('provision', goLive.provisionNumber, 'Setting up your RingBooker number...')}>{busyAction === 'provision' ? 'Working...' : 'Create forwarding number'}</button> : null}
+            <a className="btn" href="/user/billing">Open Billing</a>
+          </div>
+        </div>
+      );
     }
-  }
 
-  async function startForwardingTest() {
-    setBusyAction('start_forwarding_test');
-    setMessage(null);
-    try {
-      const response = await fetch('/api/backend/user/go-live/start-forwarding-test', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string; instruction?: string } | null;
-      if (!response.ok || !body?.ok) {
-        setMessage(body?.message ?? body?.error ?? 'Forwarding verification could not start.');
-        return;
-      }
-      setMessage(body.instruction ?? 'Call your current business number from another phone and let it forward to RingBooker.');
-      await refresh();
-    } catch {
-      setMessage('Network error. Please try again.');
-    } finally {
-      setBusyAction(null);
+    if (step === 2) {
+      return (
+        <div>
+          <NumberDisplayRow businessPhone={goLive.businessPhone} ringbookerNumber={goLive.status.provision.ringbookerNumber} provisionStatus={goLive.status.provision.status} />
+          {!numberReady ? <p className="gl-empty-note">Create your RingBooker forwarding number before setting up call forwarding.</p> : null}
+          {numberReady ? (
+            <>
+              <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
+                <div><span className="gl-section-label">Select your carrier</span><CarrierPicker selected={goLive.selectedCarrier} onSelect={goLive.selectCarrier} /></div>
+                <div><span className="gl-section-label">Which calls should RingBooker answer?</span><div className="gl-type-grid">{(['no_answer', 'all', 'busy', 'unreachable'] as ForwardingType[]).map((type) => {
+                  const meta = FORWARDING_TYPE_META[type];
+                  return <button key={type} type="button" className={`gl-type-card ${goLive.selectedForwardingType === type ? 'selected' : ''}`} onClick={() => goLive.selectForwardingType(type)}><strong>{meta.label}{meta.recommended ? ' · Recommended' : ''}</strong><small>{meta.description}</small></button>;
+                })}</div></div>
+                <DialCodeBlock dialCode={dialCode} turnOffCode={turnOffCode} instructions={instructions} />
+              </div>
+              <div className="gl-action-row">
+                <button type="button" className="btn user-save" disabled={!goLive.selectedCarrier || busyAction === 'configured'} onClick={() => run('configured', goLive.markConfigured, 'Forwarding setup saved. Run verification next.')}>{busyAction === 'configured' ? 'Saving...' : 'Done — forwarding is set up'}</button>
+                <button type="button" className="btn" onClick={() => setSelectedStep(3)}>Skip — set up later</button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      );
     }
-  }
 
-  async function confirmForwardingManually() {
-    setBusyAction('confirm_forwarding');
-    setMessage(null);
-    try {
-      const response = await fetch('/api/backend/user/go-live/confirm-forwarding-setup', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ confirmForwardingReady: true }),
-      });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
-      if (!response.ok || !body?.ok) {
-        setMessage(body?.message ?? body?.error ?? 'Forwarding could not be confirmed.');
-        return;
-      }
-      setMessage('Forwarding is marked verified. You can enable live answering when ready.');
-      await refresh();
-    } catch {
-      setMessage('Network error. Please try again.');
-    } finally {
-      setBusyAction(null);
+    if (step === 3) {
+      return (
+        <div>
+          <p className="gl-empty-note">Run a quick test to confirm calls are routing correctly. Your business number stays unchanged until you go live.</p>
+          {goLive.forwardingTestStatus === 'pending' ? <p className="gl-message">Waiting for a forwarded call. Call your current business number from another phone and let it forward to RingBooker.</p> : null}
+          {forwardingVerified ? <section className="card soft gl-live-banner" style={{ marginTop: 14 }}><h3>Forwarding verified ✓</h3><p className="sub">RingBooker received your forwarded test call.</p></section> : null}
+          <div className="gl-action-row">
+            {!forwardingVerified ? <button type="button" className="btn user-save" disabled={busyAction === 'verify'} onClick={() => run('verify', goLive.runVerification, 'Verification started. Call your business number from another phone.')}>{busyAction === 'verify' ? 'Starting...' : 'Run verification call'}</button> : null}
+            {!forwardingVerified ? <button type="button" className="btn" disabled={busyAction === 'confirm'} onClick={() => run('confirm', goLive.confirmForwarding, 'Forwarding marked verified.')}>{busyAction === 'confirm' ? 'Saving...' : 'I completed the test'}</button> : null}
+            <a className="btn" href="/current-number/call-forwarding" target="_blank" rel="noreferrer">Need help?</a>
+          </div>
+        </div>
+      );
     }
-  }
 
-  async function enableLiveAnswering() {
-    setBusyAction('enable_live');
-    setMessage(null);
-    try {
-      const response = await fetch('/api/backend/user/go-live/enable', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
-      if (!response.ok || !body?.ok) {
-        setMessage(body?.message ?? body?.error ?? 'Could not enable live answering yet.');
-        return;
-      }
-      setMessage('Live answering is now active.');
-      await refresh();
-    } catch {
-      setMessage('Network error. Please try again.');
-    } finally {
-      setBusyAction(null);
-    }
-  }
-
-  async function requestTestCall() {
-    setBusyAction('test_call');
-    setMessage(null);
-    try {
-      const response = await fetch('/api/backend/user/test-calls/call-me', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
-      setMessage(response.ok && body?.ok ? 'Test call started. Please answer your phone.' : body?.message ?? body?.error ?? 'Could not start a test call.');
-    } catch {
-      setMessage('Network error. Please try again.');
-    } finally {
-      setBusyAction(null);
-    }
-  }
-
-  function runAction(target: string) {
-    if (target === 'refresh') {
-      setBusyAction('refresh');
-      setMessage(null);
-      void refresh()
-        .catch(() => setMessage('Could not refresh status. Please try again.'))
-        .finally(() => setBusyAction(null));
-      return;
-    }
-    if (target === 'checkout') return void openPaymentSetup();
-    if (target === 'provision_forwarding_number') return void provisionForwardingNumber();
-    if (target === 'start_forwarding_test') return void startForwardingTest();
-    if (target === 'confirm_forwarding') return void confirmForwardingManually();
-    if (target === 'enable_live') return void enableLiveAnswering();
-    if (target === 'test_call') return void requestTestCall();
-  }
-
-  function renderAction(label: string, target: string, primary = false) {
-    const primaryClass = primary ? ' user-save' : '';
-    if (target.startsWith('/') || target.startsWith('#')) {
-      return <a className={`btn${primaryClass}`} href={target}>{label}</a>;
-    }
-    if (target === 'checkout' && !checkoutAvailable) {
-      return <button type="button" className="btn" disabled>{checkoutUnavailableCopy(billing?.billing?.checkoutDisabledReason)}</button>;
-    }
     return (
-      <button type="button" className={`btn${primaryClass}`} disabled={busyAction === target} onClick={() => runAction(target)}>
-        {busyAction === target ? 'Working...' : label}
-      </button>
-    );
-  }
-
-  if (!loading && (!billing?.ok || !status?.ok)) {
-    return (
-      <div className="section-stack">
-        <section className="card">
-          <h3 style={{ marginTop: 0 }}>Unable to load phone setup</h3>
-          <p className="sub">{billing?.error ?? status?.error ?? 'unknown_error'}</p>
-        </section>
+      <div>
+        {liveEnabled ? <section className="card soft gl-live-banner"><h3>RingBooker is live on your business line.</h3><p className="sub">Forwarded calls can now be answered by RingBooker.</p></section> : <p className="gl-empty-note">Billing, forwarding, and verification must be complete before live answering can be enabled.</p>}
+        <div className="gl-action-row">
+          {!liveEnabled ? <button type="button" className="btn user-save" disabled={!goLive.canGoLive || busyAction === 'enable'} onClick={() => run('enable', goLive.enableLive, 'Live answering is now active.')}>{busyAction === 'enable' ? 'Enabling...' : 'Enable live answering'}</button> : null}
+          {liveEnabled ? <button type="button" className="btn" disabled={busyAction === 'disable'} onClick={() => { if (window.confirm('Callers will no longer be answered by RingBooker. Your forwarding setup stays intact.')) void run('disable', goLive.disableLive, 'Live answering is disabled.'); }}>{busyAction === 'disable' ? 'Disabling...' : 'Disable live answering'}</button> : null}
+          <a className="btn" href="/user/calls">View call logs</a>
+        </div>
+        {!goLive.canGoLive && !liveEnabled ? <p className="gl-message error">Complete setup above before going live.</p> : null}
       </div>
     );
   }
 
+  if (goLive.isLoading) {
+    return <><GoLiveStyles /><section className="card gl-loading"><div className="gl-spinner" /><p className="sub">Loading Go Live status...</p></section></>;
+  }
+
   return (
-    <div className="section-stack">
-      <section className={`card go-live-setup-status go-live-setup-status--${statusVariant}`}>
-        <div className="panel-head" style={{ alignItems: 'flex-start', gap: 16 }}>
-          <div>
-            <span className={`tag go-live-setup-status__badge go-live-setup-status__badge--${statusVariant}`}>{toneBadgeLabel(statusVariant)}</span>
-            <h3 style={{ marginTop: 10 }}>{copy.title}</h3>
-            <p className="sub go-live-setup-status__lead">{copy.explanation}</p>
-          </div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginTop: 14 }}>
-          <div className="card soft" style={{ margin: 0 }}>
-            <div className="sub" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>Current business phone number</div>
-            <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, marginTop: 4 }}>{formatPhone(businessPhone)}</div>
-          </div>
-          <div className="card soft" style={{ margin: 0 }}>
-            <div className="sub" style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '.08em' }}>RingBooker forwarding number</div>
-            <div style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 16, marginTop: 4 }}>{forwardingNumber || 'Created after 14-day trial starts'}</div>
-          </div>
-        </div>
-        {copy.blockingReason ? <p className="sub" style={{ marginTop: 12, color: '#92400e' }}>{copy.blockingReason}</p> : null}
-        {message ? <p className="sub" style={{ marginTop: 12, color: message.includes('error') ? '#b91c1c' : '#1e3a8a' }}>{message}</p> : null}
-        <div className="portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
-          {renderAction(copy.primaryLabel, copy.primaryTarget, true)}
-          {copy.secondaryLabel && copy.secondaryTarget ? renderAction(copy.secondaryLabel, copy.secondaryTarget) : null}
-        </div>
-      </section>
+    <div className="section-stack gl-hero" id="go-live-forwarding">
+      <GoLiveStyles />
+      <div>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: '-.02em' }}>Go Live</h2>
+        <p className="sub" style={{ margin: '6px 0 0' }}>Connect RingBooker to your business number. Customers keep calling the same number — forwarding happens behind the scenes.</p>
+      </div>
+      <KnowledgeGateBanner items={goLive.gate} />
+      {message || goLive.error ? <p className={`gl-message ${goLive.error ? 'error' : ''}`}>{message ?? goLive.error}</p> : null}
 
-      <section className="card" id="forwarding-instructions">
-        <h3 style={{ marginTop: 0 }}>Connect your phone</h3>
-        <p className="sub">
-          Your clients keep calling your current business phone number. Your carrier forwards missed, busy, after-hours, or overflow calls to RingBooker behind the scenes.
-        </p>
-        {forwardingNumber ? (
-          <CallForwardingSetup
-            ringbookerNumber={forwardingNumber}
-            callForwardingPageUrl="/current-number/call-forwarding"
-            initialMethod="forward"
-            suppressForwardingTestCta
-            onComplete={() => {}}
-            onSkip={() => {}}
-          />
-        ) : (
-          <div className="card soft" style={{ margin: 0 }}>
-            <p className="sub" style={{ margin: 0 }}>
-              Start your 14-day trial first. Then RingBooker will create your RingBooker forwarding number and show carrier-specific steps to connect your current business number.
-            </p>
-          </div>
-        )}
-      </section>
+      <div className="gl-mobile-steps">
+        {steps.map((step) => (
+          <GoLiveStepCard key={step.step} step={step.step} title={step.title} meta={step.meta} state={step.state} expanded={selectedStep === step.step || step.state === 'active'} onSelect={() => step.state !== 'locked' && setSelectedStep(step.step)}>
+            {renderStepContent(step.step)}
+          </GoLiveStepCard>
+        ))}
+      </div>
 
-      {state === 'live_answering_active' ? (
-        <section className="card soft">
-          <h3 style={{ marginTop: 0 }}>Live answering controls</h3>
-          <p className="sub">Use test calls to confirm the experience. If you need to pause live answering, contact support until self-serve pause is available.</p>
-          <div className="portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            {renderAction('Run a test call', 'test_call')}
-            <a className="btn" href="/user/calls">View call logs</a>
-            <a className="btn" href="/contact?topic=pause-live-answering">Pause live answering</a>
-          </div>
-        </section>
-      ) : null}
+      <div className="gl-layout">
+        <aside className="gl-sidebar" aria-label="Go Live steps">
+          {steps.map((step) => (
+            <button key={step.step} type="button" className={`gl-sidebar-btn ${selectedStep === step.step ? 'active' : ''}`} disabled={step.state === 'locked'} onClick={() => setSelectedStep(step.step)}>
+              <span className="gl-sidebar-num">{step.done ? '✓' : step.step}</span>
+              <span className="gl-sidebar-copy"><strong>{step.title}</strong><small>{step.meta}</small></span>
+            </button>
+          ))}
+        </aside>
+        <main className="gl-desktop-panel">
+          <GoLiveStepCard step={selectedStep} title={steps.find((step) => step.step === selectedStep)?.title ?? 'Go Live'} meta={steps.find((step) => step.step === selectedStep)?.meta ?? ''} state={steps.find((step) => step.step === selectedStep)?.state ?? 'active'} expanded onSelect={() => undefined}>
+            {renderStepContent(selectedStep)}
+          </GoLiveStepCard>
+        </main>
+      </div>
     </div>
   );
 }

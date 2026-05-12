@@ -45,6 +45,7 @@ export type SecurityAuditEvent = {
     | 'forwarding_number_provisioned'
     | 'forwarding_number_failed'
     | 'forwarding_setup_manual_confirmed'
+    | 'live_answering_disabled'
     | 'commercial_go_live_approved';
   actorType: 'user' | 'admin' | 'public' | 'provider' | 'internal';
   actorId?: string;

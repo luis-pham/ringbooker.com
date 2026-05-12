@@ -203,6 +203,15 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
     padding:16px;
   }
 }
+/* Desktop: Bookings / Calls / Business Knowledge share the same page band under the portal topbar */
+@media (min-width:1025px){
+  .user-app-shell .main > .page-content.page-bookings,
+  .user-app-shell .main > .page-content.page-calls,
+  .user-app-shell .main > .page-content.page-knowledge{
+    padding-top:24px;
+    padding-bottom:24px;
+  }
+}
 .topbar{
   display:flex;align-items:center;justify-content:space-between;gap:18px;
   flex-wrap:wrap;

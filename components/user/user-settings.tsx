@@ -221,7 +221,7 @@ button.subtle-link:hover{text-decoration:underline}
   .knowledge-tabs-desktop-only{display:block}
   .knowledge-tabs-mobile-only{display:none !important}
 }
-.knowledge-portal-tab-bar{margin-bottom:18px;min-width:0}
+.knowledge-portal-tab-bar{margin-bottom:32px;min-width:0}
 /* Match /user/calls filter tabs: underline row, neutral active (not pills) */
 .business-subtabs.calls-filter-tabs{
   display:flex;gap:24px;flex-wrap:nowrap;align-items:flex-end;
@@ -533,26 +533,28 @@ button.subtle-link:hover{text-decoration:underline}
 .sh-active-row .small-field label{font-size:10px;margin-bottom:6px}
 
 .service-catalog-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:nowrap}
-.service-catalog-heading h3{margin:0 0 6px;font-size:20px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark)}
+.service-catalog-heading h3{margin:0 0 6px;font-size:18px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
 .service-catalog-actions{display:flex;gap:10px;flex-wrap:wrap;margin-left:auto}
 .service-catalog-actions .btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .service-catalog-actions .btn svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .service-group-list{display:grid;gap:16px}
-.service-group-card{border:1px solid var(--border);border-radius:16px;background:var(--surface-card);overflow:hidden}
+.service-group-card{border:1px solid var(--border);border-radius:14px;background:var(--surface-card);overflow:hidden}
 .service-group-card summary{cursor:pointer;list-style:none;padding:15px 17px;background:#f9fafb;border-bottom:1px solid var(--border)}
 .service-group-card summary::-webkit-details-marker{display:none}
 .service-group-card summary div{display:flex;align-items:center;justify-content:space-between;gap:14px}
-.service-group-card summary strong{font-size:16px;font-weight:600;color:var(--text-dark);letter-spacing:-.02em}
-.service-group-card summary span{font-size:13px;color:var(--text-gray);font-weight:500}
+.service-group-card summary strong{
+  font-size:15px;font-weight:500;color:var(--text-dark);letter-spacing:-.01em;line-height:1.25;
+}
+.service-group-card summary span{font-size:13px;color:var(--text-gray);font-weight:400;line-height:1.25}
 .service-group-card summary div strong{margin-right:auto}
 .service-group-body{display:grid;gap:0;padding:28px 24px 20px}
 .service-group-card--compact{
   border:1px solid var(--border);
-  border-radius:16px;
+  border-radius:14px;
   box-shadow:none;
 }
 .service-group-card--compact summary{
-  padding:18px 24px;
+  padding:16px 18px;
   background:#f9fafb;
   border-bottom:1px solid var(--border);
 }
@@ -560,14 +562,15 @@ button.subtle-link:hover{text-decoration:underline}
 .service-group-summary-inner{width:100%}
 .service-group-card--compact summary strong{
   font-size:15px;
-  font-weight:600;
+  font-weight:500;
   line-height:1.25;
-  letter-spacing:-.02em;
+  letter-spacing:-.01em;
   color:var(--text-dark);
 }
-.service-group-card--compact summary span{
+.service-group-card--compact summary span,
+.service-group-card--compact .service-group-count{
   font-size:13px;
-  font-weight:500;
+  font-weight:400;
   line-height:1.25;
   color:var(--text-gray);
 }
@@ -578,7 +581,7 @@ button.subtle-link:hover{text-decoration:underline}
   padding:26px 24px 20px;
   background:#fff;
 }
-.service-item-card{display:grid;gap:14px;border:1px solid rgba(15,23,42,.08);border-radius:16px;padding:15px;background:#fff}
+.service-item-card{display:grid;gap:14px;border:1px solid rgba(15,23,42,.08);border-radius:14px;padding:15px;background:#fff}
 .service-item-card.archived{opacity:.62;background:#f9fafb}
 .service-item-head{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,.8fr);gap:14px}
 .service-item-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -586,12 +589,12 @@ button.subtle-link:hover{text-decoration:underline}
 .service-summary-item:last-of-type{border-bottom:0}
 .service-summary-item.archived{opacity:.62}
 .service-summary-row{display:grid;grid-template-columns:minmax(0,1fr) auto 34px;align-items:center;gap:14px;padding:11px 0}
-.service-summary-name{font-size:15px;font-weight:500;color:#000;letter-spacing:-.01em}
-.service-summary-meta{font-size:13px;font-weight:500;color:#3f3f46;white-space:nowrap;text-align:right}
+.service-summary-name{font-size:14px;font-weight:500;color:var(--text-dark);letter-spacing:-.01em;line-height:1.3}
+.service-summary-meta{font-size:13px;font-weight:400;color:var(--text-gray);white-space:nowrap;text-align:right;line-height:1.3}
 .service-edit-icon{width:30px;height:30px;border:0;background:transparent;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer}
 .service-edit-icon:hover{background:#f3f4f6;color:var(--text-dark)}
 .service-edit-icon svg{stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.service-inline-editor{display:grid;gap:14px;margin:8px 0 18px;padding:16px;border:1px solid var(--border);border-radius:16px;background:#fff}
+.service-inline-editor{display:grid;gap:14px;margin:8px 0 18px;padding:16px;border:1px solid var(--border);border-radius:14px;background:#fff}
 .service-group-card .service-group-add-service{margin-top:16px}
 .service-variants-editor{display:grid;gap:10px;margin-top:6px}
 .service-variant-row{display:grid;grid-template-columns:minmax(0,1fr) 110px 90px 130px auto;gap:8px;align-items:center}
@@ -787,7 +790,8 @@ html[data-user-theme="dark"] .service-group-card summary{background:#161b22;bord
 html[data-user-theme="dark"] .service-group-card--compact{border-color:var(--border)}
 html[data-user-theme="dark"] .service-group-card--compact summary{background:#161b22;border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .service-group-card--compact summary strong{color:var(--text-dark)}
-html[data-user-theme="dark"] .service-group-card--compact summary span{color:var(--text-gray)}
+html[data-user-theme="dark"] .service-group-card--compact summary span,
+html[data-user-theme="dark"] .service-group-card--compact .service-group-count{color:var(--text-gray)}
 html[data-user-theme="dark"] .service-group-card--compact summary div::before{background:#0d1117;border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .service-group-card--compact .service-group-body{background:var(--surface-card)}
 html[data-user-theme="dark"] .service-item-card{background:var(--surface-card);border-color:var(--border)}

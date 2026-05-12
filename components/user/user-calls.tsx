@@ -3,12 +3,12 @@ import { userDashboardStyles } from '@/components/user/user-dashboard';
 
 const callsPortalStyles = String.raw`
 .page-calls{max-width:1100px;margin:0 auto;width:100%}
-.calls-error{margin-bottom:16px;color:#b91c1c;font-size:13px}
-.calls-metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:28px}
-.calls-metric-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;min-height:84px}
+.calls-error{margin-bottom:14px;color:#b91c1c;font-size:13px}
+.calls-metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px}
+.calls-metric-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;min-height:92px}
 .calls-metric-card p{margin:0 0 4px;font-size:13px;color:#6b7280;line-height:1.35}
-.calls-metric-card strong{display:block;font-size:24px;line-height:1;font-weight:600;letter-spacing:-.02em;color:#111}
-.calls-stat-icon{width:38px;height:38px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;color:#111}
+.calls-metric-card strong{display:block;font-size:28px;line-height:1;font-weight:650;letter-spacing:-.03em;color:#111}
+.calls-stat-icon{width:42px;height:42px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;color:#111}
 .calls-stat-icon--blue{background:#dbeafe}
 .calls-stat-icon--purple{background:#f5f3ff}
 .calls-stat-icon--amber{background:#fef3c7}

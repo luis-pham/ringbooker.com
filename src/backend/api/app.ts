@@ -32,6 +32,7 @@ import {
 import { createSignupPlaceholderBusinessPhoneE164 } from '@/src/backend/domain/signup-placeholder-phone';
 import { normalizePhoneForStorage } from '@/lib/phone-number';
 import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
+import { canProceedToGoLive, evaluateKnowledgeGate } from '@/src/backend/domain/go-live-gate';
 import { mergeImportedServicesIntoCatalog } from '@/src/backend/domain/service-catalog';
 import { importWebsiteForOnboarding } from '@/src/backend/services/website-import/importer';
 import { buildApplyPatchForSuggestions, pendingSuggestionsFromImport, secondarySummary, validateSuggestionPayload } from '@/src/backend/domain/business-knowledge-suggestions';
@@ -118,6 +119,7 @@ import {
 } from '@/src/backend/services/email/config';
 import { getEnv } from '@/src/backend/config/env';
 import { logger } from '@/src/backend/observability/logger';
+import { buildDialCode, findCarrier, getForwardingCode, type ForwardingType } from '@/lib/call-forwarding/carrier-data';
 import { trackApiStatusForAlerts } from '@/src/backend/observability/security-alerts';
 import { getMetricsSnapshot, incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import {
@@ -714,10 +716,54 @@ const confirmForwardingSetupSchema = z.object({
   confirmForwardingReady: z.literal(true),
 });
 
+const markForwardingConfiguredSchema = z.object({
+  carrier: z.string().trim().min(1).max(80),
+  forwardingType: z.enum(['no_answer', 'all', 'busy', 'unreachable']).default('no_answer'),
+});
+
+const forwardingCodeQuerySchema = z.object({
+  carrier: z.string().trim().min(1).max(80),
+  country: z.string().trim().min(2).max(8).optional(),
+  forwardingType: z.enum(['no_answer', 'all', 'busy', 'unreachable']).optional(),
+});
+
 function telnyxCountryCodeFromForwardingCountry(value: string | null | undefined): string {
   const v = (value ?? 'us').trim().toLowerCase();
   if (v === 'ca' || v === 'can') return 'CA';
   return 'US';
+}
+
+function normalizeForwardingNumberForCode(value: string | null | undefined): string {
+  return (value ?? '').trim().replace(/[\s().-]/g, '');
+}
+
+function billingStatusForGoLive(subscription: BillingSubscription | null): 'none' | 'trial' | 'active' | 'cancelled' | 'past_due' {
+  if (!subscription) return 'none';
+  if (subscription.status === 'trialing') return 'trial';
+  if (subscription.status === 'active') return 'active';
+  if (subscription.status === 'canceled' || subscription.status === 'paused' || subscription.status === 'trial_expired') {
+    return 'cancelled';
+  }
+  if (subscription.status === 'past_due' || subscription.status === 'unpaid' || subscription.status === 'incomplete') {
+    return 'past_due';
+  }
+  return 'none';
+}
+
+function provisionStatusForGoLive(shop: Shop): 'none' | 'provisioning' | 'ready' | 'failed' {
+  if (shop.telnyx_number?.trim()) return 'ready';
+  if (shop.forwarding_number_status === 'provisioning') return 'provisioning';
+  if (shop.forwarding_number_status === 'failed') return 'failed';
+  return 'none';
+}
+
+function forwardingStatusForGoLive(params: {
+  shop: Shop;
+  forwardingSetupVerified: boolean;
+}): 'none' | 'configured' | 'verified' {
+  if (params.forwardingSetupVerified) return 'verified';
+  if (params.shop.forwarding_carrier?.trim() || params.shop.forwarding_type) return 'configured';
+  return 'none';
 }
 
 const calendarProviderParamSchema = z.object({
@@ -4854,6 +4900,8 @@ export function createBackendApp(deps: {
     const accessState = await deps.shopAccessStatesRepository.findByShopId(shop.id);
     const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
     const now = new Date();
+    const gate = evaluateKnowledgeGate(shop);
+    const knowledgeGatePassed = canProceedToGoLive(gate);
 
     let forwardingTestStatus: 'none' | 'pending' | 'passed' | 'expired' | 'failed' = 'none';
     let forwardingTestExpiresAt: string | null = null;
@@ -4883,6 +4931,9 @@ export function createBackendApp(deps: {
       now,
     });
 
+    const blockReason = !knowledgeGatePassed && access.canGoLive ? 'knowledge_incomplete' : access.blockReason;
+    const canGoLive = access.canGoLive && knowledgeGatePassed;
+
     return c.json({
       ok: true,
       businessPhone: shop.phone_number?.trim() || null,
@@ -4899,12 +4950,112 @@ export function createBackendApp(deps: {
       forwardingTestStatus,
       forwardingTestExpiresAt,
       liveCallsEnabled: access.liveCallsEnabled,
-      canGoLive: access.canGoLive,
+      canGoLive,
       primaryCta: access.blockReason === 'commercial_approval_required' ? null : primaryCta,
-      blockReason: access.blockReason,
+      blockReason,
       commercialGoLiveApproved: access.commercialGoLiveApproved,
       commercialApprovalRequired: access.blockReason === 'commercial_approval_required',
+      gate,
+      status: {
+        knowledgeGate: {
+          businessName: gate.find((item) => item.key === 'businessName')?.passed ?? false,
+          timezone: gate.find((item) => item.key === 'timezone')?.passed ?? false,
+          hours: gate.find((item) => item.key === 'hours')?.passed ?? false,
+          hasServices: gate.find((item) => item.key === 'services')?.passed ?? false,
+          passed: knowledgeGatePassed,
+        },
+        billing: {
+          status: billingStatusForGoLive(subscription),
+          trialEndsAt: subscription?.trialEndsAt ?? null,
+          paymentMethodAdded: access.paymentMethodStatus === 'valid',
+        },
+        provision: {
+          status: provisionStatusForGoLive(shop),
+          ringbookerNumber: shop.telnyx_number?.trim() || null,
+          telnyx_number_id: shop.forwarding_number_provider_order_id ?? null,
+        },
+        forwarding: {
+          status: forwardingStatusForGoLive({ shop, forwardingSetupVerified: access.forwardingSetupVerified }),
+          carrier: shop.forwarding_carrier ?? null,
+          forwardingType: shop.forwarding_type ?? 'no_answer',
+          dialCode: null,
+          verifiedAt: accessState?.forwardingSetupVerifiedAt ?? null,
+        },
+        liveAnswering: {
+          enabled: access.liveCallsEnabled,
+          enabledAt: accessState?.goLiveAt ?? null,
+        },
+      },
     });
+  });
+
+  app.get(path('/user/go-live/forwarding-code'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_go_live_forwarding_code');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!shop.telnyx_number?.trim()) return c.json({ ok: false, error: 'forwarding_number_required' }, 409);
+
+    const parsed = forwardingCodeQuerySchema.safeParse({
+      carrier: c.req.query('carrier'),
+      country: c.req.query('country') ?? shop.forwarding_country ?? 'us',
+      forwardingType: c.req.query('forwardingType') ?? shop.forwarding_type ?? 'no_answer',
+    });
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const carrier = findCarrier(parsed.data.country ?? 'us', parsed.data.carrier);
+    if (!carrier) return c.json({ ok: false, error: 'carrier_not_found' }, 404);
+    const type = (parsed.data.forwardingType ?? carrier.defaultType) as ForwardingType;
+    const code = getForwardingCode(carrier, type);
+    const number = normalizeForwardingNumberForCode(shop.telnyx_number);
+    const dialCode = code ? buildDialCode(code, number) : null;
+    const instructions = carrier.appSteps?.length
+      ? carrier.appSteps
+      : [
+          'Open your phone dialer and paste the code.',
+          "Press call - you'll hear a confirmation tone.",
+          'Come back to RingBooker and mark forwarding configured.',
+        ];
+    return c.json({
+      ok: true,
+      dialCode,
+      turnOffCode: code?.cancelCode ?? null,
+      instructions,
+      carrier: carrier.id,
+      forwardingType: type,
+    });
+  });
+
+  app.post(path('/user/go-live/mark-forwarding-configured'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_confirm_forwarding_setup, 'user_go_live_mark_forwarding_configured');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = markForwardingConfiguredSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_payload', message: 'Choose a carrier before continuing.' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    if (!shop.telnyx_number?.trim()) return c.json({ ok: false, error: 'forwarding_number_required' }, 409);
+
+    await deps.shopsRepository.updateUserSettings(shop.id, {
+      forwarding_carrier: parsed.data.carrier,
+      forwarding_country: shop.forwarding_country ?? 'us',
+      forwarding_type: parsed.data.forwardingType,
+    });
+
+    return c.json({ ok: true, forwardingStatus: 'configured' });
   });
 
   app.post(path('/user/test-call-forwarding'), async (c) => {
@@ -7320,6 +7471,18 @@ export function createBackendApp(deps: {
     }
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const gate = evaluateKnowledgeGate(shop);
+    if (!canProceedToGoLive(gate)) {
+      return c.json(
+        {
+          ok: false,
+          error: 'knowledge_incomplete',
+          message: 'Finish business name, timezone, hours, and at least one service before enabling live answering.',
+          gate,
+        },
+        409,
+      );
+    }
     const access = await getShopBillingAccess(
       {
         shopsRepository: deps.shopsRepository,
@@ -7367,6 +7530,35 @@ export function createBackendApp(deps: {
       subscriptionId: subscription?.id ?? null,
     });
     return c.json({ ok: true, liveCallsEnabled: next.liveCallsEnabled, goLiveAt: next.goLiveAt });
+  });
+
+  app.post(path('/user/go-live/disable'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_go_live_enable, 'user_go_live_disable');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopAccessStatesRepository) {
+      return c.json({ ok: false, error: 'billing_dependencies_unavailable' }, 500);
+    }
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const next = await deps.shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      liveCallsEnabled: false,
+      liveCallsPausedReason: 'user_disabled',
+      liveCallsPausedAt: new Date().toISOString(),
+    });
+    securityAudit({
+      action: 'live_answering_disabled',
+      actorType: 'user',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { shopId: shop.id },
+    });
+    return c.json({ ok: true, liveCallsEnabled: next.liveCallsEnabled });
   });
 
   app.post(path('/user/test-calls/call-me'), async (c) => {
