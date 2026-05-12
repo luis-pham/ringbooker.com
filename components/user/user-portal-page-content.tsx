@@ -10,6 +10,7 @@ export const PAGE_MAX_WIDTHS = {
   bookings: 1100,
   billing: 1100,
   more: 1100,
+  knowledge: 1100,
   businessProfile: 960,
   hours: 960,
   staff: 960,

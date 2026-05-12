@@ -162,7 +162,8 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
   .page-content.page-calls,
   .page-content.page-bookings,
   .page-content.page-billing,
-  .page-content.page-more{max-width:1100px;}
+  .page-content.page-more,
+  .page-content.page-knowledge{max-width:1100px;}
   .page-content.page-business-profile,
   .page-content.page-hours,
   .page-content.page-staff,
@@ -179,7 +180,8 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
   .page-content.page-calls,
   .page-content.page-bookings,
   .page-content.page-billing,
-  .page-content.page-more{max-width:1100px;}
+  .page-content.page-more,
+  .page-content.page-knowledge{max-width:1100px;}
   .page-content.page-business-profile,
   .page-content.page-hours,
   .page-content.page-staff,
@@ -234,7 +236,19 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .page-title h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.25;color:var(--purple-dark)}
 .page-title p{margin:6px 0 0;color:var(--text-gray);font-size:15px;line-height:1.55;max-width:760px}
 .top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.top-actions.overview-top-actions{gap:14px}
+.top-actions.portal-top-account{gap:0}
+.portal-top-account-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;padding:0;border-radius:8px;
+  border:1px solid var(--border);background:var(--surface-card);
+  color:var(--text-gray);cursor:pointer;text-decoration:none;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+  box-sizing:border-box;
+}
+.portal-top-account-btn:hover{
+  background:#f9fafb;border-color:#d1d5db;color:var(--text-dark);
+}
+.portal-top-account-btn:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
 .topbar-trailing{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
   margin-left:auto;
@@ -722,6 +736,16 @@ html[data-user-theme="dark"] .portal-notif-trigger:hover{
   border-color:#8b949e;
   color:var(--text-dark);
 }
+html[data-user-theme="dark"] .portal-top-account-btn{
+  background:var(--surface-card);
+  border-color:var(--border);
+  color:var(--text-gray);
+}
+html[data-user-theme="dark"] .portal-top-account-btn:hover{
+  background:#21262d;
+  border-color:#8b949e;
+  color:var(--text-dark);
+}
 html[data-user-theme="dark"] .portal-notif-badge{
   border-color:var(--surface-page);
   background:#da3633;
@@ -949,7 +973,6 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
   .topbar-trailing > .portal-notif,
   .topbar-trailing > .user-theme-toggle{display:none}
   .topbar-user-chip{display:none !important}
-  .top-actions.overview-top-actions{display:none}
   /* Card section headers: marketing-style full-width black CTAs on mobile (not topbar shortcuts). */
   .user-app-shell .panel-head{
     flex-direction:column;
@@ -1163,7 +1186,20 @@ export function UserDashboardTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Overview</h1><p>Track calls, bookings, and reminders.</p></div>
-            <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions portal-top-account">
+              <a className="portal-top-account-btn" href="/user/account" aria-label="Account" title="Account">
+                <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
           <div className="page-content page-overview">
           <section className="grid grid-4">

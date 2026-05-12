@@ -235,7 +235,20 @@ export function UserBillingTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Billing, plan, and growth options.</h1><p>Manage your RingBooker subscription and see what is included in your current plan.</p></div>
-            <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions portal-top-account">
+              <a className="portal-top-account-btn" href="/user/account" aria-label="Account" title="Account">
+                <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
           <section className="card billing-banner">
             <div><span className="tag purple">Professional plan</span><h3 style={{fontSize: 30, marginTop: 14, marginBottom: 8, letterSpacing: '-1px'}}>Your AI phone agent is active and renewing monthly.</h3><p>Billing for your salon subscription runs through Paddle. Customer booking deposits are not enabled in this MVP.</p></div>

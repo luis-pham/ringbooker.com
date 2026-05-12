@@ -35,7 +35,20 @@ export function UserBookingsTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Bookings and calendar flow.</h1><p>See appointment requests and bookings RingBooker has captured or created.</p></div>
-            <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions portal-top-account">
+              <a className="portal-top-account-btn" href="/user/account" aria-label="Account" title="Account">
+                <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
           <section className="grid grid-3 bookings-stats">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">This week</span></div><div className="stat-value">42</div><div className="stat-meta">Upcoming bookings</div></div>

@@ -214,6 +214,38 @@ button.subtle-link:hover{text-decoration:underline}
 .tab-button-icon svg{display:block;width:20px;height:20px}
 .tab-button-body{display:flex;align-items:center;min-width:0}
 .tab-button strong{font-size:14px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
+/* Knowledge: desktop = underline tabs like /user/calls; mobile = original icon grid (see .knowledge-tabs-*) */
+.knowledge-tabs-desktop-only{display:none}
+.knowledge-tabs-mobile-only{display:block}
+@media (min-width:861px){
+  .knowledge-tabs-desktop-only{display:block}
+  .knowledge-tabs-mobile-only{display:none !important}
+}
+.knowledge-portal-tab-bar{margin-bottom:18px;min-width:0}
+.business-subtabs.calls-filter-tabs{
+  display:flex;gap:18px;flex-wrap:nowrap;align-items:flex-end;
+  margin-bottom:0;border-bottom:1px solid var(--border);
+  overflow-x:auto;overflow-y:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-x:contain;
+  scrollbar-width:none;
+}
+.business-subtabs.calls-filter-tabs::-webkit-scrollbar{display:none}
+.business-subtabs.calls-filter-tabs .business-subtab{
+  flex:0 0 auto;white-space:nowrap;
+  appearance:none;background:transparent;border:none;border-radius:0;margin:0;
+  padding:12px 0 9px;font-size:14px;line-height:1.35;font-weight:500;color:var(--text-gray);
+  cursor:pointer;font:inherit;box-shadow:none;border-bottom:3px solid transparent;
+  transition:color .15s ease,border-color .15s ease,font-weight .15s ease;
+}
+.business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
+.business-subtabs.calls-filter-tabs .business-subtab:focus-visible{
+  outline:2px solid var(--purple-dark);outline-offset:3px;
+}
+.business-subtabs.calls-filter-tabs .business-subtab.active{
+  color:var(--purple-dark);font-weight:650;letter-spacing:-.01em;border-bottom-color:var(--purple-dark);
+}
+.business-subtabs.calls-filter-tabs .business-subtab.active:hover{color:var(--purple-dark)}
 .business-subtabs{
   display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
 }
@@ -596,7 +628,7 @@ button.subtle-link:hover{text-decoration:underline}
     box-sizing:border-box;
   }
   .knowledge-portal-main .card-section-form > .settings-tab-content-frame{
-    width:60%;
+    width:100%;
     max-width:100%;
     box-sizing:border-box;
   }
@@ -665,6 +697,12 @@ html[data-user-theme="dark"] .tab-button.active:hover{
   background:rgba(56,139,253,0.22);
   border-color:#58a6ff;
   color:#79c0ff;
+}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab{color:var(--text-gray)}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active{
+  color:var(--purple-dark);border-bottom-color:var(--purple-dark);
 }
 html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
@@ -994,7 +1032,20 @@ export function UserSettingsTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Business settings and AI behavior.</h1><p>Control how RingBooker answers calls, what it offers, and when it hands off to you.</p></div>
-            <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions portal-top-account">
+              <a className="portal-top-account-btn" href="/user/account" aria-label="Account" title="Account">
+                <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
           <section className="grid grid-2">
             <div className="card">

@@ -1523,6 +1523,7 @@ export function UserSettingsLive({
   const pageContentClass = useMemo(() => {
     if (portal === 'integrations') return 'page-integrations';
     if (portal === 'ai-settings') return 'page-ai-behavior';
+    if (portal === 'knowledge') return 'page-knowledge';
     return knowledgePortalTabPageClass(activeTab);
   }, [portal, activeTab]);
 
@@ -1548,26 +1549,68 @@ export function UserSettingsLive({
           ) : null}
 
           {portal !== 'integrations' ? (
-          <div className="tab-strip" role="tablist" aria-label={portal === 'knowledge' ? 'Business Knowledge tabs' : 'AI Settings tabs'}>
-            {visibleTabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                title={tab.description}
-                className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => activateSettingsTab(tab.id)}
-              >
-                <span className="tab-button-icon">
-                  <SettingsTabIcon tabId={tab.id} />
-                </span>
-                <span className="tab-button-body">
-                  <strong>{tab.label}</strong>
-                </span>
-              </button>
-            ))}
-          </div>
+            portal === 'knowledge' ? (
+              <>
+                <div className="knowledge-tabs-desktop-only knowledge-portal-tab-bar">
+                  <div className="business-subtabs calls-filter-tabs" role="tablist" aria-label="Business Knowledge tabs">
+                    {visibleTabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeTab === tab.id}
+                        title={tab.description}
+                        className={`business-subtab${activeTab === tab.id ? ' active' : ''}`}
+                        onClick={() => activateSettingsTab(tab.id)}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="knowledge-tabs-mobile-only tab-strip" role="tablist" aria-label="Business Knowledge tabs">
+                  {visibleTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === tab.id}
+                      title={tab.description}
+                      className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                      onClick={() => activateSettingsTab(tab.id)}
+                    >
+                      <span className="tab-button-icon">
+                        <SettingsTabIcon tabId={tab.id} />
+                      </span>
+                      <span className="tab-button-body">
+                        <strong>{tab.label}</strong>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="tab-strip" role="tablist" aria-label="AI Settings tabs">
+                {visibleTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    title={tab.description}
+                    className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                    onClick={() => activateSettingsTab(tab.id)}
+                  >
+                    <span className="tab-button-icon">
+                      <SettingsTabIcon tabId={tab.id} />
+                    </span>
+                    <span className="tab-button-body">
+                      <strong>{tab.label}</strong>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )
           ) : null}
 
           {portal === 'knowledge' && websiteSuggestions.length > 0 ? (

@@ -250,7 +250,20 @@ export function UserCallsTemplate() {
         <main className="main">
           <div className="topbar">
             <div className="page-title"><h1>Calls, transcripts, and missed revenue recovery.</h1><p>Review how your AI phone agent handled every caller.</p></div>
-            <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
+            <div className="top-actions portal-top-account">
+              <a className="portal-top-account-btn" href="/user/account" aria-label="Account" title="Account">
+                <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"
+                  />
+                </svg>
+              </a>
+            </div>
           </div>
           <section className="grid grid-3">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">Handled</span></div><div className="stat-value">142</div><div className="stat-meta">Calls answered this week</div></div>
