@@ -391,7 +391,7 @@ function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSugg
         description: block.descriptionText ?? null,
         priceAmount,
         priceCurrency: CURRENCY,
-        priceType: block.priceText && /from|starting|\+/i.test(block.priceText) ? 'from' : priceAmount ? 'fixed' : 'varies',
+        priceType: block.priceText && /consultation/i.test(block.priceText) ? 'consultation' : block.priceText && /from|starting|\+/i.test(block.priceText) ? 'from' : priceAmount ? 'fixed' : 'varies',
         durationText: duration?.durationText ?? block.durationText ?? null,
         durationMinutes: duration?.durationMinutes ?? null,
         aliases: aliasFor(parsed.name),
@@ -1006,7 +1006,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
   const facts = jsonLdFacts(input.previews);
   const services = [
     ...extractServicesFromBlocks(input.previews),
-    ...input.previews.flatMap((p) => extractServicesFromText(`${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`, p.url)),
+    ...input.previews.flatMap((p) => (p.serviceBlocks?.length ? [] : extractServicesFromText(`${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`, p.url))),
     ...extractServiceLinks(input.previews),
   ];
   const deduped = dedupeServices(services);

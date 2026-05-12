@@ -86,8 +86,11 @@ function normalizeDayHoursForCompare(value: unknown): string {
 }
 function normalizeHoursForCompare(value?: WeeklyHours | null): string {
   if (!value) return '';
-  return JSON.stringify(Object.keys(value).sort().reduce<Record<string, string>>((out, key) => {
-    out[key] = normalizeDayHoursForCompare(value[key]);
+  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  return JSON.stringify(days.reduce<Record<string, string>>((out, key) => {
+    // Google Places only returns open periods; closed days are commonly absent.
+    // Treat absent days as closed for weekly-hours conflict comparison.
+    out[key] = Object.prototype.hasOwnProperty.call(value, key) ? normalizeDayHoursForCompare(value[key]) : 'closed';
     return out;
   }, {}));
 }

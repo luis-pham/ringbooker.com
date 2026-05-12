@@ -1,9 +1,10 @@
 import * as cheerio from 'cheerio';
+import type { AnyNode } from 'domhandler';
 import type { PagePreview } from './types';
 
 export const SERVICE_KEYWORD_PATTERN = /\b(nail|manicure|pedicure|acrylic|gel|shellac|dip powder|nail art|hair|haircut|color|colour|highlights|balayage|blowout|keratin|spa|massage|facial|waxing|wax|brow|eyebrow|lashes|lash|makeup|threading|microblading|botox|filler|injectable|laser|skin|hydrafacial|peel|treatment|consultation)\b/gi;
-const PRICE_PATTERN = /(?:\$\s?\d{2,4}|\b\d{2,4}\s?(?:usd|dollars)\b|\bfrom\s+\$?\d{2,4}|\bstarting at\s+\$?\d{2,4})/gi;
-const DURATION_PATTERN = /\b\d{1,3}\s?(?:min|mins|minute|minutes|hr|hour|hours)\b/gi;
+const PRICE_PATTERN = /(?:\bfrom\s+\$?\d{2,4}|\bstarting(?:\s+at)?\s+\$?\d{2,4}|\bstarts\s+at\s+\$?\d{2,4}|\$\s?\d{2,4}|\b\d{2,4}\s?(?:usd|dollars)\b)/gi;
+const DURATION_PATTERN = /\b\d{1,3}\s?(?:min|mins|minute|minutes|hr|hour|hours)\+?\b/gi;
 type ServiceBlock = NonNullable<PagePreview['serviceBlocks']>[number];
 
 function absolutize(href: string, baseUrl: string): string | null {
@@ -82,6 +83,12 @@ function cleanBlockText(value: string): string {
   return value.replace(/[\u200B-\u200D\uFEFF]/g, '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function cleanElementText(element: cheerio.Cheerio<AnyNode>): string {
+  const clone = element.clone();
+  clone.find('br').replaceWith(' ');
+  return cleanBlockText(clone.text());
+}
+
 function firstPrice(value: string): string | null {
   PRICE_PATTERN.lastIndex = 0;
   return value.match(PRICE_PATTERN)?.[0] ?? null;
@@ -92,6 +99,41 @@ function firstDuration(value: string): string | null {
   return value.match(DURATION_PATTERN)?.[0] ?? null;
 }
 
+function stripDurationParts(value: string): string {
+  return value
+    .split(/\s*•\s*/)
+    .map(cleanBlockText)
+    .filter((part) => part && !firstDuration(part))
+    .join(' • ');
+}
+
+function splitBlockNameDescription(value: string): { name: string; descriptionPrefix: string | null } {
+  const cleaned = cleanBlockText(value);
+  const lower = cleaned.toLowerCase();
+  const starts = [
+    'shampoo & condition',
+    'shampoo and condition',
+    'wash & style',
+    'wash and style',
+    'blow dry',
+    'pricing is based',
+    'involves',
+    'r+co pro',
+    '+ full head',
+    '+full head',
+  ]
+    .map((needle) => ({ needle, index: lower.indexOf(needle) }))
+    .filter((item) => item.index > 2)
+    .sort((a, b) => a.index - b.index);
+  const first = starts[0];
+  if (!first) return { name: cleaned, descriptionPrefix: null };
+  const descriptionPrefix = stripDurationParts(cleaned.slice(first.index).trim()).replace(/^\+\s*/, '').trim();
+  return {
+    name: cleaned.slice(0, first.index).trim(),
+    descriptionPrefix: descriptionPrefix || null,
+  };
+}
+
 function isLikelyServiceGroup(value: string): boolean {
   return /\b(blowout|color|cut|cuts|haircut|styling|extensions?|treatments?|facials?|massage|waxing|nails?|manicure|pedicure|lashes|brows|makeup|injectables?|laser|skin|services?)\b/i.test(value)
     && value.length <= 80;
@@ -100,7 +142,7 @@ function isLikelyServiceGroup(value: string): boolean {
 function isLikelyServiceName(value: string): boolean {
   if (!value || value.length < 3 || value.length > 120) return false;
   if (/^(home|services?|book|booking|contact|about|hours|pricing)$/i.test(value)) return false;
-  return /\b(blowout|color|cut|haircut|style|treatment|extension|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlight|keratin|essential|signature|deluxe)\b/i.test(value);
+  return /\b(blowout|color|cut|haircut|style|treatment|extension|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlights?|lowlights?|keratin|essential|signature|deluxe)\b/i.test(value);
 }
 
 function structuredServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
@@ -116,15 +158,23 @@ function structuredServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
   $('.service-item, [class*="service-item"]').each((_, el) => {
     const item = $(el);
     const rawText = cleanBlockText(item.text());
-    const name = cleanBlockText(item.find('.name, [class*="service-name"], h3, h4').first().text());
-    if (!name) return;
-    const price = cleanBlockText(item.find('.price, [class*="service-price"]').first().text()) || firstPrice(rawText);
+    const rawName = cleanElementText(item.find('.name, [class*="service-name"], h3, h4').first());
+    if (!rawName) return;
+    const name = splitBlockNameDescription(rawName);
+    const rawPrice = cleanBlockText(item.find('.price, [class*="service-price"]').first().text());
+    const price = firstPrice(rawPrice) || firstPrice(rawText) || (/consultation required/i.test(rawText) ? 'Consultation Required' : null);
     const duration = firstDuration(rawText);
     const tabContent = item.closest('[id^="elementor-tab-content"], .elementor-tab-content');
     const labelledBy = tabContent.attr('aria-labelledby');
     const group = labelledBy ? cleanBlockText($(`#${labelledBy}`).first().text()) : cleanBlockText(item.prevAll('h2,h3').first().text());
-    const description = cleanBlockText(item.find('p, .description, [class*="description"]').first().text());
-    pushBlock({ groupHeading: group || null, serviceName: name, descriptionText: description || null, priceText: price || null, durationText: duration, sourceText: rawText });
+    const rawDescription = cleanBlockText(item.find('p, .description, [class*="description"]').first().text());
+    const fallbackDescription = !name.descriptionPrefix && rawDescription && rawDescription !== rawName
+      ? stripDurationParts(rawDescription)
+      : null;
+    const description = [name.descriptionPrefix, fallbackDescription]
+      .filter((part): part is string => Boolean(part))
+      .join(' • ');
+    pushBlock({ groupHeading: group || null, serviceName: name.name, descriptionText: description || null, priceText: price || null, durationText: duration, sourceText: rawText });
   });
 
   $('h2,h3').each((_, headingEl) => {

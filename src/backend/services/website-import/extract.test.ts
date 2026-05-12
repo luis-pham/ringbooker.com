@@ -113,6 +113,29 @@ test('normal website import treats equivalent 12-hour and 24-hour hours as match
   assert.equal(suggestions.warnings.some((warning) => /hours differ/i.test(warning)), false);
 });
 
+test('normal website import treats missing Google Places closed days as closed', () => {
+  const preview = previewHtml('<p>Hours Of Operation Monday CLOSED Tuesday 10 AM - 5 PM Wednesday 10 AM - 8 PM Thursday 9 AM - 8 PM Friday 9 AM - 6 PM Saturday 9 AM - 6 PM Sunday 11 AM - 6 PM</p>', 'https://rawhairandco.test');
+  const suggestions = buildSuggestions({
+    sourceUrl: 'https://rawhairandco.test',
+    sourceType: 'normal_website',
+    previews: [preview],
+    googlePlaces: {
+      name: 'RAW Hair & Co.',
+      website: 'https://rawhairandco.test',
+      hours: {
+        tue: { open: '10:00', close: '17:00' },
+        wed: { open: '10:00', close: '20:00' },
+        thu: { open: '09:00', close: '20:00' },
+        fri: { open: '09:00', close: '18:00' },
+        sat: { open: '09:00', close: '18:00' },
+        sun: { open: '11:00', close: '18:00' },
+      },
+      matchConfidence: 0.9,
+    },
+  });
+  assert.equal(suggestions.warnings.some((warning) => /hours differ/i.test(warning)), false);
+});
+
 test('normal website import treats common address suffix variants as the same address', () => {
   const preview = previewHtml('<p>Address: 37917 Vine Street, Willoughby, OH 44094 Phone: (440) 555-0100</p>', 'https://env-salon.test');
   const suggestions = buildSuggestions({

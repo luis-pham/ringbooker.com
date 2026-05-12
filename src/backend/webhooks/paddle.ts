@@ -54,6 +54,15 @@ function verifyPaddleSignature(rawBody: string, signatureHeader: string | null, 
   return timingSafeEqual(expected, actual);
 }
 
+function shouldEmailUnmappedPaddleWebhook(eventType: string): boolean {
+  const normalized = eventType.toLowerCase();
+  // Paddle customer events can arrive before any checkout/subscription context
+  // and often do not include RingBooker shop metadata. They are not actionable
+  // enough for an email alert and must never become customer-facing noise.
+  if (normalized.startsWith('customer.')) return false;
+  return true;
+}
+
 export async function handlePaddleWebhook(
   c: Context,
   deps: {
@@ -152,7 +161,7 @@ export async function handlePaddleWebhook(
             idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:live_answering_billing_paused:${syncResult.subscription.status}:${syncResult.subscription.paymentMethodStatus ?? 'unknown'}`,
           });
         }
-      } else if (!syncResult && deps.emailService) {
+      } else if (!syncResult && deps.emailService && shouldEmailUnmappedPaddleWebhook(event.event_type)) {
         const { input, text } = buildInternalAlertEmailPayload({
           title: 'Paddle webhook mapping failure',
           summary: 'A verified Paddle webhook could not be mapped to a RingBooker shop.',
