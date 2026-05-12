@@ -164,9 +164,11 @@ function formatAppointment(booking: Booking, timezone: string) {
 export function UserBookingsLive({ initialData = null }: { initialData?: BookingsResponse | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const callIdParam = searchParams.get('callId');
   const didUseInitialBookings = useRef(Boolean(initialData?.ok));
   const [bookings, setBookings] = useState<Booking[]>(initialData?.ok ? initialData.bookings ?? [] : []);
-  const [activeFilter, setActiveFilter] = useState<BookingFilter>(() => tabFromSearch(searchParams.get('tab')));
+  const [activeFilter, setActiveFilter] = useState<BookingFilter>(() => tabFromSearch(tabParam));
   const [page, setPage] = useState(initialData?.pagination?.page ?? 1);
   const [totalCount, setTotalCount] = useState(initialData?.pagination?.total ?? initialData?.total ?? 0);
   const [totalPages, setTotalPages] = useState(initialData?.pagination?.totalPages ?? 1);
@@ -178,12 +180,12 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
   const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
-    const next = tabFromSearch(searchParams.get('tab'));
+    const next = tabFromSearch(tabParam);
     setActiveFilter((current) => (current === next ? current : next));
-  }, [searchParams]);
+  }, [tabParam]);
 
   useEffect(() => {
-    if (didUseInitialBookings.current && activeFilter === 'all' && page === 1 && !searchParams.get('callId')) {
+    if (didUseInitialBookings.current && activeFilter === 'all' && page === 1 && !callIdParam) {
       didUseInitialBookings.current = false;
       return;
     }
@@ -194,8 +196,7 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
     query.set('page', String(page));
     query.set('limit', String(USER_BOOKINGS_PAGE_SIZE));
     if (activeFilter !== 'all') query.set('tab', activeFilter);
-    const callId = searchParams.get('callId');
-    if (callId) query.set('callId', callId);
+    if (callIdParam) query.set('callId', callIdParam);
     void fetch(`/api/backend/user/bookings?${query.toString()}`, { signal: controller.signal })
       .then(async (response) => {
         const body = (await response.json()) as BookingsResponse;
@@ -221,7 +222,7 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
       })
       .finally(() => setLoading(false));
     return () => controller.abort();
-  }, [activeFilter, page, searchParams]);
+  }, [activeFilter, page, callIdParam]);
 
   function changeFilter(filter: BookingFilter) {
     const query = new URLSearchParams(searchParams.toString());
