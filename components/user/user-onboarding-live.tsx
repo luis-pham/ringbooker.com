@@ -2613,9 +2613,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                       </div>
                     </>
                   )}
-                  <button type="button" className="service-remove-btn onb-service-remove-compact" onClick={() => removeServiceRow(index)} aria-label={`Remove ${service.name || 'service'}`}>
-                    Remove
-                  </button>
+                  {!editingInline ? (
+                    <button type="button" className="service-remove-btn onb-service-remove-compact" onClick={() => removeServiceRow(index)} aria-label={`Remove ${service.name || 'service'}`}>
+                      Remove
+                    </button>
+                  ) : null}
                 </div>
               )})}
               <button className="onb-group-add-service onb-group-add-service-desktop" type="button" onClick={() => addBlankService(group, 'inline')}>
