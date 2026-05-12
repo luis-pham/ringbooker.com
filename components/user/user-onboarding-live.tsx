@@ -1877,9 +1877,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-spinner{width:12px;height:12px;border:2px solid #d1d5db;border-top-color:#111827;border-radius:999px;animation:onbSpin .8s linear infinite}
 .onb-import-delay{border-radius:10px;background:#fff7ed;color:#9a3412;padding:10px 12px;font-size:13px;line-height:1.45}.onb-import-progress-actions{display:flex;justify-content:flex-start}.onb-import-progress-actions .onb-help-link{color:#111827;text-decoration:underline;text-underline-offset:3px}
 @keyframes onbSpin{to{transform:rotate(360deg)}}
-.onb-manual-toggle-row{text-align:center;margin:-4px 0 2px}.onb-manual-toggle-row .onb-help-link{padding:0;color:#111827;text-decoration:underline;text-underline-offset:3px}
-.onb-manual-panel{border-top:1px solid #e2e8f0;padding-top:18px}
-.onb-step1-manual{max-width:560px;margin:0 auto;width:100%;padding:0 16px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
+.onb-import-manual-link{display:block;margin-top:12px;text-align:center;border:0;background:transparent;color:rgba(255,255,255,.92);font-size:14px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font:inherit;padding:0;width:100%}
+.onb-import-manual-link:hover{color:#fff}
+.onb-manual-panel{border-top:0;padding-top:0}
+.onb-step1-manual{max-width:none;margin:0;width:100%;padding:0;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
 .onb-step1-manual .onb-step1-section{display:flex;flex-direction:column;gap:0}
 .onb-step1-manual .onb-section-label{font-size:12px;font-weight:600;color:#111;margin:0 0 8px;text-transform:none;letter-spacing:0}
 .onb-step1-optional-badge{font-size:11px;font-weight:400;color:#9ca3af;margin-left:4px}
@@ -1901,7 +1902,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-step1-also-chips .preset-chip.mixed-chip .chip-icon{font-size:14px;line-height:1}
 .onb-step1-also-chips .preset-chip:not(.mixed-chip){display:inline-flex;align-items:center;padding:8px 13px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid #e5e7eb;background:#fff;color:#374151}
 .onb-step1-also-chips .preset-chip:not(.mixed-chip).active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}
-.onb-step1-manual-actions{justify-content:space-between;align-items:center;max-width:560px;margin-left:auto;margin-right:auto;margin-top:28px;gap:16px}
+.onb-step1-manual-actions{justify-content:space-between;align-items:center;max-width:none;margin-left:0;margin-right:0;margin-top:28px;gap:16px;width:100%}
 .onb-step1-next-desktop{min-height:auto;padding:10px 28px;width:auto}
 .onb-step1-hide-link{border:0;background:transparent;padding:8px 0;color:#9ca3af;cursor:pointer;font:inherit;font-size:15px;text-decoration:none}
 .onb-step1-hide-link:hover{text-decoration:underline;text-underline-offset:3px}
@@ -2027,7 +2028,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-manual-toggle-row{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:0}.onb-service-row-desktop,.onb-service-row-mobile{display:none}.svc-row{display:flex;align-items:center;padding:12px 16px;border-top:1px solid #f9fafb;cursor:pointer;gap:8px}.svc-row:active{background:#fafafa}.onb-service-name{font-size:13px}.onb-service-remove-compact{display:none}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:block;width:auto;border:0;border-radius:0;text-align:left;padding:12px 16px;margin:0;color:#7c3aed;background:transparent}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:0}.onb-service-row-desktop,.onb-service-row-mobile{display:none}.svc-row{display:flex;align-items:center;padding:12px 16px;border-top:1px solid #f9fafb;cursor:pointer;gap:8px}.svc-row:active{background:#fafafa}.onb-service-name{font-size:13px}.onb-service-remove-compact{display:none}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:block;width:auto;border:0;border-radius:0;text-align:left;padding:12px 16px;margin:0;color:#7c3aed;background:transparent}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -2150,27 +2151,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                   ✧ {websiteLoading ? 'Importing…' : 'Import'}
                 </button>
               </div>
+              {!websiteLoading ? (
+                <button type="button" className="onb-import-manual-link" onClick={() => enterManualSetup()} disabled={saving}>
+                  No website? Fill in manually
+                </button>
+              ) : null}
             </div>
           ) : null}
           {websiteLoading ? renderImportProgressCard() : null}
-          {!websiteLoading ? (
-          <div className="onb-manual-toggle-row">
-            <button
-              type="button"
-              className="onb-help-link"
-              onClick={() => {
-                if (manualEntryOpen) {
-                  setManualEntryOpen(false);
-                  setStatus(null);
-                } else {
-                  enterManualSetup();
-                }
-              }}
-            >
-              {manualEntryOpen ? 'Hide manual form ↑' : 'No website? Fill in manually'}
-            </button>
-          </div>
-          ) : null}
           {manualEntryOpen ? (
             <div className="onb-manual-panel">
               <div className="onb-step1-manual">
