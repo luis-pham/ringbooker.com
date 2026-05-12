@@ -59,9 +59,6 @@ function MarketingContactBodyInner() {
           <span>Contact</span>
         </nav>
         <div className="contact-value-col">
-          <span className="contact-value-badge" id="contactFormChip">
-            Contact
-          </span>
           <h1 className="contact-value-h1" id="contactHeroTitle">
             Contact RingBooker
           </h1>

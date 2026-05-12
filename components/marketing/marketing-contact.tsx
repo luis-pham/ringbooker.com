@@ -28,8 +28,8 @@ const styles: string[] = [
 html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:var(--mk-font-body);line-height:var(--mk-leading-body)}
 a{text-decoration:none;color:inherit}
-.contact-page{background:#f5f3ff}
-.contact-hero-reflow{padding:112px 20px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#f5f3ff 74%)}
+.contact-page{background:#fff}
+.contact-hero-reflow{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%);overflow:hidden}
 .contact-custom-shell{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -37,7 +37,7 @@ a{text-decoration:none;color:inherit}
   max-width:960px;
   margin:0 auto;
   align-items:start;
-  padding:40px 20px;
+  padding:40px 0;
   box-sizing:border-box;
 }
 .contact-value-col{min-width:0}
@@ -45,21 +45,45 @@ a{text-decoration:none;color:inherit}
 .contact-breadcrumb{margin-bottom:12px;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8)}
 .contact-breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
 .contact-breadcrumb-sep{margin:0 6px}
-.contact-value-badge{
-  display:inline-flex;align-items:center;border-radius:999px;
-  background:#f5f3ff;color:#5b21b6;border:1px solid rgba(124,58,237,.35);
-  padding:6px 14px;font-size:12px;font-weight:700;margin-bottom:14px;
+.contact-value-h1{
+  font-size:var(--mk-hero-title);
+  font-weight:800;
+  line-height:var(--mk-hero-title-lh);
+  letter-spacing:var(--mk-hero-title-track);
+  color:var(--text-dark);
+  margin:0 0 18px;
+  text-wrap:balance;
 }
-.contact-value-h1{font-size:32px;font-weight:700;letter-spacing:-0.02em;line-height:1.2;color:#111827;margin:0 0 12px}
-.contact-value-sub{font-size:14px;color:#6b7280;line-height:1.6;margin:0 0 22px;max-width:420px}
-.contact-value-checklist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:14px}
+.contact-value-sub{
+  font-size:var(--mk-hero-lead);
+  line-height:var(--mk-hero-lead-lh);
+  font-weight:400;
+  color:var(--mk-text-desc,#64748b);
+  margin:0 0 26px;
+  max-width:min(36rem,100%);
+}
+.contact-value-checklist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:16px}
 .contact-value-check-item{display:flex;gap:12px;align-items:flex-start}
 .contact-value-check-icon{
-  flex-shrink:0;width:22px;height:22px;border-radius:999px;background:#7c3aed;color:#fff;
-  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;margin-top:2px;
+  flex-shrink:0;width:24px;height:24px;border-radius:999px;background:#7c3aed;color:#fff;
+  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;margin-top:3px;
 }
-.contact-value-check-item strong{display:block;font-size:13px;font-weight:500;color:#111;margin-bottom:2px}
-.contact-value-check-desc{display:block;font-size:13px;font-weight:400;color:#6b7280;line-height:1.45}
+.contact-value-check-item strong{
+  display:block;
+  font-size:var(--mk-card-title);
+  font-weight:600;
+  line-height:1.35;
+  letter-spacing:-.015em;
+  color:var(--text-dark);
+  margin-bottom:4px;
+}
+.contact-value-check-desc{
+  display:block;
+  font-size:var(--mk-body);
+  font-weight:400;
+  line-height:var(--mk-body-lh);
+  color:var(--mk-text-muted);
+}
 .contact-form-card{
   background:#fff;border-radius:16px;padding:28px;
   box-shadow:0 4px 24px rgba(0,0,0,.06);
@@ -146,7 +170,6 @@ a{text-decoration:none;color:inherit}
 }
 @media(max-width:640px){
   .section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
-  .contact-value-h1{font-size:clamp(26px,7vw,32px)}
   .contact-field-row{grid-template-columns:1fr}
 }
 .container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
@@ -199,7 +222,6 @@ const scripts: string[] = [
   const heroTitle = document.getElementById('contactHeroTitle');
   const heroSubtitle = document.getElementById('contactHeroSubtitle');
   const formTitle = document.getElementById('contactFormTitle');
-  const formChip = document.getElementById('contactFormChip');
   const enterpriseFields = document.getElementById('enterpriseContactFields');
   if (!form || !helper || !submitButton) return;
 
@@ -217,7 +239,6 @@ const scripts: string[] = [
       if (heroTitle) heroTitle.textContent = 'Talk to us about a Custom setup';
       if (heroSubtitle) heroSubtitle.textContent = 'Tell us about your locations, call volume, and routing needs. We’ll help plan your RingBooker setup.';
       if (formTitle) formTitle.textContent = 'Talk to us about a Custom setup';
-      if (formChip) formChip.textContent = 'Custom setup';
       submitButton.textContent = 'Send Custom setup request';
       if (enterpriseFields) enterpriseFields.style.display = 'contents';
       return;
@@ -226,7 +247,6 @@ const scripts: string[] = [
       if (heroTitle) heroTitle.textContent = 'See How RingBooker Recovers Missed Bookings';
       if (heroSubtitle) heroSubtitle.textContent = 'Tell us how your calls work today—after-hours, overflow, reschedules, or consults—and we’ll show how RingBooker fits your workflow in about 15 minutes.';
       if (formTitle) formTitle.textContent = 'Request a demo';
-      if (formChip) formChip.textContent = 'Low-pressure demo';
       submitButton.textContent = 'Request demo';
       if (enterpriseFields) enterpriseFields.style.display = 'none';
       return;
@@ -234,7 +254,6 @@ const scripts: string[] = [
     if (heroTitle) heroTitle.textContent = 'Contact RingBooker';
     if (heroSubtitle) heroSubtitle.textContent = 'Send us a note and we’ll route it to the right RingBooker team member.';
     if (formTitle) formTitle.textContent = 'Contact RingBooker';
-    if (formChip) formChip.textContent = 'Contact';
     submitButton.textContent = 'Send message';
     if (enterpriseFields) enterpriseFields.style.display = 'none';
   };

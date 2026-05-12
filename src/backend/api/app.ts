@@ -811,13 +811,17 @@ const adminShopCallsQuerySchema = z.object({
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
-const USER_CALLS_PAGE_SIZE = 20;
-const userCallsFilterSchema = z.enum(['all', 'follow_up_needed', 'high_urgency', 'bookings', 'missed']);
+const USER_CALLS_PAGE_SIZE = 25;
+const userCallsTabSchema = z.enum(['all', 'follow_up', 'follow_up_needed', 'high_urgency', 'bookings', 'missed']);
 const userCallsListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).optional(),
-  filter: userCallsFilterSchema.optional().default('all'),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  tab: userCallsTabSchema.optional(),
+  filter: userCallsTabSchema.optional(),
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 const adminShopAnalyticsQuerySchema = z.object({
@@ -832,10 +836,14 @@ const adminLeadStatusUpdateSchema = z.object({
 
 
 function buildUserCallFilters(parsed: z.infer<typeof userCallsListQuerySchema>) {
-  const startedAfter = parsed.from ? new Date(`${parsed.from}T00:00:00.000Z`) : undefined;
-  const startedBefore = parsed.to ? new Date(`${parsed.to}T23:59:59.999Z`) : undefined;
+  const dateFrom = parsed.dateFrom ?? parsed.from;
+  const dateTo = parsed.dateTo ?? parsed.to;
+  const tab = parsed.tab ?? parsed.filter ?? 'all';
+  const startedAfter = dateFrom ? new Date(`${dateFrom}T00:00:00.000Z`) : undefined;
+  const startedBefore = dateTo ? new Date(`${dateTo}T23:59:59.999Z`) : undefined;
   const base = { startedAfter, startedBefore };
-  switch (parsed.filter) {
+  switch (tab) {
+    case 'follow_up':
     case 'follow_up_needed':
       return { ...base, summaryFollowUpRequired: true };
     case 'high_urgency':
@@ -847,6 +855,91 @@ function buildUserCallFilters(parsed: z.infer<typeof userCallsListQuerySchema>) 
     default:
       return base;
   }
+}
+
+type UserCallStatus = 'in_progress' | 'completed' | 'missed' | 'voicemail';
+type UserCallOutcome =
+  | 'booking_captured'
+  | 'pricing_inquiry'
+  | 'hours_inquiry'
+  | 'general_inquiry'
+  | 'follow_up_needed'
+  | 'cancelled_request'
+  | 'reschedule_request'
+  | 'complaint'
+  | 'wrong_number'
+  | 'no_outcome';
+
+function deriveUserCallStatus(call: CallLogListItem, now = new Date()): UserCallStatus {
+  if (call.outcome === 'missed') return 'missed';
+  if (call.outcome === 'voicemail') return 'voicemail';
+  if (!call.endedAt) {
+    const startedAt = call.startedAt ? new Date(call.startedAt) : null;
+    if (startedAt && Number.isFinite(startedAt.getTime()) && now.getTime() - startedAt.getTime() <= 30 * 60 * 1000) {
+      return 'in_progress';
+    }
+    return call.transcriptText?.trim() || call.transcriptStatus === 'completed' ? 'completed' : 'missed';
+  }
+  return 'completed';
+}
+
+function deriveUserCallOutcome(call: CallLogListItem): UserCallOutcome {
+  const question = `${call.summaryCallerQuestion ?? ''} ${call.summaryServiceRequest ?? ''} ${call.transcriptText ?? ''}`.toLowerCase();
+  if (call.isCapturedCaller || call.summaryNextAction === 'booking_created' || call.summaryNextAction === 'booking_link_sent' || call.outcome === 'booked') {
+    return 'booking_captured';
+  }
+  if (call.summaryFollowUpRequired || call.summaryNextAction === 'callback_scheduled' || call.outcome === 'error') return 'follow_up_needed';
+  if (call.summaryNextAction === 'cancellation_requested') return 'cancelled_request';
+  if (call.summaryNextAction === 'reschedule_requested') return 'reschedule_request';
+  if (call.summaryNextAction === 'escalated') return 'complaint';
+  if (question.includes('price') || question.includes('pricing') || question.includes('cost') || question.includes('how much')) return 'pricing_inquiry';
+  if (question.includes('hour') || question.includes('open') || question.includes('close')) return 'hours_inquiry';
+  if (call.transcriptText?.trim() || call.summaryCallerQuestion || call.summaryServiceRequest) return 'general_inquiry';
+  return 'no_outcome';
+}
+
+function buildUserCallSummary(call: CallLogListItem): string | undefined {
+  const parts = [
+    call.summaryServiceRequest ? `Service: ${call.summaryServiceRequest}` : null,
+    call.summaryCallerQuestion ? `Question: ${call.summaryCallerQuestion}` : null,
+    call.summaryPreferredDatetime ? `Preferred time: ${call.summaryPreferredDatetime}` : null,
+    call.summaryPreferredTech ? `Provider: ${call.summaryPreferredTech}` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join('\n') : undefined;
+}
+
+function toUserCallResponse(call: CallLogListItem) {
+  const status = deriveUserCallStatus(call);
+  const outcome = deriveUserCallOutcome(call);
+  return {
+    id: call.requestId ?? call.providerCallId,
+    shopId: call.shopId,
+    callerPhone: call.callerPhone ?? '',
+    callerName: call.summaryCallerName ?? undefined,
+    isRepeatCaller: false,
+    forwardedTo: call.destinationPhone ?? undefined,
+    startedAt: call.startedAt,
+    endedAt: call.endedAt,
+    durationSeconds: call.durationSecs ?? undefined,
+    status,
+    outcome,
+    bookingCaptured: outcome === 'booking_captured',
+    bookingRequestId: undefined,
+    transcriptAvailable: call.transcriptStatus === 'completed' && Boolean(call.transcriptText?.trim()),
+    transcriptUrl: undefined,
+    recordingUrl: undefined,
+    summary: buildUserCallSummary(call),
+    transcriptText: call.transcriptText,
+    followUpNeeded: Boolean(call.summaryFollowUpRequired) || outcome === 'follow_up_needed',
+    highUrgency: call.summaryUrgency === 'high',
+    urgencyReason: call.summaryUrgency === 'high' ? call.summaryCallerQuestion ?? call.summaryServiceRequest ?? 'Marked high urgency' : undefined,
+    provider: call.provider,
+    providerCallId: call.providerCallId,
+    requestId: call.requestId,
+    transcriptStatus: call.transcriptStatus,
+    createdAt: call.startedAt,
+    updatedAt: call.endedAt ?? call.startedAt,
+  };
 }
 
 type SessionRole = 'user' | 'admin';
@@ -5008,6 +5101,26 @@ export function createBackendApp(deps: {
     });
   });
 
+  app.get(path('/user/calls/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls_detail');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.callLogsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    await deps.callLogsRepository.resolveStaleInProgressByShop(shop.id, new Date(Date.now() - 30 * 60 * 1000)).catch(() => 0);
+    const id = c.req.param('id');
+    const recent = await deps.callLogsRepository.listByShop(shop.id, { limit: 500 });
+    const call = recent.find((item) => item.requestId === id || item.providerCallId === id);
+    if (!call) return c.json({ ok: false, error: 'call_not_found' }, 404);
+    return c.json({ ok: true, call: toUserCallResponse(call), shop: { timezone: shop.timezone } });
+  });
+
   app.get(path('/user/calls'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calls');
     if (limited) return limited;
@@ -5019,9 +5132,13 @@ export function createBackendApp(deps: {
 
     const parsed = userCallsListQuerySchema.safeParse({
       page: c.req.query('page'),
+      limit: c.req.query('limit'),
+      tab: c.req.query('tab'),
       filter: c.req.query('filter'),
       from: c.req.query('from'),
       to: c.req.query('to'),
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
     });
     if (!parsed.success) {
       return c.json({ ok: false, error: 'invalid_query', details: parsed.error.flatten() }, 400);
@@ -5030,25 +5147,35 @@ export function createBackendApp(deps: {
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
-    const page = parsed.data.page ?? 1;
-    const offset = (page - 1) * USER_CALLS_PAGE_SIZE;
     const repo = deps.callLogsRepository;
-    const filters = buildUserCallFilters(parsed.data);
+    await repo.resolveStaleInProgressByShop(shop.id, new Date(Date.now() - 30 * 60 * 1000)).catch(() => 0);
 
-    const [calls, total, booked, missed, transcriptsReady] = await Promise.all([
-      repo.listByShop(shop.id, { ...filters, limit: USER_CALLS_PAGE_SIZE, offset }),
+    const page = parsed.data.page ?? 1;
+    const limit = parsed.data.limit ?? USER_CALLS_PAGE_SIZE;
+    const offset = (page - 1) * limit;
+    const filters = buildUserCallFilters(parsed.data);
+    const last7Days = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const [calls, total, last7DaysCount, bookings, followUp, missed, highUrgency, transcriptsReady] = await Promise.all([
+      repo.listByShop(shop.id, { ...filters, limit, offset }),
       repo.countByShop(shop.id, filters),
-      repo.countByShop(shop.id, { ...filters, summaryNextActions: ['booking_created', 'booking_link_sent'] }),
-      repo.countByShop(shop.id, { ...filters, outcome: 'missed' }),
+      repo.countByShop(shop.id, { startedAfter: last7Days }),
+      repo.countByShop(shop.id, { summaryNextActions: ['booking_created', 'booking_link_sent'] }),
+      repo.countByShop(shop.id, { summaryFollowUpRequired: true }),
+      repo.countByShop(shop.id, { outcome: 'missed' }),
+      repo.countByShop(shop.id, { summaryUrgency: 'high' }),
       repo.countByShop(shop.id, { ...filters, transcriptStatus: 'completed' }),
     ]);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
 
     return c.json({
       ok: true,
-      calls,
+      calls: calls.map(toUserCallResponse),
       shop: { timezone: shop.timezone },
-      pagination: { page, pageSize: USER_CALLS_PAGE_SIZE, total },
-      summary: { total, booked, missed, transcriptsReady },
+      total,
+      stats: { last7Days: last7DaysCount, bookings, followUp, missed, highUrgency },
+      pagination: { page, limit, pageSize: limit, total, totalPages },
+      summary: { total, booked: bookings, missed, transcriptsReady },
     });
   });
 

@@ -244,6 +244,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
         ...log,
         startedAt: log.startedAt?.toISOString(),
         endedAt: log.endedAt?.toISOString(),
+        capturedAt: log.capturedAt?.toISOString() ?? null,
       }));
   }
 
@@ -258,6 +259,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
         ...log,
         startedAt: log.startedAt?.toISOString(),
         endedAt: log.endedAt?.toISOString(),
+        capturedAt: log.capturedAt?.toISOString() ?? null,
       }));
   }
 
