@@ -591,25 +591,15 @@ export function serviceReviewBadgeState(service?: Pick<ServiceItem, 'confidence'
   };
 }
 
-function importFieldState(field?: { value?: unknown; confidence?: number; source?: string | null } | null): ReactNode {
-  const { label, source } = importReviewBadgeState(field);
-  const verified = label === 'AI verified';
-  const missing = label === 'Missing';
-  const needsReview = label === 'Needs review';
-  return (
-    <p className="onb-help" style={{ marginTop: 6 }}>
-      <span
-        className="onb-source-badge"
-        style={{
-          background: verified ? '#ecfdf5' : needsReview ? '#fff7ed' : missing ? '#ffedd5' : '#eef2ff',
-          color: verified ? '#047857' : needsReview ? '#c2410c' : missing ? '#c2410c' : '#3730a3',
-        }}
-      >
-        {label}
-      </span>{' '}
-      {source ? <span className="onb-source-badge">Source: {source}</span> : null}
-    </p>
-  );
+function isImportedFromGoogleSource(source?: string | null): boolean {
+  if (!source || typeof source !== 'string') return false;
+  return /google/i.test(source);
+}
+
+/** Step 2 profile cards: only Google gets a small gray footnote (no AI verified / Review badges). */
+function profileImportGoogleFootnote(field?: { source?: string | null } | null): ReactNode {
+  if (!field || !isImportedFromGoogleSource(field.source)) return null;
+  return <p className="onb-profile-source-footnote">Google</p>;
 }
 
 function importedVerticalToApp(value?: string | null): Vertical | '' {
@@ -971,6 +961,59 @@ function summarizeHours(hours: WizardHours): string {
   return parts.join(' · ');
 }
 
+/** Step 2 read-only hours: two columns Mon–Thu | Fri–Sun */
+function ProfileHoursPreviewGrid({ hours: h }: { hours: WizardHours }) {
+  if (DAYS.every(([day]) => !h[day].open)) {
+    return <div className="profile-review-value">Not set</div>;
+  }
+  const row = (dayKey: (typeof DAYS)[number][0], label: string) => {
+    const day = h[dayKey];
+    const closed = !day.open;
+    return (
+      <div className="hours-row" key={dayKey}>
+        <span className="hours-day">{label}</span>
+        {closed ? (
+          <span className="hours-closed">Closed</span>
+        ) : (
+          <span className="hours-time">
+            {formatTimeLabel(day.from)}–{formatTimeLabel(day.to)}
+          </span>
+        )}
+      </div>
+    );
+  };
+  return (
+    <div className="onb-step2-hours-preview">
+      <div className="hours-grid">
+        <div className="hours-grid-col">{DAYS.slice(0, 4).map(([d, l]) => row(d, l))}</div>
+        <div className="hours-grid-col">{DAYS.slice(4).map(([d, l]) => row(d, l))}</div>
+      </div>
+    </div>
+  );
+}
+
+const STEP2_LANGUAGE_CHIPS: Array<{ code: string; label: string; required?: boolean }> = [
+  { code: 'en', label: 'English', required: true },
+  { code: 'es', label: 'Spanish' },
+  { code: 'zh', label: 'Mandarin' },
+  { code: 'vi', label: 'Vietnamese' },
+  { code: 'other', label: 'Other' },
+];
+
+function toggleStep2Language(current: string[], code: string, selected: boolean): string[] {
+  if (code === 'en') return current;
+  const withoutOther = current.filter((c) => c !== 'other');
+  const next = new Set(withoutOther);
+  if (code === 'other') {
+    if (selected) next.add('other');
+    else next.delete('other');
+  } else if (selected) next.add(code);
+  else next.delete(code);
+  next.add('en');
+  const out = [...next];
+  return out.includes('other') ? [...out.filter((c) => c !== 'other'), 'other'] : out;
+}
+
 function toggleLanguage(current: string[], language: string, checked: boolean): string[] {
   const next = new Set(['en', ...current]);
   if (checked) next.add(language);
@@ -1007,7 +1050,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [businessPhone, setBusinessPhone] = useState(initialSyntheticPhone ? '' : formatPhoneForDisplay(initialRawPhone));
   const [businessPhoneNeedsRealEntry, setBusinessPhoneNeedsRealEntry] = useState(initialSyntheticPhone);
   const [hours, setHours] = useState<WizardHours>(() => initialShop ? apiHoursToWizard(initialShop.hours ?? {}) : defaultHours());
-  const [hoursExpanded, setHoursExpanded] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState(initialShop ? findCountryForTimezone(initialShop.timezone || 'America/Los_Angeles')?.country ?? 'United States' : '');
   const [timezone, setTimezone] = useState(initialShop?.timezone || 'America/Los_Angeles');
   const [languages, setLanguages] = useState<string[]>(applyVerticalLanguageSelection(initialVertical, initialShop?.languages ?? ['en']));
@@ -1049,11 +1091,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [profileTypeEditOpen, setProfileTypeEditOpen] = useState(false);
   const [profilePickPrimary, setProfilePickPrimary] = useState<Vertical | 'beauty_umbrella' | ''>('');
   const [profilePickSubtype, setProfilePickSubtype] = useState<BeautySubtype | ''>('');
-  const [accordionOpen, setAccordionOpen] = useState<Record<string, boolean>>({
-    profile: true,
-    hours: false,
-    languages: false,
-  });
   const [testCallStatus, setTestCallStatus] = useState<string | null>(null);
   const importTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const importRequestRef = useRef(0);
@@ -1498,7 +1535,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       vertical_detail: vertical === 'beauty_clinic' && beautySubtype ? beautySubtype : null,
       hours: wizardHoursToApi(hours),
       timezone,
-      languages: shopPlan === 'starter' ? ['en'] : applyVerticalLanguageSelection(vertical, languages),
+      languages:
+        shopPlan === 'starter'
+          ? ['en']
+          : applyVerticalLanguageSelection(vertical, languages.filter((code) => code !== 'other')),
       ...(addr ? { address: addr } : { address: null }),
       ...(websiteUrl.trim() ? { website_url: normalizeWebsiteUrl(websiteUrl) } : { website_url: '' }),
       current_onboarding_step: 3,
@@ -1733,6 +1773,17 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .profile-review-card.wide{grid-column:1 / -1}
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#475569;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box}.profile-review-edit:hover{background:#f1f5f9;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
+.onb-profile-source-footnote{font-size:11px;color:#9ca3af;margin:6px 0 0;line-height:1.35}
+.onb-step2-hours-preview{margin-top:2px}
+.onb-step2-hours-preview .hours-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px}
+.onb-step2-hours-preview .hours-grid-col{display:flex;flex-direction:column;gap:4px}
+.onb-step2-hours-preview .hours-row{display:flex;gap:8px;align-items:center}
+.onb-step2-hours-preview .hours-day{font-size:12px;color:#9ca3af;width:28px;flex-shrink:0;font-weight:400}
+.onb-step2-hours-preview .hours-time{font-size:13px;color:#111}
+.onb-step2-hours-preview .hours-closed{font-size:13px;color:#9ca3af}
+.onb-step2-languages-card{margin-top:0}
+.onb-step2-lang-chips.preset-row{margin-bottom:0}
+.preset-chip.mixed-chip.locked{opacity:.55;cursor:not-allowed}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
 .onb-services-review-shell,.onb-service-mode-b,.onb-service-groups{max-width:780px;margin-left:auto;margin-right:auto}
 .onb-desktop-copy{display:inline}.onb-mobile-copy{display:none}
@@ -1794,18 +1845,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }
 
   const webDemoHref = verticalToWebDemoPath(vertical);
-  function renderAccordionSection(id: string, title: string, body: ReactNode) {
-    const open = accordionOpen[id] ?? false;
-    return (
-      <div className="acc">
-        <button type="button" className="acc-btn" onClick={() => setAccordionOpen({ ...accordionOpen, [id]: !open })} aria-expanded={open}>
-          <span>{title}</span>
-          <span aria-hidden>{open ? '−' : '+'}</span>
-        </button>
-        {open ? <div className="acc-body">{body}</div> : null}
-      </div>
-    );
-  }
 
   function renderStep1() {
     if (step1View === 'manual_vertical') {
@@ -2092,8 +2131,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               )}
             </button>
           </div>
-          {editing ? <div className="profile-review-editor">{editor}</div> : <div className="profile-review-value">{value || 'Missing'}</div>}
-          {showImportState ? importFieldState(options.imported) : null}
+          {editing ? (
+            <div className="profile-review-editor">{editor}</div>
+          ) : field === 'hours' ? (
+            <ProfileHoursPreviewGrid hours={hours} />
+          ) : (
+            <div className="profile-review-value">{value || 'Missing'}</div>
+          )}
+          {showImportState ? profileImportGoogleFootnote(options.imported ?? undefined) : null}
         </div>
       );
     };
@@ -2118,7 +2163,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             ) : null}
             {secondaryImportSuggestionCount(importSuggestions) > 0 ? (
               <p className="onb-help" style={{ margin: '10px 0 14px' }}>
-                We also found staff, policies, FAQs, promotions, or booking setup hints you can review later in Business Knowledge.
+                Staff, policies, and FAQs are ready to review in Business Knowledge.
               </p>
             ) : null}
           </div>
@@ -2339,62 +2384,54 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
         <div className="onb-note" style={{ marginTop: 18, marginBottom: 24 }}>
           <span>ⓘ</span>
-          <span>Review hours and contact info so the AI can answer callers more accurately.</span>
+          <span>Check your hours and phone — these are what callers ask most.</span>
         </div>
 
-        {renderAccordionSection(
-          'languages',
-          shopPlan === 'starter' ? 'Languages noted for setup' : 'Languages',
-          <div>
-            <p className="onb-subtitle" style={{ marginTop: 0 }}>
-              {shopPlan === 'starter'
-                ? 'Stored for your team and onboarding notes. Starter keeps live dialogue in English unless your plan enables bilingual workflows.'
-                : 'Beyond English, RingBooker can respond in the languages you enable here during live calls.'}
+        <div className="profile-review-card wide onb-step2-languages-card">
+          <div className="profile-review-top">
+            <span className="profile-review-label">{shopPlan === 'starter' ? 'Languages noted for setup' : 'Languages'}</span>
+          </div>
+          <p className="onb-subtitle" style={{ marginTop: 0, marginBottom: 12 }}>
+            {shopPlan === 'starter'
+              ? 'Stored for your team and onboarding notes. Starter keeps live dialogue in English unless your plan enables bilingual workflows.'
+              : 'Beyond English, RingBooker can respond in the languages you enable here during live calls.'}
+          </p>
+          <div className="preset-row onb-step2-lang-chips" style={{ marginTop: 0 }}>
+            {STEP2_LANGUAGE_CHIPS.map(({ code, label, required }) => {
+              const selected = languages.includes(code);
+              if (shopPlan === 'starter' && !required) {
+                return (
+                  <button key={code} type="button" className="preset-chip mixed-chip locked" disabled>
+                    {label}
+                  </button>
+                );
+              }
+              if (required) {
+                return (
+                  <button key={code} type="button" className="preset-chip mixed-chip active" disabled>
+                    {label} ✓
+                  </button>
+                );
+              }
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  className={`preset-chip mixed-chip ${selected ? 'active' : ''}`}
+                  onClick={() => setLanguages(toggleStep2Language(languages, code, !selected))}
+                >
+                  {label}
+                  {selected ? ' ✓' : ''}
+                </button>
+              );
+            })}
+          </div>
+          {vertical === 'nail_salon' && shopPlan !== 'starter' && languages.includes('vi') ? (
+            <p className="onb-help" style={{ marginTop: 10, marginBottom: 0 }}>
+              Vietnamese is included for nail salons — turn off if you don&apos;t need it.
             </p>
-            <div className="lang-list">
-              <div className="lang-option">
-                <label className="lang-pill required">
-                  <input type="checkbox" checked disabled /> EN ✓
-                </label>
-                <span className="required-badge">Required</span>
-              </div>
-              {shopPlan === 'starter' ? (
-                <>
-                  <div className="lang-option">
-                    <label className="lang-pill locked">
-                      <input type="checkbox" checked={false} disabled /> VI
-                    </label>
-                    <span className="plan-badge">Pro + Enterprise</span>
-                  </div>
-                  <div className="lang-option">
-                    <label className="lang-pill locked">
-                      <input type="checkbox" checked={false} disabled /> ES
-                    </label>
-                    <span className="plan-badge">Pro + Enterprise</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="lang-option">
-                    <label className={`lang-pill ${languages.includes('vi') ? 'selected' : ''}`}>
-                      <input type="checkbox" checked={languages.includes('vi')} onChange={(event) => setLanguages(toggleLanguage(languages, 'vi', event.target.checked))} />
-                      VI {languages.includes('vi') ? '✓' : ''}
-                    </label>
-                    <span className="lang-badge-spacer" aria-hidden="true" />
-                  </div>
-                  {vertical === 'nail_salon' ? <span className="mini-badge">✓ Auto-selected for nail salons</span> : null}
-                  <div className="lang-option">
-                    <label className={`lang-pill ${languages.includes('es') ? 'selected' : ''}`}>
-                      <input type="checkbox" checked={languages.includes('es')} onChange={(event) => setLanguages(toggleLanguage(languages, 'es', event.target.checked))} />
-                      ES {languages.includes('es') ? '✓' : ''}
-                    </label>
-                    <span className="lang-badge-spacer" aria-hidden="true" />
-                  </div>
-                </>
-              )}
-            </div>
-          </div>,
-        )}
+          ) : null}
+        </div>
 
         {websiteLoading && importProgress ? <p className="onb-help">{importProgress}</p> : null}
         <div className="onb-actions onb-actions-desktop">
