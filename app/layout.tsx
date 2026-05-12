@@ -12,6 +12,7 @@ const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
 };
 
 export const metadata: Metadata = {
