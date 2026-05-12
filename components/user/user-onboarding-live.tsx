@@ -1742,7 +1742,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .service-group-main{display:grid;gap:2px;min-width:0;flex:1}.service-group-title{margin:0;color:#111827;font-size:15px;font-weight:500;line-height:1.25}.service-group-meta{color:#9ca3af;font-size:12px;font-weight:400;line-height:1.25}
 .service-group-warning{border-radius:999px;background:#fffbeb;color:#f59e0b;padding:3px 8px;font-size:11px;font-weight:500;white-space:nowrap}.service-group-chevron{color:#6b7280;font-size:18px;line-height:1;transition:transform .18s ease}.service-group-chevron.open{transform:rotate(180deg)}
 .service-group-body{display:grid;gap:0;padding:12px 16px 16px}
-.service-review-copy{margin:-6px 0 14px;max-width:760px}
 .onb-service-row-wrap{position:relative;border-bottom:1px solid #f3f4f6}.onb-service-row-wrap:last-of-type{border-bottom:0}
 .onb-service-row{width:100%;border:0;background:transparent;padding:11px 0;display:flex;align-items:center;gap:14px;text-align:left;font:inherit;cursor:pointer;color:#111}
 .onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{color:#9ca3af;font-size:12px;font-weight:500;opacity:0;transition:opacity .15s ease}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1}
@@ -2493,12 +2492,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           ) : null}
         </div>
         {servicesFound > 0 && !modeA ? (
-          <>
-            <p className="onb-service-import-badge">✓ {servicesFound} {servicesFound === 1 ? 'service' : 'services'} imported from your website — review below</p>
-            <p className="onb-help service-review-copy">
-              Review imported services before saving. Some imported services may need review. Check names, prices, and durations before saving. You can remove anything that does not belong.
-            </p>
-          </>
+          <p className="onb-service-import-badge">✓ {servicesFound} {servicesFound === 1 ? 'service' : 'services'} imported from your website — review below</p>
         ) : websiteImportAttempted && (importSource === 'website' || importSource === 'google_business') ? (
           <p className="onb-help">
             {WEBSITE_IMPORT_EXTRACTION_ACTIVE
