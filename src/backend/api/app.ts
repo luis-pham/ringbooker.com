@@ -58,6 +58,7 @@ import type {
   CommercialAccountsRepository,
   CommercialGoLiveApprovalEventsRepository,
   CallbacksRepository,
+  CallLogListItem,
   CallLogsRepository,
   DemoAdminCallListRow,
   DemoCallStatus,

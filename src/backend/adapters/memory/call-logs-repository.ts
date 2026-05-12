@@ -1,4 +1,10 @@
-import type { CallLogsRepository, CallLogsQueryParams, CallStructuredSummaryFields, CallSummaryNextAction } from '@/src/backend/ports/repositories';
+import type {
+  CallLogListItem,
+  CallLogsRepository,
+  CallLogsQueryParams,
+  CallStructuredSummaryFields,
+  CallSummaryNextAction,
+} from '@/src/backend/ports/repositories';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
 import { getCapturedCallerReason } from '@/src/backend/services/usage/captured-caller';
 
@@ -227,36 +233,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     return [...this.logsByCall.values()].filter((log) => matchesCallAdminFilters(log, params)).length;
   }
 
-  async listByShop(
-    shopId: string,
-    params?: CallLogsQueryParams,
-  ): Promise<
-    Array<{
-      provider: string;
-      providerCallId: string;
-      shopId: string;
-      callerPhone?: string;
-      destinationPhone?: string;
-      requestId?: string;
-      roomName?: string;
-      startedAt?: string;
-      endedAt?: string;
-      agentJoined: boolean;
-      humanAnswered: boolean;
-      transcriptStatus?: string;
-      transcriptText?: string;
-      demoLiveState?: string;
-      outcome?: string;
-      summaryServiceRequest?: string | null;
-      summaryUrgency?: 'low' | 'medium' | 'high' | null;
-      summaryNextAction?: CallSummaryNextAction | null;
-      summaryCallerQuestion?: string | null;
-      summaryCallerName?: string | null;
-      summaryPreferredTech?: string | null;
-      summaryPreferredDatetime?: string | null;
-      summaryFollowUpRequired?: boolean;
-    }>
-  > {
+  async listByShop(shopId: string, params?: CallLogsQueryParams): Promise<CallLogListItem[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     return [...this.logsByCall.values()]
@@ -270,33 +247,7 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
       }));
   }
 
-  async listRecent(params?: CallLogsQueryParams): Promise<
-    Array<{
-      provider: string;
-      providerCallId: string;
-      shopId: string;
-      callerPhone?: string;
-      destinationPhone?: string;
-      requestId?: string;
-      roomName?: string;
-      startedAt?: string;
-      endedAt?: string;
-      agentJoined: boolean;
-      humanAnswered: boolean;
-      transcriptStatus?: string;
-      transcriptText?: string;
-      demoLiveState?: string;
-      outcome?: string;
-      summaryServiceRequest?: string | null;
-      summaryUrgency?: 'low' | 'medium' | 'high' | null;
-      summaryNextAction?: CallSummaryNextAction | null;
-      summaryCallerQuestion?: string | null;
-      summaryCallerName?: string | null;
-      summaryPreferredTech?: string | null;
-      summaryPreferredDatetime?: string | null;
-      summaryFollowUpRequired?: boolean;
-    }>
-  > {
+  async listRecent(params?: CallLogsQueryParams): Promise<CallLogListItem[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     return [...this.logsByCall.values()]
@@ -308,6 +259,25 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
         startedAt: log.startedAt?.toISOString(),
         endedAt: log.endedAt?.toISOString(),
       }));
+  }
+
+  async resolveStaleInProgressByShop(shopId: string, staleBefore: Date): Promise<number> {
+    let resolved = 0;
+    const now = new Date();
+    for (const [key, log] of this.logsByCall.entries()) {
+      if (log.shopId !== shopId) continue;
+      if (log.endedAt) continue;
+      if (!log.startedAt || log.startedAt >= staleBefore) continue;
+      const hasTranscript = Boolean(log.transcriptText?.trim()) || log.transcriptStatus === 'completed';
+      this.logsByCall.set(key, {
+        ...log,
+        endedAt: now,
+        outcome: hasTranscript ? log.outcome && log.outcome !== 'in_progress' ? log.outcome : 'completed' : 'missed',
+        durationSecs: Math.max(0, Math.round((now.getTime() - log.startedAt.getTime()) / 1000)),
+      });
+      resolved += 1;
+    }
+    return resolved;
   }
 
 

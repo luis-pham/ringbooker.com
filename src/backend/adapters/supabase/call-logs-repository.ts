@@ -1,6 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { CallLogsRepository, CallLogsQueryParams, CallStructuredSummaryFields } from '@/src/backend/ports/repositories';
+import type {
+  CallLogListItem,
+  CallLogsRepository,
+  CallLogsQueryParams,
+  CallStructuredSummaryFields,
+} from '@/src/backend/ports/repositories';
 import { observeDurationMs } from '@/src/backend/observability/metrics';
 import { getCapturedCallerReason } from '@/src/backend/services/usage/captured-caller';
 
@@ -237,28 +242,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     return count ?? 0;
   }
 
-  async listByShop(
-    shopId: string,
-    params?: CallLogsQueryParams,
-  ): Promise<
-    Array<{
-      provider: string;
-      providerCallId: string;
-      shopId: string;
-      callerPhone?: string;
-      destinationPhone?: string;
-      requestId?: string;
-      roomName?: string;
-      startedAt?: string;
-      endedAt?: string;
-      agentJoined: boolean;
-      humanAnswered: boolean;
-      transcriptStatus?: string;
-      transcriptText?: string;
-      demoLiveState?: string;
-      outcome?: string;
-    }>
-  > {
+  async listByShop(shopId: string, params?: CallLogsQueryParams): Promise<CallLogListItem[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     let q = this.supabase
@@ -305,25 +289,7 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }));
   }
 
-  async listRecent(params?: CallLogsQueryParams): Promise<
-    Array<{
-      provider: string;
-      providerCallId: string;
-      shopId: string;
-      callerPhone?: string;
-      destinationPhone?: string;
-      requestId?: string;
-      roomName?: string;
-      startedAt?: string;
-      endedAt?: string;
-      agentJoined: boolean;
-      humanAnswered: boolean;
-      transcriptStatus?: string;
-      transcriptText?: string;
-      demoLiveState?: string;
-      outcome?: string;
-    }>
-  > {
+  async listRecent(params?: CallLogsQueryParams): Promise<CallLogListItem[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
     const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     let q = this.supabase
@@ -366,7 +332,43 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
       capturedCallerReason: (row.captured_caller_reason as string | null) ?? null,
       capturedAt: (row.captured_at as string | null) ?? null,
       durationSecs: Number(row.duration_secs ?? 0),
-    }));
+      }));
+  }
+
+  async resolveStaleInProgressByShop(shopId: string, staleBefore: Date): Promise<number> {
+    const nowIso = new Date().toISOString();
+    const { data, error: readError } = await this.supabase
+      .from('call_logs')
+      .select('provider_call_id,started_at,transcript_text,transcript_status,outcome')
+      .eq('shop_id', shopId)
+      .is('ended_at', null)
+      .lt('started_at', staleBefore.toISOString());
+
+    if (readError) throw new Error(`call_logs_read_stale_failed:${readError.message}`);
+    const rows = data ?? [];
+    let resolved = 0;
+    for (const row of rows) {
+      const providerCallId = row.provider_call_id as string | null;
+      const startedAt = row.started_at as string | null;
+      if (!providerCallId || !startedAt) continue;
+      const hasTranscript = Boolean(((row.transcript_text as string | null) ?? '').trim()) || row.transcript_status === 'completed';
+      const currentOutcome = (row.outcome as string | null) ?? null;
+      const nextOutcome = hasTranscript ? currentOutcome && currentOutcome !== 'in_progress' ? currentOutcome : 'completed' : 'missed';
+      const durationSecs = Math.max(0, Math.round((new Date(nowIso).getTime() - new Date(startedAt).getTime()) / 1000));
+      const { error } = await this.supabase
+        .from('call_logs')
+        .update({
+          ended_at: nowIso,
+          duration_secs: durationSecs,
+          outcome: nextOutcome,
+        })
+        .eq('shop_id', shopId)
+        .eq('provider_call_id', providerCallId)
+        .is('ended_at', null);
+      if (error) throw new Error(`call_logs_resolve_stale_failed:${error.message}`);
+      resolved += 1;
+    }
+    return resolved;
   }
 
 

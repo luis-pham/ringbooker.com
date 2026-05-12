@@ -115,7 +115,7 @@ html[data-user-theme="dark"] .calls-list-card .calls-table.calls-table-desktop t
   flex:0 0 auto;white-space:nowrap;
   appearance:none;background:transparent;border:none;border-radius:0;margin:0;
   padding:12px 0 9px;font-size:14px;line-height:1.35;font-weight:500;color:var(--text-gray);
-  cursor:pointer;font:inherit;box-shadow:none;border-bottom:3px solid transparent;
+  cursor:pointer;font:inherit;box-shadow:none;border-bottom:2px solid transparent;
   transition:color .15s ease,border-color .15s ease,font-weight .15s ease;
 }
 .business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
@@ -123,7 +123,7 @@ html[data-user-theme="dark"] .calls-list-card .calls-table.calls-table-desktop t
   outline:2px solid var(--purple-dark);outline-offset:3px;
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active{
-  color:var(--purple-dark);font-weight:650;letter-spacing:-.01em;border-bottom-color:var(--purple-dark);
+  color:var(--purple-dark);font-weight:500;letter-spacing:-.01em;border-bottom-color:var(--purple-dark);
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active:hover{color:var(--purple-dark)}
 .intent-filter-count{

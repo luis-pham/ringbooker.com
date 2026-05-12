@@ -235,7 +235,7 @@ button.subtle-link:hover{text-decoration:underline}
   flex:0 0 auto;white-space:nowrap;
   appearance:none;background:transparent;border:none;border-radius:0;margin:0;
   padding:12px 0 9px;font-size:14px;line-height:1.35;font-weight:500;color:var(--text-gray);
-  cursor:pointer;font:inherit;box-shadow:none;border-bottom:3px solid transparent;
+  cursor:pointer;font:inherit;box-shadow:none;border-bottom:2px solid transparent;
   transition:color .15s ease,border-color .15s ease,font-weight .15s ease;
 }
 /* Neutral tab hovers must win over generic .business-subtab pill styles (same as /user/calls) */
@@ -248,7 +248,7 @@ button.subtle-link:hover{text-decoration:underline}
   outline:2px solid var(--purple-dark);outline-offset:3px;
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active{
-  color:var(--purple-dark);font-weight:650;letter-spacing:-.01em;border-bottom-color:var(--purple-dark);
+  color:var(--purple-dark);font-weight:500;letter-spacing:-.01em;border-bottom-color:var(--purple-dark);
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active:hover{
   color:var(--purple-dark);
@@ -899,7 +899,7 @@ html[data-user-theme="dark"] .upgrade-panel{
     border:none!important;
     border-radius:0!important;
     background:transparent!important;
-    border-bottom:3px solid transparent!important;
+    border-bottom:2px solid transparent!important;
     font-size:14px!important;
     font-weight:500!important;
     text-align:left!important;
@@ -908,7 +908,7 @@ html[data-user-theme="dark"] .upgrade-panel{
   .business-subtabs.calls-filter-tabs .business-subtab.active{
     border-bottom-color:var(--purple-dark)!important;
     color:var(--purple-dark)!important;
-    font-weight:650!important;
+    font-weight:500!important;
   }
   .knowledge-portal-main .knowledge-tabs-mobile-only.tab-strip{
     display:grid!important;

@@ -236,6 +236,36 @@ export type CallLogsQueryParams = {
   isCapturedCaller?: boolean;
 };
 
+export type CallLogListItem = {
+  provider: string;
+  providerCallId: string;
+  shopId: string;
+  callerPhone?: string;
+  destinationPhone?: string;
+  requestId?: string;
+  roomName?: string;
+  startedAt?: string;
+  endedAt?: string;
+  agentJoined: boolean;
+  humanAnswered: boolean;
+  transcriptStatus?: string;
+  transcriptText?: string;
+  demoLiveState?: string;
+  outcome?: string;
+  isCapturedCaller?: boolean;
+  capturedCallerReason?: string | null;
+  capturedAt?: string | null;
+  durationSecs?: number;
+  summaryServiceRequest?: string | null;
+  summaryUrgency?: CallSummaryUrgency | null;
+  summaryNextAction?: CallSummaryNextAction | null;
+  summaryCallerQuestion?: string | null;
+  summaryCallerName?: string | null;
+  summaryPreferredTech?: string | null;
+  summaryPreferredDatetime?: string | null;
+  summaryFollowUpRequired?: boolean;
+};
+
 export interface CallLogsRepository {
   createOrUpdateInboundCall(params: {
     provider: string;
@@ -289,33 +319,7 @@ export interface CallLogsRepository {
   listByShop(
     shopId: string,
     params?: CallLogsQueryParams,
-  ): Promise<
-    Array<{
-      provider: string;
-      providerCallId: string;
-      shopId: string;
-      callerPhone?: string;
-      destinationPhone?: string;
-      requestId?: string;
-      roomName?: string;
-      startedAt?: string;
-      endedAt?: string;
-      agentJoined: boolean;
-      humanAnswered: boolean;
-      transcriptStatus?: string;
-      transcriptText?: string;
-      demoLiveState?: string;
-      outcome?: string;
-      summaryServiceRequest?: string | null;
-      summaryUrgency?: CallSummaryUrgency | null;
-      summaryNextAction?: CallSummaryNextAction | null;
-      summaryCallerQuestion?: string | null;
-      summaryCallerName?: string | null;
-      summaryPreferredTech?: string | null;
-      summaryPreferredDatetime?: string | null;
-      summaryFollowUpRequired?: boolean;
-    }>
-  >;
+  ): Promise<CallLogListItem[]>;
   countByShop(
     shopId: string,
     params?: CallLogsQueryParams,
@@ -329,33 +333,8 @@ export interface CallLogsRepository {
     reason?: string | null;
     capturedAt?: Date | null;
   }): Promise<void>;
-  listRecent(params?: CallLogsQueryParams): Promise<
-    Array<{
-      provider: string;
-      providerCallId: string;
-      shopId: string;
-      callerPhone?: string;
-      destinationPhone?: string;
-      requestId?: string;
-      roomName?: string;
-      startedAt?: string;
-      endedAt?: string;
-      agentJoined: boolean;
-      humanAnswered: boolean;
-      transcriptStatus?: string;
-      transcriptText?: string;
-      demoLiveState?: string;
-      outcome?: string;
-      summaryServiceRequest?: string | null;
-      summaryUrgency?: CallSummaryUrgency | null;
-      summaryNextAction?: CallSummaryNextAction | null;
-      summaryCallerQuestion?: string | null;
-      summaryCallerName?: string | null;
-      summaryPreferredTech?: string | null;
-      summaryPreferredDatetime?: string | null;
-      summaryFollowUpRequired?: boolean;
-    }>
-  >;
+  listRecent(params?: CallLogsQueryParams): Promise<CallLogListItem[]>;
+  resolveStaleInProgressByShop(shopId: string, staleBefore: Date): Promise<number>;
   updateStructuredSummary(
     shopId: string,
     requestId: string,
