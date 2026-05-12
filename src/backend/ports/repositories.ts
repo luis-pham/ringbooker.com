@@ -731,24 +731,34 @@ export interface BookingRecord {
   customerPhone: string;
   customerName?: string | null;
   service: string;
+  techName?: string | null;
   matchedServiceId?: string | null;
   matchedServiceConfidence?: number | null;
   datetimeUtc: string;
   timezone: string;
+  durationMinutes?: number | null;
   status: string;
+  confirmed?: boolean;
   reminder24hSent: boolean;
   reminder2hSent: boolean;
   reviewRequestSent: boolean;
+  calendarEventId?: string | null;
+  callLogId?: string | null;
+  callTranscript?: string | null;
+  notes?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface BookingsRepository {
   findById(bookingId: string): Promise<BookingRecord | null>;
-  countByShop(shopId: string): Promise<number>;
+  countByShop(
+    shopId: string,
+    params?: { createdAfter?: Date; createdBefore?: Date; statuses?: string[]; callLogId?: string },
+  ): Promise<number>;
   listByShop(
     shopId: string,
-    params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },
+    params?: { limit?: number; offset?: number; createdAfter?: Date; createdBefore?: Date; statuses?: string[]; callLogId?: string },
   ): Promise<BookingRecord[]>;
   create(params: {
     id?: string;
@@ -762,7 +772,11 @@ export interface BookingsRepository {
     timezone: string;
     status: string;
     calendarEventId?: string;
+    callLogId?: string | null;
+    techName?: string | null;
+    durationMinutes?: number | null;
   }): Promise<BookingRecord>;
+  updateStatusByShop(shopId: string, bookingId: string, status: string): Promise<BookingRecord | null>;
   updateDatetime(bookingId: string, newDatetimeUtc: Date): Promise<void>;
   markReminderSent(bookingId: string, kind: '24h' | '2h'): Promise<void>;
   markReviewRequestSent(bookingId: string): Promise<void>;
@@ -793,6 +807,19 @@ export interface CallbacksRepository {
   markFailed(callbackId: string): Promise<void>;
 }
 
+export interface OutboundMessageRecord {
+  id: string;
+  shopId: string;
+  bookingId?: string | null;
+  customerPhone: string;
+  category: string;
+  body?: string | null;
+  status: 'queued' | 'sent' | 'failed' | string;
+  providerMessageId?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface OutboundMessagesRepository {
   create(params: {
     shopId: string;
@@ -804,6 +831,7 @@ export interface OutboundMessagesRepository {
     status: 'queued' | 'sent' | 'failed';
     providerMessageId?: string;
   }): Promise<void>;
+  listByBookingId?(bookingId: string): Promise<OutboundMessageRecord[]>;
 }
 
 export type AuthRole = 'user' | 'admin';

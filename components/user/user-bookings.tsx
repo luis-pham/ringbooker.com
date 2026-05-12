@@ -4,10 +4,17 @@ import { userDashboardStyles } from '@/components/user/user-dashboard';
 const styles: string[] = [
   ...userDashboardStyles,
   String.raw`
-.bookings-stats .stat-card{border-radius:22px}
-@media (max-width:860px){
-  .bookings-stats .stat-card{border-radius:16px}
-}
+.page-content.page-bookings{max-width:1100px;margin:0 auto;width:100%}
+.bookings-error{margin-bottom:14px;color:#b91c1c;font-size:13px}
+.bookings-metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:22px}
+.bookings-metric-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;min-height:92px}
+.bookings-metric-card p{margin:0 0 4px;color:#6b7280;font-size:13px;line-height:1.25}.bookings-metric-card strong{font-size:28px;line-height:1;font-weight:650;color:#111;letter-spacing:-.03em}.bookings-stat-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:20px}.bookings-stat-icon--blue{background:#dbeafe;color:#2563eb}.bookings-stat-icon--amber{background:#fef3c7;color:#ca8a04}.bookings-stat-icon--green{background:#dcfce7;color:#16a34a}.bookings-stat-icon--red{background:#fee2e2;color:#dc2626}
+.bookings-filter-bar{border-bottom:1.5px solid #e5e7eb;margin-bottom:32px}.bookings-filter-tabs{display:flex;gap:0;overflow-x:auto}.bookings-filter-tab{appearance:none;border:0;background:transparent;color:#6b7280;font-size:14px;font-weight:500;padding:13px 18px 12px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}.bookings-filter-tab.active{color:#111;border-bottom-color:#111}.bookings-filter-tab span{margin-left:4px;color:#9ca3af;font-size:12px}
+.bookings-list-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}.bookings-table{width:100%;border-collapse:collapse}.bookings-table th{text-align:left;font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;padding:10px 20px;border-bottom:1px solid #f3f4f6}.bookings-table td{padding:12px 20px;min-height:56px;border-bottom:1px solid #f3f4f6;vertical-align:middle}.bookings-table tbody tr{cursor:pointer}.bookings-table tbody tr:hover{background:#fafafa}.bookings-table tbody tr:last-child td{border-bottom:0}.bookings-row-client{display:flex;align-items:center;gap:10px}.bookings-client-avatar{width:30px;height:30px;border-radius:999px;background:#f5f3ff;color:#7c3aed;font-size:11px;font-weight:650;display:grid;place-items:center;flex:0 0 auto}.bookings-client-name{font-size:13px;font-weight:550;color:#111;line-height:1.25}.bookings-client-phone,.bookings-provider,.bookings-date-cell span{display:block;font-size:11px;color:#9ca3af;margin-top:2px}.bookings-service-name{font-size:13px;color:#111}.bookings-service-name em{color:#9ca3af;font-style:italic}.bookings-date-cell{font-size:13px;font-weight:500;color:#111}.booking-status{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:550;white-space:nowrap}.booking-status--captured,.booking-status--completed{background:#f3f4f6;color:#6b7280}.booking-status--link{background:#eff6ff;color:#2563eb}.booking-status--confirmed{background:#f0fdf4;color:#16a34a}.booking-status--warning{background:#fefce8;color:#ca8a04}.booking-status--cancelled{background:#fef2f2;color:#dc2626}.booking-status--rescheduled{background:#fff7ed;color:#ea580c}.bookings-view-btn{border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;padding:5px 12px;font-size:12px;cursor:pointer}.bookings-view-btn:hover{border-color:#7c3aed;color:#7c3aed}
+.bookings-empty{text-align:center;padding:54px 20px}.bookings-empty-icon{font-size:32px;opacity:.3;margin-bottom:12px}.bookings-empty h3{margin:0 0 6px;font-size:16px;color:#111}.bookings-empty p{margin:0 auto 16px;max-width:360px;font-size:13px;color:#6b7280}.bookings-empty-btn{display:inline-flex;align-items:center;border:1px solid #111;border-radius:10px;color:#111;text-decoration:none;padding:9px 14px;font-size:13px;font-weight:550}.bookings-pagination{display:flex;justify-content:center;align-items:center;gap:14px;margin-top:18px}.bookings-pagination button{border:1px solid #e5e7eb;border-radius:8px;background:#fff;color:#374151;padding:7px 12px;font-size:12px}.bookings-pagination button:disabled{opacity:.45;cursor:not-allowed}.bookings-pagination span,.bookings-count-note{font-size:12px;color:#9ca3af}.bookings-count-note{text-align:center;margin-top:8px}
+.mobile-bookings{display:none}.booking-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:1000;display:flex;justify-content:flex-end}.booking-detail-panel{width:380px;max-width:100%;height:100%;background:#fff;box-shadow:-20px 0 40px rgba(15,23,42,.18);padding:22px;overflow:auto;animation:bookingSlideIn .18s ease-out}@keyframes bookingSlideIn{from{transform:translateX(18px);opacity:.8}to{transform:translateX(0);opacity:1}}.booking-detail-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;border-bottom:1px solid #f3f4f6;padding-bottom:16px;margin-bottom:18px}.booking-detail-head h2{margin:0 0 4px;font-size:18px;color:#111}.booking-detail-head p,.booking-muted,.booking-detail-loading{margin:0;color:#6b7280;font-size:13px}.booking-detail-head button{width:32px;height:32px;border:1px solid #e5e7eb;background:#fff;border-radius:999px;font-size:20px;line-height:1;cursor:pointer}.booking-detail-section{border-bottom:1px solid #f3f4f6;padding:0 0 18px;margin:0 0 18px}.booking-detail-section h3{margin:0 0 12px;font-size:13px;color:#111}.booking-detail-section dl{display:grid;grid-template-columns:110px 1fr;gap:9px 12px;margin:0}.booking-detail-section dt{font-size:12px;color:#9ca3af}.booking-detail-section dd{margin:0;font-size:13px;color:#111}.booking-detail-section a{color:#7c3aed;text-decoration:none}.booking-sms-timeline{display:grid;gap:12px}.booking-sms-entry{display:flex;gap:10px}.booking-sms-entry>span{width:9px;height:9px;background:#16a34a;border-radius:999px;margin-top:4px;flex:0 0 auto}.booking-sms-entry>span.failed{background:#dc2626}.booking-sms-entry strong{font-size:13px;color:#111}.booking-sms-entry p{margin:2px 0 0;font-size:12px;color:#9ca3af}.booking-override-actions{display:grid;gap:10px}.booking-override-actions button{height:40px;border:1px solid #e5e7eb;background:#fff;border-radius:9px;font-size:13px;font-weight:550;color:#111;cursor:pointer}.booking-override-actions button.danger{border-color:#fca5a5;color:#dc2626}
+@media (max-width:900px){.bookings-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.bookings-table-desktop{display:none}.mobile-bookings{display:grid}.mobile-booking-card{appearance:none;border:0;border-bottom:1px solid #f3f4f6;background:#fff;text-align:left;padding:14px 16px;display:grid;gap:10px;cursor:pointer}.mobile-booking-card:last-child{border-bottom:0}.mobile-booking-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.mobile-booking-meta{display:flex;justify-content:space-between;gap:14px;font-size:12px;color:#6b7280}.booking-detail-overlay{align-items:flex-end}.booking-detail-panel{width:100%;height:auto;max-height:88vh;border-radius:20px 20px 0 0;animation:bookingSheetIn .18s ease-out}@keyframes bookingSheetIn{from{transform:translateY(24px);opacity:.8}to{transform:translateY(0);opacity:1}}}
+@media (max-width:640px){.bookings-metric-grid{grid-template-columns:1fr}.bookings-filter-tab{padding-left:12px;padding-right:12px}.booking-detail-section dl{grid-template-columns:1fr}.booking-detail-section dt{margin-top:4px}}
 `,
 ];
 
@@ -15,74 +22,12 @@ const scripts: string[] = [];
 
 export const userBookingsStyles = styles;
 export const userBookingsScripts = scripts;
-export const templateTitle = 'Bookings and calendar flow.';
+export const templateTitle = 'Bookings';
 
 export function UserBookingsTemplate() {
   return (
-    <UserLayout
-      styles={styles}
-      scripts={scripts}
-      scriptPrefix="user-bookings"
-    >
-      <div className="app-shell">
-        <aside className="sidebar">
-          <div className="sidebar-inner">
-            <div className="brand"><div className="brand-mark"><div className="brand-ripple r3" /><div className="brand-ripple r2" /><div className="brand-core"><svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#fff" stroke="none" /></svg></div></div><span>RingBooker</span></div>
-            <div className="nav-section"><div className="nav-label">User Portal</div><div className="nav-list"><a className="nav-item" href="/user"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={4} width={7} height={7} rx="1.5" /><rect x={14} y={4} width={7} height={4} rx="1.5" /><rect x={14} y={11} width={7} height={9} rx="1.5" /><rect x={3} y={14} width={7} height={6} rx="1.5" /></svg></div><span>Overview</span></a><a className="nav-item active" href="/user/bookings"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span>Bookings</span></a><a className="nav-item" href="/user/calls"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span>Calls &amp; Transcripts</span></a><a className="nav-item" href="/user/settings"><div className="nav-icon"><svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8.5a3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.2a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.2a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.2a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1Z" /></svg></div><span>Settings</span></a><a className="nav-item" href="/user/billing"><div className="nav-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={14} rx={2} /><path d="M3 10h18" /><path d="M7 15h4" /></svg></div><span>Billing</span></a></div></div>
-            <div className="sidebar-spacer" />
-          </div>
-        </aside>
-        <main className="main">
-          <div className="topbar">
-            <div className="page-title"><h1>Bookings and calendar flow.</h1><p>See appointment requests and bookings RingBooker has captured or created.</p></div>
-            <div className="top-actions portal-top-account">
-              <a className="portal-top-account-btn" href="/user/account" aria-label="Account" title="Account">
-                <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
-                  <path
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"
-                  />
-                </svg>
-              </a>
-            </div>
-          </div>
-          <section className="grid grid-3 bookings-stats">
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">This week</span></div><div className="stat-value">42</div><div className="stat-meta">Upcoming bookings</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-8 8H7l-4 2 1.5-4.5A8 8 0 1 1 21 12Z" /></svg></div><span className="tag orange">Needs attention</span></div><div className="stat-value">8</div><div className="stat-meta">Pending confirmations</div></div>
-            <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 19h16" /><path d="M7 15l3-3 3 2 4-5" /></svg></div><span className="tag green">Recovered</span></div><div className="stat-value">11</div><div className="stat-meta">Bookings from missed-call text back</div></div>
-          </section>
-          <section className="grid grid-2" style={{marginTop: 18}}>
-            <div className="card">
-              <div className="panel-head"><div><h3>Upcoming appointments</h3><p className="sub">Sorted by soonest time slot.</p></div><span className="badge-right">Google Calendar synced</span></div>
-              <table className="table">
-                <thead><tr><th>Client</th><th>Service</th><th>Stylist</th><th>When</th><th>Status</th></tr></thead>
-                <tbody>
-                  <tr><td>Emma L.</td><td>Balayage + Trim</td><td>Sophia</td><td>Today · 2:30 PM</td><td><span className="tag green">Confirmed</span></td></tr>
-                  <tr><td>Jasmine T.</td><td>Gel Manicure</td><td>Ana</td><td>Today · 4:00 PM</td><td><span className="tag purple">Booked by AI</span></td></tr>
-                  <tr><td>Nicole V.</td><td>Root Touch-up</td><td>Maria</td><td>Tomorrow · 10:00 AM</td><td><span className="tag orange">Reminder sent</span></td></tr>
-                  <tr><td>Grace H.</td><td>Pedicure</td><td>Ana</td><td>Tomorrow · 1:15 PM</td><td><span className="tag green">Confirmed</span></td></tr>
-                  <tr><td>Sarah K.</td><td>Wash + Blowout</td><td>No preference</td><td>Thu · 6:00 PM</td><td><span className="tag red">Awaiting reply</span></td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div className="card soft">
-              <div className="panel-head"><div><h3>Calendar rules</h3><p className="sub">How RingBooker decides what to offer callers.</p></div></div>
-              <div className="list">
-                <div className="list-item"><div className="item-main"><div className="avatar">1</div><div><h4>Check availability when connected</h4><p>AI can check live availability when a connected calendar integration is configured.</p></div></div></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">2</div><div><h4>Suggest alternatives when available</h4><p>When availability data is connected, nearby times can be offered; otherwise the request is captured for follow-up.</p></div></div></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">3</div><div><h4>Confirm after the call</h4><p>Successful bookings can trigger confirmation and reminder messages.</p></div></div></div>
-                <div className="list-item"><div className="item-main"><div className="avatar">4</div><div><h4>Manual fallback still works</h4><p>If there is no calendar sync, the booking is still captured for the business.</p></div></div></div>
-              </div>
-            </div>
-          </section>
-          <div className="footer-inline"><span>RingBooker user portal concept · aligned to the public landing page styling.</span><span>Mona Sans Variable · Stable layout · Shared design system</span></div>
-        </main>
-      </div>
-
+    <UserLayout styles={styles} scripts={scripts} scriptPrefix="user-bookings">
+      <div />
     </UserLayout>
   );
 }

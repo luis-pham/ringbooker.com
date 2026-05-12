@@ -8,25 +8,37 @@ export class InMemoryBookingsRepository implements BookingsRepository {
     return this.bookings.get(bookingId) ?? null;
   }
 
-  async countByShop(shopId: string): Promise<number> {
-    return [...this.bookings.values()].filter((booking) => booking.shopId === shopId).length;
+  private matches(
+    booking: BookingRecord,
+    shopId: string,
+    params?: { createdAfter?: Date; createdBefore?: Date; statuses?: string[]; callLogId?: string },
+  ): boolean {
+    if (booking.shopId !== shopId) return false;
+    if (params?.statuses?.length && !params.statuses.includes(normalizeBookingStatus(booking.status))) return false;
+    if (params?.callLogId && booking.callLogId !== params.callLogId) return false;
+    const created = booking.createdAt ? new Date(booking.createdAt) : null;
+    if (params?.createdAfter && (!created || created < params.createdAfter)) return false;
+    if (params?.createdBefore && (!created || created > params.createdBefore)) return false;
+    return true;
+  }
+
+  async countByShop(
+    shopId: string,
+    params?: { createdAfter?: Date; createdBefore?: Date; statuses?: string[]; callLogId?: string },
+  ): Promise<number> {
+    return [...this.bookings.values()].filter((booking) => this.matches(booking, shopId, params)).length;
   }
 
   async listByShop(
     shopId: string,
-    params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },
+    params?: { limit?: number; offset?: number; createdAfter?: Date; createdBefore?: Date; statuses?: string[]; callLogId?: string },
   ): Promise<BookingRecord[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
+    const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     return [...this.bookings.values()]
-      .filter((booking) => {
-        if (booking.shopId !== shopId) return false;
-        const created = booking.createdAt ? new Date(booking.createdAt) : null;
-        if (params?.createdAfter && (!created || created < params.createdAfter)) return false;
-        if (params?.createdBefore && (!created || created > params.createdBefore)) return false;
-        return true;
-      })
-      .sort((a, b) => (b.datetimeUtc > a.datetimeUtc ? 1 : -1))
-      .slice(0, limit);
+      .filter((booking) => this.matches(booking, shopId, params))
+      .sort((a, b) => ((b.createdAt ?? b.datetimeUtc) > (a.createdAt ?? a.datetimeUtc) ? 1 : -1))
+      .slice(offset, offset + limit);
   }
 
   async create(params: {
@@ -41,6 +53,9 @@ export class InMemoryBookingsRepository implements BookingsRepository {
     timezone: string;
     status: string;
     calendarEventId?: string;
+    callLogId?: string | null;
+    techName?: string | null;
+    durationMinutes?: number | null;
   }): Promise<BookingRecord> {
     const id = params.id ?? randomUUID();
     const now = new Date().toISOString();
@@ -50,11 +65,16 @@ export class InMemoryBookingsRepository implements BookingsRepository {
       customerPhone: params.customerPhone,
       customerName: params.customerName ?? null,
       service: params.service,
+      techName: params.techName ?? null,
       matchedServiceId: params.matchedServiceId ?? null,
       matchedServiceConfidence: params.matchedServiceConfidence ?? null,
       datetimeUtc: params.datetimeUtc,
       timezone: params.timezone,
+      durationMinutes: params.durationMinutes ?? null,
       status: params.status,
+      confirmed: normalizeBookingStatus(params.status) === 'confirmed',
+      calendarEventId: params.calendarEventId ?? null,
+      callLogId: params.callLogId ?? null,
       reminder24hSent: false,
       reminder2hSent: false,
       reviewRequestSent: false,
@@ -62,6 +82,15 @@ export class InMemoryBookingsRepository implements BookingsRepository {
       updatedAt: now,
     };
     this.bookings.set(id, booking);
+    return booking;
+  }
+
+  async updateStatusByShop(shopId: string, bookingId: string, status: string): Promise<BookingRecord | null> {
+    const booking = this.bookings.get(bookingId);
+    if (!booking || booking.shopId !== shopId) return null;
+    booking.status = status;
+    booking.confirmed = normalizeBookingStatus(status) === 'confirmed';
+    booking.updatedAt = new Date().toISOString();
     return booking;
   }
 
@@ -86,4 +115,10 @@ export class InMemoryBookingsRepository implements BookingsRepository {
     booking.reviewRequestSent = true;
     booking.updatedAt = new Date().toISOString();
   }
+}
+
+function normalizeBookingStatus(status: string): string {
+  if (status === 'pending') return 'captured';
+  if (status === 'no_show') return 'cancelled';
+  return status;
 }

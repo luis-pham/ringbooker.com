@@ -99,28 +99,35 @@ export const userBillingStyles: string[] = [
 .billing-subtabs.business-subtabs{
   display:flex;
   align-items:flex-end;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   gap:24px;
   margin-top:40px;
   margin-bottom:18px;
   padding-bottom:0;
-  border-bottom:1px solid var(--border);
+  border-bottom:1.5px solid #e5e7eb;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
 }
+.billing-subtabs.business-subtabs::-webkit-scrollbar{display:none}
 .billing-subtabs.business-subtabs .business-subtab{
+  flex:0 0 auto;
   appearance:none;
   background:transparent;
   border:none;
   border-radius:0;
   margin:0;
-  padding:0 0 9px;
-  font-size:14px;
-  line-height:1.35;
-  font-weight:500;
-  color:var(--text-gray);
+  padding:0 0 10px;
+  color:#6b7280;
+  white-space:nowrap;
   cursor:pointer;
   font:inherit;
-  border-bottom:3px solid transparent;
-  transition:color .15s ease,border-color .15s ease,font-weight .15s ease;
+  font-size:14px;
+  font-weight:500;
+  line-height:1.35;
+  border-bottom:2px solid transparent;
+  transition:color .15s ease,border-color .15s ease;
+  box-shadow:none;
 }
 .billing-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
 .billing-subtabs.business-subtabs .business-subtab:focus-visible{
@@ -128,12 +135,11 @@ export const userBillingStyles: string[] = [
   outline-offset:3px;
 }
 .billing-subtabs.business-subtabs .business-subtab.active{
-  color:var(--purple-dark);
-  font-weight:650;
-  letter-spacing:-.01em;
-  border-bottom-color:var(--purple-dark);
+  color:#111;
+  font-weight:500;
+  border-bottom-color:#111;
 }
-.billing-subtabs.business-subtabs .business-subtab.active:hover{color:var(--purple-dark)}
+.billing-subtabs.business-subtabs .business-subtab.active:hover{color:#111}
 .billing-tab-panels{display:flex;flex-direction:column;gap:0}
 
 @media (max-width:1200px){
@@ -142,8 +148,29 @@ export const userBillingStyles: string[] = [
 }
 @media (max-width:860px){
   .billing-status-grid{grid-template-columns:1fr}
-  .billing-subtabs.business-subtabs{gap:18px}
-  .billing-subtabs.business-subtabs .business-subtab{font-size:14px;padding:0 0 9px}
+  .billing-subtabs.business-subtabs{
+    gap:24px;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+    border-bottom:1.5px solid var(--border);
+  }
+  .billing-subtabs.business-subtabs::-webkit-scrollbar{display:none}
+  .billing-subtabs.business-subtabs .business-subtab{
+    flex:0 0 auto;
+    padding:0 0 10px;
+    color:var(--text-gray);
+    cursor:pointer;
+    font:inherit;
+    font-size:14px;
+    font-weight:500;
+    line-height:1.35;
+  }
+  .billing-subtabs.business-subtabs .business-subtab.active{
+    color:var(--text-dark);
+    border-bottom-color:var(--text-dark);
+  }
   /* Stack plan cards full-width so horizontal inset matches .card sections above (no centered narrow column). */
   .pricing-mini{
     flex-direction:column;
@@ -205,8 +232,8 @@ html[data-user-theme="dark"] .billing-subtabs.business-subtabs{border-bottom-col
 html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab{color:var(--text-gray)}
 html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
 html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab.active{
-  color:var(--purple-dark);
-  border-bottom-color:var(--purple-dark);
+  color:var(--text-dark);
+  border-bottom-color:var(--text-dark);
 }
 `,
 ];

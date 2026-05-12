@@ -228,13 +228,13 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   border-radius:0;
   margin:0;
   padding:0 0 10px;
-  font-size:14px;
-  line-height:1.35;
-  font-weight:500;
   color:#6b7280;
   white-space:nowrap;
   cursor:pointer;
   font:inherit;
+  font-size:14px;
+  font-weight:500;
+  line-height:1.35;
   border-bottom:2px solid transparent;
   transition:color .15s ease,border-color .15s ease;
   box-shadow:none;
@@ -281,8 +281,12 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
     background:transparent;
     text-align:left;
     justify-content:flex-start;
-    font-weight:500;
     color:var(--text-gray);
+    cursor:pointer;
+    font:inherit;
+    font-size:14px;
+    font-weight:500;
+    line-height:1.35;
   }
   .rb-account-subtabs.business-subtabs .business-subtab.active{
     color:var(--text-dark);

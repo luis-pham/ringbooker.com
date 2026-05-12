@@ -8,17 +8,65 @@ type BookingRow = {
   customer_phone: string;
   customer_name: string | null;
   service: string;
+  tech_name?: string | null;
   matched_service_id?: string | null;
   matched_service_confidence?: number | string | null;
   datetime_utc: string;
   timezone: string;
+  duration_min?: number | null;
   status: string;
+  confirmed?: boolean;
   reminder_24h_sent: boolean;
   reminder_2h_sent: boolean;
   review_request_sent: boolean;
+  calendar_event_id?: string | null;
+  call_log_id?: string | null;
+  call_transcript?: string | null;
+  notes?: string | null;
   created_at?: string;
   updated_at?: string;
 };
+
+const BOOKING_SELECT =
+  'id,shop_id,customer_phone,customer_name,service,tech_name,matched_service_id,matched_service_confidence,datetime_utc,timezone,duration_min,status,confirmed,reminder_24h_sent,reminder_2h_sent,review_request_sent,calendar_event_id,call_log_id,call_transcript,notes,created_at,updated_at';
+
+function normalizeBookingStatus(status: string): string {
+  if (status === 'pending') return 'captured';
+  if (status === 'no_show') return 'cancelled';
+  return status;
+}
+
+function toBookingRecord(row: BookingRow): BookingRecord {
+  return {
+    id: row.id,
+    shopId: row.shop_id,
+    customerPhone: row.customer_phone,
+    customerName: row.customer_name,
+    service: row.service,
+    techName: row.tech_name ?? null,
+    matchedServiceId: row.matched_service_id ?? null,
+    matchedServiceConfidence:
+      typeof row.matched_service_confidence === 'number'
+        ? row.matched_service_confidence
+        : typeof row.matched_service_confidence === 'string'
+          ? Number(row.matched_service_confidence)
+          : null,
+    datetimeUtc: row.datetime_utc,
+    timezone: row.timezone,
+    durationMinutes: row.duration_min ?? null,
+    status: row.status,
+    confirmed: Boolean(row.confirmed),
+    reminder24hSent: row.reminder_24h_sent,
+    reminder2hSent: row.reminder_2h_sent,
+    reviewRequestSent: row.review_request_sent,
+    calendarEventId: row.calendar_event_id ?? null,
+    callLogId: row.call_log_id ?? null,
+    callTranscript: row.call_transcript ?? null,
+    notes: row.notes ?? null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
 
 export class SupabaseBookingsRepository implements BookingsRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -26,9 +74,7 @@ export class SupabaseBookingsRepository implements BookingsRepository {
   async findById(bookingId: string): Promise<BookingRecord | null> {
     const { data, error } = await this.supabase
       .from('bookings')
-      .select(
-        'id,shop_id,customer_phone,customer_name,service,matched_service_id,matched_service_confidence,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
-      )
+      .select(BOOKING_SELECT)
       .eq('id', bookingId)
       .maybeSingle<BookingRow>();
 
@@ -37,35 +83,22 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     }
     if (!data) return null;
 
-    return {
-      id: data.id,
-      shopId: data.shop_id,
-      customerPhone: data.customer_phone,
-      customerName: data.customer_name,
-      service: data.service,
-      matchedServiceId: data.matched_service_id ?? null,
-      matchedServiceConfidence:
-        typeof data.matched_service_confidence === 'number'
-          ? data.matched_service_confidence
-          : typeof data.matched_service_confidence === 'string'
-            ? Number(data.matched_service_confidence)
-            : null,
-      datetimeUtc: data.datetime_utc,
-      timezone: data.timezone,
-      status: data.status,
-      reminder24hSent: data.reminder_24h_sent,
-      reminder2hSent: data.reminder_2h_sent,
-      reviewRequestSent: data.review_request_sent,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
+    return toBookingRecord(data);
   }
 
-  async countByShop(shopId: string): Promise<number> {
-    const { count, error } = await this.supabase
+  async countByShop(
+    shopId: string,
+    params?: { createdAfter?: Date; createdBefore?: Date; statuses?: string[]; callLogId?: string },
+  ): Promise<number> {
+    let q = this.supabase
       .from('bookings')
       .select('id', { count: 'exact', head: true })
       .eq('shop_id', shopId);
+    if (params?.createdAfter) q = q.gte('created_at', params.createdAfter.toISOString());
+    if (params?.createdBefore) q = q.lte('created_at', params.createdBefore.toISOString());
+    if (params?.statuses?.length) q = q.in('status', params.statuses.flatMap(statusesForStorage));
+    if (params?.callLogId) q = q.eq('call_log_id', params.callLogId);
+    const { count, error } = await q;
     if (error) {
       throw new Error(`bookings_count_by_shop_failed:${error.message}`);
     }
@@ -74,45 +107,25 @@ export class SupabaseBookingsRepository implements BookingsRepository {
 
   async listByShop(
     shopId: string,
-    params?: { limit?: number; createdAfter?: Date; createdBefore?: Date },
+    params?: { limit?: number; offset?: number; createdAfter?: Date; createdBefore?: Date; statuses?: string[]; callLogId?: string },
   ): Promise<BookingRecord[]> {
     const limit = params?.limit && params.limit > 0 ? params.limit : 20;
+    const offset = params?.offset && params.offset > 0 ? params.offset : 0;
     let q = this.supabase
       .from('bookings')
-      .select(
-        'id,shop_id,customer_phone,customer_name,service,matched_service_id,matched_service_confidence,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
-      )
+      .select(BOOKING_SELECT)
       .eq('shop_id', shopId);
     if (params?.createdAfter) q = q.gte('created_at', params.createdAfter.toISOString());
     if (params?.createdBefore) q = q.lte('created_at', params.createdBefore.toISOString());
-    const { data, error } = await q.order('datetime_utc', { ascending: false }).limit(limit).returns<BookingRow[]>();
+    if (params?.statuses?.length) q = q.in('status', params.statuses.flatMap(statusesForStorage));
+    if (params?.callLogId) q = q.eq('call_log_id', params.callLogId);
+    const { data, error } = await q.order('created_at', { ascending: false }).range(offset, offset + limit - 1).returns<BookingRow[]>();
 
     if (error) {
       throw new Error(`bookings_list_by_shop_failed:${error.message}`);
     }
 
-    return (data ?? []).map((item) => ({
-      id: item.id,
-      shopId: item.shop_id,
-      customerPhone: item.customer_phone,
-      customerName: item.customer_name,
-      service: item.service,
-      matchedServiceId: item.matched_service_id ?? null,
-      matchedServiceConfidence:
-        typeof item.matched_service_confidence === 'number'
-          ? item.matched_service_confidence
-          : typeof item.matched_service_confidence === 'string'
-            ? Number(item.matched_service_confidence)
-            : null,
-      datetimeUtc: item.datetime_utc,
-      timezone: item.timezone,
-      status: item.status,
-      reminder24hSent: item.reminder_24h_sent,
-      reminder2hSent: item.reminder_2h_sent,
-      reviewRequestSent: item.review_request_sent,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
-    }));
+    return (data ?? []).map(toBookingRecord);
   }
 
   async create(params: {
@@ -127,6 +140,9 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     timezone: string;
     status: string;
     calendarEventId?: string;
+    callLogId?: string | null;
+    techName?: string | null;
+    durationMinutes?: number | null;
   }): Promise<BookingRecord> {
     const now = new Date().toISOString();
     const payload = {
@@ -135,13 +151,16 @@ export class SupabaseBookingsRepository implements BookingsRepository {
       customer_phone: params.customerPhone,
       customer_name: params.customerName ?? null,
       service: params.service,
+      tech_name: params.techName ?? null,
       matched_service_id: params.matchedServiceId ?? null,
       matched_service_confidence: params.matchedServiceConfidence ?? null,
       datetime_utc: params.datetimeUtc,
       timezone: params.timezone,
+      duration_min: params.durationMinutes ?? 60,
       status: params.status,
-      confirmed: params.status === 'confirmed',
+      confirmed: normalizeBookingStatus(params.status) === 'confirmed',
       calendar_event_id: params.calendarEventId ?? null,
+      call_log_id: params.callLogId ?? null,
       reminder_24h_sent: false,
       reminder_2h_sent: false,
       review_request_sent: false,
@@ -151,37 +170,33 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     const { data, error } = await this.supabase
       .from('bookings')
       .insert(payload)
-      .select(
-        'id,shop_id,customer_phone,customer_name,service,matched_service_id,matched_service_confidence,datetime_utc,timezone,status,reminder_24h_sent,reminder_2h_sent,review_request_sent,created_at,updated_at',
-      )
+      .select(BOOKING_SELECT)
       .single<BookingRow>();
 
     if (error) {
       throw new Error(`bookings_create_failed:${error.message}`);
     }
 
-    return {
-      id: data.id,
-      shopId: data.shop_id,
-      customerPhone: data.customer_phone,
-      customerName: data.customer_name,
-      service: data.service,
-      matchedServiceId: data.matched_service_id ?? null,
-      matchedServiceConfidence:
-        typeof data.matched_service_confidence === 'number'
-          ? data.matched_service_confidence
-          : typeof data.matched_service_confidence === 'string'
-            ? Number(data.matched_service_confidence)
-            : null,
-      datetimeUtc: data.datetime_utc,
-      timezone: data.timezone,
-      status: data.status,
-      reminder24hSent: data.reminder_24h_sent,
-      reminder2hSent: data.reminder_2h_sent,
-      reviewRequestSent: data.review_request_sent,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
+    return toBookingRecord(data);
+  }
+
+  async updateStatusByShop(shopId: string, bookingId: string, status: string): Promise<BookingRecord | null> {
+    const { data, error } = await this.supabase
+      .from('bookings')
+      .update({
+        status,
+        confirmed: normalizeBookingStatus(status) === 'confirmed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('shop_id', shopId)
+      .eq('id', bookingId)
+      .select(BOOKING_SELECT)
+      .maybeSingle<BookingRow>();
+
+    if (error) {
+      throw new Error(`bookings_update_status_failed:${error.message}`);
+    }
+    return data ? toBookingRecord(data) : null;
   }
 
   async updateDatetime(bookingId: string, newDatetimeUtc: Date): Promise<void> {
@@ -223,4 +238,10 @@ export class SupabaseBookingsRepository implements BookingsRepository {
       throw new Error(`bookings_mark_review_request_sent_failed:${error.message}`);
     }
   }
+}
+
+function statusesForStorage(status: string): string[] {
+  if (status === 'captured') return ['captured', 'pending'];
+  if (status === 'cancelled') return ['cancelled', 'no_show'];
+  return [status];
 }

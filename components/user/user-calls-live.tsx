@@ -253,6 +253,11 @@ export function UserCallsLive({
     }
   }
 
+  function openBookingForCall(call: Call) {
+    const id = call.bookingRequestId ?? call.id;
+    router.push(`/user/bookings?callId=${encodeURIComponent(id)}`);
+  }
+
   const tabs = useMemo(
     () => [
       { value: 'all' as const, label: 'All', count: 0 },
@@ -344,7 +349,13 @@ export function UserCallsLive({
                                 </div>
                               </td>
                               <td><div className="calls-table-datetime">{formatShopDate(call.startedAt, shopTimezone)} · {formatShopTime(call.startedAt, shopTimezone)}{duration ? <span>{duration}</span> : null}</div></td>
-                              <td><span className={outcome.className}>{outcome.label}</span></td>
+                              <td>
+                                {call.bookingCaptured ? (
+                                  <button className={`${outcome.className} calls-outcome-link`} type="button" onClick={(event) => { event.stopPropagation(); openBookingForCall(call); }}>{outcome.label}</button>
+                                ) : (
+                                  <span className={outcome.className}>{outcome.label}</span>
+                                )}
+                              </td>
                               <td><span className={status.className}>{status.label}</span></td>
                               <td>
                                 {call.transcriptAvailable ? (
@@ -375,7 +386,14 @@ export function UserCallsLive({
                               </div>
                               <span className={status.className}>{status.label}</span>
                             </div>
-                            <div className="mobile-call-tags"><span className={outcome.className}>{outcome.label}</span>{call.transcriptAvailable ? <span className="calls-outcome">Transcript ready</span> : null}</div>
+                            <div className="mobile-call-tags">
+                              {call.bookingCaptured ? (
+                                <span className={`${outcome.className} calls-outcome-link`} role="link" tabIndex={0} onClick={(event) => { event.stopPropagation(); openBookingForCall(call); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openBookingForCall(call); } }}>{outcome.label}</span>
+                              ) : (
+                                <span className={outcome.className}>{outcome.label}</span>
+                              )}
+                              {call.transcriptAvailable ? <span className="calls-outcome">Transcript ready</span> : null}
+                            </div>
                           </button>
                         );
                       })}

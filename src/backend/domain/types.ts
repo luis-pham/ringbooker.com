@@ -15,7 +15,17 @@ export type BillingSubscriptionStatus =
   | 'unknown';
 export type BillingPaymentMethodStatus = 'none' | 'pending' | 'valid' | 'failed' | 'unknown';
 
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no_show';
+export type BookingStatus =
+  | 'pending'
+  | 'captured'
+  | 'link_sent'
+  | 'confirmed'
+  | 'reminder_sent'
+  | 'cancel_link_sent'
+  | 'cancelled'
+  | 'rescheduled'
+  | 'completed'
+  | 'no_show';
 
 export type CallOutcome =
   | 'booked'

@@ -45,6 +45,7 @@ const callsPortalStyles = String.raw`
 .calls-table-datetime{font-size:13px;color:#6b7280;line-height:1.4}
 .calls-table-datetime span{display:block;color:#9ca3af;font-size:11px;margin-top:2px}
 .calls-outcome{display:inline-flex;align-items:center;border-radius:20px;background:#f3f4f6;color:#6b7280;font-size:12px;font-weight:500;padding:3px 8px;white-space:nowrap}
+.calls-outcome-link{border:0;cursor:pointer;font-family:inherit}.calls-outcome-link:hover{box-shadow:0 0 0 1px currentColor inset}
 .calls-outcome--booking{background:#f0fdf4;color:#16a34a}
 .calls-outcome--followup{background:#fefce8;color:#ca8a04}
 .calls-outcome--complaint{background:#fef2f2;color:#dc2626}

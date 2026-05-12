@@ -235,8 +235,9 @@ button.subtle-link:hover{text-decoration:underline}
 .business-subtabs.calls-filter-tabs .business-subtab{
   flex:0 0 auto;white-space:nowrap;
   appearance:none;background:transparent;border:none;border-radius:0;margin:0;
-  padding:0 0 10px;font-size:14px;line-height:1.35;font-weight:500;color:#6b7280;
-  cursor:pointer;font:inherit;box-shadow:none;border-bottom:2px solid transparent;
+  padding:0 0 10px;color:#6b7280;
+  cursor:pointer;font:inherit;font-size:14px;font-weight:500;line-height:1.35;
+  box-shadow:none;border-bottom:2px solid transparent;
   transition:color .15s ease,border-color .15s ease;
 }
 .business-subtabs.calls-filter-tabs .business-subtab:hover{
@@ -893,11 +894,14 @@ html[data-user-theme="dark"] .upgrade-panel{
     border-radius:0!important;
     background:transparent!important;
     border-bottom:2px solid transparent!important;
-    font-size:14px!important;
-    font-weight:500!important;
     color:var(--text-gray);
     text-align:left!important;
     justify-content:flex-start!important;
+    cursor:pointer!important;
+    font:inherit!important;
+    font-size:14px!important;
+    font-weight:500!important;
+    line-height:1.35!important;
   }
   .business-subtabs.calls-filter-tabs .business-subtab.active{
     border-bottom-color:var(--text-dark);

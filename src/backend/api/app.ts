@@ -50,6 +50,7 @@ import type {
 } from '@/src/backend/domain/types';
 import type {
   BlogPostsRepository,
+  BookingRecord,
   BookingsRepository,
   BusinessKnowledgeSuggestionsRepository,
   BillingNotificationsRepository,
@@ -65,6 +66,8 @@ import type {
   DemoSessionStatus,
   JobsRepository,
   MissedCallsRepository,
+  OutboundMessageRecord,
+  OutboundMessagesRepository,
   ProviderEventsRepository,
   ShopsRepository,
   AuthUsersRepository,
@@ -812,7 +815,7 @@ const adminShopCallsQuerySchema = z.object({
 });
 
 const USER_CALLS_PAGE_SIZE = 25;
-const userCallsTabSchema = z.enum(['all', 'follow_up', 'follow_up_needed', 'high_urgency', 'bookings', 'missed']);
+const userCallsTabSchema = z.enum(['all', 'follow_up', 'follow_up_needed', 'high_urgency', 'missed']);
 const userCallsListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -822,6 +825,20 @@ const userCallsListQuerySchema = z.object({
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+const USER_BOOKINGS_PAGE_SIZE = 25;
+const userBookingsTabSchema = z.enum(['all', 'awaiting_action', 'confirmed', 'rescheduled', 'cancelled', 'completed']);
+const userBookingsListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(10_000).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  tab: userBookingsTabSchema.optional(),
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  callId: z.preprocess((v) => (v === '' || v == null ? undefined : String(v)), z.string().max(160).optional()),
+});
+const userBookingStatusPatchSchema = z.object({
+  status: z.enum(['captured', 'link_sent', 'confirmed', 'reminder_sent', 'cancel_link_sent', 'cancelled', 'rescheduled', 'completed']),
 });
 
 const adminShopAnalyticsQuerySchema = z.object({
@@ -848,13 +865,112 @@ function buildUserCallFilters(parsed: z.infer<typeof userCallsListQuerySchema>) 
       return { ...base, summaryFollowUpRequired: true };
     case 'high_urgency':
       return { ...base, summaryUrgency: 'high' as const };
-    case 'bookings':
-      return { ...base, summaryNextActions: ['booking_created' as const, 'booking_link_sent' as const] };
     case 'missed':
       return { ...base, outcome: 'missed' };
     default:
       return base;
   }
+}
+
+function buildUserBookingFilters(parsed: z.infer<typeof userBookingsListQuerySchema>) {
+  const createdAfter = parsed.dateFrom ? new Date(`${parsed.dateFrom}T00:00:00.000Z`) : undefined;
+  const createdBefore = parsed.dateTo ? new Date(`${parsed.dateTo}T23:59:59.999Z`) : undefined;
+  const base = { createdAfter, createdBefore, callLogId: parsed.callId };
+  switch (parsed.tab ?? 'all') {
+    case 'awaiting_action':
+      return { ...base, statuses: ['captured', 'link_sent'] };
+    case 'confirmed':
+      return { ...base, statuses: ['confirmed', 'reminder_sent'] };
+    case 'rescheduled':
+      return { ...base, statuses: ['rescheduled'] };
+    case 'cancelled':
+      return { ...base, statuses: ['cancelled', 'cancel_link_sent'] };
+    case 'completed':
+      return { ...base, statuses: ['completed'] };
+    default:
+      return base;
+  }
+}
+
+function normalizeUserBookingStatus(status: string, reminder24hSent?: boolean, reminder2hSent?: boolean): string {
+  if (status === 'pending') return 'captured';
+  if (status === 'no_show') return 'cancelled';
+  if (status === 'confirmed' && (reminder24hSent || reminder2hSent)) return 'reminder_sent';
+  return status;
+}
+
+function appointmentDateParts(datetimeUtc?: string | null, timezone = 'UTC'): { appointmentDate?: string; appointmentTime?: string } {
+  if (!datetimeUtc) return {};
+  const date = new Date(datetimeUtc);
+  if (!Number.isFinite(date.getTime())) return {};
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone || 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const appointmentDate = `${get('year')}-${get('month')}-${get('day')}`;
+  const appointmentTime = `${get('hour')}:${get('minute')} ${get('dayPeriod')}`.trim();
+  return { appointmentDate, appointmentTime };
+}
+
+function smsTypeFromCategory(category: string):
+  | 'booking_link'
+  | 'confirmation'
+  | 'reminder'
+  | 'cancel_link'
+  | 'reschedule_link'
+  | 'owner_summary' {
+  const c = category.toLowerCase();
+  if (c.includes('booking_link')) return 'booking_link';
+  if (c.includes('confirmation')) return 'confirmation';
+  if (c.includes('reminder')) return 'reminder';
+  if (c.includes('cancel')) return 'cancel_link';
+  if (c.includes('reschedule')) return 'reschedule_link';
+  return 'owner_summary';
+}
+
+function toUserBookingResponse(booking: BookingRecord, smsLog: OutboundMessageRecord[] = []) {
+  const status = normalizeUserBookingStatus(booking.status, booking.reminder24hSent, booking.reminder2hSent);
+  const dateParts = appointmentDateParts(booking.datetimeUtc, booking.timezone);
+  return {
+    id: booking.id,
+    shopId: booking.shopId,
+    callerPhone: booking.customerPhone,
+    callerName: booking.customerName ?? undefined,
+    serviceRequested: booking.service || undefined,
+    providerRequested: booking.techName ?? undefined,
+    durationMinutes: booking.durationMinutes ?? undefined,
+    appointmentDate: dateParts.appointmentDate,
+    appointmentTime: dateParts.appointmentTime,
+    datetimeUtc: booking.datetimeUtc,
+    timezone: booking.timezone,
+    status,
+    callId: booking.callLogId ?? undefined,
+    integrationId: booking.calendarEventId ?? undefined,
+    smsLog: smsLog.map((message) => ({
+      id: message.id,
+      bookingRequestId: booking.id,
+      type: smsTypeFromCategory(message.category),
+      sentAt: message.createdAt,
+      deliveredAt: message.status === 'sent' ? message.updatedAt ?? message.createdAt : undefined,
+      failedAt: message.status === 'failed' ? message.updatedAt ?? message.createdAt : undefined,
+      phoneNumber: message.customerPhone,
+    })),
+    createdAt: booking.createdAt,
+    updatedAt: booking.updatedAt,
+  };
+}
+
+function userBookingStatsStatuses(kind: 'awaitingAction' | 'confirmed' | 'cancelled' | 'completed'): string[] {
+  if (kind === 'awaitingAction') return ['captured', 'link_sent'];
+  if (kind === 'confirmed') return ['confirmed', 'reminder_sent'];
+  if (kind === 'cancelled') return ['cancelled', 'cancel_link_sent'];
+  return ['completed'];
 }
 
 type UserCallStatus = 'in_progress' | 'completed' | 'missed' | 'voicemail';
@@ -2041,8 +2157,9 @@ export function createBackendApp(deps: {
   phoneProvisioningService?: PhoneProvisioningService;
   emailService?: EmailService;
   callLogsRepository?: CallLogsRepository;
-  missedCallsRepository?: MissedCallsRepository;
-  handoffSessionsRepository?: HandoffSessionsRepository;
+	  missedCallsRepository?: MissedCallsRepository;
+	  outboundMessagesRepository?: OutboundMessagesRepository;
+	  handoffSessionsRepository?: HandoffSessionsRepository;
   voiceCallLegsRepository?: VoiceCallLegsRepository;
   authUsersRepository?: AuthUsersRepository;
   billingProvider?: BillingProviderAdapter;
@@ -5062,10 +5179,118 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
     }
 
+    const parsed = userBookingsListQuerySchema.safeParse({
+      page: c.req.query('page'),
+      limit: c.req.query('limit'),
+      tab: c.req.query('tab'),
+      dateFrom: c.req.query('dateFrom'),
+      dateTo: c.req.query('dateTo'),
+      callId: c.req.query('callId'),
+    });
+    if (!parsed.success) {
+      return c.json({ ok: false, error: 'invalid_query', details: parsed.error.flatten() }, 400);
+    }
+
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-    const bookings = await deps.bookingsRepository.listByShop(shop.id, { limit: 100 });
-    return c.json({ ok: true, bookings });
+
+    const page = parsed.data.page ?? 1;
+    const limit = parsed.data.limit ?? USER_BOOKINGS_PAGE_SIZE;
+    const offset = (page - 1) * limit;
+    const filters = buildUserBookingFilters(parsed.data);
+    const repo = deps.bookingsRepository;
+    const [bookings, total, totalAll, awaitingAction, confirmed, cancelled, completed] = await Promise.all([
+      repo.listByShop(shop.id, { ...filters, limit, offset }),
+      repo.countByShop(shop.id, filters),
+      repo.countByShop(shop.id),
+      repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('awaitingAction') }),
+      repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('confirmed') }),
+      repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('cancelled') }),
+      repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('completed') }),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return c.json({
+      ok: true,
+      bookings: bookings.map((booking) => toUserBookingResponse(booking)),
+      shop: { timezone: shop.timezone },
+      total,
+      stats: {
+        total: totalAll,
+        awaitingAction,
+        confirmed,
+        cancelled,
+        completed,
+      },
+      pagination: { page, limit, total, totalPages },
+    });
+  });
+
+  app.get(path('/user/bookings/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_bookings_detail');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.bookingsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const id = c.req.param('id') ?? '';
+    const booking = await deps.bookingsRepository.findById(id);
+    if (!booking || booking.shopId !== shop.id) return c.json({ ok: false, error: 'booking_not_found' }, 404);
+
+    const smsLog = deps.outboundMessagesRepository?.listByBookingId
+      ? await deps.outboundMessagesRepository.listByBookingId(booking.id).catch(() => [])
+      : [];
+    let parentCall: Record<string, unknown> | null = null;
+    if (booking.callLogId && deps.callLogsRepository) {
+      const call = await deps.callLogsRepository.findTranscriptByShopAndRequestId({ shopId: shop.id, requestId: booking.callLogId }).catch(() => null);
+      if (call) {
+        parentCall = {
+          id: booking.callLogId,
+          callerPhone: booking.customerPhone,
+          startedAt: call.startedAt,
+          durationSeconds:
+            call.startedAt && call.endedAt
+              ? Math.max(0, Math.round((new Date(call.endedAt).getTime() - new Date(call.startedAt).getTime()) / 1000))
+              : undefined,
+          transcriptAvailable: call.transcriptStatus === 'completed' && Boolean(call.transcriptText?.trim()),
+        };
+      }
+    }
+    return c.json({ ok: true, booking: { ...toUserBookingResponse(booking, smsLog), parentCall } });
+  });
+
+  app.patch(path('/user/bookings/:id'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_bookings_update');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.bookingsRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const parsed = userBookingStatusPatchSchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload', details: parsed.error.flatten() }, 400);
+
+    const id = c.req.param('id') ?? '';
+    const booking = await deps.bookingsRepository.findById(id);
+    if (!booking || booking.shopId !== shop.id) return c.json({ ok: false, error: 'booking_not_found' }, 404);
+
+    const current = normalizeUserBookingStatus(booking.status, booking.reminder24hSent, booking.reminder2hSent);
+    const next = parsed.data.status;
+    const allowed =
+      ((current === 'confirmed' || current === 'reminder_sent') && (next === 'completed' || next === 'cancelled')) ||
+      (current === 'rescheduled' && next === 'confirmed');
+    if (!allowed) return c.json({ ok: false, error: 'invalid_status_transition' }, 400);
+
+    const updated = await deps.bookingsRepository.updateStatusByShop(shop.id, id, next);
+    if (!updated) return c.json({ ok: false, error: 'booking_not_found' }, 404);
+    return c.json({ ok: true, booking: toUserBookingResponse(updated) });
   });
 
 

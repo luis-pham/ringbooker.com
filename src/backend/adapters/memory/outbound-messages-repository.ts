@@ -1,7 +1,10 @@
-import type { OutboundMessagesRepository } from '@/src/backend/ports/repositories';
+import { randomUUID } from 'node:crypto';
+
+import type { OutboundMessageRecord, OutboundMessagesRepository } from '@/src/backend/ports/repositories';
 
 export class InMemoryOutboundMessagesRepository implements OutboundMessagesRepository {
   private readonly idempotencyKeys = new Set<string>();
+  private readonly messages: OutboundMessageRecord[] = [];
 
   async create(params: {
     shopId: string;
@@ -15,5 +18,24 @@ export class InMemoryOutboundMessagesRepository implements OutboundMessagesRepos
   }): Promise<void> {
     if (this.idempotencyKeys.has(params.idempotencyKey)) return;
     this.idempotencyKeys.add(params.idempotencyKey);
+    const now = new Date().toISOString();
+    this.messages.push({
+      id: randomUUID(),
+      shopId: params.shopId,
+      bookingId: params.bookingId ?? null,
+      customerPhone: params.customerPhone,
+      category: params.category,
+      body: params.body,
+      status: params.status,
+      providerMessageId: params.providerMessageId ?? null,
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  async listByBookingId(bookingId: string): Promise<OutboundMessageRecord[]> {
+    return this.messages
+      .filter((message) => message.bookingId === bookingId)
+      .sort((a, b) => ((a.createdAt ?? '') > (b.createdAt ?? '') ? 1 : -1));
   }
 }
