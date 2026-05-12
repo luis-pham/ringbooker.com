@@ -13,12 +13,12 @@ const callsPortalStyles = String.raw`
 .calls-stat-icon--purple{background:#f5f3ff}
 .calls-stat-icon--amber{background:#fef3c7}
 .calls-stat-icon--red{background:#fee2e2}
-.calls-filter-bar{margin-bottom:32px}
-.calls-filter-tabs{display:flex;align-items:flex-end;gap:24px;border-bottom:1.5px solid #e5e7eb;overflow-x:auto;scrollbar-width:none}
+.calls-filter-bar{border-bottom:1.5px solid #e5e7eb;margin-bottom:32px}
+.calls-filter-tabs{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
 .calls-filter-tabs::-webkit-scrollbar{display:none}
-.calls-filter-tab{appearance:none;background:transparent;border:0;border-bottom:2px solid transparent;color:#6b7280;cursor:pointer;font:inherit;font-size:14px;font-weight:500;line-height:1.35;padding:0 0 10px;white-space:nowrap}
+.calls-filter-tab{appearance:none;border:0;background:transparent;color:#6b7280;cursor:pointer;font:inherit;font-size:14px;font-weight:500;padding:13px 18px 12px;border-bottom:2px solid transparent;white-space:nowrap}
 .calls-filter-tab.active{color:#111;border-bottom-color:#111}
-.calls-filter-tab span{margin-left:5px;font-size:12px;color:#9ca3af}
+.calls-filter-tab span{margin-left:4px;font-size:12px;color:#9ca3af}
 .calls-list-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
 .calls-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .calls-table th{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;text-align:left;padding:10px 20px;border-bottom:1px solid #f3f4f6}
@@ -89,6 +89,7 @@ const callsPortalStyles = String.raw`
 }
 @media (max-width:640px){
   .calls-metric-grid{grid-template-columns:1fr}
+  .calls-filter-tab{padding-left:12px;padding-right:12px}
   .calls-metric-card{min-height:72px}
   .modal-backdrop{padding:10px}
   .modal-card{padding:18px;border-radius:16px}

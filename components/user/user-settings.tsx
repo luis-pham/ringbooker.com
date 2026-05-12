@@ -221,11 +221,11 @@ button.subtle-link:hover{text-decoration:underline}
   .knowledge-tabs-desktop-only{display:block}
   .knowledge-tabs-mobile-only{display:none !important}
 }
-.knowledge-portal-tab-bar{margin-bottom:32px;min-width:0}
-/* Match /user/calls filter tabs: underline row, neutral active (not pills) */
+.knowledge-portal-tab-bar{margin-bottom:32px;min-width:0;border-bottom:1.5px solid #e5e7eb}
+/* Match /user/bookings filter tabs: same padding, gap, underline row */
 .business-subtabs.calls-filter-tabs{
-  display:flex;gap:24px;flex-wrap:nowrap;align-items:flex-end;
-  margin-bottom:0;border-bottom:1.5px solid #e5e7eb;
+  display:flex;gap:0;flex-wrap:nowrap;
+  margin-bottom:0;
   overflow-x:auto;overflow-y:hidden;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-x:contain;
@@ -235,8 +235,8 @@ button.subtle-link:hover{text-decoration:underline}
 .business-subtabs.calls-filter-tabs .business-subtab{
   flex:0 0 auto;white-space:nowrap;
   appearance:none;background:transparent;border:none;border-radius:0;margin:0;
-  padding:0 0 10px;color:#6b7280;
-  cursor:pointer;font:inherit;font-size:14px;font-weight:500;line-height:1.35;
+  padding:13px 18px 12px;color:#6b7280;
+  cursor:pointer;font:inherit;font-size:14px;font-weight:500;
   box-shadow:none;border-bottom:2px solid transparent;
   transition:color .15s ease,border-color .15s ease;
 }
@@ -709,7 +709,7 @@ html[data-user-theme="dark"] .tab-button.active:hover{
   border-color:#58a6ff;
   color:#79c0ff;
 }
-html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs{border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .knowledge-portal-tab-bar{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab{color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{color:var(--text-dark)}
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active{
@@ -874,15 +874,13 @@ html[data-user-theme="dark"] .upgrade-panel{
     width:100%;
     box-sizing:border-box;
   }
-  /* Knowledge filter tabs — same row + underline as /user/calls (scroll on narrow) */
+  /* Knowledge filter tabs — match /user/bookings (scroll on narrow) */
   .business-subtabs.calls-filter-tabs{
     display:flex!important;
     flex-direction:row!important;
     flex-wrap:nowrap!important;
-    align-items:flex-end!important;
-    gap:24px!important;
+    gap:0!important;
     width:100%!important;
-    border-bottom:1.5px solid var(--border)!important;
     overflow-x:auto!important;
     overflow-y:hidden!important;
     -webkit-overflow-scrolling:touch!important;
@@ -893,7 +891,7 @@ html[data-user-theme="dark"] .upgrade-panel{
     flex:0 0 auto!important;
     width:auto!important;
     max-width:none!important;
-    padding:0 0 10px!important;
+    padding:13px 18px 12px!important;
     border:none!important;
     border-radius:0!important;
     background:transparent!important;
@@ -905,7 +903,6 @@ html[data-user-theme="dark"] .upgrade-panel{
     font:inherit!important;
     font-size:14px!important;
     font-weight:500!important;
-    line-height:1.35!important;
   }
   .business-subtabs.calls-filter-tabs .business-subtab.active{
     border-bottom-color:var(--text-dark);
