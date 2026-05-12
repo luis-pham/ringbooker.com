@@ -1,5 +1,6 @@
 import Script from 'next/script';
 
+import { MarketingContactBody } from '@/components/marketing/marketing-contact-body';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -27,75 +28,128 @@ const styles: string[] = [
 html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:var(--mk-font-body);line-height:var(--mk-leading-body)}
 a{text-decoration:none;color:inherit}
-.contact-page{background:#fff}
-.hero-page{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 74%)}
-.container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
-.contact-grid{display:grid;grid-template-columns:.86fr 1.14fr;gap:34px;align-items:start}
-.hero-copy{padding-top:18px}
-.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.88);border:1px solid rgba(139,92,246,0.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin-bottom:22px;backdrop-filter:blur(8px)}
-.pulse-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
-.hero-copy h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:18px}
-.hero-copy p{font-size:var(--mk-hero-lead);color:var(--mk-text-desc,#64748B);max-width:540px;margin-bottom:24px;line-height:var(--mk-hero-lead-lh);font-weight:400}
-.trust-list{display:grid;gap:10px;margin-top:22px;max-width:520px}
-.trust-item{
-  display:flex;
-  gap:10px;
-  align-items:flex-start;
-  border:none;
-  background:transparent;
-  border-radius:0;
-  padding:0;
-  box-shadow:none;
+.contact-page{background:#f5f3ff}
+.contact-hero-reflow{padding:112px 20px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#f5f3ff 74%)}
+.contact-custom-shell{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:60px;
+  max-width:960px;
+  margin:0 auto;
+  align-items:start;
+  padding:40px 20px;
+  box-sizing:border-box;
 }
-.trust-item::before{content:'✓';color:#10B981;font-weight:700;line-height:1.2;flex-shrink:0;margin-top:1px}
-.trust-icon{width:36px;height:36px;border-radius:13px;background:var(--purple-ultra);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.mini-icon{width:36px;height:36px;border-radius:50%;background:var(--purple);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;font-weight:700;box-shadow:0 6px 18px rgba(124,58,237,.24)}
-.trust-item strong{display:block;font-size:var(--mk-body);margin-bottom:2px}
-.trust-item span{display:block;font-size:var(--mk-body-sm);color:var(--text-gray);line-height:1.55}
-.formshell{margin-top:18px;background:#fff;border:1px solid var(--border);border-radius:var(--mk-radius-panel,28px);padding:28px;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04)),0 1px 3px rgba(0,0,0,.04)}
-.form-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}
-.form-head h2{font-size:var(--mk-article-h2);line-height:var(--mk-article-h2-lh);letter-spacing:var(--mk-article-h2-track);margin-bottom:7px}
-.form-head p{font-size:var(--mk-body);color:var(--text-gray);line-height:var(--mk-body-lh)}
-.form-chip{display:inline-flex;align-items:center;border-radius:999px;background:#ecfdf5;color:#047857;padding:7px 11px;font-size:12px;font-weight:700;white-space:nowrap}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-.field{display:flex;flex-direction:column;gap:8px}
-.field label{font-size:var(--mk-meta);font-weight:700;color:var(--text-dark)}
-.field input,.field textarea,.field select{width:100%;border:1px solid var(--border);border-radius:var(--mk-radius-input,16px);padding:14px 15px;font:inherit;color:var(--text-dark);background:#fff}
-.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#c4b5fd;box-shadow:var(--mk-focus-ring,0 0 0 4px rgba(139,92,246,.08))}
-.field textarea{min-height:96px;resize:vertical}
-.field.full{grid-column:1/-1}
-.helper{font-size:var(--mk-meta);color:var(--text-light);line-height:1.55}
-.contact-turnstile-label{font-size:var(--mk-meta);font-weight:700;color:var(--text-dark);margin-bottom:8px;display:block}
-.contact-turnstile-frame{min-height:72px;min-width:240px;border:1px dashed var(--border);border-radius:16px;padding:10px;background:#FAFAFA;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
-.contact-turnstile-hint{font-size:12px;color:var(--text-light);line-height:1.45;margin-top:6px}
+.contact-value-col{min-width:0}
+.contact-breadcrumb--shell{grid-column:1/-1;margin-bottom:4px}
+.contact-breadcrumb{margin-bottom:12px;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8)}
+.contact-breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
+.contact-breadcrumb-sep{margin:0 6px}
+.contact-value-badge{
+  display:inline-flex;align-items:center;border-radius:999px;
+  background:#f5f3ff;color:#5b21b6;border:1px solid rgba(124,58,237,.35);
+  padding:6px 14px;font-size:12px;font-weight:700;margin-bottom:14px;
+}
+.contact-value-h1{font-size:32px;font-weight:700;letter-spacing:-0.02em;line-height:1.2;color:#111827;margin:0 0 12px}
+.contact-value-sub{font-size:14px;color:#6b7280;line-height:1.6;margin:0 0 22px;max-width:420px}
+.contact-value-checklist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:14px}
+.contact-value-check-item{display:flex;gap:12px;align-items:flex-start}
+.contact-value-check-icon{
+  flex-shrink:0;width:22px;height:22px;border-radius:999px;background:#7c3aed;color:#fff;
+  font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;margin-top:2px;
+}
+.contact-value-check-item strong{display:block;font-size:13px;font-weight:500;color:#111;margin-bottom:2px}
+.contact-value-check-desc{display:block;font-size:13px;font-weight:400;color:#6b7280;line-height:1.45}
+.contact-form-card{
+  background:#fff;border-radius:16px;padding:28px;
+  box-shadow:0 4px 24px rgba(0,0,0,.06);
+  border:1px solid var(--border);
+  min-width:0;
+}
+.contact-form-title-sr{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+.contact-step-panels{display:flex;flex-direction:column;gap:18px}
+.contact-step-panel[hidden]{display:none !important}
+.contact-step-indicator{margin-bottom:4px}
+.contact-step-indicator__nodes{display:flex;align-items:center;gap:10px;max-width:200px}
+.contact-step-dot{
+  width:28px;height:28px;border-radius:999px;border:2px solid #e5e7eb;background:#fff;color:#9ca3af;
+  font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;
+}
+.contact-step-dot.active{background:#7c3aed;border-color:#7c3aed;color:#fff}
+.contact-step-dot.done{background:#fff;border-color:#7c3aed;color:#7c3aed}
+.contact-step-line{flex:1;height:2px;background:#e5e7eb;border-radius:2px;min-width:24px}
+.contact-step-line.done{background:#7c3aed}
+.contact-step-heading{margin:0 0 6px;font-size:18px;font-weight:600;color:#111827;letter-spacing:-.02em}
+.contact-step-lead{margin:0 0 16px;font-size:14px;color:#6b7280;line-height:1.55}
+.contact-field-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-bottom:12px;
+}
+.contact-field{display:flex;flex-direction:column;gap:5px;margin-bottom:0}
+.contact-field--full{grid-column:1/-1;margin-bottom:12px}
+.contact-field label{
+  font-size:12px;font-weight:500;color:#374151;display:flex;align-items:center;gap:4px;
+}
+.optional-tag{font-size:11px;color:#9ca3af;font-weight:400}
+.contact-field input,.contact-field select,.contact-field textarea{
+  width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:9px;font-size:14px;font-family:'Inter',sans-serif;
+  color:#111;background:#fff;transition:border .15s;box-sizing:border-box;
+}
+.contact-field input:focus,.contact-field select:focus,.contact-field textarea:focus{
+  outline:none;border-color:#7c3aed;box-shadow:0 0 0 3px #ede9fe;
+}
+.contact-field textarea{resize:none;height:80px;min-height:80px}
+.contact-field-error{font-size:12px;color:#b91c1c;margin-top:2px}
+.contact-step-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:8px;flex-wrap:wrap}
+.contact-step-nav--1{margin-top:18px;padding-top:4px}
+.contact-step-nav--2{margin-top:16px;padding-top:12px;border-top:1px solid #f3f4f6}
+.contact-step-label{font-size:13px;color:#374151;font-weight:500}
+.contact-step-label--muted{color:#9ca3af;font-weight:400}
+.contact-btn-continue{
+  appearance:none;border:none;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:600;
+  background:#7c3aed;color:#fff;cursor:pointer;font-family:inherit;
+}
+.contact-btn-continue:hover{background:#6d28d9}
+.contact-btn-back{
+  appearance:none;border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:10px 16px;font-size:14px;font-weight:500;color:#374151;cursor:pointer;font-family:inherit;
+}
+.contact-btn-back:hover{background:#f9fafb}
+.contact-advanced-block{margin-top:8px;padding-top:10px;border-top:1px solid #f3f4f6}
+.contact-advanced-toggle{
+  display:block;width:100%;text-align:left;background:none;border:none;padding:0;font-size:13px;color:#7c3aed;font-weight:500;cursor:pointer;font-family:inherit;
+}
+.contact-advanced-fields{margin-top:14px;display:flex;flex-direction:column;gap:0}
+.contact-btn-submit{
+  width:100%;margin-top:16px;height:48px;border-radius:10px;border:none;background:#111;color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+}
+.contact-btn-submit:hover{background:#1f2937}
+.contact-btn-submit:disabled{opacity:.55;cursor:not-allowed}
+.contact-trust-foot{margin-top:10px;text-align:center;font-size:11px;color:#9ca3af}
+.contact-helper-block{margin-top:12px;font-size:13px;color:#6b7280;line-height:1.45}
 .contact-honeypot{display:none}
-.contact-form-actions{margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.btn-dark,.btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;border:none;cursor:pointer}
-.btn-dark{background:var(--text-dark);color:#fff}
-.btn-dark:hover{background:#1f2937;transform:translateY(-1px)}
-.btn-dark:disabled{opacity:.6;cursor:not-allowed;transform:none}
-.btn-outline{border:1.5px solid var(--border);color:var(--text-dark);background:#fff}
+.contact-turnstile-label{font-size:12px;font-weight:500;color:#374151;margin-bottom:5px;display:block}
+.contact-turnstile-frame{min-height:72px;min-width:240px;border:1px dashed var(--border);border-radius:12px;padding:10px;background:#fafafa;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.contact-turnstile-hint{font-size:12px;color:var(--text-light);line-height:1.45;margin-top:6px}
 .section{padding:64px 48px 82px}
 @media(max-width:960px){
-  .hero-page,.section{padding-left:22px;padding-right:22px}
-  .hero-page{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:52px}
-  .contact-grid,.form-grid{grid-template-columns:1fr}
-  .hero-copy{padding-top:0}
-  .trust-list{display:none}
-  .formshell{margin-top:0;padding:22px;border-radius:26px}
-  .form-head{display:block}
-  .form-chip{margin-top:12px}
-  .btn-dark{width:100%}
+  .contact-hero-reflow,.section{padding-left:22px;padding-right:22px}
+  .contact-hero-reflow{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:52px}
+}
+@media(max-width:767px){
+  .contact-custom-shell{grid-template-columns:1fr;gap:28px}
+  .contact-value-col{display:none}
+  .contact-form-card{padding:22px}
 }
 @media(max-width:640px){
   .section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
-  .hero-copy h1{font-size:clamp(30px,8vw,40px)}
-  .hero-copy p{font-size:16px}
-  .formshell{padding:20px;border-radius:var(--mk-radius-card,22px)}
-  .contact-form-actions{flex-direction:column;align-items:stretch}
-  .contact-form-actions > *{width:100%}
+  .contact-value-h1{font-size:clamp(26px,7vw,32px)}
+  .contact-field-row{grid-template-columns:1fr}
 }
+.container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 `,
 ];
 
@@ -258,6 +312,12 @@ const scripts: string[] = [
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
 
+    const step2Panel = document.querySelector('.contact-step-panel[data-contact-step="2"]');
+    if (step2Panel && step2Panel.hasAttribute('hidden')) {
+      setHelper('Continue to step 2 to complete verification and send your request.', 'error');
+      return;
+    }
+
     const fullName = document.getElementById('contactFullName')?.value?.trim() ?? '';
     const businessName = document.getElementById('contactBusinessName')?.value?.trim() ?? '';
     const email = document.getElementById('contactEmail')?.value?.trim() ?? '';
@@ -406,103 +466,7 @@ export function MarketingContactTemplate() {
         ) : null}
         <MarketingHeader active="contact" />
         <main className="contact-page">
-          <section className="hero-page">
-            <div className="container">
-              <div className="contact-grid">
-                <div className="hero-copy">
-                  <nav aria-label="Breadcrumb" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.35, color: 'var(--mk-text-soft,#94a3b8)' }}>
-                    <a href="/" style={{ color: 'var(--mk-text-soft,#94a3b8)', textDecoration: 'none', fontWeight: 400 }}>Home</a>
-                    <span style={{ margin: '0 6px' }}>›</span>
-                    <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>Contact</span>
-                  </nav>
-                  <div className="badge">Contact RingBooker</div>
-                  <h1 id="contactHeroTitle">Contact RingBooker</h1>
-                  <p id="contactHeroSubtitle">Send us a note and we&apos;ll route it to the right RingBooker team member.</p>
-                  <div className="trust-list">
-                    <div className="trust-item"><div><strong>Keep your current number</strong><span>Forward the number clients already call.</span></div></div>
-                    <div className="trust-item"><div><strong>No new booking software</strong><span>Works with your current workflow.</span></div></div>
-                    <div className="trust-item"><div><strong>Built for booking recovery</strong><span>Covers after-hours, overflow, and missed calls.</span></div></div>
-                  </div>
-                </div>
-
-                <div className="formshell" id="book-demo">
-                  <div className="form-head">
-                    <div>
-                      <h2 id="contactFormTitle">Contact RingBooker</h2>
-                    </div>
-                    <span className="form-chip" id="contactFormChip">Contact</span>
-                  </div>
-                  <form id="contactRequestForm">
-                    <div className="form-grid">
-                      <div className="field"><label htmlFor="contactFullName">Full name</label><input id="contactFullName" placeholder="Jane Nguyen" required /></div>
-                      <div className="field"><label htmlFor="contactBusinessName">Business name</label><input id="contactBusinessName" placeholder="Luxe Hair Studio" required /></div>
-                      <div className="field"><label htmlFor="contactEmail">Email</label><input id="contactEmail" type="email" placeholder="jane@luxehair.com" required /></div>
-                      <div className="field"><label htmlFor="contactPhoneNumber">Phone number</label><input id="contactPhoneNumber" placeholder="+1 (714) 555-0100" required /></div>
-                      <div className="field">
-                        <label htmlFor="contactBusinessType">Business type</label>
-                        <select id="contactBusinessType" required defaultValue="nail_shop">
-                          <option value="nail_shop">Nail salon</option>
-                          <option value="hair_salon">Hair salon</option>
-                          <option value="spa">Day spa</option>
-                          <option value="med_spa">Med spa</option>
-                          <option value="beauty_clinic">Beauty clinic</option>
-                        </select>
-                      </div>
-                      <div className="field">
-                        <label htmlFor="contactCurrentSetup">Main need</label>
-                        <select id="contactCurrentSetup" required defaultValue="after_hours_overflow">
-                          <option value="after_hours_overflow">After-hours or overflow calls</option>
-                          <option value="missed_call_text_back">Missed-call text back</option>
-                          <option value="reschedules_cancellations">Reschedules or cancellations</option>
-                          <option value="current_number_setup">Use my current number</option>
-                          <option value="custom_workflow">Custom workflow or multi-location</option>
-                        </select>
-                      </div>
-                      <div className="field full">
-                        <label htmlFor="contactBestTime">Best time to reach you</label>
-                        <input id="contactBestTime" placeholder="Weekdays after 3 PM PST" required />
-                      </div>
-
-                      <div id="enterpriseContactFields" style={{ display: 'none', gridColumn: '1 / -1', gridTemplateColumns: 'inherit', gap: 'inherit' }}>
-                      <div className="field"><label htmlFor="contactNumberOfLocations">Number of locations <span className="helper">(Custom)</span></label><input id="contactNumberOfLocations" type="number" min="1" placeholder="3" /></div>
-                      <div className="field"><label htmlFor="contactEstimatedMonthlyCallVolume">Estimated monthly calls <span className="helper">(optional)</span></label><input id="contactEstimatedMonthlyCallVolume" placeholder="500-1,000 calls/month" /></div>
-                      <div className="field"><label htmlFor="contactCurrentPhoneProvider">Phone provider <span className="helper">(optional)</span></label><input id="contactCurrentPhoneProvider" placeholder="Verizon, Comcast, RingCentral..." /></div>
-                      <div className="field"><label htmlFor="contactCurrentBookingSoftware">Booking software <span className="helper">(optional)</span></label><input id="contactCurrentBookingSoftware" placeholder="Square, Vagaro, GlossGenius..." /></div>
-                      <div className="field"><label htmlFor="contactCurrentCrm">CRM <span className="helper">(optional)</span></label><input id="contactCurrentCrm" placeholder="HubSpot, Boulevard, none..." /></div>
-                      <div className="field"><label htmlFor="contactLanguagesNeeded">Languages needed <span className="helper">(optional)</span></label><input id="contactLanguagesNeeded" placeholder="English, Vietnamese, Spanish" /></div>
-                      <div className="field full"><label htmlFor="contactLocationsText">Locations list <span className="helper">(optional)</span></label><textarea id="contactLocationsText" placeholder="List locations, cities, or business lines." /></div>
-                      <div className="field full"><label htmlFor="contactRoutingRules">Routing rules <span className="helper">(optional)</span></label><textarea id="contactRoutingRules" placeholder="Example: Vietnamese callers to owner, Botox consults to coordinator, Location A calls use Location A hours." /></div>
-                      <div className="field full"><label htmlFor="contactEscalationRules">Escalation rules <span className="helper">(optional)</span></label><textarea id="contactEscalationRules" placeholder="Example: urgent complaint to manager, refunds to owner, medical questions to provider." /></div>
-                      <div className="field full"><label htmlFor="contactIntegrationRequirements">Integration requirements <span className="helper">(optional)</span></label><textarea id="contactIntegrationRequirements" placeholder="Calendar, booking software, CRM, reporting, or custom workflow needs." /></div>
-                      <div className="field"><label htmlFor="contactMainContact">Main contact <span className="helper">(optional)</span></label><input id="contactMainContact" placeholder="Operations lead or owner" /></div>
-                      <div className="field"><label htmlFor="contactPreferredGoLiveTimeline">Preferred go-live timeline <span className="helper">(optional)</span></label><input id="contactPreferredGoLiveTimeline" placeholder="Next 30 days, next quarter..." /></div>
-                      </div>
-                      <div className="field full">
-                        <label htmlFor="contactHelpNeed">Anything else? <span className="helper">(optional)</span></label>
-                        <textarea
-                          id="contactHelpNeed"
-                          placeholder="We miss calls during peak hours, especially Saturdays."
-                          defaultValue=""
-                        />
-                      </div>
-                      <div className="field full contact-honeypot"><label htmlFor="contactWebsite">Website</label><input id="contactWebsite" autoComplete="off" tabIndex={-1} /></div>
-                      <div className="field full">
-                        <span className="contact-turnstile-label" id="contactTurnstileFieldLabel">Human verification</span>
-                        <div className="contact-turnstile-frame" role="region" aria-labelledby="contactTurnstileFieldLabel">
-                          <div id="contactTurnstileMount" />
-                        </div>
-                        <p className="contact-turnstile-hint" id="contactTurnstileHint" aria-live="polite" />
-                      </div>
-                    </div>
-                    <div className="contact-form-actions">
-                      <button id="contactSubmitButton" type="submit" className="btn-dark">Send message</button>
-                      <span className="helper" id="contactHelper">Protected by captcha and rate limits.</span>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </section>
+          <MarketingContactBody />
 
           <section className="section">
             <div className="container">

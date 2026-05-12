@@ -210,7 +210,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 	.leak-icon .home-line-icon{margin:0}
 	.leak-card h3{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.25px;margin-bottom:10px;text-align:left;color:var(--text-dark);white-space:nowrap}
 	.leak-card p{font-size:15px;color:var(--text-desc);line-height:1.74;text-align:left}
-	.leak-divider{height:1px;background:linear-gradient(90deg,rgba(221,214,204,.95) 0%,rgba(221,214,204,.72) 82%,rgba(221,214,204,0) 100%);margin:20px 0 16px}
+	.leak-divider{height:1px;background:#e5e7eb;margin:20px 0 16px}
 .leak-point{display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.6;font-weight:500;color:var(--text-desc)}
 	.leak-point-dot{width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0;margin-top:8px}
 	.compare-section{padding:88px 48px 72px;background:linear-gradient(180deg,#F9FAFB 0%,#fff 100%);color:var(--text-dark)}
@@ -709,7 +709,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .steps-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);color:var(--text-dark);margin-bottom:14px;max-width:22ch;text-wrap:balance;margin-left:auto;margin-right:auto}
 .steps-copy{font-size:var(--mk-section-lead);color:var(--text-desc);line-height:var(--mk-section-lead-lh);max-width:720px;margin:0 auto;font-weight:400}
 .steps-shell{position:relative;padding-top:42px}
-.steps-rail{position:absolute;left:10%;right:10%;top:68px;height:1px;background:linear-gradient(90deg,rgba(244,114,182,.32) 0%,rgba(221,214,204,.95) 45%,rgba(221,214,204,.95) 100%)}
+.steps-rail{position:absolute;left:10%;right:10%;top:68px;height:1px;background:#e5e7eb}
 .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px;position:relative}
 .step-card{position:relative;background:transparent;border:none;border-radius:0;padding:0;text-align:center;box-shadow:none}
 .step-marker{width:52px;height:52px;border-radius:999px;border:2px solid #10B981;background:#fff;color:#10B981;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;margin:0 auto 28px;position:relative;z-index:2}
