@@ -921,6 +921,14 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
 }
 @media (max-width:860px){
   .main{padding:0;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
+  /* Overview go-live banner: stack like Go Live card CTAs on mobile */
+  .user-app-shell .overview-banner{
+    flex-direction:column;
+    align-items:stretch;
+    gap:12px;
+  }
+  .user-app-shell .overview-banner .banner-text{width:100%}
+  .user-app-shell .overview-banner .banner-actions.portal-card-actions{width:100%}
   .app-shell .main > .topbar{margin:0;padding:12px 18px;border-bottom:none}
   .grid-2,.form-grid{grid-template-columns:1fr}
   .grid.grid-3,.grid.grid-4{

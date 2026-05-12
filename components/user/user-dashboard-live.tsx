@@ -497,10 +497,10 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                       <span className="banner-title">RingBooker is live on your business line.</span>
                       <span className="banner-sub">{postLiveBannerSubtitle}</span>
                     </div>
-                    <div className="banner-actions">
+                    <div className="banner-actions portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                       <button
                         type="button"
-                        className="btn-ghost-sm"
+                        className="btn"
                         disabled={testCallLoading}
                         onClick={() => void requestDashboardTestCall()}
                       >
@@ -517,16 +517,16 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                         No card needed during setup — your business number stays unchanged until you go live.
                       </span>
                     </div>
-                    <div className="banner-actions">
+                    <div className="banner-actions portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                       <button
                         type="button"
-                        className="btn-ghost-sm"
+                        className="btn"
                         disabled={testCallLoading}
                         onClick={() => void requestDashboardTestCall()}
                       >
                         {testCallLoading ? 'Calling…' : 'Run test call'}
                       </button>
-                      <a className="btn-primary-sm" href="/user/billing">
+                      <a className="btn user-save" href="/user/billing">
                         Start 14-day trial
                       </a>
                     </div>
