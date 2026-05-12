@@ -477,7 +477,6 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
           <UserPortalSidebar active="account" />
 
           <main className="main account-page rb-account-page">
-            <UserPortalPageContent pageClass="page-account">
             <UserPortalTopbar
               title="Your account"
               subtitle={undefined}
@@ -485,6 +484,7 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
               actions={<UserPortalStandardTopActions />}
             />
 
+            <UserPortalPageContent pageClass="page-account">
             <div className="rb-account-shell">
               {navError ? (
                 <div className="note" style={{ marginBottom: 16 }}>

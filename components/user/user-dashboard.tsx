@@ -153,51 +153,83 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .main{padding:0;padding-bottom:34px;min-width:0;background:var(--surface-page)}
 .page-content{
   width:100%;
-  margin-left:auto;
-  margin-right:auto;
-  padding:24px;
+  margin:0 auto;
+  padding:24px 24px;
   box-sizing:border-box;
 }
 @media (min-width:1281px){
   .page-content.page-overview,
   .page-content.page-calls,
-  .page-content.page-bookings{max-width:960px;}
+  .page-content.page-bookings,
+  .page-content.page-billing,
+  .page-content.page-more{max-width:1100px;}
   .page-content.page-business-profile,
   .page-content.page-hours,
   .page-content.page-staff,
   .page-content.page-policies,
   .page-content.page-ai-behavior,
-  .page-content.page-account,
-  .page-content.page-billing{max-width:800px;}
+  .page-content.page-services,
+  .page-content.page-account{max-width:960px;}
   .page-content.page-go-live,
-  .page-content.page-integrations{max-width:760px;}
-  .page-content.page-services{max-width:860px;}
-  .page-content.page-more{max-width:960px;}
+  .page-content.page-integrations{max-width:800px;}
 }
-@media (max-width:1280px){
-  .user-app-shell .main > .page-content{
-    max-width:100%;
-    padding:24px 20px;
-  }
+@media (max-width:1280px) and (min-width:1025px){
+  .app-shell .main > .page-content{padding:24px 20px;}
+  .page-content.page-overview,
+  .page-content.page-calls,
+  .page-content.page-bookings,
+  .page-content.page-billing,
+  .page-content.page-more{max-width:1100px;}
+  .page-content.page-business-profile,
+  .page-content.page-hours,
+  .page-content.page-staff,
+  .page-content.page-policies,
+  .page-content.page-ai-behavior,
+  .page-content.page-services,
+  .page-content.page-account{max-width:960px;}
+  .page-content.page-go-live,
+  .page-content.page-integrations{max-width:800px;}
 }
 @media (max-width:1024px){
-  .user-app-shell .main > .page-content{
-    padding:16px;
+  .app-shell .main > .page-content{
+    max-width:100% !important;
+    padding:20px 16px;
   }
 }
 @media (max-width:768px){
-  .user-app-shell .main > .page-content{
-    padding:12px 16px;
+  .app-shell .main > .page-content{
+    padding:16px;
   }
 }
 .topbar{
   display:flex;align-items:center;justify-content:space-between;gap:18px;
   flex-wrap:wrap;
   position:relative;z-index:1;
-  min-height:64px;margin:0 0 24px;padding:12px 0;
+  min-height:64px;
   background:var(--surface-page);
   border-bottom:1px solid var(--border);
   box-shadow:none;
+}
+.app-shell .main > .topbar{
+  width:100%;
+  box-sizing:border-box;
+  margin:0;
+  padding:12px 24px;
+}
+@media (max-width:1280px){
+  .app-shell .main > .topbar{
+    padding:12px 20px;
+  }
+}
+@media (max-width:1024px){
+  .app-shell .main > .topbar{
+    padding:12px 16px;
+  }
+}
+@media (max-width:768px){
+  .app-shell .main > .topbar{
+    padding:12px 16px;
+  }
 }
 .page-title h1{margin:0;font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.25;color:var(--purple-dark)}
 .page-title p{margin:6px 0 0;color:var(--text-gray);font-size:15px;line-height:1.55;max-width:760px}
@@ -865,7 +897,7 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
 }
 @media (max-width:860px){
   .main{padding:0;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
-  .topbar{margin:0 0 20px;padding:12px 0;border-bottom:none}
+  .app-shell .main > .topbar{margin:0;padding:12px 18px;border-bottom:none}
   .grid-2,.form-grid{grid-template-columns:1fr}
   .grid.grid-3,.grid.grid-4{
     grid-template-columns:repeat(2,minmax(0,1fr));
@@ -1129,11 +1161,11 @@ export function UserDashboardTemplate() {
           </div>
         </aside>
         <main className="main">
-          <div className="page-content page-overview">
           <div className="topbar">
             <div className="page-title"><h1>Overview</h1><p>Track calls, bookings, and reminders.</p></div>
             <div className="top-actions overview-top-actions"><a className="btn" href="/user/knowledge">Edit business info</a><a className="btn user-save" href="/user/bookings">View bookings</a></div>
           </div>
+          <div className="page-content page-overview">
           <section className="grid grid-4">
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.4 2.8a2 2 0 0 1-.6 1.7L7.1 10a16 16 0 0 0 6.9 6.9l1.8-1.8a2 2 0 0 1 1.7-.6l2.8.4A2 2 0 0 1 22 16.9Z" /></svg></div><span className="tag green">+18% this week</span></div><div className="stat-value">142</div><div className="stat-meta">Calls answered by RingBooker</div></div>
             <div className="stat-card"><div className="stat-top"><div className="stat-icon"><svg viewBox="0 0 24 24"><rect x={3} y={5} width={18} height={16} rx={2} /><path d="M16 3v4M8 3v4M3 10h18" /></svg></div><span className="tag purple">31 booked</span></div><div className="stat-value">76%</div><div className="stat-meta">Call-to-booking conversion</div></div>

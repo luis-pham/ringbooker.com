@@ -1533,7 +1533,6 @@ export function UserSettingsLive({
         <UserPortalSidebar active={sidebarNav} />
 
         <main className={`main${portal === 'knowledge' ? ' knowledge-portal-main' : ''}${portal === 'integrations' ? ' integrations-portal-main' : ''}`}>
-          <UserPortalPageContent pageClass={pageContentClass}>
           <UserPortalTopbar
             title={portalHead.title}
             subtitle={portalHead.subtitle}
@@ -1541,6 +1540,7 @@ export function UserSettingsLive({
             actions={<UserPortalStandardTopActions />}
           />
 
+          <UserPortalPageContent pageClass={pageContentClass}>
           {!settingsReady && status ? (
             <div className="note" style={{ marginBottom: 18 }}>
               Unable to load settings: {status}

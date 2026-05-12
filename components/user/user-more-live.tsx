@@ -44,13 +44,13 @@ export function UserMoreLive() {
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="more" />
           <main className="main more-page">
-            <UserPortalPageContent pageClass="page-more">
             <UserPortalTopbar
               title="More"
               subtitle="Business setup, integrations, billing, and account."
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />
+            <UserPortalPageContent pageClass="page-more">
             <section className="grid grid-2">
               {moreItems.map((item) => (
                 <a key={item.href} className="card option-card" href={item.href}>

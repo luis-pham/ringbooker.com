@@ -464,7 +464,6 @@ export function UserCallsLive({
         <UserPortalSidebar active="calls" />
 
         <main className="main">
-          <UserPortalPageContent pageClass="page-calls">
           <UserPortalTopbar
             title="Calls, transcripts, and missed revenue recovery."
             subtitle={`Browse calls by outcome, then open a transcript when you need the full text.${metrics.transcriptsReady > 0 ? ` ${metrics.transcriptsReady} transcript${metrics.transcriptsReady === 1 ? '' : 's'} ready to review.` : ''}`}
@@ -472,6 +471,7 @@ export function UserCallsLive({
             actions={<UserPortalStandardTopActions />}
           />
 
+          <UserPortalPageContent pageClass="page-calls">
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load calls: {error}</div> : null}
 
 

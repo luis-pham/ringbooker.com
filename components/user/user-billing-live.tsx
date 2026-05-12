@@ -753,7 +753,6 @@ export function UserBillingLive({
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="billing" />
           <main className="main">
-            <UserPortalPageContent pageClass="page-billing">
             <UserPortalTopbar
               title="Billing"
               subtitle="View usage, plans, and billing activity. Set up forwarding under Go Live."
@@ -761,6 +760,7 @@ export function UserBillingLive({
               actions={<UserPortalStandardTopActions />}
             />
 
+            <UserPortalPageContent pageClass="page-billing">
             {!loading && !data?.ok ? (
               <section className="card">
                 <h3>Unable to load billing</h3>

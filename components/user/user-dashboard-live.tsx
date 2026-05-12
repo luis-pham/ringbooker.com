@@ -445,13 +445,13 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="overview" />
           <main className="main">
-            <UserPortalPageContent pageClass="page-overview">
             <UserPortalTopbar
               title={shopName}
               subtitle={topbarSubtitle}
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />
+            <UserPortalPageContent pageClass="page-overview">
             {!loading && !data?.ok ? (
               <section className="card" style={{ marginBottom: 18 }}>
                 <p className="sub">Unable to load user dashboard: {data?.error ?? 'unknown_error'}</p>

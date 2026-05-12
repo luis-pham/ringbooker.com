@@ -81,7 +81,6 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
       <div className="app-shell user-app-shell">
         <UserPortalSidebar active="bookings" />
         <main className="main">
-          <UserPortalPageContent pageClass="page-bookings">
           <UserPortalTopbar
             title="Bookings and calendar flow."
             subtitle="See appointment requests and bookings RingBooker has captured or created."
@@ -89,6 +88,7 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
             actions={<UserPortalStandardTopActions />}
           />
 
+          <UserPortalPageContent pageClass="page-bookings">
           {error ? <div className="note" style={{ marginBottom: 18 }}>Unable to load bookings: {error}</div> : null}
 
           <section className="grid grid-3 bookings-stats">

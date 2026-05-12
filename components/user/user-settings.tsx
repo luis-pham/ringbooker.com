@@ -768,7 +768,7 @@ html[data-user-theme="dark"] .upgrade-panel{
 @media (max-width:860px){
   .integrations-portal-main .topbar{
     margin:0 0 10px;
-    padding:8px 0 6px;
+    padding:8px 18px 6px;
     min-height:auto;
   }
   .settings-business-profile-layout{grid-template-columns:1fr}
