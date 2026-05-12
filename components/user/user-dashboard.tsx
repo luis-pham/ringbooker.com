@@ -172,7 +172,7 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
   .page-content.page-services,
   .page-content.page-account{max-width:960px;}
   .page-content.page-go-live,
-  .page-content.page-integrations{max-width:800px;}
+  .page-content.page-integrations{max-width:960px;}
 }
 @media (max-width:1280px) and (min-width:1025px){
   .app-shell .main > .page-content{padding:24px 20px;}
@@ -190,7 +190,7 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
   .page-content.page-services,
   .page-content.page-account{max-width:960px;}
   .page-content.page-go-live,
-  .page-content.page-integrations{max-width:800px;}
+  .page-content.page-integrations{max-width:960px;}
 }
 @media (max-width:1024px){
   .app-shell .main > .page-content{

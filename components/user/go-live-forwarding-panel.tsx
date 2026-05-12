@@ -363,10 +363,6 @@ export function GoLiveForwardingPanel({
   return (
     <div className="section-stack gl-hero" id="go-live-forwarding">
       <GoLiveStyles />
-      <div>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: '-.02em' }}>Go Live</h2>
-        <p className="sub" style={{ margin: '6px 0 0' }}>Connect RingBooker to your business number. Customers keep calling the same number — forwarding happens behind the scenes.</p>
-      </div>
       <KnowledgeGateBanner items={goLive.gate} />
       {message || goLive.error ? <p className={`gl-message ${goLive.error ? 'error' : ''}`}>{message ?? goLive.error}</p> : null}
 
