@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import '@fontsource-variable/mona-sans';
 import './marketing-typography.css';
@@ -8,6 +8,11 @@ import { getUserPortalThemeBootstrapInlineScript } from '@/lib/user-portal-theme
 import { defaultSiteOgImage, siteConfig, siteOgImageEntry } from '@/lib/site';
 
 const socialProfileUrls = Object.values(siteConfig.socialLinks).filter(Boolean);
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: {

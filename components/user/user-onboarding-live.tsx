@@ -151,6 +151,19 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function useMatchMedia(query: string): boolean {
+  const [matches, setMatches] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia(query);
+    const sync = () => setMatches(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, [query]);
+  return matches;
+}
+
 export type OnboardingStatusResponse = {
   ok: boolean;
   onboardingRequired?: boolean;
@@ -222,6 +235,7 @@ const WEBSITE_IMPORT_EXTRACTION_ACTIVE = process.env.NEXT_PUBLIC_WEBSITE_IMPORT_
 
 type Step1View = 'quick' | 'manual_vertical' | 'manual_beauty_subtype';
 type ProfileEditField = 'name' | 'phone' | 'website' | 'type' | 'address' | 'hours' | 'timezone' | null;
+type Step2SheetKind = 'type' | 'timezone' | 'address' | 'hours';
 
 const MIXED_SERVICE_GROUPS = [
   'Manicure',
@@ -1085,6 +1099,35 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const [profileEditField, setProfileEditField] = useState<ProfileEditField>(null);
   const [userEditedProfileFields, setUserEditedProfileFields] = useState<Array<Exclude<ProfileEditField, null>>>([]);
+  const isStep2Mobile = useMatchMedia('(max-width: 768px)');
+  const [step2Sheet, setStep2Sheet] = useState<Step2SheetKind | null>(null);
+  const [mobileInlineEdit, setMobileInlineEdit] = useState<'name' | 'phone' | 'website' | null>(null);
+  const [mobileInlineDraft, setMobileInlineDraft] = useState('');
+  const [tzSheetCountry, setTzSheetCountry] = useState('');
+  const [tzSheetTimezone, setTzSheetTimezone] = useState('');
+  const [tzSheetSearch, setTzSheetSearch] = useState('');
+  const [addressSheetDraft, setAddressSheetDraft] = useState('');
+  const [hoursSheetDraft, setHoursSheetDraft] = useState<WizardHours>(() => defaultHours());
+  const mobileInlineCardRef = useRef<HTMLDivElement | null>(null);
+  const typeSheetSnapshotRef = useRef<{
+    vertical: Vertical | '';
+    beautySubtype: BeautySubtype | '';
+    profilePickPrimary: Vertical | 'beauty_umbrella' | '';
+    profilePickSubtype: BeautySubtype | '';
+  } | null>(null);
+
+  const allTimezoneOptions = useMemo(
+    () =>
+      COUNTRY_TIMEZONES.flatMap((item) =>
+        item.timezones.map((zone) => ({
+          value: zone.value,
+          label: `${zone.label} (${zone.offset})`,
+          country: item.country,
+          flag: item.flag,
+        })),
+      ),
+    [],
+  );
   const [manualPrimaryPick, setManualPrimaryPick] = useState<Vertical | 'beauty_umbrella' | ''>('');
   const [beautySubtype, setBeautySubtype] = useState<BeautySubtype | ''>(initialBeautySubtype);
   const [verticalConfidence, setVerticalConfidence] = useState<VerticalConfidence>(initialVertical ? 'high' : 'none');
@@ -1115,6 +1158,27 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     }
     prevStepRef.current = currentStep;
   }, [currentStep, vertical, beautySubtype, verticalConfidence]);
+
+  useEffect(() => {
+    if (isStep2Mobile) {
+      setProfileEditField(null);
+    } else {
+      setStep2Sheet(null);
+      setMobileInlineEdit(null);
+    }
+  }, [isStep2Mobile]);
+
+  useEffect(() => {
+    if (!mobileInlineEdit) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const root = mobileInlineCardRef.current;
+      if (root && !root.contains(e.target as Node)) {
+        setMobileInlineEdit(null);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [mobileInlineEdit]);
 
   useEffect(() => {
     if (initialShop) return;
@@ -1775,7 +1839,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-profile-source-footnote{font-size:11px;color:#9ca3af;margin:6px 0 0;line-height:1.35}
 .onb-step2-hours-preview{margin-top:2px}
-.onb-step2-hours-preview .hours-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px}
+.onb-step2-hours-preview .hours-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px;border:0}
 .onb-step2-hours-preview .hours-grid-col{display:flex;flex-direction:column;gap:4px}
 .onb-step2-hours-preview .hours-row{display:flex;gap:8px;align-items:center}
 .onb-step2-hours-preview .hours-day{font-size:12px;color:#9ca3af;width:28px;flex-shrink:0;font-weight:400}
@@ -1783,6 +1847,37 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-step2-hours-preview .hours-closed{font-size:13px;color:#9ca3af}
 .onb-step2-languages-card{margin-top:0}
 .onb-step2-lang-chips.preset-row{margin-bottom:0}
+.onb-step-confirm input,.onb-step-confirm select,.onb-step-confirm textarea{font-size:16px!important;font-family:inherit}
+.onb-step2-field-card-editing{border-color:#7c3aed!important}
+.onb-step2-inline-input{width:100%;font-size:16px!important;padding:8px 12px;border:1.5px solid #7c3aed;border-radius:8px;color:#111;background:#fff;outline:none;margin-top:4px;font-family:inherit;box-sizing:border-box}
+.onb-step2-inline-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.onb-step2-inline-cancel{padding:6px 14px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#6b7280;background:#fff;cursor:pointer;font-family:inherit}
+.onb-step2-inline-save{padding:6px 16px;border:none;border-radius:8px;font-size:13px;font-weight:500;color:#fff;background:#111;cursor:pointer;font-family:inherit}
+.onb-step2-value-click{cursor:pointer}
+.onb-step2-sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.onb-step2-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 20px calc(40px + env(safe-area-inset-bottom));width:100%;max-width:100%;max-height:80vh;overflow-y:auto;box-sizing:border-box}
+.onb-step2-sheet-handle{width:36px;height:4px;background:#e5e7eb;border-radius:2px;margin:0 auto 20px}
+.onb-step2-sheet-title{font-size:15px;font-weight:600;color:#111;margin-bottom:16px}
+.onb-step2-sheet input,.onb-step2-sheet select,.onb-step2-sheet textarea{font-size:16px!important;width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;font-family:inherit;color:#111;box-sizing:border-box;background:#fff}
+.onb-step2-sheet input:focus,.onb-step2-sheet select:focus,.onb-step2-sheet textarea:focus{outline:none;border-color:#7c3aed}
+.onb-step2-sheet-actions{display:flex;gap:10px;margin-top:20px}
+.onb-step2-sheet-cancel{flex:1;padding:13px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;color:#6b7280;background:#fff;cursor:pointer;font-family:inherit}
+.onb-step2-sheet-save{flex:2;padding:13px;border:none;border-radius:10px;font-size:14px;font-weight:500;color:#fff;background:#111;cursor:pointer;font-family:inherit}
+.onb-step2-tz-list{max-height:240px;overflow-y:auto;margin-top:8px;border:1px solid #e5e7eb;border-radius:10px}
+.onb-step2-tz-item{padding:12px 14px;font-size:14px;color:#111;border-bottom:1px solid #f9fafb;cursor:pointer}
+.onb-step2-tz-item:last-child{border-bottom:none}
+.onb-step2-tz-item.selected{color:#7c3aed;background:#f5f3ff}
+.onb-step2-hours-editor{display:flex;flex-direction:column;gap:10px}
+.onb-step2-hours-editor-row{display:grid;grid-template-columns:40px minmax(0,auto) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
+.onb-step2-hours-day{font-size:13px;font-weight:500;color:#6b7280}
+.onb-step2-hours-time{font-size:16px!important;padding:8px 6px;border:1px solid #e5e7eb;border-radius:8px;text-align:center;width:100%;box-sizing:border-box;font-family:inherit;background:#fff}
+.onb-step2-hours-time:disabled{background:#f9fafb;color:#d1d5db}
+.onb-step2-hours-toggle{width:36px;height:20px;border-radius:999px;border:1px solid #cbd5e1;background:#e5e7eb;cursor:pointer;position:relative;flex-shrink:0;padding:0}
+.onb-step2-hours-toggle.on{background:#7c3aed;border-color:#7c3aed}
+.onb-step2-hours-toggle::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s ease}
+.onb-step2-hours-toggle.on::after{transform:translateX(16px)}
+@media(min-width:769px){.onb-step2-mobile-only{display:none!important}}
+@media(max-width:768px){.onb-step2-desktop-inline{display:none!important}}
 .preset-chip.mixed-chip.locked{opacity:.55;cursor:not-allowed}
 .onb-note{display:flex;gap:8px;align-items:flex-start;border-radius:12px;background:#fff7ed;color:#9a3412;padding:12px 14px;font-size:13px;line-height:1.5}
 .onb-services-review-shell,.onb-service-mode-b,.onb-service-groups{max-width:780px;margin-left:auto;margin-right:auto}
@@ -1807,7 +1902,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-actions{display:flex;justify-content:space-between;gap:12px;margin-top:24px;align-items:center}
 .onb-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:0;border-radius:8px;background:#000;color:#fff;padding:10px 18px;font-size:15px;font-weight:600;box-shadow:0 8px 18px rgba(0,0,0,.18);cursor:pointer;text-decoration:none;transition:background .15s ease,transform .15s ease,box-shadow .15s ease}.onb-btn-primary:hover:not(:disabled){background:#1f1f1f;transform:translateY(-1px);box-shadow:0 12px 24px rgba(0,0,0,.24)}
 .onb-btn-primary:disabled{opacity:.6;cursor:not-allowed}.onb-btn-secondary{display:inline-flex;align-items:center;justify-content:center;min-height:44px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;padding:10px 18px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
-.hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9}.hours-row:last-child{border-bottom:0}.hours-row.closed{background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important}.hours-row.closed select{opacity:.4;background:#f8fafc!important}
+.hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9}.hours-row:last-child{border-bottom:0}.hours-row.closed select{opacity:.4;background:#f8fafc!important}
 .hours-day{font-weight:500;color:#111827;min-width:40px}.toggle-pill{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid #dbe2ee;border-radius:999px;padding:8px 12px;background:#fff;font-weight:500;color:#64748b;cursor:pointer;box-shadow:none}.toggle-pill input{position:absolute;opacity:0;pointer-events:none}.toggle-dot{width:28px;height:16px;border-radius:999px;background:#cbd5e1;position:relative;transition:.18s ease;box-shadow:none}.toggle-dot:after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:none;transition:.18s ease}.toggle-pill.active{border-color:#8b5cf6;color:#5b21b6;background:transparent}.toggle-pill.active .toggle-dot{background:#7c3aed}.toggle-pill.active .toggle-dot:after{transform:translateX(12px)}
 .lang-list{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}.lang-option{display:grid;gap:6px;justify-items:center;align-content:start}.lang-pill{min-width:72px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #e2e8f0;border-radius:999px;padding:9px 14px;background:#fff;color:#374151;font-size:16px;font-weight:500;cursor:pointer;box-shadow:none}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#faf5ff;border-color:#7c3aed;color:#111827;box-shadow:none}.lang-pill.required{background:#faf5ff;border-color:#7c3aed;color:#5b21b6;cursor:not-allowed}.lang-pill.locked{background:#f1f5f9!important;color:#64748b;cursor:not-allowed}.required-badge{display:block;color:#16a34a;background:transparent;padding:0;font-size:12px;font-weight:500;line-height:1.2}.plan-badge{display:block;color:#64748b;background:transparent!important;padding:0;font-size:12px;font-weight:500;line-height:1.2}.lang-badge-spacer{display:block;height:14px}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:600}
 .preset-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}.preset-chip{border:1px solid #e2e8f0;border-radius:999px;background:#fff;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;box-shadow:none;transition:border-color .15s ease,background .15s ease}.preset-chip:hover{border-color:#c4b5fd;background:#faf5ff}.preset-chip:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
@@ -2091,6 +2186,114 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       }
     })();
 
+    const markProfileFieldEdited = (field: Exclude<ProfileEditField, null>) => {
+      setUserEditedProfileFields((fields) => (fields.includes(field) ? fields : [...fields, field]));
+    };
+
+    const applyMobileInline = (field: 'name' | 'phone' | 'website') => {
+      if (field === 'name') {
+        setBusinessName(mobileInlineDraft);
+        markProfileFieldEdited('name');
+      } else if (field === 'phone') {
+        setBusinessPhone(mobileInlineDraft);
+        setBusinessPhoneNeedsRealEntry(false);
+        markProfileFieldEdited('phone');
+      } else {
+        setWebsiteUrl(mobileInlineDraft);
+        markProfileFieldEdited('website');
+      }
+      setMobileInlineEdit(null);
+    };
+
+    const openMobileInline = (field: 'name' | 'phone' | 'website') => {
+      setStep2Sheet(null);
+      setMobileInlineDraft(field === 'name' ? businessName : field === 'phone' ? businessPhone : websiteUrl);
+      setMobileInlineEdit(field);
+    };
+
+    const openMobileSheet = (kind: Step2SheetKind) => {
+      setMobileInlineEdit(null);
+      if (kind === 'type') {
+        typeSheetSnapshotRef.current = {
+          vertical,
+          beautySubtype,
+          profilePickPrimary,
+          profilePickSubtype,
+        };
+        setStep2Sheet('type');
+      } else if (kind === 'timezone') {
+        setTzSheetCountry(selectedCountry);
+        setTzSheetTimezone(timezone);
+        setTzSheetSearch('');
+        setStep2Sheet('timezone');
+      } else if (kind === 'address') {
+        setAddressSheetDraft(address);
+        setStep2Sheet('address');
+      } else {
+        setHoursSheetDraft(JSON.parse(JSON.stringify(hours)) as WizardHours);
+        setStep2Sheet('hours');
+      }
+    };
+
+    const cancelTypeSheet = () => {
+      const snap = typeSheetSnapshotRef.current;
+      if (snap) {
+        setVertical(snap.vertical);
+        setBeautySubtype(snap.beautySubtype);
+        setProfilePickPrimary(snap.profilePickPrimary);
+        setProfilePickSubtype(snap.profilePickSubtype);
+      }
+      typeSheetSnapshotRef.current = null;
+      setStep2Sheet(null);
+    };
+
+    const saveTypeSheet = () => {
+      markProfileFieldEdited('type');
+      typeSheetSnapshotRef.current = null;
+      setStep2Sheet(null);
+    };
+
+    const cancelTimezoneSheet = () => setStep2Sheet(null);
+
+    const saveTimezoneSheet = () => {
+      setSelectedCountry(tzSheetCountry);
+      setTimezone(tzSheetTimezone);
+      markProfileFieldEdited('timezone');
+      setStep2Sheet(null);
+    };
+
+    const cancelAddressSheet = () => setStep2Sheet(null);
+
+    const saveAddressSheet = () => {
+      setAddress(addressSheetDraft);
+      markProfileFieldEdited('address');
+      setStep2Sheet(null);
+    };
+
+    const cancelHoursSheet = () => setStep2Sheet(null);
+
+    const saveHoursSheet = () => {
+      setHours(hoursSheetDraft);
+      markProfileFieldEdited('hours');
+      setStep2Sheet(null);
+    };
+
+    const tzSearchLower = tzSheetSearch.trim().toLowerCase();
+    const filteredTzOptions = allTimezoneOptions.filter(
+      (z) =>
+        !tzSearchLower ||
+        z.label.toLowerCase().includes(tzSearchLower) ||
+        z.value.toLowerCase().includes(tzSearchLower) ||
+        z.country.toLowerCase().includes(tzSearchLower),
+    );
+
+    const pencilIcon = (
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+    );
+
     const profileCard = (
       field: Exclude<ProfileEditField, null>,
       label: string,
@@ -2098,9 +2301,110 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       editor: ReactNode,
       options: { wide?: boolean; imported?: { value?: unknown; confidence?: number; source?: string | null } | null } = {},
     ) => {
-      const editing = profileEditField === field;
       const hasUserValue = value.trim().length > 0;
       const showImportState = websiteImportAttempted && options.imported && (!userEditedProfileFields.includes(field) || !hasUserValue);
+
+      if (isStep2Mobile && (field === 'name' || field === 'phone' || field === 'website')) {
+        const editing = mobileInlineEdit === field;
+        return (
+          <div
+            ref={editing ? mobileInlineCardRef : undefined}
+            className={`profile-review-card ${options.wide ? 'wide' : ''}${editing ? ' onb-step2-field-card-editing' : ''}`}
+          >
+            <div className="profile-review-top">
+              <span className="profile-review-label">{label}</span>
+              <button
+                type="button"
+                className="profile-review-edit"
+                aria-label={editing ? `Cancel editing ${label}` : `Edit ${label}`}
+                onClick={() => (editing ? setMobileInlineEdit(null) : openMobileInline(field))}
+              >
+                {pencilIcon}
+              </button>
+            </div>
+            {editing ? (
+              <>
+                <input
+                  className="onb-step2-inline-input"
+                  value={mobileInlineDraft}
+                  onChange={(event) => setMobileInlineDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      applyMobileInline(field);
+                    }
+                    if (event.key === 'Escape') setMobileInlineEdit(null);
+                  }}
+                  autoFocus
+                  type={field === 'phone' ? 'tel' : 'text'}
+                  placeholder={
+                    field === 'name'
+                      ? 'Happy Nails & Spa'
+                      : field === 'website'
+                        ? 'yourbusiness.com or http://yourbusiness.com'
+                        : undefined
+                  }
+                />
+                <div className="onb-step2-inline-actions">
+                  <button type="button" className="onb-step2-inline-cancel" onClick={() => setMobileInlineEdit(null)} aria-label="Cancel">
+                    ✕
+                  </button>
+                  <button type="button" className="onb-step2-inline-save" onClick={() => applyMobileInline(field)}>
+                    ✓ Save
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div
+                className="profile-review-value onb-step2-value-click"
+                onClick={() => openMobileInline(field)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') openMobileInline(field);
+                }}
+              >
+                {value || 'Missing'}
+              </div>
+            )}
+            {showImportState ? profileImportGoogleFootnote(options.imported ?? undefined) : null}
+          </div>
+        );
+      }
+
+      if (isStep2Mobile && (field === 'type' || field === 'timezone' || field === 'address' || field === 'hours')) {
+        const sk = field as Step2SheetKind;
+        return (
+          <div className={`profile-review-card ${options.wide ? 'wide' : ''}`}>
+            <div className="profile-review-top">
+              <span className="profile-review-label">{label}</span>
+              <button type="button" className="profile-review-edit" aria-label={`Edit ${label}`} onClick={() => openMobileSheet(sk)}>
+                {pencilIcon}
+              </button>
+            </div>
+            {field === 'hours' ? (
+              <div className="onb-step2-value-click" onClick={() => openMobileSheet('hours')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openMobileSheet('hours'); }}>
+                <ProfileHoursPreviewGrid hours={hours} />
+              </div>
+            ) : (
+              <div
+                className="profile-review-value onb-step2-value-click"
+                onClick={() => openMobileSheet(sk)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') openMobileSheet(sk);
+                }}
+              >
+                {value || 'Missing'}
+              </div>
+            )}
+            {showImportState ? profileImportGoogleFootnote(options.imported ?? undefined) : null}
+          </div>
+        );
+      }
+
+      const editing = profileEditField === field;
       return (
         <div className={`profile-review-card ${options.wide ? 'wide' : ''}`}>
           <div className="profile-review-top">
@@ -2132,7 +2436,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             </button>
           </div>
           {editing ? (
-            <div className="profile-review-editor">{editor}</div>
+            <div className="profile-review-editor onb-step2-desktop-inline">{editor}</div>
           ) : field === 'hours' ? (
             <ProfileHoursPreviewGrid hours={hours} />
           ) : (
@@ -2142,12 +2446,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         </div>
       );
     };
-    const markProfileFieldEdited = (field: Exclude<ProfileEditField, null>) => {
-      setUserEditedProfileFields((fields) => (fields.includes(field) ? fields : [...fields, field]));
-    };
 
     return (
-      <div>
+      <>
+      <div className="onb-step-confirm">
         <h1 className="onb-title">Confirm your details</h1>
         <p className="onb-subtitle">AI filled these from your website. Edit anything that&apos;s wrong.</p>
 
@@ -2446,6 +2748,266 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           </button>
         </div>
       </div>
+
+      {isStep2Mobile && step2Sheet === 'type' ? (
+        <div className="onb-step2-sheet-overlay" role="presentation" onClick={cancelTypeSheet}>
+          <div
+            className="onb-step2-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="onb-step2-type-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="onb-step2-sheet-handle" />
+            <div className="onb-step2-sheet-title" id="onb-step2-type-title">
+              Type
+            </div>
+            <div>
+              <div className="onb-grid onb-compact-grid">
+                {MANUAL_PRIMARY_VERTICAL.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`choice-card compact ${profilePickPrimary === item.id ? 'active' : ''}`}
+                    onClick={() => {
+                      setProfilePickPrimary(item.id);
+                      if (item.id === 'beauty_umbrella') {
+                        setVertical('beauty_clinic');
+                        setBeautySubtype(profilePickSubtype || 'other_beauty');
+                      } else {
+                        setProfilePickSubtype('');
+                        setVertical(item.id);
+                        setBeautySubtype('');
+                      }
+                      setVerticalConfidence('high');
+                      setStatus(null);
+                    }}
+                  >
+                    <span className="emoji">{item.emoji}</span>
+                    <h4>{item.label}</h4>
+                  </button>
+                ))}
+              </div>
+              {profilePickPrimary === 'beauty_umbrella' ? (
+                <div className="preset-row">
+                  {BEAUTY_SUBTYPE_OPTIONS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`preset-chip ${profilePickSubtype === item.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setProfilePickSubtype(item.id);
+                        setVertical('beauty_clinic');
+                        setBeautySubtype(item.id);
+                        setVerticalConfidence('high');
+                        setStatus(null);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div className="onb-step2-sheet-actions">
+              <button type="button" className="onb-step2-sheet-cancel" onClick={cancelTypeSheet}>
+                Cancel
+              </button>
+              <button type="button" className="onb-step2-sheet-save" onClick={saveTypeSheet}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isStep2Mobile && step2Sheet === 'timezone' ? (
+        <div className="onb-step2-sheet-overlay" role="presentation" onClick={cancelTimezoneSheet}>
+          <div
+            className="onb-step2-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="onb-step2-tz-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="onb-step2-sheet-handle" />
+            <div className="onb-step2-sheet-title" id="onb-step2-tz-title">
+              Timezone
+            </div>
+            <div className="onb-field" style={{ marginBottom: 10 }}>
+              <label>Country</label>
+              <select
+                value={tzSheetCountry}
+                onChange={(event) => {
+                  const nextCountry = event.target.value;
+                  const nextCountryMeta = COUNTRY_TIMEZONES.find((item) => item.country === nextCountry);
+                  setTzSheetCountry(nextCountry);
+                  if (nextCountryMeta && !nextCountryMeta.timezones.some((zone) => zone.value === tzSheetTimezone)) {
+                    setTzSheetTimezone(nextCountryMeta.timezones[0].value);
+                  }
+                }}
+              >
+                <option value="">Select your country...</option>
+                {COUNTRY_TIMEZONES.map((item) => (
+                  <option key={item.country} value={item.country}>
+                    {item.flag} {item.country}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <input
+              type="search"
+              placeholder="Search timezone..."
+              value={tzSheetSearch}
+              onChange={(event) => setTzSheetSearch(event.target.value)}
+              autoComplete="off"
+              enterKeyHint="search"
+            />
+            <div className="onb-step2-tz-list" role="listbox">
+              {filteredTzOptions.map((z) => (
+                <div
+                  key={z.value}
+                  role="option"
+                  aria-selected={tzSheetTimezone === z.value}
+                  className={`onb-step2-tz-item${tzSheetTimezone === z.value ? ' selected' : ''}`}
+                  onClick={() => setTzSheetTimezone(z.value)}
+                >
+                  {z.flag} {z.label}
+                </div>
+              ))}
+            </div>
+            <div className="onb-step2-sheet-actions">
+              <button type="button" className="onb-step2-sheet-cancel" onClick={cancelTimezoneSheet}>
+                Cancel
+              </button>
+              <button type="button" className="onb-step2-sheet-save" onClick={saveTimezoneSheet}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isStep2Mobile && step2Sheet === 'address' ? (
+        <div className="onb-step2-sheet-overlay" role="presentation" onClick={cancelAddressSheet}>
+          <div
+            className="onb-step2-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="onb-step2-address-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="onb-step2-sheet-handle" />
+            <div className="onb-step2-sheet-title" id="onb-step2-address-title">
+              Address
+            </div>
+            <textarea
+              rows={3}
+              value={addressSheetDraft}
+              onChange={(event) => setAddressSheetDraft(event.target.value)}
+              placeholder="Street, City, State ZIP"
+            />
+            <div className="onb-step2-sheet-actions">
+              <button type="button" className="onb-step2-sheet-cancel" onClick={cancelAddressSheet}>
+                Cancel
+              </button>
+              <button type="button" className="onb-step2-sheet-save" onClick={saveAddressSheet}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isStep2Mobile && step2Sheet === 'hours' ? (
+        <div className="onb-step2-sheet-overlay" role="presentation" onClick={cancelHoursSheet}>
+          <div
+            className="onb-step2-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="onb-step2-hours-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="onb-step2-sheet-handle" />
+            <div className="onb-step2-sheet-title" id="onb-step2-hours-title">
+              Hours
+            </div>
+            <div className="preset-row">
+              <button type="button" className="preset-chip" onClick={() => setHoursSheetDraft(defaultHours())}>
+                Standard salon hours
+              </button>
+              <button type="button" className="preset-chip" onClick={() => setHoursSheetDraft((h) => presetWeekendClosed({ ...h }))}>
+                Weekend closed
+              </button>
+              <button type="button" className="preset-chip" onClick={() => setHoursSheetDraft(presetOpen7Days(defaultHours()))}>
+                Open 7 days
+              </button>
+            </div>
+            <div className="hours-list" style={{ marginTop: 12 }}>
+              {DAYS.map(([day, label]) => (
+                <div className={`hours-row ${hoursSheetDraft[day].open ? '' : 'closed'}`} key={day}>
+                  <strong className="hours-day">{label}</strong>
+                  <label className={`toggle-pill ${hoursSheetDraft[day].open ? 'active' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={hoursSheetDraft[day].open}
+                      onChange={(event) => {
+                        setHoursSheetDraft({
+                          ...hoursSheetDraft,
+                          [day]: { ...hoursSheetDraft[day], open: event.target.checked },
+                        });
+                      }}
+                    />
+                    <span className="toggle-dot" />
+                    {hoursSheetDraft[day].open ? 'Open' : 'Closed'}
+                  </label>
+                  <select
+                    disabled={!hoursSheetDraft[day].open}
+                    value={hoursSheetDraft[day].from}
+                    onChange={(event) => {
+                      setHoursSheetDraft({
+                        ...hoursSheetDraft,
+                        [day]: { ...hoursSheetDraft[day], from: event.target.value },
+                      });
+                    }}
+                  >
+                    {TIME_OPTIONS.map((time) => (
+                      <option key={time} value={time}>
+                        {formatTimeLabel(time)}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    disabled={!hoursSheetDraft[day].open}
+                    value={hoursSheetDraft[day].to}
+                    onChange={(event) => {
+                      setHoursSheetDraft({
+                        ...hoursSheetDraft,
+                        [day]: { ...hoursSheetDraft[day], to: event.target.value },
+                      });
+                    }}
+                  >
+                    {TIME_OPTIONS.map((time) => (
+                      <option key={time} value={time}>
+                        {formatTimeLabel(time)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div className="onb-step2-sheet-actions">
+              <button type="button" className="onb-step2-sheet-cancel" onClick={cancelHoursSheet}>
+                Cancel
+              </button>
+              <button type="button" className="onb-step2-sheet-save" onClick={saveHoursSheet}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      </>
     );
   }
 
