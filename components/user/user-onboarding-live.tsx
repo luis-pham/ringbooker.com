@@ -1877,8 +1877,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-spinner{width:12px;height:12px;border:2px solid #d1d5db;border-top-color:#111827;border-radius:999px;animation:onbSpin .8s linear infinite}
 .onb-import-delay{border-radius:10px;background:#fff7ed;color:#9a3412;padding:10px 12px;font-size:13px;line-height:1.45}.onb-import-progress-actions{display:flex;justify-content:flex-start}.onb-import-progress-actions .onb-help-link{color:#111827;text-decoration:underline;text-underline-offset:3px}
 @keyframes onbSpin{to{transform:rotate(360deg)}}
-.onb-import-manual-link{display:block;margin-top:12px;text-align:center;border:0;background:transparent;color:rgba(255,255,255,.92);font-size:14px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font:inherit;padding:0;width:100%}
-.onb-import-manual-link:hover{color:#fff}
+.onb-import-manual-link-desktop{display:none;margin-top:14px;text-align:center;border:0;background:transparent;color:#111827;font-size:14px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font:inherit;padding:0;width:100%;box-sizing:border-box}
+.onb-import-manual-link-desktop:hover{color:#5b21b6}
+@media(min-width:641px){.onb-import-manual-link-desktop{display:block}}
 .onb-manual-panel{border-top:0;padding-top:0}
 .onb-step1-manual{max-width:none;margin:0;width:100%;padding:0;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
 .onb-step1-manual .onb-step1-section{display:flex;flex-direction:column;gap:0}
@@ -1903,10 +1904,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-step1-also-chips .preset-chip:not(.mixed-chip){display:inline-flex;align-items:center;padding:8px 13px;border-radius:20px;font-size:13px;font-weight:500;border:1px solid #e5e7eb;background:#fff;color:#374151}
 .onb-step1-also-chips .preset-chip:not(.mixed-chip).active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}
 .onb-step1-manual-actions{justify-content:space-between;align-items:center;max-width:none;margin-left:0;margin-right:0;margin-top:28px;gap:16px;width:100%}
-.onb-step1-next-desktop{min-height:auto;padding:10px 28px;width:auto}
 .onb-step1-hide-link{border:0;background:transparent;padding:8px 0;color:#9ca3af;cursor:pointer;font:inherit;font-size:15px;text-decoration:none}
 .onb-step1-hide-link:hover{text-decoration:underline;text-underline-offset:3px}
-@media(max-width:640px){.onb-sticky-cta.onb-step1-manual-sticky{border-top:1px solid #e2e8f0;padding-top:14px}.onb-sticky-cta.onb-step1-manual-sticky .onb-btn-primary{min-height:52px;border-radius:12px;background:#111;color:#fff;width:100%;box-shadow:none}.onb-sticky-cta.onb-step1-manual-sticky .onb-btn-secondary{border:0;background:transparent;color:#9ca3af;box-shadow:none;min-height:auto;padding:10px 0;font-weight:400}}
+@media(max-width:640px){.onb-sticky-cta .onb-sticky-quiet{border:0!important;background:transparent!important;color:#9ca3af!important;box-shadow:none!important;min-height:auto!important;padding:10px 0!important;font-weight:400!important}}
 .onb-compact-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .choice-card.compact{min-height:78px;padding:12px;text-align:center;display:grid;align-content:center;justify-items:center}
 .choice-card.compact .emoji{font-size:1.1rem;color:#475569}.choice-card.compact h4{margin:7px 0 0;font-size:14px;font-weight:500;color:#374151}
@@ -1978,7 +1978,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-group-title-mobile{display:none;align-items:center;gap:4px;min-width:0;flex-wrap:wrap}
 @media(max-width:640px){.onb-group-title-desktop{display:none!important}.onb-group-title-mobile{display:flex!important}.service-group-main .service-group-meta{grid-column:1/-1}}
 @media(min-width:641px){.onb-group-title-mobile{display:none!important}}
-.onb-group-rename-pencil{border:0;background:transparent;padding:0 2px;margin-left:5px;font-size:12px;color:#9ca3af;cursor:pointer;line-height:1}
+.onb-group-rename-pencil{border:0;background:transparent;padding:0 2px;margin-left:5px;color:#9ca3af;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
+.onb-group-rename-pencil svg{display:block;flex-shrink:0}
 .onb-group-add-header-desktop{margin-left:auto;display:none;align-items:center;justify-content:center;padding:6px 12px;font-size:13px;font-weight:500;color:#7c3aed;background:transparent;border:1px dashed #e5e7eb;border-radius:8px;cursor:pointer;font:inherit;white-space:nowrap}
 @media(min-width:641px){.onb-group-add-header-desktop{display:inline-flex}}
 .service-group-collapse-btn{border:0;background:transparent;padding:4px 6px;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;flex-shrink:0;margin-left:4px}
@@ -2132,31 +2133,33 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         </p>
         <div className="onb-stack" style={{ marginTop: 24 }}>
           {!manualEntryOpen ? (
-            <div className="onb-import-panel">
-              <div className="onb-import-row">
-                <div className="onb-field">
-                  <input
-                    value={websiteUrl}
-                    onChange={(event) => setWebsiteUrl(event.target.value)}
-                    placeholder="e.g. glowspa.com or maps.google.com/..."
-                    inputMode="url"
-                  />
+            <>
+              <div className="onb-import-panel">
+                <div className="onb-import-row">
+                  <div className="onb-field">
+                    <input
+                      value={websiteUrl}
+                      onChange={(event) => setWebsiteUrl(event.target.value)}
+                      placeholder="e.g. glowspa.com or maps.google.com/..."
+                      inputMode="url"
+                    />
+                  </div>
+                  <button
+                    className="onb-import-button onb-actions-desktop"
+                    type="button"
+                    onClick={() => void saveQuickContinue()}
+                    disabled={saving || websiteLoading}
+                  >
+                    ✧ {websiteLoading ? 'Importing…' : 'Import'}
+                  </button>
                 </div>
-                <button
-                  className="onb-import-button onb-actions-desktop"
-                  type="button"
-                  onClick={() => void saveQuickContinue()}
-                  disabled={saving || websiteLoading}
-                >
-                  ✧ {websiteLoading ? 'Importing…' : 'Import'}
-                </button>
               </div>
               {!websiteLoading ? (
-                <button type="button" className="onb-import-manual-link" onClick={() => enterManualSetup()} disabled={saving}>
+                <button type="button" className="onb-import-manual-link-desktop" onClick={() => enterManualSetup()} disabled={saving}>
                   No website? Fill in manually
                 </button>
               ) : null}
-            </div>
+            </>
           ) : null}
           {websiteLoading ? renderImportProgressCard() : null}
           {manualEntryOpen ? (
@@ -2263,22 +2266,17 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             >
               Hide manual form
             </button>
-            <button
-              className="onb-btn-primary onb-step1-next-desktop"
-              type="button"
-              onClick={() => void saveQuickContinue()}
-              disabled={saving || websiteLoading}
-            >
+            <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
               Next →
             </button>
           </div>
         ) : null}
-        <div className={`onb-sticky-cta ${manualEntryOpen ? 'onb-step1-manual-sticky' : ''}`}>
+        <div className="onb-sticky-cta">
           <button className="onb-btn-primary" type="button" onClick={() => void saveQuickContinue()} disabled={saving || websiteLoading}>
             {websiteLoading ? 'Importing…' : manualEntryOpen ? 'Next →' : WEBSITE_IMPORT_EXTRACTION_ACTIVE ? 'Import' : 'Next →'}
           </button>
           <button
-            className="onb-btn-secondary"
+            className="onb-btn-secondary onb-sticky-quiet"
             type="button"
             onClick={() => {
               if (manualEntryOpen) setManualEntryOpen(false);
@@ -3271,7 +3269,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                     setGroupRenameMobileDraft(titleCaseServiceLabel(group));
                   }}
                 >
-                  ✏
+                  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
                 </button>
               </span>
               <span className="service-group-meta">{items.length} {items.length === 1 ? 'service' : 'services'}</span>
@@ -3493,7 +3494,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           <button className="onb-btn-primary" type="button" onClick={() => void continueServices()} disabled={saving}>
             {saving ? 'Saving…' : 'Save services'}
           </button>
-          <button className="onb-btn-secondary" type="button" onClick={() => void continueServices()} disabled={saving}>
+          <button className="onb-btn-secondary onb-sticky-quiet" type="button" onClick={() => void continueServices()} disabled={saving}>
             Skip services for now
           </button>
         </div>
