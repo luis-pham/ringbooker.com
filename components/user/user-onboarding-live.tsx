@@ -293,27 +293,86 @@ const MIXED_SERVICE_GROUP_ICONS: Record<(typeof MIXED_SERVICE_GROUPS)[number], s
   Other: '⋯',
 };
 
-/** Step 3 chip pre-selection from Step 1 business type (`beauty_umbrella` = mixed → none). */
-const STEP3_VERTICAL_PRESELECT_CHIPS: Partial<Record<Vertical | 'beauty_umbrella', readonly string[]>> = {
-  hair_salon: ['Haircuts', 'Hair Color'],
-  nail_salon: ['Manicure', 'Pedicure'],
-  day_spa: ['Massage', 'Facials'],
-  med_spa: ['Injectables', 'Skin Treatments'],
-  beauty_clinic: ['Facials', 'Brows & Lashes'],
-  beauty_umbrella: [],
+type ChipSuggestionProfileKey = Vertical | 'lash_studio' | 'aesthetic_clinic' | 'wax_studio' | 'brow_studio';
+
+/** Tier-1 suggested chips by business type; `mixed` / indeterminate → show all chips flat (no tier split, no auto pre-select). */
+const CHIP_SUGGESTIONS: Record<ChipSuggestionProfileKey, readonly string[]> = {
+  hair_salon: ['Haircuts', 'Hair Color', 'Waxing', 'Brows & Lashes'],
+  nail_salon: ['Manicure', 'Pedicure', 'Acrylics / Extensions', 'Waxing'],
+  day_spa: ['Massage', 'Facials', 'Waxing', 'Skin Treatments'],
+  med_spa: ['Injectables', 'Laser', 'Facials', 'Skin Treatments'],
+  beauty_clinic: ['Facials', 'Brows & Lashes', 'Makeup', 'Waxing'],
+  lash_studio: ['Brows & Lashes', 'Waxing', 'Facials', 'Makeup'],
+  // Botox / filler / laser resurfacing core; facials often bundled at aesthetic clinics.
+  aesthetic_clinic: ['Injectables', 'Laser', 'Skin Treatments', 'Facials'],
+  // Wax-first; brow shaping common; post-wax skin care; consult common at wax studios.
+  wax_studio: ['Waxing', 'Brows & Lashes', 'Skin Treatments', 'Consultations'],
+  // Brow-focused + wax/makeup; consult for shaping / tint plans.
+  brow_studio: ['Brows & Lashes', 'Waxing', 'Makeup', 'Consultations'],
 };
 
-function resolveStep3PreselctChips(vertical: Vertical | '', step1Pick: Vertical | 'beauty_umbrella' | ''): string[] {
-  if (step1Pick === 'beauty_umbrella') return [];
-  if (step1Pick && STEP3_VERTICAL_PRESELECT_CHIPS[step1Pick]) {
-    const row = STEP3_VERTICAL_PRESELECT_CHIPS[step1Pick];
-    return row ? [...row] : [];
+/** Maps Step 1 beauty specialty (under Mixed / beauty_clinic) to tier-1 chip profile. */
+const BEAUTY_SUBTYPE_CHIP_KEY: Record<BeautySubtype, ChipSuggestionProfileKey | null> = {
+  beauty_clinic: 'beauty_clinic',
+  aesthetic_clinic: 'aesthetic_clinic',
+  wax_studio: 'wax_studio',
+  brow_studio: 'brow_studio',
+  lash_studio: 'lash_studio',
+  other_beauty: null,
+};
+
+/** Returns preset chip keys to select + merge, or `null` for flat-all mode (no auto pre-select). */
+function resolveStep3PresetChipKeys(
+  vertical: Vertical | '',
+  step1Pick: Vertical | 'beauty_umbrella' | '',
+  beautySubtype: BeautySubtype | '',
+): string[] | null {
+  if (step1Pick === 'beauty_umbrella') {
+    if (!beautySubtype) return null;
+    const tierKey = BEAUTY_SUBTYPE_CHIP_KEY[beautySubtype];
+    if (tierKey === null) return null;
+    return [...CHIP_SUGGESTIONS[tierKey]];
   }
-  if (vertical && STEP3_VERTICAL_PRESELECT_CHIPS[vertical]) {
-    const row = STEP3_VERTICAL_PRESELECT_CHIPS[vertical];
-    return row ? [...row] : [];
+  if (vertical === 'beauty_clinic' && beautySubtype) {
+    const tierKey = BEAUTY_SUBTYPE_CHIP_KEY[beautySubtype];
+    if (tierKey === null) return null;
+    return [...CHIP_SUGGESTIONS[tierKey]];
   }
-  return [];
+  if (step1Pick && step1Pick in CHIP_SUGGESTIONS) {
+    return [...CHIP_SUGGESTIONS[step1Pick as keyof typeof CHIP_SUGGESTIONS]];
+  }
+  if (vertical && vertical in CHIP_SUGGESTIONS) return [...CHIP_SUGGESTIONS[vertical]];
+  return null;
+}
+
+function step3ChipDisplayPlan(
+  vertical: Vertical | '',
+  step1Pick: Vertical | 'beauty_umbrella' | '',
+  beautySubtype: BeautySubtype | '',
+): { flatAll: boolean; tier1: string[]; tier2: string[] } {
+  const presetKeys = resolveStep3PresetChipKeys(vertical, step1Pick, beautySubtype);
+  if (presetKeys === null) {
+    return { flatAll: true, tier1: [...MIXED_SERVICE_GROUPS], tier2: [] };
+  }
+  const tier1Ordered = presetKeys.filter((name) => MIXED_SERVICE_GROUPS.includes(name as (typeof MIXED_SERVICE_GROUPS)[number]));
+  const tier1Set = new Set(tier1Ordered.map((s) => s.toLowerCase()));
+  const tier2 = MIXED_SERVICE_GROUPS.filter((name) => !tier1Set.has(name.toLowerCase()));
+  return { flatAll: false, tier1: tier1Ordered, tier2 };
+}
+
+function shouldShowServiceGroupCard(
+  manualSetup: boolean,
+  group: string,
+  items: Array<{ service: ServiceItem; index: number }>,
+  selectedServiceGroups: string[],
+): boolean {
+  const hasNamedService = items.some(({ service }) => service.name.trim().length > 0);
+  if (hasNamedService) return true;
+  if (selectedServiceGroups.includes(group)) return true;
+  if (!manualSetup) {
+    return items.some(({ service }) => Boolean(service.source || service.sourceHint));
+  }
+  return false;
 }
 
 const MANUAL_SERVICE_PRESETS: Record<string, ServiceItem[]> = {
@@ -1082,9 +1141,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           ? catalogServices
           : initialShop.services.length > 0
             ? initialShop.services
-            : [{ name: '', duration_min: null, duration_text: '', price: 0, group: 'General Services' }];
+            : [];
       })()
-    : [{ name: '', duration_min: null, duration_text: '', price: 0 }];
+    : [];
 
   const [loading, setLoading] = useState(!initialData);
   const [saving, setSaving] = useState(false);
@@ -1183,6 +1242,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const step1ManualPrimaryRef = useRef<Vertical | 'beauty_umbrella' | ''>('');
   const step3ChipPresetsAppliedRef = useRef(false);
   const [addGroupSheetConfig, setAddGroupSheetConfig] = useState<{ title: string; placeholder: string } | null>(null);
+  const [step3ShowMoreChips, setStep3ShowMoreChips] = useState(false);
 
   useEffect(() => {
     const enteredProfile = currentStep === 2 && prevStepRef.current !== 2;
@@ -1288,17 +1348,19 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   useEffect(() => {
     if (currentStep !== 3) {
       step3ChipPresetsAppliedRef.current = false;
+      setStep3ShowMoreChips(false);
       return;
     }
     if (step3ChipPresetsAppliedRef.current) return;
     const hasContext = Boolean(vertical || step1ManualPrimaryRef.current);
     if (!hasContext) return;
     step3ChipPresetsAppliedRef.current = true;
-    const chips = resolveStep3PreselctChips(vertical, step1ManualPrimaryRef.current);
+    const chipKeys = resolveStep3PresetChipKeys(vertical, step1ManualPrimaryRef.current, beautySubtype);
     setSelectedServiceGroups((prev) => {
       let next = prev.filter((g) => g !== 'Other');
+      if (chipKeys === null) return next;
       const setLower = new Set(next.map((g) => g.toLowerCase()));
-      for (const c of chips) {
+      for (const c of chipKeys) {
         if (!setLower.has(c.toLowerCase())) {
           next = [...next, c];
           setLower.add(c.toLowerCase());
@@ -1306,11 +1368,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       }
       return next;
     });
-    if (chips.length === 0) return;
+    if (chipKeys === null || chipKeys.length === 0) return;
     setServices((current) => {
       let next = current.filter((service) => service.name.trim().length > 0);
       const existing = new Set(next.map((service) => `${service.group || 'General Services'}:${service.name}`.toLowerCase()));
-      for (const group of chips) {
+      for (const group of chipKeys) {
         const preset = MANUAL_SERVICE_PRESETS[group];
         if (!preset) continue;
         for (const service of preset) {
@@ -1323,7 +1385,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       }
       return next;
     });
-  }, [currentStep, vertical]);
+  }, [currentStep, vertical, beautySubtype]);
 
   useEffect(() => {
     if (groupRenameDesktop) {
@@ -1434,7 +1496,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     else setImportSource('none');
     const catalogServices = servicesFromCatalog(body.shop.service_catalog);
     setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
-    const nextServices = catalogServices.length > 0 ? catalogServices : body.shop.services.length > 0 ? body.shop.services : [{ name: '', duration_min: null, duration_text: '', price: 0, group: 'General Services' }];
+    const nextServices = catalogServices.length > 0 ? catalogServices : body.shop.services.length > 0 ? body.shop.services : [];
     setServices(nextServices);
     setSelectedServiceGroups([...new Set(nextServices.map((service) => service.group?.trim()).filter((group): group is string => Boolean(group)))]);
     setCurrentStep(normalizeStep(body.shop.current_onboarding_step));
@@ -2041,6 +2103,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-step1-hide-link:hover{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:640px){.onb-sticky-cta .onb-sticky-quiet{border:0!important;background:transparent!important;color:#9ca3af!important;box-shadow:none!important;min-height:auto!important;padding:10px 0!important;font-weight:400!important}}
 .onb-compact-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.onb-step2-type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .choice-card.compact{min-height:78px;padding:12px;text-align:center;display:grid;align-content:center;justify-items:center}
 .choice-card.compact .emoji{font-size:1.1rem;color:#475569}.choice-card.compact h4{margin:7px 0 0;font-size:14px;font-weight:500;color:#374151}
 .choice-card.compact.active .emoji,.choice-card.compact.active h4{color:#6d28d9}
@@ -2113,7 +2176,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 @media(min-width:641px){.onb-group-title-mobile{display:none!important}}
 .onb-group-rename-pencil{border:0;background:transparent;padding:0 2px;margin-left:5px;color:#9ca3af;cursor:pointer;line-height:1;display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}
 .onb-group-rename-pencil svg{display:block;flex-shrink:0}
-.onb-group-add-header-desktop{margin-left:auto;display:none;align-items:center;justify-content:center;padding:6px 12px;font-size:14px;font-weight:500;color:#7c3aed;background:transparent;border:1px dashed #e5e7eb;border-radius:8px;cursor:pointer;font:inherit;white-space:nowrap}
+.onb-group-add-header-desktop{margin-left:auto;display:none;align-items:center;justify-content:center;padding:6px 12px;font-size:14px;font-weight:500;color:#7c3aed;background:transparent;border:1px dashed #e5e7eb;border-radius:8px;cursor:pointer;font-family:inherit;white-space:nowrap}
 @media(min-width:641px){.onb-group-add-header-desktop{display:inline-flex}}
 .service-group-collapse-btn{border:0;background:transparent;padding:4px 6px;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;flex-shrink:0;margin-left:4px}
 .onb-step3-section-label{display:block;margin:16px 0 6px;color:#9ca3af;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
@@ -2165,7 +2228,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .hours-list{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#fff}.hours-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:#fff;border-bottom:1px solid #f1f5f9}.hours-row:last-child{border-bottom:0}.hours-row.closed select{opacity:.4;background:#f8fafc!important}
 .hours-day{font-weight:500;color:#111827;min-width:40px}.toggle-pill{position:relative;display:inline-flex;align-items:center;gap:8px;border:1px solid #dbe2ee;border-radius:999px;padding:8px 12px;background:#fff;font-weight:500;color:#64748b;cursor:pointer;box-shadow:none}.toggle-pill input{position:absolute;opacity:0;pointer-events:none}.toggle-dot{width:28px;height:16px;border-radius:999px;background:#cbd5e1;position:relative;transition:.18s ease;box-shadow:none}.toggle-dot:after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:none;transition:.18s ease}.toggle-pill.active{border-color:#8b5cf6;color:#5b21b6;background:transparent}.toggle-pill.active .toggle-dot{background:#7c3aed}.toggle-pill.active .toggle-dot:after{transform:translateX(12px)}
 .lang-list{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}.lang-option{display:grid;gap:6px;justify-items:center;align-content:start}.lang-pill{min-width:72px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #e2e8f0;border-radius:999px;padding:9px 14px;background:#fff;color:#374151;font-size:16px;font-weight:500;cursor:pointer;box-shadow:none}.lang-pill input{position:absolute;opacity:0;pointer-events:none}.lang-pill.selected{background:#faf5ff;border-color:#7c3aed;color:#111827;box-shadow:none}.lang-pill.required{background:#faf5ff;border-color:#7c3aed;color:#5b21b6;cursor:not-allowed}.lang-pill.locked{background:#f1f5f9!important;color:#64748b;cursor:not-allowed}.required-badge{display:block;color:#16a34a;background:transparent;padding:0;font-size:12px;font-weight:500;line-height:1.2}.plan-badge{display:block;color:#64748b;background:transparent!important;padding:0;font-size:12px;font-weight:500;line-height:1.2}.lang-badge-spacer{display:block;height:14px}.mini-badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:#dcfce7;color:#16a34a;padding:2px 8px;font-size:11px;font-weight:600}
-.preset-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}.preset-chip{border:1px solid #e2e8f0;border-radius:999px;background:#fff;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;box-shadow:none;transition:border-color .15s ease,background .15s ease}.preset-chip:hover{border-color:#c4b5fd;background:#faf5ff}.preset-chip:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
+.preset-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}.onb-chips-tier2{margin-bottom:14px}.onb-chips-show-more-btn{font-size:12px;color:#7c3aed;background:none;border:none;cursor:pointer;padding:4px 0;font-family:'Inter',sans-serif;margin-top:4px;text-align:left}.preset-chip{border:1px solid #e2e8f0;border-radius:999px;background:#fff;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer;box-shadow:none;transition:border-color .15s ease,background .15s ease}.preset-chip:hover{border-color:#c4b5fd;background:#faf5ff}.preset-chip:focus-visible{outline:2px solid #7c3aed;outline-offset:2px}
 .hours-summary{font-size:14px;color:#334155;line-height:1.5;margin:0 0 12px}
 .acc{border:1px solid #e2e8f0;border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}.acc-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border:0;background:#fff;font:inherit;font-weight:500;text-align:left;cursor:pointer}.acc-body{padding:0 16px 16px;border-top:1px solid #f1f5f9}
 .test-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:20px}.test-card{border:1px solid #e2e8f0;border-radius:16px;padding:20px;background:#fff;display:flex;flex-direction:column;gap:10px;min-height:160px;box-shadow:none}.test-card h3{margin:0;font-size:17px}.test-card p{margin:0;font-size:14px;color:#64748b;line-height:1.55}
@@ -2430,7 +2493,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
     const resolvedVerticalLabel =
       vertical === 'beauty_clinic' && beautySubtype
-        ? `${VERTICAL_LABELS.beauty_clinic} · ${BEAUTY_SUBTYPE_LABELS[beautySubtype]}`
+        ? BEAUTY_SUBTYPE_LABELS[beautySubtype]
         : vertical
           ? VERTICAL_LABELS[vertical]
           : '';
@@ -3020,7 +3083,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               Type
             </div>
             <div>
-              <div className="onb-grid onb-compact-grid">
+              <div className="onb-step2-type-grid">
                 {MANUAL_PRIMARY_VERTICAL.map((item) => (
                   <button
                     key={item.id}
@@ -3279,26 +3342,50 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     const fullImport = !manualSetup && importedServiceCount >= 5 && hasNamedGroups;
     const showChipSection = !fullImport;
     const groupNames = [
-      ...new Set([
-        ...selectedServiceGroups,
-        ...services.map((service) => service.group || 'General Services'),
-        services.length === 0 ? 'General Services' : '',
-      ].filter(Boolean)),
+      ...new Set([...selectedServiceGroups, ...services.map((service) => service.group || 'General Services')].filter(Boolean)),
     ];
     const groupedServices = groupNames.map((group) => ({
       group,
       items: services.map((service, index) => ({ service, index })).filter(({ service }) => (service.group || 'General Services') === group),
     }));
+    const visibleGroupedServices = groupedServices.filter(({ group, items }) =>
+      shouldShowServiceGroupCard(manualSetup, group, items, selectedServiceGroups),
+    );
     const chipSideGroups = thinImport
-      ? groupedServices.filter(
+      ? visibleGroupedServices.filter(
           ({ items }) => !items.some(({ service }) => Boolean(service.source || service.sourceHint)),
         )
       : [];
     const importedSideGroups = thinImport
-      ? groupedServices.filter(({ items }) => items.some(({ service }) => Boolean(service.source || service.sourceHint)))
+      ? visibleGroupedServices.filter(({ items }) => items.some(({ service }) => Boolean(service.source || service.sourceHint)))
       : [];
+    const chipDisplayPlan = step3ChipDisplayPlan(vertical, step1ManualPrimaryRef.current, beautySubtype);
     const totalServices = services.filter((service) => service.name.trim().length > 0).length;
     const importNote = totalServices === 1 ? '✓ 1 service imported' : `✓ ${totalServices} services imported`;
+    const chipTierMargin = thinImport ? 0 : 10;
+    const renderCategoryChips = (chips: readonly string[]) =>
+      chips.map((chipGroup) => {
+        const isManualOther = manualSetup && chipGroup === 'Other';
+        const isActive = !isManualOther && selectedServiceGroups.includes(chipGroup);
+        return (
+          <button
+            key={chipGroup}
+            type="button"
+            className={`preset-chip mixed-chip ${isActive ? 'active' : ''}`}
+            onClick={() =>
+              isManualOther
+                ? setAddGroupSheetConfig({
+                    title: 'Name your category',
+                    placeholder: 'e.g. Waxing, Lashes, Threading...',
+                  })
+                : toggleServiceGroup(chipGroup)
+            }
+          >
+            <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[chipGroup as keyof typeof MIXED_SERVICE_GROUP_ICONS]}</span>
+            {chipGroup}
+          </button>
+        );
+      });
 
     const renderServiceEditor = (group: string, index: number | null, mode: 'inline' | 'sheet') => {
       const draft = serviceEditor?.draft;
@@ -3539,30 +3626,27 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             {thinImport ? (
               <p className="onb-step3-section-hint">Tap to add — we&apos;ll create example services with prices to fill in.</p>
             ) : null}
-            <div className="preset-row" style={{ marginTop: thinImport ? 0 : 10 }}>
-              {MIXED_SERVICE_GROUPS.map((chipGroup) => {
-                const isManualOther = manualSetup && chipGroup === 'Other';
-                const isActive = !isManualOther && selectedServiceGroups.includes(chipGroup);
-                return (
-                  <button
-                    key={chipGroup}
-                    type="button"
-                    className={`preset-chip mixed-chip ${isActive ? 'active' : ''}`}
-                    onClick={() =>
-                      isManualOther
-                        ? setAddGroupSheetConfig({
-                            title: 'Name your category',
-                            placeholder: 'e.g. Waxing, Lashes, Threading...',
-                          })
-                        : toggleServiceGroup(chipGroup)
-                    }
-                  >
-                    <span className="chip-icon">{MIXED_SERVICE_GROUP_ICONS[chipGroup]}</span>
-                    {chipGroup}
+            {chipDisplayPlan.flatAll ? (
+              <div className="preset-row onb-chips-tier1" style={{ marginTop: chipTierMargin }}>
+                {renderCategoryChips(chipDisplayPlan.tier1)}
+              </div>
+            ) : (
+              <>
+                <div className="preset-row onb-chips-tier1" style={{ marginTop: chipTierMargin }}>
+                  {renderCategoryChips(chipDisplayPlan.tier1)}
+                </div>
+                {!step3ShowMoreChips && chipDisplayPlan.tier2.length > 0 ? (
+                  <button type="button" className="onb-chips-show-more-btn" onClick={() => setStep3ShowMoreChips(true)}>
+                    + Show more categories
                   </button>
-                );
-              })}
-            </div>
+                ) : null}
+                {step3ShowMoreChips ? (
+                  <div className="preset-row onb-chips-tier2" style={{ marginTop: 8 }}>
+                    {renderCategoryChips(chipDisplayPlan.tier2)}
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         ) : null}
         {thinImport ? (
@@ -3583,7 +3667,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           </>
         ) : (
           <div className="onb-service-groups" aria-label="Service groups">
-            {groupedServices.map(({ group, items }) => renderGroupCard(group, items))}
+            {visibleGroupedServices.map(({ group, items }) => renderGroupCard(group, items))}
           </div>
         )}
         {thinImport || fullImport ? (
