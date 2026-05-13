@@ -1265,6 +1265,47 @@ export function UserSettingsLive({
     return [duration || variant.label, price].filter(Boolean).join(' · ');
   }
 
+  function renderCatalogServiceListMeta(service: ShopService): ReactNode {
+    if (service.variants?.length) {
+      return `${service.variants.length} options · ${service.variants.slice(0, 2).map(formatVariantSummary).join(' / ')}`;
+    }
+    const price = formatServicePriceSummary(service);
+    const dur = serviceDurationText(service);
+    return (
+      <>
+        {price}
+        {dur ? (
+          <> · {dur}</>
+        ) : (
+          <>
+            {' '}
+            <span className="service-duration-warn" role="img" aria-label="No duration set">
+              ⚠
+            </span>
+          </>
+        )}
+      </>
+    );
+  }
+
+  function renderServiceSummaryNameCell(name: string | null | undefined) {
+    const trimmed = (name ?? '').trim();
+    const untitled = trimmed.length === 0;
+    const display = untitled ? 'Untitled service' : trimmed;
+    return (
+      <span className={`service-summary-name${untitled ? ' service-summary-name--untitled' : ''}`}>
+        <span className="service-summary-name-inner">
+          {untitled ? (
+            <span className="service-summary-untitled-warn" aria-hidden>
+              ⚠
+            </span>
+          ) : null}
+          <span className="service-summary-name-text">{display}</span>
+        </span>
+      </span>
+    );
+  }
+
   function renderEditIcon() {
     return (
       <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
@@ -1806,7 +1847,7 @@ export function UserSettingsLive({
 	                        {currentForm.services.map((service, index) => (
 	                          <div key={`${service.name || 'service'}-${index}`} className="service-summary-item">
 	                            <div className="service-summary-row">
-	                              <span className="service-summary-name">{service.name || 'Untitled service'}</span>
+	                              {renderServiceSummaryNameCell(service.name)}
 	                              <span className="service-summary-meta">${Math.round(Number(service.price) || 0)} · {service.duration_min || 60} min</span>
 	                              <button
 	                                type="button"
@@ -1821,11 +1862,12 @@ export function UserSettingsLive({
 	                              <div className="service-inline-editor">
 	                                <div className="service-item-head">
 	                                  <div className="field">
-	                                    <label>Service name</label>
+	                                    <label>service name</label>
 	                                    <input value={service.name} onChange={(event) => updateLegacyService(index, { name: event.target.value })} placeholder="Gel Manicure" />
+	                                    <p className="service-name-edit-hint">Tip: shorten the name so it&apos;s easier for callers to understand</p>
 	                                  </div>
 	                                  <div className="field">
-	                                    <label>Duration</label>
+	                                    <label>duration</label>
 	                                    <input
 	                                      type="number"
 	                                      min={1}
@@ -1835,7 +1877,7 @@ export function UserSettingsLive({
 	                                    />
 	                                  </div>
 	                                  <div className="field">
-	                                    <label>Price</label>
+	                                    <label>price</label>
 	                                    <input type="number" min={0} value={service.price} onChange={(event) => updateLegacyService(index, { price: Number(event.target.value) })} />
 	                                  </div>
 	                                </div>
@@ -1915,12 +1957,8 @@ export function UserSettingsLive({
 	                              {groupServices.map((service) => (
 	                                <div key={service.id} className={`service-summary-item ${service.active === false ? 'archived' : ''}`}>
 	                                  <div className="service-summary-row">
-	                                    <span className="service-summary-name">{service.name || 'Untitled service'}</span>
-	                                    <span className="service-summary-meta">
-                                        {service.variants?.length
-                                          ? `${service.variants.length} options · ${service.variants.slice(0, 2).map(formatVariantSummary).join(' / ')}`
-                                          : `${formatServicePriceSummary(service)} · ${serviceDurationText(service) || 'No duration'}`}
-                                      </span>
+	                                    {renderServiceSummaryNameCell(service.name)}
+	                                    <span className="service-summary-meta">{renderCatalogServiceListMeta(service)}</span>
 	                                    <button
 	                                      type="button"
 	                                      className="service-edit-icon"
@@ -1932,13 +1970,17 @@ export function UserSettingsLive({
 	                                  </div>
 	                                  {editingCatalogServiceId === service.id ? (
 	                                    <div className="service-inline-editor">
+	                                      <div className="service-inline-editor-summary service-inline-editor-summary--desktop" aria-label="Price and duration summary">
+	                                        {renderCatalogServiceListMeta(service)}
+	                                      </div>
 	                                      <div className="service-item-head service-item-head--catalog-pair">
 	                                        <div className="field">
-	                                          <label>Service name</label>
+	                                          <label>service name</label>
 	                                          <input value={service.name} onChange={(event) => updateCatalogService(service.id, { name: event.target.value })} placeholder="Gel Manicure" />
+	                                          <p className="service-name-edit-hint">Tip: shorten the name so it&apos;s easier for callers to understand</p>
 	                                        </div>
 	                                        <div className="field">
-	                                          <label>Move to group</label>
+	                                          <label>move to group</label>
 	                                          <select value={service.categoryId ?? ''} onChange={(event) => updateCatalogService(service.id, { categoryId: event.target.value || null })}>
 	                                            {currentForm.service_catalog.categories.map((item) => (
 	                                              <option key={item.id} value={item.id}>{item.name}</option>
@@ -1948,11 +1990,11 @@ export function UserSettingsLive({
 	                                      </div>
 	                                      <div className="form-grid settings-tab-content-frame">
 	                                        <div className="field">
-	                                          <label>Description</label>
+	                                          <label>description</label>
 	                                          <input value={service.description ?? ''} onChange={(event) => updateCatalogService(service.id, { description: event.target.value || null })} placeholder="Optional caller-facing details" />
 	                                        </div>
 	                                        <div className="field">
-	                                          <label>Duration</label>
+	                                          <label>duration</label>
 	                                          <input
 	                                            value={serviceDurationText(service)}
 	                                            onChange={(event) => {
@@ -1966,18 +2008,18 @@ export function UserSettingsLive({
 	                                          />
 	                                        </div>
 	                                        <div className="field">
-	                                          <label>Price type</label>
+	                                          <label>price type</label>
 	                                          <select value={service.priceType} onChange={(event) => updateCatalogService(service.id, { priceType: event.target.value as ServicePriceType })}>
 	                                            {PRICE_TYPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
 	                                          </select>
 	                                        </div>
 	                                        <div className="field">
-	                                          <label>Price</label>
+	                                          <label>price</label>
 	                                          <input type="number" min={0} value={service.priceAmount ?? 0} onChange={(event) => updateCatalogService(service.id, { priceAmount: Number(event.target.value) })} disabled={service.priceType === 'consultation' || service.priceType === 'varies'} />
 	                                        </div>
 	                                      </div>
 	                                      <div className="field">
-	                                        <label>Aliases / other names customers use</label>
+	                                        <label>aliases / other names customers use</label>
 	                                        <input
 	                                          value={service.aliases.join(', ')}
 	                                          onChange={(event) => updateCatalogService(service.id, { aliases: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })}
@@ -1985,7 +2027,7 @@ export function UserSettingsLive({
 	                                        />
 	                                      </div>
 	                                      <div className="field">
-	                                        <label>Booking notes</label>
+	                                        <label>booking notes</label>
 	                                        <textarea
 	                                          value={service.bookingNotes ?? ''}
 	                                          onChange={(event) => updateCatalogService(service.id, { bookingNotes: event.target.value || null })}
@@ -1993,7 +2035,7 @@ export function UserSettingsLive({
 	                                        />
 	                                      </div>
                                         <div className="field">
-                                          <label>Options / variants</label>
+                                          <label>options / variants</label>
                                           <p className="field-help">Use options when a service has different lengths or prices.</p>
                                           <div className="service-variants-editor">
                                             {(service.variants ?? []).map((variant, variantIndex) => (

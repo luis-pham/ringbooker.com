@@ -653,10 +653,28 @@ button.subtle-link:hover{text-decoration:underline}
 .service-summary-row{display:grid;grid-template-columns:minmax(0,1fr) auto 34px;align-items:center;gap:14px;padding:11px 0}
 .service-summary-name{font-size:14px;font-weight:500;color:var(--text-dark);letter-spacing:-.01em;line-height:1.3}
 .service-summary-meta{font-size:13px;font-weight:400;color:var(--text-gray);white-space:nowrap;text-align:right;line-height:1.3}
+.knowledge-portal-main .service-duration-warn{
+  color:#f59e0b;
+  font-size:13px;
+  line-height:1;
+  display:inline-block;
+  vertical-align:middle;
+}
 .service-edit-icon{width:30px;height:30px;border:0;background:transparent;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer}
 .service-edit-icon:hover{background:#f3f4f6;color:var(--text-dark)}
 .service-edit-icon svg{stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .service-inline-editor{display:grid;gap:14px;margin:8px 0 18px;padding:16px;border:1px solid var(--border);border-radius:14px;background:#fff}
+.knowledge-portal-main .service-inline-editor .field label{
+  text-transform:none;
+  letter-spacing:-0.01em;
+}
+.knowledge-portal-main .service-name-edit-hint{
+  margin:4px 0 0;
+  font-size:11px;
+  color:#9ca3af;
+  line-height:1.35;
+}
+.knowledge-portal-main .service-inline-editor-summary--desktop{display:none}
 .service-group-card .service-group-add-service{margin-top:16px}
 .service-variants-editor{display:grid;gap:10px;margin-top:6px}
 .service-variant-row{display:grid;grid-template-columns:minmax(0,1fr) 110px 90px 130px auto;gap:8px;align-items:center}
@@ -735,6 +753,55 @@ button.subtle-link:hover{text-decoration:underline}
   .service-item-head.service-item-head--catalog-pair{
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:16px;
+  }
+  .knowledge-portal-main .service-inline-editor-summary--desktop{
+    display:block;
+    font-size:13px;
+    font-weight:400;
+    color:var(--text-gray);
+    line-height:1.3;
+    margin:0 0 10px;
+    text-align:right;
+  }
+  /* Services tab (desktop): list row name truncation + untitled emphasis */
+  .knowledge-portal-main .service-summary-name{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    min-width:0;
+    max-width:420px;
+  }
+  .knowledge-portal-main .service-summary-name-inner{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    min-width:0;
+    flex:1;
+    max-width:100%;
+  }
+  .knowledge-portal-main .service-summary-name-text{
+    min-width:0;
+    flex:1;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .knowledge-portal-main .service-summary-name--untitled .service-summary-name-text{
+    color:#dc2626;
+    font-style:italic;
+  }
+  .knowledge-portal-main .service-summary-untitled-warn{
+    flex-shrink:0;
+    color:#f59e0b;
+    font-size:13px;
+    line-height:1;
+  }
+}
+@media (max-width:860px){
+  .knowledge-portal-main .service-summary-untitled-warn{display:none}
+  .knowledge-portal-main .service-summary-name--untitled .service-summary-name-text{
+    color:inherit;
+    font-style:normal;
   }
 }
 
@@ -883,6 +950,7 @@ html[data-user-theme="dark"] .service-group-card--compact .service-group-body{ba
 html[data-user-theme="dark"] .service-item-card{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .service-item-card.archived{background:#161b22}
 html[data-user-theme="dark"] .service-summary-name{color:var(--text-dark)}
+html[data-user-theme="dark"] .knowledge-portal-main .service-summary-name--untitled .service-summary-name-text{color:#f87171}
 html[data-user-theme="dark"] .service-summary-meta{color:var(--text-gray)}
 html[data-user-theme="dark"] .service-inline-editor{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .service-catalog-note{background:#161b22;border-color:var(--border)}
