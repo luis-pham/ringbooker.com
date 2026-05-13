@@ -7844,25 +7844,41 @@ export function createBackendApp(deps: {
     }
 
     let updated = shop;
-    if (hasBasicPatch) {
-      const basicUpdated = await deps.shopsRepository.updateUserSettings(sessionResult.shopId ?? '', basicPatch);
-      if (!basicUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-      updated = basicUpdated;
-    }
-    if (hasDynamicPatch) {
-      const dynamicUpdated = await deps.shopsRepository.updateDynamicConfig(sessionResult.shopId ?? '', dynamicPatch);
-      if (!dynamicUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-      updated = dynamicUpdated;
-    }
-    if (serviceCatalogPatch) {
-      const savedCatalog = await deps.shopsRepository.saveServiceCatalog(
-        shop.id,
-        normalizeServiceCatalogForShop(shop.id, serviceCatalogPatch),
-      );
-      if (!savedCatalog) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-      const reloaded = await deps.shopsRepository.findById(shop.id);
-      if (!reloaded) return c.json({ ok: false, error: 'shop_not_found' }, 404);
-      updated = reloaded;
+    try {
+      if (hasBasicPatch) {
+        const basicUpdated = await deps.shopsRepository.updateUserSettings(sessionResult.shopId ?? '', basicPatch);
+        if (!basicUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+        updated = basicUpdated;
+      }
+      if (hasDynamicPatch) {
+        const dynamicUpdated = await deps.shopsRepository.updateDynamicConfig(sessionResult.shopId ?? '', dynamicPatch);
+        if (!dynamicUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+        updated = dynamicUpdated;
+      }
+      if (serviceCatalogPatch) {
+        const savedCatalog = await deps.shopsRepository.saveServiceCatalog(
+          shop.id,
+          normalizeServiceCatalogForShop(shop.id, serviceCatalogPatch),
+        );
+        if (!savedCatalog) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+        const reloaded = await deps.shopsRepository.findById(shop.id);
+        if (!reloaded) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+        updated = reloaded;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/shops_phone_number_key|duplicate key value.*phone_number/i.test(message)) {
+        return c.json(
+          {
+            ok: false,
+            error: 'phone_number_already_exists',
+            fields: ['phone_number'],
+          },
+          409,
+        );
+      }
+      logger.error({ err: error, shopId: sessionResult.shopId ?? null }, 'user_settings_update_failed');
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
     }
 
     const showGoLiveSettingsTab = await computeShowGoLiveSettingsTab({

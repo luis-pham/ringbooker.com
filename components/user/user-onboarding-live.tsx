@@ -623,6 +623,9 @@ function friendlySaveError(error?: string | null, fields: string[] = []): string
     if (fields.includes('vertical')) return 'Please choose the business type before continuing.';
     return 'Some details need a quick check before saving.';
   }
+  if (error === 'phone_number_already_exists') {
+    return 'This phone number is already connected to another shop. Use a different number or remove it from the other shop first.';
+  }
   if (error === 'shop_not_found') return 'We could not find your shop. Please refresh and try again.';
   if (error === 'no_changes') return 'No changes were found to save.';
   if (error === 'user_dependencies_unavailable') return 'Setup is temporarily unavailable. Please try again in a moment.';
@@ -1622,7 +1625,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         body?.fields ?? [],
       );
       if (currentStep === 2) {
-        if (body?.error === 'invalid_payload' && Array.isArray(body.fields)) {
+        if ((body?.error === 'invalid_payload' || body?.error === 'phone_number_already_exists') && Array.isArray(body.fields)) {
           const fieldMap: Record<string, ProfileReviewRequiredField> = {
             name: 'name',
             vertical: 'type',
@@ -1631,6 +1634,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             website_url: 'website',
             hours: 'hours',
             address: 'address',
+            phone_number: 'phone',
+            user_phone: 'phone',
           };
           setProfileReviewInvalidFields([...new Set(body.fields.map((field) => fieldMap[field]).filter(Boolean))]);
         }

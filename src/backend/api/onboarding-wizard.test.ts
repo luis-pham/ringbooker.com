@@ -325,6 +325,38 @@ test('Confirmed profile review saves selected profile fields and website URL', a
   assert.equal(shop?.current_onboarding_step, 3);
 });
 
+test('profile review returns field-level phone conflict instead of generic server error', async () => {
+  const { app, shopsRepository } = createOnboardingTestApp();
+  const cookie = await loginUser(app);
+  const originalUpdate = shopsRepository.updateUserSettings.bind(shopsRepository);
+  const patchedRepository = shopsRepository as unknown as {
+    updateUserSettings: typeof shopsRepository.updateUserSettings;
+  };
+  patchedRepository.updateUserSettings = async () => {
+    throw new Error('shops_update_user_settings_failed:duplicate key value violates unique constraint "shops_phone_number_key"');
+  };
+
+  try {
+    const response = await app.request('/user/settings', {
+      method: 'PUT',
+      headers: {
+        cookie,
+        origin: 'http://localhost:3000',
+        host: 'localhost:3000',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ phone_number: '+12149691901', user_phone: '+12149691901' }),
+    });
+    assert.equal(response.status, 409);
+    const body = (await response.json()) as { ok: boolean; error: string; fields?: string[] };
+    assert.equal(body.ok, false);
+    assert.equal(body.error, 'phone_number_already_exists');
+    assert.deepEqual(body.fields, ['phone_number']);
+  } finally {
+    patchedRepository.updateUserSettings = originalUpdate;
+  }
+});
+
 test('Confirmed profile review saves user-edited values over imported suggestions', async () => {
   const { app, shopsRepository } = createOnboardingTestApp();
   const cookie = await loginUser(app);
