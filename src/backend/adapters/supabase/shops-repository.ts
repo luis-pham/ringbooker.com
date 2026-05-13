@@ -18,6 +18,7 @@ import type {
   ShopServiceCatalog,
   StaffMember,
 } from '@/src/backend/domain/types';
+import { logger } from '@/src/backend/observability/logger';
 import type { ShopsRepository } from '@/src/backend/ports/repositories';
 
 type ShopsRow = {
@@ -118,16 +119,43 @@ const SHOP_SELECT_COLUMNS = [
   'google_cal_credentials_encrypted',
 ] as const;
 
-function shopSelectColumns(options: { includeSmsOwnerOptIn?: boolean } = {}): string {
+const CORE_SHOP_SELECT_COLUMNS = [
+  'id',
+  'name',
+  'vertical',
+  'vertical_detail',
+  'brand_slug',
+  'phone_number',
+  'user_phone',
+  'backup_phone',
+  'user_name',
+  'address',
+  'timezone',
+  'services',
+  'staff',
+  'faqs',
+  'hours',
+  'cancel_policy',
+  'promotions',
+  'booking_url',
+  'website_url',
+  'languages',
+  'current_onboarding_step',
+  'plan',
+  'active',
+] as const;
+
+function shopSelectColumns(options: { includeSmsOwnerOptIn?: boolean; coreOnly?: boolean } = {}): string {
+  if (options.coreOnly) return CORE_SHOP_SELECT_COLUMNS.join(',');
   const includeSmsOwnerOptIn = options.includeSmsOwnerOptIn ?? true;
   return SHOP_SELECT_COLUMNS
     .filter((column) => includeSmsOwnerOptIn || column !== 'sms_owner_opted_in')
     .join(',');
 }
 
-function isMissingSmsOwnerOptInColumn(error: { message?: string } | null): boolean {
+function isMissingShopColumn(error: { message?: string } | null): boolean {
   const message = error?.message ?? '';
-  return message.includes('sms_owner_opted_in') || /schema cache/i.test(message);
+  return /schema cache|column .* does not exist|could not find .* column/i.test(message);
 }
 
 type ShopServiceCategoryRow = {
@@ -381,7 +409,13 @@ export class SupabaseShopsRepository implements ShopsRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
   private async hydrateServiceCatalog(shop: Shop): Promise<Shop> {
-    const catalog = await this.findServiceCatalogByShopId(shop.id);
+    let catalog: ShopServiceCatalog | null = null;
+    try {
+      catalog = await this.findServiceCatalogByShopId(shop.id);
+    } catch (error) {
+      logger.warn({ err: error, shopId: shop.id }, 'shop_service_catalog_hydration_failed');
+      return shop;
+    }
     if (!catalog || (catalog.services.length === 0 && catalog.categories.length === 0)) return shop;
     return {
       ...shop,
@@ -525,10 +559,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
       .eq('id', shopId)
       .maybeSingle<ShopsRow>();
 
-    if (result.error && isMissingSmsOwnerOptInColumn(result.error)) {
+    if (result.error && isMissingShopColumn(result.error)) {
       result = await this.supabase
         .from('shops')
-        .select(shopSelectColumns({ includeSmsOwnerOptIn: false }))
+        .select(shopSelectColumns({ coreOnly: true }))
         .eq('id', shopId)
         .maybeSingle<ShopsRow>();
     }
@@ -768,12 +802,12 @@ export class SupabaseShopsRepository implements ShopsRepository {
       .select(shopSelectColumns({ includeSmsOwnerOptIn: patch.sms_owner_opted_in !== undefined }))
       .maybeSingle<ShopsRow>();
 
-    if (result.error && isMissingSmsOwnerOptInColumn(result.error) && patch.sms_owner_opted_in === undefined) {
+    if (result.error && isMissingShopColumn(result.error) && patch.sms_owner_opted_in === undefined) {
       result = await this.supabase
         .from('shops')
         .update(payload)
         .eq('id', shopId)
-        .select(shopSelectColumns({ includeSmsOwnerOptIn: false }))
+        .select(shopSelectColumns({ coreOnly: true }))
         .maybeSingle<ShopsRow>();
     }
 
