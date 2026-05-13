@@ -357,6 +357,58 @@ test('profile review returns field-level phone conflict instead of generic serve
   }
 });
 
+test('user settings duplicate database constraints return conflict errors', async () => {
+  const { app, shopsRepository } = createOnboardingTestApp();
+  const cookie = await loginUser(app);
+  const originalUpdate = shopsRepository.updateUserSettings.bind(shopsRepository);
+  const patchedRepository = shopsRepository as unknown as {
+    updateUserSettings: typeof shopsRepository.updateUserSettings;
+  };
+
+  const cases = [
+    {
+      message: 'duplicate key value violates unique constraint "idx_shops_telnyx_number_unique"',
+      error: 'forwarding_number_already_exists',
+      fields: ['telnyx_number'],
+    },
+    {
+      message: 'duplicate key value violates unique constraint "shops_brand_slug_key"',
+      error: 'brand_slug_already_exists',
+      fields: ['brand_slug'],
+    },
+    {
+      message: 'duplicate key value violates unique constraint "unexpected_unique_key"',
+      error: 'duplicate_record',
+      fields: [],
+    },
+  ];
+
+  try {
+    for (const item of cases) {
+      patchedRepository.updateUserSettings = async () => {
+        throw new Error(`shops_update_user_settings_failed:${item.message}`);
+      };
+      const response = await app.request('/user/settings', {
+        method: 'PUT',
+        headers: {
+          cookie,
+          origin: 'http://localhost:3000',
+          host: 'localhost:3000',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ timezone: 'America/Los_Angeles' }),
+      });
+      assert.equal(response.status, 409);
+      const body = (await response.json()) as { ok: boolean; error: string; fields?: string[] };
+      assert.equal(body.ok, false);
+      assert.equal(body.error, item.error);
+      assert.deepEqual(body.fields, item.fields);
+    }
+  } finally {
+    patchedRepository.updateUserSettings = originalUpdate;
+  }
+});
+
 test('Confirmed profile review saves user-edited values over imported suggestions', async () => {
   const { app, shopsRepository } = createOnboardingTestApp();
   const cookie = await loginUser(app);

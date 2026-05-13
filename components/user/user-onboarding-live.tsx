@@ -626,6 +626,9 @@ function friendlySaveError(error?: string | null, fields: string[] = []): string
   if (error === 'phone_number_already_exists') {
     return 'This phone number is already connected to another shop. Use a different number or remove it from the other shop first.';
   }
+  if (error === 'forwarding_number_already_exists') return 'This RingBooker forwarding number is already connected to another shop.';
+  if (error === 'brand_slug_already_exists') return 'This business URL slug is already in use.';
+  if (error === 'duplicate_record') return 'This information is already connected to another record. Please review your details.';
   if (error === 'shop_not_found') return 'We could not find your shop. Please refresh and try again.';
   if (error === 'no_changes') return 'No changes were found to save.';
   if (error === 'user_dependencies_unavailable') return 'Setup is temporarily unavailable. Please try again in a moment.';
@@ -1636,6 +1639,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             address: 'address',
             phone_number: 'phone',
             user_phone: 'phone',
+            telnyx_number: 'phone',
           };
           setProfileReviewInvalidFields([...new Set(body.fields.map((field) => fieldMap[field]).filter(Boolean))]);
         }

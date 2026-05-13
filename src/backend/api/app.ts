@@ -1381,6 +1381,22 @@ function normalizeServiceCatalogForShop(
   };
 }
 
+function userSettingsDuplicateConflict(message: string): { error: string; fields: string[] } | null {
+  if (/shops_phone_number_key|duplicate key value.*phone_number/i.test(message)) {
+    return { error: 'phone_number_already_exists', fields: ['phone_number'] };
+  }
+  if (/idx_shops_telnyx_number_unique|shops_telnyx_number_key|duplicate key value.*telnyx_number/i.test(message)) {
+    return { error: 'forwarding_number_already_exists', fields: ['telnyx_number'] };
+  }
+  if (/shops_brand_slug_key|duplicate key value.*brand_slug/i.test(message)) {
+    return { error: 'brand_slug_already_exists', fields: ['brand_slug'] };
+  }
+  if (/duplicate key value violates unique constraint/i.test(message)) {
+    return { error: 'duplicate_record', fields: [] };
+  }
+  return null;
+}
+
 function toUserFacingServiceCatalog(catalog?: ShopServiceCatalog | null): ShopServiceCatalog | null {
   if (!catalog) return null;
   return {
@@ -7867,12 +7883,13 @@ export function createBackendApp(deps: {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      if (/shops_phone_number_key|duplicate key value.*phone_number/i.test(message)) {
+      const duplicateConflict = userSettingsDuplicateConflict(message);
+      if (duplicateConflict) {
         return c.json(
           {
             ok: false,
-            error: 'phone_number_already_exists',
-            fields: ['phone_number'],
+            error: duplicateConflict.error,
+            fields: duplicateConflict.fields,
           },
           409,
         );
