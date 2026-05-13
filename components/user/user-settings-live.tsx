@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
@@ -759,6 +759,14 @@ export function UserSettingsLive({
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
   const [editingLegacyServiceIndex, setEditingLegacyServiceIndex] = useState<number | null>(null);
   const [editingCatalogServiceId, setEditingCatalogServiceId] = useState<string | null>(null);
+  const catalogServiceDialogRef = useRef<HTMLDialogElement>(null);
+  const [catalogDialogServiceId, setCatalogDialogServiceId] = useState<string | null>(null);
+  const [catalogDialogDraft, setCatalogDialogDraft] = useState<ShopService | null>(null);
+  const [catalogDialogError, setCatalogDialogError] = useState<string | null>(null);
+  const legacyServiceDialogRef = useRef<HTMLDialogElement>(null);
+  const [legacyDialogIndex, setLegacyDialogIndex] = useState<number | null>(null);
+  const [legacyDialogDraft, setLegacyDialogDraft] = useState<ServiceItem | null>(null);
+  const [legacyFormError, setLegacyFormError] = useState<string | null>(null);
   const [expandedStaffIndex, setExpandedStaffIndex] = useState<number | null>(null);
   const [websiteSuggestions, setWebsiteSuggestions] = useState<BusinessKnowledgeSuggestion[]>([]);
   const [selectedSuggestionIds, setSelectedSuggestionIds] = useState<string[]>([]);
@@ -1095,6 +1103,18 @@ export function UserSettingsLive({
     }
   }, [portal, activeTab]);
 
+  useEffect(() => {
+    if (!catalogDialogServiceId || !catalogDialogDraft) return;
+    const el = catalogServiceDialogRef.current;
+    if (el && !el.open) el.showModal();
+  }, [catalogDialogServiceId, catalogDialogDraft]);
+
+  useEffect(() => {
+    if (legacyDialogIndex === null || !legacyDialogDraft) return;
+    const el = legacyServiceDialogRef.current;
+    if (el && !el.open) el.showModal();
+  }, [legacyDialogIndex, legacyDialogDraft]);
+
   function patchState<K extends keyof SettingsState>(key: K, value: SettingsState[K]) {
     setForm((current) => (current ? { ...current, [key]: value } : current));
   }
@@ -1124,8 +1144,16 @@ export function UserSettingsLive({
   }
 
   function addLegacyService() {
-    setEditingLegacyServiceIndex(currentForm.services.length);
-    patchState('services', [...currentForm.services, { name: '', duration_min: 60, price: 0 }]);
+    const idx = currentForm.services.length;
+    const next = [...currentForm.services, { name: '', duration_min: 60, price: 0 }];
+    patchState('services', next);
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 861px)').matches) {
+      setLegacyFormError(null);
+      setLegacyDialogIndex(idx);
+      setLegacyDialogDraft({ name: '', duration_min: 60, price: 0 });
+    } else {
+      setEditingLegacyServiceIndex(idx);
+    }
   }
 
   function updateLegacyService(index: number, patch: Partial<ServiceItem>) {
@@ -1137,6 +1165,12 @@ export function UserSettingsLive({
 
   function removeLegacyService(index: number) {
     if (editingLegacyServiceIndex === index) setEditingLegacyServiceIndex(null);
+    if (legacyDialogIndex === index) {
+      setLegacyDialogIndex(null);
+      setLegacyDialogDraft(null);
+      setLegacyFormError(null);
+      legacyServiceDialogRef.current?.close();
+    }
     patchState('services', currentForm.services.filter((_, itemIndex) => itemIndex !== index));
   }
 
@@ -1175,31 +1209,36 @@ export function UserSettingsLive({
   function addServiceToGroup(categoryId: string) {
     const groupCount = currentForm.service_catalog.services.filter((service) => service.categoryId === categoryId).length;
     const serviceId = clientId('service');
-    setEditingCatalogServiceId(serviceId);
+    const newService: ShopService = {
+      id: serviceId,
+      shopId: effectiveShop.id,
+      categoryId,
+      name: '',
+      description: null,
+      durationText: null,
+      durationMinutes: null,
+      priceAmount: 0,
+      priceCurrency: 'USD',
+      priceType: 'varies',
+      bookable: true,
+      active: true,
+      sortOrder: groupCount,
+      aliases: [],
+      bookingNotes: null,
+      variants: [],
+    };
     patchServiceCatalog({
       ...currentForm.service_catalog,
-      services: [
-        ...currentForm.service_catalog.services,
-        {
-          id: serviceId,
-          shopId: effectiveShop.id,
-          categoryId,
-          name: '',
-          description: null,
-          durationText: null,
-          durationMinutes: null,
-          priceAmount: 0,
-          priceCurrency: 'USD',
-          priceType: 'varies',
-          bookable: true,
-          active: true,
-          sortOrder: groupCount,
-          aliases: [],
-          bookingNotes: null,
-          variants: [],
-        },
-      ],
+      services: [...currentForm.service_catalog.services, newService],
     });
+    if (isKnowledgeWideLayout()) {
+      setEditingCatalogServiceId(null);
+      setCatalogDialogError(null);
+      setCatalogDialogDraft(JSON.parse(JSON.stringify(newService)) as ShopService);
+      setCatalogDialogServiceId(serviceId);
+    } else {
+      setEditingCatalogServiceId(serviceId);
+    }
   }
 
   function updateCatalogService(serviceId: string, patch: Partial<ShopService>) {
@@ -1238,10 +1277,130 @@ export function UserSettingsLive({
 
   function removeCatalogService(serviceId: string) {
     if (editingCatalogServiceId === serviceId) setEditingCatalogServiceId(null);
+    if (catalogDialogServiceId === serviceId) {
+      setCatalogDialogServiceId(null);
+      setCatalogDialogDraft(null);
+      setCatalogDialogError(null);
+      catalogServiceDialogRef.current?.close();
+    }
     patchServiceCatalog({
       ...currentForm.service_catalog,
       services: currentForm.service_catalog.services.filter((service) => service.id !== serviceId),
     });
+  }
+
+  function isKnowledgeWideLayout() {
+    return typeof window !== 'undefined' && window.matchMedia('(min-width: 861px)').matches;
+  }
+
+  function closeCatalogServiceDialog() {
+    catalogServiceDialogRef.current?.close();
+  }
+
+  function openCatalogServiceEditor(service: ShopService) {
+    if (isKnowledgeWideLayout()) {
+      setCatalogDialogError(null);
+      setCatalogDialogDraft(JSON.parse(JSON.stringify(service)) as ShopService);
+      setCatalogDialogServiceId(service.id);
+    } else {
+      setEditingCatalogServiceId((id) => (id === service.id ? null : service.id));
+    }
+  }
+
+  function saveCatalogServiceDialog() {
+    if (!catalogDialogServiceId || !catalogDialogDraft) return;
+    if (!catalogDialogDraft.name.trim()) {
+      setCatalogDialogError('Service name is required.');
+      return;
+    }
+    setCatalogDialogError(null);
+    const id = catalogDialogServiceId;
+    const merged = { ...catalogDialogDraft, name: catalogDialogDraft.name.trim() } as ShopService;
+    patchServiceCatalog({
+      ...currentForm.service_catalog,
+      services: currentForm.service_catalog.services.map((s) => (s.id === id ? merged : s)),
+    });
+    closeCatalogServiceDialog();
+  }
+
+  function confirmRemoveCatalogServiceFromDialog(serviceId: string, serviceLabel: string) {
+    if (!window.confirm(`Remove ${serviceLabel}? This cannot be undone.`)) return;
+    removeCatalogService(serviceId);
+  }
+
+  function archiveCatalogServiceFromDialog(serviceId: string) {
+    updateCatalogService(serviceId, { active: false });
+    closeCatalogServiceDialog();
+  }
+
+  function patchCatalogDialogDraft(patch: Partial<ShopService>) {
+    setCatalogDialogDraft((d) => (d ? { ...d, ...patch } : d));
+  }
+
+  function patchCatalogDialogVariant(variantIndex: number, patch: Partial<ServiceVariant>) {
+    setCatalogDialogDraft((d) => {
+      if (!d) return d;
+      const variants = [...(d.variants ?? [])];
+      variants[variantIndex] = { ...variants[variantIndex], ...patch } as ServiceVariant;
+      return { ...d, variants };
+    });
+  }
+
+  function addCatalogDialogVariantRow() {
+    setCatalogDialogDraft((d) => {
+      if (!d) return d;
+      const next = [...(d.variants ?? [])];
+      next.push({
+        label: '',
+        durationMinutes: null,
+        durationText: '',
+        priceAmount: null,
+        priceCurrency: 'USD',
+        priceType: 'from',
+        sortOrder: next.length,
+        notes: null,
+      });
+      return { ...d, variants: next };
+    });
+  }
+
+  function removeCatalogDialogVariantRow(variantIndex: number) {
+    setCatalogDialogDraft((d) => {
+      if (!d) return d;
+      return { ...d, variants: (d.variants ?? []).filter((_, i) => i !== variantIndex) };
+    });
+  }
+
+  function closeLegacyServiceDialog() {
+    legacyServiceDialogRef.current?.close();
+  }
+
+  function openLegacyServiceEditor(index: number) {
+    const service = currentForm.services[index];
+    if (!service) return;
+    if (isKnowledgeWideLayout()) {
+      setLegacyFormError(null);
+      setLegacyDialogIndex(index);
+      setLegacyDialogDraft({ ...service });
+    } else {
+      setEditingLegacyServiceIndex((i) => (i === index ? null : index));
+    }
+  }
+
+  function saveLegacyServiceDialog() {
+    if (legacyDialogIndex === null || !legacyDialogDraft) return;
+    if (!legacyDialogDraft.name.trim()) {
+      setLegacyFormError('Service name is required.');
+      return;
+    }
+    setLegacyFormError(null);
+    const idx = legacyDialogIndex;
+    const next = { ...legacyDialogDraft, name: legacyDialogDraft.name.trim() };
+    patchState(
+      'services',
+      currentForm.services.map((s, i) => (i === idx ? next : s)),
+    );
+    closeLegacyServiceDialog();
   }
 
   function formatServicePriceSummary(service: Pick<ShopService, 'priceType' | 'priceAmount'>) {
@@ -1295,11 +1454,6 @@ export function UserSettingsLive({
     return (
       <span className={`service-summary-name${untitled ? ' service-summary-name--untitled' : ''}`}>
         <span className="service-summary-name-inner">
-          {untitled ? (
-            <span className="service-summary-untitled-warn" aria-hidden>
-              ⚠
-            </span>
-          ) : null}
           <span className="service-summary-name-text">{display}</span>
         </span>
       </span>
@@ -1846,25 +2000,39 @@ export function UserSettingsLive({
 	                      <div className="service-group-list">
 	                        {currentForm.services.map((service, index) => (
 	                          <div key={`${service.name || 'service'}-${index}`} className="service-summary-item">
-	                            <div className="service-summary-row">
+	                            <div
+	                              className="service-summary-row service-summary-row--clickable"
+	                              role="button"
+	                              tabIndex={0}
+	                              onKeyDown={(event) => {
+	                                if (event.key === 'Enter' || event.key === ' ') {
+	                                  event.preventDefault();
+	                                  openLegacyServiceEditor(index);
+	                                }
+	                              }}
+	                              onClick={() => openLegacyServiceEditor(index)}
+	                            >
 	                              {renderServiceSummaryNameCell(service.name)}
 	                              <span className="service-summary-meta">${Math.round(Number(service.price) || 0)} · {service.duration_min || 60} min</span>
 	                              <button
 	                                type="button"
 	                                className="service-edit-icon"
 	                                aria-label={`Edit ${service.name || 'service'}`}
-	                                onClick={() => setEditingLegacyServiceIndex(editingLegacyServiceIndex === index ? null : index)}
+	                                onClick={(event) => {
+	                                  event.stopPropagation();
+	                                  openLegacyServiceEditor(index);
+	                                }}
 	                              >
 	                                {renderEditIcon()}
 	                              </button>
 	                            </div>
 	                            {editingLegacyServiceIndex === index ? (
-	                              <div className="service-inline-editor">
+	                              <div className="service-inline-editor service-inline-editor--legacy-mobile">
 	                                <div className="service-item-head">
 	                                  <div className="field">
 	                                    <label>service name</label>
 	                                    <input value={service.name} onChange={(event) => updateLegacyService(index, { name: event.target.value })} placeholder="Gel Manicure" />
-	                                    <p className="service-name-edit-hint">Tip: shorten the name so it&apos;s easier for callers to understand</p>
+	                                    <p className="service-name-edit-hint">Shorten so callers can understand</p>
 	                                  </div>
 	                                  <div className="field">
 	                                    <label>duration</label>
@@ -1894,6 +2062,103 @@ export function UserSettingsLive({
 	                          </div>
 	                        ))}
 	                      </div>
+                      <dialog
+                        ref={legacyServiceDialogRef}
+                        className="catalog-service-dialog catalog-service-dialog--legacy"
+                        onClose={() => {
+                          setLegacyDialogIndex(null);
+                          setLegacyDialogDraft(null);
+                          setLegacyFormError(null);
+                        }}
+                      >
+                        <div className="catalog-service-dialog-panel">
+                          <header className="catalog-service-dialog-header">
+                            <div className="catalog-service-dialog-header-main">
+                              <span className="catalog-service-dialog-header-name">
+                                {legacyDialogDraft?.name?.trim() ? legacyDialogDraft.name.trim() : 'Untitled service'}
+                              </span>
+                              {legacyDialogDraft ? (
+                                <span className="catalog-service-dialog-header-meta">
+                                  ${Math.round(Number(legacyDialogDraft.price) || 0)} · {legacyDialogDraft.duration_min || 60} min
+                                </span>
+                              ) : null}
+                            </div>
+                            <button
+                              type="button"
+                              className="catalog-service-dialog-close"
+                              aria-label="Close"
+                              onClick={() => legacyServiceDialogRef.current?.close()}
+                            >
+                              ✕
+                            </button>
+                          </header>
+                          <div className="catalog-service-dialog-body">
+                            {legacyDialogDraft ? (
+                              <div className="catalog-service-dialog-grid">
+                                <div className="catalog-service-dialog-row2">
+                                  <div className="field">
+                                    <label>service name</label>
+                                    <input
+                                      value={legacyDialogDraft.name}
+                                      onChange={(event) => setLegacyDialogDraft({ ...legacyDialogDraft, name: event.target.value })}
+                                      placeholder="Gel Manicure"
+                                    />
+                                    <p className="service-name-edit-hint">Shorten so callers can understand</p>
+                                  </div>
+                                </div>
+                                <div className="catalog-service-dialog-row3">
+                                  <div className="field">
+                                    <label>duration</label>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={legacyDialogDraft.duration_min || ''}
+                                      onChange={(event) =>
+                                        setLegacyDialogDraft({
+                                          ...legacyDialogDraft,
+                                          duration_min: event.target.value === '' ? 0 : Number(event.target.value),
+                                        })
+                                      }
+                                      placeholder="60"
+                                    />
+                                  </div>
+                                  <div className="field">
+                                    <label>price</label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={legacyDialogDraft.price}
+                                      onChange={(event) => setLegacyDialogDraft({ ...legacyDialogDraft, price: Number(event.target.value) })}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                            {legacyFormError ? <p className="catalog-service-dialog-error">{legacyFormError}</p> : null}
+                          </div>
+                          <footer className="catalog-service-dialog-footer">
+                            <div className="catalog-service-dialog-footer-spacer" />
+                            <button
+                              type="button"
+                              className="subtle-link catalog-service-dialog-link-remove"
+                              onClick={() => {
+                                if (legacyDialogIndex === null || !legacyDialogDraft) return;
+                                const label = legacyDialogDraft.name.trim() || 'this service';
+                                if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
+                                removeLegacyService(legacyDialogIndex);
+                              }}
+                            >
+                              Remove
+                            </button>
+                            <button type="button" className="btn catalog-service-dialog-btn-cancel" onClick={() => legacyServiceDialogRef.current?.close()}>
+                              Cancel <span className="catalog-service-dialog-esc-hint">ESC</span>
+                            </button>
+                            <button type="button" className="btn user-save" onClick={() => void saveLegacyServiceDialog()}>
+                              Save changes
+                            </button>
+                          </footer>
+                        </div>
+                      </dialog>
                     </>
                   ) : (
                     <>
@@ -1956,28 +2221,39 @@ export function UserSettingsLive({
 	                              ) : null}
 	                              {groupServices.map((service) => (
 	                                <div key={service.id} className={`service-summary-item ${service.active === false ? 'archived' : ''}`}>
-	                                  <div className="service-summary-row">
+	                                  <div
+	                                    className="service-summary-row service-summary-row--clickable"
+	                                    role="button"
+	                                    tabIndex={0}
+	                                    onKeyDown={(event) => {
+	                                      if (event.key === 'Enter' || event.key === ' ') {
+	                                        event.preventDefault();
+	                                        openCatalogServiceEditor(service);
+	                                      }
+	                                    }}
+	                                    onClick={() => openCatalogServiceEditor(service)}
+	                                  >
 	                                    {renderServiceSummaryNameCell(service.name)}
 	                                    <span className="service-summary-meta">{renderCatalogServiceListMeta(service)}</span>
 	                                    <button
 	                                      type="button"
 	                                      className="service-edit-icon"
 	                                      aria-label={`Edit ${service.name || 'service'}`}
-	                                      onClick={() => setEditingCatalogServiceId(editingCatalogServiceId === service.id ? null : service.id)}
+	                                      onClick={(event) => {
+	                                        event.stopPropagation();
+	                                        openCatalogServiceEditor(service);
+	                                      }}
 	                                    >
 	                                      {renderEditIcon()}
 	                                    </button>
 	                                  </div>
 	                                  {editingCatalogServiceId === service.id ? (
-	                                    <div className="service-inline-editor">
-	                                      <div className="service-inline-editor-summary service-inline-editor-summary--desktop" aria-label="Price and duration summary">
-	                                        {renderCatalogServiceListMeta(service)}
-	                                      </div>
+	                                    <div className="service-inline-editor service-inline-editor--catalog-mobile">
 	                                      <div className="service-item-head service-item-head--catalog-pair">
 	                                        <div className="field">
 	                                          <label>service name</label>
 	                                          <input value={service.name} onChange={(event) => updateCatalogService(service.id, { name: event.target.value })} placeholder="Gel Manicure" />
-	                                          <p className="service-name-edit-hint">Tip: shorten the name so it&apos;s easier for callers to understand</p>
+	                                          <p className="service-name-edit-hint">Shorten so callers can understand</p>
 	                                        </div>
 	                                        <div className="field">
 	                                          <label>move to group</label>
@@ -2084,6 +2360,280 @@ export function UserSettingsLive({
                         );
                       })}
                   </div>
+                  <dialog
+                    ref={catalogServiceDialogRef}
+                    className="catalog-service-dialog"
+                    onClose={() => {
+                      setCatalogDialogServiceId(null);
+                      setCatalogDialogDraft(null);
+                      setCatalogDialogError(null);
+                    }}
+                  >
+                    {catalogDialogDraft && catalogDialogServiceId ? (
+                      <div className="catalog-service-dialog-panel">
+                        <header className="catalog-service-dialog-header">
+                          <div className="catalog-service-dialog-header-main">
+                            <span
+                              className={`catalog-service-dialog-header-name${
+                                !catalogDialogDraft.name.trim() ? ' catalog-service-dialog-header-name--untitled' : ''
+                              }`}
+                            >
+                              {catalogDialogDraft.name.trim() || 'Untitled service'}
+                            </span>
+                            <span className="catalog-service-dialog-header-meta">
+                              {catalogDialogDraft.variants?.length ? (
+                                <>
+                                  {catalogDialogDraft.variants.length} options ·{' '}
+                                  {catalogDialogDraft.variants
+                                    .slice(0, 2)
+                                    .map(formatVariantSummary)
+                                    .join(' / ')}
+                                </>
+                              ) : (
+                                <>
+                                  {formatServicePriceSummary(catalogDialogDraft)}
+                                  {serviceDurationText(catalogDialogDraft) ? (
+                                    <> · {serviceDurationText(catalogDialogDraft)}</>
+                                  ) : (
+                                    <>
+                                      {' '}
+                                      <span className="service-duration-warn service-duration-warn--header" role="img" aria-label="No duration set">
+                                        ⚠
+                                      </span>
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="catalog-service-dialog-close"
+                            aria-label="Close"
+                            onClick={() => catalogServiceDialogRef.current?.close()}
+                          >
+                            ✕
+                          </button>
+                        </header>
+                        <div className="catalog-service-dialog-body">
+                          <div className="catalog-service-dialog-grid">
+                            <div className="catalog-service-dialog-row1">
+                              <div className="field">
+                                <label>service name</label>
+                                <input
+                                  value={catalogDialogDraft.name}
+                                  onChange={(event) => patchCatalogDialogDraft({ name: event.target.value })}
+                                  placeholder="Gel Manicure"
+                                />
+                                <p className="service-name-edit-hint">Shorten so callers can understand</p>
+                              </div>
+                              <div className="field">
+                                <label>move to group</label>
+                                <select
+                                  value={catalogDialogDraft.categoryId ?? ''}
+                                  onChange={(event) => patchCatalogDialogDraft({ categoryId: event.target.value || null })}
+                                >
+                                  {currentForm.service_catalog.categories.map((item) => (
+                                    <option key={item.id} value={item.id}>
+                                      {item.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                            <div className="catalog-service-dialog-row-desc field">
+                              <label>description</label>
+                              <input
+                                value={catalogDialogDraft.description ?? ''}
+                                onChange={(event) => patchCatalogDialogDraft({ description: event.target.value || null })}
+                                placeholder="Optional caller-facing details"
+                              />
+                            </div>
+                            <div className="catalog-service-dialog-row-price">
+                              <div className="field">
+                                <label>price type</label>
+                                <select
+                                  value={catalogDialogDraft.priceType}
+                                  onChange={(event) =>
+                                    patchCatalogDialogDraft({ priceType: event.target.value as ServicePriceType })
+                                  }
+                                >
+                                  {PRICE_TYPE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="field">
+                                <label>price</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={catalogDialogDraft.priceAmount ?? 0}
+                                  onChange={(event) =>
+                                    patchCatalogDialogDraft({ priceAmount: Number(event.target.value) })
+                                  }
+                                  disabled={
+                                    catalogDialogDraft.priceType === 'consultation' ||
+                                    catalogDialogDraft.priceType === 'varies'
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <div className="catalog-service-dialog-row-duration field">
+                              <label>duration</label>
+                              <input
+                                value={serviceDurationText(catalogDialogDraft)}
+                                onChange={(event) => {
+                                  const durationText = event.target.value;
+                                  patchCatalogDialogDraft({
+                                    durationText: durationText.trim() ? durationText : null,
+                                    durationMinutes: parseDurationTextToMinutes(durationText),
+                                  });
+                                }}
+                                placeholder="e.g. 45min, 1 hour, Varies"
+                              />
+                            </div>
+                            <div className="catalog-service-dialog-row-aliases field">
+                              <label>aliases</label>
+                              <input
+                                value={catalogDialogDraft.aliases.join(', ')}
+                                onChange={(event) =>
+                                  patchCatalogDialogDraft({
+                                    aliases: event.target.value
+                                      .split(',')
+                                      .map((item) => item.trim())
+                                      .filter(Boolean),
+                                  })
+                                }
+                                placeholder="other names callers use"
+                              />
+                            </div>
+                            <div className="catalog-service-dialog-row-notes field">
+                              <label>booking notes</label>
+                              <textarea
+                                rows={3}
+                                value={catalogDialogDraft.bookingNotes ?? ''}
+                                onChange={(event) =>
+                                  patchCatalogDialogDraft({ bookingNotes: event.target.value || null })
+                                }
+                                placeholder="Anything the AI should know before capturing this request."
+                              />
+                            </div>
+                            <div className="catalog-service-dialog-variants-box">
+                              <p className="catalog-service-dialog-variants-title">Options / variants</p>
+                              <p className="catalog-service-dialog-variants-sub">
+                                Add options when a service has different lengths or prices.
+                              </p>
+                              <div className="service-variants-editor">
+                                {(catalogDialogDraft.variants ?? []).map((variant, variantIndex) => (
+                                  <div className="service-variant-row" key={`dialog-${catalogDialogServiceId}-v-${variantIndex}`}>
+                                    <input
+                                      value={variant.label}
+                                      onChange={(event) =>
+                                        patchCatalogDialogVariant(variantIndex, { label: event.target.value })
+                                      }
+                                      placeholder="30 min"
+                                    />
+                                    <input
+                                      value={variant.durationText ?? ''}
+                                      onChange={(event) => {
+                                        const durationText = event.target.value;
+                                        patchCatalogDialogVariant(variantIndex, {
+                                          durationText: durationText || null,
+                                          durationMinutes: parseDurationTextToMinutes(durationText),
+                                        });
+                                      }}
+                                      placeholder="Duration"
+                                    />
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={variant.priceAmount ?? ''}
+                                      onChange={(event) =>
+                                        patchCatalogDialogVariant(variantIndex, {
+                                          priceAmount: event.target.value === '' ? null : Number(event.target.value),
+                                        })
+                                      }
+                                      placeholder="Price"
+                                    />
+                                    <select
+                                      value={variant.priceType ?? 'from'}
+                                      onChange={(event) =>
+                                        patchCatalogDialogVariant(variantIndex, {
+                                          priceType: event.target.value as ServicePriceType,
+                                        })
+                                      }
+                                    >
+                                      {PRICE_TYPE_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                          {option.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      className="subtle-link"
+                                      onClick={() => removeCatalogDialogVariantRow(variantIndex)}
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ))}
+                                <button type="button" className="catalog-service-dialog-add-option" onClick={addCatalogDialogVariantRow}>
+                                  + Add option
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          {catalogDialogError ? <p className="catalog-service-dialog-error">{catalogDialogError}</p> : null}
+                        </div>
+                        <footer className="catalog-service-dialog-footer">
+                          <label className="inline-check catalog-service-dialog-bookable">
+                            <input
+                              type="checkbox"
+                              checked={catalogDialogDraft.bookable}
+                              onChange={(event) => patchCatalogDialogDraft({ bookable: event.target.checked })}
+                            />
+                            Bookable by request
+                          </label>
+                          <div className="catalog-service-dialog-footer-actions">
+                            <button
+                              type="button"
+                              className="subtle-link catalog-service-dialog-link-archive"
+                              onClick={() => {
+                                if (catalogDialogServiceId) archiveCatalogServiceFromDialog(catalogDialogServiceId);
+                              }}
+                            >
+                              Archive
+                            </button>
+                            <button
+                              type="button"
+                              className="subtle-link catalog-service-dialog-link-remove"
+                              onClick={() => {
+                                if (!catalogDialogServiceId || !catalogDialogDraft) return;
+                                const label = catalogDialogDraft.name.trim() || 'this service';
+                                confirmRemoveCatalogServiceFromDialog(catalogDialogServiceId, label);
+                              }}
+                            >
+                              Remove
+                            </button>
+                            <button
+                              type="button"
+                              className="btn catalog-service-dialog-btn-cancel"
+                              onClick={() => catalogServiceDialogRef.current?.close()}
+                            >
+                              Cancel <span className="catalog-service-dialog-esc-hint">ESC</span>
+                            </button>
+                            <button type="button" className="btn user-save" onClick={() => void saveCatalogServiceDialog()}>
+                              Save changes
+                            </button>
+                          </div>
+                        </footer>
+                      </div>
+                    ) : null}
+                  </dialog>
                   <div className="service-catalog-note">
                     These services help RingBooker answer caller questions and capture booking requests. They do not turn on direct booking integrations by themselves.
                   </div>

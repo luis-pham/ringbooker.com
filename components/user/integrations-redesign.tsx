@@ -264,20 +264,30 @@ function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, 
   );
 }
 
-function DirectBookingConfirm() {
+function DirectBookingConfirm({ onChange }: { onChange: () => void }) {
   return (
     <div className="integration-confirm-card success">
       <strong>✓ No integration needed</strong>
       <p>When callers ask to book, RingBooker captures their request and alerts you. You follow up and schedule directly. If you ever add a booking app, come back to connect it.</p>
+      <div className="integrations-inline-actions integration-confirm-actions">
+        <button type="button" className="btn" onClick={onChange}>
+          Change booking setup
+        </button>
+      </div>
     </div>
   );
 }
 
-function SetupLaterConfirm() {
+function SetupLaterConfirm({ onChange }: { onChange: () => void }) {
   return (
     <div className="integration-confirm-card">
       <strong>No problem — you can set this up anytime.</strong>
       <p>RingBooker will still answer calls and capture booking requests.</p>
+      <div className="integrations-inline-actions integration-confirm-actions">
+        <button type="button" className="btn" onClick={onChange}>
+          Choose booking setup
+        </button>
+      </div>
     </div>
   );
 }
@@ -335,8 +345,8 @@ export function IntegrationsRedesign() {
         </>
       ) : null}
 
-      {status.step === 'direct' ? <DirectBookingConfirm /> : null}
-      {status.step === 'later' ? <SetupLaterConfirm /> : null}
+      {status.step === 'direct' ? <DirectBookingConfirm onChange={() => void goBack()} /> : null}
+      {status.step === 'later' ? <SetupLaterConfirm onChange={() => void goBack()} /> : null}
     </div>
   );
 }
