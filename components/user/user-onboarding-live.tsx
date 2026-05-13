@@ -2297,7 +2297,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .profile-review-card{border:1px solid #d9deea;border-radius:12px;background:#fff;padding:14px 16px;min-height:78px}
 .profile-review-card.invalid{border-color:#f97316;box-shadow:0 0 0 1px rgba(249,115,22,.18)}
 .profile-review-card.wide{grid-column:1 / -1}
-.profile-review-alert{margin:8px 0 12px;color:#c2410c;font-size:14px;font-weight:500;line-height:1.45}
+.profile-review-alert,.onb-warning,.onb-status,.onb-step3-thin-warn{margin:0 0 16px;padding:12px 14px;border-radius:12px;background:#fffbeb;color:#9a3412;font-size:13px;font-weight:400;line-height:1.45;border:1px solid #fed7aa}
+.profile-review-alert{margin:8px 0 12px}
+.onb-warning p{margin:0}
 .profile-review-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:4px}.profile-review-label{color:#64748b;font-size:14px;font-weight:600}.profile-review-edit{border:0;background:transparent;color:#475569;padding:0;width:40px;height:40px;margin:-6px -6px -6px 0;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;box-sizing:border-box}.profile-review-edit:hover{background:#f1f5f9;color:#111827}.profile-review-edit:focus-visible{outline:2px solid #2563eb;outline-offset:2px}.profile-review-edit svg{display:block;flex-shrink:0}.profile-review-edit.profile-review-edit--text{width:auto;height:auto;min-height:44px;padding:8px 4px;margin:-6px -4px -6px 0;color:#2563eb;font:inherit;font-size:14px;font-weight:600}.profile-review-edit.profile-review-edit--text:hover{background:transparent;text-decoration:underline;text-underline-offset:2px;color:#1d4ed8}
 .profile-review-value{color:#111827;font-size:16px;font-weight:500;line-height:1.35;overflow-wrap:anywhere}.profile-review-editor{margin-top:10px}
 .onb-profile-source-footnote{font-size:11px;color:#9ca3af;margin:6px 0 0;line-height:1.35}
@@ -2364,7 +2366,6 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .service-group-collapse-btn{border:0;background:transparent;padding:4px 6px;cursor:pointer;color:#6b7280;display:inline-flex;align-items:center;flex-shrink:0;margin-left:4px}
 .onb-step3-section-label{display:block;margin:16px 0 6px;color:#9ca3af;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .onb-step3-section-hint{margin:0 0 14px;color:#64748b;font-size:13px;line-height:1.55}
-.onb-step3-thin-warn{margin:0 0 16px;padding:12px 14px;border-radius:12px;background:#fffbeb;color:#9a3412;font-size:13px;line-height:1.45;border:1px solid #fed7aa}
 .onb-step3-import-divider{display:flex;align-items:center;justify-content:center;margin:22px 0 18px;color:#9ca3af;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;gap:14px}
 .onb-step3-import-divider::before,.onb-step3-import-divider::after{content:"";flex:1;height:1px;background:#e5e7eb}
 .onb-step3-optional-pill{font-weight:500;color:#64748b;font-size:1rem}
@@ -2419,7 +2420,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .service-row{display:grid;grid-template-columns:minmax(120px,1fr) minmax(0,1.6fr) 72px 72px;gap:10px;align-items:center;margin-bottom:10px}
 .price-wrap,.duration-wrap{position:relative}.price-wrap span,.duration-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:13px;font-weight:500;pointer-events:none}.price-wrap input{padding-left:28px!important}.duration-wrap input{padding-left:46px!important}
 .onb-service-sheet-overlay{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center}.onb-service-sheet{width:100%;max-width:520px;background:#fff;border-radius:20px 20px 0 0;padding:14px 18px calc(18px + env(safe-area-inset-bottom));box-shadow:0 -18px 40px rgba(15,23,42,.18)}.onb-service-sheet-handle{width:36px;height:4px;border-radius:999px;background:#e5e7eb;margin:0 auto 16px}.onb-service-sheet h3{margin:0 0 14px;color:#111827;font-size:15px;font-weight:600;line-height:1.35}.onb-service-sheet-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.onb-service-sheet-fields>input:first-child{grid-column:1 / -1;min-height:46px;font-size:16px;padding:12px 14px}.onb-service-sheet-fields .onb-service-price-input input,.onb-service-sheet-fields>input:not(:first-child){min-height:46px;font-size:16px;padding:12px 14px}.onb-service-sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.onb-service-sheet-actions .onb-btn-primary,.onb-service-sheet-actions .onb-btn-secondary{width:100%;height:48px;border-radius:10px}
-.onb-status{margin-top:14px;padding:12px 14px;border-radius:16px;background:linear-gradient(180deg,#fbfaff 0%,#f7f4ff 52%,#f4f1ff 100%)!important;color:#475569;font-size:14px}
+.onb-status{margin-top:14px}
 .read-success{color:#047857;font-weight:600}
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
@@ -2964,9 +2965,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           <div>
             <span className="onb-import-badge">✓ Imported from {importSource === 'google_business' ? 'Google' : importedHost}</span>
             {importSuggestions?.warnings?.length ? (
-              <div className="onb-warning" style={{ borderRadius: 12, border: '1px solid #fed7aa', background: '#fff7ed', color: '#9a3412', padding: '10px 12px', fontSize: 13, marginBottom: 12 }}>
+              <div className="onb-warning">
                 {importSuggestions.warnings.slice(0, 3).map((warning) => (
-                  <p key={warning} style={{ margin: 0 }}>{warning}</p>
+                  <p key={warning}>{warning}</p>
                 ))}
               </div>
             ) : null}
