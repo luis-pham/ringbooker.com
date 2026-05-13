@@ -7797,7 +7797,14 @@ export function createBackendApp(deps: {
     const body = await c.req.json().catch(() => null);
     const parsed = userSettingsUpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return c.json({ ok: false, error: 'invalid_payload' }, 400);
+      return c.json(
+        {
+          ok: false,
+          error: 'invalid_payload',
+          fields: Object.keys(parsed.error.flatten().fieldErrors),
+        },
+        400,
+      );
     }
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');

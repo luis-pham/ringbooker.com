@@ -614,8 +614,18 @@ export function validateOnboardingProfileReview(input: { businessName: string })
   return errors;
 }
 
-function friendlySaveError(error?: string | null): string {
-  if (error === 'invalid_payload') return 'Some details need a quick check before saving.';
+function friendlySaveError(error?: string | null, fields: string[] = []): string {
+  if (error === 'invalid_payload') {
+    if (fields.includes('hours')) return 'Please review your business hours before continuing.';
+    if (fields.includes('website_url')) return 'Please enter a valid website link before continuing.';
+    if (fields.includes('timezone')) return 'Please choose your timezone before continuing.';
+    if (fields.includes('name')) return 'Please add your business name before continuing.';
+    if (fields.includes('vertical')) return 'Please choose the business type before continuing.';
+    return 'Some details need a quick check before saving.';
+  }
+  if (error === 'shop_not_found') return 'We could not find your shop. Please refresh and try again.';
+  if (error === 'no_changes') return 'No changes were found to save.';
+  if (error === 'user_dependencies_unavailable') return 'Setup is temporarily unavailable. Please try again in a moment.';
   return error || 'Unable to save. Please check your details and try again.';
 }
 
@@ -969,13 +979,45 @@ function presetOpen7Days(h: WizardHours): WizardHours {
   return next;
 }
 
+export function normalizeOnboardingTimeValue(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const raw = value.trim();
+  const twentyFourHour = raw.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (twentyFourHour) {
+    return `${twentyFourHour[1].padStart(2, '0')}:${twentyFourHour[2]}`;
+  }
+
+  const normalized = raw
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ');
+  const twelveHour = normalized.match(/^(\d{1,2})(?::([0-5]\d))?\s*(am|pm)$/);
+  if (twelveHour) {
+    let hour = Number(twelveHour[1]);
+    const minute = twelveHour[2] ?? '00';
+    const meridiem = twelveHour[3];
+    if (hour < 1 || hour > 12) return fallback;
+    if (meridiem === 'am') hour = hour === 12 ? 0 : hour;
+    if (meridiem === 'pm') hour = hour === 12 ? 12 : hour + 12;
+    return `${String(hour).padStart(2, '0')}:${minute}`;
+  }
+
+  return fallback;
+}
+
 function apiHoursToWizard(hours: ApiHours): WizardHours {
   const next = defaultHours();
   for (const [day] of DAYS) {
     const item = hours[day];
     if (!item) continue;
     if ('closed' in item) next[day] = { ...next[day], open: false };
-    else next[day] = { open: true, from: item.open, to: item.close };
+    else {
+      next[day] = {
+        open: true,
+        from: normalizeOnboardingTimeValue(item.open, next[day].from),
+        to: normalizeOnboardingTimeValue(item.close, next[day].to),
+      };
+    }
   }
   return next;
 }
@@ -984,7 +1026,12 @@ function wizardHoursToApi(hours: WizardHours): ApiHours {
   return Object.fromEntries(
     Object.entries(hours).map(([day, item]) => [
       day,
-      item.open ? { open: item.from, close: item.to } : { closed: true },
+      item.open
+        ? {
+            open: normalizeOnboardingTimeValue(item.from, '09:00'),
+            close: normalizeOnboardingTimeValue(item.to, '18:00'),
+          }
+        : { closed: true },
     ]),
   ) as ApiHours;
 }
@@ -1567,11 +1614,26 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patch),
     });
-    const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+    const body = (await response.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string; fields?: string[] } | null;
     setSaving(false);
     if (!response.ok || !body?.ok) {
-      const message = friendlySaveError(body?.error);
+      const message = friendlySaveError(
+        body?.error ?? body?.message ?? (response.status >= 500 ? 'user_dependencies_unavailable' : null),
+        body?.fields ?? [],
+      );
       if (currentStep === 2) {
+        if (body?.error === 'invalid_payload' && Array.isArray(body.fields)) {
+          const fieldMap: Record<string, ProfileReviewRequiredField> = {
+            name: 'name',
+            vertical: 'type',
+            vertical_detail: 'type',
+            timezone: 'timezone',
+            website_url: 'website',
+            hours: 'hours',
+            address: 'address',
+          };
+          setProfileReviewInvalidFields([...new Set(body.fields.map((field) => fieldMap[field]).filter(Boolean))]);
+        }
         setProfileReviewMessage(message);
         setStatus(null);
       } else {

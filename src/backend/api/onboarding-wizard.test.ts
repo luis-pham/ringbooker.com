@@ -17,6 +17,7 @@ import {
   importResultMessage,
   isHttpWebsiteUrl,
   IMPORT_PROGRESS_STEPS,
+  normalizeOnboardingTimeValue,
   secondaryImportSuggestionCount,
   serviceReviewBadgeState,
   serviceSourceLabel,
@@ -98,6 +99,13 @@ test('website URL validation accepts http and https links', () => {
 
 test('Profile review validation requires business name', () => {
   assert.deepEqual(validateOnboardingProfileReview({ businessName: '' }), ['Business name is required.']);
+});
+
+test('onboarding normalizes imported AM/PM hours before settings save', () => {
+  assert.equal(normalizeOnboardingTimeValue('9:00 AM', '08:00'), '09:00');
+  assert.equal(normalizeOnboardingTimeValue('7 PM', '18:00'), '19:00');
+  assert.equal(normalizeOnboardingTimeValue('12:30 pm', '18:00'), '12:30');
+  assert.equal(normalizeOnboardingTimeValue('bad time', '18:00'), '18:00');
 });
 
 test('Vietnamese auto-selected for nail salon', () => {

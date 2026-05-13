@@ -69,6 +69,67 @@ type ShopsRow = {
   google_cal_credentials_encrypted: string | null;
 };
 
+const SHOP_SELECT_COLUMNS = [
+  'id',
+  'name',
+  'vertical',
+  'vertical_detail',
+  'brand_slug',
+  'phone_number',
+  'user_phone',
+  'backup_phone',
+  'user_name',
+  'address',
+  'timezone',
+  'services',
+  'not_offered_services',
+  'staff',
+  'faqs',
+  'hours',
+  'cancel_policy',
+  'promotions',
+  'booking_url',
+  'booking_method',
+  'selected_integration',
+  'sms_owner_opted_in',
+  'website_url',
+  'languages',
+  'current_onboarding_step',
+  'setup_method',
+  'forwarding_type',
+  'forwarding_carrier',
+  'forwarding_country',
+  'telnyx_number',
+  'forwarding_number_status',
+  'forwarding_number_provisioning_started_at',
+  'forwarding_number_provider_order_id',
+  'forwarding_number_last_error',
+  'ai_voice',
+  'ai_welcome_message',
+  'ai_custom_instructions',
+  'allow_transfers',
+  'allow_callbacks',
+  'send_reminder_sms',
+  'send_review_request_sms',
+  'send_missed_call_followup_sms',
+  'plan',
+  'active',
+  'google_cal_id',
+  'google_cal_credentials_encrypted',
+] as const;
+
+function shopSelectColumns(options: { includeSmsOwnerOptIn?: boolean } = {}): string {
+  const includeSmsOwnerOptIn = options.includeSmsOwnerOptIn ?? true;
+  return SHOP_SELECT_COLUMNS
+    .filter((column) => includeSmsOwnerOptIn || column !== 'sms_owner_opted_in')
+    .join(',');
+}
+
+function isMissingSmsOwnerOptInColumn(error: { message?: string } | null): boolean {
+  const message = error?.message ?? '';
+  return message.includes('sms_owner_opted_in') || /schema cache/i.test(message);
+}
+
 type ShopServiceCategoryRow = {
   id: string;
   shop_id: string;
@@ -458,66 +519,25 @@ export class SupabaseShopsRepository implements ShopsRepository {
   }
 
   async findById(shopId: string): Promise<Shop | null> {
-    const { data, error } = await this.supabase
+    let result = await this.supabase
       .from('shops')
-      .select(
-        [
-          'id',
-          'name',
-          'vertical',
-          'vertical_detail',
-          'brand_slug',
-          'phone_number',
-          'user_phone',
-          'backup_phone',
-          'user_name',
-          'address',
-          'timezone',
-          'services',
-          'not_offered_services',
-          'staff',
-          'faqs',
-          'hours',
-          'cancel_policy',
-          'promotions',
-          'booking_url',
-          'booking_method',
-          'selected_integration',
-          'sms_owner_opted_in',
-          'website_url',
-          'languages',
-          'current_onboarding_step',
-          'setup_method',
-          'forwarding_type',
-          'forwarding_carrier',
-          'forwarding_country',
-          'telnyx_number',
-          'forwarding_number_status',
-          'forwarding_number_provisioning_started_at',
-          'forwarding_number_provider_order_id',
-          'forwarding_number_last_error',
-          'ai_voice',
-          'ai_welcome_message',
-          'ai_custom_instructions',
-          'allow_transfers',
-          'allow_callbacks',
-          'send_reminder_sms',
-          'send_review_request_sms',
-          'send_missed_call_followup_sms',
-          'plan',
-          'active',
-          'google_cal_id',
-          'google_cal_credentials_encrypted',
-        ].join(','),
-      )
+      .select(shopSelectColumns())
       .eq('id', shopId)
       .maybeSingle<ShopsRow>();
 
-    if (error) {
-      throw new Error(`shops_find_by_id_failed:${error.message}`);
+    if (result.error && isMissingSmsOwnerOptInColumn(result.error)) {
+      result = await this.supabase
+        .from('shops')
+        .select(shopSelectColumns({ includeSmsOwnerOptIn: false }))
+        .eq('id', shopId)
+        .maybeSingle<ShopsRow>();
     }
 
-    return data ? this.hydrateServiceCatalog(toShop(data)) : null;
+    if (result.error) {
+      throw new Error(`shops_find_by_id_failed:${result.error.message}`);
+    }
+
+    return result.data ? this.hydrateServiceCatalog(toShop(result.data)) : null;
   }
 
   async list(params?: { limit?: number }): Promise<Shop[]> {
@@ -741,80 +761,40 @@ export class SupabaseShopsRepository implements ShopsRepository {
       payload.forwarding_number_last_error = patch.forwarding_number_last_error;
     }
 
-    const { data, error } = await this.supabase
+    let result = await this.supabase
       .from('shops')
       .update(payload)
       .eq('id', shopId)
-      .select(
-        [
-          'id',
-          'name',
-          'vertical',
-          'vertical_detail',
-          'brand_slug',
-          'phone_number',
-          'user_phone',
-          'backup_phone',
-          'user_name',
-          'address',
-          'timezone',
-          'services',
-          'not_offered_services',
-          'staff',
-          'faqs',
-          'hours',
-          'cancel_policy',
-          'promotions',
-          'booking_url',
-          'booking_method',
-          'selected_integration',
-          'sms_owner_opted_in',
-          'website_url',
-          'languages',
-          'current_onboarding_step',
-          'setup_method',
-          'forwarding_type',
-          'forwarding_carrier',
-          'forwarding_country',
-          'telnyx_number',
-          'forwarding_number_status',
-          'forwarding_number_provisioning_started_at',
-          'forwarding_number_provider_order_id',
-          'forwarding_number_last_error',
-          'ai_voice',
-          'ai_welcome_message',
-          'ai_custom_instructions',
-          'allow_transfers',
-          'allow_callbacks',
-          'send_reminder_sms',
-          'send_review_request_sms',
-          'send_missed_call_followup_sms',
-          'plan',
-          'active',
-          'google_cal_id',
-          'google_cal_credentials_encrypted',
-        ].join(','),
-      )
+      .select(shopSelectColumns({ includeSmsOwnerOptIn: patch.sms_owner_opted_in !== undefined }))
       .maybeSingle<ShopsRow>();
 
-    if (error) {
-      throw new Error(`shops_update_user_settings_failed:${error.message}`);
+    if (result.error && isMissingSmsOwnerOptInColumn(result.error) && patch.sms_owner_opted_in === undefined) {
+      result = await this.supabase
+        .from('shops')
+        .update(payload)
+        .eq('id', shopId)
+        .select(shopSelectColumns({ includeSmsOwnerOptIn: false }))
+        .maybeSingle<ShopsRow>();
     }
 
-    if (!data) return null;
+    if (result.error) {
+      throw new Error(`shops_update_user_settings_failed:${result.error.message}`);
+    }
+
+    if (!result.data) return null;
     if (patch.services !== undefined) {
       await this.saveServiceCatalog(
-        data.id,
+        result.data.id,
         buildGeneralServiceCatalog({
-          shopId: data.id,
+          shopId: result.data.id,
           services: patch.services,
           categoryId: randomUUID(),
           serviceIdForIndex: () => randomUUID(),
         }),
       );
-      return this.findById(data.id);
+      return this.findById(result.data.id);
     }
-    return this.hydrateServiceCatalog(toShop(data));
+    return this.hydrateServiceCatalog(toShop(result.data));
   }
 
   async findServiceCatalogByShopId(shopId: string): Promise<ShopServiceCatalog | null> {
