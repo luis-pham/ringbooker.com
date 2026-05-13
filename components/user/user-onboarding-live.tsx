@@ -1628,7 +1628,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         body?.fields ?? [],
       );
       if (currentStep === 2) {
-        if ((body?.error === 'invalid_payload' || body?.error === 'phone_number_already_exists') && Array.isArray(body.fields)) {
+        const responseFields =
+          body?.error === 'phone_number_already_exists'
+            ? Array.from(new Set([...(body.fields ?? []), 'phone_number']))
+            : (body?.fields ?? []);
+        if ((body?.error === 'invalid_payload' || body?.error === 'phone_number_already_exists') && responseFields.length > 0) {
           const fieldMap: Record<string, ProfileReviewRequiredField> = {
             name: 'name',
             vertical: 'type',
@@ -1641,7 +1645,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             user_phone: 'phone',
             telnyx_number: 'phone',
           };
-          setProfileReviewInvalidFields([...new Set(body.fields.map((field) => fieldMap[field]).filter(Boolean))]);
+          setProfileReviewInvalidFields([...new Set(responseFields.map((field) => fieldMap[field]).filter(Boolean))]);
         }
         setProfileReviewMessage(message);
         setStatus(null);
