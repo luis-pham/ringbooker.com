@@ -689,6 +689,27 @@ button.subtle-link:hover{text-decoration:underline}
 .sh-hours-wrap .hours-day{font-size:13px;font-weight:500;color:var(--text-dark)}
 .sh-hours-wrap .small-field{margin-bottom:0}
 .sh-hours-wrap .small-field label{display:none}
+.sh-hours-wrap .hours-closed-cell{
+  display:flex;align-items:center;justify-content:flex-end;gap:10px;
+  font-size:12px;color:var(--text-gray);font-weight:500;min-width:0;
+}
+.sh-hours-wrap .hours-closed-label{white-space:nowrap}
+.sh-hours-wrap .hours-closed-toggle{
+  position:relative;flex-shrink:0;width:40px;height:24px;border-radius:12px;
+  border:0;padding:0;margin:0;background:#e5e7eb;cursor:pointer;
+  transition:background .15s ease;box-sizing:border-box;
+}
+.sh-hours-wrap .hours-closed-toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.14);transition:transform .15s ease;
+}
+.sh-hours-wrap .hours-closed-toggle[aria-checked="true"]{background:#7c3aed}
+.sh-hours-wrap .hours-closed-toggle[aria-checked="true"]::after{transform:translateX(16px)}
+.sh-hours-wrap .hours-closed-toggle:focus-visible{outline:2px solid var(--purple-dark);outline-offset:2px}
+.sh-hours-wrap .hours-row.closed .hours-field-open select,
+.sh-hours-wrap .hours-row.closed .hours-field-close select{
+  opacity:.3;pointer-events:none;
+}
 @media (min-width:1024px){
   .card-section-form > .settings-tab-content-frame{
     width:100%;
@@ -846,6 +867,9 @@ html[data-user-theme="dark"] .sh-active-thead{background:#161b22;border-bottom-c
 html[data-user-theme="dark"] .sh-active-row{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .sh-hours-wrap{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .sh-hours-thead{background:#161b22;border-bottom-color:var(--border)}
+html[data-user-theme="dark"] .sh-hours-wrap .hours-closed-toggle{background:#30363d}
+html[data-user-theme="dark"] .sh-hours-wrap .hours-closed-toggle::after{background:#f0f6fc}
+html[data-user-theme="dark"] .sh-hours-wrap .hours-closed-toggle[aria-checked="true"]{background:#8957e5}
 html[data-user-theme="dark"] .sh-active-row .sh-active-service{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .service-group-card{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .service-group-card summary{background:#161b22;border-bottom-color:var(--border)}
@@ -1094,31 +1118,36 @@ html[data-user-theme="dark"] .upgrade-panel{
   .sh-hours-wrap{border:none;border-radius:0;background:transparent;overflow:visible}
   .sh-hours-wrap .hours-grid{display:grid;gap:18px;background:transparent}
   .sh-hours-wrap .hours-row{
-    grid-template-columns:minmax(0,1fr) minmax(0,1fr) 64px;
-    grid-template-areas:
-      "day day day"
-      "open close closed";
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-rows:auto auto;
     gap:8px 10px;
     padding:0;
     border-bottom:none;
     background:transparent;
   }
-  .sh-hours-wrap .hours-day{grid-area:day;min-width:0}
-  .sh-hours-wrap .hours-row .small-field:nth-of-type(1){grid-area:open}
-  .sh-hours-wrap .hours-row .small-field:nth-of-type(2){grid-area:close}
-  .sh-hours-wrap .small-field label{display:block}
-  .sh-hours-wrap .small-field{margin-bottom:0}
-  .sh-hours-wrap .hours-row .inline-check{
-    grid-area:closed;
-    display:grid;
-    grid-template-rows:auto 40px;
-    align-items:end;
-    justify-items:center;
-    gap:8px;
-    margin:0;
+  .sh-hours-wrap .hours-day{
+    grid-column:1;
+    grid-row:1;
+    align-self:center;
     min-width:0;
   }
-  .sh-hours-wrap .hours-row .inline-check input{align-self:center}
+  .sh-hours-wrap .hours-closed-cell{
+    grid-column:2;
+    grid-row:1;
+    justify-self:end;
+    align-self:center;
+  }
+  .sh-hours-wrap .hours-field-open{
+    grid-column:1;
+    grid-row:2;
+  }
+  .sh-hours-wrap .hours-field-close{
+    grid-column:2;
+    grid-row:2;
+  }
+  .sh-hours-wrap .small-field label{display:block}
+  .sh-hours-wrap .small-field{margin-bottom:0}
 }
 `;
 

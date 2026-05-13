@@ -2097,25 +2097,35 @@ export function UserSettingsLive({
                         const isClosed = 'closed' in entry;
                         const openId = `hours-open-${day}`;
                         const closeId = `hours-close-${day}`;
+                        const closedLabelId = `hours-closed-label-${day}`;
                         return (
                           <div key={day} className={`hours-row ${isClosed ? 'closed' : ''}`}>
                             <div className="hours-day">{DAY_LABELS[day]}</div>
-                            <div className="small-field">
+                            <div className="small-field hours-field-open">
                               <label htmlFor={openId}>Open</label>
                               <select id={openId} value={isClosed ? '09:00' : entry.open} disabled={isClosed} onChange={(event) => updateHours(day, { open: event.target.value, close: isClosed ? '18:00' : entry.close })}>
                                 {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
                               </select>
                             </div>
-                            <div className="small-field">
+                            <div className="small-field hours-field-close">
                               <label htmlFor={closeId}>Close</label>
                               <select id={closeId} value={isClosed ? '18:00' : entry.close} disabled={isClosed} onChange={(event) => updateHours(day, { open: isClosed ? '09:00' : entry.open, close: event.target.value })}>
                                 {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
                               </select>
                             </div>
-                            <label className="inline-check">
-                              <input type="checkbox" checked={isClosed} onChange={(event) => updateHours(day, event.target.checked ? { closed: true } : { open: '09:00', close: '18:00' })} />
-                              Closed
-                            </label>
+                            <div className="hours-closed-cell">
+                              <span className="hours-closed-label" id={closedLabelId}>
+                                Closed
+                              </span>
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={isClosed}
+                                aria-labelledby={closedLabelId}
+                                className="hours-closed-toggle"
+                                onClick={() => updateHours(day, isClosed ? { open: '09:00', close: '18:00' } : { closed: true })}
+                              />
+                            </div>
                           </div>
                         );
                       })}
