@@ -250,6 +250,8 @@ export interface Shop {
   cancel_policy: string;
   promotions?: string | null;
   booking_url?: string | null;
+  booking_method?: 'app' | 'direct' | 'later' | null;
+  selected_integration?: string | null;
   website_url?: string | null;
   languages?: string[];
   current_onboarding_step?: number | null;

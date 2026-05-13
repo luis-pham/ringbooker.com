@@ -40,6 +40,8 @@ type ShopsRow = {
   cancel_policy: string | null;
   promotions: string | null;
   booking_url: string | null;
+  booking_method: Shop['booking_method'] | null;
+  selected_integration: string | null;
   website_url: string | null;
   languages: string[] | null;
   current_onboarding_step: number | null;
@@ -283,6 +285,8 @@ function toShop(row: ShopsRow): Shop {
     cancel_policy: row.cancel_policy ?? '2-hour cancellation policy applies.',
     promotions: row.promotions,
     booking_url: row.booking_url,
+    booking_method: row.booking_method ?? null,
+    selected_integration: row.selected_integration ?? null,
     website_url: row.website_url,
     languages: Array.isArray(row.languages) && row.languages.length > 0 ? row.languages : ['en'],
     current_onboarding_step: row.current_onboarding_step ?? 1,
@@ -347,6 +351,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -408,6 +414,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -469,6 +477,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -530,6 +540,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -604,6 +616,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -660,6 +674,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'booking_method'
+        | 'selected_integration'
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'
@@ -695,6 +711,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.cancel_policy !== undefined) payload.cancel_policy = patch.cancel_policy;
     if (patch.promotions !== undefined) payload.promotions = patch.promotions;
     if (patch.booking_url !== undefined) payload.booking_url = patch.booking_url;
+    if (patch.booking_method !== undefined) payload.booking_method = patch.booking_method;
+    if (patch.selected_integration !== undefined) payload.selected_integration = patch.selected_integration;
     if (patch.website_url !== undefined) payload.website_url = patch.website_url;
     if (patch.languages !== undefined) payload.languages = patch.languages;
     if (patch.current_onboarding_step !== undefined) payload.current_onboarding_step = patch.current_onboarding_step;
@@ -739,6 +757,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -1023,6 +1043,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -1115,6 +1137,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -1187,6 +1211,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -1256,6 +1282,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'cancel_policy',
           'promotions',
           'booking_url',
+          'booking_method',
+          'selected_integration',
           'website_url',
           'languages',
           'current_onboarding_step',

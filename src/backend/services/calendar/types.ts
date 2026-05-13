@@ -54,6 +54,7 @@ function parseShopCalendarProviderHint(shop: Shop): CalendarProviderId | null {
   for (const candidate of parseCandidates) {
     try {
       const parsed = JSON.parse(candidate) as Record<string, unknown>;
+      if (parsed.type === 'booking_link') continue;
       const hintedProvider =
         parsed.provider ??
         parsed.provider_id ??

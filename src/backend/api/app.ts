@@ -768,12 +768,64 @@ function forwardingStatusForGoLive(params: {
 }
 
 const calendarProviderParamSchema = z.object({
-  provider: z.enum(['square_appointments', 'google_calendar', 'vagaro', 'glossgenius', 'fresha', 'custom', 'mindbody', 'booksy']),
+  provider: z.enum([
+    'square_appointments',
+    'google_calendar',
+    'vagaro',
+    'glossgenius',
+    'fresha',
+    'custom',
+    'mindbody',
+    'booksy',
+    'boulevard',
+    'calendly',
+    'styleseat',
+    'mangomint',
+    'schedulicity',
+    'zenoti',
+    'phorest',
+    'timely',
+    'acuity',
+  ]),
 });
 type CalendarProviderParam = z.infer<typeof calendarProviderParamSchema>['provider'];
-type BookingLinkProviderId = 'glossgenius' | 'fresha' | 'custom' | 'booksy';
+type BookingLinkProviderId =
+  | 'vagaro'
+  | 'glossgenius'
+  | 'fresha'
+  | 'custom'
+  | 'booksy'
+  | 'boulevard'
+  | 'calendly'
+  | 'styleseat'
+  | 'mangomint'
+  | 'schedulicity'
+  | 'zenoti'
+  | 'phorest'
+  | 'timely'
+  | 'acuity';
 
-const BOOKING_LINK_PROVIDER_IDS = ['glossgenius', 'fresha', 'custom', 'booksy'] as const satisfies readonly BookingLinkProviderId[];
+const BOOKING_LINK_PROVIDER_IDS = [
+  'vagaro',
+  'glossgenius',
+  'fresha',
+  'custom',
+  'booksy',
+  'boulevard',
+  'calendly',
+  'styleseat',
+  'mangomint',
+  'schedulicity',
+  'zenoti',
+  'phorest',
+  'timely',
+  'acuity',
+] as const satisfies readonly BookingLinkProviderId[];
+
+const integrationsPreferencesSchema = z.object({
+  bookingMethod: z.enum(['app', 'direct', 'later']).nullable().optional(),
+  selectedIntegration: calendarProviderParamSchema.shape.provider.nullable().optional(),
+});
 
 const squareConfigureSchema = z.object({
   locationId: z.string().min(1),
@@ -4625,6 +4677,8 @@ export function createBackendApp(deps: {
         website_url: shop.website_url ?? '',
         address: shop.address ?? null,
         booking_url: shop.booking_url ?? '',
+        booking_method: shop.booking_method ?? null,
+        selected_integration: shop.selected_integration ?? null,
         current_onboarding_step: shop.current_onboarding_step ?? 1,
         setup_method: shop.setup_method ?? null,
         forwarding_type: shop.forwarding_type ?? 'no_answer',
@@ -5588,6 +5642,53 @@ export function createBackendApp(deps: {
     });
   });
 
+  app.get(path('/user/integrations/preferences'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_integrations_preferences_get');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    return c.json({
+      ok: true,
+      bookingMethod: shop.booking_method ?? null,
+      selectedIntegration: shop.selected_integration ?? null,
+    });
+  });
+
+  app.patch(path('/user/integrations/preferences'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_integrations_preferences_patch');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = integrationsPreferencesSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const updated = await deps.shopsRepository.updateUserSettings(sessionResult.shopId ?? '', {
+      ...(parsed.data.bookingMethod !== undefined ? { booking_method: parsed.data.bookingMethod } : {}),
+      ...(parsed.data.selectedIntegration !== undefined ? { selected_integration: parsed.data.selectedIntegration } : {}),
+    });
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    return c.json({
+      ok: true,
+      bookingMethod: updated.booking_method ?? null,
+      selectedIntegration: updated.selected_integration ?? null,
+    });
+  });
+
   app.get(path('/user/calendar/providers'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_providers_get');
     if (limited) return limited;
@@ -5627,6 +5728,20 @@ export function createBackendApp(deps: {
           };
         }
         if (id === 'vagaro') {
+          if ((bookingLinkProvider === 'vagaro' || shop.selected_integration === 'vagaro') && shop.booking_url) {
+            return {
+              id,
+              label: meta.label,
+              implemented: true,
+              connected: true,
+              configured: true,
+              details: {
+                bookingUrl: shop.booking_url,
+                type: 'booking_link',
+                capabilityNote: 'Vagaro booking link saved. Full API sync requires Vagaro API approval.',
+              },
+            };
+          }
           const connected = Boolean(vagaroCredentials?.accessToken || vagaroCredentials?.clientId);
           const configured = Boolean(vagaroCredentials?.region && vagaroCredentials?.businessId);
           return {
@@ -5734,6 +5849,8 @@ export function createBackendApp(deps: {
       if (bookingUrl) {
         const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
           booking_url: bookingUrl,
+          booking_method: 'app',
+          selected_integration: 'vagaro',
         });
         if (!settingsUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
       }
@@ -5773,6 +5890,8 @@ export function createBackendApp(deps: {
 
     const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
       booking_url: bookingUrl,
+      booking_method: 'app',
+      selected_integration: 'vagaro',
     });
     if (!settingsUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
@@ -5811,6 +5930,8 @@ export function createBackendApp(deps: {
 
     const settingsUpdated = await deps.shopsRepository.updateUserSettings(shop.id, {
       booking_url: bookingUrl,
+      booking_method: 'app',
+      selected_integration: provider,
     });
     if (!settingsUpdated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
@@ -6030,6 +6151,10 @@ export function createBackendApp(deps: {
           }),
         );
       }
+      await deps.shopsRepository.updateUserSettings(existingShop.id, {
+        booking_method: 'app',
+        selected_integration: 'square_appointments',
+      });
       return c.redirect(
         buildCalendarSettingsRedirect({
           appBaseUrl,
@@ -6060,7 +6185,7 @@ export function createBackendApp(deps: {
     }
 
     const provider = parseCalendarProviderParam(c.req.param('provider') ?? '');
-    if (isBookingLinkProviderId(provider)) {
+    if (provider !== 'vagaro' && isBookingLinkProviderId(provider)) {
       return c.json({
         ok: true,
         provider,

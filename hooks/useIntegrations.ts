@@ -1,0 +1,264 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import type { BookingMethod, IntegrationAppKey } from '@/lib/integrations-config';
+import { fromBackendProviderKey, toBackendProviderKey } from '@/lib/integrations-config';
+
+type ProviderSummary = {
+  id: string;
+  label: string;
+  implemented: boolean;
+  connected: boolean;
+  configured: boolean;
+  details: {
+    bookingUrl?: string | null;
+    merchantId?: string | null;
+    locationId?: string | null;
+    serviceVariationId?: string | null;
+    teamMemberId?: string | null;
+    region?: string | null;
+    businessId?: string | null;
+    capabilityNote?: string | null;
+    type?: string | null;
+  } | null;
+};
+
+type PreferencesResponse = {
+  ok: boolean;
+  bookingMethod?: BookingMethod;
+  selectedIntegration?: string | null;
+  error?: string;
+};
+
+type ProvidersResponse = {
+  ok: boolean;
+  providers?: ProviderSummary[];
+  error?: string;
+};
+
+type Step = 'question' | 'app-picker' | 'direct' | 'later';
+
+export type IntegrationsState = {
+  bookingMethod: BookingMethod;
+  selectedApp: IntegrationAppKey | null;
+  step: Step;
+  squareConnected: boolean;
+  vagaroConnected: boolean;
+  bookingLinkSaved: boolean;
+  bookingLinkUrl: string | null;
+  providers: ProviderSummary[];
+  isLoading: boolean;
+  error: string | null;
+};
+
+function inferStep(method: BookingMethod): Step {
+  if (method === 'app') return 'app-picker';
+  if (method === 'direct') return 'direct';
+  if (method === 'later') return 'later';
+  return 'question';
+}
+
+export function useIntegrations() {
+  const [bookingMethod, setBookingMethodState] = useState<BookingMethod>(null);
+  const [selectedApp, setSelectedAppState] = useState<IntegrationAppKey | null>(null);
+  const [step, setStep] = useState<Step>('question');
+  const [providers, setProviders] = useState<ProviderSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const selectedBackendProvider = selectedApp ? toBackendProviderKey(selectedApp) : null;
+  const selectedProvider = useMemo(
+    () => providers.find((provider) => provider.id === selectedBackendProvider) ?? null,
+    [providers, selectedBackendProvider],
+  );
+
+  const squareProvider = providers.find((provider) => provider.id === 'square_appointments') ?? null;
+  const vagaroProvider = providers.find((provider) => provider.id === 'vagaro') ?? null;
+  const bookingLinkProvider = selectedProvider?.details?.type === 'booking_link' ? selectedProvider : null;
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [preferencesResponse, providersResponse] = await Promise.all([
+        fetch('/api/backend/user/integrations/preferences'),
+        fetch('/api/backend/user/calendar/providers'),
+      ]);
+      const preferences = (await preferencesResponse.json()) as PreferencesResponse;
+      const providersBody = (await providersResponse.json()) as ProvidersResponse;
+      if (!preferencesResponse.ok || !preferences.ok) throw new Error(preferences.error ?? 'integrations_preferences_failed');
+      if (!providersResponse.ok || !providersBody.ok) throw new Error(providersBody.error ?? 'integrations_providers_failed');
+
+      const method = preferences.bookingMethod ?? null;
+      const persistedApp = fromBackendProviderKey(preferences.selectedIntegration);
+      setBookingMethodState(method);
+      setSelectedAppState(persistedApp);
+      setStep(inferStep(method));
+      setProviders(providersBody.providers ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'integrations_load_failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const patchPreferences = useCallback(async (body: Record<string, unknown>) => {
+    const response = await fetch('/api/backend/user/integrations/preferences', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const payload = (await response.json()) as PreferencesResponse;
+    if (!response.ok || !payload.ok) throw new Error(payload.error ?? 'integrations_preferences_save_failed');
+    return payload;
+  }, []);
+
+  const setBookingMethod = useCallback(
+    async (method: BookingMethod) => {
+      setError(null);
+      setBookingMethodState(method);
+      setStep(inferStep(method));
+      try {
+        await patchPreferences({ bookingMethod: method });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'booking_method_save_failed');
+      }
+    },
+    [patchPreferences],
+  );
+
+  const setSelectedApp = useCallback(
+    async (key: IntegrationAppKey | null) => {
+      setError(null);
+      setSelectedAppState(key);
+      if (key) {
+        setBookingMethodState('app');
+        setStep('app-picker');
+      }
+      try {
+        await patchPreferences({ bookingMethod: key ? 'app' : bookingMethod, selectedIntegration: key ? toBackendProviderKey(key) : null });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'selected_integration_save_failed');
+      }
+    },
+    [bookingMethod, patchPreferences],
+  );
+
+  const saveBookingLink = useCallback(
+    async (url: string, key: IntegrationAppKey) => {
+      setError(null);
+      const provider = toBackendProviderKey(key);
+      if (key === 'vagaro') {
+        const response = await fetch('/api/backend/user/calendar/providers/vagaro/booking-url', {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ bookingUrl: url }),
+        });
+        const payload = (await response.json()) as { ok: boolean; error?: string };
+        if (!response.ok || !payload.ok) {
+          const message = payload.error ?? 'booking_link_save_failed';
+          setError(message);
+          throw new Error(message);
+        }
+        await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
+        await load();
+        return;
+      }
+      const response = await fetch(`/api/backend/user/calendar/providers/${provider}/connect`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ bookingUrl: url }),
+      });
+      const payload = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !payload.ok) {
+        const message = payload.error ?? 'booking_link_save_failed';
+        setError(message);
+        throw new Error(message);
+      }
+      await patchPreferences({ bookingMethod: 'app', selectedIntegration: provider });
+      await load();
+    },
+    [load, patchPreferences],
+  );
+
+  const connectVagaro = useCallback(
+    async (creds: { clientId: string; clientSecret: string; region: string; businessId: string; bookingLink?: string }) => {
+      setError(null);
+      const response = await fetch('/api/backend/user/calendar/providers/vagaro/connect', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          clientId: creds.clientId,
+          clientSecretKey: creds.clientSecret,
+          region: creds.region,
+          businessId: creds.businessId,
+          bookingUrl: creds.bookingLink || undefined,
+        }),
+      });
+      const payload = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !payload.ok) {
+        const message = payload.error ?? 'vagaro_connect_failed';
+        setError(message);
+        throw new Error(message);
+      }
+      await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'vagaro' });
+      await load();
+    },
+    [load, patchPreferences],
+  );
+
+  const disconnectProvider = useCallback(
+    async (provider: string) => {
+      setError(null);
+      const response = await fetch(`/api/backend/user/calendar/providers/${provider}/disconnect`, { method: 'POST' });
+      const payload = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !payload.ok) {
+        const message = payload.error ?? 'disconnect_failed';
+        setError(message);
+        throw new Error(message);
+      }
+      await load();
+    },
+    [load],
+  );
+
+  const goBack = useCallback(async () => {
+    setSelectedAppState(null);
+    setStep('question');
+    setBookingMethodState(null);
+    try {
+      await patchPreferences({ bookingMethod: null, selectedIntegration: null });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'integrations_reset_failed');
+    }
+  }, [patchPreferences]);
+
+  return {
+    status: {
+      bookingMethod,
+      selectedApp,
+      step,
+      squareConnected: Boolean(squareProvider?.connected),
+      vagaroConnected: Boolean(vagaroProvider?.connected),
+      bookingLinkSaved: Boolean(bookingLinkProvider?.connected),
+      bookingLinkUrl: selectedProvider?.details?.bookingUrl ?? null,
+      providers,
+      isLoading,
+      error,
+    } satisfies IntegrationsState,
+    selectedProvider,
+    setBookingMethod,
+    setSelectedApp,
+    saveBookingLink,
+    connectVagaro,
+    disconnectVagaro: () => disconnectProvider('vagaro'),
+    disconnectSquare: () => disconnectProvider('square_appointments'),
+    goBack,
+    refresh: load,
+  };
+}

@@ -203,20 +203,9 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
     padding:16px;
   }
 }
-/* Desktop: portal pages share the same page band under the topbar (match Bookings) */
-@media (min-width:1025px){
-  .user-app-shell .main > .page-content.page-bookings,
-  .user-app-shell .main > .page-content.page-calls,
-  .user-app-shell .main > .page-content.page-knowledge,
-  .user-app-shell .main > .page-content.page-overview,
-  .user-app-shell .main > .page-content.page-billing,
-  .user-app-shell .main > .page-content.page-more,
-  .user-app-shell .main > .page-content.page-go-live,
-  .user-app-shell .main > .page-content.page-integrations,
-  .user-app-shell .main > .page-content.page-account{
-    padding-top:24px;
-    padding-bottom:24px;
-  }
+/* Portal: uniform 48px from topbar (below its border) to page body on every user page */
+.user-app-shell .main > .page-content{
+  padding-top:48px;
 }
 .topbar{
   display:flex;align-items:center;justify-content:space-between;gap:18px;

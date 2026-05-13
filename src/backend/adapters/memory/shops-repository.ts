@@ -44,6 +44,8 @@ const defaultShop: Shop = {
   cancel_policy: '2-hour cancellation policy applies.',
   promotions: '10% off for first-time customers this week.',
   booking_url: 'https://ringbooker.com/demo',
+  booking_method: null,
+  selected_integration: null,
   website_url: 'https://ringbooker.com/demo',
   languages: ['en', 'vi'],
   current_onboarding_step: 4,
@@ -159,6 +161,8 @@ export class InMemoryShopsRepository implements ShopsRepository {
       languages: ['en'],
       website_url: null,
       current_onboarding_step: 1,
+      booking_method: null,
+      selected_integration: null,
       setup_method: null,
       forwarding_type: 'no_answer',
       forwarding_carrier: null,
@@ -203,6 +207,8 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'booking_method'
+        | 'selected_integration'
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'

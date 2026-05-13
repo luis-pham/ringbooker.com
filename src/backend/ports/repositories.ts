@@ -404,6 +404,8 @@ export interface ShopsRepository {
         | 'cancel_policy'
         | 'promotions'
         | 'booking_url'
+        | 'booking_method'
+        | 'selected_integration'
         | 'website_url'
         | 'languages'
         | 'current_onboarding_step'

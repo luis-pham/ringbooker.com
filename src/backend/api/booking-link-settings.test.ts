@@ -174,6 +174,59 @@ test('custom booking link accepts any valid https URL', async () => {
   assert.equal(shop?.booking_url, 'https://booking.example.com/ringbooker-salon');
 });
 
+test('integration preferences persist booking method and selected app', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/integrations/preferences', {
+    method: 'PATCH',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ bookingMethod: 'direct', selectedIntegration: null }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; bookingMethod: string | null; selectedIntegration: string | null };
+  assert.equal(body.ok, true);
+  assert.equal(body.bookingMethod, 'direct');
+  assert.equal(body.selectedIntegration, null);
+
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.booking_method, 'direct');
+  assert.equal(shop?.selected_integration, null);
+});
+
+test('vagaro booking link stores app selection without requiring API credentials', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/calendar/providers/vagaro/booking-url', {
+    method: 'PATCH',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ bookingUrl: 'https://vagaro.com/test-salon' }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; provider: string; bookingUrl: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.provider, 'vagaro');
+  assert.equal(body.bookingUrl, 'https://vagaro.com/test-salon');
+
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.booking_url, 'https://vagaro.com/test-salon');
+  assert.equal(shop?.booking_method, 'app');
+  assert.equal(shop?.selected_integration, 'vagaro');
+});
+
 test('options returns capability note for glossgenius', async () => {
   const { app } = createUserCalendarTestApp();
   const cookie = await loginUser(app);
