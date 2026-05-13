@@ -761,28 +761,6 @@ button.subtle-link:hover{text-decoration:underline}
   .knowledge-portal-main .service-inline-editor--legacy-mobile{
     display:none!important;
   }
-  .knowledge-portal-main .service-group-list{
-    gap:28px;
-  }
-  .knowledge-portal-main .service-group-card--compact{
-    border:none;
-    border-radius:0;
-    background:transparent;
-    box-shadow:none;
-    overflow:visible;
-  }
-  .knowledge-portal-main .service-group-card--compact summary{
-    padding:14px 0;
-    background:transparent;
-    border-bottom:1.5px solid var(--border);
-  }
-  .knowledge-portal-main .service-group-card--compact .service-group-body{
-    padding:0 0 8px;
-    background:transparent;
-  }
-  .knowledge-portal-main .service-group-body .service-summary-item:last-of-type{
-    border-bottom:1px solid var(--border);
-  }
   .knowledge-portal-main .service-summary-row--clickable{
     cursor:pointer;
     border-radius:6px;
@@ -829,17 +807,6 @@ button.subtle-link:hover{text-decoration:underline}
     color:#dc2626;
     font-style:italic;
   }
-  html[data-user-theme="dark"] .knowledge-portal-main .service-group-card--compact{
-    border:none;
-    background:transparent;
-  }
-  html[data-user-theme="dark"] .knowledge-portal-main .service-group-card--compact summary{
-    background:transparent;
-    border-bottom-color:var(--border);
-  }
-  html[data-user-theme="dark"] .knowledge-portal-main .service-group-card--compact .service-group-body{
-    background:transparent;
-  }
   html[data-user-theme="dark"] .knowledge-portal-main .service-summary-row--clickable:hover{
     background:#161b22;
   }
@@ -857,10 +824,19 @@ button.subtle-link:hover{text-decoration:underline}
   padding:0;
   margin:0;
   background:transparent;
-  max-width:none;
-  max-height:none;
-  width:auto;
-  height:auto;
+}
+/* Fill viewport and flex-center the panel (avoids left offset from default dialog sizing) */
+.catalog-service-dialog[open]{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:fixed;
+  inset:0;
+  width:100%;
+  max-width:100vw;
+  height:100%;
+  max-height:100dvh;
+  box-sizing:border-box;
 }
 .catalog-service-dialog::backdrop{
   background:rgba(0,0,0,.35);
@@ -868,6 +844,7 @@ button.subtle-link:hover{text-decoration:underline}
 .catalog-service-dialog-panel{
   display:flex;
   flex-direction:column;
+  flex-shrink:0;
   width:620px;
   max-width:95vw;
   max-height:88vh;

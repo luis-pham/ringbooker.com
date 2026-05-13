@@ -2203,7 +2203,7 @@ export function UserSettingsLive({
                           .filter((service) => service.categoryId === category.id)
                           .sort((a, b) => a.sortOrder - b.sortOrder);
                         return (
-	                          <details key={category.id} className="service-group-card service-group-card--compact" open>
+	                          <details key={category.id} className="service-group-card service-group-card--compact">
 	                            <summary>
 	                              <div className="service-group-summary-inner">
 	                                <strong>{category.name || 'Service group'}</strong>
