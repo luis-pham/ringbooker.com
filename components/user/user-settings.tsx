@@ -282,13 +282,7 @@ button.subtle-link:hover{text-decoration:underline}
 .tab-button-icon svg{display:block;width:20px;height:20px}
 .tab-button-body{display:flex;align-items:center;min-width:0}
 .tab-button strong{font-size:14px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
-/* Knowledge: desktop = underline tabs like /user/calls; mobile = original icon grid (see .knowledge-tabs-*) */
-.knowledge-tabs-desktop-only{display:none}
-.knowledge-tabs-mobile-only{display:block}
-@media (min-width:861px){
-  .knowledge-tabs-desktop-only{display:block}
-  .knowledge-tabs-mobile-only{display:none !important}
-}
+/* Knowledge: underline tabs like /user/calls (all breakpoints; horizontal scroll on narrow) */
 .knowledge-portal-tab-bar{margin-bottom:32px;min-width:0;border-bottom:1.5px solid #e5e7eb}
 /* Match /user/bookings filter tabs: same padding, gap, underline row */
 .business-subtabs.calls-filter-tabs{
@@ -976,21 +970,6 @@ html[data-user-theme="dark"] .upgrade-panel{
     border-bottom-color:var(--text-dark);
     color:var(--text-dark);
     font-weight:500!important;
-  }
-  .knowledge-portal-main .knowledge-tabs-mobile-only.tab-strip{
-    display:grid!important;
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
-    gap:10px!important;
-    width:100%!important;
-    max-width:100%!important;
-    min-width:0!important;
-    box-sizing:border-box!important;
-  }
-  .knowledge-portal-main .knowledge-tabs-mobile-only .tab-button{
-    min-width:0!important;
-    width:100%!important;
-    max-width:100%!important;
-    box-sizing:border-box!important;
   }
   .user-app-shell .settings-save-footer{
     flex-direction:column;

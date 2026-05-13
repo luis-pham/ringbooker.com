@@ -1553,25 +1553,8 @@ export function UserSettingsLive({
 
           {portal !== 'integrations' ? (
             portal === 'knowledge' ? (
-              <>
-                <div className="knowledge-tabs-desktop-only knowledge-portal-tab-bar">
-                  <div className="business-subtabs calls-filter-tabs" role="tablist" aria-label="Business Knowledge tabs">
-                    {visibleTabs.map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={activeTab === tab.id}
-                        title={tab.description}
-                        className={`business-subtab${activeTab === tab.id ? ' active' : ''}`}
-                        onClick={() => activateSettingsTab(tab.id)}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="knowledge-tabs-mobile-only tab-strip" role="tablist" aria-label="Business Knowledge tabs">
+              <div className="knowledge-portal-tab-bar">
+                <div className="business-subtabs calls-filter-tabs" role="tablist" aria-label="Business Knowledge tabs">
                   {visibleTabs.map((tab) => (
                     <button
                       key={tab.id}
@@ -1579,19 +1562,14 @@ export function UserSettingsLive({
                       role="tab"
                       aria-selected={activeTab === tab.id}
                       title={tab.description}
-                      className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
+                      className={`business-subtab${activeTab === tab.id ? ' active' : ''}`}
                       onClick={() => activateSettingsTab(tab.id)}
                     >
-                      <span className="tab-button-icon">
-                        <SettingsTabIcon tabId={tab.id} />
-                      </span>
-                      <span className="tab-button-body">
-                        <strong>{tab.label}</strong>
-                      </span>
+                      {tab.label}
                     </button>
                   ))}
                 </div>
-              </>
+              </div>
             ) : (
               <div className="tab-strip" role="tablist" aria-label="AI Settings tabs">
                 {visibleTabs.map((tab) => (
