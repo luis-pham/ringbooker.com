@@ -4,7 +4,7 @@ import { userDashboardStyles } from '@/components/user/user-dashboard';
 export const userBillingStyles: string[] = [
   ...userDashboardStyles,
   String.raw`
-.billing-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.billing-status-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
 .billing-status-card{
   background:#fff;border:1px solid var(--border);border-radius:22px;box-shadow:none;
   padding:22px;min-width:0;min-height:100%;display:flex;flex-direction:column;gap:6px;
@@ -101,7 +101,7 @@ export const userBillingStyles: string[] = [
   align-items:flex-end;
   flex-wrap:nowrap;
   gap:24px;
-  margin-top:40px;
+  margin-top:0;
   margin-bottom:18px;
   padding-bottom:0;
   border-bottom:1.5px solid #e5e7eb;

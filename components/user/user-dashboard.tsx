@@ -203,11 +203,17 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
     padding:16px;
   }
 }
-/* Desktop: Bookings / Calls / Business Knowledge share the same page band under the portal topbar */
+/* Desktop: portal pages share the same page band under the topbar (match Bookings) */
 @media (min-width:1025px){
   .user-app-shell .main > .page-content.page-bookings,
   .user-app-shell .main > .page-content.page-calls,
-  .user-app-shell .main > .page-content.page-knowledge{
+  .user-app-shell .main > .page-content.page-knowledge,
+  .user-app-shell .main > .page-content.page-overview,
+  .user-app-shell .main > .page-content.page-billing,
+  .user-app-shell .main > .page-content.page-more,
+  .user-app-shell .main > .page-content.page-go-live,
+  .user-app-shell .main > .page-content.page-integrations,
+  .user-app-shell .main > .page-content.page-account{
     padding-top:24px;
     padding-bottom:24px;
   }
