@@ -1643,9 +1643,11 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             }
             if (!userEditedProfileFields.includes('address')) setAddress(suggestions.businessProfile.address?.value ?? '');
             if (!userEditedProfileFields.includes('timezone')) {
-              const importedTimezone = suggestions.businessProfile.timezone?.value ?? '';
-              setTimezone(importedTimezone);
-              setSelectedCountry(importedTimezone ? findCountryForTimezone(importedTimezone)?.country ?? '' : '');
+              const importedTimezone = suggestions.businessProfile.timezone?.value?.trim() ?? '';
+              if (importedTimezone) {
+                setTimezone(importedTimezone);
+                setSelectedCountry(findCountryForTimezone(importedTimezone)?.country ?? '');
+              }
             }
             if (!userEditedProfileFields.includes('hours')) setHours(suggestions.hours?.value ? apiHoursToWizard(suggestions.hours.value) : emptyHours());
             const importedVertical = importedVerticalToApp(suggestions.businessProfile.primaryType?.value);
@@ -1805,6 +1807,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     if (!businessName.trim()) invalidFields.push('name');
     if (!vertical || verticalConfidence !== 'high') invalidFields.push('type');
     if (vertical === 'beauty_clinic' && !beautySubtype) invalidFields.push('type');
+    if (!timezone.trim()) invalidFields.push('timezone');
     if (websiteUrl.trim() && !isHttpWebsiteUrl(websiteUrl)) invalidFields.push('website');
 
     if (invalidFields.length > 0) {
@@ -1814,7 +1817,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           ? 'Please add your business name before continuing.'
           : invalidFields.includes('type')
             ? 'Please choose the business type before continuing.'
-            : 'Please enter a valid website link before continuing.',
+            : invalidFields.includes('timezone')
+              ? 'Please choose your timezone before continuing.'
+              : 'Please enter a valid website link before continuing.',
       );
       setStatus(null);
       return;
@@ -2592,7 +2597,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 
   function renderStep2() {
     const countryTimezones = COUNTRY_TIMEZONES.find((item) => item.country === selectedCountry);
-    const selectedTimezoneMeta = countryTimezones?.timezones.find((zone) => zone.value === timezone) ?? countryTimezones?.timezones[0];
+    const selectedTimezoneMeta = countryTimezones?.timezones.find((zone) => zone.value === timezone);
 
     const resolvedVerticalLabel =
       vertical === 'beauty_clinic' && beautySubtype
