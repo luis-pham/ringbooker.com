@@ -142,12 +142,100 @@ export const userBillingStyles: string[] = [
 .billing-subtabs.business-subtabs .business-subtab.active:hover{color:#111}
 .billing-tab-panels{display:flex;flex-direction:column;gap:0}
 
+.billing-trial-cta{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;
+  padding:18px 20px;border-radius:18px;border:1px solid var(--border);
+  background:var(--surface-card);margin-bottom:16px;
+}
+.billing-trial-cta__copy{flex:1 1 220px;min-width:0}
+.billing-trial-cta__copy h3{margin:0 0 6px;font-size:17px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
+.billing-trial-cta__copy p{margin:0;font-size:13px;line-height:1.5;color:var(--text-gray)}
+.billing-trial-cta__toggle{flex:0 0 auto;display:flex;align-items:center;gap:0}
+.billing-cycle-pill{
+  display:inline-flex;border-radius:999px;border:1px solid var(--border);overflow:hidden;background:var(--surface-page);
+}
+.billing-cycle-pill button{
+  appearance:none;border:0;background:transparent;margin:0;
+  padding:8px 14px;font:inherit;font-size:13px;font-weight:600;color:var(--text-gray);cursor:pointer;white-space:nowrap;
+}
+.billing-cycle-pill button:hover{color:var(--text-dark)}
+.billing-cycle-pill button[data-active="true"]{
+  background:var(--purple-ultra);color:var(--purple-dark);
+}
+.billing-cycle-pill button:disabled{opacity:.45;cursor:not-allowed}
+.billing-trial-cta__action{flex:0 0 auto}
+
+.billing-overview-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.billing-action-card{
+  border:1px solid var(--border);border-radius:18px;background:var(--surface-card);
+  padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px;min-width:0;
+}
+.billing-action-card__top{display:flex;align-items:flex-start;gap:12px}
+.billing-action-card__icon{
+  width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:18px;flex-shrink:0;
+}
+.billing-action-card__icon--danger{background:rgba(248,81,73,0.12);color:var(--text-dark)}
+.billing-action-card__icon--amber{background:rgba(187,128,9,0.14);color:var(--text-dark)}
+.billing-action-card__icon--ok{background:rgba(63,185,80,0.14);color:var(--text-dark)}
+.billing-action-card__head{flex:1;min-width:0}
+.billing-action-card__head h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
+.billing-action-card__head .sub{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--text-gray)}
+.billing-action-card__actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:4px}
+
+.billing-overview-note{
+  display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;
+  background:var(--surface-page);border:1px solid var(--border);font-size:12.5px;line-height:1.5;color:var(--text-gray);margin-bottom:16px;
+}
+.billing-overview-note__icon{flex-shrink:0;font-size:14px;line-height:1.4;margin-top:1px}
+
+.billing-plans-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.billing-plans-head p{margin:0;font-size:13px;color:var(--text-gray)}
+.billing-plans-grid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:16px;
+}
+.billing-plan-card{
+  border:1px solid var(--border);border-radius:20px;background:var(--surface-card);
+  padding:18px 16px 16px;display:flex;flex-direction:column;min-height:100%;min-width:0;
+}
+.billing-plan-card--current{border-color:var(--purple);border-width:2px;box-shadow:none}
+.billing-plan-card__badge-row{min-height:22px;margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.billing-plan-card h4{margin:0;font-size:16px;font-weight:600;color:var(--text-dark)}
+.billing-plan-card__desc{margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--text-gray)}
+.billing-plan-card__price{margin:12px 0 4px;font-size:26px;font-weight:650;letter-spacing:-.03em;color:var(--text-dark);line-height:1.1}
+.billing-plan-card__price-note{margin:0 0 12px;font-size:12px;color:var(--text-light)}
+.billing-plan-card__feats{margin:0;padding:0;list-style:none;display:grid;gap:7px;flex:1}
+.billing-plan-card__feats li{
+  display:flex;align-items:flex-start;gap:8px;font-size:12.5px;line-height:1.45;color:var(--text-gray);
+}
+.billing-plan-card__feats li[data-included="false"]{opacity:.55;text-decoration:line-through}
+.billing-plan-card__feats li::before{
+  content:'';width:14px;height:14px;flex-shrink:0;margin-top:2px;border-radius:999px;
+  border:1px solid rgba(63,185,80,0.35);background:rgba(63,185,80,0.12);
+  box-sizing:border-box;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 8.3 6.7 11 12 5.7' stroke='%23047857' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:center;background-size:11px 11px;
+}
+.billing-plan-card__feats li[data-included="false"]::before{
+  border-color:var(--border);background:var(--surface-page);background-image:none;
+}
+.billing-plan-card__cta{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+
+html[data-user-theme="dark"] .billing-action-card__icon--danger{background:rgba(248,81,73,0.16)}
+html[data-user-theme="dark"] .billing-action-card__icon--amber{background:rgba(187,128,9,0.18)}
+html[data-user-theme="dark"] .billing-action-card__icon--ok{background:rgba(63,185,80,0.16)}
+html[data-user-theme="dark"] .billing-plan-card__feats li[data-included="false"]::before{background:var(--surface-card)}
+
 @media (max-width:1200px){
   .billing-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .pricing-mini{max-width:100%}
+  .billing-plans-grid{grid-template-columns:1fr}
+  .billing-trial-cta{flex-direction:column;align-items:stretch}
+  .billing-trial-cta__action{width:100%}
+  .billing-trial-cta__action .btn{width:100%;justify-content:center}
 }
 @media (max-width:860px){
   .billing-status-grid{grid-template-columns:1fr}
+  .billing-overview-actions{grid-template-columns:1fr}
   .billing-subtabs.business-subtabs{
     gap:24px;
     flex-wrap:nowrap;

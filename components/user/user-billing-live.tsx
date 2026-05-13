@@ -14,11 +14,11 @@ import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import {
-  BILLING_PLAN_CARD_FEATURES,
   CUSTOM_MANAGED_SETUP_ITEMS,
   ENTERPRISE_PENDING_BILLING_STATUS_LINES,
 } from '@/components/user/user-plan-ux-copy';
 import { formatShopDate, getShopTimezone } from '@/src/shared/timezone';
+import type { GoLiveStatusResponse } from '@/components/user/go-live-forwarding-panel';
 
 type ShopPlan = 'starter' | 'professional' | 'enterprise';
 type BillingProvider = 'paddle' | 'stripe' | 'manual';
@@ -133,25 +133,72 @@ export type BillingTransactionsResponse = {
 
 type BillingSubscriptionRow = NonNullable<NonNullable<UserBillingResponse['billing']>['subscription']>;
 
-const PLAN_CATALOG: Array<{
-  plan: ShopPlan;
-  priceLine: string;
-  features: string[];
-}> = [
+type BillingPlanFeature = { text: string; included: boolean };
+
+type BillingPlansCatalogEntry = {
+  key: ShopPlan;
+  name: string;
+  monthlyPrice?: number;
+  annualPrice?: number;
+  priceLabel?: string;
+  description: string;
+  features: BillingPlanFeature[];
+  badge?: string;
+  ctaLabel: string;
+  ctaVariant: 'active' | 'outline-purple' | 'ghost';
+};
+
+/** Marketing / UX catalog — amounts for display; subscription charges follow Paddle. */
+const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
   {
-    plan: 'starter',
-    priceLine: '$79/mo',
-    features: BILLING_PLAN_CARD_FEATURES.starter,
+    key: 'starter',
+    name: 'Starter',
+    monthlyPrice: 79,
+    annualPrice: 63,
+    description: 'Answer calls and capture bookings.',
+    features: [
+      { text: '100 captured callers/mo', included: true },
+      { text: 'Forwarded call answering', included: true },
+      { text: 'Booking request capture', included: true },
+      { text: 'Missed-call text back', included: true },
+      { text: 'Call summaries', included: true },
+      { text: 'Bilingual answering', included: false },
+      { text: 'Returning caller memory', included: false },
+    ],
+    ctaLabel: 'Current plan',
+    ctaVariant: 'active',
   },
   {
-    plan: 'professional',
-    priceLine: '$149/mo',
-    features: BILLING_PLAN_CARD_FEATURES.professional,
+    key: 'professional',
+    name: 'Professional',
+    monthlyPrice: 129,
+    annualPrice: 103,
+    description: 'Adds SMS, caller memory, bilingual & owner transfer.',
+    badge: 'Popular',
+    features: [
+      { text: '300 captured callers/mo', included: true },
+      { text: 'Everything in Starter', included: true },
+      { text: 'Reminder & review SMS', included: true },
+      { text: 'Returning caller notes', included: true },
+      { text: 'Bilingual answering', included: true },
+      { text: 'Owner transfer', included: true },
+    ],
+    ctaLabel: 'Upgrade to Pro',
+    ctaVariant: 'outline-purple',
   },
   {
-    plan: 'enterprise',
-    priceLine: 'Custom',
-    features: BILLING_PLAN_CARD_FEATURES.enterprise,
+    key: 'enterprise',
+    name: 'Enterprise',
+    priceLabel: 'Custom',
+    description: 'Multi-location, high volume, custom routing.',
+    features: [
+      { text: 'Custom caller volume', included: true },
+      { text: 'Managed routing & integrations', included: true },
+      { text: 'Multi-location support', included: true },
+      { text: 'Dedicated CSM', included: true },
+    ],
+    ctaLabel: 'Talk to sales',
+    ctaVariant: 'ghost',
   },
 ];
 
@@ -377,12 +424,6 @@ function billingUiCopy(state: BillingUiState) {
   }
 }
 
-function liveTrialDueTodayCopy(trialNoChargeUntilEndVerified?: boolean): string {
-  return trialNoChargeUntilEndVerified
-    ? "Due today: $0. You won't be charged until your 14-day trial ends. Final total may include applicable taxes based on your location."
-    : 'Due today: $0. Final total may include applicable taxes based on your location.';
-}
-
 type BillingSectionTab = 'overview' | 'plans' | 'history';
 type BillingNotice = 'checkout_success' | 'checkout_cancelled' | 'manage_returned' | null;
 
@@ -403,9 +444,11 @@ function manageBillingUnavailableCopy(reason?: string | null): string {
 export function UserBillingLive({
   initialData = null,
   initialTransactions = null,
+  initialGoLiveStatus = null,
 }: {
   initialData?: UserBillingResponse | null;
   initialTransactions?: BillingTransactionsResponse | null;
+  initialGoLiveStatus?: GoLiveStatusResponse | null;
 }) {
   const { workspace, setWorkspace } = useUserWorkspace();
   const [data, setData] = useState<UserBillingResponse | null>(initialData);
@@ -430,6 +473,18 @@ export function UserBillingLive({
     message: initialTransactions?.message ?? null,
   }));
 
+  const [goLiveStatus, setGoLiveStatus] = useState<GoLiveStatusResponse | null>(initialGoLiveStatus ?? null);
+
+  const refreshGoLiveStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/backend/user/go-live/status', { credentials: 'include' });
+      const body = (await response.json()) as GoLiveStatusResponse;
+      if (response.ok && body.ok) setGoLiveStatus(body);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const refreshBilling = useCallback(async () => {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 10000);
@@ -452,7 +507,8 @@ export function UserBillingLive({
         active: body.shop.active,
       });
     }
-  }, [setWorkspace]);
+    void refreshGoLiveStatus();
+  }, [setWorkspace, refreshGoLiveStatus]);
 
   useEffect(() => {
     if (initialData) return;
@@ -471,6 +527,10 @@ export function UserBillingLive({
       active = false;
     };
   }, [initialData, refreshBilling]);
+
+  useEffect(() => {
+    if (initialGoLiveStatus?.ok) setGoLiveStatus(initialGoLiveStatus);
+  }, [initialGoLiveStatus]);
 
   useEffect(() => {
     if (!data?.ok || !data.shop) return;
@@ -545,7 +605,7 @@ export function UserBillingLive({
   const paymentMethodStatus = data?.billing?.paymentMethodStatus ?? subscription?.paymentMethodStatus ?? 'none';
   const hasPaymentMethod = data?.billing?.hasPaymentMethod === true;
   const liveEnabled = data?.billing?.liveCallsEnabled;
-  const catalog = useMemo(() => PLAN_CATALOG.find((p) => p.plan === currentPlan) ?? PLAN_CATALOG[0], [currentPlan]);
+  const catalog = useMemo(() => BILLING_PLANS_CATALOG.find((p) => p.key === currentPlan) ?? BILLING_PLANS_CATALOG[0], [currentPlan]);
   const shopTimezone = getShopTimezone(data?.shop);
 
   const billingHistory = useMemo(() => {
@@ -578,8 +638,8 @@ export function UserBillingLive({
     if (subscription && subscription.amount > 0) {
       return `${formatMoney(subscription.amount, subscription.currency)}/${subscription.interval === 'year' ? 'yr' : 'mo'}`;
     }
-    return catalog.priceLine;
-  }, [currentPlan, subscription, catalog.priceLine]);
+    return catalog.monthlyPrice != null ? `$${catalog.monthlyPrice}/mo` : catalog.priceLabel ?? '—';
+  }, [currentPlan, subscription, catalog.monthlyPrice, catalog.priceLabel]);
 
   const enterpriseApprovalPending = currentPlan === 'enterprise' && data?.billing?.commercialApprovalRequired === true;
   const isEnterprisePlan = currentPlan === 'enterprise';
@@ -599,17 +659,13 @@ export function UserBillingLive({
   const billingCopy = billingUiCopy(billingState);
   const subscriptionBillingBlocked =
     subscription != null && ['past_due', 'paused', 'canceled'].includes(subscription.status);
-  const showAddPaymentStrip =
+  const showTrialCtaRow =
     Boolean(data?.billing) &&
     !isEnterprisePlan &&
-    !liveEnabled &&
-    !hasPaymentMethod &&
-    !subscriptionBillingBlocked;
-  const showBillingOverviewCard =
-    Boolean(data?.billing) &&
-    !isEnterprisePlan &&
-    !liveEnabled &&
-    (hasPaymentMethod || subscriptionBillingBlocked);
+    billingState !== 'trialing_valid' &&
+    billingState !== 'active' &&
+    billingState !== 'checkout_pending';
+  const forwardingState = goLiveStatus?.status?.forwarding?.status ?? 'none';
 
   const selectBillingTab = useCallback((tab: BillingSectionTab) => {
     setBillingTab(tab);
@@ -836,37 +892,39 @@ export function UserBillingLive({
                   </section>
                 ) : null}
 
-                {showAddPaymentStrip ? (
-                  <section className="billing-alert-strip">
-                    <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                      <p style={{ margin: 0 }}>
-                        <strong>Start your 14-day trial.</strong> Add a payment method to start your 14-day live answering trial.
-                        RingBooker will not answer real calls on your business number until billing and phone forwarding are set up.
+                {showTrialCtaRow ? (
+                  <section className="billing-trial-cta" aria-label="Start trial">
+                    <div className="billing-trial-cta__copy">
+                      <h3>Start your 14-day free trial</h3>
+                      <p>
+                        No charge today · RingBooker answers live calls after billing and phone forwarding are set up.
                       </p>
-                      <div className="sub" style={{ marginTop: 10 }}>
-                        {liveTrialDueTodayCopy(billing?.trialNoChargeUntilEndVerified)}
-                      </div>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
+                    <div className="billing-trial-cta__toggle">
                       {checkoutAvailable && availableBillingIntervals.length > 1 ? (
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }} aria-label="Billing interval">
+                        <div className="billing-cycle-pill" role="group" aria-label="Billing cycle">
                           <button
                             type="button"
-                            className={`btn${effectiveBillingInterval === 'monthly' ? ' purple' : ''}`}
+                            data-active={effectiveBillingInterval === 'monthly'}
                             onClick={() => setBillingInterval('monthly')}
                           >
                             Monthly
                           </button>
                           <button
                             type="button"
-                            className={`btn${effectiveBillingInterval === 'annual' ? ' purple' : ''}`}
+                            data-active={effectiveBillingInterval === 'annual'}
                             onClick={() => setBillingInterval('annual')}
                             disabled={!canChooseAnnual}
                           >
                             Annual
+                            {canChooseAnnual ? (
+                              <span className="billing-cycle-pill__badge tag green">−20%</span>
+                            ) : null}
                           </button>
                         </div>
                       ) : null}
+                    </div>
+                    <div className="billing-trial-cta__action">
                       {checkoutAvailable ? (
                         <button
                           type="button"
@@ -877,11 +935,13 @@ export function UserBillingLive({
                           {checkoutPlan ? 'Starting…' : 'Start 14-day trial'}
                         </button>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                        <div>
                           <button type="button" className="btn" disabled>
                             Payment setup unavailable
                           </button>
-                          <span style={{ fontSize: 12 }}>{checkoutUnavailableCopy(billing?.checkoutDisabledReason)}</span>
+                          <p className="sub" style={{ margin: '8px 0 0', maxWidth: 280 }}>
+                            {checkoutUnavailableCopy(billing?.checkoutDisabledReason)}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -927,16 +987,177 @@ export function UserBillingLive({
                 <div className="billing-tab-panels">
                   {billingTab === 'overview' ? (
                     <div role="tabpanel" id="billing-panel-overview" aria-labelledby="billing-tab-overview">
-                      <section className="card soft" style={{ marginBottom: 16 }}>
-                        <h3 style={{ marginTop: 0 }}>Call forwarding & go live</h3>
-                        <p className="sub">
-                          Your RingBooker forwarding number and carrier steps live under Go live, so Billing stays focused on
-                          your subscription and payment method.
-                        </p>
-                        <a className="btn" href="/user/go-live#go-live-forwarding">
-                          Open Go live
-                        </a>
-                      </section>
+                      {!isEnterprisePlan ? (
+                        <>
+                          <div className="billing-overview-actions">
+                            <div className="billing-action-card">
+                              <div className="billing-action-card__top">
+                                <div
+                                  className={`billing-action-card__icon${hasPaymentMethod ? ' billing-action-card__icon--ok' : ' billing-action-card__icon--danger'}`}
+                                  aria-hidden
+                                >
+                                  {hasPaymentMethod ? '✓' : '◇'}
+                                </div>
+                                <div className="billing-action-card__head">
+                                  <h3>Payment method</h3>
+                                  {hasPaymentMethod ? (
+                                    <>
+                                      <span className="tag green" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                        Added ✓
+                                      </span>
+                                      <p className="sub">
+                                        Payment method is on file. Manage billing to view or update card details.
+                                      </p>
+                                    </>
+                                  ) : paymentMethodStatus === 'pending' ? (
+                                    <>
+                                      <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                        Pending
+                                      </span>
+                                      <p className="sub">We are confirming your payment method. This usually updates within a minute.</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="tag red" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                        Not added
+                                      </span>
+                                      <p className="sub">A card is required before RingBooker can answer real calls on your number.</p>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="billing-action-card__actions">
+                                {hasPaymentMethod ? (
+                                  <button type="button" className="btn" disabled={!manageBillingAvailable} onClick={() => void openManageBilling()}>
+                                    {managingBilling ? 'Opening…' : 'Update card'}
+                                  </button>
+                                ) : checkoutAvailable ? (
+                                  <button
+                                    type="button"
+                                    className="btn user-save"
+                                    disabled={checkoutPlan !== null}
+                                    onClick={() => void openCheckout(currentPlan)}
+                                  >
+                                    {checkoutPlan ? 'Starting…' : 'Add payment method'}
+                                  </button>
+                                ) : (
+                                  <button type="button" className="btn" disabled>
+                                    Payment setup unavailable
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="billing-action-card">
+                              <div className="billing-action-card__top">
+                                <div
+                                  className={`billing-action-card__icon${
+                                    forwardingState === 'verified' ? ' billing-action-card__icon--ok' : ' billing-action-card__icon--amber'
+                                  }`}
+                                  aria-hidden
+                                >
+                                  {forwardingState === 'verified' ? '✓' : '☎'}
+                                </div>
+                                <div className="billing-action-card__head">
+                                  <h3>Phone forwarding</h3>
+                                  {forwardingState === 'verified' ? (
+                                    <>
+                                      <span className="tag green" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                        Verified ✓
+                                      </span>
+                                      <p className="sub">Forwarding is active and verified.</p>
+                                    </>
+                                  ) : forwardingState === 'configured' ? (
+                                    <>
+                                      <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                        Pending verification
+                                      </span>
+                                      <p className="sub">Forwarding is configured — run a test call to verify.</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                        Not set up
+                                      </span>
+                                      <p className="sub">
+                                        Forward missed calls from your business number to RingBooker to activate live answering.
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              {forwardingState === 'verified' ? null : (
+                                <div className="billing-action-card__actions">
+                                  {forwardingState === 'configured' ? (
+                                    <a className="btn" href="/user/go-live#go-live-forwarding">
+                                      Verify now →
+                                    </a>
+                                  ) : (
+                                    <a className="btn" href="/user/go-live#go-live-forwarding">
+                                      Open Go Live →
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="billing-overview-note" role="note">
+                            <span className="billing-overview-note__icon" aria-hidden>
+                              ⓘ
+                            </span>
+                            <span>
+                              Your business number stays unchanged. Customers keep calling the same number they always have.
+                            </span>
+                          </div>
+
+                          {manageBillingAvailable && ['active', 'trialing_valid'].includes(billingState) ? (
+                            <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                              <button type="button" className="btn" disabled={managingBilling} onClick={() => void openManageBilling()}>
+                                {managingBilling ? 'Opening…' : 'Manage billing & invoices'}
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {['past_due', 'paused', 'canceled'].includes(billingState) && !isEnterprisePlan ? (
+                            <section className="billing-alert-strip" style={{ marginBottom: 16 }}>
+                              <p style={{ margin: 0 }}>
+                                <strong>{billingCopy.title}</strong> {billingCopy.body}
+                              </p>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                {manageBillingAvailable ? (
+                                  <button type="button" className="btn user-save" disabled={managingBilling} onClick={() => void openManageBilling()}>
+                                    {managingBilling ? 'Opening…' : 'Resolve billing issue'}
+                                  </button>
+                                ) : checkoutAvailable ? (
+                                  <button
+                                    type="button"
+                                    className="btn user-save"
+                                    disabled={checkoutPlan !== null}
+                                    onClick={() => void openReactivateCheckout()}
+                                  >
+                                    {checkoutPlan ? 'Starting…' : 'Resolve billing issue'}
+                                  </button>
+                                ) : (
+                                  <a className="btn" href="/contact?topic=support">
+                                    Contact support
+                                  </a>
+                                )}
+                                {billingState === 'canceled' && checkoutAvailable ? (
+                                  <button
+                                    type="button"
+                                    className="btn"
+                                    disabled={checkoutPlan !== null}
+                                    onClick={() => void openReactivateCheckout()}
+                                  >
+                                    {checkoutPlan ? 'Starting…' : 'Restart trial'}
+                                  </button>
+                                ) : null}
+                              </div>
+                            </section>
+                          ) : null}
+                        </>
+                      ) : null}
                       {hasPaymentMethod && usage ? (
                         <section
                           className={`card usage-captured-card${usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${usage.nearCapturedCallerLimit && !usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
@@ -1020,112 +1241,6 @@ export function UserBillingLive({
                         </section>
                       ) : null}
 
-                      {showBillingOverviewCard ? (
-                        <section className="card" style={{ marginBottom: 16 }}>
-                          <h3 style={{ marginTop: 0 }}>{billingCopy.title}</h3>
-                          <p className="sub">{billingCopy.body}</p>
-                          {!hasPaymentMethod && !['past_due', 'paused', 'canceled'].includes(billingState) ? (
-                            <p className="sub">{liveTrialDueTodayCopy(billing?.trialNoChargeUntilEndVerified)}</p>
-                          ) : null}
-                          {['active', 'trialing_valid'].includes(billingState) && manageBillingAvailable ? (
-                            <p className="sub">Changes made in billing management may take a minute to appear here.</p>
-                          ) : null}
-                          {checkoutAvailable && availableBillingIntervals.length > 1 && !hasPaymentMethod ? (
-                            <div style={{ display: 'flex', gap: 8, margin: '12px 0', flexWrap: 'wrap' }} aria-label="Billing interval">
-                              <button
-                                type="button"
-                                className={`btn${effectiveBillingInterval === 'monthly' ? ' purple' : ''}`}
-                                onClick={() => setBillingInterval('monthly')}
-                              >
-                                Monthly
-                              </button>
-                              <button
-                                type="button"
-                                className={`btn${effectiveBillingInterval === 'annual' ? ' purple' : ''}`}
-                                onClick={() => setBillingInterval('annual')}
-                                disabled={!canChooseAnnual}
-                              >
-                                Annual
-                              </button>
-                            </div>
-                          ) : null}
-                          {['active', 'trialing_valid'].includes(billingState) ? (
-                            manageBillingAvailable ? (
-                              <button
-                                type="button"
-                                className="btn user-save"
-                                disabled={managingBilling}
-                                onClick={() => void openManageBilling()}
-                              >
-                                {managingBilling ? 'Opening…' : 'Manage billing'}
-                              </button>
-                            ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-                                <button type="button" className="btn" disabled>
-                                  Manage billing unavailable
-                                </button>
-                                <p className="sub" style={{ margin: 0 }}>
-                                  {manageBillingUnavailableCopy(billing?.manageBillingDisabledReason)}
-                                </p>
-                              </div>
-                            )
-                          ) : !checkoutAvailable && !manageBillingAvailable ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-                              <button type="button" className="btn" disabled>
-                                Payment setup unavailable
-                              </button>
-                              <p className="sub" style={{ margin: 0 }}>
-                                {checkoutUnavailableCopy(billing?.checkoutDisabledReason)}
-                              </p>
-                            </div>
-                          ) : ['past_due', 'paused'].includes(billingState) ? (
-                            manageBillingAvailable ? (
-                              <button
-                                type="button"
-                                className="btn user-save"
-                                disabled={managingBilling}
-                                onClick={() => void openManageBilling()}
-                              >
-                                {managingBilling ? 'Opening…' : 'Resolve billing issue'}
-                              </button>
-                            ) : checkoutAvailable ? (
-                              <button
-                                type="button"
-                                className="btn user-save"
-                                disabled={checkoutPlan !== null}
-                                onClick={() => void openReactivateCheckout()}
-                              >
-                                {checkoutPlan ? 'Starting…' : 'Resolve billing issue'}
-                              </button>
-                            ) : (
-                              <a className="btn" href="/contact?topic=support">Contact support</a>
-                            )
-                          ) : billingState === 'canceled' ? (
-                            checkoutAvailable ? (
-                              <button
-                                type="button"
-                                className="btn user-save"
-                                disabled={checkoutPlan !== null}
-                                onClick={() => void openReactivateCheckout()}
-                              >
-                                {checkoutPlan ? 'Starting…' : 'Restart 14-day trial'}
-                              </button>
-                            ) : (
-                              <a className="btn" href="/contact?topic=support">Contact support</a>
-                            )
-                          ) : !hasPaymentMethod ? (
-                            <button
-                              type="button"
-                              className="btn user-save"
-                              disabled={checkoutPlan !== null}
-                              onClick={() => void openCheckout(currentPlan)}
-                            >
-                              {checkoutPlan ? 'Starting…' : 'Start 14-day trial'}
-                            </button>
-                          ) : null}
-                        </section>
-                      ) : null}
-
                       {checkoutError ? (
                         <section className="card" style={{ marginTop: 0 }}>
                           <h3>Payment setup could not start</h3>
@@ -1137,17 +1252,53 @@ export function UserBillingLive({
 
                   {billingTab === 'plans' ? (
                     <div role="tabpanel" id="billing-panel-plans" aria-labelledby="billing-tab-plans">
-                      <section className="pricing-mini" style={{ marginBottom: 16 }}>
-                        {PLAN_CATALOG.map((plan) => {
-                          const isCurrent = currentPlan === plan.plan;
-                          const isBusy = checkoutPlan === plan.plan;
-                          const isEnterprise = plan.plan === 'enterprise';
+                      {checkoutAvailable && availableBillingIntervals.length > 1 && !showTrialCtaRow ? (
+                        <div className="billing-plans-head">
+                          <p>Billing cycle for displayed prices</p>
+                          <div className="billing-cycle-pill" role="group" aria-label="Billing cycle">
+                            <button
+                              type="button"
+                              data-active={effectiveBillingInterval === 'monthly'}
+                              onClick={() => setBillingInterval('monthly')}
+                            >
+                              Monthly
+                            </button>
+                            <button
+                              type="button"
+                              data-active={effectiveBillingInterval === 'annual'}
+                              onClick={() => setBillingInterval('annual')}
+                              disabled={!canChooseAnnual}
+                            >
+                              Annual <span className="tag green" style={{ marginLeft: 6 }}>−20%</span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div className="billing-plans-grid">
+                        {BILLING_PLANS_CATALOG.map((plan) => {
+                          const isCurrent = currentPlan === plan.key;
+                          const isBusy = checkoutPlan === plan.key;
+                          const isEnterprise = plan.key === 'enterprise';
+                          const bigPrice =
+                            plan.priceLabel ??
+                            (effectiveBillingInterval === 'annual' && plan.annualPrice != null
+                              ? `$${plan.annualPrice}`
+                              : plan.monthlyPrice != null
+                                ? `$${plan.monthlyPrice}`
+                                : '—');
+                          const priceNote =
+                            plan.priceLabel || plan.monthlyPrice == null
+                              ? null
+                              : effectiveBillingInterval === 'annual'
+                                ? 'per month · billed annually'
+                                : 'per month';
 
                           let cta: ReactNode;
                           if (isEnterprise) {
                             cta = (
-                              <a className="btn" href="/contact">
-                                Contact us
+                              <a className="btn" href="/contact?topic=sales">
+                                Talk to sales
                               </a>
                             );
                           } else if (isCurrent) {
@@ -1157,19 +1308,19 @@ export function UserBillingLive({
                                   type="button"
                                   className="btn user-save"
                                   disabled={isBusy || !checkoutAvailable}
-                                  onClick={() => void openCheckout(plan.plan)}
+                                  onClick={() => void openCheckout(plan.key)}
                                 >
                                   {isBusy ? 'Starting…' : checkoutAvailable ? 'Start 14-day trial' : 'Payment setup unavailable'}
                                 </button>
                               );
                             } else {
                               cta = (
-                                <span className="btn" style={{ opacity: 0.85, cursor: 'default' }} aria-current="true">
+                                <span className="btn user-save" style={{ opacity: 0.85, cursor: 'default' }} aria-current="true">
                                   Current plan
                                 </span>
                               );
                             }
-                          } else if (plan.plan === 'professional' && currentPlan === 'starter') {
+                          } else if (plan.key === 'professional' && currentPlan === 'starter') {
                             if (subscriptionBillingBlocked) {
                               cta = <span className="btn" style={{ opacity: 0.85, cursor: 'default' }}>Resolve billing first</span>;
                             } else if (upgradePending) {
@@ -1178,53 +1329,70 @@ export function UserBillingLive({
                               cta = (
                                 <button
                                   type="button"
-                                  className="btn user-save"
+                                  className="btn purple"
                                   disabled={upgradingPlan === 'professional'}
                                   onClick={() => void upgradeToProfessional()}
                                 >
-                                  {upgradingPlan === 'professional' ? 'Starting…' : 'Upgrade to Professional'}
+                                  {upgradingPlan === 'professional' ? 'Starting…' : 'Upgrade to Pro'}
+                                </button>
+                              );
+                            } else if (manageBillingAvailable) {
+                              cta = (
+                                <button type="button" className="btn purple" disabled={managingBilling} onClick={() => void openManageBilling()}>
+                                  {managingBilling ? 'Opening…' : 'Upgrade via billing portal'}
+                                </button>
+                              );
+                            } else if (checkoutAvailable) {
+                              cta = (
+                                <button
+                                  type="button"
+                                  className="btn purple"
+                                  disabled={isBusy}
+                                  onClick={() => void openCheckout('professional')}
+                                >
+                                  {isBusy ? 'Starting…' : 'Set up billing for Pro'}
                                 </button>
                               );
                             } else {
                               cta = (
-                                <a className="btn" href="/contact?intent=sales&source=user_billing_upgrade&plan=professional">
+                                <a className="btn" href="/contact?topic=sales">
                                   Contact us to upgrade
                                 </a>
                               );
                             }
                           } else {
                             cta = (
-                              <a className="btn" href={`/contact?intent=sales&source=user_billing_plan_change&plan=${plan.plan}`}>
+                              <a className="btn" href={`/contact?topic=sales&source=user_billing_plan_change&plan=${plan.key}`}>
                                 Contact us to switch
                               </a>
                             );
                           }
 
                           return (
-                            <div className={`price-mini${isCurrent ? ' featured' : ''}`} key={plan.plan}>
-                              <div className="price-mini-body">
+                            <div className={`billing-plan-card${isCurrent ? ' billing-plan-card--current' : ''}`} key={plan.key}>
+                              <div className="billing-plan-card__badge-row">
                                 {isCurrent ? (
-                                  <span className="tag purple" style={{ marginBottom: 8, display: 'inline-flex' }}>
-                                    Current plan
-                                  </span>
+                                  <span className="tag purple">Current plan</span>
+                                ) : plan.badge ? (
+                                  <span className="tag purple">{plan.badge}</span>
                                 ) : null}
-                                <h4 style={{ margin: 0 }}>
-                                  {plan.plan === 'professional' && currentPlan === 'starter'
-                                    ? 'Upgrade to Professional'
-                                    : planDisplayName(plan.plan)}
-                                </h4>
-                                <div className="amt">{plan.priceLine}</div>
-                                <ul>
-                                  {plan.features.map((feature) => (
-                                    <li key={feature}>{feature}</li>
-                                  ))}
-                                </ul>
                               </div>
-                              <div className="price-mini-cta">{cta}</div>
+                              <h4>{plan.key === 'professional' && currentPlan === 'starter' ? 'Upgrade to Professional' : plan.name}</h4>
+                              <p className="billing-plan-card__desc">{plan.description}</p>
+                              <div className="billing-plan-card__price">{bigPrice}</div>
+                              {priceNote ? <p className="billing-plan-card__price-note">{priceNote}</p> : null}
+                              <ul className="billing-plan-card__feats">
+                                {plan.features.map((f) => (
+                                  <li key={f.text} data-included={f.included}>
+                                    {f.text}
+                                  </li>
+                                ))}
+                              </ul>
+                              <div className="billing-plan-card__cta">{cta}</div>
                             </div>
                           );
                         })}
-                      </section>
+                      </div>
 
                       <section className="card soft billing-plan-includes-card">
                         <div className="panel-head">
