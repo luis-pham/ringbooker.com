@@ -718,6 +718,7 @@ const confirmForwardingSetupSchema = z.object({
 
 const markForwardingConfiguredSchema = z.object({
   carrier: z.string().trim().min(1).max(80),
+  country: z.string().trim().min(2).max(8).optional(),
   forwardingType: z.enum(['no_answer', 'all', 'busy', 'unreachable']).default('no_answer'),
 });
 
@@ -762,7 +763,7 @@ function forwardingStatusForGoLive(params: {
   forwardingSetupVerified: boolean;
 }): 'none' | 'configured' | 'verified' {
   if (params.forwardingSetupVerified) return 'verified';
-  if (params.shop.forwarding_carrier?.trim() || params.shop.forwarding_type) return 'configured';
+  if (params.shop.forwarding_carrier?.trim()) return 'configured';
   return 'none';
 }
 
@@ -4976,7 +4977,8 @@ export function createBackendApp(deps: {
         },
         forwarding: {
           status: forwardingStatusForGoLive({ shop, forwardingSetupVerified: access.forwardingSetupVerified }),
-          carrier: shop.forwarding_carrier ?? null,
+          country: shop.forwarding_country ?? 'us',
+          carrier: shop.forwarding_carrier?.trim() || null,
           forwardingType: shop.forwarding_type ?? 'no_answer',
           dialCode: null,
           verifiedAt: accessState?.forwardingSetupVerifiedAt ?? null,
@@ -5016,9 +5018,9 @@ export function createBackendApp(deps: {
     const instructions = carrier.appSteps?.length
       ? carrier.appSteps
       : [
-          'Open your phone dialer and paste the code.',
-          "Press call - you'll hear a confirmation tone.",
-          'Come back to RingBooker and mark forwarding configured.',
+          'Open your phone dialer, paste the code above and press call',
+          "You'll hear a confirmation tone - forwarding is now active",
+          'Come back here and click/tap Done',
         ];
     return c.json({
       ok: true,
@@ -5051,7 +5053,7 @@ export function createBackendApp(deps: {
 
     await deps.shopsRepository.updateUserSettings(shop.id, {
       forwarding_carrier: parsed.data.carrier,
-      forwarding_country: shop.forwarding_country ?? 'us',
+      forwarding_country: parsed.data.country ?? shop.forwarding_country ?? 'us',
       forwarding_type: parsed.data.forwardingType,
     });
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { CARRIER_DATA, FORWARDING_TYPE_META, findCarrier, type Carrier, type ForwardingType } from '@/lib/call-forwarding/carrier-data';
+import { CARRIER_DATA, FORWARDING_TYPE_META, findCarrier, findCountry, type Carrier, type CountryCarriers, type ForwardingType } from '@/lib/call-forwarding/carrier-data';
 import { useGoLive, type GoLiveStatusResponse, type KnowledgeGateItem } from '@/hooks/useGoLive';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 
@@ -43,6 +43,20 @@ function formatDate(value: string | null | undefined): string | null {
 
 function carrierInitials(name: string) {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0] ?? '').join('').toUpperCase();
+}
+
+function countryShortLabel(country: CountryCarriers) {
+  if (country.countryCode === 'gb') return 'UK';
+  return country.countryCode.toUpperCase();
+}
+
+function carrierTypeLabel(carrier: Carrier) {
+  const id = carrier.id.toLowerCase();
+  const name = carrier.name.toLowerCase();
+  if (id === 'other') return 'Other';
+  if (name.includes('business') || ['comcast', 'nextiva', 'ringcentral', 'openphone', 'ooma'].includes(id)) return 'Business';
+  if (['googlevoice', 'openphone', 'ringcentral', 'ooma'].includes(id)) return 'VoIP';
+  return 'Mobile';
 }
 
 function CopyButton({ value }: { value: string | null | undefined }) {
@@ -144,19 +158,81 @@ function NumberDisplayRow({ businessPhone, ringbookerNumber, provisionStatus }: 
 
 function CarrierLogo({ carrier }: { carrier: Carrier }) {
   if (carrier.logoPath) return <img src={carrier.logoPath} alt={`${carrier.name} logo`} className="gl-carrier-logo" />;
-  return <span className="gl-carrier-fallback" aria-hidden>{carrierInitials(carrier.name)}</span>;
+  return <span className="gl-carrier-fallback" style={{ background: carrier.color }} aria-hidden>{carrierInitials(carrier.name)}</span>;
 }
 
-function CarrierPicker({ selected, onSelect }: { selected: string | null; onSelect: (id: string) => void }) {
-  const carriers = CARRIER_DATA.find((country) => country.countryCode === 'us')?.carriers.filter((carrier) => ['verizon', 'att', 'tmobile', 'googlevoice', 'other', 'openphone'].includes(carrier.id)) ?? [];
+function CountrySelector({ selected, onSelect }: { selected: string; onSelect: (country: string) => void }) {
+  return (
+    <div className="gl-country-row">
+      {CARRIER_DATA.map((country) => (
+        <button key={country.countryCode} type="button" className={`gl-country-pill ${selected === country.countryCode ? 'selected' : ''}`} onClick={() => onSelect(country.countryCode)}>
+          <span>{country.flag}</span>
+          <span className="gl-country-name">{country.countryName}</span>
+          <span className="gl-country-short">{countryShortLabel(country)}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CarrierPicker({ countryCode, selected, onSelect }: { countryCode: string; selected: string | null; onSelect: (id: string) => void }) {
+  const carriers = findCountry(countryCode).carriers;
   return (
     <div className="gl-carrier-grid">
       {carriers.map((carrier) => (
         <button key={carrier.id} type="button" className={`gl-carrier-card ${selected === carrier.id ? 'selected' : ''}`} onClick={() => onSelect(carrier.id)}>
           <CarrierLogo carrier={carrier} />
-          <span>{carrier.name}</span>
+          <span className="gl-carrier-copy">
+            <strong>{carrier.name}</strong>
+            <small>{carrierTypeLabel(carrier)}</small>
+          </span>
         </button>
       ))}
+    </div>
+  );
+}
+
+function ForwardingTypeSelector({
+  selected,
+  showAdvanced,
+  onToggleAdvanced,
+  onSelect,
+}: {
+  selected: ForwardingType;
+  showAdvanced: boolean;
+  onToggleAdvanced: () => void;
+  onSelect: (type: ForwardingType) => void;
+}) {
+  const recommended = FORWARDING_TYPE_META.no_answer;
+  const advancedTypes: ForwardingType[] = ['all', 'busy', 'unreachable'];
+  const advancedOpen = showAdvanced || selected !== 'no_answer';
+  return (
+    <div className="gl-forwarding-options">
+      <button type="button" className={`gl-type-card gl-type-card--featured ${selected === 'no_answer' ? 'selected' : ''}`} onClick={() => onSelect('no_answer')}>
+        <span className={`gl-radio-dot ${selected === 'no_answer' ? 'selected' : ''}`} />
+        <span>
+          <strong>No-answer calls · Recommended</strong>
+          <small>{recommended.description}. Best for most businesses.</small>
+        </span>
+      </button>
+      <button type="button" className="gl-advanced-toggle" onClick={onToggleAdvanced}>
+        <span>{advancedOpen ? '▾' : '▸'}</span>
+        <span className="gl-advanced-desktop">Show other options (busy, unreachable, forward all)</span>
+        <span className="gl-advanced-mobile">More options</span>
+      </button>
+      {advancedOpen ? (
+        <div className="gl-type-grid">
+          {advancedTypes.map((type) => {
+            const meta = FORWARDING_TYPE_META[type];
+            return (
+              <button key={type} type="button" className={`gl-type-card ${selected === type ? 'selected' : ''}`} onClick={() => onSelect(type)}>
+                <span className={`gl-radio-dot ${selected === type ? 'selected' : ''}`} />
+                <span><strong>{meta.label}</strong><small>{meta.description}</small></span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -181,7 +257,7 @@ function DialCodeBlock({
       ) : null}
       {turnOffCode ? <p className="sub gl-turn-off">To turn off: dial {turnOffCode}</p> : null}
       <ol className="gl-instructions">
-        {(instructions.length ? instructions : ['Open your phone dialer, paste the code above', "Press call - you'll hear a confirmation tone", 'Come back and tap Done']).slice(0, 4).map((step, index) => (
+        {(instructions.length ? instructions : ['Open your phone dialer, paste the code above and press call', "You'll hear a confirmation tone - forwarding is now active", 'Come back here and click/tap Done']).slice(0, 4).map((step, index) => (
           <li key={`${index}-${step}`}><span>{index + 1}</span>{step}</li>
         ))}
       </ol>
@@ -193,7 +269,7 @@ function DialCodeBlock({
 function GoLiveStyles() {
   return (
     <style>{`
-.gl-hero{display:grid;gap:12px}.gl-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px}.gl-sidebar{position:sticky;top:82px;align-self:start;display:grid;gap:8px}.gl-sidebar-btn{width:100%;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;display:flex;gap:10px;align-items:flex-start;color:var(--text-gray);cursor:pointer}.gl-sidebar-btn.active{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--text-dark)}.gl-sidebar-btn:disabled{opacity:.45;cursor:not-allowed}.gl-sidebar-num{width:24px;height:24px;border-radius:999px;background:#f3f4f6;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-sidebar-btn.active .gl-sidebar-num{background:var(--purple-light);color:var(--purple-dark)}.gl-sidebar-copy{display:grid;gap:3px}.gl-sidebar-copy strong{font-size:13px;font-weight:600}.gl-sidebar-copy small{font-size:11px;line-height:1.35}.gl-mobile-steps{display:none}.gl-desktop-panel{min-width:0}.gl-step-card{padding:0;overflow:hidden}.gl-step-card--active{border-color:var(--purple-dark)}.gl-step-card--locked{opacity:.48}.gl-step-head{width:100%;border:0;background:transparent;padding:16px 18px;display:flex;align-items:center;gap:12px;text-align:left;color:inherit;cursor:pointer}.gl-step-head:disabled{cursor:not-allowed}.gl-step-num{width:30px;height:30px;border-radius:999px;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-step-card--active .gl-step-num{border-color:var(--purple-dark);color:var(--purple-dark);background:var(--purple-ultra)}.gl-step-card--done .gl-step-num{border-color:var(--green);background:#ecfdf5;color:#047857}.gl-step-copy{display:grid;gap:4px;min-width:0}.gl-step-copy strong{font-size:15px;font-weight:600;color:var(--text-dark)}.gl-step-copy small{font-size:12px;color:var(--text-gray);line-height:1.35}.gl-step-chevron{margin-left:auto;color:var(--text-light)}.gl-step-card.expanded .gl-step-chevron{transform:rotate(180deg)}.gl-step-body{border-top:1px solid var(--border);padding:18px}.gl-gate-card{border-color:#fed7aa;background:#fff7ed}.gl-gate-list{display:grid;gap:8px}.gl-gate-item{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-gray)}.gl-gate-item a{margin-left:auto;color:var(--purple-dark);font-weight:500}.gl-gate-dot{width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#f3f4f6;color:var(--text-gray);flex-shrink:0}.gl-gate-item.done .gl-gate-dot{background:#ecfdf5;color:#047857}.gl-gate-item.missing .gl-gate-dot{background:#fef2f2;color:#b91c1c}.gl-gate-item.warn .gl-gate-dot{background:#fff7ed;color:#c2410c}.gl-section-label{display:block;margin:0 0 7px;color:var(--text-light);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}.gl-number-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gl-number-card{margin:0;padding:16px}.gl-number-card strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px}.gl-number-card p.sub{margin:8px 0 0}.gl-number-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.gl-carrier-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.gl-carrier-card{height:54px;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;cursor:pointer;color:var(--text-dark);font-size:12px;font-weight:500}.gl-carrier-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--purple-dark)}.gl-carrier-logo{width:34px;height:22px;object-fit:contain}.gl-carrier-fallback{width:34px;height:22px;border-radius:6px;background:#f3f4f6;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}.gl-type-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.gl-type-card{border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;cursor:pointer}.gl-type-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra)}.gl-type-card strong{display:block;font-size:13px;font-weight:600}.gl-type-card small{display:block;margin-top:4px;color:var(--text-gray);font-size:12px;line-height:1.35}.gl-dial-wrap{display:grid;gap:12px}.gl-dial-code{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#18181b;color:#fff;border-radius:12px;padding:14px}.gl-dial-code code{font-size:18px;font-weight:600;overflow-wrap:anywhere}.gl-dial-code .btn{background:#fff;color:#111827;border-color:#fff}.gl-turn-off{margin:0!important}.gl-instructions{display:grid;gap:10px;margin:0;padding:0;list-style:none}.gl-instructions li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text-gray);line-height:1.5}.gl-instructions span{width:24px;height:24px;border-radius:999px;background:var(--purple-light);color:var(--purple-dark);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-guide-link{color:var(--purple-dark);font-size:13px;font-weight:500}.gl-action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.gl-message{font-size:13px;line-height:1.5;color:var(--text-gray);margin:12px 0 0}.gl-message.error{color:#b91c1c}.gl-live-banner{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.gl-live-banner h3{color:#166534}.gl-empty-note{margin:0;color:var(--text-gray);font-size:13px;line-height:1.6}.gl-loading{padding:30px;text-align:center}.gl-spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:var(--purple-dark);border-radius:999px;animation:glSpin 1s linear infinite;margin:0 auto 10px}@keyframes glSpin{to{transform:rotate(360deg)}}@media(max-width:767px){.gl-layout{display:block}.gl-sidebar,.gl-desktop-panel{display:none}.gl-mobile-steps{display:grid;gap:12px}.gl-number-grid,.gl-carrier-grid,.gl-type-grid{grid-template-columns:1fr}.gl-step-body{padding:16px}.gl-action-row{flex-direction:column}.gl-action-row .btn{width:100%;min-height:48px}.gl-dial-code{align-items:flex-start;flex-direction:column}.gl-carrier-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}`}</style>
+.gl-hero{display:grid;gap:12px}.gl-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px}.gl-sidebar{position:sticky;top:82px;align-self:start;display:grid;gap:8px}.gl-sidebar-btn{width:100%;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;display:flex;gap:10px;align-items:flex-start;color:var(--text-gray);cursor:pointer}.gl-sidebar-btn.active{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--text-dark)}.gl-sidebar-btn:disabled{opacity:.45;cursor:not-allowed}.gl-sidebar-num{width:24px;height:24px;border-radius:999px;background:#f3f4f6;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-sidebar-btn.active .gl-sidebar-num{background:var(--purple-light);color:var(--purple-dark)}.gl-sidebar-copy{display:grid;gap:3px}.gl-sidebar-copy strong{font-size:13px;font-weight:600}.gl-sidebar-copy small{font-size:11px;line-height:1.35}.gl-mobile-steps{display:none}.gl-desktop-panel{min-width:0}.gl-step-card{padding:0;overflow:hidden}.gl-step-card--active{border-color:var(--purple-dark)}.gl-step-card--locked{opacity:.48}.gl-step-head{width:100%;border:0;background:transparent;padding:16px 18px;display:flex;align-items:center;gap:12px;text-align:left;color:inherit;cursor:pointer}.gl-step-head:disabled{cursor:not-allowed}.gl-step-num{width:30px;height:30px;border-radius:999px;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-step-card--active .gl-step-num{border-color:var(--purple-dark);color:var(--purple-dark);background:var(--purple-ultra)}.gl-step-card--done .gl-step-num{border-color:var(--green);background:#ecfdf5;color:#047857}.gl-step-copy{display:grid;gap:4px;min-width:0}.gl-step-copy strong{font-size:15px;font-weight:600;color:var(--text-dark)}.gl-step-copy small{font-size:12px;color:var(--text-gray);line-height:1.35}.gl-step-chevron{margin-left:auto;color:var(--text-light)}.gl-step-card.expanded .gl-step-chevron{transform:rotate(180deg)}.gl-step-body{border-top:1px solid var(--border);padding:18px}.gl-gate-card{border-color:#fed7aa;background:#fff7ed}.gl-gate-list{display:grid;gap:8px}.gl-gate-item{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-gray)}.gl-gate-item a{margin-left:auto;color:var(--purple-dark);font-weight:500}.gl-gate-dot{width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#f3f4f6;color:var(--text-gray);flex-shrink:0}.gl-gate-item.done .gl-gate-dot{background:#ecfdf5;color:#047857}.gl-gate-item.missing .gl-gate-dot{background:#fef2f2;color:#b91c1c}.gl-gate-item.warn .gl-gate-dot{background:#fff7ed;color:#c2410c}.gl-section-label{display:block;margin:0 0 7px;color:var(--text-light);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}.gl-number-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gl-number-card{margin:0;padding:16px}.gl-number-card strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px}.gl-number-card p.sub{margin:8px 0 0}.gl-number-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.gl-country-row{display:flex;flex-wrap:wrap;gap:8px}.gl-country-pill{border:1px solid var(--border);background:var(--surface-card);border-radius:999px;padding:9px 14px;display:inline-flex;align-items:center;gap:7px;color:var(--text-gray);font-size:13px;font-weight:500;cursor:pointer}.gl-country-pill.selected{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--purple-dark)}.gl-country-short{display:none}.gl-carrier-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.gl-carrier-card{min-height:62px;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;display:flex;align-items:center;gap:9px;padding:10px;cursor:pointer;color:var(--text-dark);text-align:left}.gl-carrier-card:hover{border-color:var(--purple-light)}.gl-carrier-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--purple-dark)}.gl-carrier-logo{width:30px;height:30px;border-radius:7px;object-fit:contain;flex-shrink:0}.gl-carrier-fallback{width:30px;height:30px;border-radius:7px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}.gl-carrier-copy{display:grid;gap:3px;min-width:0}.gl-carrier-copy strong{font-size:13px;font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gl-carrier-copy small{font-size:10.5px;color:var(--text-light);line-height:1}.gl-forwarding-options{display:grid;gap:10px}.gl-type-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.gl-type-card{border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;cursor:pointer;display:flex;gap:10px;align-items:flex-start}.gl-type-card--featured{background:var(--purple-ultra)}.gl-type-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra)}.gl-type-card strong{display:block;font-size:13px;font-weight:600}.gl-type-card small{display:block;margin-top:4px;color:var(--text-gray);font-size:12px;line-height:1.35}.gl-radio-dot{width:16px;height:16px;border-radius:999px;border:1.5px solid var(--border);flex-shrink:0;margin-top:1px}.gl-radio-dot.selected{border-color:var(--purple-dark);background:radial-gradient(circle,#fff 0 35%,var(--purple-dark) 38%)}.gl-advanced-toggle{border:0;background:transparent;color:var(--purple-dark);font-size:13px;font-weight:500;padding:2px 0;text-align:left;cursor:pointer;display:inline-flex;gap:6px;align-items:center;justify-self:start}.gl-advanced-mobile{display:none}.gl-dial-wrap{display:grid;gap:12px}.gl-dial-code{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#18181b;color:#fff;border-radius:12px;padding:14px}.gl-dial-code code{font-size:18px;font-weight:600;overflow-wrap:anywhere}.gl-dial-code .btn{background:#fff;color:#111827;border-color:#fff}.gl-turn-off{margin:0!important}.gl-instructions{display:grid;gap:10px;margin:0;padding:0;list-style:none}.gl-instructions li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text-gray);line-height:1.5}.gl-instructions span{width:24px;height:24px;border-radius:999px;background:var(--purple-light);color:var(--purple-dark);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-guide-link{color:var(--purple-dark);font-size:13px;font-weight:500}.gl-action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.gl-message{font-size:13px;line-height:1.5;color:var(--text-gray);margin:12px 0 0}.gl-message.error{color:#b91c1c}.gl-live-banner{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.gl-live-banner h3{color:#166534}.gl-empty-note{margin:0;color:var(--text-gray);font-size:13px;line-height:1.6}.gl-loading{padding:30px;text-align:center}.gl-spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:var(--purple-dark);border-radius:999px;animation:glSpin 1s linear infinite;margin:0 auto 10px}@keyframes glSpin{to{transform:rotate(360deg)}}@media(max-width:767px){.gl-layout{display:block}.gl-sidebar,.gl-desktop-panel{display:none}.gl-mobile-steps{display:grid;gap:12px}.gl-number-grid,.gl-type-grid{grid-template-columns:1fr}.gl-step-body{padding:16px}.gl-action-row{flex-direction:column}.gl-action-row .btn{width:100%;min-height:48px}.gl-dial-code{align-items:flex-start;flex-direction:column}.gl-country-pill{padding:7px 12px;font-size:12px}.gl-country-name{display:none}.gl-country-short{display:inline}.gl-carrier-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.gl-carrier-card{min-height:50px}.gl-carrier-logo,.gl-carrier-fallback{width:26px;height:26px}.gl-carrier-copy small{display:none}.gl-advanced-desktop{display:none}.gl-advanced-mobile{display:inline}.gl-dial-code code{font-size:15px}}`}</style>
   );
 }
 
@@ -212,6 +288,7 @@ export function GoLiveForwardingPanel({
   const [dialCode, setDialCode] = useState<string | null>(null);
   const [turnOffCode, setTurnOffCode] = useState<string | null>(null);
   const [instructions, setInstructions] = useState<string[]>([]);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   useEffect(() => {
     if (initialBilling?.ok && initialBilling.shop) {
@@ -243,7 +320,7 @@ export function GoLiveForwardingPanel({
   }, [billingReady, forwardingConfigured, forwardingVerified]);
 
   const selectedCarrier = goLive.selectedCarrier;
-  const selectedCarrierRecord = findCarrier('us', selectedCarrier ?? undefined);
+  const selectedCarrierRecord = findCarrier(goLive.selectedCountry, selectedCarrier ?? undefined);
 
   useEffect(() => {
     if (!numberReady || !selectedCarrier) {
@@ -269,7 +346,7 @@ export function GoLiveForwardingPanel({
     return () => {
       active = false;
     };
-  }, [goLive, numberReady, selectedCarrier, selectedCarrierRecord?.appSteps]);
+  }, [goLive, numberReady, selectedCarrier, selectedCarrierRecord?.appSteps, goLive.selectedCountry, goLive.selectedForwardingType]);
 
   async function run(label: string, action: () => Promise<void>, success?: string) {
     setBusyAction(label);
@@ -311,11 +388,9 @@ export function GoLiveForwardingPanel({
           {numberReady ? (
             <>
               <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
-                <div><span className="gl-section-label">Select your carrier</span><CarrierPicker selected={goLive.selectedCarrier} onSelect={goLive.selectCarrier} /></div>
-                <div><span className="gl-section-label">Which calls should RingBooker answer?</span><div className="gl-type-grid">{(['no_answer', 'all', 'busy', 'unreachable'] as ForwardingType[]).map((type) => {
-                  const meta = FORWARDING_TYPE_META[type];
-                  return <button key={type} type="button" className={`gl-type-card ${goLive.selectedForwardingType === type ? 'selected' : ''}`} onClick={() => goLive.selectForwardingType(type)}><strong>{meta.label}{meta.recommended ? ' · Recommended' : ''}</strong><small>{meta.description}</small></button>;
-                })}</div></div>
+                <div><span className="gl-section-label">Country</span><CountrySelector selected={goLive.selectedCountry} onSelect={goLive.selectCountry} /></div>
+                <div><span className="gl-section-label">Select your carrier</span><CarrierPicker countryCode={goLive.selectedCountry} selected={goLive.selectedCarrier} onSelect={goLive.selectCarrier} /></div>
+                <div><span className="gl-section-label">Which calls should RingBooker answer?</span><ForwardingTypeSelector selected={goLive.selectedForwardingType} showAdvanced={showAdvancedOptions} onToggleAdvanced={() => setShowAdvancedOptions((value) => !value)} onSelect={goLive.selectForwardingType} /></div>
                 <DialCodeBlock dialCode={dialCode} turnOffCode={turnOffCode} instructions={instructions} />
               </div>
               <div className="gl-action-row">

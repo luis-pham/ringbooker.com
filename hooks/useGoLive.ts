@@ -35,6 +35,7 @@ export type GoLiveStatus = {
   };
   forwarding: {
     status: GoLiveForwardingStatus;
+    country: string;
     carrier: string | null;
     forwardingType: GoLiveForwardingType;
     dialCode: string | null;
@@ -71,15 +72,35 @@ function fallbackStatus(): GoLiveStatus {
     knowledgeGate: { businessName: false, timezone: false, hours: false, hasServices: false, passed: false },
     billing: { status: 'none', trialEndsAt: null, paymentMethodAdded: false },
     provision: { status: 'none', ringbookerNumber: null, telnyx_number_id: null },
-    forwarding: { status: 'none', carrier: null, forwardingType: 'no_answer', dialCode: null, verifiedAt: null },
+    forwarding: { status: 'none', country: 'us', carrier: null, forwardingType: 'no_answer', dialCode: null, verifiedAt: null },
     liveAnswering: { enabled: false, enabledAt: null },
   };
+}
+
+function inferCountryFromLocale(): string {
+  if (typeof navigator === 'undefined') return 'us';
+  const locale = navigator.language || Intl.DateTimeFormat().resolvedOptions().locale || '';
+  const region = locale.split('-')[1]?.toLowerCase();
+  if (region === 'ca') return 'ca';
+  if (region === 'au') return 'au';
+  if (region === 'gb' || region === 'uk') return 'gb';
+  return 'us';
+}
+
+async function saveForwardingPreference(patch: Record<string, unknown>) {
+  await fetch('/api/backend/user/settings', {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  }).catch(() => undefined);
 }
 
 export function useGoLive(initial?: GoLiveStatusResponse | null) {
   const [response, setResponse] = useState<GoLiveStatusResponse | null>(initial ?? null);
   const [isLoading, setIsLoading] = useState(!initial);
   const [error, setError] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string>(() => initial?.status?.forwarding.country ?? inferCountryFromLocale());
   const [selectedCarrier, setSelectedCarrier] = useState<string | null>(initial?.status?.forwarding.carrier ?? null);
   const [selectedForwardingType, setSelectedForwardingType] = useState<GoLiveForwardingType>(initial?.status?.forwarding.forwardingType ?? 'no_answer');
 
@@ -91,6 +112,7 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       throw new Error(body?.error ?? 'go_live_status_failed');
     }
     setResponse(body);
+    if (body.status?.forwarding.country) setSelectedCountry(body.status.forwarding.country);
     if (body.status?.forwarding.carrier) setSelectedCarrier(body.status.forwarding.carrier);
     if (body.status?.forwarding.forwardingType) setSelectedForwardingType(body.status.forwarding.forwardingType);
     return body;
@@ -159,18 +181,34 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
 
   const getDialCode = useCallback(async (): Promise<DialCodeResult> => {
     if (!selectedCarrier) throw new Error('Choose a carrier first.');
-    const params = new URLSearchParams({ carrier: selectedCarrier, forwardingType: selectedForwardingType });
+    const params = new URLSearchParams({ carrier: selectedCarrier, country: selectedCountry, forwardingType: selectedForwardingType });
     const res = await fetch(`/api/backend/user/go-live/forwarding-code?${params.toString()}`, { credentials: 'include' });
     const body = (await res.json().catch(() => null)) as (DialCodeResult & { ok?: boolean; error?: string }) | null;
     if (!res.ok || !body?.ok) throw new Error(body?.error ?? 'Could not generate forwarding code.');
     return { dialCode: body.dialCode, turnOffCode: body.turnOffCode, instructions: body.instructions ?? [] };
-  }, [selectedCarrier, selectedForwardingType]);
+  }, [selectedCarrier, selectedCountry, selectedForwardingType]);
 
   const markConfigured = useCallback(async () => {
     if (!selectedCarrier) throw new Error('Choose a carrier first.');
-    await postJson('/api/backend/user/go-live/mark-forwarding-configured', { carrier: selectedCarrier, forwardingType: selectedForwardingType });
+    await postJson('/api/backend/user/go-live/mark-forwarding-configured', { carrier: selectedCarrier, country: selectedCountry, forwardingType: selectedForwardingType });
     await refresh();
-  }, [refresh, selectedCarrier, selectedForwardingType]);
+  }, [refresh, selectedCarrier, selectedCountry, selectedForwardingType]);
+
+  const selectCountry = useCallback((country: string) => {
+    setSelectedCountry(country);
+    setSelectedCarrier(null);
+    void saveForwardingPreference({ forwarding_country: country, forwarding_carrier: '' });
+  }, []);
+
+  const selectCarrier = useCallback((carrier: string | null) => {
+    setSelectedCarrier(carrier);
+    void saveForwardingPreference({ forwarding_country: selectedCountry, forwarding_carrier: carrier });
+  }, [selectedCountry]);
+
+  const selectForwardingType = useCallback((type: GoLiveForwardingType) => {
+    setSelectedForwardingType(type);
+    void saveForwardingPreference({ forwarding_type: type });
+  }, []);
 
   const runVerification = useCallback(async () => {
     await postJson('/api/backend/user/go-live/start-forwarding-test', {});
@@ -202,10 +240,12 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       forwardingTestStatus: response?.forwardingTestStatus ?? 'none',
       startTrial,
       provisionNumber,
+      selectedCountry,
       selectedCarrier,
       selectedForwardingType,
-      selectCarrier: setSelectedCarrier,
-      selectForwardingType: setSelectedForwardingType,
+      selectCountry,
+      selectCarrier,
+      selectForwardingType,
       getDialCode,
       markConfigured,
       runVerification,
@@ -223,8 +263,12 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       canGoLive,
       startTrial,
       provisionNumber,
+      selectedCountry,
       selectedCarrier,
       selectedForwardingType,
+      selectCountry,
+      selectCarrier,
+      selectForwardingType,
       getDialCode,
       markConfigured,
       runVerification,
