@@ -38,7 +38,7 @@ export default function TermsPage() {
       badge="Terms of Service"
       title="Terms of Service"
       subtitle="These terms govern your use of RingBooker services, including website access, AI phone agent features, and paid subscription plans."
-      updatedAt="April 8, 2026"
+      updatedAt="May 11, 2026"
       sections={[
         {
           title: 'Acceptance',
@@ -78,6 +78,42 @@ export default function TermsPage() {
           content: (
             <>
               <p>You may not use RingBooker to break laws, violate telemarketing/call recording rules, abuse third-party systems, or process data without a valid legal basis. You are responsible for your business compliance in each jurisdiction.</p>
+            </>
+          ),
+        },
+        {
+          title: 'SMS Messaging',
+          content: (
+            <>
+              <p>RingBooker sends SMS messages as part of its core appointment and call-handling service.</p>
+              <p>
+                <strong>Authorization:</strong>
+              </p>
+              <p>
+                By activating live answering or SMS features in RingBooker, businesses authorize RingBooker to send SMS messages to:
+              </p>
+              <ul>
+                <li>Callers who contact the business via the AI phone agent and provide their phone number</li>
+                <li>Business owners and staff who opt in during account setup</li>
+              </ul>
+              <p>
+                <strong>Permitted use:</strong>
+              </p>
+              <p>
+                SMS is used only for transactional and operational messages directly related to appointments, missed calls, and business notifications. SMS is not used for unsolicited marketing or promotional campaigns.
+              </p>
+              <p>
+                <strong>Opt-out:</strong>
+              </p>
+              <p>
+                Recipients may opt out at any time by replying STOP to any message. Reply HELP for support contact information. Message and data rates may apply.
+              </p>
+              <p>
+                <strong>Business responsibility:</strong>
+              </p>
+              <p>
+                Businesses using RingBooker are responsible for ensuring their use of SMS features complies with applicable laws including TCPA, CAN-SPAM, and relevant state regulations.
+              </p>
             </>
           ),
         },

@@ -39,7 +39,7 @@ export default function PrivacyPage() {
       badge="Privacy Policy"
       title="Privacy Policy"
       subtitle="This policy explains how RingBooker collects, uses, stores, and protects personal data when you use our website, demo flows, and AI phone agent platform."
-      updatedAt="April 8, 2026"
+      updatedAt="May 11, 2026"
       sections={[
         {
           title: 'Who We Are',
@@ -61,6 +61,45 @@ export default function PrivacyPage() {
                 <li>Billing data: subscription status and payment metadata from billing providers.</li>
                 <li>Security data: IP, device, session, audit logs, abuse/rate-limit events.</li>
               </ul>
+            </>
+          ),
+        },
+        {
+          title: 'SMS Communications',
+          content: (
+            <>
+              <p>RingBooker sends SMS messages on behalf of businesses using our platform to support appointment workflows.</p>
+              <p>
+                <strong>Who receives SMS:</strong>
+              </p>
+              <ul>
+                <li>Callers who contacted the business and provided their phone number during a call or booking interaction</li>
+                <li>Business owners and staff who opted in during RingBooker account setup or onboarding</li>
+              </ul>
+              <p>
+                <strong>Types of messages sent:</strong>
+              </p>
+              <ul>
+                <li>Appointment request confirmations</li>
+                <li>Booking links and scheduling follow-ups</li>
+                <li>Missed-call follow-up notifications</li>
+                <li>Appointment reminders and reschedule confirmations</li>
+                <li>Cancellation confirmations</li>
+                <li>Owner alerts and handoff notifications</li>
+                <li>Customer support replies</li>
+              </ul>
+              <p>
+                <strong>What we do not do:</strong>
+              </p>
+              <p>
+                RingBooker does not use SMS for cold outreach, unsolicited marketing, purchased contact lists, or third-party promotional blasts.
+              </p>
+              <p>
+                <strong>Opt-out:</strong>
+              </p>
+              <p>
+                Reply <strong>STOP</strong> to any message to opt out immediately. Reply <strong>HELP</strong> for support information. Message and data rates may apply. Message frequency varies based on appointment activity.
+              </p>
             </>
           ),
         },
