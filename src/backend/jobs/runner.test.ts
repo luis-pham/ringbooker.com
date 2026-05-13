@@ -121,6 +121,52 @@ test('runner skips missed-call follow-up SMS when billing access is blocked', as
   assert.equal(sentSms.length, 0);
 });
 
+test('runner skips owner alert SMS until owner opts in', async () => {
+  const { runtime, sentSms } = createRuntime();
+  const shop = await runtime.shopsRepository.create({
+    name: 'Owner Opt Shop',
+    phone_number: '+15550001000',
+    user_phone: '+15550001001',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+    active: true,
+  });
+
+  const handlers = createJobHandlers(runtime);
+  await handlers.handoff_failed_owner_sms!({
+    jobId: 'job-owner-alert-no-opt',
+    shopId: shop.id,
+    payload: {
+      rbCallId: 'rb-no-opt',
+      summary: 'Caller requested owner handoff.',
+      reason: 'owner requested',
+      urgency: 'medium',
+      callerPhone: '+15551234567',
+      failureCode: 'owner_no_answer',
+    },
+    attemptCount: 1,
+  });
+
+  assert.equal(sentSms.length, 0);
+
+  await runtime.shopsRepository.updateUserSettings(shop.id, { sms_owner_opted_in: true });
+  await handlers.handoff_failed_owner_sms!({
+    jobId: 'job-owner-alert-opted',
+    shopId: shop.id,
+    payload: {
+      rbCallId: 'rb-opted',
+      summary: 'Caller requested owner handoff.',
+      reason: 'owner requested',
+      urgency: 'medium',
+      callerPhone: '+15551234567',
+      failureCode: 'owner_no_answer',
+    },
+    attemptCount: 1,
+  });
+
+  assert.equal(sentSms.length, 1);
+});
+
 test('callback_outbound_call uses shared outbound caller id (not shop.phone_number)', async () => {
   const outboundCalls: Array<{ from?: string; to?: string }> = [];
   const { runtime } = createRuntime();

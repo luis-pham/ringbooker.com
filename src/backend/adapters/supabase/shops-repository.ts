@@ -62,6 +62,7 @@ type ShopsRow = {
   send_reminder_sms: boolean | null;
   send_review_request_sms: boolean | null;
   send_missed_call_followup_sms: boolean | null;
+  sms_owner_opted_in: boolean | null;
   plan: string | null;
   active: boolean | null;
   google_cal_id: string | null;
@@ -304,6 +305,7 @@ function toShop(row: ShopsRow): Shop {
     ai_custom_instructions: row.ai_custom_instructions,
     allow_transfers: row.allow_transfers ?? false,
     allow_callbacks: row.allow_callbacks ?? true,
+    sms_owner_opted_in: row.sms_owner_opted_in ?? false,
     send_reminder_sms: row.send_reminder_sms ?? false,
     send_review_request_sms: row.send_review_request_sms ?? false,
     send_missed_call_followup_sms: row.send_missed_call_followup_sms ?? true,
@@ -353,6 +355,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -416,6 +419,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -479,6 +483,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -542,6 +547,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -618,6 +624,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -683,6 +690,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'forwarding_type'
         | 'forwarding_carrier'
         | 'forwarding_country'
+        | 'sms_owner_opted_in'
         | 'telnyx_number'
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'
@@ -720,6 +728,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.forwarding_type !== undefined) payload.forwarding_type = patch.forwarding_type;
     if (patch.forwarding_carrier !== undefined) payload.forwarding_carrier = patch.forwarding_carrier;
     if (patch.forwarding_country !== undefined) payload.forwarding_country = patch.forwarding_country;
+    if (patch.sms_owner_opted_in !== undefined) payload.sms_owner_opted_in = patch.sms_owner_opted_in;
     if (patch.telnyx_number !== undefined) payload.telnyx_number = patch.telnyx_number;
     if (patch.forwarding_number_status !== undefined) payload.forwarding_number_status = patch.forwarding_number_status;
     if (patch.forwarding_number_provisioning_started_at !== undefined) {
@@ -759,6 +768,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -1045,6 +1055,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -1139,6 +1150,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -1213,6 +1225,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',
@@ -1284,6 +1297,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'booking_url',
           'booking_method',
           'selected_integration',
+          'sms_owner_opted_in',
           'website_url',
           'languages',
           'current_onboarding_step',

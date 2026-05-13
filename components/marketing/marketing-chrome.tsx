@@ -392,6 +392,10 @@ export function MarketingFooter({
               <span className="mk-footer-legal-sep" aria-hidden="true">
                 ·
               </span>
+              <Link href="/sms-consent">SMS Consent</Link>
+              <span className="mk-footer-legal-sep" aria-hidden="true">
+                ·
+              </span>
               <Link href="/refund">Refund Policy</Link>
             </nav>
             <p className="mk-footer-tagline">Built for salon users 💜</p>

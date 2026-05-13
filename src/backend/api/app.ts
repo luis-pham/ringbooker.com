@@ -474,6 +474,7 @@ const userSettingsBaseSchema = z.object({
   forwarding_type: z.enum(['no_answer', 'all', 'busy', 'unreachable']).optional(),
   forwarding_carrier: z.string().optional(),
   forwarding_country: z.string().optional(),
+  sms_owner_opted_in: z.boolean().optional(),
 });
 
 const serviceItemSchema = z.object({
@@ -1177,6 +1178,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   forwarding_type: 'edit_business_profile',
   forwarding_carrier: 'edit_business_profile',
   forwarding_country: 'edit_business_profile',
+  sms_owner_opted_in: 'edit_business_profile',
   cancel_policy: 'edit_cancel_policy',
   promotions: 'edit_promotions',
   services: 'edit_services',
@@ -1226,6 +1228,7 @@ function splitUserSettingsPatchByPlan(
         | 'forwarding_type'
         | 'forwarding_carrier'
         | 'forwarding_country'
+        | 'sms_owner_opted_in'
     >
   >;
   dynamicPatch: Partial<
@@ -1306,6 +1309,7 @@ function splitUserSettingsPatchByPlan(
         | 'forwarding_type'
         | 'forwarding_carrier'
         | 'forwarding_country'
+        | 'sms_owner_opted_in'
       >]?: Shop[K];
     },
     dynamicPatch: dynamicPatch as {

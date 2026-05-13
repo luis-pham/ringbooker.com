@@ -289,6 +289,7 @@ export function GoLiveForwardingPanel({
   const [turnOffCode, setTurnOffCode] = useState<string | null>(null);
   const [instructions, setInstructions] = useState<string[]>([]);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [smsOwnerOptedIn, setSmsOwnerOptedIn] = useState(false);
 
   useEffect(() => {
     if (initialBilling?.ok && initialBilling.shop) {
@@ -361,6 +362,25 @@ export function GoLiveForwardingPanel({
     }
   }
 
+  async function saveSmsOwnerOptInIfChecked() {
+    if (!smsOwnerOptedIn) return;
+    const res = await fetch('/api/backend/user/settings', {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sms_owner_opted_in: true }),
+    });
+    const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; message?: string } | null;
+    if (!res.ok || !body?.ok) {
+      throw new Error(body?.message ?? body?.error ?? 'Could not save SMS alert preference.');
+    }
+  }
+
+  async function startTrialWithOptionalSmsConsent() {
+    await saveSmsOwnerOptInIfChecked();
+    await goLive.startTrial();
+  }
+
   function renderStepContent(step: StepId) {
     if (step === 1) {
       return (
@@ -373,8 +393,21 @@ export function GoLiveForwardingPanel({
           ) : (
             <p className="gl-message">No charge for 14 days · Cancel anytime. Live answering stays off until forwarding is verified and you enable it.</p>
           )}
+          {!billingReady ? (
+            <label
+              className="checkbox-line"
+              style={{ alignItems: 'flex-start', color: 'var(--text-gray)', display: 'flex', fontSize: 12, fontWeight: 400, gap: 9, lineHeight: 1.5, marginBottom: 12, marginTop: 12 }}
+            >
+              <input
+                type="checkbox"
+                checked={smsOwnerOptedIn}
+                onChange={(event) => setSmsOwnerOptedIn(event.currentTarget.checked)}
+              />
+              <span>Send me SMS alerts for new bookings, missed calls, and handoff requests. Msg &amp; data rates may apply. Reply STOP to opt out.</span>
+            </label>
+          ) : null}
           <div className="gl-action-row">
-            {!billingReady ? <button type="button" className="btn user-save" disabled={busyAction === 'trial'} onClick={() => run('trial', goLive.startTrial)}>{busyAction === 'trial' ? 'Opening...' : 'Add card and start free trial'}</button> : null}
+            {!billingReady ? <button type="button" className="btn user-save" disabled={busyAction === 'trial'} onClick={() => run('trial', startTrialWithOptionalSmsConsent)}>{busyAction === 'trial' ? 'Opening...' : 'Add card and start free trial'}</button> : null}
             {billingReady && !numberReady ? <button type="button" className="btn user-save" disabled={busyAction === 'provision'} onClick={() => run('provision', goLive.provisionNumber, 'Setting up your RingBooker number...')}>{busyAction === 'provision' ? 'Working...' : 'Create forwarding number'}</button> : null}
             <a className="btn" href="/user/billing">Open Billing</a>
           </div>

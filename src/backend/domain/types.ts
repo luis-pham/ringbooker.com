@@ -269,6 +269,8 @@ export interface Shop {
   ai_custom_instructions?: string | null;
   allow_transfers: boolean;
   allow_callbacks: boolean;
+  /** Explicit owner/staff consent for operational SMS alerts. */
+  sms_owner_opted_in?: boolean;
   send_reminder_sms: boolean;
   send_review_request_sms: boolean;
   send_missed_call_followup_sms: boolean;

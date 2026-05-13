@@ -413,6 +413,7 @@ export interface ShopsRepository {
         | 'forwarding_type'
         | 'forwarding_carrier'
         | 'forwarding_country'
+        | 'sms_owner_opted_in'
         | 'telnyx_number'
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'

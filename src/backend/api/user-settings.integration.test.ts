@@ -203,6 +203,28 @@ test('user can save business knowledge staff and FAQ fields', async () => {
   assert.equal(body.shop.faqs[0]?.question, 'Do you accept walk-ins?');
 });
 
+test('user can save optional owner SMS alert opt-in preference', async () => {
+  const { app, shopsRepository } = createUserSettingsTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ sms_owner_opted_in: true }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; shop: { sms_owner_opted_in?: boolean } };
+  assert.equal(body.ok, true);
+  assert.equal(body.shop.sms_owner_opted_in, true);
+  assert.equal((await shopsRepository.findById('demo-shop'))?.sms_owner_opted_in, true);
+});
+
 test('user can save grouped service catalog and legacy services are derived for compatibility', async () => {
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),

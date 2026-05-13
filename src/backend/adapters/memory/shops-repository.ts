@@ -63,6 +63,7 @@ const defaultShop: Shop = {
   ai_custom_instructions: 'Prioritize manicure and pedicure bookings and keep answers concise.',
   allow_transfers: true,
   allow_callbacks: true,
+  sms_owner_opted_in: false,
   send_reminder_sms: true,
   send_review_request_sms: true,
   send_missed_call_followup_sms: true,
@@ -174,6 +175,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
       forwarding_number_last_error: null,
       allow_transfers: enableProfessionalDefaults,
       allow_callbacks: true,
+      sms_owner_opted_in: false,
       send_reminder_sms: enableProfessionalDefaults,
       send_review_request_sms: enableProfessionalDefaults,
       send_missed_call_followup_sms: true,
@@ -216,6 +218,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'forwarding_type'
         | 'forwarding_carrier'
         | 'forwarding_country'
+        | 'sms_owner_opted_in'
         | 'telnyx_number'
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'

@@ -677,6 +677,9 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'handoff_failed_owner_sms_shop_not_found');
         return;
       }
+      if (!shop.sms_owner_opted_in) {
+        return;
+      }
       if (!shop.user_phone?.trim()) {
         return;
       }
@@ -817,6 +820,9 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const shop = await runtime.shopsRepository.findById(params.shopId);
       if (!shop) {
         logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'cancellation_request_alert_shop_not_found');
+        return;
+      }
+      if (!shop.sms_owner_opted_in) {
         return;
       }
 
