@@ -32,8 +32,8 @@ export function UserGoLiveLive({
 
           <main className="main">
             <UserPortalTopbar
-              title="Go Live"
-              subtitle="Connect RingBooker to your business number. Customers keep calling the same number — forwarding happens behind the scenes."
+              title="Start answering missed calls"
+              subtitle="When you don't pick up, RingBooker answers for your business. Setup takes about 5 minutes."
               actionsClassName={USER_PORTAL_TOPBAR_ACTIONS_CLASS}
               actions={<UserPortalStandardTopActions />}
             />

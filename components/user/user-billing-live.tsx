@@ -171,8 +171,8 @@ const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
   {
     key: 'professional',
     name: 'Professional',
-    monthlyPrice: 129,
-    annualPrice: 103,
+    monthlyPrice: 149,
+    annualPrice: 119,
     description: 'Adds SMS, caller memory, bilingual & owner transfer.',
     badge: 'Popular',
     features: [
@@ -991,40 +991,32 @@ export function UserBillingLive({
                         <>
                           <div className="billing-overview-actions">
                             <div className="billing-action-card">
-                              <div className="billing-action-card__top">
-                                <div
-                                  className={`billing-action-card__icon${hasPaymentMethod ? ' billing-action-card__icon--ok' : ' billing-action-card__icon--danger'}`}
-                                  aria-hidden
-                                >
-                                  {hasPaymentMethod ? '✓' : '◇'}
-                                </div>
-                                <div className="billing-action-card__head">
-                                  <h3>Payment method</h3>
-                                  {hasPaymentMethod ? (
-                                    <>
-                                      <span className="tag green" style={{ marginTop: 6, display: 'inline-flex' }}>
-                                        Added ✓
-                                      </span>
-                                      <p className="sub">
-                                        Payment method is on file. Manage billing to view or update card details.
-                                      </p>
-                                    </>
-                                  ) : paymentMethodStatus === 'pending' ? (
-                                    <>
-                                      <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
-                                        Pending
-                                      </span>
-                                      <p className="sub">We are confirming your payment method. This usually updates within a minute.</p>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="tag red" style={{ marginTop: 6, display: 'inline-flex' }}>
-                                        Not added
-                                      </span>
-                                      <p className="sub">A card is required before RingBooker can answer real calls on your number.</p>
-                                    </>
-                                  )}
-                                </div>
+                              <div className="billing-action-card__head">
+                                <h3>Payment method</h3>
+                                {hasPaymentMethod ? (
+                                  <>
+                                    <span className="tag green" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                      Added ✓
+                                    </span>
+                                    <p className="sub">
+                                      Payment method is on file. Manage billing to view or update card details.
+                                    </p>
+                                  </>
+                                ) : paymentMethodStatus === 'pending' ? (
+                                  <>
+                                    <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                      Pending
+                                    </span>
+                                    <p className="sub">We are confirming your payment method. This usually updates within a minute.</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="tag red" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                      Not added
+                                    </span>
+                                    <p className="sub">A card is required before RingBooker can answer real calls on your number.</p>
+                                  </>
+                                )}
                               </div>
                               <div className="billing-action-card__actions">
                                 {hasPaymentMethod ? (
@@ -1049,42 +1041,32 @@ export function UserBillingLive({
                             </div>
 
                             <div className="billing-action-card">
-                              <div className="billing-action-card__top">
-                                <div
-                                  className={`billing-action-card__icon${
-                                    forwardingState === 'verified' ? ' billing-action-card__icon--ok' : ' billing-action-card__icon--amber'
-                                  }`}
-                                  aria-hidden
-                                >
-                                  {forwardingState === 'verified' ? '✓' : '☎'}
-                                </div>
-                                <div className="billing-action-card__head">
-                                  <h3>Phone forwarding</h3>
-                                  {forwardingState === 'verified' ? (
-                                    <>
-                                      <span className="tag green" style={{ marginTop: 6, display: 'inline-flex' }}>
-                                        Verified ✓
-                                      </span>
-                                      <p className="sub">Forwarding is active and verified.</p>
-                                    </>
-                                  ) : forwardingState === 'configured' ? (
-                                    <>
-                                      <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
-                                        Pending verification
-                                      </span>
-                                      <p className="sub">Forwarding is configured — run a test call to verify.</p>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
-                                        Not set up
-                                      </span>
-                                      <p className="sub">
-                                        Forward missed calls from your business number to RingBooker to activate live answering.
-                                      </p>
-                                    </>
-                                  )}
-                                </div>
+                              <div className="billing-action-card__head">
+                                <h3>Phone forwarding</h3>
+                                {forwardingState === 'verified' ? (
+                                  <>
+                                    <span className="tag green" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                      Verified ✓
+                                    </span>
+                                    <p className="sub">Forwarding is active and verified.</p>
+                                  </>
+                                ) : forwardingState === 'configured' ? (
+                                  <>
+                                    <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                      Pending verification
+                                    </span>
+                                    <p className="sub">Forwarding is configured — run a test call to verify.</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
+                                      Not set up
+                                    </span>
+                                    <p className="sub">
+                                      Forward missed calls from your business number to RingBooker to activate live answering.
+                                    </p>
+                                  </>
+                                )}
                               </div>
                               {forwardingState === 'verified' ? null : (
                                 <div className="billing-action-card__actions">
@@ -1524,9 +1506,6 @@ export function UserBillingLive({
                     </div>
                   ) : null}
                 </div>
-            <div className="footer-inline">
-              <span>RingBooker · {data?.shop?.name ?? 'Your business'}</span>
-            </div>
             </UserPortalPageContent>
           </main>
         </div>

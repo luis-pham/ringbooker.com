@@ -33,6 +33,7 @@ export type UserDashboardResponse = {
     id: string;
     name: string;
     phone_number?: string;
+    address?: string | null;
     timezone: string;
     plan: string;
     active: boolean;
@@ -167,22 +168,35 @@ function buildActivationChecklist(
   rail: UserDashboardOverviewRail | undefined,
 ): ActivationChecklistRow[] {
   const hasBilling = goLive.paymentMethodValid && goLive.subscriptionActiveLike;
-  let knowledgeDone = true;
-  if (rail?.variant === 'setup') {
-    const row = rail.checklist.find((i) => i.id === 'business_knowledge');
-    knowledgeDone = row ? row.done : true;
-  }
+  void rail;
   return [
-    { id: 'billing', name: 'Add a payment method', desc: null, done: hasBilling, href: '/user/billing' },
-    { id: 'forwarding_number', name: 'Confirm your forwarding number', desc: null, done: goLive.hasForwardingNumber, href: '/user/go-live#go-live-forwarding' },
-    { id: 'forwarding_test', name: 'Test call forwarding', desc: null, done: goLive.forwardingSetupVerified, href: '/user/go-live#go-live-forwarding' },
-    { id: 'live_answering', name: 'Enable live answering', desc: null, done: goLive.liveCallsEnabled, href: '/user/go-live#go-live-forwarding' },
     {
-      id: 'knowledge',
-      name: 'Complete Business Knowledge',
-      desc: 'Add hours, services, and FAQs so AI answers callers accurately.',
-      done: knowledgeDone,
-      href: '/user/knowledge',
+      id: 'billing',
+      name: 'Add your card',
+      desc: 'Starts your free 14-day trial — no charge today',
+      done: hasBilling,
+      href: '/user/billing',
+    },
+    {
+      id: 'forwarding',
+      name: 'Forward missed calls to RingBooker',
+      desc: 'One code to dial on your phone — takes 2 minutes',
+      done: goLive.hasForwardingNumber,
+      href: '/user/go-live#go-live-forwarding',
+    },
+    {
+      id: 'forwarding_test',
+      name: 'Test it works',
+      desc: "We'll make a quick test call to confirm",
+      done: goLive.forwardingSetupVerified,
+      href: '/user/go-live#go-live-forwarding',
+    },
+    {
+      id: 'live_answering',
+      name: 'Switch it on',
+      desc: 'RingBooker starts answering missed calls immediately',
+      done: goLive.liveCallsEnabled,
+      href: '/user/go-live#go-live-forwarding',
     },
   ];
 }
@@ -396,6 +410,10 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     if (!data?.goLive) return [];
     return buildActivationChecklist(data.goLive, data.overviewRail);
   }, [data, data?.overviewRail]);
+  const businessKnowledgeIncomplete = useMemo(() => {
+    if (!data?.overviewRail || data.overviewRail.variant !== 'live') return false;
+    return data.overviewRail.health.some((item) => item.id === 'business_knowledge' && item.state !== 'ok');
+  }, [data?.overviewRail]);
 
   const shopTimezone = useMemo(() => getShopTimezone(data?.shop), [data?.shop]);
 
@@ -514,21 +532,37 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     <div className="banner-text">
                       <span className="banner-title">RingBooker is set up, but not live yet.</span>
                       <span className="banner-sub">
-                        No card needed during setup — your business number stays unchanged until you go live.
+                        When someone calls and you don't pick up, RingBooker will answer for them. Finish setup below.
                       </span>
                     </div>
                     <div className="banner-actions portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={testCallLoading}
-                        onClick={() => void requestDashboardTestCall()}
-                      >
-                        {testCallLoading ? 'Calling…' : 'Run test call'}
-                      </button>
-                      <a className="btn user-save" href="/user/billing">
-                        Start 14-day trial
-                      </a>
+                      {!data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike ? (
+                        <a className="btn user-save" href="/user/billing">
+                          Start 14-day trial
+                        </a>
+                      ) : data.goLive.forwardingSetupVerified ? (
+                        <a className="btn user-save" href="/user/go-live#go-live-forwarding">
+                          Switch it on →
+                        </a>
+                      ) : data.goLive.hasForwardingNumber ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn"
+                            disabled={testCallLoading}
+                            onClick={() => void requestDashboardTestCall()}
+                          >
+                            {testCallLoading ? 'Calling…' : 'Run test call'}
+                          </button>
+                          <a className="btn user-save" href="/user/go-live#go-live-forwarding">
+                            Continue setup →
+                          </a>
+                        </>
+                      ) : (
+                        <a className="btn user-save" href="/user/go-live#go-live-forwarding">
+                          Continue setup →
+                        </a>
+                      )}
                     </div>
                   </div>
                 ) : null}
@@ -549,21 +583,32 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 <div className="overview-grid">
                   <div className="overview-left">
                     {liveAnsweringOn ? (
-                      <div className="shortcuts-card quick-actions-card">
-                        <div className="card-title">Quick actions</div>
-                        {overviewShortcutRows.map((s) => (
-                          <a key={s.href} className="sc-item" href={s.href}>
-                            <div className="sc-icon">{s.icon}</div>
-                            <div className="sc-body">
-                              <div className="sc-name">{s.name}</div>
-                              <div className="sc-desc">{s.desc}</div>
-                            </div>
-                            <div className="sc-go" aria-hidden>
-                              ›
-                            </div>
-                          </a>
-                        ))}
-                      </div>
+                      <>
+                        {businessKnowledgeIncomplete ? (
+                          <div className="shortcuts-card quick-actions-card" style={{ marginBottom: 16 }}>
+                            <div className="card-title">Make your AI smarter</div>
+                            <div className="card-sub">Add staff, policies, and FAQs in Business Knowledge.</div>
+                            <a className="btn user-save" href="/user/knowledge" style={{ marginTop: 12 }}>
+                              Open Business Knowledge →
+                            </a>
+                          </div>
+                        ) : null}
+                        <div className="shortcuts-card quick-actions-card">
+                          <div className="card-title">Quick actions</div>
+                          {overviewShortcutRows.map((s) => (
+                            <a key={s.href} className="sc-item" href={s.href}>
+                              <div className="sc-icon">{s.icon}</div>
+                              <div className="sc-body">
+                                <div className="sc-name">{s.name}</div>
+                                <div className="sc-desc">{s.desc}</div>
+                              </div>
+                              <div className="sc-go" aria-hidden>
+                                ›
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      </>
                     ) : (
                       <div className="checklist-card">
                         <div className="card-title">Go-live checklist</div>

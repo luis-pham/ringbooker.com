@@ -4484,6 +4484,7 @@ export function createBackendApp(deps: {
         id: shop.id,
         name: shop.name,
         phone_number: shop.phone_number,
+        address: shop.address ?? null,
         timezone: shop.timezone,
         plan: shop.plan,
         active: shop.active,
@@ -4938,6 +4939,7 @@ export function createBackendApp(deps: {
     return c.json({
       ok: true,
       businessPhone: shop.phone_number?.trim() || null,
+      businessAddress: shop.address?.trim() || null,
       paymentMethodStatus: access.paymentMethodStatus,
       subscriptionStatus: access.subscriptionStatus,
       providerCustomerId: access.providerCustomerId,
@@ -5018,9 +5020,9 @@ export function createBackendApp(deps: {
     const instructions = carrier.appSteps?.length
       ? carrier.appSteps
       : [
-          'Open your phone dialer, paste the code above and press call',
-          "You'll hear a confirmation tone - forwarding is now active",
-          'Come back here and click/tap Done',
+          "Open your phone's dialer app",
+          'Paste or type the code above, then press call',
+          "You'll hear a tone - then come back and tap Done below",
         ];
     return c.json({
       ok: true,

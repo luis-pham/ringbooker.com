@@ -113,15 +113,6 @@ export function buildDashboardOverviewRail(params: {
   const { shop, onboardingRequired, goLive, usage, recentCalls, totalCallCount } = params;
   const calendar = resolveCalendarBookingStatus(shop);
   const knowledge = getBusinessKnowledgeStatus(shop);
-  const knowledgeChecklistItem: DashboardOverviewRailChecklistItem | null = knowledge.complete
-    ? null
-    : {
-        id: 'business_knowledge',
-        title: 'Finish your AI knowledge',
-        detail: 'Add hours, services, and FAQs so RingBooker can answer callers accurately.',
-        done: false,
-        href: '/user/knowledge',
-      };
 
   if (goLive?.commercialApprovalRequired) {
     return {
@@ -177,30 +168,33 @@ export function buildDashboardOverviewRail(params: {
     const checklist: DashboardOverviewRailChecklistItem[] = [
       {
         id: 'payment',
-        title: 'Add a valid payment method',
+        title: 'Add your card',
+        detail: 'Starts your free 14-day trial — no charge today',
         done: goLive.paymentMethodValid,
         href: '/user/billing',
       },
       {
-        id: 'forwarding_number',
-        title: 'Provision or confirm your RingBooker forwarding number',
+        id: 'forwarding',
+        title: 'Forward missed calls to RingBooker',
+        detail: 'One code to dial on your phone — takes 2 minutes',
         done: goLive.hasForwardingNumber,
         href: '/user/go-live#go-live-forwarding',
       },
       {
         id: 'forwarding_verify',
-        title: 'Verify call forwarding (place a test call)',
+        title: 'Test it works',
+        detail: "We'll make a quick test call to confirm",
         done: goLive.forwardingSetupVerified,
         href: '/user/go-live#go-live-forwarding',
       },
       {
         id: 'live_enable',
-        title: 'Enable live answering',
+        title: 'Switch it on',
+        detail: 'RingBooker starts answering missed calls immediately',
         done: goLive.liveCallsEnabled,
         href: '/user/go-live#go-live-forwarding',
       },
     ];
-    if (knowledgeChecklistItem) checklist.push(knowledgeChecklistItem);
 
     return {
       variant: 'setup',

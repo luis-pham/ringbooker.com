@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { detectCountry, detectCountryFromAddress, detectCountryFromPhone } from '@/lib/detect-country';
 
 export type GoLiveBillingStatus = 'none' | 'trial' | 'active' | 'cancelled' | 'past_due';
 export type GoLiveProvisionStatus = 'none' | 'provisioning' | 'ready' | 'failed';
@@ -50,6 +51,7 @@ export type GoLiveStatus = {
 export type GoLiveStatusResponse = {
   ok: boolean;
   businessPhone?: string | null;
+  businessAddress?: string | null;
   status?: GoLiveStatus;
   gate?: KnowledgeGateItem[];
   canGoLive?: boolean;
@@ -77,16 +79,6 @@ function fallbackStatus(): GoLiveStatus {
   };
 }
 
-function inferCountryFromLocale(): string {
-  if (typeof navigator === 'undefined') return 'us';
-  const locale = navigator.language || Intl.DateTimeFormat().resolvedOptions().locale || '';
-  const region = locale.split('-')[1]?.toLowerCase();
-  if (region === 'ca') return 'ca';
-  if (region === 'au') return 'au';
-  if (region === 'gb' || region === 'uk') return 'gb';
-  return 'us';
-}
-
 async function saveForwardingPreference(patch: Record<string, unknown>) {
   await fetch('/api/backend/user/settings', {
     method: 'PUT',
@@ -96,11 +88,28 @@ async function saveForwardingPreference(patch: Record<string, unknown>) {
   }).catch(() => undefined);
 }
 
+function detectKnownCountry(phone: string | null | undefined, address: string | null | undefined): string | null {
+  if (phone) {
+    const fromPhone = detectCountryFromPhone(phone);
+    if (fromPhone) return fromPhone;
+  }
+  if (address) {
+    const fromAddress = detectCountryFromAddress(address);
+    if (fromAddress) return fromAddress;
+  }
+  return null;
+}
+
 export function useGoLive(initial?: GoLiveStatusResponse | null) {
   const [response, setResponse] = useState<GoLiveStatusResponse | null>(initial ?? null);
   const [isLoading, setIsLoading] = useState(!initial);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCountry, setSelectedCountry] = useState<string>(() => initial?.status?.forwarding.country ?? inferCountryFromLocale());
+  const [countryPickerVisible, setCountryPickerVisible] = useState(() => !initial?.status?.forwarding.carrier && !detectKnownCountry(initial?.businessPhone ?? null, initial?.businessAddress ?? null));
+  const [selectedCountry, setSelectedCountry] = useState<string>(() => (
+    initial?.status?.forwarding.carrier
+      ? initial.status.forwarding.country
+      : detectCountry(initial?.businessPhone ?? null, initial?.businessAddress ?? null)
+  ));
   const [selectedCarrier, setSelectedCarrier] = useState<string | null>(initial?.status?.forwarding.carrier ?? null);
   const [selectedForwardingType, setSelectedForwardingType] = useState<GoLiveForwardingType>(initial?.status?.forwarding.forwardingType ?? 'no_answer');
 
@@ -112,7 +121,11 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       throw new Error(body?.error ?? 'go_live_status_failed');
     }
     setResponse(body);
-    if (body.status?.forwarding.country) setSelectedCountry(body.status.forwarding.country);
+    const detectedCountry = detectKnownCountry(body.businessPhone ?? null, body.businessAddress ?? null);
+    setSelectedCountry(body.status?.forwarding.carrier
+      ? body.status.forwarding.country
+      : detectedCountry ?? detectCountry(body.businessPhone ?? null, body.businessAddress ?? null));
+    if (!body.status?.forwarding.carrier) setCountryPickerVisible(!detectedCountry);
     if (body.status?.forwarding.carrier) setSelectedCarrier(body.status.forwarding.carrier);
     if (body.status?.forwarding.forwardingType) setSelectedForwardingType(body.status.forwarding.forwardingType);
     return body;
@@ -197,7 +210,12 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
   const selectCountry = useCallback((country: string) => {
     setSelectedCountry(country);
     setSelectedCarrier(null);
+    setCountryPickerVisible(false);
     void saveForwardingPreference({ forwarding_country: country, forwarding_carrier: '' });
+  }, []);
+
+  const showCountryPicker = useCallback(() => {
+    setCountryPickerVisible(true);
   }, []);
 
   const selectCarrier = useCallback((carrier: string | null) => {
@@ -237,13 +255,16 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       gate,
       canGoLive,
       businessPhone: response?.businessPhone ?? null,
+      businessAddress: response?.businessAddress ?? null,
       forwardingTestStatus: response?.forwardingTestStatus ?? 'none',
       startTrial,
       provisionNumber,
       selectedCountry,
+      countryPickerVisible,
       selectedCarrier,
       selectedForwardingType,
       selectCountry,
+      showCountryPicker,
       selectCarrier,
       selectForwardingType,
       getDialCode,
@@ -264,9 +285,11 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       startTrial,
       provisionNumber,
       selectedCountry,
+      countryPickerVisible,
       selectedCarrier,
       selectedForwardingType,
       selectCountry,
+      showCountryPicker,
       selectCarrier,
       selectForwardingType,
       getDialCode,

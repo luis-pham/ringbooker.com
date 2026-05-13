@@ -73,7 +73,7 @@ test('business knowledge status detects incomplete and complete knowledge', () =
   assert.deepEqual(complete.missingRecommended, []);
 });
 
-test('dashboard setup rail shows Finish your AI knowledge after go-live blockers when incomplete', () => {
+test('dashboard setup rail keeps go-live checklist focused on activation steps', () => {
   const rail = buildDashboardOverviewRail({
     shop: baseShop({ services: [], service_catalog: { categories: [], services: [] }, faqs: [] }),
     onboardingRequired: false,
@@ -89,15 +89,16 @@ test('dashboard setup rail shows Finish your AI knowledge after go-live blockers
   });
 
   assert.equal(rail.variant, 'setup');
-  const knowledge = rail.checklist.find((item) => item.id === 'business_knowledge');
-  assert.ok(knowledge);
-  assert.equal(knowledge.title, 'Finish your AI knowledge');
-  assert.equal(knowledge.href, '/user/knowledge');
-  assert.match(knowledge.detail ?? '', /Add hours, services, and FAQs/);
-  assert.equal(rail.checklist.at(-1)?.id, 'business_knowledge');
+  assert.deepEqual(rail.checklist.map((item) => item.title), [
+    'Add your card',
+    'Forward missed calls to RingBooker',
+    'Test it works',
+    'Switch it on',
+  ]);
+  assert.equal(rail.checklist.some((item) => item.id === 'business_knowledge'), false);
 });
 
-test('dashboard setup rail omits Business Knowledge card when complete', () => {
+test('dashboard setup rail omits Business Knowledge from activation checklist when complete', () => {
   const rail = buildDashboardOverviewRail({
     shop: baseShop(),
     onboardingRequired: false,

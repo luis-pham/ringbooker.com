@@ -93,7 +93,7 @@ export const userBillingStyles: string[] = [
   margin-top:6px;
 }
 .plan-includes-foot{font-size:12px;color:var(--text-light);margin-top:14px;line-height:1.5}
-.billing-plan-includes-card{max-width:940px;margin:0 auto}
+.billing-plan-includes-card{width:100%;max-width:100%;margin:0;box-sizing:border-box}
 .footer-inline{margin-top:14px}
 
 .billing-subtabs.business-subtabs{
@@ -170,14 +170,7 @@ export const userBillingStyles: string[] = [
   border:1px solid var(--border);border-radius:18px;background:var(--surface-card);
   padding:18px 18px 16px;display:flex;flex-direction:column;gap:10px;min-width:0;
 }
-.billing-action-card__top{display:flex;align-items:flex-start;gap:12px}
-.billing-action-card__icon{
-  width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font-size:18px;flex-shrink:0;
-}
-.billing-action-card__icon--danger{background:rgba(248,81,73,0.12);color:var(--text-dark)}
-.billing-action-card__icon--amber{background:rgba(187,128,9,0.14);color:var(--text-dark)}
-.billing-action-card__icon--ok{background:rgba(63,185,80,0.14);color:var(--text-dark)}
-.billing-action-card__head{flex:1;min-width:0}
+.billing-action-card__head{min-width:0}
 .billing-action-card__head h3{margin:0;font-size:16px;font-weight:600;letter-spacing:-.02em;color:var(--text-dark);line-height:1.25}
 .billing-action-card__head .sub{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--text-gray)}
 .billing-action-card__actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:4px}
@@ -220,9 +213,6 @@ export const userBillingStyles: string[] = [
 }
 .billing-plan-card__cta{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
 
-html[data-user-theme="dark"] .billing-action-card__icon--danger{background:rgba(248,81,73,0.16)}
-html[data-user-theme="dark"] .billing-action-card__icon--amber{background:rgba(187,128,9,0.18)}
-html[data-user-theme="dark"] .billing-action-card__icon--ok{background:rgba(63,185,80,0.16)}
 html[data-user-theme="dark"] .billing-plan-card__feats li[data-included="false"]::before{background:var(--surface-card)}
 
 @media (max-width:1200px){
