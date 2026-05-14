@@ -615,6 +615,82 @@ test('paddle transaction events without subscription id do not corrupt internal 
   assert.equal(after?.paymentMethodStatus, 'none');
 });
 
+test('paddle subscription payment-method-change transaction keeps trial subscription usable', async () => {
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Payment Method Change Salon',
+    phone_number: '+15550006666',
+    user_phone: '+15550007777',
+    timezone: 'America/New_York',
+    plan: 'starter',
+    active: true,
+  });
+  const billingCustomersRepository = new InMemoryBillingCustomersRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const internal = await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'internal',
+    plan: 'starter',
+    status: 'trialing',
+    interval: 'month',
+    currency: 'USD',
+    amount: 79,
+    amountCents: 7900,
+    trialStartedAt: '2026-05-01T00:00:00Z',
+    trialEndsAt: '2099-05-15T00:00:00Z',
+    paymentMethodStatus: 'none',
+  });
+  const provider = new PaddleBillingProvider({
+    shopsRepository,
+    billingCustomersRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+  });
+
+  const result = await provider.syncWebhookEvent({
+    eventType: 'transaction.created',
+    payload: {
+      id: 'txn_payment_method_change_ready',
+      origin: 'subscription_payment_method_change',
+      status: 'ready',
+      currency_code: 'USD',
+      customer_id: 'ctm_payment_method_change',
+      subscription_id: 'sub_payment_method_change',
+      custom_data: {
+        shop_id: shop.id,
+        internal_subscription_id: internal.id,
+        internal_trial_ends_at: '2099-05-15T00:00:00Z',
+      },
+      items: [
+        {
+          price: {
+            id: process.env.PADDLE_PRICE_STARTER_MONTHLY,
+            trial_period: { interval: 'day', frequency: 14, requires_payment_method: true },
+          },
+          quantity: 1,
+        },
+      ],
+      details: { totals: { total: '0', grand_total: '0', currency_code: 'USD' } },
+      payments: [],
+    },
+  });
+
+  assert.equal(result?.subscription?.id, internal.id);
+  assert.equal(result?.subscription?.provider, 'paddle');
+  assert.equal(result?.subscription?.providerCustomerId, 'ctm_payment_method_change');
+  assert.equal(result?.subscription?.providerSubscriptionId, 'sub_payment_method_change');
+  assert.equal(result?.subscription?.status, 'trialing');
+  assert.equal(result?.subscription?.paymentMethodStatus, 'valid');
+
+  const access = await getShopBillingAccess(
+    { shopsRepository, billingSubscriptionsRepository, shopAccessStatesRepository },
+    { shopId: shop.id },
+  );
+  assert.equal(access.subscriptionStatus, 'trialing');
+  assert.equal(access.paymentMethodStatus, 'valid');
+});
+
 test('paddle subscription lifecycle events map to normalized statuses', async () => {
   const statusCases: Array<{ eventType: string; paddleStatus?: string; expected: string }> = [
     { eventType: 'subscription.created', paddleStatus: 'trialing', expected: 'trialing' },

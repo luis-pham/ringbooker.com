@@ -234,6 +234,28 @@ function extractProviderPriceId(data: Record<string, unknown> | undefined): stri
   return null;
 }
 
+function extractInternalTrialEndsAt(data: Record<string, unknown> | undefined): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const candidates = [
+    (data.custom_data as Record<string, unknown> | undefined)?.internal_trial_ends_at,
+    (data.customData as Record<string, unknown> | undefined)?.internal_trial_ends_at,
+    (data.metadata as Record<string, unknown> | undefined)?.internal_trial_ends_at,
+    data.internal_trial_ends_at,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string' || !candidate.trim()) continue;
+    const timestamp = Date.parse(candidate);
+    if (Number.isFinite(timestamp)) return new Date(timestamp).toISOString();
+  }
+  return null;
+}
+
+function isPaddleSubscriptionPaymentMethodChange(eventType: string, data: Record<string, unknown> | undefined): boolean {
+  if (!data || typeof data !== 'object') return false;
+  const normalized = eventType.toLowerCase();
+  return normalized.startsWith('transaction.') && data.origin === 'subscription_payment_method_change';
+}
+
 function hasPaymentMethodEvidence(eventType: string, data: Record<string, unknown> | undefined): boolean {
   if (!data || typeof data !== 'object') return false;
   const normalized = eventType.toLowerCase();
@@ -252,6 +274,13 @@ function hasPaymentMethodEvidence(eventType: string, data: Record<string, unknow
       const method = (payment as Record<string, unknown>).payment_method_id ?? (payment as Record<string, unknown>).payment_method;
       return ['authorized', 'captured', 'paid', 'succeeded', 'completed'].includes(status) || Boolean(method);
     })
+  ) {
+    return true;
+  }
+  if (
+    isPaddleSubscriptionPaymentMethodChange(eventType, data) &&
+    Boolean(extractProviderCustomerId(eventType, data)) &&
+    Boolean(extractProviderSubscriptionId(eventType, data))
   ) {
     return true;
   }
@@ -362,6 +391,10 @@ function mapPaddleStatus(eventType: string, data: Record<string, unknown> | unde
   if (normalized.includes('subscription.created') || normalized.includes('subscription.updated')) return 'active';
   if (normalized.includes('transaction.completed') || normalized.includes('transaction.paid') || normalized.includes('payment.succeeded')) return 'active';
   if (normalized.includes('transaction.payment_failed') || normalized.includes('payment_failed')) return 'past_due';
+  if (isPaddleSubscriptionPaymentMethodChange(eventType, data)) {
+    const internalTrialEndsAt = extractInternalTrialEndsAt(data);
+    if (internalTrialEndsAt) return Date.parse(internalTrialEndsAt) > Date.now() ? 'trialing' : 'trial_expired';
+  }
 
   return 'unknown';
 }
@@ -882,7 +915,7 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         ? 'valid'
         : mappedStatus === 'past_due' || mappedStatus === 'unpaid'
           ? 'failed'
-          : internalSubscription?.paymentMethodStatus === 'valid'
+          : staleTarget?.paymentMethodStatus === 'valid'
             ? 'valid'
             : 'unknown';
       const now = new Date().toISOString();
