@@ -30,7 +30,11 @@ const SERVICE_GROUP_HEADINGS = [
   'Spa Services',
   'Massage Services',
   'Facial Services',
+  'Facial/Hydrafacial',
+  'Facials',
   'Waxing Services',
+  'Waxing',
+  'Body Treatments',
   'Injectables',
   'Laser Services',
   'Skin Treatments',
@@ -68,14 +72,14 @@ export function inferGroup(name: string): string {
   if (/pedicure/.test(lower)) return 'Pedicure';
   if (/hair\s*extension|extensions?.*hair/.test(lower)) return 'Hair Extensions';
   if (/acrylic|extension|dip powder|nail/.test(lower)) return 'Acrylics / Extensions';
+  if (/\b(lash|brow|eyebrow)\b/.test(lower)) return 'Brows & Lashes';
+  if (/\b(wax|bikini|brazilian|half leg|full leg|lip)\b/.test(lower)) return 'Waxing';
   if (/balayage|highlight|lightening|tint|retouch|root|color|colour/.test(lower)) return 'Hair Color';
   if (/haircut|\bcut\b|blowout|blow\s*out|styling|updo|keratin|hair/.test(lower)) return 'Haircuts';
-  if (/wax/.test(lower)) return 'Waxing';
   if (/massage/.test(lower)) return 'Massage';
   if (/facial|hydrafacial|peel/.test(lower)) return 'Facials';
   if (/botox|dysport|filler|inject/.test(lower)) return 'Injectables';
   if (/laser/.test(lower)) return 'Laser';
-  if (/lash|brow|eyebrow/.test(lower)) return 'Brows & Lashes';
   if (/makeup|make-up/.test(lower)) return 'Makeup';
   return 'General Services';
 }
@@ -294,10 +298,13 @@ export function extractServicesFromText(text: string, source: string): ImportedS
   }) => {
     const name = collapseRepeatedServiceName(cleanServiceName(input.name));
     if (name.length < 3 || name.length > 90) return;
+    if (/\$/.test(name)) return;
+    if (/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\+?\s*$/i.test(name)) return;
     if (/^[a-z]\s+\w/.test(name)) return;
     if (SERVICE_MENU_SOURCE_RE.test(name)) return;
     if (isStylistPricingRowName(name)) return;
-    if (/^(this is|service includes|includes|perfect for|ideal for|not sure|our service|pricing is based)\b/i.test(name)) return;
+    if ((name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2) return;
+    if (/^(this is|service includes|includes|perfect for|ideal for|not sure|our service|pricing is based|you|your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)) return;
     const categoryName = input.group?.trim() || inferGroup(name);
     const key = `${categoryName.toLowerCase()}::${name.toLowerCase()}`;
     const priceAmount = input.priceAmount ?? (input.priceText ? Number(input.priceText) : null);
@@ -326,7 +333,8 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     services.set(key, next);
   };
 
-  for (const item of extractTextServiceMatrixServices(text, source)) {
+  const matrixServices = extractTextServiceMatrixServices(text, source);
+  for (const item of matrixServices) {
     const key = `${item.categoryName.toLowerCase()}::${item.name.toLowerCase()}`;
     const existing = services.get(key);
     if (!existing || (item.variants?.length ?? 0) > (existing.variants?.length ?? 0)) services.set(key, item);
@@ -364,19 +372,21 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     });
   }
 
-  let currentCompressedGroup: string | null = null;
   const compressedText = cleanCompressedServiceText(text);
-  for (const match of compressedText.matchAll(COMPRESSED_PRICE_SERVICE_RE)) {
-    const parsed = splitServiceHeadingPrefix(match[1]);
-    if (parsed.group) currentCompressedGroup = parsed.group;
-    const lower = match[0].toLowerCase();
-    addService({
-      name: parsed.name,
-      priceText: match[2],
-      priceType: match[3] || /from|starting at|starts at/.test(lower) ? 'from' : 'fixed',
-      group: parsed.group ?? currentCompressedGroup,
-      confidence: parsed.group ? 0.86 : 0.8,
-    });
+  if (matrixServices.length === 0) {
+    let currentCompressedGroup: string | null = null;
+    for (const match of compressedText.matchAll(COMPRESSED_PRICE_SERVICE_RE)) {
+      const parsed = splitServiceHeadingPrefix(match[1]);
+      if (parsed.group) currentCompressedGroup = parsed.group;
+      const lower = match[0].toLowerCase();
+      addService({
+        name: parsed.name,
+        priceText: match[2],
+        priceType: match[3] || /from|starting at|starts at/.test(lower) ? 'from' : 'fixed',
+        group: parsed.group ?? currentCompressedGroup,
+        confidence: parsed.group ? 0.86 : 0.8,
+      });
+    }
   }
 
   for (const rawLine of compressedText.split(/[\n•]+/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean)) {
@@ -951,6 +961,7 @@ function cleanServiceName(name: string): string {
     .replace(/Starts\s*at.*$/i, '')
     .replace(/^(services|service|treatments|treatment|menu)\s*:?\s*/i, '')
     .replace(/\b(from|starting at|starts at|starting)\s*$/i, '')
+    .replace(/[-–—]+\s*$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

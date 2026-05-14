@@ -26,7 +26,9 @@ export function visibleTextFromHtml(html: string): string {
   const $ = cheerio.load(html);
   // Keep footer text because salons commonly place hours/contact details there.
   $('script, style, noscript, svg, img, nav').remove();
-  return $('body').text().replace(/\s+/g, ' ').trim();
+  $('br').replaceWith('\n');
+  $('h1,h2,h3,h4,h5,h6,p,li,tr,table,section,article,div,footer,main').append('\n');
+  return $('body').text().replace(/[ \t]+/g, ' ').replace(/\n\s+/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 export function extractJsonLd(html: string): unknown[] {

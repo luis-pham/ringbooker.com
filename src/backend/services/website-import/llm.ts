@@ -135,8 +135,10 @@ function isInvalidServiceName(value: string): boolean {
   const name = value.trim();
   return !name
     || /^(?:\d+\s*(?:min|mins|minutes|hour|hours|hr)\+?|\$?\s*\d+|book now|book online|schedule|reserve|appointment|consultation required)$/i.test(name)
-    || (name.length > 45 && (name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2)
-    || /^(?:your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)
+    || /\$/.test(name)
+    || (!name.includes('•') && /\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\+?\s*$/i.test(name))
+    || (name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2
+    || /^(?:you|your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)
     || /\b(cancellation|refund|privacy|policy|faq|address|directions|contact us)\b/i.test(name);
 }
 

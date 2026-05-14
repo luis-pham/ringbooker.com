@@ -134,6 +134,9 @@ function canonicalServiceGroupName(value?: string | null): string {
   if (/^(hair\s*)?colou?r$/.test(lower)) return 'Hair Color';
   if (/^(hair\s*)?cuts?$/.test(lower) || /^hair\s+cuts?$/.test(lower) || /^cutting$/.test(lower)) return 'Haircuts';
   if (/^(hair\s*)?treatments?$/.test(lower) || /^conditioning treatments?$/.test(lower) || /^deep conditioning treatments?$/.test(lower)) return 'Treatments';
+  if (/^(facial|facials|facial\/hydrafacial|hydrafacial|hydra facial)$/.test(lower)) return 'Facials';
+  if (/^body treatments?$/.test(lower)) return 'Body Treatments';
+  if (/^waxing?$/.test(lower)) return 'Waxing';
   return cleaned || 'General Services';
 }
 
@@ -171,8 +174,10 @@ function isInvalidMergedServiceName(value: string): boolean {
   const name = value.trim();
   return !name
     || /^(?:\d+\s*(?:min|mins|minutes|hour|hours|hr)\+?|\$?\s*\d+|book now|book online|schedule|reserve|appointment|consultation required)$/i.test(name)
-    || (name.length > 45 && (name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2)
-    || /^(?:your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)
+    || /\$/.test(name)
+    || /\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\+?\s*$/i.test(name)
+    || (name.match(/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\b/gi)?.length ?? 0) >= 2
+    || /^(?:you|your|our|we|at|experience|discover|looking|relax,)\b/i.test(name)
     || /\b(cancellation|refund|privacy|policy|faq|address|directions|contact us)\b/i.test(name);
 }
 function dedupeServices(services: ImportedServiceSuggestion[]): ImportedServiceSuggestion[] {
