@@ -692,6 +692,12 @@ button.subtle-link:hover{text-decoration:underline}
 .service-item-card.archived{opacity:.62;background:#f9fafb}
 .service-item-head{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(180px,.8fr);gap:14px}
 .service-item-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.service-item-footer--catalog-inline{
+  flex-direction:column;
+  align-items:stretch;
+  gap:10px;
+}
+.service-item-footer--catalog-inline > .flex{width:100%}
 .service-summary-item{border-bottom:1px solid var(--border)}
 .service-summary-item:last-of-type{border-bottom:0}
 .service-summary-item.archived{opacity:.62}
@@ -1049,7 +1055,7 @@ html[data-user-theme="dark"] .knowledge-address-sheet-trigger{background:#0d1117
   display:flex;
   flex-direction:column;
   flex-shrink:0;
-  width:620px;
+  width:680px;
   max-width:95vw;
   max-height:88vh;
   background:#fff;
@@ -1128,7 +1134,7 @@ html[data-user-theme="dark"] .knowledge-address-sheet-trigger{background:#0d1117
   color:var(--text-dark);
 }
 .catalog-service-dialog-body{
-  padding:20px;
+  padding:16px 20px;
   overflow-y:auto;
   flex:1;
   min-height:0;
@@ -1137,6 +1143,40 @@ html[data-user-theme="dark"] .knowledge-address-sheet-trigger{background:#0d1117
   display:flex;
   flex-direction:column;
   gap:14px;
+}
+.catalog-service-dialog-grid--desktop{
+  gap:12px;
+}
+.catalog-service-dialog-desktop-row1{
+  display:grid;
+  grid-template-columns:minmax(0,2fr) minmax(0,1fr);
+  gap:16px;
+  align-items:start;
+}
+.catalog-service-dialog-desktop-row3{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+  align-items:start;
+}
+.catalog-service-dialog-desktop-row4{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  align-items:start;
+}
+.catalog-service-dialog-desc-field textarea{
+  min-height:52px;
+  box-sizing:border-box;
+}
+.catalog-service-dialog-bookable--body{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin:0;
+  cursor:pointer;
+  font-size:13px;
+  color:var(--text-dark);
 }
 .catalog-service-dialog-row1,
 .catalog-service-dialog-row-price{
@@ -1161,14 +1201,14 @@ html[data-user-theme="dark"] .knowledge-address-sheet-trigger{background:#0d1117
   color:var(--text-dark);
 }
 .catalog-service-dialog-variants-sub{
-  margin:0 0 10px;
+  margin:0 0 8px;
   font-size:11px;
   line-height:1.4;
   color:var(--text-gray);
 }
 .catalog-service-dialog-add-option{
   width:100%;
-  margin-top:8px;
+  margin-top:4px;
   padding:10px 12px;
   border:1px dashed var(--border);
   border-radius:8px;
@@ -1195,6 +1235,25 @@ html[data-user-theme="dark"] .knowledge-address-sheet-trigger{background:#0d1117
   border-top:1px solid var(--border);
   padding:14px 20px;
   flex-shrink:0;
+}
+.catalog-service-dialog-footer--edit-service{
+  flex-direction:column;
+  align-items:stretch;
+  gap:10px;
+}
+.catalog-service-dialog-footer-cta-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  width:100%;
+  padding-top:12px;
+  margin-top:2px;
+  border-top:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.catalog-service-dialog-footer-cta-row .catalog-service-dialog-footer-actions{
+  margin-left:0;
 }
 .catalog-service-dialog-bookable{
   margin:0;
@@ -1239,6 +1298,9 @@ html[data-user-theme="dark"] .catalog-service-dialog-header{
   border-bottom-color:var(--border);
 }
 html[data-user-theme="dark"] .catalog-service-dialog-footer{
+  border-top-color:var(--border);
+}
+html[data-user-theme="dark"] .catalog-service-dialog-footer-cta-row{
   border-top-color:var(--border);
 }
 html[data-user-theme="dark"] .catalog-service-dialog-variants-box{

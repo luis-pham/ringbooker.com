@@ -2501,16 +2501,13 @@ export function UserSettingsLive({
                                             <button type="button" className="btn ghost" onClick={() => addCatalogServiceVariant(service.id)}>+ Add option</button>
                                           </div>
                                         </div>
-	                                      <div className="service-item-footer">
+	                                      <div className="service-item-footer service-item-footer--catalog-inline">
 	                                        <label className="inline-check">
 	                                          <input type="checkbox" checked={service.bookable} onChange={(event) => updateCatalogService(service.id, { bookable: event.target.checked })} />
 	                                          Bookable by request
 	                                        </label>
-	                                        <div className="actions-row">
-	                                          <button type="button" className="subtle-link" onClick={() => updateCatalogService(service.id, { active: service.active === false })}>
-	                                            {service.active === false ? 'Restore service' : 'Archive service'}
-	                                          </button>
-	                                          <button type="button" className="subtle-link" onClick={() => removeCatalogService(service.id)}>
+	                                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3 mt-1">
+	                                          <button type="button" className="subtle-link catalog-service-dialog-link-remove" onClick={() => removeCatalogService(service.id)}>
 	                                            Remove
 	                                          </button>
 	                                          <button type="button" className="btn" onClick={() => setEditingCatalogServiceId(null)}>
@@ -2585,9 +2582,9 @@ export function UserSettingsLive({
                             ✕
                           </button>
                         </header>
-                        <div className="catalog-service-dialog-body">
-                          <div className="catalog-service-dialog-grid">
-                            <div className="catalog-service-dialog-row1">
+                        <div className="catalog-service-dialog-body max-h-[calc(100dvh-160px)] min-h-0 flex-1 overflow-y-auto">
+                          <div className="catalog-service-dialog-grid catalog-service-dialog-grid--desktop">
+                            <div className="catalog-service-dialog-desktop-row1">
                               <div className="field">
                                 <label>service name</label>
                                 <input
@@ -2611,18 +2608,21 @@ export function UserSettingsLive({
                                 </select>
                               </div>
                             </div>
-                            <div className="catalog-service-dialog-row-desc field">
+                            <div className="field catalog-service-dialog-desc-field">
                               <label>description</label>
-                              <input
+                              <textarea
+                                rows={2}
+                                className="w-full resize-y"
                                 value={catalogDialogDraft.description ?? ''}
                                 onChange={(event) => patchCatalogDialogDraft({ description: event.target.value || null })}
                                 placeholder="Optional caller-facing details"
                               />
                             </div>
-                            <div className="catalog-service-dialog-row-price">
+                            <div className="catalog-service-dialog-desktop-row3">
                               <div className="field">
                                 <label>price type</label>
                                 <select
+                                  className="w-full"
                                   value={catalogDialogDraft.priceType}
                                   onChange={(event) =>
                                     patchCatalogDialogDraft({ priceType: event.target.value as ServicePriceType })
@@ -2638,6 +2638,7 @@ export function UserSettingsLive({
                               <div className="field">
                                 <label>price</label>
                                 <input
+                                  className="w-full"
                                   type="number"
                                   min={0}
                                   value={catalogDialogDraft.priceAmount ?? 0}
@@ -2650,46 +2651,51 @@ export function UserSettingsLive({
                                   }
                                 />
                               </div>
+                              <div className="field">
+                                <label>duration</label>
+                                <input
+                                  className="w-full"
+                                  value={serviceDurationText(catalogDialogDraft)}
+                                  onChange={(event) => {
+                                    const durationText = event.target.value;
+                                    patchCatalogDialogDraft({
+                                      durationText: durationText.trim() ? durationText : null,
+                                      durationMinutes: parseDurationTextToMinutes(durationText),
+                                    });
+                                  }}
+                                  placeholder="e.g. 45min, 1 hour, Varies"
+                                />
+                              </div>
                             </div>
-                            <div className="catalog-service-dialog-row-duration field">
-                              <label>duration</label>
-                              <input
-                                value={serviceDurationText(catalogDialogDraft)}
-                                onChange={(event) => {
-                                  const durationText = event.target.value;
-                                  patchCatalogDialogDraft({
-                                    durationText: durationText.trim() ? durationText : null,
-                                    durationMinutes: parseDurationTextToMinutes(durationText),
-                                  });
-                                }}
-                                placeholder="e.g. 45min, 1 hour, Varies"
-                              />
-                            </div>
-                            <div className="catalog-service-dialog-row-aliases field">
-                              <label>aliases</label>
-                              <input
-                                value={catalogDialogDraft.aliases.join(', ')}
-                                onChange={(event) =>
-                                  patchCatalogDialogDraft({
-                                    aliases: event.target.value
-                                      .split(',')
-                                      .map((item) => item.trim())
-                                      .filter(Boolean),
-                                  })
-                                }
-                                placeholder="other names callers use"
-                              />
-                            </div>
-                            <div className="catalog-service-dialog-row-notes field">
-                              <label>booking notes</label>
-                              <textarea
-                                rows={3}
-                                value={catalogDialogDraft.bookingNotes ?? ''}
-                                onChange={(event) =>
-                                  patchCatalogDialogDraft({ bookingNotes: event.target.value || null })
-                                }
-                                placeholder="Anything the AI should know before capturing this request."
-                              />
+                            <div className="catalog-service-dialog-desktop-row4">
+                              <div className="field">
+                                <label>aliases</label>
+                                <input
+                                  className="w-full"
+                                  value={catalogDialogDraft.aliases.join(', ')}
+                                  onChange={(event) =>
+                                    patchCatalogDialogDraft({
+                                      aliases: event.target.value
+                                        .split(',')
+                                        .map((item) => item.trim())
+                                        .filter(Boolean),
+                                    })
+                                  }
+                                  placeholder="other names callers use"
+                                />
+                              </div>
+                              <div className="field">
+                                <label>booking notes</label>
+                                <textarea
+                                  className="w-full resize-y"
+                                  rows={2}
+                                  value={catalogDialogDraft.bookingNotes ?? ''}
+                                  onChange={(event) =>
+                                    patchCatalogDialogDraft({ bookingNotes: event.target.value || null })
+                                  }
+                                  placeholder="Anything the AI should know before capturing this request."
+                                />
+                              </div>
                             </div>
                             <div className="catalog-service-dialog-variants-box">
                               <p className="catalog-service-dialog-variants-title">Options / variants</p>
@@ -2756,39 +2762,30 @@ export function UserSettingsLive({
                                 </button>
                               </div>
                             </div>
+                            <label className="inline-check catalog-service-dialog-bookable catalog-service-dialog-bookable--body">
+                              <input
+                                type="checkbox"
+                                checked={catalogDialogDraft.bookable}
+                                onChange={(event) => patchCatalogDialogDraft({ bookable: event.target.checked })}
+                              />
+                              Bookable by request
+                            </label>
                           </div>
                           {catalogDialogError ? <p className="catalog-service-dialog-error">{catalogDialogError}</p> : null}
                         </div>
                         <footer className="catalog-service-dialog-footer">
-                          <label className="inline-check catalog-service-dialog-bookable">
-                            <input
-                              type="checkbox"
-                              checked={catalogDialogDraft.bookable}
-                              onChange={(event) => patchCatalogDialogDraft({ bookable: event.target.checked })}
-                            />
-                            Bookable by request
-                          </label>
+                          <button
+                            type="button"
+                            className="subtle-link catalog-service-dialog-link-remove"
+                            onClick={() => {
+                              if (!catalogDialogServiceId || !catalogDialogDraft) return;
+                              const label = catalogDialogDraft.name.trim() || 'this service';
+                              confirmRemoveCatalogServiceFromDialog(catalogDialogServiceId, label);
+                            }}
+                          >
+                            Remove
+                          </button>
                           <div className="catalog-service-dialog-footer-actions">
-                            <button
-                              type="button"
-                              className="subtle-link catalog-service-dialog-link-archive"
-                              onClick={() => {
-                                if (catalogDialogServiceId) archiveCatalogServiceFromDialog(catalogDialogServiceId);
-                              }}
-                            >
-                              Archive
-                            </button>
-                            <button
-                              type="button"
-                              className="subtle-link catalog-service-dialog-link-remove"
-                              onClick={() => {
-                                if (!catalogDialogServiceId || !catalogDialogDraft) return;
-                                const label = catalogDialogDraft.name.trim() || 'this service';
-                                confirmRemoveCatalogServiceFromDialog(catalogDialogServiceId, label);
-                              }}
-                            >
-                              Remove
-                            </button>
                             <button
                               type="button"
                               className="btn catalog-service-dialog-btn-cancel"
@@ -3683,146 +3680,70 @@ export function UserSettingsLive({
                 }}
                 title="Edit Service"
               >
-                {knowledgeCatalogMobileSheet ? (
-                  <>
-                    <div className="service-item-head service-item-head--catalog-pair">
-                      <div className="field">
-                        <label>service name</label>
-                        <input
-                          value={knowledgeCatalogMobileSheet.draft.name}
-                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ name: event.target.value })}
-                          placeholder="Gel Manicure"
-                        />
-                        <p className="service-name-edit-hint">Shorten so callers can understand</p>
-                      </div>
-                      <div className="field">
-                        <label>move to group</label>
-                        <select
-                          value={knowledgeCatalogMobileSheet.draft.categoryId ?? ''}
-                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ categoryId: event.target.value || null })}
-                        >
-                          {currentForm.service_catalog.categories.map((item) => (
-                            <option key={item.id} value={item.id}>
-                              {item.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div className="form-grid settings-tab-content-frame">
-                      <div className="field">
-                        <label>description</label>
-                        <input
-                          value={knowledgeCatalogMobileSheet.draft.description ?? ''}
-                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ description: event.target.value || null })}
-                          placeholder="Optional caller-facing details"
-                        />
-                      </div>
-                      <div className="field">
-                        <label>duration</label>
-                        <input
-                          value={serviceDurationText(knowledgeCatalogMobileSheet.draft)}
-                          onChange={(event) => {
-                            const durationText = event.target.value;
-                            patchKnowledgeCatalogMobileDraft({
-                              durationText: durationText.trim() ? durationText : null,
-                              durationMinutes: parseDurationTextToMinutes(durationText),
-                            });
-                          }}
-                          placeholder="60 min, 1 hour+, Varies"
-                        />
-                      </div>
-                      <div className="field">
-                        <label>price type</label>
-                        <select
-                          value={knowledgeCatalogMobileSheet.draft.priceType}
-                          onChange={(event) =>
-                            patchKnowledgeCatalogMobileDraft({ priceType: event.target.value as ServicePriceType })
-                          }
-                        >
-                          {PRICE_TYPE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="field">
-                        <label>price</label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={knowledgeCatalogMobileSheet.draft.priceAmount ?? 0}
-                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ priceAmount: Number(event.target.value) })}
-                          disabled={
-                            knowledgeCatalogMobileSheet.draft.priceType === 'consultation' ||
-                            knowledgeCatalogMobileSheet.draft.priceType === 'varies'
-                          }
-                        />
-                      </div>
-                    </div>
-                    <div className="field">
-                      <label>aliases / other names customers use</label>
-                      <input
-                        value={knowledgeCatalogMobileSheet.draft.aliases.join(', ')}
-                        onChange={(event) =>
-                          patchKnowledgeCatalogMobileDraft({
-                            aliases: event.target.value
-                              .split(',')
-                              .map((item) => item.trim())
-                              .filter(Boolean),
-                          })
-                        }
-                        placeholder="gel mani, shellac"
-                      />
-                    </div>
-                    <div className="field">
-                      <label>booking notes</label>
-                      <textarea
-                        value={knowledgeCatalogMobileSheet.draft.bookingNotes ?? ''}
-                        onChange={(event) => patchKnowledgeCatalogMobileDraft({ bookingNotes: event.target.value || null })}
-                        placeholder="Anything the AI should know before capturing this request."
-                      />
-                    </div>
-                    <div className="field">
-                      <label>options / variants</label>
-                      <p className="field-help">Use options when a service has different lengths or prices.</p>
-                      <div className="service-variants-editor">
-                        {(knowledgeCatalogMobileSheet.draft.variants ?? []).map((variant, variantIndex) => (
-                          <div className="service-variant-row" key={`${knowledgeCatalogMobileSheet.serviceId}-variant-${variantIndex}`}>
+                {knowledgeCatalogMobileSheet ? (() => {
+                  const draft = knowledgeCatalogMobileSheet.draft;
+                  const showPrice = draft.priceType !== 'consultation' && draft.priceType !== 'varies';
+                  return (
+                    <>
+                      <div className="flex flex-col gap-3">
+                        <div className="service-item-head service-item-head--catalog-pair">
+                          <div className="field">
+                            <label>service name</label>
                             <input
-                              value={variant.label}
-                              onChange={(event) => patchKnowledgeMobileVariant(variantIndex, { label: event.target.value })}
-                              placeholder="30 min"
+                              value={draft.name}
+                              onChange={(event) => patchKnowledgeCatalogMobileDraft({ name: event.target.value })}
+                              placeholder="Gel Manicure"
+                              className="w-full"
                             />
+                            <p className="service-name-edit-hint">Shorten so callers can understand</p>
+                          </div>
+                          <div className="field">
+                            <label>move to group</label>
+                            <select
+                              className="w-full"
+                              value={draft.categoryId ?? ''}
+                              onChange={(event) => patchKnowledgeCatalogMobileDraft({ categoryId: event.target.value || null })}
+                            >
+                              {currentForm.service_catalog.categories.map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="field">
+                          <label>description</label>
+                          <input
+                            className="w-full"
+                            value={draft.description ?? ''}
+                            onChange={(event) => patchKnowledgeCatalogMobileDraft({ description: event.target.value || null })}
+                            placeholder="Optional caller-facing details"
+                          />
+                        </div>
+                        <div className={showPrice ? 'grid grid-cols-3 gap-3' : 'grid grid-cols-2 gap-3'}>
+                          <div className="field min-w-0">
+                            <label className="text-xs text-[var(--text-gray)]">duration</label>
                             <input
-                              value={variant.durationText ?? ''}
+                              className="w-full"
+                              value={serviceDurationText(draft)}
                               onChange={(event) => {
                                 const durationText = event.target.value;
-                                patchKnowledgeMobileVariant(variantIndex, {
-                                  durationText: durationText || null,
+                                patchKnowledgeCatalogMobileDraft({
+                                  durationText: durationText.trim() ? durationText : null,
                                   durationMinutes: parseDurationTextToMinutes(durationText),
                                 });
                               }}
-                              placeholder="Duration"
+                              placeholder="60 min, 1 hour+, Varies"
                             />
-                            <input
-                              type="number"
-                              min={0}
-                              value={variant.priceAmount ?? ''}
-                              onChange={(event) =>
-                                patchKnowledgeMobileVariant(variantIndex, {
-                                  priceAmount: event.target.value === '' ? null : Number(event.target.value),
-                                })
-                              }
-                              placeholder="Price"
-                            />
+                          </div>
+                          <div className="field min-w-0">
+                            <label className="text-xs text-[var(--text-gray)]">price type</label>
                             <select
-                              value={variant.priceType ?? 'from'}
+                              className="w-full"
+                              value={draft.priceType}
                               onChange={(event) =>
-                                patchKnowledgeMobileVariant(variantIndex, {
-                                  priceType: event.target.value as ServicePriceType,
-                                })
+                                patchKnowledgeCatalogMobileDraft({ priceType: event.target.value as ServicePriceType })
                               }
                             >
                               {PRICE_TYPE_OPTIONS.map((option) => (
@@ -3831,73 +3752,147 @@ export function UserSettingsLive({
                                 </option>
                               ))}
                             </select>
-                            <button type="button" className="subtle-link" onClick={() => removeKnowledgeMobileVariantRow(variantIndex)}>
-                              Remove
+                          </div>
+                          {showPrice ? (
+                            <div className="field min-w-0">
+                              <label className="text-xs text-[var(--text-gray)]">price</label>
+                              <input
+                                className="w-full"
+                                type="number"
+                                min={0}
+                                value={draft.priceAmount ?? 0}
+                                onChange={(event) => patchKnowledgeCatalogMobileDraft({ priceAmount: Number(event.target.value) })}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="field">
+                          <label>aliases / other names customers use</label>
+                          <input
+                            className="w-full"
+                            value={draft.aliases.join(', ')}
+                            onChange={(event) =>
+                              patchKnowledgeCatalogMobileDraft({
+                                aliases: event.target.value
+                                  .split(',')
+                                  .map((item) => item.trim())
+                                  .filter(Boolean),
+                              })
+                            }
+                            placeholder="gel mani, shellac"
+                          />
+                        </div>
+                        <div className="field">
+                          <label>booking notes</label>
+                          <textarea
+                            className="w-full min-h-[64px] resize-y"
+                            rows={2}
+                            value={draft.bookingNotes ?? ''}
+                            onChange={(event) => patchKnowledgeCatalogMobileDraft({ bookingNotes: event.target.value || null })}
+                            placeholder="Anything the AI should know before capturing this request."
+                          />
+                        </div>
+                        <div className="field mt-1">
+                          <label>options / variants</label>
+                          <p className="field-help mt-0 mb-2">Use options when a service has different lengths or prices.</p>
+                          <div className="service-variants-editor">
+                            {(draft.variants ?? []).map((variant, variantIndex) => (
+                              <div className="service-variant-row" key={`${knowledgeCatalogMobileSheet.serviceId}-variant-${variantIndex}`}>
+                                <input
+                                  value={variant.label}
+                                  onChange={(event) => patchKnowledgeMobileVariant(variantIndex, { label: event.target.value })}
+                                  placeholder="30 min"
+                                />
+                                <input
+                                  value={variant.durationText ?? ''}
+                                  onChange={(event) => {
+                                    const durationText = event.target.value;
+                                    patchKnowledgeMobileVariant(variantIndex, {
+                                      durationText: durationText || null,
+                                      durationMinutes: parseDurationTextToMinutes(durationText),
+                                    });
+                                  }}
+                                  placeholder="Duration"
+                                />
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={variant.priceAmount ?? ''}
+                                  onChange={(event) =>
+                                    patchKnowledgeMobileVariant(variantIndex, {
+                                      priceAmount: event.target.value === '' ? null : Number(event.target.value),
+                                    })
+                                  }
+                                  placeholder="Price"
+                                />
+                                <select
+                                  value={variant.priceType ?? 'from'}
+                                  onChange={(event) =>
+                                    patchKnowledgeMobileVariant(variantIndex, {
+                                      priceType: event.target.value as ServicePriceType,
+                                    })
+                                  }
+                                >
+                                  {PRICE_TYPE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button type="button" className="subtle-link" onClick={() => removeKnowledgeMobileVariantRow(variantIndex)}>
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                            <button type="button" className="btn ghost" onClick={() => addKnowledgeMobileVariantRow()}>
+                              + Add option
                             </button>
                           </div>
-                        ))}
-                        <button type="button" className="btn ghost" onClick={() => addKnowledgeMobileVariantRow()}>
-                          + Add option
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="service-item-footer">
-                      <label className="inline-check">
+                      <label className="inline-check mt-2 block">
                         <input
                           type="checkbox"
-                          checked={knowledgeCatalogMobileSheet.draft.bookable}
+                          checked={draft.bookable}
                           onChange={(event) => patchKnowledgeCatalogMobileDraft({ bookable: event.target.checked })}
                         />
                         Bookable by request
                       </label>
-                      <div className="actions-row">
+                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-3">
                         <button
                           type="button"
-                          className="subtle-link"
-                          onClick={() =>
-                            patchKnowledgeCatalogMobileDraft({
-                              active: knowledgeCatalogMobileSheet.draft.active === false,
-                            })
-                          }
-                        >
-                          {knowledgeCatalogMobileSheet.draft.active === false ? 'Restore service' : 'Archive service'}
-                        </button>
-                        <button
-                          type="button"
-                          className="subtle-link"
+                          className="subtle-link catalog-service-dialog-link-remove"
                           onClick={() => {
                             const sid = knowledgeCatalogMobileSheet.serviceId;
-                            const label = knowledgeCatalogMobileSheet.draft.name.trim() || 'this service';
+                            const label = draft.name.trim() || 'this service';
                             if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
                             removeCatalogService(sid);
                           }}
                         >
                           Remove
                         </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            className="onb-sheet-cancel"
+                            onClick={() => {
+                              setKnowledgeCatalogMobileSheet(null);
+                              setKnowledgeCatalogMobileError(null);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button type="button" className="onb-sheet-save" onClick={() => saveKnowledgeCatalogMobileSheet()}>
+                            Save
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    {knowledgeCatalogMobileError ? (
-                      <p className="catalog-service-dialog-error" style={{ marginTop: 8 }}>
-                        {knowledgeCatalogMobileError}
-                      </p>
-                    ) : null}
-                    <div className="onb-sheet-actions">
-                      <button
-                        type="button"
-                        className="onb-sheet-cancel"
-                        onClick={() => {
-                          setKnowledgeCatalogMobileSheet(null);
-                          setKnowledgeCatalogMobileError(null);
-                        }}
-                      >
-                        Cancel
-                      </button>
-                      <button type="button" className="onb-sheet-save" onClick={() => saveKnowledgeCatalogMobileSheet()}>
-                        Save
-                      </button>
-                    </div>
-                  </>
-                ) : null}
+                      {knowledgeCatalogMobileError ? (
+                        <p className="catalog-service-dialog-error mt-2">{knowledgeCatalogMobileError}</p>
+                      ) : null}
+                    </>
+                  );
+                })() : null}
               </BottomSheet>
             </>
           ) : null}
