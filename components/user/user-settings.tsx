@@ -284,23 +284,38 @@ button.subtle-link:hover{text-decoration:underline}
 .tab-button-body{display:flex;align-items:center;min-width:0}
 .tab-button strong{font-size:14px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
 /* Knowledge: underline tabs like /user/calls (all breakpoints; horizontal scroll on narrow) */
-.knowledge-portal-tab-bar{margin-bottom:32px;min-width:0;border-bottom:1.5px solid #e5e7eb}
-/* Match /user/bookings filter tabs: same padding, gap, underline row */
+.knowledge-portal-tab-bar{margin-bottom:18px;min-width:0;border-bottom:1.5px solid var(--border)}
+/* Underline tabs — match /user/billing (Overview / Plans / History) */
 .business-subtabs.calls-filter-tabs{
-  display:flex;gap:0;flex-wrap:nowrap;
+  display:flex;
+  align-items:flex-end;
+  flex-wrap:nowrap;
+  gap:24px;
   margin-bottom:0;
-  overflow-x:auto;overflow-y:hidden;
+  overflow-x:auto;
+  overflow-y:hidden;
   -webkit-overflow-scrolling:touch;
   overscroll-behavior-x:contain;
   scrollbar-width:none;
 }
 .business-subtabs.calls-filter-tabs::-webkit-scrollbar{display:none}
 .business-subtabs.calls-filter-tabs .business-subtab{
-  flex:0 0 auto;white-space:nowrap;
-  appearance:none;background:transparent;border:none;border-radius:0;margin:0;
-  padding:13px 18px 12px;color:#6b7280;
-  cursor:pointer;font:inherit;font-size:14px;font-weight:500;
-  box-shadow:none;border-bottom:2px solid transparent;
+  flex:0 0 auto;
+  white-space:nowrap;
+  appearance:none;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  margin:0;
+  padding:0 0 10px;
+  color:var(--text-gray);
+  cursor:pointer;
+  font:inherit;
+  font-size:14px;
+  font-weight:500;
+  line-height:1.35;
+  box-shadow:none;
+  border-bottom:2px solid transparent;
   transition:color .15s ease,border-color .15s ease;
 }
 .business-subtabs.calls-filter-tabs .business-subtab:hover{
@@ -308,13 +323,16 @@ button.subtle-link:hover{text-decoration:underline}
   background:transparent;
 }
 .business-subtabs.calls-filter-tabs .business-subtab:focus-visible{
-  outline:2px solid var(--purple-dark);outline-offset:3px;
+  outline:2px solid var(--purple-dark);
+  outline-offset:3px;
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active{
-  color:#111;font-weight:500;border-bottom-color:#111;
+  color:var(--text-dark);
+  font-weight:500;
+  border-bottom-color:var(--text-dark);
 }
 .business-subtabs.calls-filter-tabs .business-subtab.active:hover{
-  color:#111;
+  color:var(--text-dark);
   background:transparent;
 }
 .business-subtabs{
@@ -1374,6 +1392,7 @@ html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subta
 html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active:hover{
   color:var(--text-dark);
   background:transparent;
+  border-bottom-color:var(--text-dark);
 }
 html[data-user-theme="dark"] .business-subtab{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .business-subtab:hover{background:#21262d;color:var(--text-dark)}
@@ -1475,6 +1494,10 @@ html[data-user-theme="dark"] .upgrade-panel{
   background:linear-gradient(135deg,rgba(56,139,253,.08),var(--surface-card));
   border-color:rgba(56,139,253,.35);
 }
+html[data-user-theme="dark"] .plan-chip{
+  background:rgba(56,139,253,0.12);
+  color:#79c0ff;
+}
 
 @media (max-width:1200px){
   .option-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -1534,12 +1557,13 @@ html[data-user-theme="dark"] .upgrade-panel{
     width:100%;
     box-sizing:border-box;
   }
-  /* Knowledge filter tabs — match /user/bookings (scroll on narrow) */
+  /* Knowledge underline tabs — same metrics as billing on narrow screens */
   .business-subtabs.calls-filter-tabs{
     display:flex!important;
     flex-direction:row!important;
     flex-wrap:nowrap!important;
-    gap:0!important;
+    align-items:flex-end!important;
+    gap:24px!important;
     width:100%!important;
     overflow-x:auto!important;
     overflow-y:hidden!important;
@@ -1551,7 +1575,8 @@ html[data-user-theme="dark"] .upgrade-panel{
     flex:0 0 auto!important;
     width:auto!important;
     max-width:none!important;
-    padding:13px 18px 12px!important;
+    padding:0 0 10px!important;
+    line-height:1.35!important;
     border:none!important;
     border-radius:0!important;
     background:transparent!important;
@@ -1565,8 +1590,8 @@ html[data-user-theme="dark"] .upgrade-panel{
     font-weight:500!important;
   }
   .business-subtabs.calls-filter-tabs .business-subtab.active{
-    border-bottom-color:var(--text-dark);
-    color:var(--text-dark);
+    border-bottom-color:var(--text-dark)!important;
+    color:var(--text-dark)!important;
     font-weight:500!important;
   }
   .user-app-shell .settings-save-footer{

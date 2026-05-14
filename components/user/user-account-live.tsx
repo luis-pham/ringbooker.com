@@ -206,15 +206,16 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   background:var(--surface-card);border:1px solid var(--border);border-radius:16px;
   overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.06);
 }
-/* Underline tabs — match /user/calls (.calls-filter-tabs + .calls-filter-tab) */
+/* Underline tabs — match /user/billing (Overview / Plans / History) */
 .rb-account-subtabs.business-subtabs{
   display:flex;
   align-items:flex-end;
   flex-wrap:nowrap;
   gap:24px;
-  margin-bottom:0;
+  margin-top:0;
+  margin-bottom:18px;
   padding:24px 28px 0;
-  border-bottom:1.5px solid #e5e7eb;
+  border-bottom:1.5px solid var(--border);
   overflow-x:auto;
   scrollbar-width:none;
   -webkit-overflow-scrolling:touch;
@@ -228,7 +229,7 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   border-radius:0;
   margin:0;
   padding:0 0 10px;
-  color:#6b7280;
+  color:var(--text-gray);
   white-space:nowrap;
   cursor:pointer;
   font:inherit;
@@ -245,11 +246,14 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   outline-offset:3px;
 }
 .rb-account-subtabs.business-subtabs .business-subtab.active{
-  color:#111;
+  color:var(--text-dark);
   font-weight:500;
-  border-bottom-color:#111;
+  border-bottom-color:var(--text-dark);
 }
-.rb-account-subtabs.business-subtabs .business-subtab.active:hover{color:#111}
+.rb-account-subtabs.business-subtabs .business-subtab.active:hover{
+  color:var(--text-dark);
+  border-bottom-color:var(--text-dark);
+}
 .rb-account-panel{padding:18px 18px 22px}
 .rb-account-panel-title{
   margin:0 0 18px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-gray);
@@ -264,6 +268,8 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   .rb-account-subtabs.business-subtabs{
     flex-wrap:nowrap;
     gap:24px;
+    margin-top:0;
+    margin-bottom:18px;
     padding:18px 18px 0;
     border-bottom:1.5px solid var(--border);
     overflow-x:auto;
@@ -371,6 +377,10 @@ html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs{border-bottom-
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab{color:var(--text-gray)}
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active{
+  color:var(--text-dark);
+  border-bottom-color:var(--text-dark);
+}
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active:hover{
   color:var(--text-dark);
   border-bottom-color:var(--text-dark);
 }

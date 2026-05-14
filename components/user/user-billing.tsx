@@ -315,6 +315,10 @@ html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab.
   color:var(--text-dark);
   border-bottom-color:var(--text-dark);
 }
+html[data-user-theme="dark"] .billing-subtabs.business-subtabs .business-subtab.active:hover{
+  color:var(--text-dark);
+  border-bottom-color:var(--text-dark);
+}
 `,
 ];
 
