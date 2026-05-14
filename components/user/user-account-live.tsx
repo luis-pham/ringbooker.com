@@ -374,15 +374,26 @@ html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(35,134,54,0.1
 html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){background:#21262d;border-color:#58a6ff}
 html[data-user-theme="dark"] .rb-account-frame{box-shadow:none}
 html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs{border-bottom-color:var(--border)}
-html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab{color:var(--text-gray)}
-html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab:hover{color:var(--text-dark)}
-html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active{
-  color:var(--text-dark);
-  border-bottom-color:var(--text-dark);
+/* Underline tabs like /user/calls — override global dark pill .business-subtab from shared settings styles */
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab{
+  background:transparent;
+  border:none;
+  border-radius:0;
+  box-shadow:none;
+  color:var(--text-gray);
+  border-bottom:2px solid transparent;
 }
-html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active:hover{
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab:hover{
+  background:transparent;
   color:var(--text-dark);
-  border-bottom-color:var(--text-dark);
+}
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active,
+html[data-user-theme="dark"] .rb-account-subtabs.business-subtabs .business-subtab.active:hover{
+  background:transparent;
+  border:none;
+  border-radius:0;
+  color:var(--text-dark);
+  border-bottom:2px solid var(--text-dark);
 }
 .rb-account-skel-head .rb-account-skel-bar{max-width:128px;height:12px}
 .rb-account-skel-bar{

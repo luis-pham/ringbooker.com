@@ -314,7 +314,7 @@ export function UserCallsLive({
                     <div className="calls-empty-icon">☎</div>
                     <h3>No calls yet</h3>
                     <p>Complete Go Live to start receiving calls on your business number.</p>
-                    <a className="calls-empty-btn" href="/user/go-live">Complete Go Live →</a>
+                    <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
                   </div>
                 ) : null}
                 {loading && calls.length === 0 ? <div className="calls-empty"><p>Loading calls…</p></div> : null}

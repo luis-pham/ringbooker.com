@@ -72,7 +72,6 @@ const callsPortalStyles = String.raw`
 .calls-empty-icon{font-size:32px;opacity:.3;margin-bottom:10px}
 .calls-empty h3{margin:0 0 6px;font-size:15px;font-weight:600;color:var(--text-dark)}
 .calls-empty p{margin:0 auto 18px;max-width:340px;font-size:13px;line-height:1.5;color:var(--text-gray)}
-.calls-empty-btn{display:inline-flex;align-items:center;justify-content:center;height:38px;border-radius:10px;background:#111;color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:0 16px}
 .calls-pagination{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px;color:var(--text-gray);font-size:13px}
 .calls-pager-btn{appearance:none;background:var(--surface-card);border:1px solid var(--border);border-radius:8px;color:var(--text-dark);cursor:pointer;font:inherit;font-size:12px;font-weight:500;padding:8px 12px}
 .calls-pager-btn:disabled{opacity:.45;cursor:not-allowed}

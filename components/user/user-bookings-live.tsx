@@ -330,7 +330,7 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
                     <div className="bookings-empty-icon">▣</div>
                     <h3>No booking requests yet</h3>
                     <p>RingBooker captures booking requests from phone calls. Complete Go Live to start receiving calls.</p>
-                    <a className="bookings-empty-btn" href="/user/go-live">Complete Go Live →</a>
+                    <a className="btn user-save" href="/user/go-live">Complete Go Live →</a>
                   </div>
                 ) : null}
                 {loading && bookings.length === 0 ? <div className="bookings-empty"><p>Loading bookings…</p></div> : null}

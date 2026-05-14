@@ -284,7 +284,7 @@ button.subtle-link:hover{text-decoration:underline}
 .tab-button-body{display:flex;align-items:center;min-width:0}
 .tab-button strong{font-size:14px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
 /* Knowledge: underline tabs like /user/calls (all breakpoints; horizontal scroll on narrow) */
-.knowledge-portal-tab-bar{margin-bottom:18px;min-width:0;border-bottom:1.5px solid var(--border)}
+.knowledge-portal-tab-bar{margin-bottom:32px;min-width:0;border-bottom:1.5px solid var(--border)}
 /* Underline tabs — match /user/billing (Overview / Plans / History) */
 .business-subtabs.calls-filter-tabs{
   display:flex;
@@ -1406,6 +1406,25 @@ html[data-user-theme="dark"] .business-subtab.active:hover{
   background:#8957e5;
   border-color:#8957e5;
   color:#fff;
+}
+/* Underline tabs (/user/calls style): global dark .business-subtab pill rules must not apply */
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab{
+  background:transparent;
+  border:none;
+  border-radius:0;
+  box-shadow:none;
+  border-bottom:2px solid transparent;
+}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab:hover{
+  background:transparent;
+}
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active,
+html[data-user-theme="dark"] .business-subtabs.calls-filter-tabs .business-subtab.active:hover{
+  background:transparent;
+  border:none;
+  border-radius:0;
+  border-bottom:2px solid var(--text-dark);
+  color:var(--text-dark);
 }
 html[data-user-theme="dark"] .calendar-int-card .btn.user-save,
 html[data-user-theme="dark"] .integrations-vagaro-booking-actions .btn.user-save,
