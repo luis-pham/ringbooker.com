@@ -2,9 +2,9 @@ import { MarketingHowItWorksTemplate } from '@/components/marketing/marketing-ho
 import { buildMetadata } from '@/lib/site';
 
 export const metadata = buildMetadata({
-  title: 'How RingBooker Works | Keep Number, Cover Missed Calls | RingBooker',
+  title: 'How It Works — Recover Lost Bookings, Keep Your Number | RingBooker',
   description:
-    'See how RingBooker answers after-hours calls, covers peak-hour overflow, texts missed callers back, and helps salons recover revenue without changing their phone number or booking system.',
+    'Forward your existing line — RingBooker answers after-hours, covers overflow, sends missed-call texts, and captures intent before it becomes lost revenue.',
   path: '/how-it-works',
 });
 

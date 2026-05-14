@@ -428,7 +428,7 @@ export function MarketingPricingTemplate() {
                 <div className="sec-label">Plans</div>
                 <h2 className="sec-title">Choose the right level of call recovery.</h2>
                 <p className="sec-sub">
-                  Starter covers after-hours, overflow, and missed-call recovery. Professional adds follow-up, caller context, and owner transfer where configured. Custom is for multi-location teams, higher volume, and custom routing.
+                  From after-hours coverage to follow-up and multi-location routing — each plan adds more control.
                 </p>
                 <div className="pt-toggle">
                   <button className="pt-btn on" id="pricing-tog-m" type="button">Monthly</button>

@@ -81,12 +81,14 @@ a{text-decoration:none;color:inherit}
 @keyframes hiwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
 .hiw-hero h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:18px}
 .hiw-hero p{font-size:var(--mk-hero-lead);color:var(--mk-text-desc,#64748B);max-width:650px;margin-bottom:26px;line-height:var(--mk-hero-lead-lh);font-weight:400}
-.hiw-actions{display:flex;flex-direction:column;align-items:stretch;gap:12px;width:100%;max-width:min(360px,100%)}
-.hiw-btn-dark,.hiw-btn-outline{padding:14px 24px;border-radius:var(--r-pill);font-size:var(--mk-btn);font-weight:700;display:flex;width:100%;align-items:center;justify-content:center;gap:10px;transition:all .2s;box-sizing:border-box}
-.hiw-btn-dark{background:linear-gradient(135deg,var(--mk-brand-purple-deep,#5B21B6) 0%,var(--purple-dark) 48%,var(--purple) 100%);color:#fff;box-shadow:var(--mk-shadow-brand)}
-.hiw-btn-dark:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:var(--mk-shadow-brand-hover)}
-.hiw-btn-outline{border:1.5px solid var(--border);color:var(--text-dark);background:#fff}
-.hiw-btn-outline:hover{border-color:var(--purple);color:var(--purple)}
+.hiw-actions{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:12px;width:100%}
+.hiw-btn-dark{padding:15px 32px;border-radius:var(--r-pill);font-size:var(--mk-btn-lg);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s,filter .2s,box-shadow .2s;box-sizing:border-box;text-decoration:none;cursor:pointer;font-family:inherit;background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;border:none;box-shadow:0 8px 28px rgba(91,33,182,.22),0 2px 8px rgba(91,33,182,.12)}
+.hiw-btn-dark:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 12px 36px rgba(91,33,182,.28),0 4px 12px rgba(91,33,182,.14)}
+.hiw-btn-dark svg{width:16px;height:16px;flex-shrink:0}
+.hiw-btn-dark .demo-cta-phone{width:18px;height:18px}
+.hiw-btn-dark .hiw-btn-dark-arrow{color:#fff;flex-shrink:0}
+.hiw-btn-outline{padding:11px 20px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,background .2s,border-color .2s,color .2s;box-sizing:border-box;text-decoration:none;cursor:pointer;font-family:inherit;background:rgba(255,255,255,.56);color:#5b21b6;border:1px solid rgba(196,181,253,.55)}
+.hiw-btn-outline:hover{background:#fff;border-color:rgba(196,181,253,.75);color:#5b21b6;transform:translateY(-1px)}
 .hiw-summary{background:#fff;border:1px solid rgba(196,181,253,.35);border-radius:28px;padding:26px;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04));position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
 .hiw-summary:hover{transform:translateY(-2px);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));border-color:rgba(139,92,246,.28)}
 .hiw-summary::before{content:"";position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:rgba(139,92,246,.08)}
@@ -299,7 +301,7 @@ a{text-decoration:none;color:inherit}
   .hiw-hero{padding-bottom:46px}
   .hiw-hero h1{font-size:clamp(30px,8vw,40px)}
   .hiw-actions,.hiw-faq-cta-lower .hiw-actions{flex-direction:column;align-items:stretch}
-  .hiw-btn-dark,.hiw-btn-outline{width:100%}
+  .hiw-hero .hiw-btn-dark,.hiw-hero .hiw-btn-outline{width:100%;justify-content:center}
   .hiw-cta-box .hiw-cta-btn-white,.hiw-cta-box .hiw-cta-btn-ghost{width:100%;justify-content:center;white-space:normal}
   .hiw-section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
   .hiw-trust-caller-stack .hiw-caller-after-trust{padding-top:var(--mk-space-section-y-mobile,56px)}
@@ -379,7 +381,7 @@ const scripts: string[] = [
 ];
 
 export const templateTitle =
-  'How RingBooker Works | Keep Number, Cover Missed Calls | RingBooker';
+  'How It Works — Recover Lost Bookings, Keep Your Number | RingBooker';
 
 export function MarketingHowItWorksTemplate() {
   const layoutChildren: ReactNode = (
@@ -404,16 +406,25 @@ export function MarketingHowItWorksTemplate() {
             </div>
             <div className="hiw-container hiw-hero-grid">
               <div>
-                <h1>How RingBooker Recovers Lost Bookings Without Changing Your Number</h1>
+                <h1>
+                  Recover Lost Bookings.
+                  <br />
+                  Keep Your Number.
+                </h1>
                 <p>
-                  Forward from your existing line: RingBooker is a missed booking protection layer that answers after-hours calls, covers peak-hour overflow, sends missed-call text back, and captures intent so missed rings are less likely to become lost revenue — without a new booking system and without reprinting your number everywhere.
+                  Forward your existing line — RingBooker answers after-hours, covers overflow, sends missed-call texts, and captures intent before it becomes lost revenue.
                 </p>
                 <div className="hiw-actions">
                   <a href="/demo" className="hiw-btn-dark" data-demo-picker>
-                    <DemoCtaPhoneIcon width={18} height={18} />
+                    <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
                     Try a Live Demo Call
+                    <svg className="hiw-btn-dark-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                      <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+                    </svg>
                   </a>
-                  <a href="/contact" className="hiw-btn-outline">Talk through setup</a>
+                  <a href="/contact" className="hiw-btn-outline">
+                    Talk through setup
+                  </a>
                 </div>
               </div>
               <aside className="hiw-summary" aria-label="RingBooker summary">
