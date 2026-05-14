@@ -957,19 +957,29 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
       });
       if (!subscription) return null;
 
-      const shouldBeActive = subscription.status === 'active' || subscription.status === 'trialing';
+      // Only 'canceled' fully deactivates the account; 'past_due'/'paused' keeps
+      // the dashboard accessible but suspends live calls until billing recovers.
+      const shouldBeActive = subscription.status !== 'canceled';
+      const shouldDisableLiveCalls = !['active', 'trialing'].includes(subscription.status);
       const existingPlan = shop.plan;
       const existingActive = shop.active;
       await this.deps.shopsRepository.updatePlanAndActivation(shopId, {
         plan: subscription.plan,
         active: shouldBeActive,
       });
-      if (!shouldBeActive) {
+      if (shouldDisableLiveCalls) {
         await this.deps.shopAccessStatesRepository?.upsert({
           shopId,
           liveCallsEnabled: false,
           liveCallsPausedReason: subscription.status,
           liveCallsPausedAt: new Date().toISOString(),
+        });
+      } else {
+        await this.deps.shopAccessStatesRepository?.upsert({
+          shopId,
+          liveCallsEnabled: true,
+          liveCallsPausedReason: null,
+          liveCallsPausedAt: null,
         });
       }
 

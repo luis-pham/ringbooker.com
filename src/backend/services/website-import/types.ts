@@ -53,7 +53,7 @@ export type PagePreview = {
     priceText?: string | null;
     durationText?: string | null;
     sourceText?: string | null;
-    sourceHint?: 'semantic' | 'heading_sibling' | 'repeated_card' | 'service_menu_list' | 'service_matrix_table';
+    sourceHint?: 'semantic' | 'heading_sibling' | 'repeated_card' | 'service_menu_list' | 'service_matrix_table' | 'simple_price_table';
     confidence?: number;
     evidenceSnippet?: string | null;
     variants?: ServiceVariantSuggestion[];
@@ -64,6 +64,7 @@ export type PagePreview = {
   internalServiceLikeLinkCount: number;
   links: Array<{ href: string; text: string }>;
   jsonLd: unknown[];
+  policyBlocks?: Array<{ heading: string; content: string }>;
   contentScore: number;
 };
 

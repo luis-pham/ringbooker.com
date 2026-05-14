@@ -19,6 +19,7 @@ import {
   buildForwardingVerifiedEmailPayload,
   buildInternalAlertEmailPayload,
   buildLiveAnsweringBillingPausedEmailPayload,
+  buildLiveAnsweringBillingRestoredEmailPayload,
   buildLiveAnsweringEnabledEmailPayload,
   buildPaymentMethodAddedEmailPayload,
   buildTrialEndedEmailPayload,
@@ -49,6 +50,7 @@ const lifecycleEmailPayloadSchema = z.object({
     'forwarding_verified',
     'live_answering_enabled',
     'live_answering_billing_paused',
+    'live_answering_billing_restored',
     'internal_paddle_alert',
     'internal_telnyx_alert',
     'internal_live_billing_blocked_alert',
@@ -76,6 +78,7 @@ const lifecycleNotificationTypeByKind: Record<LifecycleEmailKind, BillingNotific
   forwarding_verified: 'forwarding_verified',
   live_answering_enabled: 'live_answering_enabled',
   live_answering_billing_paused: 'live_answering_billing_paused',
+  live_answering_billing_restored: 'live_answering_billing_restored',
   internal_paddle_alert: 'internal_paddle_alert',
   internal_telnyx_alert: 'internal_telnyx_alert',
   internal_live_billing_blocked_alert: 'internal_live_billing_blocked_alert',
@@ -260,7 +263,7 @@ export async function scheduleTrialLifecycleJobsWithRuntime(
           ? (now.getTime() - trialStartedAt.getTime()) / (60 * 60 * 1000)
           : 0;
 
-      if (!isShopSetupWizardComplete(shop) && subscriptionId) {
+      if (!isShopSetupWizardComplete(shop) && subscriptionId && subscription?.status !== 'canceled' && subscription?.status !== 'trial_expired') {
         const reminderKind = hoursSinceSignup >= 72 ? 'finish_onboarding_reminder_2' : hoursSinceSignup >= 24 ? 'finish_onboarding_reminder_1' : null;
         if (reminderKind) {
           const type = lifecycleNotificationTypeByKind[reminderKind];
@@ -1218,6 +1221,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
             status: payload.data.status ?? subscription.status,
             appBaseUrl,
           });
+          break;
+        case 'live_answering_billing_restored':
+          if (!shop || !subscription || !['active', 'trialing'].includes(subscription.status)) return;
+          category = 'live_answering_billing_restored';
+          built = buildLiveAnsweringBillingRestoredEmailPayload({ shopName: shop.name, appBaseUrl });
           break;
         case 'forwarding_number_failed_internal':
         case 'internal_paddle_alert':

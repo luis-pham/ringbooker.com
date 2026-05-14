@@ -512,6 +512,7 @@ export type BillingNotificationType =
   | 'live_answering_billing_paused_paused'
   | 'live_answering_billing_paused_past_due'
   | 'live_answering_billing_paused_payment_failed'
+  | 'live_answering_billing_restored'
   | 'internal_paddle_alert'
   | 'internal_telnyx_alert'
   | 'internal_live_billing_blocked_alert';

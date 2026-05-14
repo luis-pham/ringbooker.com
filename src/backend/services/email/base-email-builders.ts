@@ -535,6 +535,31 @@ export function buildLiveAnsweringBillingPausedEmailPayload(params: {
   return { input, text };
 }
 
+export function buildLiveAnsweringBillingRestoredEmailPayload(params: {
+  shopName: string;
+  appBaseUrl: string;
+}): { input: BaseEmailInput; text: string } {
+  const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
+  const callsUrl = `${base}/user/calls`;
+  const input: BaseEmailInput = {
+    title: 'Live answering is restored',
+    previewText: 'Your billing has been resolved — live answering is active again.',
+    heroTitle: 'Live answering is restored',
+    heroSubtitleHtml: `<p style="margin:0">Billing for <strong>${escapeHtmlText(params.shopName)}</strong> has been resolved. Live answering is active again.</p>`,
+    bodyHtml:
+      '<p style="margin:0">RingBooker is ready to answer forwarded calls. Your call logs and captured caller details are available from your dashboard.</p>',
+    ctaLabel: 'View call logs',
+    ctaUrl: callsUrl,
+    signatureHtml: '<p style="margin:0">RingBooker Billing</p>',
+  };
+  const text = [
+    `Live answering is restored for "${params.shopName}".`,
+    'Billing has been resolved — live answering is active again.',
+    `View call logs: ${callsUrl}`,
+  ].join('\n');
+  return { input, text };
+}
+
 export function buildInternalAlertEmailPayload(params: {
   title: string;
   summary: string;

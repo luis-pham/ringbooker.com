@@ -10,6 +10,25 @@ import type { CandidateUrl, PagePreview, WebsiteImportResult } from './types';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 
+type SiteBuilder = 'nextjs' | 'nuxtjs' | 'react_spa' | 'webflow' | 'wix' | 'squarespace' | 'shopify' | null;
+
+function detectSiteBuilder(html: string): SiteBuilder {
+  if (/<div[^>]+id=["']__next["']/i.test(html)) return 'nextjs';
+  if (/<div[^>]+id=["']__nuxt["']/i.test(html)) return 'nuxtjs';
+  if (/data-wf-site|cdn\.prod\.website-files\.com|webflow\.io/i.test(html)) return 'webflow';
+  if (/wixsite\.com|cdn\d*\.wix\.com|X-Wix-Published-Version/i.test(html)) return 'wix';
+  if (/static\d+\.squarespace\.com|squarespace\.com\/s\//i.test(html)) return 'squarespace';
+  if (/cdn\.shopify\.com/i.test(html)) return 'shopify';
+  if (/<div[^>]+id=["'](?:root|app)["'][^>]*>\s*<\/div>/i.test(html)) return 'react_spa';
+  return null;
+}
+
+function hasThinContent(html: string): boolean {
+  const withoutScripts = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+  const text = withoutScripts.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text.length < 1000;
+}
+
 type ImportOptions = {
   fetcher?: Fetcher;
   lookup?: DnsLookup;
@@ -54,10 +73,16 @@ async function fetchText(url: string, opts: ImportOptions): Promise<{ url: strin
     let current = (await preflightUrl(url, { lookup: opts.lookup })).toString();
     let redirectsFollowed = 0;
     while (true) {
+      const fetchHeaders = {
+        'user-agent': 'RingBookerBot/1.0 (+https://ringbooker.com/bot)',
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'accept-language': 'en-US,en;q=0.9',
+        'cache-control': 'no-cache',
+      };
       const response = await (opts.fetcher ?? fetch)(current, {
         redirect: 'manual',
         signal: controller.signal,
-        headers: { 'user-agent': 'RingBookerBot/1.0 (+https://ringbooker.com)', accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8' },
+        headers: fetchHeaders,
       });
       if ([301, 302, 303, 307, 308].includes(response.status)) {
         const location = response.headers.get('location');
@@ -71,7 +96,18 @@ async function fetchText(url: string, opts: ImportOptions): Promise<{ url: strin
       }
       const finalUrl = response.url || current;
       await preflightUrl(finalUrl, { lookup: opts.lookup });
-      if (!response.ok) return null;
+      if (!response.ok) {
+        if (response.status === 429) {
+          await new Promise((res) => setTimeout(res, 1500));
+          const retried = await (opts.fetcher ?? fetch)(current, { signal: controller.signal, headers: fetchHeaders }).catch(() => null);
+          if (!retried?.ok) return null;
+          const retryType = retried.headers.get('content-type') ?? '';
+          if (retryType && !/html|xml|text|markdown/i.test(retryType)) return null;
+          const retryRaw = await readResponseTextWithLimit(retried, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
+          return { url: finalUrl, text: retryRaw };
+        }
+        return null;
+      }
       const contentType = response.headers.get('content-type') ?? '';
       if (!/html|xml|text|markdown/i.test(contentType) && contentType) return null;
       const raw = await readResponseTextWithLimit(response, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
@@ -182,6 +218,10 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     return emptyResult(startUrl.toString(), sourceType);
   }
   const homepagePreview = previewHtml(homepage.text, homepage.url);
+  const siteBuilder = detectSiteBuilder(homepage.text);
+  const spaWarning = siteBuilder && hasThinContent(homepage.text)
+    ? `Site appears to be a JavaScript SPA (${siteBuilder}). Extracted content may be incomplete — full extraction requires a headless browser.`
+    : null;
 
   if (!shouldDeepCrawlSource(sourceType)) {
     const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: [homepagePreview], googlePlaces });
@@ -267,29 +307,42 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   for (const preview of selectedPreviews.length ? selectedPreviews : [homepagePreview]) finalPreviewMap.set(preview.url, preview);
   if (supplementalRootPreview) finalPreviewMap.set(supplementalRootPreview.url, supplementalRootPreview);
   const finalPreviews = [...finalPreviewMap.values()];
-  if (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey) {
-    const staticPreviewSuggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews });
-    googlePlaces = await lookupGooglePlaces({
-      url: startUrl,
-      sourceType,
-      hints: {
-        name: staticPreviewSuggestions.businessProfile.name.value,
-        phone: staticPreviewSuggestions.businessProfile.phone.value,
-        address: staticPreviewSuggestions.businessProfile.address.value,
-        website: staticPreviewSuggestions.businessProfile.website.value ?? startUrl.toString(),
-      },
-      apiKey: opts.googlePlacesApiKey,
-      fetcher: opts.fetcher,
-      timeoutMs: opts.timeoutMs,
-    });
-  }
-  const llmExtraction = await extractWebsiteImportWithLlm(
-    { sourceUrl: startUrl.toString(), previews: finalPreviews, googlePlaces, selectedPages: selected.map(toDiagnostic) },
-    { enabled: opts.llmEnabled, apiKey: opts.openAiApiKey, model: opts.llmModel, maxTokens: opts.llmMaxTokens, fetcher: opts.fetcher, timeoutMs: opts.timeoutMs },
-  );
-  const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces, llmExtraction });
+  // Run Google Places lookup and LLM extraction in parallel to save ~500ms.
+  // LLM receives googlePlaces: null here; the merged result is used in buildSuggestions below.
+  const staticHints = (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey)
+    ? buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews })
+    : null;
+  const [googlePlacesResult, llmResult] = await Promise.allSettled([
+    staticHints
+      ? lookupGooglePlaces({
+          url: startUrl,
+          sourceType,
+          hints: {
+            name: staticHints.businessProfile.name.value,
+            phone: staticHints.businessProfile.phone.value,
+            address: staticHints.businessProfile.address.value,
+            website: staticHints.businessProfile.website.value ?? startUrl.toString(),
+          },
+          apiKey: opts.googlePlacesApiKey!,
+          fetcher: opts.fetcher,
+          timeoutMs: opts.timeoutMs,
+        })
+      : Promise.resolve(googlePlaces),
+    extractWebsiteImportWithLlm(
+      { sourceUrl: startUrl.toString(), previews: finalPreviews, googlePlaces: null, selectedPages: selected.map(toDiagnostic) },
+      { enabled: opts.llmEnabled, apiKey: opts.openAiApiKey, model: opts.llmModel, maxTokens: opts.llmMaxTokens, fetcher: opts.fetcher, timeoutMs: opts.timeoutMs },
+    ),
+  ]);
+  const finalGooglePlaces = googlePlacesResult.status === 'fulfilled' ? googlePlacesResult.value : googlePlaces;
+  const llmExtraction = llmResult.status === 'fulfilled' ? llmResult.value : null;
+  const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews, googlePlaces: finalGooglePlaces, llmExtraction });
   const serviceHubPagesFound = selected.filter((s) => s.bucket === 'service_hub').map((s) => s.candidate.url);
   const childServicePagesFound = selected.filter((s) => s.bucket === 'service_child').map((s) => s.candidate.url);
+  const allWarnings = [
+    ...suggestions.warnings,
+    ...(spaWarning ? [spaWarning] : []),
+    ...(siteBuilder && !spaWarning ? [`Site built with ${siteBuilder}. Content is server-rendered and should extract normally.`] : []),
+  ];
   const result = {
     ok: suggestions.status !== 'failed',
     suggestions,
@@ -300,8 +353,8 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
       serviceHubPagesFound,
       childServicePagesFound,
       confidenceSummary: { services: suggestions.serviceCatalog.confidence, businessProfile: suggestions.businessProfile.name.confidence, contact: suggestions.businessProfile.phone.confidence, overall: suggestions.completeness?.overallConfidence ?? 0 },
-      warnings: suggestions.warnings,
-      fallbackUsed: ['static', ...(googlePlaces ? ['google_places'] : []), ...(llmExtraction ? ['llm'] : [])],
+      warnings: allWarnings,
+      fallbackUsed: ['static', ...(finalGooglePlaces ? ['google_places'] : []), ...(llmExtraction ? ['llm'] : [])],
     },
   };
   return result;

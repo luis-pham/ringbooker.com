@@ -334,7 +334,7 @@ export function buildLlmImportPrompt(input: LlmPayloadInput): string {
 export async function extractWebsiteImportWithLlm(input: LlmPayloadInput, opts: LlmExtractionOptions): Promise<LlmImportExtraction | null> {
   if (!opts.enabled || !opts.apiKey) return null;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 8_000);
+  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 15_000);
   try {
     const response = await (opts.fetcher ?? fetch)('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -343,7 +343,7 @@ export async function extractWebsiteImportWithLlm(input: LlmPayloadInput, opts: 
       body: JSON.stringify({
         model: opts.model?.trim() || 'gpt-4o-mini',
         temperature: 0,
-        max_tokens: opts.maxTokens ?? 1800,
+        max_tokens: opts.maxTokens ?? 3500,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: 'You extract salon/spa business knowledge for user review. Return valid JSON only. Never invent missing facts, staff, policies, FAQs, promotions, prices, or booking integrations. Keep evidence snippets short and sanitized.' },

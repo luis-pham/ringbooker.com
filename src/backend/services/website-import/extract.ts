@@ -53,6 +53,16 @@ const SERVICE_GROUP_HEADINGS = [
 const SERVICE_MENU_SOURCE_RE = /\b(source|skip to content|open menu|close menu|copyright|social media|get in touch|book now|quick view|home|about|contact|careers|blog|shop|cart|folder:|back|policy|policies|faq|questions?|located|walk-ins?)\b/i;
 const ECOMMERCE_CONTEXT_RE = /\b(shop|store|products?|collections?|cart|checkout|add to cart|retail|merch|gift cards?)\b/i;
 
+function normalizePriceSeparators(text: string): string {
+  return text
+    // Dot leaders: "Women's Cut........$55" → "Women's Cut $55"
+    .replace(/([A-Za-z0-9'''])\s*\.{3,}\s*(\$|\bfrom\b|\bstarting\b)/gi, '$1 $2')
+    // Middle dot leaders (U+00B7): "Haircut · · · $55" → "Haircut $55"
+    .replace(/([A-Za-z0-9'''])\s*(?:·\s*){2,}(\$)/g, '$1 $2')
+    // Parenthesized prices: "Cut ($55+)" or "Cut (from $55)" → "Cut $55+"
+    .replace(/\((?:from\s+)?(\$\s?\d{2,4}\+?)\)/g, '$1');
+}
+
 const DAY_ALIASES: Record<string, string> = {
   mo: 'mon', mon: 'mon', monday: 'mon',
   tu: 'tue', tue: 'tue', tues: 'tue', tuesday: 'tue',
@@ -282,6 +292,7 @@ export function inferTimezoneFromAddress(address?: string | null): ImportField<s
 }
 
 export function extractServicesFromText(text: string, source: string): ImportedServiceSuggestion[] {
+  text = normalizePriceSeparators(text);
   const services = new Map<string, ImportedServiceSuggestion>();
 
   const addService = (input: {
@@ -1148,6 +1159,19 @@ function detectBookingPlatform(url: string): BookingSetupSuggestion['platform'] 
   return null;
 }
 
+function classifyPolicyHeading(heading: string): PolicySuggestion['type'] {
+  const lower = heading.toLowerCase();
+  if (/cancell/.test(lower)) return 'cancellation';
+  if (/no.?show|missed\s+appointment/.test(lower)) return 'no_show';
+  if (/deposit|booking\s+fee|retainer/.test(lower)) return 'deposit';
+  if (/late\s+arrival|late\s+fee|tardy/.test(lower)) return 'late_arrival';
+  if (/walk.?in/.test(lower)) return 'walk_ins';
+  if (/refund|return\s+policy/.test(lower)) return 'refund';
+  if (/aftercare|before\s+your|appointment\s+prep|preparation/.test(lower)) return 'appointment_prep';
+  if (/consultation\s+(?:required|policy)/.test(lower)) return 'consultation';
+  return 'other';
+}
+
 export function extractSecondaryKnowledge(previews: PagePreview[]): {
   staffSuggestions: StaffSuggestion[];
   policySuggestions: PolicySuggestion[];
@@ -1191,25 +1215,28 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
       }
     }
 
-    if (/(staff|team|stylist|artist|provider|injector|esthetician|barber)/i.test(lowerContext)) {
-      const structuredStaffRe = /^STAFF_MEMBER:\s*([^|\n]+?)(?:\s*\|\s*Bio:\s*([^\n]+))?$/gim;
+    if (/(staff|team|stylist|artist|provider|injector|esthetician|barber|about)/i.test(lowerContext)) {
+      // Structured STAFF_MEMBER: blocks from DOM extraction (includes Role: when available)
+      const structuredStaffRe = /^STAFF_MEMBER:\s*([^|\n]+?)(?:\s*\|\s*Role:\s*([^|\n]+?))?(?:\s*\|\s*Bio:\s*([^\n]+))?$/gim;
       for (const match of text.matchAll(structuredStaffRe)) {
         const name = cleanStaffName(match[1]);
         if (!isLikelyStaffName(name)) continue;
-        const bio = sanitizeSnippet(match[2], 500);
+        const role = match[2]?.trim() || staffRoleFromContext(lowerContext);
+        const bio = sanitizeSnippet(match[3], 500);
         staffSuggestions.push({
           name,
-          role: staffRoleFromContext(lowerContext),
+          role,
           specialties: [],
           bio,
           source: 'website',
           sourceUrl: preview.url,
-          confidence: bio ? 0.74 : 0.66,
-          evidenceSnippet: sanitizeSnippet(`${name}${bio ? ` ${bio}` : ''}`),
+          confidence: bio ? 0.78 : 0.68,
+          evidenceSnippet: sanitizeSnippet(`${name}${role ? ` ${role}` : ''}${bio ? ` ${bio}` : ''}`),
         });
       }
 
-      const staffLineRe = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:[-–—,|]\s*)?(Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Massage Therapist)\b/g;
+      // Fallback: "Name - Role" inline patterns
+      const staffLineRe = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:[-–—,|]\s*)?(Stylist|Colorist|Artist|Provider|Technician|Injector|Esthetician|Barber|Owner|Manager|Director|Founder|Specialist|Therapist|Aesthetician|Nail\s+Tech)\b/g;
       for (const match of text.matchAll(staffLineRe)) {
         const name = cleanStaffName(match[1]);
         if (!isLikelyStaffName(name)) continue;
@@ -1225,19 +1252,38 @@ export function extractSecondaryKnowledge(previews: PagePreview[]): {
       }
     }
 
+    // Heading-anchored policy blocks (full content, not truncated at sentence end)
+    const headingCapturedPolicyTypes = new Set<string>();
+    for (const block of preview.policyBlocks ?? []) {
+      const type = classifyPolicyHeading(block.heading);
+      headingCapturedPolicyTypes.add(type);
+      policySuggestions.push({
+        type,
+        title: block.heading.slice(0, 160),
+        content: block.content.slice(0, 1200),
+        source: 'website',
+        sourceUrl: preview.url,
+        confidence: 0.78,
+        evidenceSnippet: sanitizeSnippet(block.content),
+      });
+    }
+
+    // Regex fallback — only for policy types not already captured by DOM headings
+    // Keywords deliberately narrow to avoid false positives
     const policyTypePatterns: Array<[PolicySuggestion['type'], RegExp, string]> = [
-      ['cancellation', /\b(cancellation|cancel)\b[^.\n]{20,420}/gi, 'Cancellation policy'],
-      ['no_show', /\b(no-show|no show)\b[^.\n]{20,420}/gi, 'No-show policy'],
-      ['deposit', /\b(deposit)\b[^.\n]{20,420}/gi, 'Deposit policy'],
-      ['late_arrival', /\b(late arrival|late)\b[^.\n]{20,420}/gi, 'Late arrival policy'],
-      ['walk_ins', /\b(walk-ins|walk ins|walkin)\b[^.\n]{20,420}/gi, 'Walk-ins'],
-      ['refund', /\b(refund)\b[^.\n]{20,420}/gi, 'Refund policy'],
-      ['appointment_prep', /\b(prep|preparation|aftercare)\b[^.\n]{20,420}/gi, 'Appointment preparation'],
-      ['consultation', /\b(consultation required|consultation)\b[^.\n]{20,420}/gi, 'Consultation'],
+      ['cancellation', /\b(cancellation\s+policy|cancellations?)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Cancellation policy'],
+      ['no_show', /\b(no-show|no\s+show|missed\s+appointment)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'No-show policy'],
+      ['deposit', /\b(deposit|booking\s+fee|retainer)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Deposit policy'],
+      ['late_arrival', /\b(late\s+arrival|late\s+fee)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Late arrival policy'],
+      ['walk_ins', /\b(walk-ins?|walk\s+ins?|walk-in\s+policy)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Walk-ins'],
+      ['refund', /\b(refund\s+policy|refunds?)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Refund policy'],
+      ['appointment_prep', /\b(appointment\s+prep(?:aration)?|aftercare|before\s+your\s+appointment)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Appointment preparation'],
+      ['consultation', /\b(consultation\s+required|consultation\s+policy)\b(?:[^\n]|\n(?!\n)){20,600}/gi, 'Consultation'],
     ];
     for (const [type, pattern, title] of policyTypePatterns) {
+      if (headingCapturedPolicyTypes.has(type)) continue;
       for (const match of text.matchAll(pattern)) {
-        const content = sanitizeSnippet(match[0], 500);
+        const content = sanitizeSnippet(match[0], 600);
         if (content) policySuggestions.push({ type, title, content, source: 'website', sourceUrl: preview.url, confidence: 0.66, evidenceSnippet: sanitizeSnippet(content) });
       }
     }
@@ -1340,10 +1386,84 @@ function extractVisiblePhone(previews: PagePreview[]): { value: string; source: 
   return [...byDigits.values()].sort((a, b) => b.score - a.score)[0] ?? null;
 }
 
+function isJsonLdServiceGroupName(name: string): boolean {
+  return /^(our\s+)?(?:hair|nail|spa|beauty|skin|massage|waxing|facial|lash|brow|makeup|injectable|laser)\s+services?$/i.test(name.trim())
+    || /^(our\s+)?services$/i.test(name.trim());
+}
+
+function extractServicesFromJsonLd(previews: PagePreview[]): ImportedServiceSuggestion[] {
+  const services: ImportedServiceSuggestion[] = [];
+  const seen = new Set<string>();
+
+  function pushService(node: Record<string, unknown>): void {
+    const name = typeof node.name === 'string' ? node.name.trim() : null;
+    if (!name || name.length < 3 || name.length > 100) return;
+    if (SERVICE_MENU_SOURCE_RE.test(name) || ECOMMERCE_CONTEXT_RE.test(name)) return;
+    if (isJsonLdServiceGroupName(name)) return;
+    const key = name.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    const description = typeof node.description === 'string' ? node.description.trim().slice(0, 400) : null;
+    const rawOffers = Array.isArray(node.offers) ? (node.offers as Record<string, unknown>[]) :
+      node.offers && typeof node.offers === 'object' ? [node.offers as Record<string, unknown>] : [];
+    const offer = rawOffers[0];
+    const rawPrice = offer?.price ?? node.price;
+    const parsedPrice = typeof rawPrice === 'number' ? rawPrice :
+      typeof rawPrice === 'string' ? Number(rawPrice.replace(/[^0-9.]/g, '')) : NaN;
+    const priceAmount = Number.isFinite(parsedPrice) && parsedPrice >= 0 && parsedPrice < 10000 ? parsedPrice : null;
+    const rawCurrency = String((offer?.priceCurrency ?? node.priceCurrency) ?? CURRENCY);
+    services.push({
+      categoryName: inferGroup(name),
+      name,
+      description: description && description.toLowerCase() !== name.toLowerCase() ? description : null,
+      priceAmount,
+      priceCurrency: /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : CURRENCY,
+      priceType: priceAmount !== null && priceAmount > 0 ? 'fixed' : 'varies',
+      durationText: null,
+      durationMinutes: null,
+      aliases: aliasFor(name),
+      bookingNotes: null,
+      bookable: true,
+      source: 'jsonld',
+      confidence: priceAmount !== null ? 0.88 : 0.72,
+      needsReview: priceAmount === null,
+    });
+  }
+
+  for (const node of flattenJsonLd(previews.flatMap((p) => p.jsonLd))) {
+    const types = (Array.isArray(node['@type']) ? node['@type'] : [node['@type']]).map(
+      (t) => String(t ?? '').replace(/^https?:\/\/schema\.org\//, '').toLowerCase(),
+    );
+
+    if (types.some((t) => /^(?:service|product|offer)$/.test(t))) {
+      pushService(node);
+      continue;
+    }
+
+    if (types.some((t) => /localbusiness|beautysalon|hairsalon|nailsalon|dayspa|healthandbeauty|spa/.test(t))) {
+      const catalogs = (Array.isArray(node.hasOfferCatalog) ? node.hasOfferCatalog :
+        node.hasOfferCatalog ? [node.hasOfferCatalog] : []) as Record<string, unknown>[];
+      for (const catalog of catalogs) {
+        const items = (Array.isArray(catalog.itemListElement) ? catalog.itemListElement : []) as Record<string, unknown>[];
+        for (const item of items) pushService(item);
+      }
+      continue;
+    }
+
+    if (types.some((t) => /itemlist|offercatalog/.test(t))) {
+      const items = (Array.isArray(node.itemListElement) ? node.itemListElement : []) as Record<string, unknown>[];
+      for (const item of items) pushService(item);
+    }
+  }
+
+  return services.slice(0, 60);
+}
+
 export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportSourceType; previews: PagePreview[]; googlePlaces?: GooglePlacesSuggestion | null; llmExtraction?: LlmImportExtraction | null }): ImportSuggestions {
   const allText = input.previews.map((p) => `${p.title}\n${p.h1}\n${p.h2s.join('\n')}\n${p.firstTextChars}`).join('\n');
   const facts = jsonLdFacts(input.previews);
   const services = [
+    ...extractServicesFromJsonLd(input.previews),
     ...extractServicesFromBlocks(input.previews),
     ...input.previews.flatMap((p) => {
       const hasStructuredServiceEvidence = (p.serviceBlocks?.length ?? 0) >= 3 || (p.serviceBlocks ?? []).some((block) => block.sourceHint === 'service_matrix_table');

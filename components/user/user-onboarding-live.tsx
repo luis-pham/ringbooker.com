@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 
 import { formatPhoneForDisplay, normalizePhoneForStorage } from '@/lib/phone-number';
 import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
@@ -1229,7 +1228,6 @@ function toggleLanguage(current: string[], language: string, checked: boolean): 
 }
 
 export function UserOnboardingLive({ initialData = null }: { initialData?: OnboardingStatusResponse | null }) {
-  const router = useRouter();
   const initialShop = initialData?.ok ? initialData.shop : null;
   const initialRawPhone = (initialShop?.phone_number ?? initialShop?.user_phone ?? '').trim();
   const initialSyntheticPhone = isSignupSyntheticPlaceholderPhone(initialRawPhone);
@@ -1973,8 +1971,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     } catch {
       // ignore
     }
-    router.replace('/user');
-    router.refresh();
+    // Full page load so UserOnboardingGate picks up fresh server-side status
+    // (avoids stale initialStatus causing an immediate redirect back to this page).
+    window.location.href = '/user';
   }
 
   function markOnboardingWrapped() {

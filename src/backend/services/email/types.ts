@@ -20,6 +20,7 @@ export type EmailCategory =
   | 'forwarding_verified'
   | 'live_answering_enabled'
   | 'live_answering_billing_paused'
+  | 'live_answering_billing_restored'
   | 'internal_alert';
 
 export type EmailSendResult = {

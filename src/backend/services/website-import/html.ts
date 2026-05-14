@@ -27,6 +27,7 @@ export function visibleTextFromHtml(html: string): string {
   // Keep footer text because salons commonly place hours/contact details there.
   $('script, style, noscript, svg, img, nav').remove();
   $('br').replaceWith('\n');
+  $('td,th').append(' ');
   $('h1,h2,h3,h4,h5,h6,p,li,tr,table,section,article,div,footer,main').append('\n');
   return $('body').text().replace(/[ \t]+/g, ' ').replace(/\n\s+/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
@@ -155,7 +156,7 @@ function isLikelyServiceName(value: string): boolean {
   if (!value || value.length < 3 || value.length > 120) return false;
   if (/^[a-z]\s+\w/.test(value)) return false;
   if (/^(home|services?|book|booking|contact|about|hours|pricing)$/i.test(value)) return false;
-  return /\b(blow\s*out|blowout|color|lightening|tint|retouch|touch\s*-?\s*up|cut|haircut|style|package|scrub|treatment|extensions?|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlights?|lowlights?|keratin|essential|signature|deluxe|curly|men'?s|women'?s|children'?s|up-?do|relaxing|therapeutic|reflexology|stone|body)\b/i.test(value);
+  return /\b(blow\s*out|blowout|color|lightening|tint|retouch|touch\s*-?\s*up|cut|haircut|style|package|scrub|treatment|extensions?|facial|massage|wax|manicure|pedicure|lash|brow|makeup|consult|balayage|highlights?|lowlights?|keratin|essential|signature|deluxe|curly|men'?s?|women'?s?|children'?s|up-?do|relaxing|therapeutic|reflexology|stone|body)\b/i.test(value);
 }
 
 function isLikelySpecificServiceHeading(value: string): boolean {
@@ -327,6 +328,72 @@ function priceFromCell(value: string): { amount: number | null; type: 'fixed' | 
   };
 }
 
+/** Handles simple 2-column name/price tables (no duration header required).
+ *  Matches sites like Avalon Salon that use <table class="im-services …">
+ *  with <td class="serv-title"> / <td class="serv-price"> rows. */
+function simplePriceTableBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
+  const blocks: ServiceBlock[] = [];
+  const seen = new Set<string>();
+  $('table').each((_, tableEl) => {
+    const table = $(tableEl);
+    const tableText = cleanElementText(table);
+    if (!tableText || looksLikeNonServiceBlock(tableText) || isEcommerceContext($)) return;
+    const rows = table.find('tr').toArray();
+    if (rows.length < 2) return;
+    // Collect 2-column data rows (skip colspan description/note rows)
+    const dataRows = rows.filter((rowEl) => {
+      const cells = $(rowEl).children('td').toArray();
+      return cells.length === 2 && Number($(cells[0]).attr('colspan') ?? 1) <= 1;
+    });
+    if (dataRows.length < 1) return;
+    // Second column must have at least one price value
+    const hasPriceEvidence = dataRows.slice(0, 6).some((rowEl) => {
+      const cells = $(rowEl).children('td').toArray();
+      return Boolean(firstPrice(cleanElementText($(cells[1]))));
+    });
+    if (!hasPriceEvidence) return;
+    // Defer to serviceMatrixTableBlocks when duration headers are present
+    const allCellTexts = rows.flatMap((rowEl) =>
+      $(rowEl).children('th,td').toArray().map((cellEl) => cleanElementText($(cellEl))),
+    );
+    if (allCellTexts.some((cell) => Boolean(durationFromHeader(cell)))) return;
+    const group = nearestSectionHeading($, table)
+      ?? cleanBlockText(table.prevAll('h1,h2,h3,h4').first().text());
+    const groupHeading = group && isLikelyServiceGroup(group) ? group : null;
+    for (const rowEl of rows) {
+      const cells = $(rowEl).children('td').toArray();
+      if (cells.length !== 2 || Number($(cells[0]).attr('colspan') ?? 1) > 1) continue;
+      const nameText = cleanElementText($(cells[0]));
+      const rawPrice = cleanElementText($(cells[1]));
+      if (!nameText || nameText.length < 2 || nameText.length > 120) continue;
+      if (looksLikeNonServiceBlock(nameText)) continue;
+      const price = firstPrice(rawPrice) || (/consultation/i.test(rawPrice) ? 'Consultation Required' : null);
+      const hasPlus = /\+/.test(rawPrice);
+      const priceText = price
+        ? (hasPlus && !price.includes('+') ? `${price}+` : price)
+        : null;
+      const name = splitBlockNameDescription(nameText).name
+        .replace(/\b(book now|schedule|reserve|appointment)\b.*$/i, '').trim();
+      if (name.length < 2) continue;
+      const key = `${groupHeading ?? ''}:${name}:${priceText ?? ''}`.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      blocks.push({
+        groupHeading,
+        serviceName: name,
+        descriptionText: null,
+        priceText,
+        durationText: null,
+        sourceText: `${nameText} ${rawPrice}`.trim().slice(0, 600),
+        sourceHint: 'simple_price_table',
+        confidence: price ? 0.80 : 0.52,
+        evidenceSnippet: `${nameText}: ${rawPrice}`.slice(0, 220),
+      });
+    }
+  });
+  return blocks.slice(0, 80);
+}
+
 function serviceMatrixTableBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
   const blocks: ServiceBlock[] = [];
   const seen = new Set<string>();
@@ -491,6 +558,7 @@ function structuredServiceBlocks($: cheerio.CheerioAPI): ServiceBlock[] {
     }
   });
 
+  for (const block of simplePriceTableBlocks($)) pushBlock(block);
   for (const block of serviceMatrixTableBlocks($)) pushBlock(block);
   for (const block of repeatedCardServiceBlocks($)) pushBlock(block);
   return blocks.slice(0, 80);
@@ -510,30 +578,106 @@ function looksLikePersonName(value: string): boolean {
   return /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,3}$/.test(cleaned);
 }
 
-function structuredStaffText($: cheerio.CheerioAPI): string {
+function structuredStaffText($: cheerio.CheerioAPI, url = ''): string {
   const title = cleanStaffText($('title').first().text());
   const h1 = cleanStaffText($('h1').first().text());
-  const bodyClass = cleanStaffText($('body').attr('class') ?? '');
-  const isDedicatedStaffPage = /\b(artists?|staff|team|stylists?|providers?|technicians?)\b/i.test(bodyClass)
-    || /^\s*(artists?|staff|team|stylists?|providers?|technicians?)\b/i.test(title)
-    || /^\s*(artists?|staff|team|stylists?|providers?|technicians?)\b/i.test(h1);
-  if (!isDedicatedStaffPage) return '';
+  const bodyClass = $('body').attr('class') ?? '';
+  const allH2s = $('h2').map((_, el) => $(el).text()).get().join(' ');
+  const hasStaffContext =
+    /\b(artists?|staff|team|stylists?|providers?|technicians?)\b/i.test(bodyClass)
+    || /\b(artists?|staff|team|stylists?|providers?|technicians?|meet\s+(?:our|the))\b/i.test(`${title} ${h1} ${allH2s}`)
+    || /\/(about|team|staff|artists?|stylists?|providers?|our-?team|meet-?us)/i.test(url);
+  if (!hasStaffContext) return '';
+
   const rows: string[] = [];
+  const seen = new Set<string>();
+
+  function pushStaffRow(name: string, role: string | null, bio: string) {
+    const key = name.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push(`STAFF_MEMBER: ${name}${role ? ` | Role: ${role}` : ''}${bio ? ` | Bio: ${bio}` : ''}`);
+  }
+
+  function bioFromContainer(container: cheerio.Cheerio<AnyNode>): string {
+    return container.find('p').map((_, p) => cleanStaffText($(p).text())).get()
+      .filter((t) => t && t.length > 3 && !/^online booking/i.test(t)).join(' ').slice(0, 500);
+  }
+
+  function roleFromContainer(container: cheerio.Cheerio<AnyNode>, nameEl: cheerio.Cheerio<AnyNode>): string | null {
+    const roleText = container.find('[class*="role"],[class*="position"],[class*="subtitle"],small').not(nameEl).first().text().trim();
+    return roleText && roleText.length < 80 && !looksLikePersonName(cleanStaffText(roleText)) ? roleText : null;
+  }
+
+  // Strategy 1: explicit team/staff card container classes
+  $('[class*="team-member"],[class*="team_member"],[class*="staff-member"],[class*="staff_member"],[class*="artist-card"],[class*="stylist-card"],[class*="provider-card"],[class*="bio-card"]').each((_, el) => {
+    const container = $(el);
+    const nameEl = container.find('h2,h3,h4,h5,[class*="name"],[class*="title"]').first();
+    const name = cleanStaffText(nameEl.text());
+    if (!looksLikePersonName(name)) return;
+    pushStaffRow(name, roleFromContainer(container, nameEl), bioFromContainer(container));
+  });
+
+  // Strategy 2: section heading like "Meet Our Team" → look for person names inside siblings
+  $('h1,h2,h3').each((_, headingEl) => {
+    if (!/\b(meet\s+(?:our|the)\s+)?(?:team|staff|artists?|stylists?|providers?|technicians?)\b/i.test($(headingEl).text())) return;
+    let cursor = $(headingEl).next();
+    let scanned = 0;
+    while (cursor.length && scanned < 30) {
+      const tag = (cursor.get(0)?.tagName ?? '').toLowerCase();
+      if (/^h[12]$/.test(tag)) break;
+      cursor.find('h3,h4,h5').each((_, nameEl) => {
+        const name = cleanStaffText($(nameEl).text());
+        if (!looksLikePersonName(name)) return;
+        const wrapper = $(nameEl).closest('[class*="team"],[class*="staff"],[class*="artist"],[class*="member"],[class*="card"]');
+        const container = wrapper.length ? wrapper : $(nameEl).parent();
+        pushStaffRow(name, roleFromContainer(container, $(nameEl)), bioFromContainer(container));
+      });
+      cursor = cursor.next();
+      scanned += 1;
+    }
+  });
+
+  // Strategy 3: any h2/h3/h4 that is a person name (flat structure)
   $('h2,h3,h4').each((_, el) => {
     const heading = cleanStaffText($(el).text());
     if (!looksLikePersonName(heading)) return;
     const wrapper = $(el).closest('.flexible-column-wrapper, .wp-block-column, .team-member, [class*="team"], [class*="staff"], [class*="artist"]');
     const container = wrapper.length ? wrapper : $(el).parent();
-    const bio = container
-      .find('p')
-      .map((__, p) => cleanStaffText($(p).text()))
-      .get()
-      .filter((text) => text && !/^online booking available$/i.test(text))
-      .join(' ')
-      .slice(0, 500);
-    rows.push(`STAFF_MEMBER: ${heading}${bio ? ` | Bio: ${bio}` : ''}`);
+    pushStaffRow(heading, roleFromContainer(container, $(el)), bioFromContainer(container));
   });
+
   return rows.join('\n');
+}
+
+function extractPolicyBlocks($: cheerio.CheerioAPI): Array<{ heading: string; content: string }> {
+  const blocks: Array<{ heading: string; content: string }> = [];
+  const seen = new Set<string>();
+  const policyHeadingRe = /\b(cancell|no.?show|missed\s+appointment|deposit|booking\s+fee|late\s+arrival|walk.?in|refund|aftercare|before\s+your\s+appointment|appointment\s+prep|consultation\s+(?:required|policy)|our\s+polic|important\s+(?:info|notice)|please\s+(?:note|read)|etiquette|terms\s+(?:of|and|&))\b/i;
+  $('h2,h3,h4,h5').each((_, headingEl) => {
+    const headingText = cleanBlockText($(headingEl).text());
+    if (!headingText || headingText.length < 3 || headingText.length > 120) return;
+    if (!policyHeadingRe.test(headingText)) return;
+    const level = parseInt((headingEl as { tagName?: string }).tagName?.replace('h', '') ?? '6');
+    const stopTags = Array.from({ length: level }, (_, i) => `h${i + 1}`).join(',');
+    const parts: string[] = [];
+    let cursor = $(headingEl).next();
+    let scanned = 0;
+    while (cursor.length && scanned < 20) {
+      if (cursor.is(stopTags)) break;
+      const text = cleanBlockText(cursor.text());
+      if (text && text.length >= 5) parts.push(text);
+      cursor = cursor.next();
+      scanned += 1;
+    }
+    const content = parts.join(' ').slice(0, 1200);
+    if (content.length < 15) return;
+    const key = headingText.toLowerCase().slice(0, 40);
+    if (seen.has(key)) return;
+    seen.add(key);
+    blocks.push({ heading: headingText, content });
+  });
+  return blocks;
 }
 
 export function previewHtml(html: string, url: string): PagePreview {
@@ -543,7 +687,8 @@ export function previewHtml(html: string, url: string): PagePreview {
   const h2s = $('h2').slice(0, 8).map((_, el) => $(el).text().replace(/\s+/g, ' ').trim()).get().filter(Boolean);
   const serviceBlocks = structuredServiceBlocks($);
   const structuredServices = structuredServiceText($);
-  const structuredStaff = structuredStaffText($);
+  const structuredStaff = structuredStaffText($, url);
+  const policyBlocks = extractPolicyBlocks($);
   const text = [structuredServices, structuredStaff, visibleTextFromHtml(html)].filter(Boolean).join('\n');
   const links = extractLinks(html, url);
   const priceCount = (text.match(PRICE_PATTERN) ?? []).length;
@@ -567,6 +712,7 @@ export function previewHtml(html: string, url: string): PagePreview {
     internalServiceLikeLinkCount,
     links,
     jsonLd: extractJsonLd(html),
+    policyBlocks,
     contentScore: Math.min(100, Math.floor(text.length / 80) + serviceKeywordCount * 3 + priceCount * 4 + durationCount * 2),
   };
 }

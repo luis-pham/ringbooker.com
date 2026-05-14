@@ -161,27 +161,65 @@ export async function handlePaddleWebhook(
             idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:live_answering_billing_paused:${syncResult.subscription.status}:${syncResult.subscription.paymentMethodStatus ?? 'unknown'}`,
           });
         }
-      } else if (!syncResult && deps.emailService && shouldEmailUnmappedPaddleWebhook(event.event_type)) {
-        const { input, text } = buildInternalAlertEmailPayload({
-          title: 'Paddle webhook mapping failure',
-          summary: 'A verified Paddle webhook could not be mapped to a RingBooker shop.',
-          fields: {
+        if (
+          ['subscription.activated', 'subscription.resumed'].some((name) => eventType.includes(name)) &&
+          ['active', 'trialing'].includes(syncResult.subscription.status)
+        ) {
+          await deps.jobsRepository.enqueue({
+            shopId: syncResult.shopId,
+            type: 'lifecycle_email',
+            payload: {
+              kind: 'live_answering_billing_restored',
+              subscriptionId,
+              status: syncResult.subscription.status,
+            },
+            runAt: new Date(),
+            idempotencyKey: `lifecycle_email:${syncResult.shopId}:${subscriptionId}:live_answering_billing_restored:${syncResult.subscription.status}`,
+          });
+        }
+      } else if (!syncResult && shouldEmailUnmappedPaddleWebhook(event.event_type)) {
+        // Subscription event with no matching shop — log and alert; mark as error
+        // so it surfaces in monitoring rather than being silently swallowed.
+        logger.warn(
+          {
+            event: 'paddle_webhook_unmapped_subscription',
             event_id: event.event_id,
             event_type: event.event_type,
-            provider_customer_id: typeof event.data.provider_customer_id === 'string' ? event.data.provider_customer_id : typeof event.data.customer_id === 'string' ? event.data.customer_id : null,
-            provider_subscription_id: typeof event.data.provider_subscription_id === 'string' ? event.data.provider_subscription_id : typeof event.data.subscription_id === 'string' ? event.data.subscription_id : null,
           },
+          'paddle_webhook_unmapped_subscription',
+        );
+        await deps.providerEventsRepository.markProcessingError(
+          'paddle',
+          dedupeKey,
+          `unmapped_subscription_event:${event.event_type}`,
+        );
+        if (deps.emailService) {
+          const { input, text } = buildInternalAlertEmailPayload({
+            title: 'Paddle webhook mapping failure',
+            summary: 'A verified Paddle webhook could not be mapped to a RingBooker shop.',
+            fields: {
+              event_id: event.event_id,
+              event_type: event.event_type,
+              provider_customer_id: typeof event.data?.provider_customer_id === 'string' ? event.data.provider_customer_id : typeof event.data?.customer_id === 'string' ? event.data.customer_id : null,
+              provider_subscription_id: typeof event.data?.provider_subscription_id === 'string' ? event.data.provider_subscription_id : typeof event.data?.subscription_id === 'string' ? event.data.subscription_id : null,
+            },
+          });
+          await deps.emailService.sendEmail({
+            to: emailSupportAddress(),
+            subject: input.title,
+            text,
+            html: await renderBaseEmailHtml(input),
+            category: 'internal_alert',
+            idempotencyKey: `internal:paddle_mapping_failure:${event.event_id}`,
+            from: emailDefaultFrom(),
+            replyTo: emailSupportAddress(),
+          }).catch((error) => logger.error({ err: error, eventId: event.event_id }, 'paddle_internal_alert_email_failed'));
+        }
+        incrementMetric('webhook_requests_total', {
+          provider: 'paddle',
+          outcome: 'failed',
         });
-        await deps.emailService.sendEmail({
-          to: emailSupportAddress(),
-          subject: input.title,
-          text,
-          html: await renderBaseEmailHtml(input),
-          category: 'internal_alert',
-          idempotencyKey: `internal:paddle_mapping_failure:${event.event_id}`,
-          from: emailDefaultFrom(),
-          replyTo: emailSupportAddress(),
-        }).catch((error) => logger.error({ err: error, eventId: event.event_id }, 'paddle_internal_alert_email_failed'));
+        return c.json({ ok: false }, 500);
       }
     }
 
