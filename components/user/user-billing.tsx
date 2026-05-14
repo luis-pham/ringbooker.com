@@ -212,6 +212,9 @@ export const userBillingStyles: string[] = [
   border-color:var(--border);background:var(--surface-page);background-image:none;
 }
 .billing-plan-card__cta{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.billing-plan-card--feats-compact .billing-plan-card__feats{gap:3px}
+.billing-plan-card--feats-compact .billing-plan-card__feats li{line-height:1.3}
+.billing-plan-card--feats-compact .billing-plan-card__feats li::before{margin-top:1px}
 
 html[data-user-theme="dark"] .billing-plan-card__feats li[data-included="false"]::before{background:var(--surface-card)}
 

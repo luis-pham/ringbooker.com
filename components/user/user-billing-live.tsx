@@ -1369,8 +1369,13 @@ export function UserBillingLive({
                             );
                           }
 
+                          const compactEnterpriseFeats = plan.key === 'enterprise' && plan.features.length <= 4;
+
                           return (
-                            <div className={`billing-plan-card${isCurrent ? ' billing-plan-card--current' : ''}`} key={plan.key}>
+                            <div
+                              className={`billing-plan-card${isCurrent ? ' billing-plan-card--current' : ''}${compactEnterpriseFeats ? ' billing-plan-card--feats-compact' : ''}`}
+                              key={plan.key}
+                            >
                               <div className="billing-plan-card__badge-row">
                                 {isCurrent ? (
                                   <span className="tag purple">Current plan</span>

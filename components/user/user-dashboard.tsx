@@ -437,7 +437,7 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
   font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:var(--text-light);margin:-2px 0 8px;
 }
-.grid.grid-4.overview-stats-grid{gap:10px}
+.grid.grid-4.overview-stats-grid{gap:10px;margin-top:20px}
 .usage-captured-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
 .usage-captured-title{margin:0;font-size:15px;font-weight:500;letter-spacing:-.01em;color:var(--text-dark)}
 .usage-captured-summary{font-size:13px;font-weight:500;color:var(--text-dark);text-align:right;max-width:52%;line-height:1.35}
@@ -622,7 +622,7 @@ a.carrier-link strong{font-size:14px;letter-spacing:-.02em;color:#111827}
 }
 .usage-progress-track{
   height:6px;border-radius:20px;margin-top:10px;overflow:hidden;
-  background:linear-gradient(180deg,#ede9fe 0%,#e9d5ff 100%);
+  background-color:#f9fafb;
   border:1px solid rgba(99,14,212,.14);
   box-shadow:inset 0 1px 2px rgba(17,24,39,.07);
 }
