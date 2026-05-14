@@ -930,6 +930,15 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
   }
 }
 @media (max-width:860px){
+  .user-app-shell{
+    align-content:start;
+    grid-auto-rows:max-content;
+  }
+  .user-app-shell .sidebar,
+  .user-app-shell .main{
+    align-self:start;
+    width:100%;
+  }
   .main{padding:0;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
   .user-app-shell .main > .page-content{padding-top:24px;}
   .user-app-shell .main > .page-content.page-overview,
