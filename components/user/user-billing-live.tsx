@@ -29,6 +29,8 @@ type BillingSubscriptionStatus =
   | 'canceled'
   | 'incomplete'
   | 'paused'
+  | 'trial_expired'
+  | 'unpaid'
   | 'unknown';
 
 export type UserBillingResponse = {
@@ -659,6 +661,8 @@ export function UserBillingLive({
   const billingCopy = billingUiCopy(billingState);
   const subscriptionBillingBlocked =
     subscription != null && ['past_due', 'paused', 'canceled'].includes(subscription.status);
+  const shouldUseReactivateCheckout =
+    subscription != null && ['trial_expired', 'paused', 'canceled', 'past_due', 'unpaid'].includes(subscription.status);
   const showTrialCtaRow =
     Boolean(data?.billing) &&
     !isEnterprisePlan &&
@@ -732,6 +736,14 @@ export function UserBillingLive({
     } finally {
       setCheckoutPlan(null);
     }
+  }
+
+  async function openStartOrReactivateCheckout(plan: ShopPlan) {
+    if (shouldUseReactivateCheckout) {
+      await openReactivateCheckout();
+      return;
+    }
+    await openCheckout(plan);
   }
 
   async function openManageBilling() {
@@ -863,7 +875,7 @@ export function UserBillingLive({
                       <strong>Checkout was cancelled.</strong> Your live answering trial was not started. Setup and test calls still work.
                     </p>
                     {checkoutAvailable ? (
-                      <button type="button" className="btn user-save" disabled={checkoutPlan !== null} onClick={() => void openCheckout(currentPlan)}>
+                      <button type="button" className="btn user-save" disabled={checkoutPlan !== null} onClick={() => void openStartOrReactivateCheckout(currentPlan)}>
                         {checkoutPlan ? 'Starting…' : 'Try again'}
                       </button>
                     ) : null}
@@ -900,8 +912,8 @@ export function UserBillingLive({
                         No charge today · RingBooker answers live calls after billing and phone forwarding are set up.
                       </p>
                     </div>
-                    <div className="billing-trial-cta__toggle">
-                      {checkoutAvailable && availableBillingIntervals.length > 1 ? (
+                    {checkoutAvailable && availableBillingIntervals.length > 1 ? (
+                      <div className="billing-trial-cta__toggle">
                         <div className="billing-cycle-pill" role="group" aria-label="Billing cycle">
                           <button
                             type="button"
@@ -922,15 +934,15 @@ export function UserBillingLive({
                             ) : null}
                           </button>
                         </div>
-                      ) : null}
-                    </div>
+                      </div>
+                    ) : null}
                     <div className="billing-trial-cta__action">
                       {checkoutAvailable ? (
                         <button
                           type="button"
                           className="btn user-save"
                           disabled={checkoutPlan !== null}
-                          onClick={() => void openCheckout(currentPlan)}
+                          onClick={() => void openStartOrReactivateCheckout(currentPlan)}
                         >
                           {checkoutPlan ? 'Starting…' : 'Start 14-day trial'}
                         </button>
@@ -1028,7 +1040,7 @@ export function UserBillingLive({
                                     type="button"
                                     className="btn user-save"
                                     disabled={checkoutPlan !== null}
-                                    onClick={() => void openCheckout(currentPlan)}
+                                    onClick={() => void openStartOrReactivateCheckout(currentPlan)}
                                   >
                                     {checkoutPlan ? 'Starting…' : 'Add payment method'}
                                   </button>
@@ -1290,7 +1302,7 @@ export function UserBillingLive({
                                   type="button"
                                   className="btn user-save"
                                   disabled={isBusy || !checkoutAvailable}
-                                  onClick={() => void openCheckout(plan.key)}
+                                  onClick={() => void openStartOrReactivateCheckout(plan.key)}
                                 >
                                   {isBusy ? 'Starting…' : checkoutAvailable ? 'Start 14-day trial' : 'Payment setup unavailable'}
                                 </button>
@@ -1330,7 +1342,7 @@ export function UserBillingLive({
                                   type="button"
                                   className="btn purple"
                                   disabled={isBusy}
-                                  onClick={() => void openCheckout('professional')}
+                                  onClick={() => void openStartOrReactivateCheckout('professional')}
                                 >
                                   {isBusy ? 'Starting…' : 'Set up billing for Pro'}
                                 </button>

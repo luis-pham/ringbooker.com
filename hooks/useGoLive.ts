@@ -172,7 +172,8 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
 
   const startTrial = useCallback(async () => {
     setError(null);
-    const res = await fetch('/api/backend/user/billing/checkout', {
+    const shouldReactivate = status.billing.status === 'cancelled' || status.billing.status === 'past_due';
+    const res = await fetch(shouldReactivate ? '/api/backend/user/billing/reactivate' : '/api/backend/user/billing/checkout', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -185,7 +186,7 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       throw new Error(msg);
     }
     window.location.href = body.checkoutUrl;
-  }, []);
+  }, [status.billing.status]);
 
   const provisionNumber = useCallback(async () => {
     await postJson('/api/backend/user/phone-numbers/provision-forwarding-number', { confirmGoLiveIntent: true });

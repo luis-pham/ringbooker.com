@@ -7054,6 +7054,19 @@ export function createBackendApp(deps: {
         })) ?? subscription;
     }
     if (!subscription || !['trialing', 'trial_expired', 'paused', 'canceled', 'active', 'incomplete', 'past_due', 'unpaid'].includes(subscription.status)) {
+      logger.warn(
+        {
+          shopId: shop.id,
+          plan: shop.plan,
+          subscriptionId: subscription?.id ?? null,
+          subscriptionStatus: subscription?.status ?? null,
+          subscriptionProvider: subscription?.provider ?? null,
+          providerCustomerId: subscription?.providerCustomerId ?? existingPaddleCustomer?.providerCustomerId ?? null,
+          providerSubscriptionId: subscription?.providerSubscriptionId ?? null,
+          hasExistingPaddleCustomer: Boolean(existingPaddleCustomer?.providerCustomerId?.trim()),
+        },
+        'user_billing_checkout_subscription_not_ready',
+      );
       return c.json(
         {
           ok: false,
