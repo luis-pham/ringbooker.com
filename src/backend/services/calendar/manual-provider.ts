@@ -17,7 +17,9 @@ export class ManualCalendarProvider implements CalendarProvider {
   async createBooking(input: BookingInput): Promise<BookingResult> {
     return {
       bookingId: `manual-${input.idempotencyKey}`,
-      confirmed: true,
+      // No calendar integration — request is captured in RingBooker only.
+      // The owner must confirm via notification. Do NOT set confirmed: true here.
+      confirmed: false,
     };
   }
 

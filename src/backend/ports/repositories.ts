@@ -3,6 +3,7 @@ import type { VoiceCallLegPurpose, VoiceCallLegRecord } from '@/src/backend/doma
 import type {
   BlogPost,
   BlogPostStatus,
+  Customer,
   BillingCustomer,
   BillingProvider,
   BillingSubscription,
@@ -835,6 +836,7 @@ export interface OutboundMessagesRepository {
     providerMessageId?: string;
   }): Promise<void>;
   listByBookingId?(bookingId: string): Promise<OutboundMessageRecord[]>;
+  listMissedCallSmsSentPhones?(shopId: string, phones: string[]): Promise<Set<string>>;
 }
 
 export type AuthRole = 'user' | 'admin';
@@ -1052,4 +1054,13 @@ export interface VoiceCallLegsRepository {
   }): Promise<void>;
 
   markCallLegEnded(callControlId: string, purpose?: VoiceCallLegPurpose): Promise<void>;
+}
+
+export interface CustomersRepository {
+  /** Returns true if the customer has opted out of automated SMS (replied STOP). */
+  isSmsOptedOut(shopId: string, phone: string): Promise<boolean>;
+  /** Persist an inbound STOP reply — prevents all future automated SMS to this number. */
+  setSmsOptOut(shopId: string, phone: string, optOut: boolean): Promise<void>;
+  /** Upsert a customer record (visit tracking, name, etc.). Does not touch sms_opt_out. */
+  upsert(customer: Omit<Customer, 'sms_opt_out'>): Promise<Customer>;
 }

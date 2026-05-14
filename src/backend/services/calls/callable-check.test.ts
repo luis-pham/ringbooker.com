@@ -68,6 +68,18 @@ test('isShopCallable allows services-only for professional', () => {
   assert.equal(r.ok, true);
 });
 
+test('isShopCallable allows starter with services only (no script needed)', () => {
+  const r = isShopCallable(
+    baseShop({
+      plan: 'starter',
+      services: [{ name: 'X', duration_min: 10, price: 5 }],
+      ai_welcome_message: null,
+      ai_custom_instructions: null,
+    }),
+  );
+  assert.equal(r.ok, true);
+});
+
 test('isShopCallable allows starter when AI script present even without services', () => {
   const r = isShopCallable(
     baseShop({
@@ -79,15 +91,33 @@ test('isShopCallable allows starter when AI script present even without services
   assert.equal(r.ok, true);
 });
 
-test('isShopCallable rejects starter with services only (no script)', () => {
+test('isShopCallable allows shop with service_catalog and empty services list', () => {
   const r = isShopCallable(
     baseShop({
-      plan: 'starter',
-      services: [{ name: 'X', duration_min: 10, price: 5 }],
+      services: [],
       ai_welcome_message: null,
       ai_custom_instructions: null,
+      service_catalog: {
+        categories: [],
+        services: [{ id: 'svc-1', shopId: 'shop-1', name: 'Manicure', active: true, categoryId: null, durationMinutes: 30, priceAmount: 40, priceCurrency: 'USD', priceType: 'fixed', sortOrder: 0, description: null, bookingNotes: null, variants: [], bookable: true, aliases: [] }],
+      },
+    }),
+  );
+  assert.equal(r.ok, true);
+});
+
+test('isShopCallable rejects inactive service_catalog entries', () => {
+  const r = isShopCallable(
+    baseShop({
+      services: [],
+      ai_welcome_message: null,
+      ai_custom_instructions: null,
+      service_catalog: {
+        categories: [],
+        services: [{ id: 'svc-1', shopId: 'shop-1', name: 'Manicure', active: false, categoryId: null, durationMinutes: 30, priceAmount: 40, priceCurrency: 'USD', priceType: 'fixed', sortOrder: 0, description: null, bookingNotes: null, variants: [], bookable: true, aliases: [] }],
+      },
     }),
   );
   assert.equal(r.ok, false);
-  if (!r.ok) assert.equal(r.reason, 'plan_requires_ai_config');
+  if (!r.ok) assert.equal(r.reason, 'insufficient_config');
 });

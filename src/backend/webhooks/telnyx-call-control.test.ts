@@ -257,11 +257,11 @@ test('evaluateTelnyxCallControlInboundInitiated demo DID wins over shop with sam
   });
   const conflictShop = await repo.findById(conflict.id);
   assert.ok(conflictShop);
+  // Shop has services → callable (no longer blocked by plan_requires_ai_config).
   const callable = isShopCallable(conflictShop);
-  assert.equal(callable.ok, false);
-  if (callable.ok) assert.fail();
-  assert.equal(callable.reason, 'plan_requires_ai_config');
+  assert.equal(callable.ok, true);
 
+  // Despite the shop being callable, demo DID takes precedence.
   const result = await evaluateTelnyxCallControlInboundInitiated(
     { call_control_id: 'cc_col', direction: 'inbound', to: demoPhone, from: '+15551111111' },
     { shopsRepository: repo },
@@ -271,7 +271,6 @@ test('evaluateTelnyxCallControlInboundInitiated demo DID wins over shop with sam
   assert.equal(result.decision, 'answer');
   assert.equal(result.routeKind, 'demo');
   assert.equal(result.reason, 'vertical_demo_did_matched');
-  assert.notEqual(result.reason, 'plan_requires_ai_config');
 
   resetEnvCacheForTests();
   clearVerticalDemoPhoneEnv();

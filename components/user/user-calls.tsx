@@ -51,7 +51,7 @@ const callsPortalStyles = String.raw`
 .calls-caller-body{min-width:0}
 .calls-caller-line1{display:flex;align-items:center;gap:8px;min-width:0}
 .calls-caller-phone{font-size:13px;font-weight:500;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.calls-repeat-badge{background:#f5f3ff;color:#7c3aed;font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.calls-repeat-badge{background:#f5f3ff;color:#7c3aed;font-size:11px;padding:2px 8px;border-radius:20px;white-space:nowrap}.calls-sms-sent-badge{background:#dcfce7;color:#15803d;font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap;display:inline-block;margin-left:4px}
 .calls-caller-routed{font-size:11px;color:var(--text-light);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .calls-table-datetime{font-size:13px;color:var(--text-gray);line-height:1.4}
 .calls-table-datetime span{display:block;color:var(--text-light);font-size:11px;margin-top:2px}

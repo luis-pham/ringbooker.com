@@ -64,7 +64,8 @@ function daysRemaining(value: string | null | undefined, now: Date): number | nu
 }
 
 function testCallLimitForPlan(plan: Shop['plan']): number {
-  return plan === 'professional' ? 5 : 3;
+  if (plan === 'professional' || plan === 'enterprise') return 5;
+  return 3;
 }
 
 const inactiveAccess = (): ShopBillingAccess => ({

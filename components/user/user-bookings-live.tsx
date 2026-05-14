@@ -18,13 +18,15 @@ import { formatShopDate, formatShopDateTime, formatShopTime, getShopTimezone } f
 type BookingStatus =
   | 'captured'
   | 'link_sent'
+  | 'contacted'
   | 'confirmed'
   | 'reminder_sent'
   | 'cancel_link_sent'
+  | 'declined'
   | 'cancelled'
   | 'rescheduled'
   | 'completed';
-type BookingFilter = 'all' | 'awaiting_action' | 'confirmed' | 'rescheduled' | 'cancelled' | 'completed';
+type BookingFilter = 'all' | 'awaiting_action' | 'contacted' | 'confirmed' | 'declined' | 'rescheduled' | 'cancelled' | 'completed';
 type SmsType = 'booking_link' | 'confirmation' | 'reminder' | 'cancel_link' | 'reschedule_link' | 'owner_summary';
 
 type SmsLogEntry = {
@@ -69,7 +71,9 @@ type Booking = {
 type BookingsStats = {
   total: number;
   awaitingAction: number;
+  contacted: number;
   confirmed: number;
+  declined: number;
   cancelled: number;
   completed: number;
 };
@@ -86,7 +90,7 @@ export type BookingsResponse = {
 };
 
 const USER_BOOKINGS_PAGE_SIZE = 25;
-const EMPTY_STATS: BookingsStats = { total: 0, awaitingAction: 0, confirmed: 0, cancelled: 0, completed: 0 };
+const EMPTY_STATS: BookingsStats = { total: 0, awaitingAction: 0, contacted: 0, confirmed: 0, declined: 0, cancelled: 0, completed: 0 };
 
 function formatPhone(value?: string | null) {
   if (!value) return 'Unknown';
@@ -110,18 +114,20 @@ function avatarGlyph(booking: Booking): string {
 function normalizeStatus(status?: string): BookingStatus {
   if (status === 'pending') return 'captured';
   if (status === 'no_show') return 'cancelled';
-  if (status === 'link_sent' || status === 'confirmed' || status === 'reminder_sent' || status === 'cancel_link_sent' || status === 'cancelled' || status === 'rescheduled' || status === 'completed') return status;
+  if (status === 'link_sent' || status === 'contacted' || status === 'confirmed' || status === 'reminder_sent' || status === 'cancel_link_sent' || status === 'declined' || status === 'cancelled' || status === 'rescheduled' || status === 'completed') return status;
   return 'captured';
 }
 
 function statusMeta(statusValue?: string) {
   const status = normalizeStatus(statusValue);
   const map: Record<BookingStatus, { label: string; className: string }> = {
-    captured: { label: 'Captured', className: 'booking-status booking-status--captured' },
+    captured: { label: 'New', className: 'booking-status booking-status--captured' },
     link_sent: { label: '🔗 Link sent', className: 'booking-status booking-status--link' },
+    contacted: { label: '📞 Contacted', className: 'booking-status booking-status--contacted' },
     confirmed: { label: '✓ Confirmed', className: 'booking-status booking-status--confirmed' },
     reminder_sent: { label: '🔔 Reminder sent', className: 'booking-status booking-status--confirmed' },
     cancel_link_sent: { label: 'Cancel link sent', className: 'booking-status booking-status--warning' },
+    declined: { label: '✕ Declined', className: 'booking-status booking-status--declined' },
     cancelled: { label: '✕ Cancelled', className: 'booking-status booking-status--cancelled' },
     rescheduled: { label: '↻ Rescheduled', className: 'booking-status booking-status--rescheduled' },
     completed: { label: 'Completed', className: 'booking-status booking-status--completed' },
@@ -142,7 +148,7 @@ function smsLabel(type: SmsType): string {
 }
 
 function tabFromSearch(value: string | null): BookingFilter {
-  if (value === 'awaiting_action' || value === 'confirmed' || value === 'rescheduled' || value === 'cancelled' || value === 'completed') return value;
+  if (value === 'awaiting_action' || value === 'contacted' || value === 'confirmed' || value === 'declined' || value === 'rescheduled' || value === 'cancelled' || value === 'completed') return value;
   return 'all';
 }
 
@@ -268,8 +274,10 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
   const tabs = useMemo(
     () => [
       { value: 'all' as const, label: 'All', count: 0 },
-      { value: 'awaiting_action' as const, label: 'Awaiting action', count: stats.awaitingAction },
+      { value: 'awaiting_action' as const, label: 'New', count: stats.awaitingAction },
+      { value: 'contacted' as const, label: 'Contacted', count: stats.contacted },
       { value: 'confirmed' as const, label: 'Confirmed', count: stats.confirmed },
+      { value: 'declined' as const, label: 'Declined', count: stats.declined },
       { value: 'rescheduled' as const, label: 'Rescheduled', count: 0 },
       { value: 'cancelled' as const, label: 'Cancelled', count: stats.cancelled },
       { value: 'completed' as const, label: 'Completed', count: stats.completed },
@@ -299,9 +307,9 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
               {hasAnyStats(stats) ? (
                 <section className="bookings-metric-grid" aria-label="Booking summary">
                   <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--blue">▣</span><div><p>Total requests</p><strong>{stats.total}</strong></div></div>
-                  <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--amber">⏳</span><div><p>Awaiting action</p><strong>{stats.awaitingAction}</strong></div></div>
+                  <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--amber">⏳</span><div><p>New</p><strong>{stats.awaitingAction}</strong></div></div>
+                  <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--purple">📞</span><div><p>Contacted</p><strong>{stats.contacted}</strong></div></div>
                   <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--green">✓</span><div><p>Confirmed</p><strong>{stats.confirmed}</strong></div></div>
-                  <div className="bookings-metric-card"><span className="bookings-stat-icon bookings-stat-icon--red">✕</span><div><p>Cancelled</p><strong>{stats.cancelled}</strong></div></div>
                 </section>
               ) : null}
 
@@ -389,7 +397,26 @@ export function UserBookingsLive({ initialData = null }: { initialData?: Booking
               <section className="booking-detail-section"><h3>Booking info</h3><dl><dt>Service</dt><dd>{activeBooking.serviceRequested || 'Not specified'}</dd><dt>Provider</dt><dd>{activeBooking.providerRequested || 'Any available'}</dd><dt>Date</dt><dd>{formatAppointment(activeBooking, shopTimezone)}</dd><dt>Duration</dt><dd>{activeBooking.durationMinutes ? `${activeBooking.durationMinutes} min` : 'Not set'}</dd><dt>Status</dt><dd><span className={statusMeta(activeBooking.status).className}>{statusMeta(activeBooking.status).label}</span></dd><dt>Integration</dt><dd>{activeBooking.integrationId || 'No integration'}</dd></dl></section>
               <section className="booking-detail-section"><h3>Parent call</h3>{activeBooking.parentCall ? <dl><dt>Called</dt><dd>{formatShopDateTime(activeBooking.parentCall.startedAt, shopTimezone)}</dd><dt>Duration</dt><dd>{activeBooking.parentCall.durationSeconds ? `${activeBooking.parentCall.durationSeconds}s` : 'Not set'}</dd><dt>Transcript</dt><dd>{activeBooking.parentCall.transcriptAvailable ? <a href={`/user/calls?callId=${encodeURIComponent(activeBooking.parentCall.id)}`}>View transcript →</a> : 'Pending'}</dd></dl> : <p className="booking-muted">No linked call available.</p>}</section>
               <section className="booking-detail-section"><h3>SMS history</h3>{activeBooking.smsLog?.length ? <div className="booking-sms-timeline">{activeBooking.smsLog.map((entry) => <div className="booking-sms-entry" key={entry.id}><span className={entry.failedAt ? 'failed' : ''} /><div><strong>{smsLabel(entry.type)}</strong><p>{formatShopDateTime(entry.failedAt || entry.deliveredAt || entry.sentAt, shopTimezone)}</p></div></div>)}</div> : <p className="booking-muted">No SMS history for this booking yet.</p>}</section>
-              {(activeStatus === 'confirmed' || activeStatus === 'reminder_sent' || activeStatus === 'rescheduled') ? <section className="booking-detail-section"><h3>Mark as</h3><div className="booking-override-actions">{activeStatus === 'rescheduled' ? <button type="button" onClick={() => void updateBookingStatus('confirmed')}>✓ Mark as confirmed</button> : <><button type="button" onClick={() => void updateBookingStatus('completed')}>✓ Mark as completed</button><button type="button" className="danger" onClick={() => void updateBookingStatus('cancelled')}>✕ Mark as cancelled</button></>}</div></section> : null}
+              {(activeStatus === 'captured' || activeStatus === 'link_sent') ? (
+                <section className="booking-detail-section"><h3>Actions</h3><div className="booking-override-actions">
+                  <button type="button" onClick={() => void updateBookingStatus('contacted')}>📞 Mark as contacted</button>
+                  <button type="button" className="danger" onClick={() => void updateBookingStatus('cancelled')}>✕ Cancel</button>
+                </div></section>
+              ) : activeStatus === 'contacted' ? (
+                <section className="booking-detail-section"><h3>Actions</h3><div className="booking-override-actions">
+                  <button type="button" onClick={() => void updateBookingStatus('confirmed')}>✓ Confirm appointment</button>
+                  <button type="button" className="warning" onClick={() => void updateBookingStatus('declined')}>✕ Mark as declined</button>
+                  <button type="button" className="danger" onClick={() => void updateBookingStatus('cancelled')}>✕ Cancel</button>
+                </div></section>
+              ) : (activeStatus === 'confirmed' || activeStatus === 'reminder_sent' || activeStatus === 'rescheduled') ? (
+                <section className="booking-detail-section"><h3>Actions</h3><div className="booking-override-actions">
+                  {activeStatus === 'rescheduled' ? (
+                    <button type="button" onClick={() => void updateBookingStatus('confirmed')}>✓ Re-confirm</button>
+                  ) : (
+                    <><button type="button" onClick={() => void updateBookingStatus('completed')}>✓ Mark as completed</button><button type="button" className="danger" onClick={() => void updateBookingStatus('cancelled')}>✕ Cancel</button></>
+                  )}
+                </div></section>
+              ) : null}
             </aside>
           </div>
         ) : null}

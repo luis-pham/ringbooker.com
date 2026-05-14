@@ -45,6 +45,7 @@ type ServiceItem = {
   sourceHint?: string | null;
   evidenceSnippet?: string | null;
   variants?: ServiceVariant[];
+  aiKnowledgeStatus?: 'imported_unreviewed' | 'owner_reviewed' | null;
 };
 type ServiceCatalogResponse = {
   categories: Array<{ id: string; name: string; sortOrder: number; active: boolean }>;
@@ -61,6 +62,7 @@ type ServiceCatalogResponse = {
     sortOrder: number;
     active: boolean;
     variants?: ServiceVariant[];
+    aiKnowledgeStatus?: 'imported_unreviewed' | 'owner_reviewed' | null;
   }>;
 };
 type ApiHours = Record<string, { closed: true } | { open: string; close: string }>;
@@ -839,6 +841,7 @@ function servicesFromImport(suggestions?: ImportedWebsiteSuggestions): ServiceIt
       sourceHint: service.sourceHint ?? null,
       evidenceSnippet: service.evidenceSnippet?.trim() || null,
       variants: service.variants ?? [],
+      aiKnowledgeStatus: 'imported_unreviewed' as const,
     }));
 }
 
@@ -1057,6 +1060,7 @@ function cleanServices(rows: ServiceItem[]): ServiceItem[] {
       aliases: item.aliases ?? [],
       price_type: item.price_type ?? (item.price > 0 ? 'fixed' : 'varies'),
       bookable: item.bookable ?? true,
+      aiKnowledgeStatus: item.aiKnowledgeStatus ?? null,
       variants: (item.variants ?? []).slice(0, 20).map((variant, index) => ({
         ...variant,
         label: variant.label?.trim() || variant.durationText?.trim() || (variant.priceAmount !== null && variant.priceAmount !== undefined ? `$${variant.priceAmount}` : `Option ${index + 1}`),
@@ -1104,6 +1108,7 @@ function servicesFromCatalog(catalog?: ServiceCatalogResponse | null): ServiceIt
         price_type: service.priceType ?? 'fixed',
         bookable: service.bookable ?? true,
         variants: service.variants ?? [],
+        aiKnowledgeStatus: service.aiKnowledgeStatus ?? null,
       };
     });
 }
@@ -1140,6 +1145,7 @@ function serviceCatalogFromRows(rows: ServiceItem[], extraGroups: string[] = [])
         sortOrder: index,
         aliases: service.aliases ?? [],
         variants: service.variants ?? [],
+        aiKnowledgeStatus: service.aiKnowledgeStatus ?? null,
       };
     }),
   };
@@ -1882,6 +1888,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     if (vertical === 'beauty_clinic' && !beautySubtype) invalidFields.push('type');
     if (!timezone.trim()) invalidFields.push('timezone');
     if (websiteUrl.trim() && !isHttpWebsiteUrl(websiteUrl)) invalidFields.push('website');
+    // Phone is required when the current value is still a signup placeholder.
+    if (initialSyntheticPhone && !businessPhone.trim()) invalidFields.push('phone');
 
     if (invalidFields.length > 0) {
       setProfileReviewInvalidFields([...new Set(invalidFields)]);
@@ -1892,7 +1900,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
             ? 'Please choose the business type before continuing.'
             : invalidFields.includes('timezone')
               ? 'Please choose your timezone before continuing.'
-              : 'Please enter a valid website link before continuing.',
+              : invalidFields.includes('phone')
+                ? 'Please add your business phone number before continuing.'
+                : 'Please enter a valid website link before continuing.',
       );
       setStatus(null);
       return;
@@ -2155,6 +2165,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       duration_min: parseDurationTextToMinutes(serviceEditor.draft.duration_text) ?? serviceEditor.draft.duration_min ?? null,
       duration_text: serviceEditor.draft.duration_text?.trim() || null,
       needsReview: false,
+      aiKnowledgeStatus: 'owner_reviewed',
     };
     if (!draft.name) return;
     if (serviceEditor.index === null) {
@@ -2380,7 +2391,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .service-group-body{display:grid;gap:0;padding:12px 16px 16px}
 .onb-service-row-wrap{position:relative;border-bottom:1px solid #f3f4f6}.onb-service-row-wrap:last-of-type{border-bottom:0}
 .onb-service-row{width:100%;border:0;background:transparent;padding:11px 0;display:flex;align-items:center;gap:14px;text-align:left;font:inherit;cursor:pointer;color:#111}
-.onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-service-variants-preview{display:block;margin-top:3px;color:#6b7280;font-size:12px;text-transform:none;white-space:normal}.svc-variants{margin:0 0 3px;color:#9ca3af;font-size:12px;line-height:1.35}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{color:#9ca3af;font-size:12px;font-weight:500;opacity:0;transition:opacity .15s ease}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1}
+.onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-ai-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;vertical-align:middle;text-transform:none;white-space:nowrap}.onb-service-variants-preview{display:block;margin-top:3px;color:#6b7280;font-size:12px;text-transform:none;white-space:normal}.svc-variants{margin:0 0 3px;color:#9ca3af;font-size:12px;line-height:1.35}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{color:#9ca3af;font-size:12px;font-weight:500;opacity:0;transition:opacity .15s ease}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1}
 .onb-service-row-mobile{display:none}.onb-service-mobile-meta{color:#6b7280;font-size:12px;text-align:right;white-space:nowrap}.onb-service-mobile-arrow{color:#9ca3af;font-size:22px;line-height:1}
 .svc-row{display:none}.svc-body{flex:1;min-width:0}.svc-name{font-size:13px;font-weight:400;color:#111;text-transform:capitalize;line-height:1.35;margin-bottom:3px;overflow-wrap:anywhere}.svc-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af;flex-wrap:nowrap;min-width:0}.svc-price{color:#374151;font-weight:500;white-space:nowrap}.svc-price.zero{color:#dc2626}.svc-duration{white-space:nowrap}.svc-duration.missing{color:#f59e0b}.svc-remove{margin-left:auto;font-size:12px;color:#9ca3af;background:none;border:none;padding:0;cursor:pointer;flex-shrink:0}.svc-remove:active{color:#dc2626}.svc-arrow{color:#d1d5db;font-size:16px;flex-shrink:0;align-self:flex-start;margin-top:1px}
 .onb-service-edit-row{display:grid;gap:8px;align-items:center;padding:8px 0}.onb-service-edit-main-row{display:flex;gap:8px;align-items:center}.onb-service-edit-main-row>input:first-child{flex:1;min-width:0}.onb-service-edit-main-row>.onb-service-price-input,.onb-service-edit-main-row>input[aria-label="Duration"]{width:90px;flex:0 0 90px}.onb-service-edit-row input,.onb-service-sheet-fields input{min-height:34px;border:1px solid #7c3aed;border-radius:8px;padding:6px 10px;font-size:16px;font-family:inherit;color:#111827;box-sizing:border-box;background:#fff;width:100%}.onb-service-price-input{position:relative}.onb-service-price-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px}.onb-service-price-input input{padding-left:24px!important}.onb-service-variants-editor{grid-column:1 / -1;display:grid;gap:8px;border:1px solid #ede9fe;border-radius:10px;background:#faf5ff;padding:10px}.onb-service-variants-label{font-size:12px;font-weight:700;color:#6d28d9}.onb-service-variant-edit{display:grid;grid-template-columns:minmax(0,1fr) 100px 90px 28px;gap:8px}.onb-service-variant-edit button{border:0;border-radius:999px;background:#f3f4f6;color:#6b7280;cursor:pointer}.onb-service-add-option{grid-column:1 / -1;border:1px dashed #ddd6fe;border-radius:8px;background:#fff;color:#7c3aed;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer}
@@ -3771,6 +3782,9 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                         <button type="button" className="onb-service-row onb-service-row-desktop" onClick={() => openServiceEditor(index, group, 'inline')}>
                           <span className="onb-service-name">
                             {service.name || 'Untitled service'}
+                            {service.aiKnowledgeStatus === 'imported_unreviewed' ? (
+                              <span className="onb-ai-badge" title="Imported from website — tap Edit to confirm">AI imported</span>
+                            ) : null}
                             {service.variants?.length ? (
                               <span className="onb-service-variants-preview">
                                 {service.variants.slice(0, 4).map(formatServiceVariant).join(' · ')}
@@ -3799,7 +3813,12 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                           }}
                         >
                           <div className="svc-body">
-                            <div className="svc-name">{service.name || 'Untitled service'}</div>
+                            <div className="svc-name">
+                              {service.name || 'Untitled service'}
+                              {service.aiKnowledgeStatus === 'imported_unreviewed' ? (
+                                <span className="onb-ai-badge" title="Imported from website — tap Edit to confirm">AI imported</span>
+                              ) : null}
+                            </div>
                             {service.variants?.length ? (
                               <div className="svc-variants">{service.variants.slice(0, 3).map(formatServiceVariant).join(' · ')}</div>
                             ) : null}
@@ -4012,10 +4031,17 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }
 
   function renderStep4() {
+    const unreviewedServiceCount = services.filter((s) => s.aiKnowledgeStatus === 'imported_unreviewed').length;
     return (
       <div>
         <h1 className="onb-title">Meet your AI receptionist</h1>
         <p className="onb-subtitle">Try RingBooker before it answers real callers. No card is needed for setup and test calls.</p>
+
+        {unreviewedServiceCount > 0 ? (
+          <div className="onb-warning" style={{ marginBottom: 16 }}>
+            <strong>{unreviewedServiceCount} service{unreviewedServiceCount !== 1 ? 's' : ''} imported from your website</strong> — your AI will use them but they haven&apos;t been reviewed yet. Go back to step 3 to confirm prices and details.
+          </div>
+        ) : null}
 
         {step4Phase === 'try' ? (
           <>

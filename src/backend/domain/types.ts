@@ -19,9 +19,11 @@ export type BookingStatus =
   | 'pending'
   | 'captured'
   | 'link_sent'
+  | 'contacted'
   | 'confirmed'
   | 'reminder_sent'
   | 'cancel_link_sent'
+  | 'declined'
   | 'cancelled'
   | 'rescheduled'
   | 'completed'
@@ -56,6 +58,7 @@ export type JobType =
   | 'review_request_sms'
   | 'post_call_summary'
   | 'handoff_failed_owner_sms'
+  | 'new_booking_request_owner_alert'
   | 'lifecycle_email'
   | 'trial_reminder_email'
   | 'trial_expiry_check';
@@ -126,6 +129,7 @@ export interface ShopService {
   externalLocationId?: string | null;
   externalStaffRequired?: boolean;
   externalMetadata?: Record<string, unknown>;
+  aiKnowledgeStatus?: 'imported_unreviewed' | 'owner_reviewed' | null;
   createdAt?: string;
   updatedAt?: string;
 }

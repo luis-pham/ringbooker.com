@@ -50,6 +50,18 @@ export class SupabaseOutboundMessagesRepository implements OutboundMessagesRepos
     }
   }
 
+  async listMissedCallSmsSentPhones(shopId: string, phones: string[]): Promise<Set<string>> {
+    if (phones.length === 0) return new Set();
+    const { data } = await this.supabase
+      .from('outbound_messages')
+      .select('customer_phone')
+      .eq('shop_id', shopId)
+      .eq('category', 'missed_call')
+      .in('customer_phone', phones)
+      .returns<{ customer_phone: string }[]>();
+    return new Set((data ?? []).map((row) => row.customer_phone));
+  }
+
   async listByBookingId(bookingId: string): Promise<OutboundMessageRecord[]> {
     const { data, error } = await this.supabase
       .from('outbound_messages')

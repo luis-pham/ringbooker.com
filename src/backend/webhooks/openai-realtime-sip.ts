@@ -689,6 +689,19 @@ export async function handleOpenAiRealtimeSipWebhook(
             }
             return executeSipShopToolCall(toolCtx, name, parsed);
           },
+          onTranscript: deps.callLogsRepository && shopRoomContext
+            ? (speaker, text) => {
+                void deps.callLogsRepository!.appendTranscriptByRequestId({
+                  shopId: route.shop.id,
+                  requestId: shopRoomContext.requestId,
+                  speaker,
+                  text,
+                  occurredAt: new Date(),
+                }).catch((err: unknown) => {
+                  logger.warn({ err, callId, shopId: route.shop.id }, 'openai_sip_transcript_append_failed');
+                });
+              }
+            : undefined,
         });
       }
     }

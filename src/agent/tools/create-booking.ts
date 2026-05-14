@@ -26,7 +26,7 @@ export async function createBookingTool(
   ctx: AgentToolContext,
   input: unknown,
 ): Promise<
-  | { success: true; bookingId: string; calendarEventId?: string; bookedWithTech?: string; message?: string }
+  | { success: true; bookingId: string; confirmed: boolean; calendarEventId?: string; bookedWithTech?: string; message?: string }
   | { success: false; techNotAvailable: true; requestedTech: string; message: string }
   | ToolError
 > {
@@ -177,6 +177,7 @@ export async function createBookingTool(
           appointmentTime: parsed.data.time,
           techName: parsed.data.techName,
           shopName: ctx.shop.name,
+          confirmed: result.confirmed,
         },
         runAt: new Date(),
         idempotencyKey: `booking:${booking.id}:confirmation`,
@@ -185,9 +186,34 @@ export async function createBookingTool(
       console.warn('booking_confirmation_sms enqueue failed', smsEnqueueErr);
     }
 
+    if (!result.confirmed) {
+      try {
+        await ctx.jobsRepository.enqueue({
+          shopId: ctx.shop.id,
+          type: 'new_booking_request_owner_alert',
+          payload: {
+            shopId: ctx.shop.id,
+            bookingId: booking.id,
+            callerPhone: ctx.callerPhone,
+            callerName: parsed.data.customerName,
+            serviceName: parsed.data.service,
+            appointmentDate: parsed.data.date,
+            appointmentTime: parsed.data.time,
+            techName: parsed.data.techName,
+            notes: parsed.data.notes,
+          },
+          runAt: new Date(),
+          idempotencyKey: `booking:${booking.id}:owner-alert`,
+        });
+      } catch (ownerAlertErr) {
+        logger.warn({ err: ownerAlertErr, shopId: ctx.shop.id, bookingId: booking.id }, 'new_booking_request_owner_alert_enqueue_failed');
+      }
+    }
+
     return {
       success: true,
       bookingId: booking.id,
+      confirmed: result.confirmed,
       calendarEventId: result.calendarEventId,
       ...(teamMemberId && parsed.data.techName
         ? {

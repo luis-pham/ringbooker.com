@@ -33,6 +33,14 @@ export class InMemoryOutboundMessagesRepository implements OutboundMessagesRepos
     });
   }
 
+  async listMissedCallSmsSentPhones(shopId: string, phones: string[]): Promise<Set<string>> {
+    const phoneSet = new Set(phones);
+    const sent = this.messages
+      .filter((m) => m.shopId === shopId && m.category === 'missed_call' && phoneSet.has(m.customerPhone))
+      .map((m) => m.customerPhone);
+    return new Set(sent);
+  }
+
   async listByBookingId(bookingId: string): Promise<OutboundMessageRecord[]> {
     return this.messages
       .filter((message) => message.bookingId === bookingId)

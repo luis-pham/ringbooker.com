@@ -29,7 +29,7 @@ import {
   getShopPlanCapabilities,
   type ShopSettingCapability,
 } from '@/src/backend/domain/shop-plan-capabilities';
-import { createSignupPlaceholderBusinessPhoneE164 } from '@/src/backend/domain/signup-placeholder-phone';
+import { createShopWithPlaceholderPhoneRetry } from '@/src/backend/domain/signup-placeholder-phone';
 import { normalizePhoneForStorage } from '@/lib/phone-number';
 import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
 import { canProceedToGoLive, evaluateKnowledgeGate } from '@/src/backend/domain/go-live-gate';
@@ -82,6 +82,7 @@ import type {
   TestCallAttemptsRepository,
   ForwardingTestSessionsRepository,
   VoiceCallLegsRepository,
+  CustomersRepository,
 } from '@/src/backend/ports/repositories';
 import type { WebDemoSessionStatus, WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
@@ -519,6 +520,7 @@ const shopServiceSchema = z.object({
   aliases: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   bookingNotes: z.string().trim().max(1000).nullable().optional(),
   variants: z.array(serviceVariantSchema).max(20).optional(),
+  aiKnowledgeStatus: z.enum(['imported_unreviewed', 'owner_reviewed']).nullable().optional(),
 });
 
 const serviceCatalogSchema = z.object({
@@ -935,7 +937,7 @@ const userCallsListQuerySchema = z.object({
 });
 
 const USER_BOOKINGS_PAGE_SIZE = 25;
-const userBookingsTabSchema = z.enum(['all', 'awaiting_action', 'confirmed', 'rescheduled', 'cancelled', 'completed']);
+const userBookingsTabSchema = z.enum(['all', 'awaiting_action', 'contacted', 'confirmed', 'declined', 'rescheduled', 'cancelled', 'completed']);
 const userBookingsListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(10_000).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
@@ -945,7 +947,7 @@ const userBookingsListQuerySchema = z.object({
   callId: z.preprocess((v) => (v === '' || v == null ? undefined : String(v)), z.string().max(160).optional()),
 });
 const userBookingStatusPatchSchema = z.object({
-  status: z.enum(['captured', 'link_sent', 'confirmed', 'reminder_sent', 'cancel_link_sent', 'cancelled', 'rescheduled', 'completed']),
+  status: z.enum(['captured', 'link_sent', 'contacted', 'confirmed', 'reminder_sent', 'cancel_link_sent', 'declined', 'cancelled', 'rescheduled', 'completed']),
 });
 
 const adminShopAnalyticsQuerySchema = z.object({
@@ -986,8 +988,12 @@ function buildUserBookingFilters(parsed: z.infer<typeof userBookingsListQuerySch
   switch (parsed.tab ?? 'all') {
     case 'awaiting_action':
       return { ...base, statuses: ['captured', 'link_sent'] };
+    case 'contacted':
+      return { ...base, statuses: ['contacted'] };
     case 'confirmed':
       return { ...base, statuses: ['confirmed', 'reminder_sent'] };
+    case 'declined':
+      return { ...base, statuses: ['declined'] };
     case 'rescheduled':
       return { ...base, statuses: ['rescheduled'] };
     case 'cancelled':
@@ -1073,9 +1079,11 @@ function toUserBookingResponse(booking: BookingRecord, smsLog: OutboundMessageRe
   };
 }
 
-function userBookingStatsStatuses(kind: 'awaitingAction' | 'confirmed' | 'cancelled' | 'completed'): string[] {
+function userBookingStatsStatuses(kind: 'awaitingAction' | 'contacted' | 'confirmed' | 'declined' | 'cancelled' | 'completed'): string[] {
   if (kind === 'awaitingAction') return ['captured', 'link_sent'];
+  if (kind === 'contacted') return ['contacted'];
   if (kind === 'confirmed') return ['confirmed', 'reminder_sent'];
+  if (kind === 'declined') return ['declined'];
   if (kind === 'cancelled') return ['cancelled', 'cancel_link_sent'];
   return ['completed'];
 }
@@ -1131,7 +1139,7 @@ function buildUserCallSummary(call: CallLogListItem): string | undefined {
   return parts.length ? parts.join('\n') : undefined;
 }
 
-function toUserCallResponse(call: CallLogListItem) {
+function toUserCallResponse(call: CallLogListItem, extras: { missedFollowupSmsSent?: boolean } = {}) {
   const status = deriveUserCallStatus(call);
   const outcome = deriveUserCallOutcome(call);
   return {
@@ -1162,6 +1170,7 @@ function toUserCallResponse(call: CallLogListItem) {
     transcriptStatus: call.transcriptStatus,
     createdAt: call.startedAt,
     updatedAt: call.endedAt ?? call.startedAt,
+    missedFollowupSmsSent: extras.missedFollowupSmsSent ?? false,
   };
 }
 
@@ -1370,6 +1379,7 @@ function normalizeServiceCatalogForShop(
       sortOrder: service.sortOrder ?? index,
       aliases: service.aliases ?? [],
       bookingNotes: service.bookingNotes ?? null,
+      aiKnowledgeStatus: service.aiKnowledgeStatus ?? null,
       variants: (service.variants ?? []).slice(0, 20).map((variant, variantIndex) => ({
         id: variant.id ?? randomUUID(),
         label: variant.label?.trim() || variant.durationText?.trim() || (variant.priceAmount !== null && variant.priceAmount !== undefined ? `$${variant.priceAmount}` : `Option ${variantIndex + 1}`),
@@ -2283,6 +2293,7 @@ export function createBackendApp(deps: {
   phoneProvisioningService?: PhoneProvisioningService;
   emailService?: EmailService;
   callLogsRepository?: CallLogsRepository;
+  customersRepository?: CustomersRepository;
 	  missedCallsRepository?: MissedCallsRepository;
 	  outboundMessagesRepository?: OutboundMessagesRepository;
 	  handoffSessionsRepository?: HandoffSessionsRepository;
@@ -2541,6 +2552,7 @@ export function createBackendApp(deps: {
       billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
       shopAccessStatesRepository: deps.shopAccessStatesRepository,
       testCallAttemptsRepository: deps.testCallAttemptsRepository,
+      customersRepository: deps.customersRepository,
       });
     })(),
   );
@@ -3850,23 +3862,36 @@ export function createBackendApp(deps: {
     /* Business main line when provided — never Telnyx-provisioned during signup (P0 onboarding sprint). */
     const businessLineRaw =
       (parsed.data.phoneNumber?.trim() || '') || (parsed.data.userPhone?.trim() || '');
-    const assignedPhoneNumber =
-      businessLineRaw.length >= 6 ? businessLineRaw : createSignupPlaceholderBusinessPhoneE164();
-    const ownerPhone =
+    const userProvidedPhone = businessLineRaw.length >= 6 ? businessLineRaw : null;
+    const ownerPhoneFromForm =
       parsed.data.userPhone?.trim().length && parsed.data.userPhone.trim().length >= 6
         ? parsed.data.userPhone.trim()
-        : assignedPhoneNumber;
+        : null;
 
-    const createdShop = await deps.shopsRepository.create({
-      name: shopName,
-      brand_slug: parsed.data.brandSlug ?? toBrandSlug(shopName),
-      phone_number: assignedPhoneNumber,
-      user_phone: ownerPhone,
-      user_name: parsed.data.userName ?? null,
-      timezone: parsed.data.timezone,
-      plan: parsed.data.plan,
-      active: true,
-    });
+    // When user provides a real phone, create directly. Otherwise retry up to 5x on placeholder collision.
+    const createdShop = userProvidedPhone
+      ? await deps.shopsRepository.create({
+          name: shopName,
+          brand_slug: parsed.data.brandSlug ?? toBrandSlug(shopName),
+          phone_number: userProvidedPhone,
+          user_phone: ownerPhoneFromForm ?? userProvidedPhone,
+          user_name: parsed.data.userName ?? null,
+          timezone: parsed.data.timezone,
+          plan: parsed.data.plan,
+          active: true,
+        })
+      : await createShopWithPlaceholderPhoneRetry((placeholder) =>
+          deps.shopsRepository!.create({
+            name: shopName,
+            brand_slug: parsed.data.brandSlug ?? toBrandSlug(shopName),
+            phone_number: placeholder,
+            user_phone: placeholder,
+            user_name: parsed.data.userName ?? null,
+            timezone: parsed.data.timezone,
+            plan: parsed.data.plan,
+            active: true,
+          }),
+        );
 
     const authUser = await deps.authUsersRepository.create({
       email: normalizedEmail,
@@ -3913,7 +3938,7 @@ export function createBackendApp(deps: {
       path: c.req.path,
       details: {
         shopId: createdShop.id,
-        phoneNumber: assignedPhoneNumber,
+        phoneNumber: createdShop.phone_number,
       },
     });
 
@@ -4100,17 +4125,18 @@ export function createBackendApp(deps: {
         return c.redirect(`${appBaseUrl}/pricing?reason=plan_required`, 302);
       }
       const shopName = buildDefaultShopNameFromEmail(googleProfile.email);
-      const assignedPhoneNumber = createSignupPlaceholderBusinessPhoneE164();
-      shop = await deps.shopsRepository.create({
-        name: shopName,
-        brand_slug: toBrandSlug(shopName),
-        phone_number: assignedPhoneNumber,
-        user_phone: assignedPhoneNumber,
-        user_name: googleProfile.name?.trim() || null,
-        timezone: process.env.DEFAULT_SHOP_TIMEZONE ?? 'America/Los_Angeles',
-        plan: selectedPlan,
-        active: true,
-      });
+      shop = await createShopWithPlaceholderPhoneRetry((placeholder) =>
+        deps.shopsRepository!.create({
+          name: shopName,
+          brand_slug: toBrandSlug(shopName),
+          phone_number: placeholder,
+          user_phone: placeholder,
+          user_name: googleProfile.name?.trim() || null,
+          timezone: process.env.DEFAULT_SHOP_TIMEZONE ?? 'America/Los_Angeles',
+          plan: selectedPlan!,
+          active: true,
+        }),
+      );
       authUser = await deps.authUsersRepository.create({
         email: googleProfile.email,
         role: 'user',
@@ -5435,12 +5461,14 @@ export function createBackendApp(deps: {
     const offset = (page - 1) * limit;
     const filters = buildUserBookingFilters(parsed.data);
     const repo = deps.bookingsRepository;
-    const [bookings, total, totalAll, awaitingAction, confirmed, cancelled, completed] = await Promise.all([
+    const [bookings, total, totalAll, awaitingAction, contacted, confirmed, declined, cancelled, completed] = await Promise.all([
       repo.listByShop(shop.id, { ...filters, limit, offset }),
       repo.countByShop(shop.id, filters),
       repo.countByShop(shop.id),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('awaitingAction') }),
+      repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('contacted') }),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('confirmed') }),
+      repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('declined') }),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('cancelled') }),
       repo.countByShop(shop.id, { statuses: userBookingStatsStatuses('completed') }),
     ]);
@@ -5453,7 +5481,9 @@ export function createBackendApp(deps: {
       stats: {
         total: totalAll,
         awaitingAction,
+        contacted,
         confirmed,
+        declined,
         cancelled,
         completed,
       },
@@ -5520,6 +5550,8 @@ export function createBackendApp(deps: {
     const current = normalizeUserBookingStatus(booking.status, booking.reminder24hSent, booking.reminder2hSent);
     const next = parsed.data.status;
     const allowed =
+      ((current === 'captured' || current === 'link_sent') && (next === 'contacted' || next === 'cancelled')) ||
+      (current === 'contacted' && (next === 'confirmed' || next === 'declined' || next === 'cancelled')) ||
       ((current === 'confirmed' || current === 'reminder_sent') && (next === 'completed' || next === 'cancelled')) ||
       (current === 'rescheduled' && next === 'confirmed');
     if (!allowed) return c.json({ ok: false, error: 'invalid_status_transition' }, 400);
@@ -5629,9 +5661,16 @@ export function createBackendApp(deps: {
     ]);
     const totalPages = Math.max(1, Math.ceil(total / limit));
 
+    const missedPhones = calls
+      .filter((c) => c.outcome === 'missed' && c.callerPhone)
+      .map((c) => c.callerPhone as string);
+    const missedSmsSentPhones = missedPhones.length > 0 && deps.outboundMessagesRepository?.listMissedCallSmsSentPhones
+      ? await deps.outboundMessagesRepository.listMissedCallSmsSentPhones(shop.id, missedPhones)
+      : new Set<string>();
+
     return c.json({
       ok: true,
-      calls: calls.map(toUserCallResponse),
+      calls: calls.map((call) => toUserCallResponse(call, { missedFollowupSmsSent: missedSmsSentPhones.has(call.callerPhone ?? '') })),
       shop: { timezone: shop.timezone },
       total,
       stats: { last7Days: last7DaysCount, bookings, followUp, missed, highUrgency },

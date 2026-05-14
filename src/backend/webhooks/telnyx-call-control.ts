@@ -289,6 +289,11 @@ export function isCallBridgedEvent(eventType: string): boolean {
   return t.includes('call.bridged') || t.includes('call_bridged');
 }
 
+export function isCallCostEvent(eventType: string): boolean {
+  const t = eventType.toLowerCase();
+  return t === 'call.cost' || t === 'call_cost';
+}
+
 /** Telnyx `call.bridged` — peer leg id field name varies by API version. */
 export function bridgedPeerCallControlIdFromPayload(payload: unknown): string | null {
   return firstStringFromPayload(payload, [

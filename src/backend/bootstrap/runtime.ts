@@ -5,6 +5,7 @@ import { SupabaseHandoffSessionsRepository } from '@/src/backend/adapters/supaba
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
+import { InMemoryCustomersRepository } from '@/src/backend/adapters/memory/customers-repository';
 import { InMemoryBillingCustomersRepository } from '@/src/backend/adapters/memory/billing-customers-repository';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
 import { InMemoryBillingNotificationsRepository } from '@/src/backend/adapters/memory/billing-notifications-repository';
@@ -35,6 +36,7 @@ import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-serv
 import { ResendEmailService } from '@/src/backend/adapters/resend/email-service';
 import { SupabaseJobsRepository } from '@/src/backend/adapters/supabase/jobs-repository';
 import { SupabaseBookingsRepository } from '@/src/backend/adapters/supabase/bookings-repository';
+import { SupabaseCustomersRepository } from '@/src/backend/adapters/supabase/customers-repository';
 import { SupabaseBillingCustomersRepository } from '@/src/backend/adapters/supabase/billing-customers-repository';
 import { SupabaseBillingSubscriptionsRepository } from '@/src/backend/adapters/supabase/billing-subscriptions-repository';
 import { SupabaseBillingNotificationsRepository } from '@/src/backend/adapters/supabase/billing-notifications-repository';
@@ -164,6 +166,7 @@ export function createBackendRuntime() {
           return {
             providerEventsRepository: new SupabaseProviderEventsRepository(supabase),
             shopsRepository: new SupabaseShopsRepository(supabase),
+            customersRepository: new SupabaseCustomersRepository(supabase),
             billingCustomersRepository: new SupabaseBillingCustomersRepository(supabase),
             billingSubscriptionsRepository: new SupabaseBillingSubscriptionsRepository(supabase),
             billingNotificationsRepository: new SupabaseBillingNotificationsRepository(supabase),
@@ -194,6 +197,7 @@ export function createBackendRuntime() {
       : {
           providerEventsRepository: new InMemoryProviderEventsRepository(),
           shopsRepository: new InMemoryShopsRepository(),
+          customersRepository: new InMemoryCustomersRepository(),
           billingCustomersRepository: new InMemoryBillingCustomersRepository(),
           billingSubscriptionsRepository: new InMemoryBillingSubscriptionsRepository(),
           billingNotificationsRepository: new InMemoryBillingNotificationsRepository(),
@@ -338,6 +342,7 @@ export function createBackendRuntime() {
     agentVoiceProviderMode,
     providerEventsRepository: repositories.providerEventsRepository,
     shopsRepository: repositories.shopsRepository,
+    customersRepository: repositories.customersRepository,
     billingCustomersRepository: repositories.billingCustomersRepository,
     billingSubscriptionsRepository: repositories.billingSubscriptionsRepository,
     billingNotificationsRepository: repositories.billingNotificationsRepository,

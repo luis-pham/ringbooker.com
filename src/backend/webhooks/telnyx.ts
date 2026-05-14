@@ -6,6 +6,7 @@ import type {
   CallLogsRepository,
   CallbacksRepository,
   BillingSubscriptionsRepository,
+  CustomersRepository,
   DemoSessionsRepository,
   JobsRepository,
   MissedCallsRepository,
@@ -79,6 +80,13 @@ function isCallbackRequestMessage(eventType: string, payload: unknown): boolean 
   return ['yes', 'y', 'callback', 'call me'].includes(message);
 }
 
+function isSmsOptOutMessage(eventType: string, payload: unknown): boolean {
+  if (!(eventType.includes('message') || eventType.includes('messaging'))) return false;
+  const message = firstString(payload, ['text', 'body'])?.toLowerCase().trim() ?? '';
+  // STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT are required opt-out keywords per CTIA/carrier rules.
+  return ['stop', 'stopall', 'unsubscribe', 'cancel', 'end', 'quit'].includes(message);
+}
+
 export async function handleTelnyxWebhook(
   c: Context,
   deps: {
@@ -92,6 +100,7 @@ export async function handleTelnyxWebhook(
     billingSubscriptionsRepository?: BillingSubscriptionsRepository;
     shopAccessStatesRepository?: ShopAccessStatesRepository;
     testCallAttemptsRepository?: TestCallAttemptsRepository;
+    customersRepository?: CustomersRepository;
   },
 ) {
   const bodyText = await c.req.text();
@@ -352,6 +361,18 @@ export async function handleTelnyxWebhook(
           });
           log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_callback_request_queued');
           }
+        }
+      }
+    }
+
+    if (deps.customersRepository && deps.shopsRepository && isSmsOptOutMessage(event.event_type, event.payload)) {
+      const destinationPhone = normalizePhone(firstString(event.payload, ['to', 'to_number']));
+      const callerPhone = normalizePhone(firstString(event.payload, ['from', 'from_number']));
+      if (destinationPhone && callerPhone) {
+        const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, destinationPhone);
+        if (shop) {
+          await deps.customersRepository.setSmsOptOut(shop.id, callerPhone, true);
+          log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_sms_stop_opt_out_recorded');
         }
       }
     }

@@ -57,6 +57,7 @@ type Call = {
   transcriptStatus?: string;
   createdAt?: string;
   updatedAt?: string;
+  missedFollowupSmsSent?: boolean;
 };
 
 type CallsStats = {
@@ -356,7 +357,10 @@ export function UserCallsLive({
                                   <span className={outcome.className}>{outcome.label}</span>
                                 )}
                               </td>
-                              <td><span className={status.className}>{status.label}</span></td>
+                              <td>
+                                <span className={status.className}>{status.label}</span>
+                                {call.missedFollowupSmsSent ? <span className="calls-sms-sent-badge">SMS sent</span> : null}
+                              </td>
                               <td>
                                 {call.transcriptAvailable ? (
                                   <button className="calls-transcript-view-btn" type="button" onClick={(event) => { event.stopPropagation(); void openCall(call); }}>View</button>
@@ -387,6 +391,7 @@ export function UserCallsLive({
                               <span className={status.className}>{status.label}</span>
                             </div>
                             <div className="mobile-call-tags">
+                              {call.missedFollowupSmsSent ? <span className="calls-sms-sent-badge">SMS sent</span> : null}
                               {call.bookingCaptured ? (
                                 <span className={`${outcome.className} calls-outcome-link`} role="link" tabIndex={0} onClick={(event) => { event.stopPropagation(); openBookingForCall(call); }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); openBookingForCall(call); } }}>{outcome.label}</span>
                               ) : (

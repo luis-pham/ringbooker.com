@@ -297,9 +297,16 @@ function toShopService(row: ShopServiceRow): ShopService {
     externalServiceId: row.external_service_id ?? null,
     externalLocationId: row.external_location_id ?? null,
     externalStaffRequired: row.external_staff_required ?? false,
-    externalMetadata: row.external_metadata && typeof row.external_metadata === 'object' && !Array.isArray(row.external_metadata)
-      ? (row.external_metadata as Record<string, unknown>)
-      : {},
+    externalMetadata: (() => {
+      if (!row.external_metadata || typeof row.external_metadata !== 'object' || Array.isArray(row.external_metadata)) return {};
+      const { __aiKnowledgeStatus: _stripped, ...rest } = row.external_metadata as Record<string, unknown>;
+      return rest;
+    })(),
+    aiKnowledgeStatus: (() => {
+      if (!row.external_metadata || typeof row.external_metadata !== 'object' || Array.isArray(row.external_metadata)) return null;
+      const v = (row.external_metadata as Record<string, unknown>).__aiKnowledgeStatus;
+      return v === 'imported_unreviewed' || v === 'owner_reviewed' ? v : null;
+    })(),
     createdAt: row.created_at ?? undefined,
     updatedAt: row.updated_at ?? undefined,
   };
@@ -929,7 +936,10 @@ export class SupabaseShopsRepository implements ShopsRepository {
         external_service_id: service.externalServiceId ?? null,
         external_location_id: service.externalLocationId ?? null,
         external_staff_required: service.externalStaffRequired ?? false,
-        external_metadata: service.externalMetadata ?? {},
+        external_metadata: {
+          ...(service.externalMetadata ?? {}),
+          ...(service.aiKnowledgeStatus != null ? { __aiKnowledgeStatus: service.aiKnowledgeStatus } : {}),
+        },
         updated_at: now,
       }));
 

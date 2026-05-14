@@ -56,6 +56,7 @@ import {
   firstStringFromPayload,
   isCallAnsweredEvent,
   isCallBridgedEvent,
+  isCallCostEvent,
   isCallGatherEndedEvent,
   isCallHangupEvent,
   isCallInitiatedEvent,
@@ -303,6 +304,9 @@ export async function handleTelnyxCallControlWebhook(
   }
   if (isCallHangupEvent(event.event_type)) {
     return processCallHangup(c, { ...deps, shopsRepository }, event, bodyText, log);
+  }
+  if (isCallCostEvent(event.event_type)) {
+    return processCallCost(c, deps.providerEventsRepository, event, bodyText, log);
   }
 
   return c.json({ ok: true, ignored: true }, 200);
@@ -1292,6 +1296,58 @@ async function processCallGatherEnded(
     );
     incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'failed' });
     log.error({ err: error, eventId: event.id }, 'telnyx_call_control_gather_ended_failed');
+    return c.json({ ok: false }, 500);
+  }
+}
+
+async function processCallCost(
+  c: Context,
+  providerEventsRepository: ProviderEventsRepository,
+  event: { event_type: string; id: string; payload?: unknown },
+  bodyText: string,
+  log: ReturnType<typeof withLogContext>,
+) {
+  try {
+    const alreadyProcessed = await providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+    if (alreadyProcessed) {
+      incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'duplicate' });
+      return c.json({ ok: true, duplicate: true }, 200);
+    }
+
+    const validatedRoot = telnyxCallControlEnvelopeSchema.parse(JSON.parse(bodyText));
+    await providerEventsRepository.markProcessed({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: validatedRoot,
+    });
+
+    const payload = event.payload;
+    const cost = firstStringFromPayload(payload, ['cost']);
+    const currency = firstStringFromPayload(payload, ['currency']) ?? 'USD';
+    const callControlId = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
+    const callSessionId = firstStringFromPayload(payload, ['call_session_id']);
+
+    incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+    log.info(
+      {
+        cost,
+        currency,
+        callControlId,
+        callSessionId,
+      },
+      'telnyx_call_cost_received',
+    );
+
+    return c.json({ ok: true, phase: 'call_cost' }, 200);
+  } catch (error) {
+    await providerEventsRepository.markProcessingError(
+      CALL_CONTROL_EVENTS_PROVIDER,
+      event.id,
+      error instanceof Error ? error.message : 'webhook_processing_failed',
+    );
+    incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'failed' });
+    log.error({ err: error, eventId: event.id }, 'telnyx_call_control_cost_failed');
     return c.json({ ok: false }, 500);
   }
 }

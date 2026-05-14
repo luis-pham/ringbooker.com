@@ -9,7 +9,8 @@ export type SmsCategory =
   | 'cancellation_alert'
   | 'callback_ack'
   | 'user_alert'
-  | 'review_request';
+  | 'review_request'
+  | 'booking_request_alert';
 
 export interface SmsSendResult {
   providerMessageId?: string;

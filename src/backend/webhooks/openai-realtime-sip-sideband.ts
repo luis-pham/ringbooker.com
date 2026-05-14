@@ -31,6 +31,8 @@ export type OpenAiRealtimeSipSidebandParams =
       initialResponseInstructions?: string | null;
       /** When set, used for `openai_accepted_to_initial_response_ms` after first greeting send. */
       acceptedAtMs?: number;
+      /** Called for each completed transcript segment (AI speech or caller speech). Fire-and-forget. */
+      onTranscript?: (speaker: 'caller' | 'assistant', text: string) => void;
     };
 
 /**
@@ -176,7 +178,7 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
   });
 
   ws.on('message', (data) => {
-    let evt: { type?: string; name?: string; call_id?: string; arguments?: string };
+    let evt: { type?: string; name?: string; call_id?: string; arguments?: string; transcript?: string };
     try {
       evt = JSON.parse(String(data)) as typeof evt;
     } catch {
@@ -195,6 +197,18 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
       (evt.type === 'response.done' || evt.type === 'output_audio_buffer.stopped')
     ) {
       maybeResumeDemoVadAfterWelcome(evt.type ?? 'unknown');
+    }
+
+    // Capture completed transcript segments for shop calls.
+    if (params.variant === 'shop' && params.onTranscript) {
+      const transcript = typeof evt.transcript === 'string' ? evt.transcript.trim() : '';
+      if (transcript) {
+        if (evt.type === 'response.audio_transcript.done') {
+          params.onTranscript('assistant', transcript);
+        } else if (evt.type === 'conversation.item.input_audio_transcription.completed') {
+          params.onTranscript('caller', transcript);
+        }
+      }
     }
 
     if (evt.type !== 'response.function_call_arguments.done') return;

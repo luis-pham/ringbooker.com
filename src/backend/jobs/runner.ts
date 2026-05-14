@@ -436,6 +436,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
     appointmentTime: z.string().min(1).optional(),
     techName: z.string().min(1).optional(),
     shopName: z.string().min(1),
+    confirmed: z.boolean().optional(),
   });
   const bookingLinkSmsPayloadSchema = z.object({
     shopId: z.string().min(1),
@@ -506,13 +507,28 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         return;
       }
 
-      const body =
-        `${payload.data.shopName}: Your appointment is confirmed!` +
-        (payload.data.serviceName ? `\nService: ${payload.data.serviceName}` : '') +
-        (payload.data.appointmentDate ? `\nDate: ${payload.data.appointmentDate}` : '') +
-        (payload.data.appointmentTime ? `\nTime: ${payload.data.appointmentTime}` : '') +
-        (payload.data.techName ? `\nWith: ${payload.data.techName}` : '') +
-        '\nSee you soon!';
+      if (runtime.customersRepository) {
+        const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, payload.data.toPhone);
+        if (optedOut) {
+          logger.info({ jobId: params.jobId, shopId: shop.id }, 'booking_confirmation_sms_skipped_opt_out');
+          return;
+        }
+      }
+
+      const isConfirmed = payload.data.confirmed !== false;
+      const body = isConfirmed
+        ? `${payload.data.shopName}: Your appointment is confirmed!` +
+          (payload.data.serviceName ? `\nService: ${payload.data.serviceName}` : '') +
+          (payload.data.appointmentDate ? `\nDate: ${payload.data.appointmentDate}` : '') +
+          (payload.data.appointmentTime ? `\nTime: ${payload.data.appointmentTime}` : '') +
+          (payload.data.techName ? `\nWith: ${payload.data.techName}` : '') +
+          '\nSee you soon!'
+        : `${payload.data.shopName}: We received your booking request!` +
+          (payload.data.serviceName ? `\nService: ${payload.data.serviceName}` : '') +
+          (payload.data.appointmentDate ? `\nRequested: ${payload.data.appointmentDate}` : '') +
+          (payload.data.appointmentTime ? ` at ${payload.data.appointmentTime}` : '') +
+          (payload.data.techName ? `\nWith: ${payload.data.techName}` : '') +
+          '\nThe salon will confirm your appointment shortly.';
       const idempotencyKey = `job:${params.jobId}:booking-confirmation`;
 
       try {
@@ -576,6 +592,15 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         return;
       }
 
+      if (runtime.customersRepository) {
+        const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, booking.customerPhone);
+        if (optedOut) {
+          logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id }, 'reminder_24h_sms_skipped_opt_out');
+          await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
+          return;
+        }
+      }
+
       const local = toLocalLabels(booking.datetimeUtc, booking.timezone);
       const smsBody = SMS_REMINDER_24H(shop, {
         service: booking.service,
@@ -634,6 +659,15 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         );
         await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
         return;
+      }
+
+      if (runtime.customersRepository) {
+        const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, booking.customerPhone);
+        if (optedOut) {
+          logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id }, 'reminder_2h_sms_skipped_opt_out');
+          await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
+          return;
+        }
       }
 
       const local = toLocalLabels(booking.datetimeUtc, booking.timezone);
@@ -745,6 +779,14 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         return;
       }
 
+      if (runtime.customersRepository) {
+        const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, payload.data.customerPhone);
+        if (optedOut) {
+          logger.info({ jobId: params.jobId, shopId: shop.id }, 'missed_call_followup_sms_skipped_opt_out');
+          return;
+        }
+      }
+
       const smsBody = SMS_MISSED_CALL(shop);
       const idempotencyKey = `job:${params.jobId}:missed-call`;
 
@@ -778,6 +820,14 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       if (!shop) {
         logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'booking_link_sms_shop_not_found');
         return;
+      }
+
+      if (runtime.customersRepository) {
+        const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, payload.data.toPhone);
+        if (optedOut) {
+          logger.info({ jobId: params.jobId, shopId: shop.id }, 'booking_link_sms_skipped_opt_out');
+          return;
+        }
       }
 
       const idempotencyKey = `job:${params.jobId}:booking-link`;
@@ -868,6 +918,74 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
             providerName: payload.data.providerName,
           },
           'cancellation_request_alert_failed',
+        );
+      }
+    },
+    new_booking_request_owner_alert: async (params) => {
+      const payload = z.object({
+        shopId: z.string().min(1),
+        bookingId: z.string().min(1),
+        callerPhone: z.string().min(1).optional(),
+        callerName: z.string().min(1).optional(),
+        serviceName: z.string().min(1).optional(),
+        appointmentDate: z.string().min(1).optional(),
+        appointmentTime: z.string().min(1).optional(),
+        techName: z.string().min(1).optional(),
+        notes: z.string().min(1).optional(),
+      }).safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'new_booking_request_owner_alert_invalid_payload');
+        return;
+      }
+
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'new_booking_request_owner_alert_shop_not_found');
+        return;
+      }
+      if (!shop.sms_owner_opted_in || !shop.user_phone) {
+        return;
+      }
+
+      const body = [
+        `[${shop.name}] NEW BOOKING REQUEST`,
+        payload.data.serviceName ? `Service: ${payload.data.serviceName}` : null,
+        payload.data.appointmentDate
+          ? `Date: ${payload.data.appointmentDate}${payload.data.appointmentTime ? ` at ${payload.data.appointmentTime}` : ''}`
+          : null,
+        payload.data.techName ? `With: ${payload.data.techName}` : null,
+        payload.data.callerName ? `From: ${payload.data.callerName}` : null,
+        `Phone: ${payload.data.callerPhone || 'not provided'}`,
+        payload.data.notes ? `Notes: ${payload.data.notes}` : null,
+        'Please confirm with the client.',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      const idempotencyKey = `job:${params.jobId}:booking-request-owner-alert`;
+
+      try {
+        const sms = await runtime.smsService.sendSms({
+          to: shop.user_phone,
+          from: shop.phone_number,
+          body,
+          shopId: shop.id,
+          category: 'booking_request_alert',
+          idempotencyKey,
+        });
+
+        await runtime.outboundMessagesRepository.create({
+          shopId: shop.id,
+          customerPhone: shop.user_phone,
+          category: 'booking_request_alert',
+          body,
+          idempotencyKey,
+          status: 'sent',
+          providerMessageId: sms.providerMessageId,
+        });
+      } catch (error) {
+        logger.error(
+          { err: error, jobId: params.jobId, shopId: shop.id },
+          'new_booking_request_owner_alert_failed',
         );
       }
     },
@@ -1000,7 +1118,17 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         return;
       }
 
-      const body = `${shop.name}: Thanks for visiting us! We'd love your feedback!`;
+      if (runtime.customersRepository) {
+        const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, booking.customerPhone);
+        if (optedOut) {
+          logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id }, 'review_request_sms_skipped_opt_out');
+          await runtime.bookingsRepository.markReviewRequestSent(booking.id);
+          return;
+        }
+      }
+
+      const reviewLinkPart = shop.website_url ? ` Leave us a review: ${shop.website_url}` : '';
+      const body = `${shop.name}: Thanks for visiting us! We'd love your feedback!${reviewLinkPart} Reply STOP to opt out.`;
       const idempotencyKey = `job:${params.jobId}:review-request`;
 
       const sms = await runtime.smsService.sendSms({
