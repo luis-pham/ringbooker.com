@@ -97,7 +97,12 @@ import {
   buildAdminTrialEndingSoonWatchlist,
   type AdminTrialEndingSoonItem,
 } from '@/src/backend/services/admin/admin-dashboard-trial-watchlist';
-import { buildDashboardOverviewRail } from '@/src/backend/services/user/dashboard-overview-rail';
+import {
+  buildDashboardOverviewRail,
+  resolveCalendarBookingStatus,
+  shopHasConfiguredBusinessHours,
+  shopHasConfiguredServices,
+} from '@/src/backend/services/user/dashboard-overview-rail';
 import {
   buildUserPortalNotifications,
   type UserPortalNotificationsUsageInput,
@@ -4570,6 +4575,7 @@ export function createBackendApp(deps: {
       hasForwardingNumber: boolean;
       paymentMethodValid: boolean;
       subscriptionActiveLike: boolean;
+      billingTrialing: boolean;
       blockReason: BillingBlockReason;
       commercialGoLiveApproved: boolean;
       commercialApprovalRequired: boolean;
@@ -4603,6 +4609,9 @@ export function createBackendApp(deps: {
         paymentMethodValid: access.paymentMethodStatus === 'valid',
         subscriptionActiveLike:
           subscription?.status === 'active' || (subscription ? isBillingTrialStillValid(subscription, now) : false),
+        billingTrialing: Boolean(
+          subscription?.status === 'trialing' && subscription && isBillingTrialStillValid(subscription, now),
+        ),
         blockReason: access.blockReason,
         commercialGoLiveApproved: access.commercialGoLiveApproved,
         commercialApprovalRequired,
@@ -4632,6 +4641,14 @@ export function createBackendApp(deps: {
       totalCallCount: callCount,
     });
 
+    const calendarBooking = resolveCalendarBookingStatus(shop);
+    const overviewSnapshot = {
+      hasServices: shopHasConfiguredServices(shop),
+      hasHours: shopHasConfiguredBusinessHours(shop),
+      integrationConnected: calendarBooking.ready,
+      integrationLabel: calendarBooking.detail,
+    };
+
     return c.json({
       ok: true,
       shop: {
@@ -4653,6 +4670,7 @@ export function createBackendApp(deps: {
       usage,
       goLive,
       overviewRail,
+      overviewSnapshot,
     });
   });
 

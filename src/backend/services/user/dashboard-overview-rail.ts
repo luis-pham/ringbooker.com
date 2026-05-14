@@ -62,11 +62,11 @@ export function resolveCalendarBookingStatus(shop: Shop): { ready: boolean; deta
   return { ready: false, detail: 'Connect Square, Vagaro, or add a booking link' };
 }
 
-function hasBusinessHours(shop: Shop): boolean {
+export function shopHasConfiguredBusinessHours(shop: Shop): boolean {
   return Object.values(shop.hours ?? {}).some((value) => 'open' in value && Boolean(value.open && value.close));
 }
 
-function hasServices(shop: Shop): boolean {
+export function shopHasConfiguredServices(shop: Shop): boolean {
   const catalogServices = shop.service_catalog?.services ?? [];
   if (catalogServices.some((service) => service.active !== false && service.name.trim().length > 0)) return true;
   return (shop.services ?? []).some((service) => service.name.trim().length > 0);
@@ -77,8 +77,8 @@ export function getBusinessKnowledgeStatus(shop: Shop): BusinessKnowledgeStatus 
   const missingRecommended: string[] = [];
 
   if (!shop.name.trim() || !shop.vertical || !shop.timezone.trim()) missingCore.push('profile');
-  if (!hasBusinessHours(shop)) missingCore.push('hours');
-  if (!hasServices(shop)) missingCore.push('services');
+  if (!shopHasConfiguredBusinessHours(shop)) missingCore.push('hours');
+  if (!shopHasConfiguredServices(shop)) missingCore.push('services');
   if (!shop.cancel_policy?.trim()) missingRecommended.push('policy');
   if ((shop.faqs ?? []).filter((item) => item.question.trim() && item.answer.trim()).length === 0) missingRecommended.push('faq');
 

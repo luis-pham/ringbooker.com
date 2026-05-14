@@ -266,6 +266,14 @@ function hasPaymentMethodEvidence(eventType: string, data: Record<string, unknow
     (data as { payment_method?: Record<string, unknown> }).payment_method?.type,
   ];
   if (candidates.some((value) => typeof value === 'string' && value.trim().length > 0)) return true;
+  // Paddle subscription events (subscription.created, subscription.activated) use
+  // payment_method_details instead of payment_method_id
+  const pmDetails = (data as { payment_method_details?: unknown }).payment_method_details;
+  if (pmDetails && typeof pmDetails === 'object') {
+    const pmType = (pmDetails as { type?: unknown }).type;
+    if (typeof pmType === 'string' && pmType.trim()) return true;
+    if ((pmDetails as { card?: unknown }).card || (pmDetails as { paypal?: unknown }).paypal) return true;
+  }
   const payments = Array.isArray((data as { payments?: unknown }).payments) ? ((data as { payments: unknown[] }).payments) : [];
   if (
     payments.some((payment) => {
@@ -407,8 +415,11 @@ function shouldMutateSubscriptionFromPaddleEvent(params: {
   if (params.providerSubscriptionId) return true;
   const normalized = params.eventType.toLowerCase();
   if (normalized.includes('subscription.')) return true;
+  // payment_method.saved must update paymentMethodStatus even when mappedStatus is 'unknown'
+  // (payment_method events carry no subscription status in their payload)
+  if (normalized.includes('payment_method.') || normalized.includes('transaction.payment_failed')) return true;
   if (params.mappedStatus === 'unknown') return false;
-  return normalized.includes('payment_method.') || normalized.includes('transaction.payment_failed');
+  return false;
 }
 
 function firstString(...values: unknown[]): string | undefined {
@@ -927,7 +938,8 @@ export class PaddleBillingProvider implements BillingProviderAdapter {
         providerPriceId,
         providerProductId: null,
         plan: mappedPlan,
-        status: mappedStatus,
+        // Preserve existing status when the event carries no meaningful status (e.g. payment_method.saved)
+        status: mappedStatus === 'unknown' ? (staleTarget?.status ?? 'unknown') : mappedStatus,
         interval: mappedInterval ?? period.interval,
         currency: amount.currency,
         amount: amount.amount,

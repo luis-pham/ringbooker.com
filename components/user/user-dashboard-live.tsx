@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { UserLayout } from '@/components/user/user-layout';
 import { UserPortalPageContent } from '@/components/user/user-portal-page-content';
@@ -14,7 +14,7 @@ import {
 import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { CUSTOM_MANAGED_SETUP_ITEMS, ENTERPRISE_PENDING_OVERVIEW_STATUS_LINES } from '@/components/user/user-plan-ux-copy';
-import { formatShopDateTime, getShopTimezone } from '@/src/shared/timezone';
+import { formatShopDateTime, formatShopLongDate, getShopLocalMonthPeriod, getShopTimezone } from '@/src/shared/timezone';
 
 type GoLiveDashboardPrimaryCta =
   | 'add_payment_method'
@@ -63,8 +63,17 @@ export type UserDashboardResponse = {
     commercialApprovalRequired?: boolean;
     /** ISO timestamp when live answering was enabled — optional until API provides it */
     activatedAt?: string | null;
+    /** True when subscription is in a valid trialing window (for plan stat badge). */
+    billingTrialing?: boolean;
   } | null;
   overviewRail?: UserDashboardOverviewRail;
+  /** Shop knowledge/integration snapshot for overview status (mirrors server-side checks). */
+  overviewSnapshot?: {
+    hasServices: boolean;
+    hasHours: boolean;
+    integrationConnected: boolean;
+    integrationLabel: string;
+  };
   error?: string;
 };
 
@@ -161,6 +170,39 @@ function IconPlug() {
   );
 }
 
+const BK_NUDGE_STORAGE_KEY = 'bk_nudge_dismissed';
+
+type OverviewState = {
+  billingActive: boolean;
+  forwardingVerified: boolean;
+  liveAnsweringOn: boolean;
+  hasServices: boolean;
+  hasHours: boolean;
+  integrationConnected: boolean;
+  integrationLabel: string;
+};
+
+function deriveOverviewState(data: UserDashboardResponse): OverviewState | null {
+  if (!data.goLive) return null;
+  const snap = data.overviewSnapshot;
+  return {
+    billingActive: data.goLive.paymentMethodValid && data.goLive.subscriptionActiveLike,
+    forwardingVerified: data.goLive.forwardingSetupVerified && data.goLive.hasForwardingNumber,
+    liveAnsweringOn: data.goLive.liveCallsEnabled === true,
+    hasServices: snap?.hasServices ?? false,
+    hasHours: snap?.hasHours ?? false,
+    integrationConnected: snap?.integrationConnected ?? false,
+    integrationLabel: snap?.integrationLabel?.trim() ?? '',
+  };
+}
+
+type OverviewShortcutRow = {
+  icon: ReactNode;
+  name: string;
+  desc: string;
+  href: string;
+};
+
 type ActivationChecklistRow = { id: string; name: string; desc: string | null; done: boolean; href: string };
 
 function buildActivationChecklist(
@@ -201,79 +243,145 @@ function buildActivationChecklist(
   ];
 }
 
-/** Full KPI dashboard only after live answering is on — keeps onboarding / go-live focused on next steps. */
-function userOverviewPhase(data: UserDashboardResponse | null): 'onboarding' | 'activation' | 'live' | null {
-  if (!data?.ok) return null;
-  if (data.onboardingRequired) return 'onboarding';
-  if (data.goLive?.liveCallsEnabled === true) return 'live';
-  return 'activation';
+function OverviewQuickAccessCard({ rows }: { rows: OverviewShortcutRow[] }) {
+  return (
+    <div className="shortcuts-card overview-quick-access-card">
+      <div className="quick-access-card-title">Quick access</div>
+      {rows.map((s) => (
+        <a key={s.href} className="sc-item overview-quick-access-item" href={s.href}>
+          <div className="sc-icon">{s.icon}</div>
+          <div className="sc-body">
+            <div className="sc-name">{s.name}</div>
+            <div className="sc-desc">{s.desc}</div>
+          </div>
+          <div className="sc-go" aria-hidden>
+            ›
+          </div>
+        </a>
+      ))}
+    </div>
+  );
 }
 
-function DashboardOverviewRailCard(props: { rail: UserDashboardOverviewRail; shopTimezone: string }) {
-  const { rail, shopTimezone } = props;
+function OverviewBkNudgeBanner(props: { onDismiss: () => void }) {
+  const { onDismiss } = props;
+  return (
+    <div className="overview-bk-nudge" role="region" aria-label="Business Knowledge suggestion">
+      <span className="overview-bk-nudge__icon" aria-hidden>
+        ✨
+      </span>
+      <p className="overview-bk-nudge__text">
+        Make your AI smarter — add staff, policies, and FAQs in Business Knowledge.
+      </p>
+      <a className="btn-primary-sm overview-bk-nudge__cta" href="/user/knowledge">
+        Open Business Knowledge →
+      </a>
+      <button type="button" className="overview-bk-nudge-dismiss" aria-label="Dismiss" onClick={onDismiss}>
+        ✕
+      </button>
+    </div>
+  );
+}
 
-  if (rail.variant === 'setup') {
-    return (
-      <section className="card soft overview-rail-card">
-        <div className="panel-head" style={{ marginBottom: 14 }}>
-          <div>
-            <h3>{rail.title}</h3>
-            {rail.subtitle ? <p className="sub">{rail.subtitle}</p> : null}
-          </div>
-        </div>
-        <ul className="overview-rail-checklist">
-          {rail.checklist.map((step) => (
-            <li key={step.id} className={`overview-rail-step ${step.done ? 'done' : ''}`}>
-              <span className="overview-rail-step-mark" aria-hidden />
-              <div>
-                <p className="overview-rail-step-title">
-                  {step.done ? (
-                    step.title
-                  ) : (
-                    <a href={step.href}>{step.title}</a>
-                  )}
-                </p>
-                {!step.done ? <p className="overview-rail-step-meta">{step.detail ?? 'Tap to open and complete.'}</p> : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-    );
-  }
+function OverviewSystemStatusCard(props: {
+  state: OverviewState;
+  totalCalls: number;
+  shopTimezone: string;
+  recentCalls: Array<{
+    requestId?: string;
+    startedAt?: string;
+    callerPhone?: string;
+    outcome?: string;
+    subtitle?: string | null;
+  }>;
+}) {
+  const { state, totalCalls, shopTimezone, recentCalls } = props;
+  const showRecentCalls = recentCalls.length > 0;
 
   return (
-    <section className="card soft overview-rail-card">
-      <div className="panel-head" style={{ marginBottom: 14 }}>
-        <div>
-          <h3>{rail.title}</h3>
-          {rail.subtitle ? <p className="sub">{rail.subtitle}</p> : null}
-        </div>
-      </div>
-      <div className="overview-rail-health">
-        {rail.health.map((row) => (
-          <div key={row.id} className="overview-rail-health-row">
-            <span className={`overview-rail-dot ${row.state}`} title={row.state} aria-hidden />
-            <div className="overview-rail-health-main">
-              <div className="overview-rail-health-label">{row.label}</div>
-              <div className="overview-rail-health-detail">
-                {row.detail ? <span>{row.detail}</span> : null}
-                {row.href ? (
-                  <>
-                    {row.detail ? ' · ' : null}
-                    <a href={row.href}>Open</a>
-                  </>
-                ) : null}
-              </div>
+    <section className="checklist-card overview-system-status-card">
+      <div className="card-title">System status</div>
+      <div className="card-sub">What&apos;s working and what needs attention.</div>
+      <div className="overview-status-list">
+        <div className="overview-status-row">
+          <span
+            className={`overview-status-dot ${state.liveAnsweringOn ? 'overview-status-dot--ok' : 'overview-status-dot--warn'}`}
+            aria-hidden
+          />
+          <div className="overview-status-main">
+            <div className="overview-status-label">Live answering</div>
+            <div className="overview-status-desc">
+              {state.liveAnsweringOn
+                ? 'RingBooker is answering missed calls'
+                : 'Not enabled — complete Go Live to activate'}
             </div>
           </div>
-        ))}
+          <a className="overview-status-action" href="/user/go-live#go-live-forwarding">
+            {state.liveAnsweringOn ? 'Manage' : 'Go to Go Live →'}
+          </a>
+        </div>
+        <div className="overview-status-row">
+          <span
+            className={`overview-status-dot ${state.forwardingVerified ? 'overview-status-dot--ok' : 'overview-status-dot--warn'}`}
+            aria-hidden
+          />
+          <div className="overview-status-main">
+            <div className="overview-status-label">Call forwarding</div>
+            <div className="overview-status-desc">
+              {state.forwardingVerified
+                ? 'Forwarding is active and verified'
+                : "Forwarding not set up — calls won't reach RingBooker yet"}
+            </div>
+          </div>
+          <a className="overview-status-action" href="/user/go-live#go-live-forwarding">
+            {state.forwardingVerified ? 'Manage' : 'Fix →'}
+          </a>
+        </div>
+        <div className="overview-status-row">
+          <span
+            className={`overview-status-dot ${state.integrationConnected ? 'overview-status-dot--ok' : 'overview-status-dot--neutral'}`}
+            aria-hidden
+          />
+          <div className="overview-status-main">
+            <div className="overview-status-label">Booking / calendar</div>
+            <div className="overview-status-desc">
+              {state.integrationConnected
+                ? `Connected — ${state.integrationLabel || 'Integration on file'}`
+                : "No integration — RingBooker can't check availability"}
+            </div>
+          </div>
+          <a className="overview-status-action" href="/user/integrations#integrations">
+            {state.integrationConnected ? 'Manage' : 'Connect →'}
+          </a>
+        </div>
+        <div className="overview-status-row overview-status-row--last">
+          <span
+            className={`overview-status-dot ${state.hasServices && state.hasHours ? 'overview-status-dot--ok' : 'overview-status-dot--warn'}`}
+            aria-hidden
+          />
+          <div className="overview-status-main">
+            <div className="overview-status-label">AI knowledge</div>
+            <div className="overview-status-desc">
+              {state.hasServices && state.hasHours
+                ? 'Hours and services are set'
+                : 'Add hours and services so callers get accurate answers'}
+            </div>
+          </div>
+          <a className="overview-status-action" href="/user/knowledge">
+            Open →
+          </a>
+        </div>
       </div>
-      {rail.recentCalls.length > 0 ? (
-        <div className="overview-rail-recent">
+      {totalCalls === 0 ? (
+        <p className="overview-status-zero-calls">
+          No calls logged yet. Place a test call through your forwarding setup, or check back here once live traffic starts.
+        </p>
+      ) : null}
+      {showRecentCalls ? (
+        <div className="overview-status-recent">
           <h4 className="overview-rail-recent-title">Recent calls</h4>
           <div className="overview-rail-calls">
-            {rail.recentCalls.map((call, index) => {
+            {recentCalls.map((call, index) => {
               const key = call.requestId ?? `${call.startedAt ?? 'call'}-${index}`;
               const line1 = `${formatOverviewPhone(call.callerPhone)} · ${formatOverviewWhen(call.startedAt, shopTimezone) || 'Recent'}`;
               const line2Parts = [formatOverviewOutcome(call.outcome)];
@@ -291,7 +399,6 @@ function DashboardOverviewRailCard(props: { rail: UserDashboardOverviewRail; sho
           </a>
         </div>
       ) : null}
-      {rail.tip ? <p className="overview-rail-tip">{rail.tip}</p> : null}
     </section>
   );
 }
@@ -359,12 +466,41 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
   const enterpriseApprovalPending = data?.goLive?.commercialApprovalRequired === true;
   const isEnterprisePlan = data?.shop?.plan === 'enterprise';
 
-  const overviewPhase = useMemo(() => userOverviewPhase(data), [data]);
-  /** While loading, `data` is null so phase is unknown — do not assume the full KPI layout (avoids a flash). */
   const dashboardReady = !loading && data?.ok === true;
-  const simplifiedOverview =
-    dashboardReady && (overviewPhase === 'onboarding' || overviewPhase === 'activation');
+  const billingActive = !!(data?.goLive?.paymentMethodValid && data?.goLive?.subscriptionActiveLike);
+  const expandedOverview =
+    dashboardReady &&
+    Boolean(data?.goLive) &&
+    !data?.onboardingRequired &&
+    !enterpriseApprovalPending &&
+    (billingActive || liveAnsweringOn);
 
+  const overviewState = useMemo(() => (data?.ok ? deriveOverviewState(data) : null), [data]);
+
+  const [bkNudgeDismissed, setBkNudgeDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && localStorage.getItem(BK_NUDGE_STORAGE_KEY) === '1') {
+        setBkNudgeDismissed(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const dismissBkNudge = useCallback(() => {
+    try {
+      localStorage.setItem(BK_NUDGE_STORAGE_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+    setBkNudgeDismissed(true);
+  }, []);
+
+  const showBkNudgeBanner =
+    expandedOverview &&
+    overviewState &&
+    !bkNudgeDismissed &&
+    (!overviewState.liveAnsweringOn || !overviewState.hasServices || !overviewState.hasHours);
   const topbarSubtitle = useMemo(() => {
     if (!data?.ok) return 'Track calls, bookings, and reminders.';
     if (data.onboardingRequired) return "Complete setup — then we'll walk you through go-live.";
@@ -410,10 +546,6 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     if (!data?.goLive) return [];
     return buildActivationChecklist(data.goLive, data.overviewRail);
   }, [data, data?.overviewRail]);
-  const businessKnowledgeIncomplete = useMemo(() => {
-    if (!data?.overviewRail || data.overviewRail.variant !== 'live') return false;
-    return data.overviewRail.health.some((item) => item.id === 'business_knowledge' && item.state !== 'ok');
-  }, [data?.overviewRail]);
 
   const shopTimezone = useMemo(() => getShopTimezone(data?.shop), [data?.shop]);
 
@@ -427,7 +559,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     return `Answering calls on your business line · ${name}`;
   }, [data?.goLive?.activatedAt, data?.shop?.name, shopTimezone]);
 
-  const overviewShortcutRows = useMemo(
+  const overviewShortcutRows = useMemo<OverviewShortcutRow[]>(
     () => [
       {
         icon: <IconQuickBookings />,
@@ -456,6 +588,16 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     ],
     [],
   );
+
+  const recentCallsForStatus = useMemo(() => {
+    if (data?.overviewRail?.variant !== 'live') return [];
+    return data.overviewRail.recentCalls;
+  }, [data?.overviewRail]);
+
+  const usageResetLabel = useMemo(() => {
+    const { periodEnd } = getShopLocalMonthPeriod(new Date(), shopTimezone);
+    return formatShopLongDate(periodEnd, shopTimezone);
+  }, [shopTimezone]);
 
   return (
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
@@ -486,7 +628,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                         planning, and implementation support.
                       </p>
                     ) : null}
-                </div>
+                  </div>
                 </div>
                 <ul className="plan-includes-list" style={{ marginTop: enterpriseApprovalPending ? 10 : 12 }}>
                   {(enterpriseApprovalPending
@@ -580,36 +722,26 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     ) : null}
                   </div>
                 ) : null}
-                <div className="overview-grid">
-                  <div className="overview-left">
-                    {liveAnsweringOn ? (
-                      <>
-                        {businessKnowledgeIncomplete ? (
-                          <div className="shortcuts-card quick-actions-card" style={{ marginBottom: 16 }}>
-                            <div className="card-title">Make your AI smarter</div>
-                            <div className="card-sub">Add staff, policies, and FAQs in Business Knowledge.</div>
-                            <a className="btn user-save" href="/user/knowledge" style={{ marginTop: 12 }}>
-                              Open Business Knowledge →
-                            </a>
-                          </div>
-                        ) : null}
-                        <div className="shortcuts-card quick-actions-card">
-                          <div className="card-title">Quick actions</div>
-                          {overviewShortcutRows.map((s) => (
-                            <a key={s.href} className="sc-item" href={s.href}>
-                              <div className="sc-icon">{s.icon}</div>
-                              <div className="sc-body">
-                                <div className="sc-name">{s.name}</div>
-                                <div className="sc-desc">{s.desc}</div>
-                              </div>
-                              <div className="sc-go" aria-hidden>
-                                ›
-                              </div>
-                            </a>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
+                {expandedOverview && overviewState ? (
+                  <>
+                    {showBkNudgeBanner ? <OverviewBkNudgeBanner onDismiss={dismissBkNudge} /> : null}
+                    <div className="overview-grid">
+                      <div className="overview-left">
+                        <OverviewSystemStatusCard
+                          state={overviewState}
+                          totalCalls={data?.metrics?.callCount ?? 0}
+                          shopTimezone={shopTimezone}
+                          recentCalls={recentCallsForStatus}
+                        />
+                      </div>
+                      <div className="overview-right overview-rail">
+                        <OverviewQuickAccessCard rows={overviewShortcutRows} />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="overview-grid">
+                    <div className="overview-left">
                       <div className="checklist-card">
                         <div className="card-title">Go-live checklist</div>
                         <div className="card-sub">
@@ -630,38 +762,16 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                           </a>
                         ))}
                       </div>
-                    )}
+                    </div>
+                    <div className="overview-right overview-rail">
+                      <OverviewQuickAccessCard rows={overviewShortcutRows} />
+                    </div>
                   </div>
-                  <div className="overview-right overview-rail">
-                    {liveAnsweringOn ? (
-                      data.overviewRail ? (
-                        <div className="overview-rail-mount">
-                          <DashboardOverviewRailCard rail={data.overviewRail} shopTimezone={shopTimezone} />
-                        </div>
-                      ) : null
-                    ) : (
-                      <div className="shortcuts-card">
-                        <div className="card-title">Quick access</div>
-                        {overviewShortcutRows.map((s) => (
-                          <a key={`acc-${s.href}`} className="sc-item" href={s.href}>
-                            <div className="sc-icon">{s.icon}</div>
-                            <div className="sc-body">
-                              <div className="sc-name">{s.name}</div>
-                              <div className="sc-desc">{s.desc}</div>
-                            </div>
-                            <div className="sc-go" aria-hidden>
-                              ›
-                            </div>
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
             ) : null}
-            {dashboardReady && !simplifiedOverview ? (
-              <section className="grid grid-4">
+            {dashboardReady && expandedOverview ? (
+              <section className="grid grid-4 overview-stats-grid">
                 <div className="stat-card">
                   <div className="stat-top">
                     <div className="stat-icon">
@@ -673,8 +783,9 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                       {liveAnsweringOn ? 'Live answering' : 'Not live'}
                     </span>
                   </div>
+                  <div className="stat-label">Calls</div>
                   <div className="stat-value">{data?.metrics?.callCount ?? 0}</div>
-                  <div className="stat-meta">Total calls logged for this business</div>
+                  <div className="stat-meta">Total calls logged</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-top">
@@ -686,8 +797,9 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     </div>
                     <span className="tag purple">Booked</span>
                   </div>
+                  <div className="stat-label">Bookings</div>
                   <div className="stat-value">{data?.metrics?.bookingCount ?? 0}</div>
-                  <div className="stat-meta">Total bookings in your current business</div>
+                  <div className="stat-meta">Captured this month</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-top">
@@ -699,8 +811,9 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     </div>
                     <span className="tag orange">Needs follow-up</span>
                   </div>
+                  <div className="stat-label">Missed</div>
                   <div className="stat-value">{data?.metrics?.missedCalls ?? 0}</div>
-                  <div className="stat-meta">Total missed calls (outcome = missed)</div>
+                  <div className="stat-meta">Calls not answered</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-top">
@@ -710,29 +823,27 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                         <path d="M7 15l3-3 3 2 4-5" />
                       </svg>
                     </div>
-                    <span className="tag green">{data?.shop?.active ? 'Active' : 'Paused'}</span>
+                    <span className={`tag ${data?.goLive?.billingTrialing ? 'orange' : 'green'}`}>
+                      {data?.goLive?.billingTrialing ? 'Trial' : 'Active'}
+                    </span>
                   </div>
+                  <div className="stat-label">Plan</div>
                   <div className="stat-value">{planLabel}</div>
                   <div className="stat-meta">{data?.shop?.timezone ?? 'Timezone unavailable'}</div>
                 </div>
               </section>
             ) : null}
-            {dashboardReady && !simplifiedOverview && data?.usage ? (
+            {dashboardReady && expandedOverview && data?.usage ? (
               <section
                 className={`card usage-captured-card${data.usage.overCapturedCallerLimit ? ' usage-captured-card--over' : ''}${data.usage.nearCapturedCallerLimit && !data.usage.overCapturedCallerLimit ? ' usage-captured-card--near' : ''}`}
                 style={{ marginTop: 18 }}
               >
-                <div className="panel-head">
-                  <div>
-                    <h3>Captured callers this month</h3>
-                    <p className="sub">
-                      {data.usage.capturedCallersLimit == null
-                        ? `${data.usage.capturedCallersUsed} captured callers · Custom allowance`
-                        : `${data.usage.capturedCallersUsed} / ${data.usage.capturedCallersLimit} captured callers`}
-                    </p>
-                  </div>
-                  <span className={`tag ${data.usage.overCapturedCallerLimit ? 'orange' : data.usage.nearCapturedCallerLimit ? 'orange' : 'green'}`}>
-                    {data.usage.capturedCallerUsagePercent == null ? 'Custom' : `${data.usage.capturedCallerUsagePercent}%`}
+                <div className="usage-captured-head">
+                  <h3 className="usage-captured-title">Captured callers this month</h3>
+                  <span className="usage-captured-summary">
+                    {data.usage.capturedCallersLimit == null
+                      ? `${data.usage.capturedCallersUsed} · Custom`
+                      : `${data.usage.capturedCallersUsed} / ${data.usage.capturedCallersLimit} · ${data.usage.capturedCallerUsagePercent ?? 0}%`}
                   </span>
                 </div>
                 <div className="usage-progress-track" aria-hidden="true">
@@ -741,16 +852,23 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     style={{ width: `${Math.min(100, data.usage.capturedCallerUsagePercent ?? 0)}%` }}
                   />
                 </div>
+                <div className="usage-captured-footer">
+                  <span className="usage-captured-footer-main">
+                    Voice usage: {data.usage.voiceMinutesUsed} min
+                    {data.usage.voiceMinutesSoftLimit ? ` / ${data.usage.voiceMinutesSoftLimit} soft cap` : ''} · Active calls:{' '}
+                    {data.usage.activeLiveCalls}/{data.usage.maxConcurrentLiveCalls}
+                  </span>
+                  <span className="usage-captured-reset">Resets {usageResetLabel}</span>
+                </div>
                 {data.usage.nearCapturedCallerLimit || data.usage.overCapturedCallerLimit ? (
-                  <p className="sub" style={{ marginTop: 10, color: data.usage.overCapturedCallerLimit ? '#b91c1c' : '#92400e' }}>
+                  <p
+                    className={`sub usage-captured-warn${data.usage.overCapturedCallerLimit ? ' usage-captured-warn--over' : ' usage-captured-warn--near'}`}
+                  >
                     {data.usage.overCapturedCallerLimit
                       ? 'You have reached your monthly captured caller limit. Upgrade for more call coverage.'
                       : 'You are close to your monthly captured caller limit.'}
                   </p>
                 ) : null}
-                <p className="sub" style={{ marginTop: 8 }}>
-                  Voice usage: {data.usage.voiceMinutesUsed} min{data.usage.voiceMinutesSoftLimit ? ` / ${data.usage.voiceMinutesSoftLimit} soft cap` : ''} · Active calls: {data.usage.activeLiveCalls}/{data.usage.maxConcurrentLiveCalls}
-                </p>
               </section>
             ) : null}
             {loading ? (

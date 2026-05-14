@@ -188,6 +188,15 @@ export async function handlePaddleWebhook(
           },
           'paddle_webhook_unmapped_subscription',
         );
+        // Mark as processed first so future retries are deduplicated by hasProcessed,
+        // then record the error reason. Without markProcessed the UPDATE in
+        // markProcessingError is a no-op (row doesn't exist) and Paddle retries forever.
+        await deps.providerEventsRepository.markProcessed({
+          provider: 'paddle',
+          providerEventId: dedupeKey,
+          eventType: event.event_type,
+          payload: event,
+        });
         await deps.providerEventsRepository.markProcessingError(
           'paddle',
           dedupeKey,
@@ -219,7 +228,8 @@ export async function handlePaddleWebhook(
           provider: 'paddle',
           outcome: 'failed',
         });
-        return c.json({ ok: false }, 500);
+        // Return 200 so Paddle stops retrying — the error is recorded in provider_events.
+        return c.json({ ok: false }, 200);
       }
     }
 
