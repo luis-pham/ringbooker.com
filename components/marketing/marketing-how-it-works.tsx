@@ -229,8 +229,8 @@ a{text-decoration:none;color:inherit}
 .hiw-call-step{display:flex;gap:13px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
 .hiw-call-step:hover{transform:translateY(-2px);box-shadow:0 18px 36px -10px rgba(17,24,39,.12);border-color:#d1d5db}
 .hiw-call-step span{width:30px;height:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;border:none;box-shadow:none}
-.hiw-call-step strong{display:block;margin-bottom:3px}
-.hiw-call-step p{font-size:14px;color:var(--text-gray);line-height:1.6}
+.hiw-call-step strong{display:block;margin-bottom:3px;font-size:var(--mk-body-md);font-weight:700;line-height:1.45}
+.hiw-call-step p{font-size:var(--mk-body);color:var(--text-gray);line-height:1.6}
 .hiw-trust-caller-stack .hiw-caller-after-trust{padding-top:86px;margin-top:0}
 .hiw-faq-cta-lower .hiw-cta-box{margin-top:48px}
 .hiw-cta-box{max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#7C3AED 0%,#A855F7 100%);color:#fff;border-radius:32px;padding:42px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;box-shadow:0 20px 56px rgba(124,58,237,.2),0 8px 24px rgba(17,24,39,.08)}
