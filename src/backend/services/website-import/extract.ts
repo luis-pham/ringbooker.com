@@ -19,6 +19,7 @@ const CURRENCY = 'USD';
 const PHONE_RE = /(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}(?!\d)/;
 const SERVICE_LINE_RE = /^(.{3,80}?)(?:\s+[—-]\s+|\s+)(?:from|starting at|starts at)?\s*\$\s?(\d{2,4})(?:.*?(\d{2,3})\s?(?:min|minutes))?/i;
 const COMPRESSED_PRICE_SERVICE_RE = /([A-Z][^$\n]{2,100}?)\s*(?:from|starting at|starts at)?\s*\$\s?(\d{2,4})(\+)?/g;
+const DURATION_HEADER_RE = /\b(\d{1,3})\s*(?:min|mins|minute|minutes)\+?\b/gi;
 const SERVICE_GROUP_HEADINGS = [
   'Styling Services',
   'Color Services',
@@ -325,6 +326,12 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     services.set(key, next);
   };
 
+  for (const item of extractTextServiceMatrixServices(text, source)) {
+    const key = `${item.categoryName.toLowerCase()}::${item.name.toLowerCase()}`;
+    const existing = services.get(key);
+    if (!existing || (item.variants?.length ?? 0) > (existing.variants?.length ?? 0)) services.set(key, item);
+  }
+
   for (const item of extractBulletServiceRows(text)) {
     addService({ ...item, confidence: 0.72 });
   }
@@ -391,6 +398,176 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     });
   }
   return [...services.values()].slice(0, 80);
+}
+
+function durationHeadersFromLine(value: string): Array<{ durationText: string; durationMinutes: number }> {
+  return [...value.matchAll(DURATION_HEADER_RE)]
+    .map((match) => {
+      const minutes = Number(match[1]);
+      return Number.isFinite(minutes) && minutes > 0
+        ? { durationText: `${minutes} min${/\+/.test(match[0]) ? '+' : ''}`, durationMinutes: minutes }
+        : null;
+    })
+    .filter((item): item is { durationText: string; durationMinutes: number } => Boolean(item));
+}
+
+function isDurationOnlyLine(value: string): boolean {
+  return /^\s*\d{1,3}\s*(?:min|mins|minute|minutes)\+?\s*$/i.test(value);
+}
+
+function parseMatrixPriceCell(value: string): { priceAmount: number | null; priceType: ImportedServiceSuggestion['priceType'] } | null {
+  const text = value.trim();
+  if (!text || /^[-–—]+$/.test(text)) return null;
+  if (/consult/i.test(text)) return { priceAmount: null, priceType: 'consultation' };
+  if (/varies|call/i.test(text)) return { priceAmount: null, priceType: 'varies' };
+  const match = text.match(/\$?\s*(\d{2,4})(?:\.\d{1,2})?\s*\+?/);
+  if (!match) return null;
+  return {
+    priceAmount: Number(match[1]),
+    priceType: /from|starting|starts|\+/i.test(text) ? 'from' : 'fixed',
+  };
+}
+
+function isLikelyTextMatrixServiceName(value: string): boolean {
+  const cleaned = cleanServiceName(value);
+  if (cleaned.length < 3 || cleaned.length > 80) return false;
+  if (SERVICE_MENU_SOURCE_RE.test(cleaned) || ECOMMERCE_CONTEXT_RE.test(cleaned)) return false;
+  if (isDurationOnlyLine(cleaned) || /^\$?\s*\d/.test(cleaned)) return false;
+  if (/[.!?]$/.test(cleaned)) return false;
+  if (/^(your|our|we|at|experience|relax,|discover|looking)\b/i.test(cleaned)) return false;
+  return /[A-Za-z]/.test(cleaned);
+}
+
+function currentMatrixGroupFromLine(line: string, currentGroup: string | null): string | null {
+  const cleaned = cleanServiceName(line);
+  if (/^body treatments?$/i.test(cleaned)) return 'Body Treatments';
+  if (/^waxing$/i.test(cleaned)) return 'Waxing';
+  if (/^facials?|hydrafacial$/i.test(cleaned)) return 'Facials';
+  if (/^massage(?:\s+therapy)?$/i.test(cleaned)) return currentGroup ?? 'Massage';
+  if (isServiceMenuGroupHeading(cleaned) && !/therapy$/i.test(cleaned)) return cleaned;
+  return currentGroup;
+}
+
+function buildMatrixService(params: {
+  source: string;
+  group: string | null;
+  name: string;
+  headers: Array<{ durationText: string; durationMinutes: number }>;
+  cells: string[];
+  description?: string | null;
+}): ImportedServiceSuggestion | null {
+  const parsedName = cleanServiceName(params.name.replace(/[-–—]+$/g, ''));
+  if (!isLikelyTextMatrixServiceName(parsedName)) return null;
+  const variants = params.headers.flatMap((header, index) => {
+    const price = parseMatrixPriceCell(params.cells[index] ?? '');
+    if (!price) return [];
+    return [{
+      label: header.durationText,
+      durationMinutes: header.durationMinutes,
+      durationText: header.durationText,
+      priceAmount: price.priceAmount,
+      priceCurrency: CURRENCY,
+      priceType: price.priceType,
+      sortOrder: index,
+      notes: null,
+    }];
+  });
+  if (variants.length === 0) return null;
+  const categoryName = params.group || inferGroup(parsedName);
+  return {
+    categoryName,
+    name: parsedName,
+    description: params.description && params.description.length <= 240 ? params.description : null,
+    priceAmount: null,
+    priceCurrency: CURRENCY,
+    priceType: variants.some((variant) => variant.priceType === 'from') ? 'from' : 'varies',
+    durationText: null,
+    durationMinutes: null,
+    aliases: aliasFor(parsedName),
+    bookingNotes: null,
+    bookable: true,
+    variants,
+    source: params.source,
+    sourceHint: 'service_matrix_table',
+    confidence: 0.78,
+    needsReview: true,
+    evidenceSnippet: `${categoryName}: ${parsedName} ${variants.map((variant) => `${variant.durationText} ${variant.priceAmount ? `$${variant.priceAmount}` : variant.priceType}`).join(' ')}`.slice(0, 220),
+  };
+}
+
+function compactMatrixCells(line: string): { name: string; cells: string[] } | null {
+  const firstDollar = line.indexOf('$');
+  if (firstDollar < 3) return null;
+  const beforePrice = line.slice(0, firstDollar);
+  const leadingMissingCell = /[-–—]\s*$/.test(beforePrice);
+  const name = beforePrice.replace(/[-–—]+$/g, '').trim();
+  const priceTokens = [...line.slice(firstDollar).matchAll(/\$\s*\d{2,4}\+?/g)].map((match) => match[0]);
+  if (!name || priceTokens.length === 0) return null;
+  return { name, cells: leadingMissingCell ? ['-', ...priceTokens] : priceTokens };
+}
+
+function extractTextServiceMatrixServices(text: string, source: string): ImportedServiceSuggestion[] {
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  const out = new Map<string, ImportedServiceSuggestion>();
+  let currentGroup: string | null = null;
+
+  const add = (service: ImportedServiceSuggestion | null) => {
+    if (!service) return;
+    const key = `${service.categoryName}:${service.name}`.toLowerCase();
+    const existing = out.get(key);
+    if (!existing || (service.variants?.length ?? 0) > (existing.variants?.length ?? 0)) out.set(key, service);
+  };
+
+  for (let i = 0; i < lines.length; i += 1) {
+    currentGroup = currentMatrixGroupFromLine(lines[i], currentGroup);
+    const inlineHeaders = durationHeadersFromLine(lines[i]);
+    const nextInline = lines[i + 1] ?? '';
+    const compact = inlineHeaders.length >= 2 ? compactMatrixCells(nextInline) : null;
+    if (compact) {
+      add(buildMatrixService({ source, group: currentGroup, name: compact.name, headers: inlineHeaders, cells: compact.cells }));
+    }
+
+    if (!isDurationOnlyLine(lines[i])) continue;
+    const headers: Array<{ durationText: string; durationMinutes: number }> = [];
+    let headerEnd = i;
+    while (headerEnd < lines.length && isDurationOnlyLine(lines[headerEnd]) && headers.length < 6) {
+      headers.push(...durationHeadersFromLine(lines[headerEnd]));
+      headerEnd += 1;
+    }
+    if (headers.length < 2) continue;
+    let cursor = headerEnd;
+    while (cursor < lines.length) {
+      const name = lines[cursor];
+      if (durationHeadersFromLine(name).length >= 2 || isServiceMenuGroupHeading(name)) break;
+      if (!isLikelyTextMatrixServiceName(name)) {
+        cursor += 1;
+        continue;
+      }
+      const cells: string[] = [];
+      let consumed = 0;
+      for (let j = cursor + 1; j < Math.min(lines.length, cursor + 1 + headers.length + 1); j += 1) {
+        const row = lines[j];
+        const match = row.match(/^(\d{1,3})\s*(?:min|mins|minute|minutes)\+?\s*(.*)$/i);
+        if (!match) break;
+        cells.push(match[2]?.trim() || '-');
+        consumed += 1;
+      }
+      if (consumed >= 1) {
+        const description = lines[cursor + 1 + consumed] && !/[$]|\b\d{1,3}\s*min\b/i.test(lines[cursor + 1 + consumed])
+          ? lines[cursor + 1 + consumed]
+          : null;
+        add(buildMatrixService({ source, group: currentGroup, name, headers, cells, description }));
+        cursor += 1 + consumed + (description ? 1 : 0);
+        continue;
+      }
+      break;
+    }
+  }
+
+  return [...out.values()].slice(0, 40);
 }
 
 function extractServicesFromBlocks(previews: PagePreview[]): ImportedServiceSuggestion[] {

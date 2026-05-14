@@ -463,6 +463,62 @@ test('extracts Avalon-style service matrix as one service with duration and pric
   assert.equal(suggestions.serviceCatalog.services.some((service) => /Book your appointment/i.test(service.name)), false);
 });
 
+test('extracts Avalon-style rendered text matrix without creating intro or duration-header services', () => {
+  const preview = {
+    url: 'https://avalon.test/spa/body',
+    title: 'Body Treatments',
+    h1: 'Body Treatments',
+    h2s: ['Massage Therapy', 'Body Treatments'],
+    firstTextChars: [
+      'Body Treatments',
+      'Massage Therapy',
+      'Relax, Rejuvenate, and Restore with Luxurious Body Treatments & Massages at Avalon Salon and Spa.',
+      'Your well-being is our priority at Avalon Salon and Spa.',
+      '30 min',
+      '60 min',
+      '90 min',
+      'Relaxing',
+      '30 min$65+',
+      '60 min $95+',
+      '90 min$140+',
+      'A massage including custom-blended Aveda essences and various relaxing techniques customized to your needs.',
+      'Therapeutic',
+      '30 min-',
+      '60 min$105+',
+      '90 min$150+',
+      'A massage designed to release patterns of tension, stress and fatigue using deeper pressure and more focused techniques.',
+      '30 min 60 min 90 min',
+      'Relaxing$65+ $95+$140+',
+      'Therapeutic-$105+$150+',
+      'Promotions',
+      'Shop Aveda',
+      'Careers',
+    ].join('\n'),
+    links: [],
+    jsonLd: [],
+    priceCount: 6,
+    durationCount: 12,
+    serviceKeywordCount: 8,
+    internalServiceLikeLinkCount: 0,
+    contentScore: 80,
+    serviceBlocks: [],
+  };
+  const suggestions = buildSuggestions({ sourceUrl: 'https://avalon.test', sourceType: 'normal_website', previews: [preview] });
+  const relaxing = suggestions.serviceCatalog.services.find((service) => service.name === 'Relaxing');
+  const therapeutic = suggestions.serviceCatalog.services.find((service) => service.name === 'Therapeutic');
+  assert.equal(relaxing?.categoryName, 'Body Treatments');
+  assert.equal(relaxing?.variants?.length, 3);
+  assert.equal(relaxing?.variants?.[0]?.durationText, '30 min');
+  assert.equal(relaxing?.variants?.[0]?.priceAmount, 65);
+  assert.equal(relaxing?.variants?.[2]?.durationText, '90 min');
+  assert.equal(relaxing?.variants?.[2]?.priceAmount, 140);
+  assert.equal(therapeutic?.variants?.length, 2);
+  assert.equal(therapeutic?.variants?.[0]?.durationText, '60 min');
+  assert.equal(therapeutic?.variants?.[0]?.priceAmount, 105);
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /^Your well-being/i.test(service.name)), false);
+  assert.equal(suggestions.serviceCatalog.services.some((service) => /\b30 min\s*60 min\s*90 min/i.test(service.name)), false);
+});
+
 test('extracts Elementor service-item cards with group, clean names, and prices', () => {
   const preview = previewHtml(`
     <html><body>
