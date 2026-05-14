@@ -622,7 +622,51 @@ button.subtle-link:hover{text-decoration:underline}
   border-bottom:1px solid var(--border);
 }
 .service-group-card--compact summary div{gap:12px}
-.service-group-summary-inner{width:100%}
+.service-group-summary-inner{
+  width:100%;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.service-group-title-with-rename{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  flex:1;
+}
+.service-group-title-with-rename strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.service-group-rename-btn{
+  flex-shrink:0;
+  width:30px;
+  height:30px;
+  border:0;
+  background:transparent;
+  color:var(--text-gray);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:8px;
+  cursor:pointer;
+}
+.service-group-rename-btn:hover{
+  background:#f3f4f6;
+  color:var(--text-dark);
+}
+.service-group-rename-btn svg{
+  stroke:currentColor;
+  stroke-width:1.8;
+  fill:none;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
 .service-group-card--compact summary strong{
   font-size:15px;
   font-weight:500;
@@ -779,6 +823,15 @@ button.subtle-link:hover{text-decoration:underline}
     background:#f5f3ff;
     color:var(--text-dark);
   }
+  .knowledge-portal-main .service-group-rename-btn{
+    opacity:0;
+    transition:opacity .15s ease,background .15s ease,color .15s ease;
+  }
+  .knowledge-portal-main .service-group-card--compact summary:hover .service-group-rename-btn{
+    opacity:1;
+    background:#f5f3ff;
+    color:var(--text-dark);
+  }
   /* Services tab (desktop): list row name truncation + untitled emphasis */
   .knowledge-portal-main .service-summary-name{
     display:flex;
@@ -816,7 +869,83 @@ button.subtle-link:hover{text-decoration:underline}
     color:inherit;
     font-style:normal;
   }
+  .knowledge-portal-main .service-group-rename-btn{
+    opacity:1;
+  }
 }
+
+/* Add/rename service group sheet (classes shared with onboarding-add-group-sheet) */
+.onb-sheet-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.4);
+  z-index:200;
+  display:flex;
+  align-items:flex-end;
+  font-family:inherit;
+}
+.onb-sheet{
+  background:#fff;
+  border-radius:20px 20px 0 0;
+  padding:20px 20px 40px;
+  width:100%;
+  max-height:90vh;
+  overflow:auto;
+  box-sizing:border-box;
+  font-family:inherit;
+}
+.onb-sheet-handle{width:36px;height:4px;background:#e5e7eb;border-radius:2px;margin:0 auto 20px}
+.onb-sheet-title{font-size:15px;font-weight:600;color:var(--text-dark);margin-bottom:16px;font-family:inherit}
+.onb-sheet-field{margin-bottom:0}
+.onb-sheet-label{font-size:11px;font-weight:500;color:var(--text-gray);margin-bottom:5px;font-family:inherit}
+.onb-sheet-input{
+  width:100%;
+  font-size:16px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-family:inherit;
+  color:var(--text-dark);
+  outline:none;
+  box-sizing:border-box;
+  background:var(--surface-card);
+}
+.onb-sheet-input:focus{border-color:var(--purple-dark)}
+.onb-sheet-actions{display:flex;gap:10px;margin-top:16px}
+.onb-sheet-cancel{
+  flex:1;
+  padding:13px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-size:14px;
+  color:var(--text-gray);
+  background:var(--surface-card);
+  cursor:pointer;
+  font-family:inherit;
+}
+.onb-sheet-save{
+  flex:2;
+  padding:13px;
+  border:none;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:500;
+  color:#fff;
+  background:var(--text-dark);
+  cursor:pointer;
+  font-family:inherit;
+}
+.onb-sheet-save:disabled{background:#d1d5db;cursor:not-allowed}
+@media (min-width:768px){
+  .onb-sheet-overlay{align-items:center;justify-content:center}
+  .onb-sheet{border-radius:14px;max-width:420px;padding:24px;width:100%}
+  .onb-sheet-handle{display:none}
+}
+html[data-user-theme="dark"] .onb-sheet{background:var(--surface-card)}
+html[data-user-theme="dark"] .onb-sheet-title{color:var(--text-dark)}
+html[data-user-theme="dark"] .onb-sheet-input{background:#0d1117;border-color:var(--border);color:var(--text-dark)}
+html[data-user-theme="dark"] .onb-sheet-cancel{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
+html[data-user-theme="dark"] .onb-sheet-save{background:#1f6feb}
 
 /* Catalog / legacy service editor: native <dialog> + panel */
 .catalog-service-dialog{

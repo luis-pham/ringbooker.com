@@ -8,22 +8,37 @@ export type OnboardingAddGroupSheetProps = {
   onConfirm: (groupName: string) => void;
   title: string;
   placeholder: string;
+  /** Pre-fill when opening (e.g. rename group). */
+  initialName?: string;
+  /** Primary action label (default: Add group). */
+  confirmLabel?: string;
+  /** Override `aria-labelledby` target (avoid duplicate ids when multiple sheets exist). */
+  titleId?: string;
 };
 
-export function OnboardingAddGroupSheet({ isOpen, onClose, onConfirm, title, placeholder }: OnboardingAddGroupSheetProps) {
+export function OnboardingAddGroupSheet({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
+  placeholder,
+  initialName,
+  confirmLabel = 'Add group',
+  titleId = 'onb-sheet-add-group-title',
+}: OnboardingAddGroupSheetProps) {
   const [groupName, setGroupName] = useState('');
 
   useEffect(() => {
-    if (isOpen) setGroupName('');
-  }, [isOpen]);
+    if (isOpen) setGroupName(initialName ?? '');
+  }, [isOpen, initialName]);
 
   if (!isOpen) return null;
 
   return (
     <div className="onb-sheet-overlay" role="presentation" onClick={onClose}>
-      <div className="onb-sheet" role="dialog" aria-modal="true" aria-labelledby="onb-sheet-add-group-title" onClick={(e) => e.stopPropagation()}>
+      <div className="onb-sheet" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()}>
         <div className="onb-sheet-handle" aria-hidden />
-        <div className="onb-sheet-title" id="onb-sheet-add-group-title">
+        <div className="onb-sheet-title" id={titleId}>
           {title}
         </div>
         <div className="onb-sheet-field">
@@ -47,7 +62,7 @@ export function OnboardingAddGroupSheet({ isOpen, onClose, onConfirm, title, pla
             Cancel
           </button>
           <button type="button" className="onb-sheet-save" disabled={!groupName.trim()} onClick={() => onConfirm(groupName.trim())}>
-            Add group
+            {confirmLabel}
           </button>
         </div>
       </div>

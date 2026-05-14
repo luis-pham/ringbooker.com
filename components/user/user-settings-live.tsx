@@ -15,6 +15,7 @@ import { UserPortalTopbar } from '@/components/user/user-portal-topbar';
 import { knowledgePortalTabPageClass, UserPortalPageContent } from '@/components/user/user-portal-page-content';
 import { useUserWorkspace } from '@/components/user/user-workspace-context';
 import { IntegrationsRedesign } from '@/components/user/integrations-redesign';
+import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-sheet';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
 import {
   USER_LANGUAGE_OPTIONS,
@@ -177,6 +178,11 @@ export type UserSettingsResponse = {
   error?: string;
   fields?: string[];
 };
+
+type CatalogGroupSheetState =
+  | null
+  | { mode: 'add' }
+  | { mode: 'rename'; categoryId: string; currentName: string };
 
 type CalendarProviderSummary = {
   id: string;
@@ -763,6 +769,7 @@ export function UserSettingsLive({
   const [catalogDialogServiceId, setCatalogDialogServiceId] = useState<string | null>(null);
   const [catalogDialogDraft, setCatalogDialogDraft] = useState<ShopService | null>(null);
   const [catalogDialogError, setCatalogDialogError] = useState<string | null>(null);
+  const [catalogGroupSheet, setCatalogGroupSheet] = useState<CatalogGroupSheetState>(null);
   const legacyServiceDialogRef = useRef<HTMLDialogElement>(null);
   const [legacyDialogIndex, setLegacyDialogIndex] = useState<number | null>(null);
   const [legacyDialogDraft, setLegacyDialogDraft] = useState<ServiceItem | null>(null);
@@ -2174,7 +2181,7 @@ export function UserSettingsLive({
 	                      </p>
 	                    </div>
                     <div className="service-catalog-actions">
-                      <button type="button" className="btn" onClick={() => addServiceGroup()}>
+                      <button type="button" className="btn" onClick={() => setCatalogGroupSheet({ mode: 'add' })}>
                         <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
                           <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H9l2 2h7.5A2.5 2.5 0 0 1 21 8.5v1" />
                           <path d="M12 16h8" />
@@ -2206,8 +2213,26 @@ export function UserSettingsLive({
 	                          <details key={category.id} className="service-group-card service-group-card--compact">
 	                            <summary>
 	                              <div className="service-group-summary-inner">
-	                                <strong>{category.name || 'Service group'}</strong>
-                                <span className="service-group-count">
+	                                <span className="service-group-title-with-rename">
+	                                  <strong>{category.name || 'Service group'}</strong>
+	                                  <button
+	                                    type="button"
+	                                    className="service-group-rename-btn"
+	                                    aria-label={`Rename group ${category.name || 'Service group'}`}
+	                                    onClick={(event) => {
+	                                      event.preventDefault();
+	                                      event.stopPropagation();
+	                                      setCatalogGroupSheet({
+	                                        mode: 'rename',
+	                                        categoryId: category.id,
+	                                        currentName: category.name?.trim() || 'Service group',
+	                                      });
+	                                    }}
+	                                  >
+	                                    {renderEditIcon()}
+	                                  </button>
+	                                </span>
+	                                <span className="service-group-count">
                                   {groupServices.length} services
                                   <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden>
                                     <path d="m6 9 6 6 6-6" />
@@ -2634,6 +2659,27 @@ export function UserSettingsLive({
                       </div>
                     ) : null}
                   </dialog>
+                  <OnboardingAddGroupSheet
+                    isOpen={catalogGroupSheet !== null}
+                    onClose={() => setCatalogGroupSheet(null)}
+                    onConfirm={(name) => {
+                      const trimmed = name.trim();
+                      if (!trimmed || !catalogGroupSheet) return;
+                      if (catalogGroupSheet.mode === 'add') {
+                        addServiceGroup(trimmed);
+                      } else {
+                        updateServiceGroup(catalogGroupSheet.categoryId, { name: trimmed });
+                      }
+                      setCatalogGroupSheet(null);
+                    }}
+                    title={
+                      catalogGroupSheet?.mode === 'rename' ? 'Rename service group' : catalogGroupSheet?.mode === 'add' ? 'New service group' : ''
+                    }
+                    placeholder="e.g. Waxing, Facials, Extensions..."
+                    initialName={catalogGroupSheet?.mode === 'rename' ? catalogGroupSheet.currentName : undefined}
+                    confirmLabel={catalogGroupSheet?.mode === 'rename' ? 'Save' : 'Add group'}
+                    titleId="knowledge-catalog-group-sheet-title"
+                  />
                   <div className="service-catalog-note">
                     These services help RingBooker answer caller questions and capture booking requests. They do not turn on direct booking integrations by themselves.
                   </div>
