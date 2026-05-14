@@ -1713,7 +1713,7 @@ export function MarketingHomeTemplate() {
                   <li>Call summaries with next steps</li>
                   <li>Guided setup and test call</li>
                 </ul>
-                <a className="plan-btn pb-outline" href="/user/signup?plan=starter">Start free trial →</a>
+                <a className="plan-btn pb-outline" href="/user/signup?plan=starter">Start 14-Day Free Trial →</a>
               </div>
               <div className="plan star home-carousel-slide">
                 <div className="plan-badge">Most popular</div>
@@ -1733,7 +1733,7 @@ export function MarketingHomeTemplate() {
                   <li>Advanced call insights</li>
                   <li>Priority support</li>
                 </ul>
-                <a className="plan-btn pb-dark" href="/user/signup?plan=professional">Start free trial →</a>
+                <a className="plan-btn pb-dark" href="/user/signup?plan=professional">Start 14-Day Free Trial →</a>
               </div>
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Custom</div>
@@ -1782,7 +1782,7 @@ export function MarketingHomeTemplate() {
                   </svg>
                 </a>
                 <a href="/user/signup?plan=starter" className="btn-ghost-w">
-                  Start free trial
+                  Start 14-Day Free Trial
                 </a>
               </div>
               {/* CTA Phone — voice call UI */}

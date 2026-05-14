@@ -1388,7 +1388,7 @@ export function MarketingVerticalDemoTemplate({
                         <div className="vd-sms-bubble">{config.smsPreview}</div>
                       </div>
                       <div className="vd-complete-cta">
-                        <Link href="/pricing" className="vd-btn-primary">Start Free 14-Day Trial →</Link>
+                        <Link href="/pricing" className="vd-btn-primary">Start 14-Day Free Trial →</Link>
                         <button type="button" className="vd-btn-ghost" onClick={resetDemo}>Try another scenario</button>
                       </div>
                     </>

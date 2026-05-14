@@ -546,7 +546,7 @@ function FinalCta({
             href="/pricing"
             className="flex w-full items-center justify-center rounded-full border border-white/35 bg-white/10 px-6 py-3.5 text-[14px] font-bold text-white transition hover:bg-white/20"
           >
-            Start Free 14-Day Trial
+            Start 14-Day Free Trial
           </Link>
         </div>
       </div>
@@ -580,7 +580,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/pricing" className={theme.trialCtaClass}>
-              Start Free 14-Day Trial
+              Start 14-Day Free Trial
             </Link>
             <Link href="/industries/nail-salon/vi" className="inline-flex items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-500 transition hover:border-violet-200 hover:text-violet-700">
               🇻🇳 Tiếng Việt
@@ -1005,7 +1005,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/pricing" className={theme.trialCtaClass}>
-              Start Free Trial
+              Start 14-Day Free Trial
             </Link>
           </div>
           <IntegrationRow eyebrowClass={theme.accentClass} />
@@ -1130,7 +1130,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/pricing" className={theme.trialCtaClass}>
-              Start Free Trial
+              Start 14-Day Free Trial
             </Link>
           </div>
           <IntegrationRow eyebrowClass={theme.accentClass} />
@@ -1275,7 +1275,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/pricing" className={theme.trialCtaClass}>
-              Start Free Trial
+              Start 14-Day Free Trial
             </Link>
           </div>
           <IntegrationRow eyebrowClass={theme.accentClass} />
@@ -1422,7 +1422,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
               Try a Live Demo Call
             </a>
             <Link href="/pricing" className={theme.trialCtaClass}>
-              Start Free Trial
+              Start 14-Day Free Trial
             </Link>
           </div>
           <IntegrationRow eyebrowClass={theme.accentClass} />

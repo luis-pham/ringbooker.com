@@ -170,7 +170,7 @@ export function MarketingMobileNav({ active }: MarketingMobileNavProps) {
                   className="mk-drawer-btn-cta"
                   onClick={() => setOpen(false)}
                 >
-                  Start Free Trial →
+                  Start 14-Day Free Trial →
                 </Link>
                 <Link
                   href="/user/login"

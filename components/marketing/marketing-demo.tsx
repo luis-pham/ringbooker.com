@@ -123,7 +123,7 @@ export function MarketingDemoTemplate() {
                   Try web demo →
                 </Link>
                 <Link href="/pricing" className="nav-trial-outline">
-                  Start Free Trial →
+                  Start 14-Day Free Trial →
                 </Link>
               </div>
             </div>
