@@ -408,7 +408,15 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
   font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
   color:var(--text-light);margin:0 0 12px;
 }
-.overview-quick-access-item:hover .sc-name{color:var(--purple-dark)}
+.overview-quick-access-item:hover .sc-name{color:var(--text-dark)}
+.overview-quick-access-card .sc-icon{
+  width:34px;height:34px;border-radius:10px;background:transparent;
+  color:#4a4455;
+}
+.overview-quick-access-card .sc-icon svg{
+  width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;
+}
+.overview-quick-access-item:hover .sc-icon{color:var(--text-dark)}
 .overview-system-status-card .card-sub{margin-bottom:4px}
 .overview-status-list{margin-top:4px}
 .overview-status-row{
@@ -925,6 +933,9 @@ html[data-user-theme="dark"] .overview-bk-nudge-dismiss{border-color:var(--borde
 html[data-user-theme="dark"] .overview-status-row{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .overview-status-zero-calls{background:#21262d;color:var(--text-gray)}
 html[data-user-theme="dark"] .overview-status-recent{border-top-color:var(--border)}
+html[data-user-theme="dark"] .overview-quick-access-card .sc-icon{color:#8b949e}
+html[data-user-theme="dark"] .overview-quick-access-item:hover .sc-icon,
+html[data-user-theme="dark"] .overview-quick-access-item:hover .sc-name{color:#e6edf3}
 html[data-user-theme="dark"] .stat-icon svg{stroke:var(--purple-dark)}
 html[data-user-theme="dark"] .forward-num{
   background:rgba(56,139,253,0.1);
