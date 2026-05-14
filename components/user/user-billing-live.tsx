@@ -51,6 +51,9 @@ export type UserBillingResponse = {
     subscription: {
       plan: ShopPlan;
       status: BillingSubscriptionStatus;
+      provider?: BillingProvider;
+      providerCustomerId?: string | null;
+      providerSubscriptionId?: string | null;
       amount: number;
       amountCents?: number | null;
       currency: string;
@@ -662,7 +665,11 @@ export function UserBillingLive({
   const subscriptionBillingBlocked =
     subscription != null && ['past_due', 'paused', 'canceled'].includes(subscription.status);
   const shouldUseReactivateCheckout =
-    subscription != null && ['trial_expired', 'paused', 'canceled', 'past_due', 'unpaid'].includes(subscription.status);
+    subscription != null &&
+    (['trial_expired', 'paused', 'canceled', 'past_due', 'unpaid'].includes(subscription.status) ||
+      (subscription.status === 'unknown' &&
+        (subscription.provider === 'paddle' || data?.billing?.provider === 'paddle') &&
+        Boolean(subscription.providerCustomerId?.trim() || subscription.providerSubscriptionId?.trim() || data?.billing?.customer?.providerCustomerId?.trim())));
   const showTrialCtaRow =
     Boolean(data?.billing) &&
     !isEnterprisePlan &&

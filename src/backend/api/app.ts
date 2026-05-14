@@ -743,7 +743,14 @@ function billingStatusForGoLive(subscription: BillingSubscription | null): 'none
   if (!subscription) return 'none';
   if (subscription.status === 'trialing') return 'trial';
   if (subscription.status === 'active') return 'active';
-  if (subscription.status === 'canceled' || subscription.status === 'paused' || subscription.status === 'trial_expired') {
+  if (
+    subscription.status === 'canceled' ||
+    subscription.status === 'paused' ||
+    subscription.status === 'trial_expired' ||
+    (subscription.status === 'unknown' &&
+      subscription.provider === 'paddle' &&
+      Boolean(subscription.providerCustomerId?.trim() || subscription.providerSubscriptionId?.trim()))
+  ) {
     return 'cancelled';
   }
   if (subscription.status === 'past_due' || subscription.status === 'unpaid' || subscription.status === 'incomplete') {
@@ -7189,7 +7196,11 @@ export function createBackendApp(deps: {
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
     const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
-    if (!subscription || !['trial_expired', 'paused', 'canceled', 'past_due', 'unpaid'].includes(subscription.status)) {
+    const unknownPaddleSubscriptionCanReactivate =
+      subscription?.status === 'unknown' &&
+      subscription.provider === 'paddle' &&
+      Boolean(subscription.providerCustomerId?.trim() || subscription.providerSubscriptionId?.trim());
+    if (!subscription || (!['trial_expired', 'paused', 'canceled', 'past_due', 'unpaid'].includes(subscription.status) && !unknownPaddleSubscriptionCanReactivate)) {
       return c.json({ ok: false, error: 'subscription_not_reactivatable' }, 409);
     }
     if (!isSelfServeTrialPlan(subscription.plan)) {
