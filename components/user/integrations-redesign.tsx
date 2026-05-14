@@ -28,6 +28,28 @@ function StatusDot({ connected }: { connected: boolean }) {
   return <span className={`integration-status-dot ${connected ? 'connected' : ''}`} aria-hidden="true" />;
 }
 
+function stringifyMappings(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+  return Object.entries(value as Record<string, unknown>)
+    .filter(([, mapped]) => typeof mapped === 'string' && mapped.trim())
+    .map(([key, mapped]) => `${key}=${String(mapped).trim()}`)
+    .join('\n');
+}
+
+function parseMappings(value: string): Record<string, string> {
+  const mapped: Record<string, string> = {};
+  for (const rawLine of value.split('\n')) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const separator = line.includes('=') ? '=' : ':';
+    const [rawKey, ...rest] = line.split(separator);
+    const key = rawKey?.trim().toLowerCase().replace(/\s+/g, ' ');
+    const id = rest.join(separator).trim();
+    if (key && id) mapped[key] = id;
+  }
+  return mapped;
+}
+
 function BookingMethodQuestion({ onChoose }: { onChoose: (method: 'app' | 'direct' | 'later') => void }) {
   return (
     <div className="integrations-flow-stack">
@@ -183,7 +205,12 @@ function SquareConfigPanel({ connected, provider, onDisconnect, onRefresh }: {
       {connected ? (
         <>
           <div className="integration-success-box">Connected · Merchant: {String(provider?.details?.merchantId ?? 'Square')}</div>
-          <p className="calendar-int-desc">Use the existing Square settings flow to choose location and service target.</p>
+          <div className="integration-info-box">
+            <strong>Square Appointments booking provider.</strong>
+            <br />
+            Services/catalog sync: available · Staff sync: available · Availability check: {provider?.details?.availabilityCheck === 'available' ? 'available' : 'needs mapping'} · Direct appointment creation: {provider?.details?.directAppointmentCreation === 'enabled' ? 'enabled' : 'not enabled'}.
+          </div>
+          <p className="calendar-int-desc">Choose a Square location and service variation before RingBooker creates appointments directly. If Square fails, RingBooker captures the booking request instead.</p>
           <div className="integrations-inline-actions">
             <button type="button" className="btn" onClick={onRefresh}>Refresh</button>
             <button
@@ -201,7 +228,7 @@ function SquareConfigPanel({ connected, provider, onDisconnect, onRefresh }: {
         </>
       ) : (
         <>
-          <p className="calendar-int-desc">Sign in with your Square account — RingBooker will ask which location and service to use.</p>
+          <p className="calendar-int-desc">Sign in with your Square account — RingBooker will use Square Appointments as a booking provider after you choose the location and service target.</p>
           <button
             type="button"
             className="btn user-save integrations-primary-button"
@@ -365,6 +392,10 @@ function AcuityConfigPanel({
     accessToken?: string;
     appointmentTypeId?: string;
     calendarId?: string;
+    defaultCalendarId?: string;
+    serviceMappings?: Record<string, string>;
+    staffMappings?: Record<string, string>;
+    requiresCallerEmail?: boolean;
     timezone?: string;
     bookingUrl?: string;
   }) => Promise<void>;
@@ -374,7 +405,10 @@ function AcuityConfigPanel({
   const [userId, setUserId] = useState(String(details.userId ?? ''));
   const [apiKey, setApiKey] = useState('');
   const [appointmentTypeId, setAppointmentTypeId] = useState(String(details.appointmentTypeId ?? ''));
-  const [calendarId, setCalendarId] = useState(String(details.calendarId ?? ''));
+  const [defaultCalendarId, setDefaultCalendarId] = useState(String(details.defaultCalendarId ?? details.calendarId ?? ''));
+  const [serviceMappingsText, setServiceMappingsText] = useState(stringifyMappings(details.serviceMappings));
+  const [staffMappingsText, setStaffMappingsText] = useState(stringifyMappings(details.staffMappings));
+  const [requiresCallerEmail, setRequiresCallerEmail] = useState(Boolean(details.requiresCallerEmail ?? false));
   const [timezone, setTimezone] = useState(String(details.timezone ?? ''));
   const [bookingUrl, setBookingUrl] = useState(String(details.bookingUrl ?? ''));
   const [busy, setBusy] = useState(false);
@@ -383,13 +417,17 @@ function AcuityConfigPanel({
   useEffect(() => {
     setUserId(String(details.userId ?? ''));
     setAppointmentTypeId(String(details.appointmentTypeId ?? ''));
-    setCalendarId(String(details.calendarId ?? ''));
+    setDefaultCalendarId(String(details.defaultCalendarId ?? details.calendarId ?? ''));
+    setServiceMappingsText(stringifyMappings(details.serviceMappings));
+    setStaffMappingsText(stringifyMappings(details.staffMappings));
+    setRequiresCallerEmail(Boolean(details.requiresCallerEmail ?? false));
     setTimezone(String(details.timezone ?? ''));
     setBookingUrl(String(details.bookingUrl ?? ''));
   }, [provider?.details]);
 
   const directAppointmentCreation = String(details.directAppointmentCreation ?? 'not_enabled');
   const bookingMode = String(details.bookingMode ?? 'capture_request_only');
+  const missingMappings = Array.isArray(details.missingMappings) ? details.missingMappings.map(String) : [];
 
   return (
     <div className="integration-config-body">
@@ -403,8 +441,15 @@ function AcuityConfigPanel({
       <div className="integration-info-box">
         <strong>Current Acuity mode: {bookingMode === 'direct_booking_with_fallback' ? 'direct booking with fallback' : 'capture request only'}.</strong>
         <br />
-        Appointment types sync: available · Calendars sync: available · Availability check: {details.availabilityCheck === 'available' ? 'available' : 'needs appointment type mapping'} · Direct appointment creation: {directAppointmentCreation === 'enabled' ? 'enabled' : 'not enabled'}.
+        Appointment types sync: available · Calendars sync: available · Availability check: {details.availabilityCheck === 'available' ? 'available' : 'needs service mapping'} · Direct appointment creation: {directAppointmentCreation === 'enabled' ? 'On' : 'Off'}.
       </div>
+      {missingMappings.length ? (
+        <div className="integration-info-box">
+          <strong>Missing mapping before direct booking can run:</strong>
+          <br />
+          {missingMappings.join(' ')}
+        </div>
+      ) : null}
       <div className="calendar-int-grid">
         <div className="field integration-config-field">
           <label>Acuity User ID</label>
@@ -415,12 +460,12 @@ function AcuityConfigPanel({
           <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Your Acuity API key" />
         </div>
         <div className="field integration-config-field">
-          <label>Appointment type ID</label>
+          <label>Legacy default appointment type ID optional</label>
           <input value={appointmentTypeId} onChange={(event) => setAppointmentTypeId(event.target.value)} placeholder="1001" />
         </div>
         <div className="field integration-config-field">
-          <label>Calendar ID optional</label>
-          <input value={calendarId} onChange={(event) => setCalendarId(event.target.value)} placeholder="2002" />
+          <label>Default Acuity calendar ID</label>
+          <input value={defaultCalendarId} onChange={(event) => setDefaultCalendarId(event.target.value)} placeholder="2002" />
         </div>
         <div className="field integration-config-field">
           <label>Timezone optional</label>
@@ -431,6 +476,30 @@ function AcuityConfigPanel({
           <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://your-business.as.me/" />
         </div>
       </div>
+      <div className="field integration-config-field">
+        <label>RingBooker service → Acuity appointment type ID</label>
+        <textarea
+          value={serviceMappingsText}
+          onChange={(event) => setServiceMappingsText(event.target.value)}
+          placeholder={'haircut=1001\nhair color=1002'}
+          rows={4}
+        />
+        <small>One mapping per line. Direct booking requires a matching service mapping.</small>
+      </div>
+      <div className="field integration-config-field">
+        <label>RingBooker staff/provider → Acuity calendar ID optional</label>
+        <textarea
+          value={staffMappingsText}
+          onChange={(event) => setStaffMappingsText(event.target.value)}
+          placeholder={'alex=2002\njamie=2003'}
+          rows={3}
+        />
+        <small>If no staff mapping matches, RingBooker uses the default Acuity calendar ID.</small>
+      </div>
+      <label className="integration-checkbox-row">
+        <input type="checkbox" checked={requiresCallerEmail} onChange={(event) => setRequiresCallerEmail(event.target.checked)} />
+        <span>Require caller email before direct Acuity booking. If missing, RingBooker captures a booking request instead.</span>
+      </label>
       {message ? <div className="note">{message}</div> : null}
       <div className="integrations-inline-actions">
         <button
@@ -445,7 +514,11 @@ function AcuityConfigPanel({
                 userId: userId.trim(),
                 apiKey: apiKey.trim(),
                 appointmentTypeId: appointmentTypeId.trim() || undefined,
-                calendarId: calendarId.trim() || undefined,
+                calendarId: defaultCalendarId.trim() || undefined,
+                defaultCalendarId: defaultCalendarId.trim() || undefined,
+                serviceMappings: parseMappings(serviceMappingsText),
+                staffMappings: parseMappings(staffMappingsText),
+                requiresCallerEmail,
                 timezone: timezone.trim() || undefined,
                 bookingUrl: bookingUrl.trim() || undefined,
               });
@@ -512,6 +585,10 @@ function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, 
     accessToken?: string;
     appointmentTypeId?: string;
     calendarId?: string;
+    defaultCalendarId?: string;
+    serviceMappings?: Record<string, string>;
+    staffMappings?: Record<string, string>;
+    requiresCallerEmail?: boolean;
     timezone?: string;
     bookingUrl?: string;
   }) => Promise<void>;

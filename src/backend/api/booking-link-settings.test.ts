@@ -10,6 +10,7 @@ import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repos
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
+import { parseAcuityCredentials } from '@/src/backend/services/booking-providers/acuity';
 import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 
@@ -307,6 +308,10 @@ test('acuity connect stores API credentials and app selection', async () => {
       apiKey: 'acuity-key',
       appointmentTypeId: '100',
       calendarId: '200',
+      defaultCalendarId: '200',
+      serviceMappings: { haircut: '100' },
+      staffMappings: { alex: '200' },
+      requiresCallerEmail: true,
       timezone: 'America/Chicago',
       bookingUrl: 'https://example.as.me/',
     }),
@@ -321,6 +326,11 @@ test('acuity connect stores API credentials and app selection', async () => {
   assert.equal(shop?.selected_integration, 'acuity');
   assert.equal(shop?.booking_url, 'https://example.as.me/');
   assert.match(shop?.integration_credentials_encrypted ?? '', /acuity/);
+  const stored = parseAcuityCredentials(shop?.integration_credentials_encrypted);
+  assert.equal(stored?.serviceMappings?.haircut, '100');
+  assert.equal(stored?.staffMappings?.alex, '200');
+  assert.equal(stored?.defaultCalendarId, '200');
+  assert.equal(stored?.requiresCallerEmail, true);
 });
 
 test('acuity connect rejects missing API credentials', async () => {

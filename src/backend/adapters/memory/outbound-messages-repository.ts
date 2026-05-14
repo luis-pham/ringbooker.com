@@ -46,4 +46,10 @@ export class InMemoryOutboundMessagesRepository implements OutboundMessagesRepos
       .filter((message) => message.bookingId === bookingId)
       .sort((a, b) => ((a.createdAt ?? '') > (b.createdAt ?? '') ? 1 : -1));
   }
+
+  async countRecentByPhone(params: { shopId: string; customerPhone: string; since: Date }): Promise<number> {
+    return this.messages.filter(
+      (m) => m.shopId === params.shopId && m.customerPhone === params.customerPhone && (m.createdAt ?? '') >= params.since.toISOString(),
+    ).length;
+  }
 }

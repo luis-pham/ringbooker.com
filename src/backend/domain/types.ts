@@ -329,6 +329,7 @@ export interface BookingInput {
   shopId: string;
   customerPhone: string;
   customerName?: string;
+  customerEmail?: string;
   service: string;
   techName?: string;
   teamMemberId?: string;
@@ -343,11 +344,19 @@ export interface BookingInput {
   idempotencyKey: string;
 }
 
+export type BookingProviderStatus =
+  | 'request_only'
+  | 'provider_confirmed'
+  | 'provider_failed'
+  | 'provider_unavailable'
+  | 'provider_disabled'
+  | 'missing_mapping';
+
 export interface BookingResult {
   bookingId: string;
   calendarEventId?: string;
   confirmed: boolean;
-  providerStatus?: string;
+  providerStatus?: BookingProviderStatus;
   providerErrorReason?: string;
 }
 

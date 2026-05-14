@@ -23,6 +23,13 @@ type ProviderSummary = {
     staffId?: string | null;
     appointmentTypeId?: string | null;
     calendarId?: string | null;
+    defaultCalendarId?: string | null;
+    serviceMappings?: Record<string, string>;
+    staffMappings?: Record<string, string>;
+    serviceMappingCount?: number | null;
+    staffMappingCount?: number | null;
+    requiresCallerEmail?: boolean | null;
+    missingMappings?: string[];
     timezone?: string | null;
     appointmentTypesSync?: string | null;
     calendarsSync?: string | null;
@@ -264,6 +271,10 @@ export function useIntegrations() {
       accessToken?: string;
       appointmentTypeId?: string;
       calendarId?: string;
+      defaultCalendarId?: string;
+      serviceMappings?: Record<string, string>;
+      staffMappings?: Record<string, string>;
+      requiresCallerEmail?: boolean;
       timezone?: string;
       bookingUrl?: string;
     }) => {

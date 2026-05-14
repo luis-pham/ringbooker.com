@@ -40,6 +40,11 @@ export const REALTIME_TOOL_DEFINITIONS: RealtimeToolDefinition[] = [
             "Name of the stylist, technician, or staff member requested by the caller. Use when caller says things like 'I want Sarah' or 'Can I book with Mike?'",
         },
         customerName: { type: 'string', description: 'Optional customer name.' },
+        customerEmail: {
+          type: 'string',
+          description:
+            'Optional caller email. Include it when the caller provides one, especially for booking providers that require email before direct confirmation.',
+        },
         notes: { type: 'string', description: 'Optional booking notes.' },
       },
       required: ['date', 'time', 'service'],

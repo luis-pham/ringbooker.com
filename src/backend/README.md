@@ -95,7 +95,7 @@ Latency preset notes:
 - `balanced`: safer conversational stability for mixed caller audio quality.
 - `ultra_low_latency`: more aggressive VAD for fastest turn-taking; can cut off hesitant speech sooner in noisy lines.
 
-## Calendar Provider
+## Booking And Calendar Providers
 
 - `GoogleCalendarProvider` is now wired to Google Calendar API:
   - `freeBusy` for availability checks
@@ -104,7 +104,7 @@ Latency preset notes:
   - `events.delete` for cancellation
   - booking create idempotency via private extended property (`rb_idempotency_key`)
   - Redis-backed token + freebusy cache for multi-instance latency reduction (falls back to in-process cache when `REDIS_URL` is not set)
-- `SquareAppointmentsProvider` is now wired to Square Bookings API:
+- `SquareAppointmentsProvider` now lives under `services/booking-providers/square.ts` and is wired to Square Bookings API:
   - `bookings/availability/search` for availability checks
   - `bookings` create/update/cancel for booking lifecycle
   - customer lookup/create via `customers/search` + `customers`
@@ -117,10 +117,10 @@ Latency preset notes:
     - `service_variation_id`
     - optional `team_member_id`
 
-## User Calendar Connection APIs
+## User Booking Provider Connection APIs
 
 - `GET /api/backend/user/calendar/providers`
-  - returns connect/configure status for calendar providers per shop.
+  - returns connect/configure status for booking and calendar providers per shop.
 - `GET /api/backend/user/calendar/providers/square_appointments/connect/start`
   - starts Square OAuth for authenticated user and redirects to Square auth page.
 - `GET /api/backend/user/calendar/providers/square_appointments/connect/callback`

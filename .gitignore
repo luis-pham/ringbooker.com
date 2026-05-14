@@ -38,3 +38,4 @@ tsconfig.tsbuildinfo
 !README.md
 !docs/integrations/mindbody.md
 !docs/integrations/acuity-scheduling.md
+!docs/integrations/square-appointments.md

@@ -900,6 +900,10 @@ const acuityConnectSchema = z.object({
   accessToken: z.string().min(1).optional(),
   appointmentTypeId: z.string().min(1).optional(),
   calendarId: z.string().min(1).optional(),
+  defaultCalendarId: z.string().min(1).optional(),
+  serviceMappings: z.record(z.string(), z.string()).optional(),
+  staffMappings: z.record(z.string(), z.string()).optional(),
+  requiresCallerEmail: z.boolean().optional(),
   timezone: z.string().min(1).optional(),
   bookingUrl: z.string().optional(),
 }).refine((value) => Boolean(value.accessToken || (value.userId && value.apiKey)), {
@@ -5862,6 +5866,13 @@ export function createBackendApp(deps: {
                   locationId: squareCredentials?.location_id ?? null,
                   serviceVariationId: squareCredentials?.service_variation_id ?? null,
                   teamMemberId: squareCredentials?.team_member_id ?? null,
+                  servicesCatalogSync: 'available',
+                  staffSync: 'available',
+                  availabilityCheck: configured ? 'available' : 'needs_mapping',
+                  directAppointmentCreation: configured ? 'enabled' : 'not_enabled',
+                  bookingMode: configured ? 'direct_booking_with_fallback' : 'capture_request_only',
+                  capabilityNote:
+                    'Square Appointments is a booking provider. RingBooker can check availability and create appointments directly after location and service mapping are configured.',
                 }
               : null,
           };
@@ -5928,7 +5939,16 @@ export function createBackendApp(deps: {
         }
         if (id === 'acuity') {
           const connected = Boolean(acuityCredentials?.accessToken || (acuityCredentials?.userId && acuityCredentials?.apiKey));
-          const directEnabled = process.env.ACUITY_DIRECT_BOOKING_ENABLED === 'true' && Boolean(acuityCredentials?.appointmentTypeId);
+          const serviceMappingCount = Object.keys(acuityCredentials?.serviceMappings ?? {}).length;
+          const staffMappingCount = Object.keys(acuityCredentials?.staffMappings ?? {}).length;
+          const defaultCalendarId = acuityCredentials?.defaultCalendarId ?? acuityCredentials?.calendarId ?? null;
+          const directFlagEnabled = process.env.ACUITY_DIRECT_BOOKING_ENABLED === 'true';
+          const hasRequiredMappings = serviceMappingCount > 0 && Boolean(defaultCalendarId);
+          const directEnabled = directFlagEnabled && hasRequiredMappings;
+          const missingMappings = [
+            serviceMappingCount > 0 ? null : 'Add at least one RingBooker service to Acuity appointment type mapping.',
+            defaultCalendarId ? null : 'Set a default Acuity calendar or staff calendar mapping.',
+          ].filter(Boolean);
           return {
             id,
             label: meta.label,
@@ -5940,16 +5960,23 @@ export function createBackendApp(deps: {
                   userId: acuityCredentials?.userId ?? null,
                   appointmentTypeId: acuityCredentials?.appointmentTypeId ?? null,
                   calendarId: acuityCredentials?.calendarId ?? null,
+                  defaultCalendarId,
+                  serviceMappings: acuityCredentials?.serviceMappings ?? {},
+                  staffMappings: acuityCredentials?.staffMappings ?? {},
+                  serviceMappingCount,
+                  staffMappingCount,
+                  requiresCallerEmail: acuityCredentials?.requiresCallerEmail ?? false,
+                  missingMappings,
                   timezone: acuityCredentials?.timezone ?? shop.timezone ?? null,
                   bookingUrl: acuityCredentials?.bookingUrl ?? shop.booking_url ?? null,
                   appointmentTypesSync: 'available',
                   calendarsSync: 'available',
-                  availabilityCheck: acuityCredentials?.appointmentTypeId ? 'available' : 'needs_mapping',
+                  availabilityCheck: serviceMappingCount > 0 ? 'available' : 'needs_mapping',
                   directAppointmentCreation: directEnabled ? 'enabled' : 'not_enabled',
                   bookingMode: directEnabled ? 'direct_booking_with_fallback' : 'capture_request_only',
                   capabilityNote: directEnabled
                     ? 'Acuity direct appointment creation is enabled. Failed API bookings still fall back to captured booking requests.'
-                    : 'Acuity is connected for appointment types, calendars, and availability. Direct appointment creation requires appointment type mapping and ACUITY_DIRECT_BOOKING_ENABLED=true.',
+                    : 'Acuity is connected for appointment types, calendars, and availability. Direct appointment creation requires service mapping, default calendar mapping, and ACUITY_DIRECT_BOOKING_ENABLED=true.',
                 }
               : null,
           };
@@ -6211,6 +6238,10 @@ export function createBackendApp(deps: {
       accessToken: parsed.data.accessToken,
       appointmentTypeId: parsed.data.appointmentTypeId,
       calendarId: parsed.data.calendarId,
+      defaultCalendarId: parsed.data.defaultCalendarId ?? parsed.data.calendarId,
+      serviceMappings: parsed.data.serviceMappings,
+      staffMappings: parsed.data.staffMappings,
+      requiresCallerEmail: parsed.data.requiresCallerEmail,
       timezone: parsed.data.timezone,
       bookingUrl: bookingUrl ?? undefined,
     });
@@ -6235,7 +6266,9 @@ export function createBackendApp(deps: {
         status: 'success',
         has_booking_url: Boolean(bookingUrl),
         has_appointment_type_id: Boolean(payload.appointmentTypeId),
-        has_calendar_id: Boolean(payload.calendarId),
+        has_calendar_id: Boolean(payload.calendarId ?? payload.defaultCalendarId),
+        service_mapping_count: Object.keys(payload.serviceMappings ?? {}).length,
+        staff_mapping_count: Object.keys(payload.staffMappings ?? {}).length,
       },
       'integration_acuity_connect',
     );

@@ -11,6 +11,10 @@ export type AcuityCredentials = {
   accessToken?: string;
   appointmentTypeId?: string;
   calendarId?: string;
+  defaultCalendarId?: string;
+  serviceMappings?: Record<string, string>;
+  staffMappings?: Record<string, string>;
+  requiresCallerEmail?: boolean;
   timezone?: string;
   bookingUrl?: string;
 };
@@ -95,6 +99,10 @@ export function parseAcuityCredentials(raw: string | null | undefined): Partial<
         accessToken: stringValue(parsed.accessToken ?? parsed.access_token),
         appointmentTypeId: stringValue(parsed.appointmentTypeId ?? parsed.appointment_type_id),
         calendarId: stringValue(parsed.calendarId ?? parsed.calendar_id),
+        defaultCalendarId: stringValue(parsed.defaultCalendarId ?? parsed.default_calendar_id ?? parsed.calendarId ?? parsed.calendar_id),
+        serviceMappings: parseStringMap(parsed.serviceMappings ?? parsed.service_mappings),
+        staffMappings: parseStringMap(parsed.staffMappings ?? parsed.staff_mappings),
+        requiresCallerEmail: booleanValue(parsed.requiresCallerEmail ?? parsed.requires_caller_email),
         timezone: stringValue(parsed.timezone),
         bookingUrl: stringValue(parsed.bookingUrl ?? parsed.booking_url),
       };
@@ -120,6 +128,10 @@ export function buildAcuityConnectionPayload(
     accessToken: patch.accessToken ?? current?.accessToken,
     appointmentTypeId: patch.appointmentTypeId ?? current?.appointmentTypeId,
     calendarId: patch.calendarId ?? current?.calendarId,
+    defaultCalendarId: patch.defaultCalendarId ?? patch.calendarId ?? current?.defaultCalendarId ?? current?.calendarId,
+    serviceMappings: mergeStringMaps(patch.serviceMappings, current?.serviceMappings),
+    staffMappings: mergeStringMaps(patch.staffMappings, current?.staffMappings),
+    requiresCallerEmail: patch.requiresCallerEmail ?? current?.requiresCallerEmail,
     timezone: patch.timezone ?? current?.timezone,
     bookingUrl: patch.bookingUrl ?? current?.bookingUrl,
   };
@@ -127,6 +139,33 @@ export function buildAcuityConnectionPayload(
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function booleanValue(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function normalizeMappingKey(value: string | undefined | null): string {
+  return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function parseStringMap(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const mapped: Record<string, string> = {};
+  for (const [rawKey, rawValue] of Object.entries(value as Record<string, unknown>)) {
+    const key = normalizeMappingKey(rawKey);
+    const id = stringValue(rawValue);
+    if (key && id) mapped[key] = id;
+  }
+  return Object.keys(mapped).length ? mapped : undefined;
+}
+
+function mergeStringMaps(
+  patch: Record<string, string> | undefined,
+  current: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  if (patch !== undefined) return parseStringMap(patch);
+  return parseStringMap(current);
 }
 
 function acuityApiBaseUrl(): string {
@@ -159,6 +198,14 @@ function resolveAcuityCredentials(shop: Shop): AcuityCredentials {
     apiKey,
     appointmentTypeId: parsed?.appointmentTypeId?.trim() || process.env.ACUITY_APPOINTMENT_TYPE_ID?.trim(),
     calendarId: parsed?.calendarId?.trim() || process.env.ACUITY_CALENDAR_ID?.trim(),
+    defaultCalendarId:
+      parsed?.defaultCalendarId?.trim() ||
+      parsed?.calendarId?.trim() ||
+      process.env.ACUITY_DEFAULT_CALENDAR_ID?.trim() ||
+      process.env.ACUITY_CALENDAR_ID?.trim(),
+    serviceMappings: parseStringMap(parsed?.serviceMappings),
+    staffMappings: parseStringMap(parsed?.staffMappings),
+    requiresCallerEmail: parsed?.requiresCallerEmail ?? process.env.ACUITY_REQUIRES_CALLER_EMAIL === 'true',
     timezone: parsed?.timezone?.trim() || shop.timezone?.trim() || process.env.ACUITY_TIMEZONE?.trim(),
     bookingUrl: parsed?.bookingUrl?.trim() || shop.booking_url?.trim() || process.env.ACUITY_BOOKING_URL?.trim(),
   };
@@ -222,6 +269,33 @@ export class AcuityProvider implements CalendarProvider {
     this.baseUrl = options.baseUrl?.replace(/\/+$/, '') ?? acuityApiBaseUrl();
     this.timeoutMs = options.timeoutMs ?? acuityTimeoutMs();
     this.fetchImpl = options.fetchImpl ?? fetch;
+  }
+
+  private mappedAppointmentTypeId(input: Pick<BookingInput, 'service' | 'matchedServiceId'>): string | undefined {
+    const mappings = this.credentials.serviceMappings ?? {};
+    const candidates = [
+      normalizeMappingKey(input.matchedServiceId ?? undefined),
+      normalizeMappingKey(input.service),
+      'default',
+      '*',
+    ].filter(Boolean);
+    for (const candidate of candidates) {
+      const mapped = mappings[candidate];
+      if (mapped) return mapped;
+    }
+    return undefined;
+  }
+
+  private mappedCalendarId(input: Pick<BookingInput, 'techName' | 'teamMemberId'>): string | undefined {
+    if (input.teamMemberId) return input.teamMemberId;
+    const mappings = this.credentials.staffMappings ?? {};
+    const staffKey = normalizeMappingKey(input.techName);
+    if (staffKey && mappings[staffKey]) return mappings[staffKey];
+    return this.credentials.defaultCalendarId ?? this.credentials.calendarId;
+  }
+
+  private hasDirectBookingMappings(): boolean {
+    return Boolean(this.credentials.serviceMappings && Object.keys(this.credentials.serviceMappings).length > 0);
   }
 
   private authHeaders(): Record<string, string> {
@@ -315,7 +389,7 @@ export class AcuityProvider implements CalendarProvider {
 
   async getConnectionOptions(): Promise<AcuityConnectionOptions> {
     const [appointmentTypes, calendars] = await Promise.all([this.getAppointmentTypes(), this.getCalendars()]);
-    const directEnabled = isDirectBookingEnabled() && Boolean(this.credentials.appointmentTypeId);
+    const directEnabled = isDirectBookingEnabled() && this.hasDirectBookingMappings() && Boolean(this.credentials.defaultCalendarId ?? this.credentials.calendarId);
     return {
       appointmentTypes,
       calendars,
@@ -323,7 +397,7 @@ export class AcuityProvider implements CalendarProvider {
       bookingMode: directEnabled ? 'direct_booking_with_fallback' : 'capture_request_only',
       capabilityNote: directEnabled
         ? 'Acuity direct appointment creation is enabled. RingBooker still falls back to captured booking requests when Acuity rejects a booking.'
-        : 'Acuity is connected for appointment type/calendar sync and availability. Direct appointment creation is disabled until mappings and ACUITY_DIRECT_BOOKING_ENABLED are configured.',
+        : 'Acuity is connected for appointment type/calendar sync and availability. Direct appointment creation requires service mapping, calendar mapping, and ACUITY_DIRECT_BOOKING_ENABLED=true.',
     };
   }
 
@@ -396,32 +470,84 @@ export class AcuityProvider implements CalendarProvider {
   }
 
   async createBooking(input: BookingInput): Promise<BookingResult> {
-    if (!isDirectBookingEnabled() || !this.credentials.appointmentTypeId) {
+    if (!isDirectBookingEnabled()) {
       logger.warn(
-        { provider: 'acuity', shopId: this.shop.id, directEnabled: isDirectBookingEnabled(), hasAppointmentTypeId: Boolean(this.credentials.appointmentTypeId) },
+        { provider: 'acuity', shopId: this.shop.id, directEnabled: false },
         'acuity_create_booking_fallback_request_only',
       );
       return {
         bookingId: `acuity-request-${input.idempotencyKey}`,
         confirmed: false,
-        providerStatus: 'fallback_request',
-        providerErrorReason: 'direct_booking_disabled_or_unmapped',
+        providerStatus: 'provider_disabled',
+        providerErrorReason: 'direct_booking_disabled',
+      };
+    }
+
+    const appointmentTypeId = this.mappedAppointmentTypeId(input);
+    const calendarId = this.mappedCalendarId(input);
+    if (!appointmentTypeId || !calendarId) {
+      logger.warn(
+        {
+          provider: 'acuity',
+          shopId: this.shop.id,
+          hasAppointmentTypeMapping: Boolean(appointmentTypeId),
+          hasCalendarMapping: Boolean(calendarId),
+        },
+        'acuity_create_booking_missing_mapping',
+      );
+      return {
+        bookingId: `acuity-request-${input.idempotencyKey}`,
+        confirmed: false,
+        providerStatus: 'missing_mapping',
+        providerErrorReason: !appointmentTypeId ? 'missing_service_mapping' : 'missing_calendar_mapping',
+      };
+    }
+
+    if (this.credentials.requiresCallerEmail && !input.customerEmail) {
+      logger.warn({ provider: 'acuity', shopId: this.shop.id }, 'acuity_create_booking_missing_required_email');
+      return {
+        bookingId: `acuity-request-${input.idempotencyKey}`,
+        confirmed: false,
+        providerStatus: 'request_only',
+        providerErrorReason: 'missing_required_email',
       };
     }
 
     try {
       const { firstName, lastName } = firstAndLastName(input.customerName);
-      const calendarId = input.teamMemberId ?? this.credentials.calendarId;
+      const requestedStart = DateTime.fromISO(input.datetimeIso, { setZone: true }).setZone(input.timezone);
+      const checkPayload = [
+        {
+          datetime: requestedStart.toISO({ suppressMilliseconds: true }) ?? input.datetimeIso,
+          appointmentTypeID: parseOptionalInt(appointmentTypeId) ?? appointmentTypeId,
+          calendarID: parseOptionalInt(calendarId) ?? calendarId,
+        },
+      ];
+      const checked = await this.acuityJsonRequest<AcuityAvailabilityCheck[]>({
+        path: '/availability/check-times',
+        method: 'POST',
+        body: checkPayload,
+      });
+      const first = Array.isArray(checked) ? checked[0] : undefined;
+      if (!(first?.valid === true || first?.available === true)) {
+        return {
+          bookingId: `acuity-request-${input.idempotencyKey}`,
+          confirmed: false,
+          providerStatus: 'provider_unavailable',
+          providerErrorReason: first?.reason ?? first?.error ?? 'slot_not_available',
+        };
+      }
+
       const response = await this.acuityJsonRequest<AcuityAppointmentResponse>({
         path: '/appointments',
         method: 'POST',
         body: {
-          datetime: DateTime.fromISO(input.datetimeIso, { setZone: true }).setZone(input.timezone).toISO({ suppressMilliseconds: true }) ?? input.datetimeIso,
-          appointmentTypeID: parseOptionalInt(this.credentials.appointmentTypeId) ?? this.credentials.appointmentTypeId,
-          ...(calendarId ? { calendarID: parseOptionalInt(calendarId) ?? calendarId } : {}),
+          datetime: requestedStart.toISO({ suppressMilliseconds: true }) ?? input.datetimeIso,
+          appointmentTypeID: parseOptionalInt(appointmentTypeId) ?? appointmentTypeId,
+          calendarID: parseOptionalInt(calendarId) ?? calendarId,
           firstName,
           lastName,
-          email: 'booking-request@ringbooker.com',
+          email: input.customerEmail ?? 'booking-request@ringbooker.com',
           phone: input.customerPhone,
           timezone: input.timezone,
           notes: input.notes || `RingBooker phone booking request for ${input.service}`,
@@ -434,7 +560,7 @@ export class AcuityProvider implements CalendarProvider {
         return {
           bookingId: `acuity-request-${input.idempotencyKey}`,
           confirmed: false,
-          providerStatus: 'fallback_request',
+          providerStatus: 'provider_failed',
           providerErrorReason: 'missing_appointment_id',
         };
       }
@@ -442,14 +568,14 @@ export class AcuityProvider implements CalendarProvider {
         bookingId: `acuity-${appointmentId}`,
         calendarEventId: appointmentId,
         confirmed: true,
-        providerStatus: 'confirmed',
+        providerStatus: 'provider_confirmed',
       };
     } catch (error) {
       logger.error({ err: error, provider: 'acuity', shopId: this.shop.id, error_kind: 'create_booking_failed' }, 'acuity_create_booking_failed_fallback');
       return {
         bookingId: `acuity-request-${input.idempotencyKey}`,
         confirmed: false,
-        providerStatus: 'fallback_request',
+        providerStatus: 'provider_failed',
         providerErrorReason: error instanceof Error ? error.message.slice(0, 240) : 'create_booking_failed',
       };
     }

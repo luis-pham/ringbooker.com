@@ -19,6 +19,7 @@ const schema = z.object({
   service: z.string().min(1),
   techName: z.string().min(1).optional(),
   customerName: z.string().min(1).optional(),
+  customerEmail: z.string().email().optional(),
   notes: z.string().min(1).optional(),
 });
 
@@ -88,20 +89,40 @@ export async function createBookingTool(
       }
     }
 
-    const result = await ctx.calendarProvider.createBooking({
-      shopId: ctx.shop.id,
-      customerPhone: ctx.callerPhone,
-      customerName: parsed.data.customerName,
-      service: parsed.data.service,
-      techName: parsed.data.techName,
-      teamMemberId,
-      datetimeIso: utcIso,
-      timezone: ctx.shop.timezone,
-      durationMin,
-      source: 'inbound_call',
-      notes: parsed.data.notes,
-      idempotencyKey,
-    });
+    let result;
+    try {
+      result = await ctx.calendarProvider.createBooking({
+        shopId: ctx.shop.id,
+        customerPhone: ctx.callerPhone,
+        customerName: parsed.data.customerName,
+        customerEmail: parsed.data.customerEmail,
+        service: parsed.data.service,
+        techName: parsed.data.techName,
+        teamMemberId,
+        datetimeIso: utcIso,
+        timezone: ctx.shop.timezone,
+        durationMin,
+        source: 'inbound_call',
+        notes: parsed.data.notes,
+        idempotencyKey,
+      });
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          shopId: ctx.shop.id,
+          provider: providerMeta.id,
+          errorKind: 'provider_create_booking_failed',
+        },
+        'booking_provider_create_failed_fallback_request',
+      );
+      result = {
+        bookingId: `${providerMeta.id}-request-${idempotencyKey}`,
+        confirmed: false,
+        providerStatus: 'provider_failed',
+        providerErrorReason: error instanceof Error ? error.message.slice(0, 240) : 'provider_create_booking_failed',
+      };
+    }
 
     const booking = await ctx.bookingsRepository.create({
       shopId: ctx.shop.id,
@@ -113,7 +134,7 @@ export async function createBookingTool(
       status: result.confirmed ? 'confirmed' : 'pending',
       calendarEventId: result.calendarEventId,
       provider: getShopCalendarProviderMetadata(ctx.shop).id,
-      providerStatus: result.providerStatus ?? (result.confirmed ? 'confirmed' : 'fallback_request'),
+      providerStatus: result.providerStatus ?? (result.confirmed ? 'provider_confirmed' : 'request_only'),
       providerErrorReason: result.providerErrorReason,
     });
 

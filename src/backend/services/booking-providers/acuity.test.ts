@@ -29,6 +29,9 @@ function buildShop(overrides: Partial<Shop> = {}): Shop {
       apiKey: 'key-1',
       appointmentTypeId: '100',
       calendarId: '200',
+      defaultCalendarId: '200',
+      serviceMappings: { haircut: '100' },
+      staffMappings: { alex: '200' },
       timezone: 'America/Chicago',
     }),
     ...overrides,
@@ -156,7 +159,7 @@ test('acuity create booking falls back when direct booking flag is disabled', as
     });
     assert.equal(result.bookingId, 'acuity-request-idem-1');
     assert.equal(result.confirmed, false);
-    assert.equal(result.providerStatus, 'fallback_request');
+    assert.equal(result.providerStatus, 'provider_disabled');
   } finally {
     if (previous === undefined) delete process.env.ACUITY_DIRECT_BOOKING_ENABLED;
     else process.env.ACUITY_DIRECT_BOOKING_ENABLED = previous;
@@ -168,7 +171,10 @@ test('acuity create booking confirms only after appointment id is returned', asy
   process.env.ACUITY_DIRECT_BOOKING_ENABLED = 'true';
   const bodies: unknown[] = [];
   try {
-    const fetchImpl = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes('/availability/check-times')) {
+        return jsonResponse([{ valid: true }]);
+      }
       bodies.push(JSON.parse(String(init?.body)));
       return jsonResponse({ id: 98765 });
     }) as typeof fetch;
@@ -186,7 +192,7 @@ test('acuity create booking confirms only after appointment id is returned', asy
     });
     assert.equal(result.confirmed, true);
     assert.equal(result.calendarEventId, '98765');
-    assert.equal(result.providerStatus, 'confirmed');
+    assert.equal(result.providerStatus, 'provider_confirmed');
     assert.equal((bodies[0] as { appointmentTypeID?: number }).appointmentTypeID, 100);
   } finally {
     if (previous === undefined) delete process.env.ACUITY_DIRECT_BOOKING_ENABLED;
@@ -213,8 +219,108 @@ test('acuity create booking API error falls back to request-only result', async 
     });
     assert.equal(result.bookingId, 'acuity-request-idem-3');
     assert.equal(result.confirmed, false);
-    assert.equal(result.providerStatus, 'fallback_request');
+    assert.equal(result.providerStatus, 'provider_failed');
     assert.match(result.providerErrorReason ?? '', /Required field missing/);
+  } finally {
+    if (previous === undefined) delete process.env.ACUITY_DIRECT_BOOKING_ENABLED;
+    else process.env.ACUITY_DIRECT_BOOKING_ENABLED = previous;
+  }
+});
+
+test('acuity create booking falls back when service mapping is missing', async () => {
+  const previous = process.env.ACUITY_DIRECT_BOOKING_ENABLED;
+  process.env.ACUITY_DIRECT_BOOKING_ENABLED = 'true';
+  try {
+    const provider = new AcuityProvider(
+      buildShop({
+        integration_credentials_encrypted: encodeAcuityCredentials({
+          provider: 'acuity',
+          userId: 'user-1',
+          apiKey: 'key-1',
+          defaultCalendarId: '200',
+        }),
+      }),
+      { baseUrl: 'https://acuity.test/api/v1', fetchImpl: (async () => jsonResponse({})) as typeof fetch },
+    );
+    const result = await provider.createBooking({
+      shopId: 'shop-acuity',
+      customerPhone: '+15551234567',
+      customerName: 'Alex Lee',
+      service: 'Haircut',
+      datetimeIso: '2099-01-02T10:00:00-06:00',
+      timezone: 'America/Chicago',
+      durationMin: 45,
+      source: 'inbound_call',
+      idempotencyKey: 'idem-mapping',
+    });
+    assert.equal(result.confirmed, false);
+    assert.equal(result.providerStatus, 'missing_mapping');
+    assert.equal(result.providerErrorReason, 'missing_service_mapping');
+  } finally {
+    if (previous === undefined) delete process.env.ACUITY_DIRECT_BOOKING_ENABLED;
+    else process.env.ACUITY_DIRECT_BOOKING_ENABLED = previous;
+  }
+});
+
+test('acuity create booking falls back when required caller email is missing', async () => {
+  const previous = process.env.ACUITY_DIRECT_BOOKING_ENABLED;
+  process.env.ACUITY_DIRECT_BOOKING_ENABLED = 'true';
+  try {
+    const provider = new AcuityProvider(
+      buildShop({
+        integration_credentials_encrypted: encodeAcuityCredentials({
+          provider: 'acuity',
+          userId: 'user-1',
+          apiKey: 'key-1',
+          serviceMappings: { haircut: '100' },
+          defaultCalendarId: '200',
+          requiresCallerEmail: true,
+        }),
+      }),
+      { baseUrl: 'https://acuity.test/api/v1', fetchImpl: (async () => jsonResponse({})) as typeof fetch },
+    );
+    const result = await provider.createBooking({
+      shopId: 'shop-acuity',
+      customerPhone: '+15551234567',
+      customerName: 'Alex Lee',
+      service: 'Haircut',
+      datetimeIso: '2099-01-02T10:00:00-06:00',
+      timezone: 'America/Chicago',
+      durationMin: 45,
+      source: 'inbound_call',
+      idempotencyKey: 'idem-email',
+    });
+    assert.equal(result.confirmed, false);
+    assert.equal(result.providerStatus, 'request_only');
+    assert.equal(result.providerErrorReason, 'missing_required_email');
+  } finally {
+    if (previous === undefined) delete process.env.ACUITY_DIRECT_BOOKING_ENABLED;
+    else process.env.ACUITY_DIRECT_BOOKING_ENABLED = previous;
+  }
+});
+
+test('acuity create booking falls back when availability is unavailable', async () => {
+  const previous = process.env.ACUITY_DIRECT_BOOKING_ENABLED;
+  process.env.ACUITY_DIRECT_BOOKING_ENABLED = 'true';
+  try {
+    const provider = new AcuityProvider(buildShop(), {
+      baseUrl: 'https://acuity.test/api/v1',
+      fetchImpl: (async () => jsonResponse([{ valid: false, reason: 'not_available' }])) as typeof fetch,
+    });
+    const result = await provider.createBooking({
+      shopId: 'shop-acuity',
+      customerPhone: '+15551234567',
+      customerName: 'Alex Lee',
+      service: 'Haircut',
+      datetimeIso: '2099-01-02T10:00:00-06:00',
+      timezone: 'America/Chicago',
+      durationMin: 45,
+      source: 'inbound_call',
+      idempotencyKey: 'idem-unavailable',
+    });
+    assert.equal(result.confirmed, false);
+    assert.equal(result.providerStatus, 'provider_unavailable');
+    assert.equal(result.providerErrorReason, 'not_available');
   } finally {
     if (previous === undefined) delete process.env.ACUITY_DIRECT_BOOKING_ENABLED;
     else process.env.ACUITY_DIRECT_BOOKING_ENABLED = previous;

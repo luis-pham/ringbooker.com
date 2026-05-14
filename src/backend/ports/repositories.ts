@@ -847,6 +847,7 @@ export interface OutboundMessagesRepository {
   }): Promise<void>;
   listByBookingId?(bookingId: string): Promise<OutboundMessageRecord[]>;
   listMissedCallSmsSentPhones?(shopId: string, phones: string[]): Promise<Set<string>>;
+  countRecentByPhone?(params: { shopId: string; customerPhone: string; since: Date }): Promise<number>;
 }
 
 export type AuthRole = 'user' | 'admin';

@@ -18,7 +18,7 @@ export type CalendarProviderId =
   | 'timely'
   | 'acuity';
 
-export type CalendarProviderType = 'calendar' | 'booking_link';
+export type CalendarProviderType = 'calendar' | 'booking_provider' | 'booking_link';
 
 export type CalendarProviderCapability = {
   checkAvailability: boolean;
@@ -99,7 +99,7 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
   square_appointments: {
     id: 'square_appointments',
     label: 'Square Appointments',
-    type: 'calendar',
+    type: 'booking_provider',
     implemented: true,
     status: 'active',
     capabilities: {
@@ -351,7 +351,7 @@ export const CALENDAR_PROVIDER_CATALOG: Record<CalendarProviderId, CalendarProvi
   acuity: {
     id: 'acuity',
     label: 'Acuity Scheduling',
-    type: 'calendar',
+    type: 'booking_provider',
     implemented: true,
     status: 'active',
     capabilities: {

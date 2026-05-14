@@ -17,7 +17,17 @@ const userSettingsSpecificStyles = String.raw`
   border:1px solid var(--border);border-radius:18px;padding:16px;background:#fff;
   display:flex;flex-direction:column;gap:10px;min-width:0;transition:.18s ease;
 }
-.calendar-int-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-soft);border-color:#d8ccff}
+.calendar-int-card:hover{
+  transform:none;
+  box-shadow:none;
+  background:var(--bg-gray);
+  border-color:var(--border);
+}
+.calendar-int-card.connected-active:hover{
+  background:var(--bg-gray);
+  border-color:rgba(139,92,246,.5);
+  box-shadow:none;
+}
 .calendar-int-card.connected-active{
   border-color:rgba(139,92,246,.55);
   background:linear-gradient(180deg,#faf7ff 0%,#fff 100%);
@@ -196,7 +206,7 @@ button.subtle-link:hover{text-decoration:underline}
   padding:14px;display:flex;align-items:flex-start;gap:12px;text-align:left;cursor:pointer;
   font:inherit;color:var(--text-dark);transition:background .15s ease,border-color .15s ease;
 }
-.integration-method-card:hover{background:#f9fafb;border-color:#d1d5db}
+.integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 .integration-method-icon{
   width:36px;height:36px;border-radius:10px;background:var(--purple-ultra);display:inline-flex;
   align-items:center;justify-content:center;flex-shrink:0;
@@ -213,8 +223,9 @@ button.subtle-link:hover{text-decoration:underline}
   border-radius:12px;padding:12px;display:grid;gap:10px;text-align:left;cursor:pointer;font:inherit;
   color:var(--text-dark);transition:background .15s ease,border-color .15s ease;
 }
-.integration-app-card:hover{background:#f9fafb;border-color:#d1d5db}
+.integration-app-card:hover{background:var(--bg-gray);border-color:var(--border)}
 .integration-app-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra)}
+.integration-app-card.selected:hover{background:var(--purple-ultra);border-color:var(--purple-dark)}
 .integration-app-card.soon{opacity:.72}
 .integration-app-logo{
   width:38px;height:38px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;
@@ -245,6 +256,8 @@ button.subtle-link:hover{text-decoration:underline}
 }
 .integration-success-box{border-color:#bbf7d0;background:#ecfdf5;color:#047857}
 .integration-config-field{max-width:520px}
+.integration-checkbox-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;color:var(--text-gray)}
+.integration-checkbox-row input{margin-top:2px}
 .integration-saved-url{word-break:break-word}
 .integration-error-note{color:#b91c1c}
 .integration-confirm-card{
@@ -1337,7 +1350,17 @@ html[data-user-theme="dark"] .calendar-int-card{
   background:var(--surface-card);
   border-color:var(--border);
 }
-html[data-user-theme="dark"] .calendar-int-card:hover{border-color:#58a6ff;box-shadow:none}
+html[data-user-theme="dark"] .calendar-int-card:hover{
+  background:var(--bg-gray);
+  border-color:var(--border);
+  transform:none;
+  box-shadow:none;
+}
+html[data-user-theme="dark"] .calendar-int-card.connected-active:hover{
+  background:var(--bg-gray);
+  border-color:rgba(56,139,253,.5);
+  box-shadow:none;
+}
 html[data-user-theme="dark"] .calendar-int-card.connected-active{
   border-color:rgba(56,139,253,.45);
   background:linear-gradient(180deg,rgba(56,139,253,.08) 0%,var(--surface-card) 100%);
@@ -1357,6 +1380,12 @@ html[data-user-theme="dark"] .calendar-int-actions{border-top-color:rgba(240,246
 html[data-user-theme="dark"] button.subtle-link{color:#a371f7}
 html[data-user-theme="dark"] button.subtle-link:hover{color:#d2a8ff}
 html[data-user-theme="dark"] .calendar-int-badge{background:#21262d;color:var(--text-gray);border-color:var(--border)}
+html[data-user-theme="dark"] .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
+html[data-user-theme="dark"] .integration-app-card:hover:not(.selected){background:var(--bg-gray);border-color:var(--border)}
+html[data-user-theme="dark"] .integration-app-card.selected:hover{
+  background:rgba(56,139,253,.12);
+  border-color:rgba(56,139,253,.55);
+}
 html[data-user-theme="dark"] .option-card{background:var(--surface-card)}
 html[data-user-theme="dark"] .option-card:hover{border-color:#58a6ff}
 html[data-user-theme="dark"] .option-card.active{

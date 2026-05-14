@@ -62,6 +62,17 @@ export class SupabaseOutboundMessagesRepository implements OutboundMessagesRepos
     return new Set((data ?? []).map((row) => row.customer_phone));
   }
 
+  async countRecentByPhone(params: { shopId: string; customerPhone: string; since: Date }): Promise<number> {
+    const { count, error } = await this.supabase
+      .from('outbound_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('shop_id', params.shopId)
+      .eq('customer_phone', params.customerPhone)
+      .gte('created_at', params.since.toISOString());
+    if (error) return 0;
+    return count ?? 0;
+  }
+
   async listByBookingId(bookingId: string): Promise<OutboundMessageRecord[]> {
     const { data, error } = await this.supabase
       .from('outbound_messages')

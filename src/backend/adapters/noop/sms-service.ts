@@ -15,7 +15,6 @@ export class NoopSmsService implements SmsService {
       | 'booking_link'
       | 'cancellation_alert'
       | 'booking_request_alert'
-      | 'callback_ack'
       | 'user_alert'
       | 'review_request';
     bookingId?: string;

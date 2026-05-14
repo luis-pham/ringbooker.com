@@ -575,6 +575,12 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         throw new JobExecutionError('booking_not_found', { retryable: false });
       }
 
+      if (!['confirmed', 'reminder_sent', 'cancel_link_sent'].includes(booking.status)) {
+        logger.info({ jobId: params.jobId, bookingId: booking.id, status: booking.status }, 'reminder_24h_skipped_ineligible_status');
+        await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
+        return;
+      }
+
       const shop = await runtime.shopsRepository.findById(booking.shopId);
       if (!shop) {
         throw new JobExecutionError('shop_not_found', { retryable: false });
@@ -596,6 +602,16 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, booking.customerPhone);
         if (optedOut) {
           logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id }, 'reminder_24h_sms_skipped_opt_out');
+          await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
+          return;
+        }
+      }
+
+      if (runtime.outboundMessagesRepository.countRecentByPhone) {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentCount = await runtime.outboundMessagesRepository.countRecentByPhone({ shopId: shop.id, customerPhone: booking.customerPhone, since });
+        if (recentCount >= 5) {
+          logger.warn({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id, recentCount }, 'reminder_24h_skipped_frequency_cap');
           await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
           return;
         }
@@ -644,6 +660,12 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         throw new JobExecutionError('booking_not_found', { retryable: false });
       }
 
+      if (!['confirmed', 'reminder_sent', 'cancel_link_sent'].includes(booking.status)) {
+        logger.info({ jobId: params.jobId, bookingId: booking.id, status: booking.status }, 'reminder_2h_skipped_ineligible_status');
+        await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
+        return;
+      }
+
       const shop = await runtime.shopsRepository.findById(booking.shopId);
       if (!shop) {
         throw new JobExecutionError('shop_not_found', { retryable: false });
@@ -665,6 +687,16 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, booking.customerPhone);
         if (optedOut) {
           logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id }, 'reminder_2h_sms_skipped_opt_out');
+          await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
+          return;
+        }
+      }
+
+      if (runtime.outboundMessagesRepository.countRecentByPhone) {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentCount = await runtime.outboundMessagesRepository.countRecentByPhone({ shopId: shop.id, customerPhone: booking.customerPhone, since });
+        if (recentCount >= 5) {
+          logger.warn({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id, recentCount }, 'reminder_2h_skipped_frequency_cap');
           await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
           return;
         }
@@ -1101,6 +1133,12 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         throw new JobExecutionError('booking_not_found', { retryable: false });
       }
 
+      if (booking.status !== 'completed') {
+        logger.info({ jobId: params.jobId, bookingId: booking.id, status: booking.status }, 'review_request_skipped_not_completed');
+        await runtime.bookingsRepository.markReviewRequestSent(booking.id);
+        return;
+      }
+
       const shop = await runtime.shopsRepository.findById(booking.shopId);
       if (!shop) {
         throw new JobExecutionError('shop_not_found', { retryable: false });
@@ -1122,6 +1160,16 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, booking.customerPhone);
         if (optedOut) {
           logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id }, 'review_request_sms_skipped_opt_out');
+          await runtime.bookingsRepository.markReviewRequestSent(booking.id);
+          return;
+        }
+      }
+
+      if (runtime.outboundMessagesRepository.countRecentByPhone) {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentCount = await runtime.outboundMessagesRepository.countRecentByPhone({ shopId: shop.id, customerPhone: booking.customerPhone, since });
+        if (recentCount >= 5) {
+          logger.warn({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id, recentCount }, 'review_request_skipped_frequency_cap');
           await runtime.bookingsRepository.markReviewRequestSent(booking.id);
           return;
         }

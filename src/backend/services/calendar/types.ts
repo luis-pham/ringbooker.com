@@ -3,7 +3,7 @@ import { AcuityProvider } from '@/src/backend/services/booking-providers/acuity'
 import { GoogleCalendarProvider } from '@/src/backend/services/calendar/google-calendar';
 import { ManualCalendarProvider } from '@/src/backend/services/calendar/manual-provider';
 import { MindbodyProvider } from '@/src/backend/services/booking-providers/mindbody';
-import { SquareAppointmentsProvider } from '@/src/backend/services/calendar/square-appointments';
+import { SquareAppointmentsProvider } from '@/src/backend/services/booking-providers/square';
 import { VagaroProvider } from '@/src/backend/services/calendar/vagaro';
 import {
   CALENDAR_PROVIDER_CATALOG,

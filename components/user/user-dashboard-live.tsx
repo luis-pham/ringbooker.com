@@ -717,7 +717,10 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                       </p>
                     ) : null}
                     {testCallStatus ? (
-                      <p className="sub" style={{ fontSize: 12, color: '#374151', marginTop: goLiveActionMessage ? 8 : 0, marginBottom: 0 }}>
+                      <p
+                        className="overview-banner-test-status"
+                        style={{ marginTop: goLiveActionMessage ? 8 : 0 }}
+                      >
                         {testCallStatus}
                       </p>
                     ) : null}

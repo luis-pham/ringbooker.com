@@ -40,7 +40,10 @@ Supported:
 - Appointment type sync.
 - Calendar sync.
 - Availability check using `/availability/check-times` and suggestions from `/availability/times`.
-- Direct appointment creation using `POST /appointments`, gated by `ACUITY_DIRECT_BOOKING_ENABLED=true` and an `appointmentTypeId`.
+- Per-service mapping: RingBooker service name -> Acuity appointment type ID.
+- Per-staff mapping: RingBooker staff/provider name -> Acuity calendar ID.
+- Default Acuity calendar ID.
+- Direct appointment creation using `POST /appointments`, gated by `ACUITY_DIRECT_BOOKING_ENABLED=true`, service mapping, and calendar/default-calendar mapping.
 - Request fallback when direct booking is disabled or Acuity returns an error.
 - Reschedule and cancel client methods for Acuity appointment IDs when direct booking is enabled.
 
@@ -48,9 +51,8 @@ Deferred:
 
 - Full OAuth connect UI.
 - Dynamic webhook provisioning.
-- Per-service appointment type mapping UI.
 - Per-provider customer/client matching beyond appointment creation payload.
-- Provider appointment status columns on RingBooker booking records.
+- Acuity intake form custom-field mapping.
 
 ## Required Credentials and Env Vars
 
@@ -58,8 +60,12 @@ Dashboard fields:
 
 - `userId`: Acuity numeric User ID.
 - `apiKey`: Acuity API key.
-- `appointmentTypeId`: Acuity appointment type ID used for RingBooker bookings.
-- `calendarId`: Optional Acuity calendar ID.
+- `serviceMappings`: RingBooker service name -> Acuity appointment type ID.
+- `staffMappings`: Optional RingBooker staff/provider name -> Acuity calendar ID.
+- `defaultCalendarId`: Required default Acuity calendar ID for direct booking.
+- `appointmentTypeId`: Legacy fallback appointment type field for availability/admin use. Direct booking still requires service mappings.
+- `calendarId`: Legacy calendar field. Stored as/defaults to `defaultCalendarId`.
+- `requiresCallerEmail`: Optional. When true, direct booking falls back unless the caller email is captured.
 - `timezone`: Optional IANA timezone.
 - `bookingUrl`: Optional fallback booking URL.
 
@@ -72,9 +78,11 @@ Environment variables:
 - `ACUITY_ACCESS_TOKEN`: Optional OAuth bearer token fallback.
 - `ACUITY_APPOINTMENT_TYPE_ID`: Optional fallback appointment type mapping.
 - `ACUITY_CALENDAR_ID`: Optional fallback calendar mapping.
+- `ACUITY_DEFAULT_CALENDAR_ID`: Optional fallback default calendar mapping.
+- `ACUITY_REQUIRES_CALLER_EMAIL`: Optional. Set `true` only if the Acuity account requires caller email for appointment creation.
 - `ACUITY_TIMEZONE`: Optional fallback timezone.
 - `ACUITY_BOOKING_URL`: Optional fallback booking URL.
-- `ACUITY_DIRECT_BOOKING_ENABLED`: Must be `true` before direct Acuity appointment creation is attempted.
+- `ACUITY_DIRECT_BOOKING_ENABLED`: Defaults to disabled. Must be exactly `true` before direct Acuity appointment creation is attempted.
 
 ## Data Model Changes
 
@@ -88,6 +96,16 @@ The integration uses the provider-neutral `shops.integration_credentials_encrypt
   "accessToken": "optional-oauth-token",
   "appointmentTypeId": "100",
   "calendarId": "200",
+  "defaultCalendarId": "200",
+  "serviceMappings": {
+    "haircut": "100",
+    "hair color": "101"
+  },
+  "staffMappings": {
+    "alex": "200",
+    "jamie": "201"
+  },
+  "requiresCallerEmail": false,
   "timezone": "America/Chicago",
   "bookingUrl": "https://your-business.as.me/"
 }
@@ -98,7 +116,7 @@ Secrets must not be logged. Current local storage is JSON in the same repository
 Booking records also store provider outcome metadata:
 
 - `bookings.provider`: e.g. `acuity`.
-- `bookings.provider_status`: e.g. `confirmed` or `fallback_request`.
+- `bookings.provider_status`: one of `request_only`, `provider_confirmed`, `provider_failed`, `provider_unavailable`, `provider_disabled`, `missing_mapping`.
 - `bookings.provider_error_reason`: short non-secret error reason when provider booking falls back.
 - `bookings.calendar_event_id`: Acuity appointment ID when direct booking succeeds.
 
@@ -123,16 +141,18 @@ Acuity endpoints:
 
 ## Appointment Type and Calendar Mapping
 
-Current mapping is account-level:
+Current mapping is explicit and required for direct booking:
 
-- `appointmentTypeId` maps RingBooker booking requests to one Acuity appointment type.
-- `calendarId` is optional. If omitted, Acuity may auto-select an available calendar.
-- Agent-selected team member IDs can override `calendarId` when the provider resolves a calendar/team member match.
+- RingBooker service name -> Acuity appointment type ID.
+- RingBooker staff/provider name -> Acuity calendar ID.
+- Default Acuity calendar ID.
 
-Future work should add per-service mapping:
+Direct booking is blocked with `provider_status=missing_mapping` when:
 
-- RingBooker service ID -> Acuity appointment type ID.
-- RingBooker staff/provider ID -> Acuity calendar ID.
+- No service mapping matches the caller's requested service.
+- No matched staff calendar and no default Acuity calendar exist.
+
+If staff mapping is missing but default calendar exists, RingBooker uses the default Acuity calendar.
 
 ## Availability Flow
 
@@ -146,10 +166,14 @@ Future work should add per-service mapping:
 
 1. The AI captures service, date, time, caller phone, and optional caller name.
 2. RingBooker checks availability.
-3. If `ACUITY_DIRECT_BOOKING_ENABLED=true` and `appointmentTypeId` exists, RingBooker calls `POST /appointments`.
-4. RingBooker marks the booking confirmed only if Acuity returns an appointment ID.
-5. RingBooker stores the Acuity appointment ID as the calendar event ID.
-6. If Acuity fails or returns no appointment ID, RingBooker creates a normal booking request with `confirmed=false`.
+3. RingBooker resolves the requested service to an Acuity appointment type ID.
+4. RingBooker resolves the requested staff/provider to an Acuity calendar ID or uses the default calendar.
+5. If email is required and no caller email was captured, RingBooker creates a normal booking request with `confirmed=false`.
+6. If `ACUITY_DIRECT_BOOKING_ENABLED=true` and mappings are complete, RingBooker checks `/availability/check-times`.
+7. RingBooker calls `POST /appointments` only after the slot is available.
+8. RingBooker marks the booking confirmed only if Acuity returns an appointment ID.
+9. RingBooker stores the Acuity appointment ID as the calendar event ID.
+10. If mapping, availability, or creation fails, RingBooker creates a normal booking request with `confirmed=false`.
 
 The customer confirmation SMS uses the confirmed template only after step 4 succeeds. Fallback requests use the booking-request-received copy.
 
@@ -176,6 +200,8 @@ RingBooker creates a normal booking request when:
 
 - Acuity credentials are missing or invalid.
 - Appointment type mapping is missing.
+- Default calendar/staff calendar mapping is missing.
+- Caller email is required by Acuity/account settings but was not captured.
 - Availability is unavailable or uncertain.
 - `POST /appointments` returns a validation/API error.
 - `ACUITY_DIRECT_BOOKING_ENABLED` is not `true`.
@@ -215,25 +241,31 @@ Provider tests mock Acuity API responses. Local development does not require liv
 - Set `ACUITY_DIRECT_BOOKING_ENABLED=false` initially.
 - Connect a test Acuity account in the dashboard.
 - Confirm `/calendar/providers/acuity/options` returns appointment types and calendars.
-- Configure appointment type ID and optional calendar ID.
+- Configure RingBooker service -> Acuity appointment type ID mappings.
+- Configure a default Acuity calendar ID and optional staff -> calendar ID mappings.
+- If the Acuity account requires customer email, enable the email-required setting and validate fallback when no email is available.
 - Test availability with known available and unavailable slots.
 - Enable `ACUITY_DIRECT_BOOKING_ENABLED=true` only after end-to-end test bookings succeed.
 - Confirm fallback creates pending booking requests when Acuity rejects a slot.
 - Confirm customer SMS copy does not claim confirmation on fallback.
+- Confirm provider statuses:
+  - `provider_confirmed` only after Acuity returns an appointment ID.
+  - `provider_disabled` when the direct-booking flag is off.
+  - `missing_mapping` when service/calendar mapping is missing.
+  - `provider_unavailable` when Acuity says the slot is unavailable.
+  - `provider_failed` when Acuity errors during creation.
+  - `request_only` for request-only fallback such as missing required email.
 - Monitor `acuity_api_request_failed` and `acuity_create_booking_failed_fallback` logs after launch.
 
 ## Limitations
 
 - OAuth connect UI is deferred.
-- Mapping is account-level, not per service/staff.
 - Webhook sync is deferred.
-- Direct booking requires a generic RingBooker email placeholder unless a caller email is captured elsewhere.
+- Caller email is optional unless the Acuity account requires it; if required and missing, RingBooker falls back to request-only.
 
 ## Future Improvements
 
 - Acuity OAuth connect flow.
-- Per-service and per-staff mapping UI.
 - Dynamic webhook registration and signature verification route.
-- Provider status/error fields on booking requests.
-- Caller email capture before direct provider booking.
+- Richer caller email capture in the AI flow.
 - Better Acuity intake form field mapping.
