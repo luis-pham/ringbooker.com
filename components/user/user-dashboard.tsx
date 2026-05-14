@@ -203,8 +203,14 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
     padding:16px;
   }
 }
-/* Portal: uniform 48px from topbar (below its border) to page body on every user page */
+/* Portal: match /user/knowledge spacing from topbar to page body. */
 .user-app-shell .main > .page-content{
+  padding-top:48px;
+}
+.user-app-shell .main > .page-content.page-overview,
+.user-app-shell .main > .page-content.page-bookings,
+.user-app-shell .main > .page-content.page-go-live,
+.user-app-shell .main > .page-content.page-more{
   padding-top:48px;
 }
 .topbar{
@@ -926,6 +932,10 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
 @media (max-width:860px){
   .main{padding:0;padding-bottom:calc(18px + 76px + env(safe-area-inset-bottom, 0px))}
   .user-app-shell .main > .page-content{padding-top:24px;}
+  .user-app-shell .main > .page-content.page-overview,
+  .user-app-shell .main > .page-content.page-bookings,
+  .user-app-shell .main > .page-content.page-go-live,
+  .user-app-shell .main > .page-content.page-more{padding-top:24px;}
   /* Overview go-live banner: stack like Go Live card CTAs on mobile */
   .user-app-shell .overview-banner{
     flex-direction:column;
