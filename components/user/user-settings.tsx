@@ -947,6 +947,81 @@ html[data-user-theme="dark"] .onb-sheet-input{background:#0d1117;border-color:va
 html[data-user-theme="dark"] .onb-sheet-cancel{background:var(--surface-card);border-color:var(--border);color:var(--text-gray)}
 html[data-user-theme="dark"] .onb-sheet-save{background:#1f6feb}
 
+/* Knowledge mobile bottom sheet: title row + scroll body + bottom alignment override (≤860px) */
+@media (max-width:860px){
+  .onb-sheet-overlay.rb-bottom-sheet-overlay{
+    align-items:flex-end!important;
+    justify-content:center;
+  }
+}
+.rb-bottom-sheet-overlay{z-index:210}
+.onb-sheet.rb-bottom-sheet-root{
+  display:flex;
+  flex-direction:column;
+  max-height:90vh;
+  overflow:hidden;
+  padding-bottom:calc(20px + env(safe-area-inset-bottom, 0px));
+  animation:rb-bottom-sheet-enter .3s ease forwards;
+}
+@keyframes rb-bottom-sheet-enter{
+  from{transform:translateY(100%);opacity:.92}
+  to{transform:translateY(0);opacity:1}
+}
+.rb-bottom-sheet-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-shrink:0;
+  margin-bottom:2px;
+}
+.rb-bottom-sheet-head .onb-sheet-title{
+  margin:0;
+  flex:1;
+  min-width:0;
+  text-align:left;
+  line-height:1.3;
+}
+.rb-bottom-sheet-close{
+  flex-shrink:0;
+  width:34px;
+  height:34px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:var(--text-gray);
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.rb-bottom-sheet-close:hover{background:var(--bg-gray);color:var(--text-dark)}
+.rb-bottom-sheet-body{
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding-top:6px;
+}
+.knowledge-address-sheet-trigger{
+  width:100%;
+  text-align:left;
+  min-height:44px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface-card);
+  font:inherit;
+  font-size:16px;
+  color:var(--text-dark);
+  cursor:pointer;
+  box-sizing:border-box;
+}
+.knowledge-address-sheet-trigger--placeholder{color:var(--text-gray)}
+html[data-user-theme="dark"] .knowledge-address-sheet-trigger{background:#0d1117}
+
 /* Catalog / legacy service editor: native <dialog> + panel */
 .catalog-service-dialog{
   border:none;

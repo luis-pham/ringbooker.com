@@ -220,6 +220,8 @@ html[data-user-theme="dark"] .billing-plan-card__feats li[data-included="false"]
   .pricing-mini{max-width:100%}
   .billing-plans-grid{grid-template-columns:1fr}
   .billing-trial-cta{flex-direction:column;align-items:stretch}
+  /* Row layout uses flex-basis 220px on the inline axis; in column mode that becomes height and leaves a large blank band under the subtitle. */
+  .billing-trial-cta__copy{flex:0 1 auto}
   .billing-trial-cta__action{width:100%}
   .billing-trial-cta__action .btn{width:100%;justify-content:center}
 }

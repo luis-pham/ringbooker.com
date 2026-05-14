@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
+import { BottomSheet, useIsKnowledgeMobile } from '@/components/ui/BottomSheet';
 import { UserLayout } from '@/components/user/user-layout';
 import type { UserPortalNavKey } from '@/components/user/user-portal-nav';
 import { UserPortalMobileTabbar } from '@/components/user/user-portal-mobile-tabbar';
@@ -470,7 +471,7 @@ const SETTINGS_TAB_META: Record<SettingsTabId, { label: string; description: str
   business: { label: 'Business profile', description: 'Name, type, website, phone, timezone, and address.' },
   hours: { label: 'Hours', description: 'Weekly schedule and closure notes.' },
   'services-hours': { label: 'Services', description: 'Service groups, prices, duration, and request rules.' },
-  staff: { label: 'Staff', description: 'Technicians, specialists, and provider preferences.' },
+  staff: { label: 'Staffs', description: 'Technicians, specialists, and provider preferences.' },
   faq: { label: 'Policies & FAQ', description: 'Policies, promotions, and approved answers.' },
   'ai-call-behavior': { label: 'AI behavior & Call handling', description: 'Voice, greeting, instructions, and call handling.' },
   messaging: { label: 'Messaging', description: 'Reminders, reviews, and follow-up SMS.' },
@@ -770,6 +771,17 @@ export function UserSettingsLive({
   const [catalogDialogDraft, setCatalogDialogDraft] = useState<ShopService | null>(null);
   const [catalogDialogError, setCatalogDialogError] = useState<string | null>(null);
   const [catalogGroupSheet, setCatalogGroupSheet] = useState<CatalogGroupSheetState>(null);
+  const knowledgeMobile = useIsKnowledgeMobile();
+  const [knowledgeAddressSheetOpen, setKnowledgeAddressSheetOpen] = useState(false);
+  const [knowledgeAddressDraft, setKnowledgeAddressDraft] = useState('');
+  const [knowledgeCatalogMobileSheet, setKnowledgeCatalogMobileSheet] = useState<{ serviceId: string; draft: ShopService } | null>(null);
+  const [knowledgeCatalogMobileError, setKnowledgeCatalogMobileError] = useState<string | null>(null);
+  const [knowledgeLegacyMobileSheet, setKnowledgeLegacyMobileSheet] = useState<{ index: number; draft: ServiceItem } | null>(null);
+  const [knowledgeLegacyMobileError, setKnowledgeLegacyMobileError] = useState<string | null>(null);
+  const [knowledgeStaffAddSheetOpen, setKnowledgeStaffAddSheetOpen] = useState(false);
+  const [knowledgeStaffAddDraft, setKnowledgeStaffAddDraft] = useState<StaffMember>(() => emptyStaffMember());
+  const [knowledgeFaqCreateSheetOpen, setKnowledgeFaqCreateSheetOpen] = useState(false);
+  const [knowledgeFaqCreateDraft, setKnowledgeFaqCreateDraft] = useState<BusinessFaqItem>(() => emptyFaqItem());
   const legacyServiceDialogRef = useRef<HTMLDialogElement>(null);
   const [legacyDialogIndex, setLegacyDialogIndex] = useState<number | null>(null);
   const [legacyDialogDraft, setLegacyDialogDraft] = useState<ServiceItem | null>(null);
@@ -1152,8 +1164,15 @@ export function UserSettingsLive({
 
   function addLegacyService() {
     const idx = currentForm.services.length;
-    const next = [...currentForm.services, { name: '', duration_min: 60, price: 0 }];
+    const draft: ServiceItem = { name: '', duration_min: 60, price: 0 };
+    const next = [...currentForm.services, draft];
     patchState('services', next);
+    if (portal === 'knowledge' && typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches) {
+      setKnowledgeLegacyMobileError(null);
+      setKnowledgeLegacyMobileSheet({ index: idx, draft });
+      setEditingLegacyServiceIndex(null);
+      return;
+    }
     if (typeof window !== 'undefined' && window.matchMedia('(min-width: 861px)').matches) {
       setLegacyFormError(null);
       setLegacyDialogIndex(idx);
@@ -1172,6 +1191,10 @@ export function UserSettingsLive({
 
   function removeLegacyService(index: number) {
     if (editingLegacyServiceIndex === index) setEditingLegacyServiceIndex(null);
+    if (knowledgeLegacyMobileSheet?.index === index) {
+      setKnowledgeLegacyMobileSheet(null);
+      setKnowledgeLegacyMobileError(null);
+    }
     if (legacyDialogIndex === index) {
       setLegacyDialogIndex(null);
       setLegacyDialogDraft(null);
@@ -1244,7 +1267,16 @@ export function UserSettingsLive({
       setCatalogDialogDraft(JSON.parse(JSON.stringify(newService)) as ShopService);
       setCatalogDialogServiceId(serviceId);
     } else {
-      setEditingCatalogServiceId(serviceId);
+      if (portal === 'knowledge' && typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches) {
+        setEditingCatalogServiceId(null);
+        setKnowledgeCatalogMobileError(null);
+        setKnowledgeCatalogMobileSheet({
+          serviceId,
+          draft: JSON.parse(JSON.stringify(newService)) as ShopService,
+        });
+      } else {
+        setEditingCatalogServiceId(serviceId);
+      }
     }
   }
 
@@ -1284,6 +1316,10 @@ export function UserSettingsLive({
 
   function removeCatalogService(serviceId: string) {
     if (editingCatalogServiceId === serviceId) setEditingCatalogServiceId(null);
+    if (knowledgeCatalogMobileSheet?.serviceId === serviceId) {
+      setKnowledgeCatalogMobileSheet(null);
+      setKnowledgeCatalogMobileError(null);
+    }
     if (catalogDialogServiceId === serviceId) {
       setCatalogDialogServiceId(null);
       setCatalogDialogDraft(null);
@@ -1305,6 +1341,15 @@ export function UserSettingsLive({
   }
 
   function openCatalogServiceEditor(service: ShopService) {
+    if (portal === 'knowledge' && !isKnowledgeWideLayout() && serviceCatalogEnabled) {
+      setEditingCatalogServiceId(null);
+      setKnowledgeCatalogMobileError(null);
+      setKnowledgeCatalogMobileSheet({
+        serviceId: service.id,
+        draft: JSON.parse(JSON.stringify(service)) as ShopService,
+      });
+      return;
+    }
     if (isKnowledgeWideLayout()) {
       setCatalogDialogError(null);
       setCatalogDialogDraft(JSON.parse(JSON.stringify(service)) as ShopService);
@@ -1328,6 +1373,84 @@ export function UserSettingsLive({
       services: currentForm.service_catalog.services.map((s) => (s.id === id ? merged : s)),
     });
     closeCatalogServiceDialog();
+  }
+
+  function patchKnowledgeCatalogMobileDraft(patch: Partial<ShopService>) {
+    setKnowledgeCatalogMobileSheet((cur) => (cur ? { ...cur, draft: { ...cur.draft, ...patch } } : cur));
+  }
+
+  function patchKnowledgeMobileVariant(variantIndex: number, patch: Partial<ServiceVariant>) {
+    setKnowledgeCatalogMobileSheet((cur) => {
+      if (!cur) return cur;
+      const variants = [...(cur.draft.variants ?? [])];
+      variants[variantIndex] = { ...variants[variantIndex], ...patch } as ServiceVariant;
+      return { ...cur, draft: { ...cur.draft, variants } };
+    });
+  }
+
+  function addKnowledgeMobileVariantRow() {
+    setKnowledgeCatalogMobileSheet((cur) => {
+      if (!cur) return cur;
+      const d = cur.draft;
+      const next = [...(d.variants ?? [])];
+      next.push({
+        label: '',
+        durationMinutes: null,
+        durationText: '',
+        priceAmount: null,
+        priceCurrency: 'USD',
+        priceType: 'from',
+        sortOrder: next.length,
+        notes: null,
+      });
+      return { ...cur, draft: { ...d, variants: next } };
+    });
+  }
+
+  function removeKnowledgeMobileVariantRow(variantIndex: number) {
+    setKnowledgeCatalogMobileSheet((cur) => {
+      if (!cur) return cur;
+      return {
+        ...cur,
+        draft: {
+          ...cur.draft,
+          variants: (cur.draft.variants ?? []).filter((_, i) => i !== variantIndex),
+        },
+      };
+    });
+  }
+
+  function saveKnowledgeCatalogMobileSheet() {
+    if (!knowledgeCatalogMobileSheet) return;
+    const id = knowledgeCatalogMobileSheet.serviceId;
+    const draft = knowledgeCatalogMobileSheet.draft;
+    if (!draft.name.trim()) {
+      setKnowledgeCatalogMobileError('Service name is required.');
+      return;
+    }
+    setKnowledgeCatalogMobileError(null);
+    const merged = { ...draft, name: draft.name.trim() } as ShopService;
+    patchServiceCatalog({
+      ...currentForm.service_catalog,
+      services: currentForm.service_catalog.services.map((s) => (s.id === id ? merged : s)),
+    });
+    setKnowledgeCatalogMobileSheet(null);
+  }
+
+  function saveKnowledgeLegacyMobileSheet() {
+    if (!knowledgeLegacyMobileSheet) return;
+    const idx = knowledgeLegacyMobileSheet.index;
+    const draft = knowledgeLegacyMobileSheet.draft;
+    if (!draft.name.trim()) {
+      setKnowledgeLegacyMobileError('Service name is required.');
+      return;
+    }
+    setKnowledgeLegacyMobileError(null);
+    patchState(
+      'services',
+      currentForm.services.map((s, i) => (i === idx ? { ...draft, name: draft.name.trim() } : s)),
+    );
+    setKnowledgeLegacyMobileSheet(null);
   }
 
   function confirmRemoveCatalogServiceFromDialog(serviceId: string, serviceLabel: string) {
@@ -1385,6 +1508,12 @@ export function UserSettingsLive({
   function openLegacyServiceEditor(index: number) {
     const service = currentForm.services[index];
     if (!service) return;
+    if (portal === 'knowledge' && !isKnowledgeWideLayout()) {
+      setEditingLegacyServiceIndex(null);
+      setKnowledgeLegacyMobileError(null);
+      setKnowledgeLegacyMobileSheet({ index, draft: { ...service } });
+      return;
+    }
     if (isKnowledgeWideLayout()) {
       setLegacyFormError(null);
       setLegacyDialogIndex(index);
@@ -1888,7 +2017,23 @@ export function UserSettingsLive({
 	                    <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
 	                    <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
 	                    <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
-	                    <div className="field"><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
+	                    <div className="field">
+                      <label>Address</label>
+                      {portal === 'knowledge' && knowledgeMobile ? (
+                        <button
+                          type="button"
+                          className={`knowledge-address-sheet-trigger${!currentForm.address.trim() ? ' knowledge-address-sheet-trigger--placeholder' : ''}`}
+                          onClick={() => {
+                            setKnowledgeAddressDraft(currentForm.address);
+                            setKnowledgeAddressSheetOpen(true);
+                          }}
+                        >
+                          {currentForm.address.trim() || 'Tap to edit address'}
+                        </button>
+                      ) : (
+                        <input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} />
+                      )}
+                    </div>
 	                    <div className="field"><label>Website</label><input value={currentForm.website_url} onChange={(event) => patchState('website_url', event.target.value)} placeholder="https://..." /></div>
 	                  </div>
 	                </div>
@@ -2033,7 +2178,7 @@ export function UserSettingsLive({
 	                                {renderEditIcon()}
 	                              </button>
 	                            </div>
-	                            {editingLegacyServiceIndex === index ? (
+	                            {editingLegacyServiceIndex === index && portal !== 'knowledge' ? (
 	                              <div className="service-inline-editor service-inline-editor--legacy-mobile">
 	                                <div className="service-item-head">
 	                                  <div className="field">
@@ -2272,7 +2417,7 @@ export function UserSettingsLive({
 	                                      {renderEditIcon()}
 	                                    </button>
 	                                  </div>
-	                                  {editingCatalogServiceId === service.id ? (
+	                                  {editingCatalogServiceId === service.id && portal !== 'knowledge' ? (
 	                                    <div className="service-inline-editor service-inline-editor--catalog-mobile">
 	                                      <div className="service-item-head service-item-head--catalog-pair">
 	                                        <div className="field">
@@ -2812,6 +2957,11 @@ export function UserSettingsLive({
                         type="button"
                         className="btn"
                         onClick={() => {
+                          if (portal === 'knowledge' && knowledgeMobile) {
+                            setKnowledgeStaffAddDraft(emptyStaffMember());
+                            setKnowledgeStaffAddSheetOpen(true);
+                            return;
+                          }
                           patchState('staff', [...currentForm.staff, emptyStaffMember()]);
                           setExpandedStaffIndex(currentForm.staff.length);
                         }}
@@ -2836,6 +2986,11 @@ export function UserSettingsLive({
                         type="button"
                         className="btn staff-empty-add"
                         onClick={() => {
+                          if (portal === 'knowledge' && knowledgeMobile) {
+                            setKnowledgeStaffAddDraft(emptyStaffMember());
+                            setKnowledgeStaffAddSheetOpen(true);
+                            return;
+                          }
                           patchState('staff', [...currentForm.staff, emptyStaffMember()]);
                           setExpandedStaffIndex(0);
                         }}
@@ -2933,7 +3088,14 @@ export function UserSettingsLive({
 	                    <p className="sub">Approved policies and answers for common caller questions: deposits, cancellations, parking, walk-ins, payment methods, gift cards, or group bookings.</p>
 	                  </div>
 		                  {currentForm.faqs.length > 0 ? (
-		                    <button type="button" className="btn" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
+		                    <button type="button" className="btn" onClick={() => {
+                          if (portal === 'knowledge' && knowledgeMobile) {
+                            setKnowledgeFaqCreateDraft(emptyFaqItem());
+                            setKnowledgeFaqCreateSheetOpen(true);
+                            return;
+                          }
+                          patchState('faqs', [...currentForm.faqs, emptyFaqItem()]);
+                        }}>
 		                      Add FAQ
 		                    </button>
 		                  ) : null}
@@ -2984,7 +3146,14 @@ export function UserSettingsLive({
 		                  {currentForm.faqs.length === 0 ? (
 		                    <div className="sh-empty faq-empty-state">
 		                      <p>No FAQs added yet. Add common answers so RingBooker can respond consistently.</p>
-		                      <button type="button" className="btn faq-empty-cta" onClick={() => patchState('faqs', [...currentForm.faqs, emptyFaqItem()])}>
+		                      <button type="button" className="btn faq-empty-cta" onClick={() => {
+                            if (portal === 'knowledge' && knowledgeMobile) {
+                              setKnowledgeFaqCreateDraft(emptyFaqItem());
+                              setKnowledgeFaqCreateSheetOpen(true);
+                              return;
+                            }
+                            patchState('faqs', [...currentForm.faqs, emptyFaqItem()]);
+                          }}>
 		                        Add FAQ
 		                      </button>
 		                    </div>
@@ -3275,6 +3444,463 @@ export function UserSettingsLive({
             ) : null}
 
           </div>
+
+          {portal === 'knowledge' ? (
+            <>
+              <BottomSheet
+                isOpen={knowledgeAddressSheetOpen}
+                onClose={() => setKnowledgeAddressSheetOpen(false)}
+                title="Edit Address"
+              >
+                <div className="onb-sheet-field">
+                  <div className="onb-sheet-label">Address</div>
+                  <textarea
+                    className="onb-sheet-input"
+                    rows={4}
+                    value={knowledgeAddressDraft}
+                    onChange={(event) => setKnowledgeAddressDraft(event.target.value)}
+                    style={{ minHeight: 100, resize: 'vertical' }}
+                  />
+                </div>
+                <div className="onb-sheet-actions">
+                  <button type="button" className="onb-sheet-cancel" onClick={() => setKnowledgeAddressSheetOpen(false)}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="onb-sheet-save"
+                    onClick={() => {
+                      patchState('address', knowledgeAddressDraft);
+                      setKnowledgeAddressSheetOpen(false);
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </BottomSheet>
+
+              <BottomSheet
+                isOpen={knowledgeLegacyMobileSheet !== null}
+                onClose={() => {
+                  setKnowledgeLegacyMobileSheet(null);
+                  setKnowledgeLegacyMobileError(null);
+                }}
+                title="Edit Service"
+              >
+                {knowledgeLegacyMobileSheet ? (
+                  <>
+                    <div className="field">
+                      <label>service name</label>
+                      <input
+                        value={knowledgeLegacyMobileSheet.draft.name}
+                        onChange={(event) =>
+                          setKnowledgeLegacyMobileSheet({
+                            ...knowledgeLegacyMobileSheet,
+                            draft: { ...knowledgeLegacyMobileSheet.draft, name: event.target.value },
+                          })
+                        }
+                        placeholder="Gel Manicure"
+                      />
+                      <p className="service-name-edit-hint">Shorten so callers can understand</p>
+                    </div>
+                    <div className="service-item-head" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div className="field">
+                        <label>duration</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={knowledgeLegacyMobileSheet.draft.duration_min || ''}
+                          onChange={(event) =>
+                            setKnowledgeLegacyMobileSheet({
+                              ...knowledgeLegacyMobileSheet,
+                              draft: {
+                                ...knowledgeLegacyMobileSheet.draft,
+                                duration_min: event.target.value === '' ? 0 : Number(event.target.value),
+                              },
+                            })
+                          }
+                          placeholder="60"
+                        />
+                      </div>
+                      <div className="field">
+                        <label>price</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={knowledgeLegacyMobileSheet.draft.price}
+                          onChange={(event) =>
+                            setKnowledgeLegacyMobileSheet({
+                              ...knowledgeLegacyMobileSheet,
+                              draft: { ...knowledgeLegacyMobileSheet.draft, price: Number(event.target.value) },
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+                    {knowledgeLegacyMobileError ? (
+                      <p className="catalog-service-dialog-error" style={{ marginTop: 8 }}>
+                        {knowledgeLegacyMobileError}
+                      </p>
+                    ) : null}
+                    <div className="onb-sheet-actions">
+                      <button type="button" className="onb-sheet-cancel" onClick={() => setKnowledgeLegacyMobileSheet(null)}>
+                        Cancel
+                      </button>
+                      <button type="button" className="onb-sheet-save" onClick={() => saveKnowledgeLegacyMobileSheet()}>
+                        Save
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+              </BottomSheet>
+
+              <BottomSheet
+                isOpen={knowledgeStaffAddSheetOpen}
+                onClose={() => setKnowledgeStaffAddSheetOpen(false)}
+                title="Add Staff"
+              >
+                <div className="form-grid" style={{ gap: 12 }}>
+                  <div className="field">
+                    <label>Name</label>
+                    <input
+                      value={knowledgeStaffAddDraft.name}
+                      onChange={(event) => setKnowledgeStaffAddDraft({ ...knowledgeStaffAddDraft, name: event.target.value })}
+                      placeholder="Sarah"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>Role / title</label>
+                    <input
+                      value={knowledgeStaffAddDraft.role ?? ''}
+                      onChange={(event) => setKnowledgeStaffAddDraft({ ...knowledgeStaffAddDraft, role: event.target.value })}
+                      placeholder="Nail technician"
+                    />
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label>Specialties</label>
+                    <input
+                      value={(knowledgeStaffAddDraft.specialties ?? []).join(', ')}
+                      onChange={(event) =>
+                        setKnowledgeStaffAddDraft({
+                          ...knowledgeStaffAddDraft,
+                          specialties: event.target.value
+                            .split(',')
+                            .map((value) => value.trim())
+                            .filter(Boolean),
+                        })
+                      }
+                      placeholder="Gel nails, nail art, pedicure"
+                    />
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label>Notes for AI</label>
+                    <textarea
+                      value={knowledgeStaffAddDraft.notes ?? ''}
+                      onChange={(event) => setKnowledgeStaffAddDraft({ ...knowledgeStaffAddDraft, notes: event.target.value })}
+                      placeholder="Optional. Example: Available Tuesday-Friday."
+                    />
+                  </div>
+                </div>
+                <div className="onb-sheet-actions">
+                  <button type="button" className="onb-sheet-cancel" onClick={() => setKnowledgeStaffAddSheetOpen(false)}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="onb-sheet-save"
+                    disabled={!knowledgeStaffAddDraft.name.trim()}
+                    onClick={() => {
+                      const name = knowledgeStaffAddDraft.name.trim();
+                      if (!name) return;
+                      patchState('staff', [
+                        ...currentForm.staff,
+                        {
+                          ...knowledgeStaffAddDraft,
+                          name,
+                          role: knowledgeStaffAddDraft.role?.trim() || null,
+                          specialties: (knowledgeStaffAddDraft.specialties ?? []).map((value) => value.trim()).filter(Boolean),
+                          notes: knowledgeStaffAddDraft.notes?.trim() || null,
+                          active: knowledgeStaffAddDraft.active !== false,
+                        },
+                      ]);
+                      setExpandedStaffIndex(currentForm.staff.length);
+                      setKnowledgeStaffAddSheetOpen(false);
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </BottomSheet>
+
+              <BottomSheet
+                isOpen={knowledgeFaqCreateSheetOpen}
+                onClose={() => setKnowledgeFaqCreateSheetOpen(false)}
+                title="Create FAQ"
+              >
+                <div className="field">
+                  <label>Question</label>
+                  <input
+                    value={knowledgeFaqCreateDraft.question}
+                    onChange={(event) => setKnowledgeFaqCreateDraft({ ...knowledgeFaqCreateDraft, question: event.target.value })}
+                    placeholder="e.g. Do you take walk-ins?"
+                  />
+                </div>
+                <div className="field" style={{ marginTop: 12 }}>
+                  <label>Answer</label>
+                  <textarea
+                    value={knowledgeFaqCreateDraft.answer}
+                    onChange={(event) => setKnowledgeFaqCreateDraft({ ...knowledgeFaqCreateDraft, answer: event.target.value })}
+                    placeholder="Approved answer callers should hear."
+                    rows={4}
+                  />
+                </div>
+                <div className="onb-sheet-actions">
+                  <button type="button" className="onb-sheet-cancel" onClick={() => setKnowledgeFaqCreateSheetOpen(false)}>
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="onb-sheet-save"
+                    disabled={!knowledgeFaqCreateDraft.question.trim() || !knowledgeFaqCreateDraft.answer.trim()}
+                    onClick={() => {
+                      const q = knowledgeFaqCreateDraft.question.trim();
+                      const a = knowledgeFaqCreateDraft.answer.trim();
+                      if (!q || !a) return;
+                      patchState('faqs', [...currentForm.faqs, { question: q, answer: a }]);
+                      setKnowledgeFaqCreateSheetOpen(false);
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+              </BottomSheet>
+
+              <BottomSheet
+                isOpen={knowledgeCatalogMobileSheet !== null}
+                onClose={() => {
+                  setKnowledgeCatalogMobileSheet(null);
+                  setKnowledgeCatalogMobileError(null);
+                }}
+                title="Edit Service"
+              >
+                {knowledgeCatalogMobileSheet ? (
+                  <>
+                    <div className="service-item-head service-item-head--catalog-pair">
+                      <div className="field">
+                        <label>service name</label>
+                        <input
+                          value={knowledgeCatalogMobileSheet.draft.name}
+                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ name: event.target.value })}
+                          placeholder="Gel Manicure"
+                        />
+                        <p className="service-name-edit-hint">Shorten so callers can understand</p>
+                      </div>
+                      <div className="field">
+                        <label>move to group</label>
+                        <select
+                          value={knowledgeCatalogMobileSheet.draft.categoryId ?? ''}
+                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ categoryId: event.target.value || null })}
+                        >
+                          {currentForm.service_catalog.categories.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="form-grid settings-tab-content-frame">
+                      <div className="field">
+                        <label>description</label>
+                        <input
+                          value={knowledgeCatalogMobileSheet.draft.description ?? ''}
+                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ description: event.target.value || null })}
+                          placeholder="Optional caller-facing details"
+                        />
+                      </div>
+                      <div className="field">
+                        <label>duration</label>
+                        <input
+                          value={serviceDurationText(knowledgeCatalogMobileSheet.draft)}
+                          onChange={(event) => {
+                            const durationText = event.target.value;
+                            patchKnowledgeCatalogMobileDraft({
+                              durationText: durationText.trim() ? durationText : null,
+                              durationMinutes: parseDurationTextToMinutes(durationText),
+                            });
+                          }}
+                          placeholder="60 min, 1 hour+, Varies"
+                        />
+                      </div>
+                      <div className="field">
+                        <label>price type</label>
+                        <select
+                          value={knowledgeCatalogMobileSheet.draft.priceType}
+                          onChange={(event) =>
+                            patchKnowledgeCatalogMobileDraft({ priceType: event.target.value as ServicePriceType })
+                          }
+                        >
+                          {PRICE_TYPE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label>price</label>
+                        <input
+                          type="number"
+                          min={0}
+                          value={knowledgeCatalogMobileSheet.draft.priceAmount ?? 0}
+                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ priceAmount: Number(event.target.value) })}
+                          disabled={
+                            knowledgeCatalogMobileSheet.draft.priceType === 'consultation' ||
+                            knowledgeCatalogMobileSheet.draft.priceType === 'varies'
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="field">
+                      <label>aliases / other names customers use</label>
+                      <input
+                        value={knowledgeCatalogMobileSheet.draft.aliases.join(', ')}
+                        onChange={(event) =>
+                          patchKnowledgeCatalogMobileDraft({
+                            aliases: event.target.value
+                              .split(',')
+                              .map((item) => item.trim())
+                              .filter(Boolean),
+                          })
+                        }
+                        placeholder="gel mani, shellac"
+                      />
+                    </div>
+                    <div className="field">
+                      <label>booking notes</label>
+                      <textarea
+                        value={knowledgeCatalogMobileSheet.draft.bookingNotes ?? ''}
+                        onChange={(event) => patchKnowledgeCatalogMobileDraft({ bookingNotes: event.target.value || null })}
+                        placeholder="Anything the AI should know before capturing this request."
+                      />
+                    </div>
+                    <div className="field">
+                      <label>options / variants</label>
+                      <p className="field-help">Use options when a service has different lengths or prices.</p>
+                      <div className="service-variants-editor">
+                        {(knowledgeCatalogMobileSheet.draft.variants ?? []).map((variant, variantIndex) => (
+                          <div className="service-variant-row" key={`${knowledgeCatalogMobileSheet.serviceId}-variant-${variantIndex}`}>
+                            <input
+                              value={variant.label}
+                              onChange={(event) => patchKnowledgeMobileVariant(variantIndex, { label: event.target.value })}
+                              placeholder="30 min"
+                            />
+                            <input
+                              value={variant.durationText ?? ''}
+                              onChange={(event) => {
+                                const durationText = event.target.value;
+                                patchKnowledgeMobileVariant(variantIndex, {
+                                  durationText: durationText || null,
+                                  durationMinutes: parseDurationTextToMinutes(durationText),
+                                });
+                              }}
+                              placeholder="Duration"
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              value={variant.priceAmount ?? ''}
+                              onChange={(event) =>
+                                patchKnowledgeMobileVariant(variantIndex, {
+                                  priceAmount: event.target.value === '' ? null : Number(event.target.value),
+                                })
+                              }
+                              placeholder="Price"
+                            />
+                            <select
+                              value={variant.priceType ?? 'from'}
+                              onChange={(event) =>
+                                patchKnowledgeMobileVariant(variantIndex, {
+                                  priceType: event.target.value as ServicePriceType,
+                                })
+                              }
+                            >
+                              {PRICE_TYPE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                            <button type="button" className="subtle-link" onClick={() => removeKnowledgeMobileVariantRow(variantIndex)}>
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <button type="button" className="btn ghost" onClick={() => addKnowledgeMobileVariantRow()}>
+                          + Add option
+                        </button>
+                      </div>
+                    </div>
+                    <div className="service-item-footer">
+                      <label className="inline-check">
+                        <input
+                          type="checkbox"
+                          checked={knowledgeCatalogMobileSheet.draft.bookable}
+                          onChange={(event) => patchKnowledgeCatalogMobileDraft({ bookable: event.target.checked })}
+                        />
+                        Bookable by request
+                      </label>
+                      <div className="actions-row">
+                        <button
+                          type="button"
+                          className="subtle-link"
+                          onClick={() =>
+                            patchKnowledgeCatalogMobileDraft({
+                              active: knowledgeCatalogMobileSheet.draft.active === false,
+                            })
+                          }
+                        >
+                          {knowledgeCatalogMobileSheet.draft.active === false ? 'Restore service' : 'Archive service'}
+                        </button>
+                        <button
+                          type="button"
+                          className="subtle-link"
+                          onClick={() => {
+                            const sid = knowledgeCatalogMobileSheet.serviceId;
+                            const label = knowledgeCatalogMobileSheet.draft.name.trim() || 'this service';
+                            if (!window.confirm(`Remove ${label}? This cannot be undone.`)) return;
+                            removeCatalogService(sid);
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    {knowledgeCatalogMobileError ? (
+                      <p className="catalog-service-dialog-error" style={{ marginTop: 8 }}>
+                        {knowledgeCatalogMobileError}
+                      </p>
+                    ) : null}
+                    <div className="onb-sheet-actions">
+                      <button
+                        type="button"
+                        className="onb-sheet-cancel"
+                        onClick={() => {
+                          setKnowledgeCatalogMobileSheet(null);
+                          setKnowledgeCatalogMobileError(null);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button type="button" className="onb-sheet-save" onClick={() => saveKnowledgeCatalogMobileSheet()}>
+                        Save
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+              </BottomSheet>
+            </>
+          ) : null}
 
           </UserPortalPageContent>
         </main>
