@@ -67,21 +67,20 @@ export const HTML_HUB_SCOPED_CSS = `
   margin:-12px auto 28px;
   text-align:center;
 }
-/* Hero CTAs — stack like /how-it-works (primary above secondary), not side-by-side */
+/* Hero CTAs — horizontal on desktop, stacked on mobile (mirrors homepage hero-btns) */
 .html-hub-page .hero-ctas{
   display:flex;
-  flex-direction:column;
+  flex-direction:row;
+  flex-wrap:wrap;
   align-items:center;
+  justify-content:center;
   gap:12px;
-  width:100%;
-  max-width:min(360px,100%);
   margin:0 auto;
   box-sizing:border-box;
 }
 .html-hub-page .hero-ctas > a,
 .html-hub-page .hero-ctas > button{
-  width:100%;
-  display:flex;
+  display:inline-flex;
   justify-content:center;
   box-sizing:border-box;
 }
@@ -116,24 +115,22 @@ export const HTML_HUB_SCOPED_CSS = `
 }
 .html-hub-page .hero.hero--landing .hero-btns{
   display:flex;
-  flex-direction:column;
+  flex-direction:row;
+  flex-wrap:wrap;
   align-items:center;
   justify-content:center;
   gap:12px;
   margin:0 auto 0;
-  width:100%;
-  max-width:min(360px,100%);
   box-sizing:border-box;
 }
 .html-hub-page .hero.hero--landing .hero-btns > a,
 .html-hub-page .hero.hero--landing .hero-btns > button{
-  width:100%;
-  display:flex;
+  display:inline-flex;
   justify-content:center;
   align-items:center;
   box-sizing:border-box;
 }
-.html-hub-page .hero.hero--landing .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:14px 24px;border-radius:var(--radius-pill);font-size:var(--mk-btn);font-weight:700;text-decoration:none;gap:10px;box-shadow:0 8px 28px rgba(91,33,182,.22),0 2px 8px rgba(91,33,182,.12);border:none;transition:transform .15s,filter .2s,box-shadow .2s;font-family:inherit;cursor:pointer;box-sizing:border-box}
+.html-hub-page .hero.hero--landing .btn-hero-live{background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;padding:15px 32px;border-radius:var(--radius-pill);font-size:var(--mk-btn-lg);font-weight:700;text-decoration:none;gap:10px;box-shadow:0 8px 28px rgba(91,33,182,.22),0 2px 8px rgba(91,33,182,.12);border:none;transition:transform .15s,filter .2s,box-shadow .2s;font-family:inherit;cursor:pointer;box-sizing:border-box}
 .html-hub-page .hero.hero--landing .btn-hero-live:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 12px 36px rgba(91,33,182,.28),0 4px 12px rgba(91,33,182,.14)}
 .html-hub-page .hero.hero--landing .btn-hero-live svg{width:16px;height:16px;flex-shrink:0}
 .html-hub-page .hero.hero--landing .btn-hero-live .btn-hero-live-phone{width:18px;height:18px}
@@ -146,9 +143,9 @@ export const HTML_HUB_SCOPED_CSS = `
   background:rgba(255,255,255,.56);
   color:#5b21b6;
   border:1px solid rgba(196,181,253,.55);
-  padding:14px 24px;
-  font-size:var(--mk-btn);
-  font-weight:700;
+  padding:11px 20px;
+  font-size:var(--mk-btn-sm);
+  font-weight:600;
 }
 .html-hub-page .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial:hover{
   background:#fff;
@@ -159,11 +156,16 @@ export const HTML_HUB_SCOPED_CSS = `
 @media(max-width:640px){
   .html-hub-page .hero-landing-shell{padding-left:24px;padding-right:24px;padding-top:34px;padding-bottom:64px}
   .html-hub-page .hero-ctas{
+    flex-direction:column;
     align-items:stretch;
     max-width:100%;
     gap:10px;
   }
-  /* Landing hero: CTAs stay stacked; copy aligns left on small screens */
+  .html-hub-page .hero-ctas > a,
+  .html-hub-page .hero-ctas > button{
+    width:100%;
+  }
+  /* Landing hero: CTAs stack on mobile; copy aligns left */
   .html-hub-page .hero.hero--landing .hero-inner{
     margin-left:0;
     margin-right:0;
@@ -185,10 +187,16 @@ export const HTML_HUB_SCOPED_CSS = `
     text-align:left;
   }
   .html-hub-page .hero.hero--landing .hero-btns{
+    flex-direction:column;
     align-items:stretch;
     max-width:100%;
     margin-left:0;
     margin-right:0;
+    gap:10px;
+  }
+  .html-hub-page .hero.hero--landing .hero-btns > a,
+  .html-hub-page .hero.hero--landing .hero-btns > button{
+    width:100%;
   }
   .html-hub-page .hero.hero--landing .btn-hero-live{
     padding:14px 24px;
@@ -197,9 +205,9 @@ export const HTML_HUB_SCOPED_CSS = `
     gap:8px;
   }
   .html-hub-page .hero.hero--landing .hero-btns .btn-outline.btn-hero-trial{
-    padding:14px 24px;
-    font-size:14px;
-    font-weight:700;
+    padding:12px 20px;
+    font-size:13px;
+    font-weight:600;
   }
   .html-hub-page .btn,
   .html-hub-page .btn-lg{

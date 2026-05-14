@@ -61,13 +61,13 @@ const BOOKING_TOOL_INTEGRATIONS: BookingToolIntegration[] = [
 ];
 
 const TRIAL_CTA_SECONDARY =
-  'flex w-full min-w-0 items-center justify-center rounded-full border bg-white/55 px-6 py-3.5 text-[14px] font-bold transition hover:-translate-y-px hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+  'inline-flex w-full sm:w-auto items-center justify-center rounded-full border bg-white/55 px-5 py-[11px] text-[13px] font-semibold transition hover:-translate-y-px hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
 
 const DEMO_CTA_BASE =
-  'flex w-full min-w-0 items-center justify-center gap-2 rounded-full px-6 py-3.5 text-[14px] font-bold text-white transition hover:-translate-y-px hover:brightness-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
+  'inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-full px-8 py-[15px] text-[16px] font-bold text-white transition hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
 
-/** Hero / bottom band: CTAs stacked like /how-it-works (not one row). */
-const VERTICAL_HERO_CTA_STACK = 'mt-6 flex w-full max-w-md flex-col gap-3';
+/** Hero: stacked on mobile, horizontal on sm+ (mirrors homepage hero-btns). */
+const VERTICAL_HERO_CTA_STACK = 'mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center';
 const VERTICAL_FINAL_CTA_STACK = 'relative mt-8 flex w-full max-w-md flex-col gap-3 mx-auto';
 
 export type IndustryLandingTheme = {
@@ -91,7 +91,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#5b21b6_0%,#7c3aed_50%,#a78bfa_100%)]',
     finalCtaPrimaryBtnText: 'text-violet-900',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_6px_18px_rgba(91,33,182,0.16),0_1px_4px_rgba(91,33,182,0.08)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)]`,
     trialCtaClass: `${TRIAL_CTA_SECONDARY} border-violet-400/55 text-violet-900 hover:border-violet-500 hover:text-violet-950 focus-visible:outline-violet-600`,
     accentClass: 'text-violet-600',
   },
@@ -100,7 +100,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ffedd5_0%,#fffbeb_42%,#ffffff_68%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#9a3412_0%,#d97706_48%,#f59e0b_100%)]',
     finalCtaPrimaryBtnText: 'text-amber-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_6px_18px_rgba(180,83,9,0.15),0_1px_4px_rgba(180,83,9,0.08)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_8px_28px_rgba(180,83,9,0.20),0_2px_8px_rgba(180,83,9,0.11)]`,
     trialCtaClass: `${TRIAL_CTA_SECONDARY} border-amber-400/55 text-amber-950 hover:border-amber-500 hover:text-amber-950 focus-visible:outline-amber-600`,
     accentClass: 'text-amber-600',
   },
@@ -109,7 +109,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ccfbf1_0%,#f0fdfa_44%,#ffffff_70%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#115e59_0%,#0d9488_50%,#14b8a6_100%)]',
     finalCtaPrimaryBtnText: 'text-teal-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_6px_18px_rgba(13,148,136,0.15),0_1px_4px_rgba(13,148,136,0.08)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_8px_28px_rgba(13,148,136,0.20),0_2px_8px_rgba(13,148,136,0.11)]`,
     trialCtaClass: `${TRIAL_CTA_SECONDARY} border-teal-400/55 text-teal-950 hover:border-teal-500 hover:text-teal-950 focus-visible:outline-teal-600`,
     accentClass: 'text-teal-600',
   },
@@ -118,7 +118,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#e0e7ff_0%,#eef2ff_46%,#ffffff_72%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#312e81_0%,#4f46e5_52%,#818cf8_100%)]',
     finalCtaPrimaryBtnText: 'text-indigo-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_6px_18px_rgba(67,56,202,0.16),0_1px_4px_rgba(67,56,202,0.08)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_8px_28px_rgba(67,56,202,0.22),0_2px_8px_rgba(67,56,202,0.12)]`,
     trialCtaClass: `${TRIAL_CTA_SECONDARY} border-indigo-400/55 text-indigo-950 hover:border-indigo-500 hover:text-indigo-950 focus-visible:outline-indigo-600`,
     accentClass: 'text-indigo-600',
   },
@@ -127,7 +127,7 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#fae8ff_0%,#fdf4ff_46%,#ffffff_72%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#86198f_0%,#c026d3_50%,#e879f9_100%)]',
     finalCtaPrimaryBtnText: 'text-fuchsia-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_6px_18px_rgba(192,38,211,0.16),0_1px_4px_rgba(192,38,211,0.08)]`,
+    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_8px_28px_rgba(192,38,211,0.20),0_2px_8px_rgba(192,38,211,0.11)]`,
     trialCtaClass: `${TRIAL_CTA_SECONDARY} border-fuchsia-400/55 text-fuchsia-950 hover:border-fuchsia-500 hover:text-fuchsia-950 focus-visible:outline-fuchsia-600`,
     accentClass: 'text-fuchsia-600',
   },
@@ -582,7 +582,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
             <Link href="/pricing" className={theme.trialCtaClass}>
               Start Free 14-Day Trial
             </Link>
-            <Link href="/industries/nail-salon/vi" className="flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3.5 text-[14px] font-bold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
+            <Link href="/industries/nail-salon/vi" className="inline-flex items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-500 transition hover:border-violet-200 hover:text-violet-700">
               🇻🇳 Tiếng Việt
             </Link>
           </div>
@@ -791,7 +791,7 @@ export async function MarketingNailSalonVietnameseTemplate() {
               <a href="/demo/nail-salon" className={theme.trialCtaClass}>
                 Xem demo trực tiếp
               </a>
-              <Link href="/industries/nail-salon" className="flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3.5 text-[14px] font-bold text-slate-700 transition hover:border-violet-200 hover:text-violet-700">
+              <Link href="/industries/nail-salon" className="inline-flex items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-500 transition hover:border-violet-200 hover:text-violet-700">
                 🇺🇸 English
               </Link>
             </div>
