@@ -215,6 +215,273 @@ function SquareConfigPanel({ connected, provider, onDisconnect, onRefresh }: {
   );
 }
 
+function MindbodyConfigPanel({
+  connected,
+  provider,
+  onConnect,
+  onDisconnect,
+}: {
+  connected: boolean;
+  provider: { details: Record<string, unknown> | null } | null;
+  onConnect: (creds: {
+    siteId: string;
+    apiKey: string;
+    sourceName?: string;
+    staffToken?: string;
+    locationId?: string;
+    sessionTypeId?: string;
+    staffId?: string;
+    bookingUrl?: string;
+  }) => Promise<void>;
+  onDisconnect: () => Promise<void>;
+}) {
+  const details = provider?.details ?? {};
+  const [siteId, setSiteId] = useState(String(details.siteId ?? ''));
+  const [apiKey, setApiKey] = useState('');
+  const [sourceName, setSourceName] = useState(String(details.sourceName ?? 'RingBooker'));
+  const [locationId, setLocationId] = useState(String(details.locationId ?? ''));
+  const [sessionTypeId, setSessionTypeId] = useState(String(details.sessionTypeId ?? ''));
+  const [staffId, setStaffId] = useState(String(details.staffId ?? ''));
+  const [bookingUrl, setBookingUrl] = useState(String(details.bookingUrl ?? ''));
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSiteId(String(details.siteId ?? ''));
+    setSourceName(String(details.sourceName ?? 'RingBooker'));
+    setLocationId(String(details.locationId ?? ''));
+    setSessionTypeId(String(details.sessionTypeId ?? ''));
+    setStaffId(String(details.staffId ?? ''));
+    setBookingUrl(String(details.bookingUrl ?? ''));
+  }, [provider?.details]);
+
+  return (
+    <div className="integration-config-body">
+      {connected ? (
+        <div className="integration-success-box">Connected · Site ID: {String(details.siteId ?? siteId)}</div>
+      ) : (
+        <div className="integration-info-box">
+          Mindbody API access requires an approved developer account and activated site access. If API booking is unavailable, RingBooker will capture the request and alert you instead.
+        </div>
+      )}
+      <div className="integration-info-box">
+        <strong>Current Mindbody mode: capture request only.</strong>
+        <br />
+        Services/staff sync: available · Availability check: best-effort · Direct appointment creation: not enabled.
+      </div>
+      <div className="calendar-int-grid">
+        <div className="field integration-config-field">
+          <label>Mindbody Site ID</label>
+          <input value={siteId} onChange={(event) => setSiteId(event.target.value)} placeholder="123456" />
+        </div>
+        <div className="field integration-config-field">
+          <label>API key</label>
+          <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Your Mindbody API key" />
+        </div>
+        <div className="field integration-config-field">
+          <label>Source name</label>
+          <input value={sourceName} onChange={(event) => setSourceName(event.target.value)} placeholder="RingBooker" />
+        </div>
+        <div className="field integration-config-field">
+          <label>Location ID optional</label>
+          <input value={locationId} onChange={(event) => setLocationId(event.target.value)} placeholder="1" />
+        </div>
+        <div className="field integration-config-field">
+          <label>Session type ID optional</label>
+          <input value={sessionTypeId} onChange={(event) => setSessionTypeId(event.target.value)} placeholder="17" />
+        </div>
+        <div className="field integration-config-field">
+          <label>Staff ID optional</label>
+          <input value={staffId} onChange={(event) => setStaffId(event.target.value)} placeholder="5" />
+        </div>
+      </div>
+      <div className="field integration-config-field">
+        <label>Booking URL fallback optional</label>
+        <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://clients.mindbodyonline.com/..." />
+      </div>
+      {message ? <div className="note">{message}</div> : null}
+      <div className="integrations-inline-actions">
+        <button
+          type="button"
+          className="btn user-save integrations-primary-button"
+          disabled={busy || !siteId.trim() || !apiKey.trim()}
+          onClick={async () => {
+            setBusy(true);
+            setMessage(null);
+            try {
+              await onConnect({
+                siteId: siteId.trim(),
+                apiKey: apiKey.trim(),
+                sourceName: sourceName.trim() || undefined,
+                locationId: locationId.trim() || undefined,
+                sessionTypeId: sessionTypeId.trim() || undefined,
+                staffId: staffId.trim() || undefined,
+                bookingUrl: bookingUrl.trim() || undefined,
+              });
+              setApiKey('');
+              setMessage('Mindbody settings saved.');
+            } catch (err) {
+              setMessage(err instanceof Error ? err.message : 'Unable to connect Mindbody.');
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? 'Saving...' : connected ? 'Save Mindbody settings' : 'Connect Mindbody'}
+        </button>
+        {connected ? (
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try { await onDisconnect(); } finally { setBusy(false); }
+            }}
+          >
+            Disconnect Mindbody
+          </button>
+        ) : null}
+        <a className="subtle-link" href="https://developers.mindbodyonline.com/" target="_blank" rel="noreferrer">
+          Mindbody developer docs →
+        </a>
+      </div>
+      <div className="note">RingBooker will not tell callers an appointment is confirmed. Mindbody booking creation is not enabled in this release.</div>
+    </div>
+  );
+}
+
+function AcuityConfigPanel({
+  connected,
+  provider,
+  onConnect,
+  onDisconnect,
+}: {
+  connected: boolean;
+  provider: { details: Record<string, unknown> | null } | null;
+  onConnect: (creds: {
+    userId?: string;
+    apiKey?: string;
+    accessToken?: string;
+    appointmentTypeId?: string;
+    calendarId?: string;
+    timezone?: string;
+    bookingUrl?: string;
+  }) => Promise<void>;
+  onDisconnect: () => Promise<void>;
+}) {
+  const details = provider?.details ?? {};
+  const [userId, setUserId] = useState(String(details.userId ?? ''));
+  const [apiKey, setApiKey] = useState('');
+  const [appointmentTypeId, setAppointmentTypeId] = useState(String(details.appointmentTypeId ?? ''));
+  const [calendarId, setCalendarId] = useState(String(details.calendarId ?? ''));
+  const [timezone, setTimezone] = useState(String(details.timezone ?? ''));
+  const [bookingUrl, setBookingUrl] = useState(String(details.bookingUrl ?? ''));
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUserId(String(details.userId ?? ''));
+    setAppointmentTypeId(String(details.appointmentTypeId ?? ''));
+    setCalendarId(String(details.calendarId ?? ''));
+    setTimezone(String(details.timezone ?? ''));
+    setBookingUrl(String(details.bookingUrl ?? ''));
+  }, [provider?.details]);
+
+  const directAppointmentCreation = String(details.directAppointmentCreation ?? 'not_enabled');
+  const bookingMode = String(details.bookingMode ?? 'capture_request_only');
+
+  return (
+    <div className="integration-config-body">
+      {connected ? (
+        <div className="integration-success-box">Connected · User ID: {String(details.userId ?? userId)}</div>
+      ) : (
+        <div className="integration-info-box">
+          Acuity API credentials are stored server-side. RingBooker can sync appointment types and calendars, then use direct booking only when mappings and the direct booking flag are enabled.
+        </div>
+      )}
+      <div className="integration-info-box">
+        <strong>Current Acuity mode: {bookingMode === 'direct_booking_with_fallback' ? 'direct booking with fallback' : 'capture request only'}.</strong>
+        <br />
+        Appointment types sync: available · Calendars sync: available · Availability check: {details.availabilityCheck === 'available' ? 'available' : 'needs appointment type mapping'} · Direct appointment creation: {directAppointmentCreation === 'enabled' ? 'enabled' : 'not enabled'}.
+      </div>
+      <div className="calendar-int-grid">
+        <div className="field integration-config-field">
+          <label>Acuity User ID</label>
+          <input value={userId} onChange={(event) => setUserId(event.target.value)} placeholder="12345678" />
+        </div>
+        <div className="field integration-config-field">
+          <label>API key</label>
+          <input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder="Your Acuity API key" />
+        </div>
+        <div className="field integration-config-field">
+          <label>Appointment type ID</label>
+          <input value={appointmentTypeId} onChange={(event) => setAppointmentTypeId(event.target.value)} placeholder="1001" />
+        </div>
+        <div className="field integration-config-field">
+          <label>Calendar ID optional</label>
+          <input value={calendarId} onChange={(event) => setCalendarId(event.target.value)} placeholder="2002" />
+        </div>
+        <div className="field integration-config-field">
+          <label>Timezone optional</label>
+          <input value={timezone} onChange={(event) => setTimezone(event.target.value)} placeholder="America/Chicago" />
+        </div>
+        <div className="field integration-config-field">
+          <label>Booking URL fallback optional</label>
+          <input value={bookingUrl} onChange={(event) => setBookingUrl(event.target.value)} placeholder="https://your-business.as.me/" />
+        </div>
+      </div>
+      {message ? <div className="note">{message}</div> : null}
+      <div className="integrations-inline-actions">
+        <button
+          type="button"
+          className="btn user-save integrations-primary-button"
+          disabled={busy || !userId.trim() || !apiKey.trim()}
+          onClick={async () => {
+            setBusy(true);
+            setMessage(null);
+            try {
+              await onConnect({
+                userId: userId.trim(),
+                apiKey: apiKey.trim(),
+                appointmentTypeId: appointmentTypeId.trim() || undefined,
+                calendarId: calendarId.trim() || undefined,
+                timezone: timezone.trim() || undefined,
+                bookingUrl: bookingUrl.trim() || undefined,
+              });
+              setApiKey('');
+              setMessage('Acuity settings saved.');
+            } catch (err) {
+              setMessage(err instanceof Error ? err.message : 'Unable to connect Acuity.');
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? 'Saving...' : connected ? 'Save Acuity settings' : 'Connect Acuity'}
+        </button>
+        {connected ? (
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try { await onDisconnect(); } finally { setBusy(false); }
+            }}
+          >
+            Disconnect Acuity
+          </button>
+        ) : null}
+        <a className="subtle-link" href="https://developers.acuityscheduling.com/" target="_blank" rel="noreferrer">
+          Acuity developer docs →
+        </a>
+      </div>
+      <div className="note">RingBooker only tells callers an appointment is confirmed after Acuity returns a real appointment ID. Failed API bookings become normal booking requests.</div>
+    </div>
+  );
+}
+
 function ComingSoonPanel({ app, onSave }: { app: IntegrationApp; onSave: (url: string) => Promise<void> }) {
   return (
     <div className="integration-config-body">
@@ -224,11 +491,32 @@ function ComingSoonPanel({ app, onSave }: { app: IntegrationApp; onSave: (url: s
   );
 }
 
-function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, disconnectSquare, refresh }: {
+function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, connectMindbody, connectAcuity, disconnectMindbody, disconnectAcuity, disconnectSquare, refresh }: {
   appKey: IntegrationAppKey | null;
   providers: Array<{ id: string; connected: boolean; details: Record<string, unknown> | null }>;
-  selectedProvider: { id: string; connected: boolean; details: { bookingUrl?: string | null; merchantId?: string | null } | null } | null;
+  selectedProvider: { id: string; connected: boolean; details: Record<string, unknown> | null } | null;
   saveBookingLink: (url: string, key: IntegrationAppKey) => Promise<void>;
+  connectMindbody: (creds: {
+    siteId: string;
+    apiKey: string;
+    sourceName?: string;
+    staffToken?: string;
+    locationId?: string;
+    sessionTypeId?: string;
+    staffId?: string;
+    bookingUrl?: string;
+  }) => Promise<void>;
+  connectAcuity: (creds: {
+    userId?: string;
+    apiKey?: string;
+    accessToken?: string;
+    appointmentTypeId?: string;
+    calendarId?: string;
+    timezone?: string;
+    bookingUrl?: string;
+  }) => Promise<void>;
+  disconnectMindbody: () => Promise<void>;
+  disconnectAcuity: () => Promise<void>;
   disconnectSquare: () => Promise<void>;
   refresh: () => void;
 }) {
@@ -242,7 +530,7 @@ function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, 
 
   if (!app) return null;
 
-  const savedUrl = selectedProvider?.details?.bookingUrl ?? null;
+  const savedUrl = typeof selectedProvider?.details?.bookingUrl === 'string' ? selectedProvider.details.bookingUrl : null;
   return (
     <section ref={panelRef} className="integration-config-panel">
       <div className="integration-config-head">
@@ -255,6 +543,10 @@ function AppConfigPanel({ appKey, providers, selectedProvider, saveBookingLink, 
       </div>
       {app.key === 'square' ? (
         <SquareConfigPanel connected={connected} provider={selectedProvider} onDisconnect={disconnectSquare} onRefresh={refresh} />
+      ) : app.key === 'mindbody' ? (
+        <MindbodyConfigPanel connected={connected} provider={selectedProvider} onConnect={connectMindbody} onDisconnect={disconnectMindbody} />
+      ) : app.key === 'acuity' ? (
+        <AcuityConfigPanel connected={connected} provider={selectedProvider} onConnect={connectAcuity} onDisconnect={disconnectAcuity} />
       ) : app.comingSoon ? (
         <ComingSoonPanel app={app} onSave={(url) => saveBookingLink(url, app.key)} />
       ) : (
@@ -299,6 +591,10 @@ export function IntegrationsRedesign() {
     setBookingMethod,
     setSelectedApp,
     saveBookingLink,
+    connectMindbody,
+    connectAcuity,
+    disconnectMindbody,
+    disconnectAcuity,
     disconnectSquare,
     goBack,
     refresh,
@@ -339,6 +635,10 @@ export function IntegrationsRedesign() {
             providers={status.providers}
             selectedProvider={selectedProvider}
             saveBookingLink={saveBookingLink}
+            connectMindbody={connectMindbody}
+            connectAcuity={connectAcuity}
+            disconnectMindbody={disconnectMindbody}
+            disconnectAcuity={disconnectAcuity}
             disconnectSquare={disconnectSquare}
             refresh={() => void refresh()}
           />

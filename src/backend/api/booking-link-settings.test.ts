@@ -227,6 +227,155 @@ test('vagaro booking link stores app selection without requiring API credentials
   assert.equal(shop?.selected_integration, 'vagaro');
 });
 
+test('mindbody connect stores API credentials and app selection', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/calendar/providers/mindbody/connect', {
+    method: 'POST',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      siteId: '12345',
+      apiKey: 'mb-api-key',
+      sourceName: 'RingBookerTest',
+      bookingUrl: 'https://clients.mindbodyonline.com/test',
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; provider: string; connected: boolean; configured: boolean };
+  assert.deepEqual(body, { ok: true, provider: 'mindbody', connected: true, configured: true });
+
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.booking_method, 'app');
+  assert.equal(shop?.selected_integration, 'mindbody');
+  assert.equal(shop?.booking_url, 'https://clients.mindbodyonline.com/test');
+  assert.match(shop?.integration_credentials_encrypted ?? '', /mindbody/);
+});
+
+test('mindbody disconnect clears provider credentials', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  await app.request('/user/calendar/providers/mindbody/connect', {
+    method: 'POST',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ siteId: '12345', apiKey: 'mb-api-key' }),
+  });
+
+  const response = await app.request('/user/calendar/providers/mindbody/disconnect', {
+    method: 'POST',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; disconnected: boolean; provider: string };
+  assert.deepEqual(body, { ok: true, disconnected: true, provider: 'mindbody' });
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.integration_credentials_encrypted, null);
+  assert.equal(shop?.selected_integration, null);
+});
+
+test('acuity connect stores API credentials and app selection', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/calendar/providers/acuity/connect', {
+    method: 'POST',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      userId: 'acuity-user',
+      apiKey: 'acuity-key',
+      appointmentTypeId: '100',
+      calendarId: '200',
+      timezone: 'America/Chicago',
+      bookingUrl: 'https://example.as.me/',
+    }),
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; provider: string; connected: boolean; configured: boolean };
+  assert.deepEqual(body, { ok: true, provider: 'acuity', connected: true, configured: true });
+
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.booking_method, 'app');
+  assert.equal(shop?.selected_integration, 'acuity');
+  assert.equal(shop?.booking_url, 'https://example.as.me/');
+  assert.match(shop?.integration_credentials_encrypted ?? '', /acuity/);
+});
+
+test('acuity connect rejects missing API credentials', async () => {
+  const { app } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  const response = await app.request('/user/calendar/providers/acuity/connect', {
+    method: 'POST',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ appointmentTypeId: '100' }),
+  });
+
+  assert.equal(response.status, 400);
+  const body = (await response.json()) as { ok: boolean; error: string };
+  assert.equal(body.ok, false);
+  assert.match(body.error, /Acuity User ID and API key|OAuth access token/i);
+});
+
+test('acuity disconnect clears provider credentials', async () => {
+  const { app, shopsRepository } = createUserCalendarTestApp();
+  const cookie = await loginUser(app);
+
+  await app.request('/user/calendar/providers/acuity/connect', {
+    method: 'POST',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ userId: 'acuity-user', apiKey: 'acuity-key' }),
+  });
+
+  const response = await app.request('/user/calendar/providers/acuity/disconnect', {
+    method: 'POST',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+    },
+  });
+
+  assert.equal(response.status, 200);
+  const body = (await response.json()) as { ok: boolean; disconnected: boolean; provider: string };
+  assert.deepEqual(body, { ok: true, disconnected: true, provider: 'acuity' });
+  const shop = await shopsRepository.findById('demo-shop');
+  assert.equal(shop?.integration_credentials_encrypted, null);
+  assert.equal(shop?.selected_integration, null);
+});
+
 test('options returns capability note for glossgenius', async () => {
   const { app } = createUserCalendarTestApp();
   const cookie = await loginUser(app);

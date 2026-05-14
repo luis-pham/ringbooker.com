@@ -167,6 +167,75 @@ test('runner skips owner alert SMS until owner opts in', async () => {
   assert.equal(sentSms.length, 1);
 });
 
+test('booking confirmation SMS for request-only booking does not claim confirmation', async () => {
+  const { runtime, sentSms } = createRuntime();
+  const shop = await runtime.shopsRepository.create({
+    name: 'Request Only Salon',
+    phone_number: '+15550002000',
+    user_phone: '+15550002001',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+    active: true,
+  });
+
+  const handlers = createJobHandlers(runtime);
+  await handlers.booking_confirmation_sms!({
+    jobId: 'job-booking-request-sms',
+    shopId: shop.id,
+    payload: {
+      shopId: shop.id,
+      toPhone: '+15551234567',
+      bookingId: 'booking-request-only',
+      serviceName: 'Haircut',
+      appointmentDate: '2099-01-02',
+      appointmentTime: '10:00',
+      shopName: shop.name,
+      confirmed: false,
+    },
+    attemptCount: 1,
+  });
+
+  assert.equal(sentSms.length, 1);
+  const body = (sentSms[0] as { body?: string }).body ?? '';
+  assert.match(body, /received your booking request/i);
+  assert.doesNotMatch(body, /appointment is confirmed/i);
+});
+
+test('new booking request owner alert sends when owner opted in', async () => {
+  const { runtime, sentSms } = createRuntime();
+  const shop = await runtime.shopsRepository.create({
+    name: 'Owner Alert Shop',
+    phone_number: '+15550003000',
+    user_phone: '+15550003001',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+    active: true,
+  });
+  await runtime.shopsRepository.updateUserSettings(shop.id, { sms_owner_opted_in: true });
+
+  const handlers = createJobHandlers(runtime);
+  await handlers.new_booking_request_owner_alert!({
+    jobId: 'job-new-booking-alert',
+    shopId: shop.id,
+    payload: {
+      shopId: shop.id,
+      bookingId: 'booking-request-only',
+      callerPhone: '+15551234567',
+      callerName: 'Alex',
+      serviceName: 'Haircut',
+      appointmentDate: '2099-01-02',
+      appointmentTime: '10:00',
+    },
+    attemptCount: 1,
+  });
+
+  assert.equal(sentSms.length, 1);
+  const sms = sentSms[0] as { to?: string; body?: string };
+  assert.equal(sms.to, '+15550003001');
+  assert.match(sms.body ?? '', /NEW BOOKING REQUEST/);
+  assert.match(sms.body ?? '', /Please confirm with the client/);
+});
+
 test('callback_outbound_call uses shared outbound caller id (not shop.phone_number)', async () => {
   const outboundCalls: Array<{ from?: string; to?: string }> = [];
   const { runtime } = createRuntime();

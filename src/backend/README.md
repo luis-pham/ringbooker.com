@@ -89,7 +89,7 @@ This backend is intentionally split by contracts first so we can replace infrast
 - `CALENDAR_TOKEN_CACHE_TTL_SECONDS` (default `3300`)
 - `CALENDAR_FREEBUSY_CACHE_TTL_SECONDS` (default `45`)
 - `CALENDAR_SINGLEFLIGHT_LOCK_MS` (default `2500`)
-- `CALENDAR_PROVIDER_DEFAULT` (default `manual`; supports `manual|google_calendar|vagaro|square_appointments|mindbody|booksy`)
+- `CALENDAR_PROVIDER_DEFAULT` (default `manual`; supports `manual|google_calendar|vagaro|square_appointments|mindbody|acuity|booksy`)
 
 Latency preset notes:
 - `balanced`: safer conversational stability for mixed caller audio quality.
@@ -283,9 +283,10 @@ Realtime metrics now carry provider labels so Gemini vs OpenAI can be compared d
   - `manual` (active)
   - `google_calendar` (active)
   - `square_appointments` (active)
-  - `vagaro`, `mindbody`, `booksy` (planned)
+  - `vagaro`, `mindbody`, `acuity` (active integration providers)
+  - `booksy` (planned)
 - Provider resolution order per shop:
-  1. provider hint from `shop.google_cal_credentials_encrypted` (`provider` / `provider_id`)
+  1. provider hint from `shop.integration_credentials_encrypted` or legacy `shop.google_cal_credentials_encrypted` (`provider` / `provider_id`)
   2. `shop.google_cal_id` -> `google_calendar`
   3. fallback `CALENDAR_PROVIDER_DEFAULT`
 - Safety:

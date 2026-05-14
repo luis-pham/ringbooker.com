@@ -405,4 +405,18 @@ export class InMemoryShopsRepository implements ShopsRepository {
     this.shops.set(shopId, updated);
     return updated;
   }
+
+  async updateIntegrationConnection(
+    shopId: string,
+    patch: Pick<Shop, 'integration_credentials_encrypted'>,
+  ): Promise<Shop | null> {
+    const current = this.shops.get(shopId);
+    if (!current) return null;
+    const updated: Shop = {
+      ...current,
+      integration_credentials_encrypted: patch.integration_credentials_encrypted ?? null,
+    };
+    this.shops.set(shopId, updated);
+    return updated;
+  }
 }

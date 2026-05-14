@@ -68,6 +68,7 @@ type ShopsRow = {
   active: boolean | null;
   google_cal_id: string | null;
   google_cal_credentials_encrypted: string | null;
+  integration_credentials_encrypted: string | null;
 };
 
 const SHOP_SELECT_COLUMNS = [
@@ -117,6 +118,7 @@ const SHOP_SELECT_COLUMNS = [
   'active',
   'google_cal_id',
   'google_cal_credentials_encrypted',
+  'integration_credentials_encrypted',
 ] as const;
 
 const CORE_SHOP_SELECT_COLUMNS = [
@@ -409,6 +411,7 @@ function toShop(row: ShopsRow): Shop {
     active: row.active ?? false,
     google_cal_id: row.google_cal_id,
     google_cal_credentials_encrypted: row.google_cal_credentials_encrypted,
+    integration_credentials_encrypted: row.integration_credentials_encrypted,
   };
 }
 
@@ -482,6 +485,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'active',
           'google_cal_id',
           'google_cal_credentials_encrypted',
+          'integration_credentials_encrypted',
         ].join(','),
       )
       .eq('phone_number', destinationPhone)
@@ -546,6 +550,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'active',
           'google_cal_id',
           'google_cal_credentials_encrypted',
+          'integration_credentials_encrypted',
         ].join(','),
       )
       .eq('telnyx_number', e164)
@@ -616,6 +621,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'active',
           'google_cal_id',
           'google_cal_credentials_encrypted',
+          'integration_credentials_encrypted',
         ].join(','),
       )
       .order('created_at', { ascending: false })
@@ -710,6 +716,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'active',
           'google_cal_id',
           'google_cal_credentials_encrypted',
+          'integration_credentials_encrypted',
         ].join(','),
       )
       .single<ShopsRow>();
@@ -1104,6 +1111,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'active',
           'google_cal_id',
           'google_cal_credentials_encrypted',
+          'integration_credentials_encrypted',
         ].join(','),
       )
       .maybeSingle<ShopsRow>();
@@ -1199,6 +1207,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'active',
           'google_cal_id',
           'google_cal_credentials_encrypted',
+          'integration_credentials_encrypted',
         ].join(','),
       )
       .maybeSingle<ShopsRow>();
@@ -1274,6 +1283,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'active',
           'google_cal_id',
           'google_cal_credentials_encrypted',
+          'integration_credentials_encrypted',
         ].join(','),
       )
       .maybeSingle<ShopsRow>();
@@ -1346,12 +1356,35 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'active',
           'google_cal_id',
           'google_cal_credentials_encrypted',
+          'integration_credentials_encrypted',
         ].join(','),
       )
       .maybeSingle<ShopsRow>();
 
     if (error) {
       throw new Error(`shops_update_calendar_connection_failed:${error.message}`);
+    }
+    return data ? toShop(data) : null;
+  }
+
+  async updateIntegrationConnection(
+    shopId: string,
+    patch: Pick<Shop, 'integration_credentials_encrypted'>,
+  ): Promise<Shop | null> {
+    const payload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      integration_credentials_encrypted: patch.integration_credentials_encrypted ?? null,
+    };
+
+    const { data, error } = await this.supabase
+      .from('shops')
+      .update(payload)
+      .eq('id', shopId)
+      .select(shopSelectColumns())
+      .maybeSingle<ShopsRow>();
+
+    if (error) {
+      throw new Error(`shops_update_integration_connection_failed:${error.message}`);
     }
     return data ? toShop(data) : null;
   }

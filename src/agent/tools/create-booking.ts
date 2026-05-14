@@ -112,6 +112,9 @@ export async function createBookingTool(
       timezone: ctx.shop.timezone,
       status: result.confirmed ? 'confirmed' : 'pending',
       calendarEventId: result.calendarEventId,
+      provider: getShopCalendarProviderMetadata(ctx.shop).id,
+      providerStatus: result.providerStatus ?? (result.confirmed ? 'confirmed' : 'fallback_request'),
+      providerErrorReason: result.providerErrorReason,
     });
 
     const bookingAt = new Date(utcIso).getTime();

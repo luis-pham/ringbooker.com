@@ -376,13 +376,15 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           tag={tagSlug}
         />
 
-        <MarketingFaqAccordion
-          items={BLOG_INDEX_FAQ_ITEMS}
-          eyebrow="Common Questions"
-          title="About this blog"
-          subtitle={null}
-          embedded
-        />
+        <div className="mx-auto max-w-6xl px-6 pb-10 md:px-12">
+          <MarketingFaqAccordion
+            items={BLOG_INDEX_FAQ_ITEMS}
+            eyebrow="Common Questions"
+            title="About this blog"
+            subtitle={null}
+            embedded
+          />
+        </div>
 
         <section className="px-6 pb-14 md:px-12">
           <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[var(--mk-radius-panel)] bg-gradient-to-r from-violet-700 via-brand-purple to-violet-400 px-6 py-14 text-center shadow-[var(--mk-shadow-soft)] md:px-12">

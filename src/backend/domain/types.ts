@@ -282,6 +282,8 @@ export interface Shop {
   active: boolean;
   google_cal_id?: string | null;
   google_cal_credentials_encrypted?: string | null;
+  /** Provider-neutral credentials for booking/calendar integrations such as Mindbody. */
+  integration_credentials_encrypted?: string | null;
 }
 
 export type BusinessKnowledgeSuggestionType = 'staff' | 'policy' | 'faq' | 'promotion' | 'booking_hint';
@@ -345,6 +347,8 @@ export interface BookingResult {
   bookingId: string;
   calendarEventId?: string;
   confirmed: boolean;
+  providerStatus?: string;
+  providerErrorReason?: string;
 }
 
 export interface TransferResult {

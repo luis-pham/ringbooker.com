@@ -34,8 +34,29 @@ export type IntegrationApp = {
 
 export const INTEGRATION_APPS: IntegrationApp[] = [
   { key: 'square', name: 'Square Appointments', logoText: 'S', logoColor: '#00a0df', logoTextColor: '#fff', connectionType: 'api', category: 'full-sync' },
-  { key: 'mindbody', name: 'Mindbody', logoText: 'M', logoColor: '#4a90d9', logoTextColor: '#fff', connectionType: 'api', category: 'full-sync', comingSoon: true },
-  { key: 'acuity', name: 'Acuity Scheduling', logoText: 'A', logoColor: '#006bff', logoTextColor: '#fff', connectionType: 'api', category: 'full-sync', comingSoon: true },
+  {
+    key: 'mindbody',
+    name: 'Mindbody',
+    logoText: 'M',
+    logoColor: '#4a90d9',
+    logoTextColor: '#fff',
+    connectionType: 'api',
+    category: 'full-sync',
+    helpUrl: 'https://developers.mindbodyonline.com/',
+    note: 'Mindbody API access requires an approved developer account and activated site access. RingBooker falls back to captured booking requests if API booking is unavailable.',
+  },
+  {
+    key: 'acuity',
+    name: 'Acuity Scheduling',
+    logoText: 'A',
+    logoColor: '#006bff',
+    logoTextColor: '#fff',
+    connectionType: 'api',
+    category: 'full-sync',
+    placeholder: 'https://your-business.as.me/',
+    helpUrl: 'https://developers.acuityscheduling.com/',
+    note: 'Acuity supports appointment type and calendar sync. Direct appointment creation requires verified mapping and ACUITY_DIRECT_BOOKING_ENABLED=true.',
+  },
   {
     key: 'vagaro',
     name: 'Vagaro',

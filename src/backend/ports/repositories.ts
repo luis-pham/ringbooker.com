@@ -455,6 +455,10 @@ export interface ShopsRepository {
     shopId: string,
     patch: Pick<Shop, 'google_cal_id' | 'google_cal_credentials_encrypted'>,
   ): Promise<Shop | null>;
+  updateIntegrationConnection(
+    shopId: string,
+    patch: Pick<Shop, 'integration_credentials_encrypted'>,
+  ): Promise<Shop | null>;
   findServiceCatalogByShopId(shopId: string): Promise<Shop['service_catalog'] | null>;
   saveServiceCatalog(shopId: string, catalog: NonNullable<Shop['service_catalog']>): Promise<Shop['service_catalog'] | null>;
   deleteServiceCategory(params: { shopId: string; categoryId: string }): Promise<Shop['service_catalog'] | null>;
@@ -747,6 +751,9 @@ export interface BookingRecord {
   reminder2hSent: boolean;
   reviewRequestSent: boolean;
   calendarEventId?: string | null;
+  provider?: string | null;
+  providerStatus?: string | null;
+  providerErrorReason?: string | null;
   callLogId?: string | null;
   callTranscript?: string | null;
   notes?: string | null;
@@ -776,6 +783,9 @@ export interface BookingsRepository {
     timezone: string;
     status: string;
     calendarEventId?: string;
+    provider?: string | null;
+    providerStatus?: string | null;
+    providerErrorReason?: string | null;
     callLogId?: string | null;
     techName?: string | null;
     durationMinutes?: number | null;

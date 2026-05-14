@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { getEnv } from '@/src/backend/config/env';
 import { decrypt, encrypt } from '@/src/backend/services/crypto/encrypt';
 
-export type CalendarConnectionProviderId = 'square_appointments' | 'google_calendar' | 'vagaro' | 'mindbody' | 'booksy';
+export type CalendarConnectionProviderId = 'square_appointments' | 'google_calendar' | 'vagaro' | 'mindbody' | 'acuity' | 'booksy';
 
 export type SquareConnectionCredentials = {
   provider: 'square_appointments';

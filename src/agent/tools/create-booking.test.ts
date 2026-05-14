@@ -7,7 +7,7 @@ import type { BookingRecord } from '@/src/backend/ports/repositories';
 import type { BookingInput, BookingResult, Shop } from '@/src/backend/domain/types';
 import { SquareAppointmentsProvider } from '@/src/backend/services/calendar/square-appointments';
 
-function createShop(provider: 'square_appointments' | 'manual' = 'square_appointments'): Shop {
+function createShop(provider: 'square_appointments' | 'manual' | 'mindbody' | 'acuity' = 'square_appointments'): Shop {
   return {
     id: 'shop-test',
     name: 'Test Salon',
@@ -35,11 +35,26 @@ function createShop(provider: 'square_appointments' | 'manual' = 'square_appoint
             serviceVariationId: 'service-variation-id',
           })
         : null,
+    integration_credentials_encrypted:
+      provider === 'mindbody'
+        ? JSON.stringify({
+            provider: 'mindbody',
+            siteId: '12345',
+            apiKey: 'mb-api-key',
+          })
+        : provider === 'acuity'
+          ? JSON.stringify({
+              provider: 'acuity',
+              userId: 'acuity-user',
+              apiKey: 'acuity-key',
+              appointmentTypeId: '100',
+            })
+        : null,
   };
 }
 
 function createContext(params?: {
-  provider?: 'square_appointments' | 'manual';
+  provider?: 'square_appointments' | 'manual' | 'mindbody' | 'acuity';
   shop?: Partial<Shop>;
   findTeamMemberByName?: (name: string) => Promise<string | null>;
   checkAvailability?: AgentToolContext['calendarProvider']['checkAvailability'];
@@ -92,6 +107,9 @@ function createContext(params?: {
           datetimeUtc: params.datetimeUtc,
           timezone: params.timezone,
           status: params.status,
+          provider: params.provider ?? null,
+          providerStatus: params.providerStatus ?? null,
+          providerErrorReason: params.providerErrorReason ?? null,
           reminder24hSent: false,
           reminder2hSent: false,
           reviewRequestSent: false,
@@ -111,6 +129,7 @@ function createContext(params?: {
     createdInputs,
     availabilityInputs,
     enqueuedJobs,
+    bookings,
     get findTeamMemberCalls() {
       return findTeamMemberCalls;
     },
@@ -244,6 +263,105 @@ test('SMS confirmation enqueue failure does not break booking', async () => {
   });
 
   assert.equal('success' in result && result.success, true);
+});
+
+test('Mindbody request-only booking creates pending request and owner alert without confirmed claim', async () => {
+  const harness = createContext({
+    provider: 'mindbody',
+    shop: {
+      sms_owner_opted_in: true,
+      user_phone: '+17145550001',
+    },
+    createBooking: async () => ({ bookingId: 'mindbody-request-123', confirmed: false }),
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+    customerName: 'Alex',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  assert.equal('confirmed' in result ? result.confirmed : undefined, false);
+  assert.doesNotMatch('message' in result ? result.message ?? '' : '', /confirmed|booked/i);
+
+  const saved = harness.bookings.get('local-booking-123');
+  assert.equal(saved?.status, 'pending');
+
+  const confirmationJob = harness.enqueuedJobs.find((job) => (job as { type?: string }).type === 'booking_confirmation_sms') as
+    | { payload?: { confirmed?: boolean } }
+    | undefined;
+  assert.equal(confirmationJob?.payload?.confirmed, false);
+
+  const ownerAlertJob = harness.enqueuedJobs.find((job) => (job as { type?: string }).type === 'new_booking_request_owner_alert');
+  assert.ok(ownerAlertJob);
+});
+
+test('Acuity fallback booking creates pending request and owner alert without confirmed claim', async () => {
+  const harness = createContext({
+    provider: 'acuity',
+    shop: {
+      sms_owner_opted_in: true,
+      user_phone: '+17145550001',
+    },
+    createBooking: async () => ({
+      bookingId: 'acuity-request-123',
+      confirmed: false,
+      providerStatus: 'fallback_request',
+      providerErrorReason: 'acuity_request_failed:400:Required field missing',
+    }),
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+    customerName: 'Alex',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  assert.equal('confirmed' in result ? result.confirmed : undefined, false);
+  assert.doesNotMatch('message' in result ? result.message ?? '' : '', /confirmed|booked/i);
+
+  const saved = harness.bookings.get('local-booking-123');
+  assert.equal(saved?.status, 'pending');
+  assert.equal(saved?.provider, 'acuity');
+  assert.equal(saved?.providerStatus, 'fallback_request');
+  assert.match(saved?.providerErrorReason ?? '', /acuity_request_failed/);
+
+  const confirmationJob = harness.enqueuedJobs.find((job) => (job as { type?: string }).type === 'booking_confirmation_sms') as
+    | { payload?: { confirmed?: boolean } }
+    | undefined;
+  assert.equal(confirmationJob?.payload?.confirmed, false);
+  assert.ok(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'new_booking_request_owner_alert'));
+});
+
+test('Acuity confirmed booking can send confirmed SMS only when provider confirms', async () => {
+  const harness = createContext({
+    provider: 'acuity',
+    createBooking: async () => ({ bookingId: 'acuity-98765', calendarEventId: '98765', confirmed: true, providerStatus: 'confirmed' }),
+  });
+
+  const result = await createBookingTool(harness.ctx, {
+    date: '2099-01-02',
+    time: '10:00',
+    service: 'Haircut',
+    customerName: 'Alex',
+  });
+
+  assert.equal('success' in result && result.success, true);
+  assert.equal('confirmed' in result ? result.confirmed : undefined, true);
+  const saved = harness.bookings.get('local-booking-123');
+  assert.equal(saved?.status, 'confirmed');
+  assert.equal(saved?.provider, 'acuity');
+  assert.equal(saved?.providerStatus, 'confirmed');
+
+  const confirmationJob = harness.enqueuedJobs.find((job) => (job as { type?: string }).type === 'booking_confirmation_sms') as
+    | { payload?: { confirmed?: boolean } }
+    | undefined;
+  assert.equal(confirmationJob?.payload?.confirmed, true);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'new_booking_request_owner_alert'), false);
 });
 
 test('Starter does not enqueue reminder jobs even when reminder flag is true', async () => {

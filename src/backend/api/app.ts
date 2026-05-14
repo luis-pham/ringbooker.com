@@ -162,6 +162,18 @@ import {
   VagaroProvider,
   type VagaroCredentials,
 } from '@/src/backend/services/calendar/vagaro';
+import {
+  encodeMindbodyCredentials,
+  parseMindbodyCredentials,
+  MindbodyProvider,
+  type MindbodyCredentials,
+} from '@/src/backend/services/booking-providers/mindbody';
+import {
+  AcuityProvider,
+  buildAcuityConnectionPayload,
+  encodeAcuityCredentials,
+  parseAcuityCredentials,
+} from '@/src/backend/services/booking-providers/acuity';
 import { CALENDAR_PROVIDER_CATALOG } from '@/src/backend/services/calendar/provider-catalog';
 import {
   aggregateIntoBuckets,
@@ -812,8 +824,7 @@ type BookingLinkProviderId =
   | 'schedulicity'
   | 'zenoti'
   | 'phorest'
-  | 'timely'
-  | 'acuity';
+  | 'timely';
 
 const BOOKING_LINK_PROVIDER_IDS = [
   'vagaro',
@@ -829,7 +840,6 @@ const BOOKING_LINK_PROVIDER_IDS = [
   'zenoti',
   'phorest',
   'timely',
-  'acuity',
 ] as const satisfies readonly BookingLinkProviderId[];
 
 const integrationsPreferencesSchema = z.object({
@@ -866,6 +876,29 @@ const bookingLinkConnectSchema = z.object({
 
 const vagaroBookingUrlSchema = z.object({
   bookingUrl: z.string().min(1),
+});
+
+const mindbodyConnectSchema = z.object({
+  siteId: z.string().min(1, 'Mindbody Site ID is required'),
+  apiKey: z.string().min(1, 'Mindbody API key is required'),
+  sourceName: z.string().min(1).optional(),
+  staffToken: z.string().min(1).optional(),
+  locationId: z.string().min(1).optional(),
+  sessionTypeId: z.string().min(1).optional(),
+  staffId: z.string().min(1).optional(),
+  bookingUrl: z.string().optional(),
+});
+
+const acuityConnectSchema = z.object({
+  userId: z.string().min(1, 'Acuity User ID is required').optional(),
+  apiKey: z.string().min(1, 'Acuity API key is required').optional(),
+  accessToken: z.string().min(1).optional(),
+  appointmentTypeId: z.string().min(1).optional(),
+  calendarId: z.string().min(1).optional(),
+  timezone: z.string().min(1).optional(),
+  bookingUrl: z.string().optional(),
+}).refine((value) => Boolean(value.accessToken || (value.userId && value.apiKey)), {
+  message: 'Acuity User ID and API key, or OAuth access token, are required',
 });
 
 const blogPostStatusSchema = z.enum(['draft', 'published', 'archived']);
@@ -1985,6 +2018,22 @@ function buildVagaroConnectionPayload(current: Partial<VagaroCredentials> | null
     scope: patch.scope ?? current?.scope ?? 'read access',
     accessToken: patch.accessToken ?? current?.accessToken,
     expiresAt: patch.expiresAt ?? current?.expiresAt,
+  };
+}
+
+function buildMindbodyConnectionPayload(current: Partial<MindbodyCredentials> | null, patch: Partial<MindbodyCredentials>): MindbodyCredentials {
+  const siteId = patch.siteId ?? current?.siteId ?? process.env.MINDBODY_SITE_ID ?? '';
+  const apiKey = patch.apiKey ?? current?.apiKey ?? process.env.MINDBODY_API_KEY ?? '';
+  return {
+    provider: 'mindbody',
+    siteId,
+    apiKey,
+    sourceName: patch.sourceName ?? current?.sourceName ?? process.env.MINDBODY_SOURCE_NAME,
+    staffToken: patch.staffToken ?? current?.staffToken ?? process.env.MINDBODY_STAFF_TOKEN,
+    locationId: patch.locationId ?? current?.locationId ?? process.env.MINDBODY_LOCATION_ID,
+    sessionTypeId: patch.sessionTypeId ?? current?.sessionTypeId ?? process.env.MINDBODY_SESSION_TYPE_ID,
+    staffId: patch.staffId ?? current?.staffId ?? process.env.MINDBODY_STAFF_ID,
+    bookingUrl: patch.bookingUrl ?? current?.bookingUrl ?? process.env.MINDBODY_BOOKING_URL,
   };
 }
 
@@ -5769,6 +5818,12 @@ export function createBackendApp(deps: {
 
     const squareCredentials = parseSquareConnectionCredentials(shop.google_cal_credentials_encrypted);
     const vagaroCredentials = parseVagaroCredentials(shop.google_cal_credentials_encrypted);
+    const mindbodyCredentials =
+      parseMindbodyCredentials(shop.integration_credentials_encrypted) ??
+      parseMindbodyCredentials(shop.google_cal_credentials_encrypted);
+    const acuityCredentials =
+      parseAcuityCredentials(shop.integration_credentials_encrypted) ??
+      parseAcuityCredentials(shop.google_cal_credentials_encrypted);
     const bookingLinkProvider = parseBookingLinkConnectionProvider(shop.google_cal_credentials_encrypted);
     const providers = (Object.keys(CALENDAR_PROVIDER_CATALOG) as Array<keyof typeof CALENDAR_PROVIDER_CATALOG>)
       .filter((id) => id !== 'manual' && id !== 'google_calendar')
@@ -5822,6 +5877,61 @@ export function createBackendApp(deps: {
                   businessId: vagaroCredentials?.businessId ?? null,
                   bookingUrl: shop.booking_url ?? null,
                   capabilityNote: 'Availability checking supported. Booking creation requires Vagaro app.',
+                }
+              : null,
+          };
+        }
+        if (id === 'mindbody') {
+          const connected = Boolean(mindbodyCredentials?.siteId && mindbodyCredentials?.apiKey);
+          const configured = connected;
+          return {
+            id,
+            label: meta.label,
+            implemented: meta.implemented,
+            connected,
+            configured,
+            details: connected
+              ? {
+                  siteId: mindbodyCredentials?.siteId ?? null,
+                  sourceName: mindbodyCredentials?.sourceName ?? null,
+                  locationId: mindbodyCredentials?.locationId ?? null,
+                  sessionTypeId: mindbodyCredentials?.sessionTypeId ?? null,
+                  staffId: mindbodyCredentials?.staffId ?? null,
+                  bookingUrl: mindbodyCredentials?.bookingUrl ?? shop.booking_url ?? null,
+                  servicesStaffSync: 'available',
+                  availabilityCheck: 'best_effort',
+                  directAppointmentCreation: 'not_enabled',
+                  bookingMode: 'capture_request_only',
+                  capabilityNote:
+                    'Mindbody API connected for services/staff sync and best-effort availability. Direct appointment creation is not enabled; RingBooker captures booking requests for owner confirmation.',
+                }
+              : null,
+          };
+        }
+        if (id === 'acuity') {
+          const connected = Boolean(acuityCredentials?.accessToken || (acuityCredentials?.userId && acuityCredentials?.apiKey));
+          const directEnabled = process.env.ACUITY_DIRECT_BOOKING_ENABLED === 'true' && Boolean(acuityCredentials?.appointmentTypeId);
+          return {
+            id,
+            label: meta.label,
+            implemented: meta.implemented,
+            connected,
+            configured: connected,
+            details: connected
+              ? {
+                  userId: acuityCredentials?.userId ?? null,
+                  appointmentTypeId: acuityCredentials?.appointmentTypeId ?? null,
+                  calendarId: acuityCredentials?.calendarId ?? null,
+                  timezone: acuityCredentials?.timezone ?? shop.timezone ?? null,
+                  bookingUrl: acuityCredentials?.bookingUrl ?? shop.booking_url ?? null,
+                  appointmentTypesSync: 'available',
+                  calendarsSync: 'available',
+                  availabilityCheck: acuityCredentials?.appointmentTypeId ? 'available' : 'needs_mapping',
+                  directAppointmentCreation: directEnabled ? 'enabled' : 'not_enabled',
+                  bookingMode: directEnabled ? 'direct_booking_with_fallback' : 'capture_request_only',
+                  capabilityNote: directEnabled
+                    ? 'Acuity direct appointment creation is enabled. Failed API bookings still fall back to captured booking requests.'
+                    : 'Acuity is connected for appointment types, calendars, and availability. Direct appointment creation requires appointment type mapping and ACUITY_DIRECT_BOOKING_ENABLED=true.',
                 }
               : null,
           };
@@ -5965,6 +6075,157 @@ export function createBackendApp(deps: {
       ok: true,
       provider: 'vagaro',
       bookingUrl,
+    });
+  });
+
+  app.post(path('/user/calendar/providers/mindbody/connect'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_mindbody_connect');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = mindbodyConnectSchema.safeParse(body);
+    if (!parsed.success) {
+      const siteIdIssue = parsed.error.issues.find((issue) => issue.path.join('.') === 'siteId');
+      const apiKeyIssue = parsed.error.issues.find((issue) => issue.path.join('.') === 'apiKey');
+      return c.json(
+        {
+          ok: false,
+          error: siteIdIssue ? 'Mindbody Site ID is required' : apiKeyIssue ? 'Mindbody API key is required' : 'invalid_payload',
+        },
+        400,
+      );
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const bookingUrl = parsed.data.bookingUrl ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
+    if (parsed.data.bookingUrl && !bookingUrl) {
+      return c.json({ ok: false, error: 'bookingUrl must start with https://' }, 400);
+    }
+
+    const current =
+      parseMindbodyCredentials(shop.integration_credentials_encrypted) ??
+      parseMindbodyCredentials(shop.google_cal_credentials_encrypted);
+    const payload = buildMindbodyConnectionPayload(current, {
+      siteId: parsed.data.siteId,
+      apiKey: parsed.data.apiKey,
+      sourceName: parsed.data.sourceName,
+      staffToken: parsed.data.staffToken,
+      locationId: parsed.data.locationId,
+      sessionTypeId: parsed.data.sessionTypeId,
+      staffId: parsed.data.staffId,
+      bookingUrl: bookingUrl ?? undefined,
+    });
+
+    const updated = await deps.shopsRepository.updateIntegrationConnection(shop.id, {
+      integration_credentials_encrypted: encodeMindbodyCredentials(payload),
+    });
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    await deps.shopsRepository.updateUserSettings(shop.id, {
+      ...(bookingUrl ? { booking_url: bookingUrl } : {}),
+      booking_method: 'app',
+      selected_integration: 'mindbody',
+    });
+
+    logger.info(
+      {
+        provider: 'mindbody',
+        shop_id: shop.id,
+        user_id: null, user_email: sessionResult.email,
+        status: 'success',
+        has_booking_url: Boolean(bookingUrl),
+      },
+      'integration_mindbody_connect',
+    );
+    return c.json({
+      ok: true,
+      provider: 'mindbody',
+      connected: true,
+      configured: true,
+    });
+  });
+
+  app.post(path('/user/calendar/providers/acuity/connect'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_calendar_provider_acuity_connect');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = acuityConnectSchema.safeParse(body);
+    if (!parsed.success) {
+      logger.warn(
+        { provider: 'acuity', shop_id: sessionResult.shopId ?? null, user_email: sessionResult.email, status: 'failed', error_kind: 'invalid_payload' },
+        'integration_acuity_connect',
+      );
+      return c.json({ ok: false, error: parsed.error.issues[0]?.message ?? 'invalid_payload' }, 400);
+    }
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const bookingUrl = parsed.data.bookingUrl ? normalizeHttpsBookingUrl(parsed.data.bookingUrl) : null;
+    if (parsed.data.bookingUrl && !bookingUrl) {
+      return c.json({ ok: false, error: 'bookingUrl must start with https://' }, 400);
+    }
+
+    const current =
+      parseAcuityCredentials(shop.integration_credentials_encrypted) ??
+      parseAcuityCredentials(shop.google_cal_credentials_encrypted);
+    const payload = buildAcuityConnectionPayload(current, {
+      provider: 'acuity',
+      userId: parsed.data.userId,
+      apiKey: parsed.data.apiKey,
+      accessToken: parsed.data.accessToken,
+      appointmentTypeId: parsed.data.appointmentTypeId,
+      calendarId: parsed.data.calendarId,
+      timezone: parsed.data.timezone,
+      bookingUrl: bookingUrl ?? undefined,
+    });
+
+    const updated = await deps.shopsRepository.updateIntegrationConnection(shop.id, {
+      integration_credentials_encrypted: encodeAcuityCredentials(payload),
+    });
+    if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    await deps.shopsRepository.updateUserSettings(shop.id, {
+      ...(bookingUrl ? { booking_url: bookingUrl } : {}),
+      booking_method: 'app',
+      selected_integration: 'acuity',
+    });
+
+    logger.info(
+      {
+        provider: 'acuity',
+        shop_id: shop.id,
+        user_id: null,
+        user_email: sessionResult.email,
+        status: 'success',
+        has_booking_url: Boolean(bookingUrl),
+        has_appointment_type_id: Boolean(payload.appointmentTypeId),
+        has_calendar_id: Boolean(payload.calendarId),
+      },
+      'integration_acuity_connect',
+    );
+    return c.json({
+      ok: true,
+      provider: 'acuity',
+      connected: true,
+      configured: true,
     });
   });
 
@@ -6260,7 +6521,7 @@ export function createBackendApp(deps: {
         note: 'When clients call to book, they will receive your booking link via SMS.',
       });
     }
-    if (provider !== 'square_appointments' && provider !== 'vagaro') {
+    if (provider !== 'square_appointments' && provider !== 'vagaro' && provider !== 'mindbody' && provider !== 'acuity') {
       return c.json({ ok: false, error: 'provider_not_supported' }, 400);
     }
 
@@ -6292,7 +6553,78 @@ export function createBackendApp(deps: {
           configured: true,
         });
       } catch (error) {
+        logger.error({ err: error, provider, shop_id: shop.id, user_id: null, user_email: sessionResult.email, status: 'failed', error_kind: 'options_fetch_failed' }, 'integration_mindbody_sync_attempt');
+        return c.json({ ok: false, error: 'provider_options_failed' }, 502);
+      }
+    }
+
+    if (provider === 'mindbody') {
+      const credentials =
+        parseMindbodyCredentials(shop.integration_credentials_encrypted) ??
+        parseMindbodyCredentials(shop.google_cal_credentials_encrypted);
+      if (!credentials?.siteId || !credentials?.apiKey) {
+        return c.json({ ok: false, error: 'provider_not_connected' }, 400);
+      }
+
+      try {
+        const options = await new MindbodyProvider(shop).getConnectionOptions();
+        logger.info(
+          {
+            provider,
+            shop_id: shop.id,
+            user_id: null,
+            user_email: sessionResult.email,
+            status: 'success',
+            services_count: options.services.length,
+            staff_count: options.staff.length,
+          },
+          'integration_mindbody_sync_attempt',
+        );
+        return c.json({
+          ok: true,
+          provider,
+          options,
+          configured: true,
+        });
+      } catch (error) {
         logger.error({ err: error, provider }, 'calendar_provider_options_failed');
+        return c.json({ ok: false, error: 'provider_options_failed' }, 502);
+      }
+    }
+
+    if (provider === 'acuity') {
+      const credentials =
+        parseAcuityCredentials(shop.integration_credentials_encrypted) ??
+        parseAcuityCredentials(shop.google_cal_credentials_encrypted);
+      if (!credentials?.accessToken && (!credentials?.userId || !credentials?.apiKey)) {
+        return c.json({ ok: false, error: 'provider_not_connected' }, 400);
+      }
+
+      try {
+        const options = await new AcuityProvider(shop).getConnectionOptions();
+        logger.info(
+          {
+            provider,
+            shop_id: shop.id,
+            user_id: null,
+            user_email: sessionResult.email,
+            status: 'success',
+            appointment_types_count: options.appointmentTypes.length,
+            calendars_count: options.calendars.length,
+          },
+          'integration_acuity_sync_attempt',
+        );
+        return c.json({
+          ok: true,
+          provider,
+          options,
+          configured: true,
+        });
+      } catch (error) {
+        logger.error(
+          { err: error, provider, shop_id: shop.id, user_id: null, user_email: sessionResult.email, status: 'failed', error_kind: 'options_fetch_failed' },
+          'integration_acuity_sync_attempt',
+        );
         return c.json({ ok: false, error: 'provider_options_failed' }, 502);
       }
     }
@@ -6454,6 +6786,48 @@ export function createBackendApp(deps: {
         google_cal_credentials_encrypted: null,
       });
       if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      return c.json({ ok: true, disconnected: true, provider });
+    }
+
+    const mindbody =
+      parseMindbodyCredentials(shop.integration_credentials_encrypted) ??
+      parseMindbodyCredentials(shop.google_cal_credentials_encrypted);
+    if (provider === 'mindbody' && mindbody?.provider === 'mindbody') {
+      const updated = await deps.shopsRepository.updateIntegrationConnection(shop.id, {
+        integration_credentials_encrypted: null,
+      });
+      if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      if (parseMindbodyCredentials(shop.google_cal_credentials_encrypted)?.provider === 'mindbody') {
+        await deps.shopsRepository.updateCalendarConnection(shop.id, {
+          google_cal_id: shop.google_cal_id ?? null,
+          google_cal_credentials_encrypted: null,
+        });
+      }
+      await deps.shopsRepository.updateUserSettings(shop.id, {
+        selected_integration: null,
+      });
+      logger.info({ provider: 'mindbody', shop_id: shop.id, user_id: null, user_email: sessionResult.email, status: 'success' }, 'integration_mindbody_disconnect');
+      return c.json({ ok: true, disconnected: true, provider });
+    }
+
+    const acuity =
+      parseAcuityCredentials(shop.integration_credentials_encrypted) ??
+      parseAcuityCredentials(shop.google_cal_credentials_encrypted);
+    if (provider === 'acuity' && acuity?.provider === 'acuity') {
+      const updated = await deps.shopsRepository.updateIntegrationConnection(shop.id, {
+        integration_credentials_encrypted: null,
+      });
+      if (!updated) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+      if (parseAcuityCredentials(shop.google_cal_credentials_encrypted)?.provider === 'acuity') {
+        await deps.shopsRepository.updateCalendarConnection(shop.id, {
+          google_cal_id: shop.google_cal_id ?? null,
+          google_cal_credentials_encrypted: null,
+        });
+      }
+      await deps.shopsRepository.updateUserSettings(shop.id, {
+        selected_integration: null,
+      });
+      logger.info({ provider: 'acuity', shop_id: shop.id, user_id: null, user_email: sessionResult.email, status: 'success' }, 'integration_acuity_disconnect');
       return c.json({ ok: true, disconnected: true, provider });
     }
 

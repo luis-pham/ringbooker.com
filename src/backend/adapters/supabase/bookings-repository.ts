@@ -20,6 +20,9 @@ type BookingRow = {
   reminder_2h_sent: boolean;
   review_request_sent: boolean;
   calendar_event_id?: string | null;
+  provider?: string | null;
+  provider_status?: string | null;
+  provider_error_reason?: string | null;
   call_log_id?: string | null;
   call_transcript?: string | null;
   notes?: string | null;
@@ -28,7 +31,7 @@ type BookingRow = {
 };
 
 const BOOKING_SELECT =
-  'id,shop_id,customer_phone,customer_name,service,tech_name,matched_service_id,matched_service_confidence,datetime_utc,timezone,duration_min,status,confirmed,reminder_24h_sent,reminder_2h_sent,review_request_sent,calendar_event_id,call_log_id,call_transcript,notes,created_at,updated_at';
+  'id,shop_id,customer_phone,customer_name,service,tech_name,matched_service_id,matched_service_confidence,datetime_utc,timezone,duration_min,status,confirmed,reminder_24h_sent,reminder_2h_sent,review_request_sent,calendar_event_id,provider,provider_status,provider_error_reason,call_log_id,call_transcript,notes,created_at,updated_at';
 
 function normalizeBookingStatus(status: string): string {
   if (status === 'pending') return 'captured';
@@ -60,6 +63,9 @@ function toBookingRecord(row: BookingRow): BookingRecord {
     reminder2hSent: row.reminder_2h_sent,
     reviewRequestSent: row.review_request_sent,
     calendarEventId: row.calendar_event_id ?? null,
+    provider: row.provider ?? null,
+    providerStatus: row.provider_status ?? null,
+    providerErrorReason: row.provider_error_reason ?? null,
     callLogId: row.call_log_id ?? null,
     callTranscript: row.call_transcript ?? null,
     notes: row.notes ?? null,
@@ -140,6 +146,9 @@ export class SupabaseBookingsRepository implements BookingsRepository {
     timezone: string;
     status: string;
     calendarEventId?: string;
+    provider?: string | null;
+    providerStatus?: string | null;
+    providerErrorReason?: string | null;
     callLogId?: string | null;
     techName?: string | null;
     durationMinutes?: number | null;
@@ -160,6 +169,9 @@ export class SupabaseBookingsRepository implements BookingsRepository {
       status: params.status,
       confirmed: normalizeBookingStatus(params.status) === 'confirmed',
       calendar_event_id: params.calendarEventId ?? null,
+      provider: params.provider ?? null,
+      provider_status: params.providerStatus ?? null,
+      provider_error_reason: params.providerErrorReason ?? null,
       call_log_id: params.callLogId ?? null,
       reminder_24h_sent: false,
       reminder_2h_sent: false,

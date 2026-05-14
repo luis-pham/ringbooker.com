@@ -65,7 +65,7 @@ export function MarketingFaqAccordion({
           {items.map((faq, i) => (
             <details className="mfaq-item" key={faq.q} open={openFirstItem && i === 0}>
               <summary className="mfaq-q">
-                {faq.q}
+                <span className="mfaq-q-label">{faq.q}</span>
                 <span className="mfaq-icon" aria-hidden>
                   +
                 </span>
@@ -91,6 +91,8 @@ export function MarketingFaqAccordion({
   margin:0 auto;
   text-align:center;
   box-sizing:border-box;
+  min-width:0;
+  width:100%;
 }
 .mfaq-section *{box-sizing:border-box}
 .mfaq-eyebrow{
@@ -137,6 +139,9 @@ export function MarketingFaqAccordion({
   overflow:hidden;
   text-align:left;
   box-shadow:none;
+  min-width:0;
+  width:100%;
+  max-width:100%;
 }
 /* Keep a comfortable gap when subtitle is intentionally hidden. */
 .mfaq-title + .mfaq-list{margin-top:28px}
@@ -169,11 +174,18 @@ export function MarketingFaqAccordion({
 }
 .mfaq-q::-webkit-details-marker{display:none}
 .mfaq-q:hover{background:var(--mfaq-bg-hover)}
+.mfaq-q-label{
+  flex:1;
+  min-width:0;
+  text-align:left;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
 .mfaq-icon{
   font-size:20px;
   font-weight:600;
   line-height:1;
-  color:var(--mfaq-purple);
+  color:#e5e7eb;
   transition:transform .25s;
   flex-shrink:0;
 }
@@ -190,6 +202,9 @@ export function MarketingFaqAccordion({
   color:var(--mfaq-muted);
   line-height:var(--mk-body-lh);
   text-align:left;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  min-width:0;
 }
 .mfaq-a-content p{margin:0}
 .mfaq-a-content p + p{margin-top:.75em}

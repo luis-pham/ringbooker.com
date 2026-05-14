@@ -17,6 +17,18 @@ type ProviderSummary = {
     locationId?: string | null;
     serviceVariationId?: string | null;
     teamMemberId?: string | null;
+    siteId?: string | null;
+    userId?: string | null;
+    sessionTypeId?: string | null;
+    staffId?: string | null;
+    appointmentTypeId?: string | null;
+    calendarId?: string | null;
+    timezone?: string | null;
+    appointmentTypesSync?: string | null;
+    calendarsSync?: string | null;
+    availabilityCheck?: string | null;
+    directAppointmentCreation?: string | null;
+    bookingMode?: string | null;
     region?: string | null;
     businessId?: string | null;
     capabilityNote?: string | null;
@@ -45,6 +57,8 @@ export type IntegrationsState = {
   step: Step;
   squareConnected: boolean;
   vagaroConnected: boolean;
+  mindbodyConnected: boolean;
+  acuityConnected: boolean;
   bookingLinkSaved: boolean;
   bookingLinkUrl: string | null;
   providers: ProviderSummary[];
@@ -75,6 +89,8 @@ export function useIntegrations() {
 
   const squareProvider = providers.find((provider) => provider.id === 'square_appointments') ?? null;
   const vagaroProvider = providers.find((provider) => provider.id === 'vagaro') ?? null;
+  const mindbodyProvider = providers.find((provider) => provider.id === 'mindbody') ?? null;
+  const acuityProvider = providers.find((provider) => provider.id === 'acuity') ?? null;
   const bookingLinkProvider = selectedProvider?.details?.type === 'booking_link' ? selectedProvider : null;
 
   const load = useCallback(async () => {
@@ -212,6 +228,63 @@ export function useIntegrations() {
     [load, patchPreferences],
   );
 
+  const connectMindbody = useCallback(
+    async (creds: {
+      siteId: string;
+      apiKey: string;
+      sourceName?: string;
+      staffToken?: string;
+      locationId?: string;
+      sessionTypeId?: string;
+      staffId?: string;
+      bookingUrl?: string;
+    }) => {
+      setError(null);
+      const response = await fetch('/api/backend/user/calendar/providers/mindbody/connect', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(creds),
+      });
+      const payload = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !payload.ok) {
+        const message = payload.error ?? 'mindbody_connect_failed';
+        setError(message);
+        throw new Error(message);
+      }
+      await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'mindbody' });
+      await load();
+    },
+    [load, patchPreferences],
+  );
+
+  const connectAcuity = useCallback(
+    async (creds: {
+      userId?: string;
+      apiKey?: string;
+      accessToken?: string;
+      appointmentTypeId?: string;
+      calendarId?: string;
+      timezone?: string;
+      bookingUrl?: string;
+    }) => {
+      setError(null);
+      const response = await fetch('/api/backend/user/calendar/providers/acuity/connect', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(creds),
+      });
+      const payload = (await response.json()) as { ok: boolean; error?: string };
+      if (!response.ok || !payload.ok) {
+        const message = payload.error ?? 'acuity_connect_failed';
+        setError(message);
+        throw new Error(message);
+      }
+      await patchPreferences({ bookingMethod: 'app', selectedIntegration: 'acuity' });
+      await load();
+    },
+    [load, patchPreferences],
+  );
+
   const disconnectProvider = useCallback(
     async (provider: string) => {
       setError(null);
@@ -245,6 +318,8 @@ export function useIntegrations() {
       step,
       squareConnected: Boolean(squareProvider?.connected),
       vagaroConnected: Boolean(vagaroProvider?.connected),
+      mindbodyConnected: Boolean(mindbodyProvider?.connected),
+      acuityConnected: Boolean(acuityProvider?.connected),
       bookingLinkSaved: Boolean(bookingLinkProvider?.connected),
       bookingLinkUrl: selectedProvider?.details?.bookingUrl ?? null,
       providers,
@@ -256,7 +331,11 @@ export function useIntegrations() {
     setSelectedApp,
     saveBookingLink,
     connectVagaro,
+    connectMindbody,
+    connectAcuity,
     disconnectVagaro: () => disconnectProvider('vagaro'),
+    disconnectMindbody: () => disconnectProvider('mindbody'),
+    disconnectAcuity: () => disconnectProvider('acuity'),
     disconnectSquare: () => disconnectProvider('square_appointments'),
     goBack,
     refresh: load,

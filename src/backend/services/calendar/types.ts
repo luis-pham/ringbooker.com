@@ -1,6 +1,8 @@
 import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
+import { AcuityProvider } from '@/src/backend/services/booking-providers/acuity';
 import { GoogleCalendarProvider } from '@/src/backend/services/calendar/google-calendar';
 import { ManualCalendarProvider } from '@/src/backend/services/calendar/manual-provider';
+import { MindbodyProvider } from '@/src/backend/services/booking-providers/mindbody';
 import { SquareAppointmentsProvider } from '@/src/backend/services/calendar/square-appointments';
 import { VagaroProvider } from '@/src/backend/services/calendar/vagaro';
 import {
@@ -42,7 +44,7 @@ export type CalendarProviderOptions = {
 };
 
 function parseShopCalendarProviderHint(shop: Shop): CalendarProviderId | null {
-  const rawCredentials = shop.google_cal_credentials_encrypted;
+  const rawCredentials = shop.integration_credentials_encrypted ?? shop.google_cal_credentials_encrypted;
   if (!rawCredentials) return null;
   const parseCandidates = [rawCredentials];
   try {
@@ -104,6 +106,14 @@ export function getCalendarProvider(shop: Shop, options?: CalendarProviderOption
     return new VagaroProvider(shop, {
       persistCredentials: options?.persistCredentials,
     });
+  }
+
+  if (providerId === 'mindbody') {
+    return new MindbodyProvider(shop);
+  }
+
+  if (providerId === 'acuity') {
+    return new AcuityProvider(shop);
   }
 
   if (providerId !== 'manual' && !providerMeta.implemented) {

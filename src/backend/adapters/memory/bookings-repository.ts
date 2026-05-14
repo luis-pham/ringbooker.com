@@ -53,6 +53,9 @@ export class InMemoryBookingsRepository implements BookingsRepository {
     timezone: string;
     status: string;
     calendarEventId?: string;
+    provider?: string | null;
+    providerStatus?: string | null;
+    providerErrorReason?: string | null;
     callLogId?: string | null;
     techName?: string | null;
     durationMinutes?: number | null;
@@ -74,6 +77,9 @@ export class InMemoryBookingsRepository implements BookingsRepository {
       status: params.status,
       confirmed: normalizeBookingStatus(params.status) === 'confirmed',
       calendarEventId: params.calendarEventId ?? null,
+      provider: params.provider ?? null,
+      providerStatus: params.providerStatus ?? null,
+      providerErrorReason: params.providerErrorReason ?? null,
       callLogId: params.callLogId ?? null,
       reminder24hSent: false,
       reminder2hSent: false,

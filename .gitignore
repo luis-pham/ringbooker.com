@@ -36,3 +36,5 @@ tsconfig.tsbuildinfo
 # markdown files
 *.md
 !README.md
+!docs/integrations/mindbody.md
+!docs/integrations/acuity-scheduling.md
