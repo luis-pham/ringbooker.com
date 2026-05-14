@@ -930,6 +930,25 @@ html[data-user-theme="dark"] .usage-captured-card--over{border-color:rgba(248,81
 html[data-user-theme="dark"] .overview-bk-nudge{background:var(--surface-card);border-color:var(--border)}
 html[data-user-theme="dark"] .overview-bk-nudge__text{color:var(--text-dark)}
 html[data-user-theme="dark"] .overview-bk-nudge-dismiss{border-color:var(--border);color:var(--text-light)}
+html[data-user-theme="dark"] .overview-system-status-card.checklist-card,
+html[data-user-theme="dark"] .overview-quick-access-card.shortcuts-card{
+  background:var(--surface-card);
+  border-color:var(--border);
+  box-shadow:none;
+}
+html[data-user-theme="dark"] .overview-system-status-card.checklist-card .card-title{color:var(--text-dark)}
+html[data-user-theme="dark"] .overview-system-status-card.checklist-card .card-sub{color:var(--text-gray)}
+html[data-user-theme="dark"] .overview-quick-access-card .sc-item{
+  border-color:var(--border);
+  background:transparent;
+}
+html[data-user-theme="dark"] .overview-quick-access-card .sc-item:hover{
+  border-color:#58a6ff;
+  background:#21262d;
+}
+html[data-user-theme="dark"] .overview-quick-access-card .sc-name{color:var(--text-dark)}
+html[data-user-theme="dark"] .overview-quick-access-card .sc-desc{color:var(--text-gray)}
+html[data-user-theme="dark"] .overview-quick-access-card .sc-go{color:var(--text-light)}
 html[data-user-theme="dark"] .overview-status-row{border-bottom-color:var(--border)}
 html[data-user-theme="dark"] .overview-status-zero-calls{background:#21262d;color:var(--text-gray)}
 html[data-user-theme="dark"] .overview-status-recent{border-top-color:var(--border)}
