@@ -2223,7 +2223,15 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   box-sizing:border-box;width:100%;min-width:0;
 }
 /* Prevent horizontal scroll on narrow viewports (wide grids, sticky CTA, etc.) */
-.main.onboarding-main{min-width:0;overflow-x:hidden}
+.main.onboarding-main{
+  min-width:0;
+  overflow-x:hidden;
+  /* Dark theme sets body/html to #0d1117; main uses :root --surface-page (#f8f9fa) and was only as tall as content, so the rest of the viewport showed the dark body. Fill the viewport with the same canvas as the wizard. */
+  min-height:100vh;
+  min-height:100dvh;
+  background:var(--surface-page);
+  box-sizing:border-box;
+}
 .onboarding-flow input,.onboarding-flow select,.onboarding-flow textarea{font-size:16px!important;-webkit-text-size-adjust:100%}
 .onboarding-flow input:focus,.onboarding-flow select:focus,.onboarding-flow textarea:focus{transform:none!important}
 .onb-card{background:transparent;border:none;box-shadow:none;border-radius:0;padding:32px 0;max-width:816px;margin:0 auto;width:100%}
