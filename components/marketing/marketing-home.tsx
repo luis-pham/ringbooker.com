@@ -438,96 +438,96 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .convo-quote{font-size:20px;font-weight:700;color:var(--text-dark);line-height:1.3;margin-bottom:18px;letter-spacing:-.35px}
 .convo-wave{height:50px;width:100%;opacity:.15}
 .convo-wave path{fill:none;stroke:var(--text-dark);stroke-width:1.5px}
-/* ─── USE CASES ─── */
-.testimonials{padding:88px 48px;background:#fff}
-.test-inner{max-width:1120px;margin:0 auto}
-.test-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:40px}
-.test-card{
-  background:linear-gradient(180deg,#fbfaff 0%,#ffffff 100%);
+/* ─── BY THE NUMBERS (metrics) — replaces former testimonials block ─── */
+.home-metrics{padding:88px 48px;background:#fff}
+.metrics-inner{max-width:1120px;margin:0 auto}
+.metrics-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:0;
+  margin-top:40px;
   border:1px solid var(--border);
-  border-radius:24px;
-  padding:22px 22px 20px;
-  box-shadow:0 12px 28px -18px rgba(17,24,39,.1),0 4px 10px -8px rgba(17,24,39,.05);
-  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+  border-radius:20px;
+  background:#fff;
+  overflow:hidden;
+  box-shadow:var(--home-shadow-soft);
 }
-.test-card:hover{transform:translateY(-2px);box-shadow:0 18px 36px -20px rgba(17,24,39,.12),0 8px 14px -10px rgba(17,24,39,.07);border-color:rgba(196,181,253,.42)}
-.test-grid .test-card:nth-child(1){
-  background:linear-gradient(180deg,#fbfaff 0%,#ffffff 100%);
-  border-color:rgba(196,181,253,.55);
+.metrics-cell{
+  padding:26px 22px;
+  border-right:1px solid rgba(241,245,249,.95);
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  text-align:left;
 }
-.test-grid .test-card:nth-child(2){
-  background:linear-gradient(180deg,#f0fdf9 0%,#ffffff 100%);
-  border-color:rgba(110,231,183,.55);
-}
-.test-grid .test-card:nth-child(3){
-  background:linear-gradient(180deg,#eff6ff 0%,#ffffff 100%);
-  border-color:rgba(147,197,253,.55);
-}
-.test-pill{
+.metrics-cell:nth-child(4n){border-right:none}
+.metrics-value{font-size:34px;font-weight:700;letter-spacing:-.8px;color:var(--text-dark);line-height:1.1;margin:12px 0 8px}
+.metrics-label{font-size:15px;font-weight:700;color:var(--text-dark);line-height:1.35;margin-bottom:6px}
+.metrics-sublabel{font-size:13px;color:var(--text-desc);line-height:1.5;font-weight:400}
+.metrics-lang-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;margin-top:2px}
+.metric-pill{
   display:inline-flex;
   align-items:center;
-  gap:6px;
-  min-height:28px;
-  padding:6px 10px;
+  padding:4px 9px;
   border-radius:999px;
   background:var(--purple-ultra);
   color:var(--purple-dark);
-  border:1px solid rgba(196,181,253,.65);
+  border:1px solid rgba(196,181,253,.55);
   font-size:11px;
   font-weight:600;
-  line-height:1;
-  margin-bottom:16px;
+  line-height:1.2;
 }
-.test-pill-dot{width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0}
-.test-icon{width:40px;height:40px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;background:linear-gradient(180deg,#f5f3ff,#ede9fe);border:1px solid rgba(196,181,253,.5);color:#6d28d9}
-.test-icon .home-line-icon{margin:0}
-.test-stars{display:flex;gap:4px;margin-bottom:14px;color:#7C3AED}
-.test-stars span{font-size:13px;line-height:1}
-.test-quote{font-size:var(--mk-body);color:var(--text-desc);line-height:1.72;margin-bottom:20px;font-weight:400}
-.test-author{display:flex;align-items:center;gap:12px}
-.test-av{
-  width:42px;
-  height:42px;
-  border-radius:50%;
-  background:linear-gradient(135deg,#ede9fe,#ddd6fe);
+.metrics-trust{
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:14px;
-  font-weight:700;
-  color:var(--purple-dark);
-  overflow:hidden;
-  flex-shrink:0;
+  gap:14px;
+  margin-top:40px;
+  max-width:760px;
+  margin-left:auto;
+  margin-right:auto;
 }
-.test-av img{width:100%;height:100%;display:block;object-fit:cover}
-.test-name{font-size:14px;font-weight:600;color:var(--text-dark);line-height:1.2}
-.test-role{font-size:13px;color:#7c3aed;opacity:.82;font-weight:500;line-height:1.4;margin-top:3px}
-.test-grid .test-card:nth-child(1) .test-pill{
-  background:var(--purple-ultra);
-  color:var(--purple-dark);
-  border-color:rgba(196,181,253,.65);
+.metrics-trust-line{flex:1;height:1px;background:var(--border);min-width:24px}
+.metrics-trust-text{
+  font-size:13px;
+  color:var(--text-desc);
+  text-align:center;
+  margin:0;
+  line-height:1.55;
+  font-weight:400;
 }
-.test-grid .test-card:nth-child(1) .test-pill-dot{background:var(--purple)}
-.test-grid .test-card:nth-child(1) .test-stars{color:#7C3AED}
-.test-grid .test-card:nth-child(1) .test-role{color:#7c3aed}
-
-.test-grid .test-card:nth-child(2) .test-pill{
-  background:#ecfdf5;
-  color:#047857;
-  border-color:rgba(110,231,183,.6);
+.metrics-checks{
+  list-style:none;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:12px 32px;
+  margin:28px 0 0;
+  padding:0;
 }
-.test-grid .test-card:nth-child(2) .test-pill-dot{background:#10B981}
-.test-grid .test-card:nth-child(2) .test-stars{color:#059669}
-.test-grid .test-card:nth-child(2) .test-role{color:#047857}
-
-.test-grid .test-card:nth-child(3) .test-pill{
-  background:#eff6ff;
-  color:#1d4ed8;
-  border-color:rgba(147,197,253,.65);
+.metrics-checks li{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:var(--mk-body);
+  font-weight:500;
+  color:var(--text-dark);
 }
-.test-grid .test-card:nth-child(3) .test-pill-dot{background:#3B82F6}
-.test-grid .test-card:nth-child(3) .test-stars{color:#2563EB}
-.test-grid .test-card:nth-child(3) .test-role{color:#1d4ed8}
+@media(max-width:767px){
+  .metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .metrics-cell{
+    border-right:1px solid rgba(241,245,249,.95);
+    border-bottom:1px solid rgba(241,245,249,.95);
+    align-items:center;
+    text-align:center;
+  }
+  .metrics-cell:nth-child(2n){border-right:none}
+  .metrics-cell:nth-last-child(-n+2){border-bottom:none}
+  .metrics-lang-row{justify-content:center}
+  .metrics-trust-line{display:none}
+  .metrics-trust{gap:0}
+  .metrics-checks{flex-direction:column;align-items:center;gap:14px}
+}
 
 .summary-board{
   margin:48px auto 0;
@@ -791,7 +791,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 
 
 @media(max-width:960px){
-  .steps-grid,.flow-grid,.scope-inner,.user-grid,.current-number-grid,.test-grid{grid-template-columns:1fr}
+  .steps-grid,.flow-grid,.scope-inner,.user-grid,.current-number-grid{grid-template-columns:1fr}
   .steps-section{padding-top:72px;padding-bottom:72px}
   .steps-intro{margin-bottom:34px}
   .steps-title{font-size:34px;letter-spacing:var(--mk-section-h2-track)}
@@ -843,15 +843,13 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .home-carousel-track::-webkit-scrollbar{display:none}
   .home-carousel-slide{scroll-snap-align:start}
   .home-carousel-controls{display:flex}
-  .home-carousel-track .test-card,
   .home-carousel-track .plan{
     margin:0;
     box-sizing:border-box;
     transform:none;
+    flex:0 0 calc((100% - 16px) / 2);
+    height:auto;
   }
-  .home-carousel-track .test-card{flex:0 0 calc((100% - 16px) / 2)}
-  .home-carousel-track .plan{flex:0 0 calc((100% - 16px) / 2);height:auto}
-  .home-carousel-track .test-card:hover,
   .home-carousel-track .plan:hover{transform:none}
 }
 
@@ -859,9 +857,7 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .industry-card{flex-basis:84%;min-height:292px}
   .industry-sub{max-width:190px}
   .current-number-actions{margin-top:22px}
-  .test-card{padding:20px 18px}
   .summary-row{padding:14px 12px}
-  .home-carousel-track .test-card,
   .home-carousel-track .plan{flex-basis:100%}
   .home-carousel-controls{justify-content:center}
 }
@@ -939,10 +935,10 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 
 /* ─── RESPONSIVE ─── */
 @media(max-width:960px){
-  .leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.test-grid,.price-grid,.footer-grid{grid-template-columns:1fr}
+  .leak-grid,.compare-row,.feat-grid,.deep-s1,.deep-s2-outer,.price-grid,.footer-grid{grid-template-columns:1fr}
   .cta-banner{grid-template-columns:1fr;padding:32px 26px}
   .cta-phone-wrap{display:none}
-  footer,.hero,.leak-section,.compare-section,.features,.trusted,.testimonials,.pricing,.mfaq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
+  footer,.hero,.leak-section,.compare-section,.features,.trusted,.home-metrics,.pricing,.mfaq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
   .industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.user-image-corners::before,.user-image-corners::after{display:none}
   .pulse-dot,.wv span,.vc-wave span,.cta-vc-wave span{animation:none}
@@ -976,7 +972,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .current-btn-secondary,
   .btn-white,
   .btn-ghost-w{width:100%;justify-content:center}
-  .features,.compare-section,.testimonials,.pricing{padding-top:var(--mk-space-section-y-mobile);padding-bottom:64px}
+  .features,.compare-section,.home-metrics,.pricing{padding-top:var(--mk-space-section-y-mobile);padding-bottom:64px}
   .steps-section,.industries,.current-number-setup{padding-top:var(--mk-space-section-y-mobile);padding-bottom:64px}
   .sec-sub{margin-bottom:32px}
   .steps-intro,.current-number-intro{margin-bottom:28px}
@@ -995,7 +991,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 .legacy-marketing .sec-label,
 .legacy-marketing .feat-card p,
 .legacy-marketing .checklist li,
-.legacy-marketing .test-card p,
+.legacy-marketing .metrics-sublabel,
 .legacy-marketing .plan-desc,
 .legacy-marketing .plan-feats li,
 .legacy-marketing .save-tag,
@@ -1182,16 +1178,6 @@ setPriceSafe('monthly')
       nextId: 'industriesNext',
       dotsId: 'industriesDots',
       dotClassName: 'industry-dot',
-    })
-
-    initCarousel({
-      rootId: 'usersCarousel',
-      trackSelector: '.home-carousel-track',
-      cardSelector: '.test-card',
-      prevId: 'usersPrev',
-      nextId: 'usersNext',
-      dotsId: 'usersDots',
-      dotClassName: 'home-carousel-dot',
     })
 
     initCarousel({
@@ -1633,56 +1619,91 @@ export function MarketingHomeTemplate() {
               </div>
             </div>
         </section>
-        {/* TESTIMONIALS */}
-        <section className="testimonials" id="testimonials">
-          <div className="test-inner">
-            <div className="sec-label sec-label-center">Testimonials</div>
-            <h2 className="sec-title reveal">Loved by beauty teams.</h2>
-            <p className="sec-sub reveal">Real salon owners who stopped losing bookings to voicemail.</p>
-            <div className="test-grid reveal">
-              <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />47 missed calls recovered in month 1</div>
-                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-                <p className="test-quote">"I used to stop mid-color to answer the phone. Now my team stays focused and the bookings still happen."</p>
-                <div className="test-author">
-                  <div className="test-av">
-                    <Image src="/images/jane.png" alt="Jane Nguyen" width={84} height={84} sizes="42px" quality={70} />
-                  </div>
-                  <div>
-                    <div className="test-name">Jane Nguyen</div>
-                    <div className="test-role">Nail Salon Owner — NYC</div>
-                  </div>
+        {/* BY THE NUMBERS — metrics (replaces testimonials) */}
+        <section className="home-metrics" id="by-the-numbers">
+          <div className="metrics-inner">
+            <div className="sec-label sec-label-center">By the numbers</div>
+            <h2 className="sec-title reveal">Built for real salon workflows.</h2>
+            <p className="sec-sub reveal">
+              Tested across nail salons, hair salons, spas, med spas, and beauty clinics.
+            </p>
+            <div className="metrics-grid reveal">
+              <article className="metrics-cell">
+                <div className="feat-ico fi-p" aria-hidden>
+                  <HomeLineIcon>
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                  </HomeLineIcon>
+                </div>
+                <div className="metrics-value">500+</div>
+                <div className="metrics-label">Demo calls completed</div>
+                <p className="metrics-sublabel">Across all salon verticals</p>
+              </article>
+              <article className="metrics-cell">
+                <div className="feat-ico fi-p" aria-hidden>
+                  <HomeLineIcon>
+                    <path d="M3 21h18" />
+                    <path d="M5 21V8l7-4 7 4v13" />
+                    <path d="M9 21v-6h6v6" />
+                  </HomeLineIcon>
+                </div>
+                <div className="metrics-value">200+</div>
+                <div className="metrics-label">Salon profiles built</div>
+                <p className="metrics-sublabel">From real salon websites</p>
+              </article>
+              <article className="metrics-cell">
+                <div className="feat-ico fi-p" aria-hidden>
+                  <HomeLineIcon>
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M2 12h20" />
+                    <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                  </HomeLineIcon>
+                </div>
+                <div className="metrics-value">5</div>
+                <div className="metrics-label">Languages supported</div>
+                <div className="metrics-lang-row" aria-label="Supported languages">
+                  {['English', 'Spanish', 'Korean', 'Chinese', 'Vietnamese'].map((lang) => (
+                    <span key={lang} className="metric-pill">{lang}</span>
+                  ))}
                 </div>
               </article>
-              <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Setup completed in 12 minutes</div>
-                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-                <p className="test-quote">"We kept our number, configured basics in 15 minutes, and clients still reach us the way they always have."</p>
-                <div className="test-author">
-                  <div className="test-av">
-                    <Image src="/images/jeny.png" alt="Jennifer K." width={84} height={84} sizes="42px" quality={70} />
-                  </div>
-                  <div>
-                    <div className="test-name">Jennifer K.</div>
-                    <div className="test-role">Day Spa Manager — Dallas</div>
-                  </div>
+              <article className="metrics-cell">
+                <div className="feat-ico fi-p" aria-hidden>
+                  <HomeLineIcon>
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                  </HomeLineIcon>
                 </div>
-              </article>
-              <article className="test-card">
-                <div className="test-pill"><span className="test-pill-dot" aria-hidden="true" />Zero missed after-hours calls</div>
-                <div className="test-stars" aria-label="5 star review"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
-                <p className="test-quote">"After-hours used to be a black hole. Now missed callers get a text back and we know exactly who needs a callback."</p>
-                <div className="test-author">
-                  <div className="test-av">
-                    <Image src="/images/lisa.png" alt="Lisa R." width={84} height={84} sizes="42px" quality={70} />
-                  </div>
-                  <div>
-                    <div className="test-name">Lisa R.</div>
-                    <div className="test-role">Med Spa Owner — LA</div>
-                  </div>
-                </div>
+                <div className="metrics-value">{'<1s'}</div>
+                <div className="metrics-label">AI response time</div>
+                <p className="metrics-sublabel">Average across all calls</p>
               </article>
             </div>
+            <div className="metrics-trust reveal">
+              <span className="metrics-trust-line" aria-hidden="true" />
+              <p className="metrics-trust-text">
+                No contract · Keep your current number · Cancel before day 15, pay nothing
+              </p>
+              <span className="metrics-trust-line" aria-hidden="true" />
+            </div>
+            <ul className="metrics-checks reveal">
+              <li>
+                <span className="ck-ico" aria-hidden>
+                  <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg>
+                </span>
+                No booking software migration
+              </li>
+              <li>
+                <span className="ck-ico" aria-hidden>
+                  <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg>
+                </span>
+                Works with your current number
+              </li>
+              <li>
+                <span className="ck-ico" aria-hidden>
+                  <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg>
+                </span>
+                Setup in under 15 minutes
+              </li>
+            </ul>
           </div>
         </section>
         {/* PRICING */}

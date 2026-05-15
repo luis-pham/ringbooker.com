@@ -285,7 +285,18 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
   const places = input.googlePlaces ?? null;
   const llm = input.llm ?? null;
   const rawPlaceConfidence = places?.matchConfidence ?? (input.staticFacts.sourceType === 'google_maps' && places ? 0.95 : 0);
-  const trustPlaces = Boolean(places) && (input.staticFacts.sourceType === 'google_maps' || rawPlaceConfidence >= 0.6);
+  // A Google Places result whose listed website exactly matches the submitted URL is a strong identity
+  // signal even when phone/address hints were unavailable (e.g. website blocked the scraper).
+  // Only activates for unambiguous matches (lookupGooglePlaces already returns a warning-only object
+  // with no `website` field when two candidates score too closely, so this stays false in that case).
+  const placesDomainMatchesSubmittedUrl = Boolean(
+    places?.website && normalizeDomain(places.website) === normalizeDomain(input.staticFacts.sourceUrl),
+  );
+  const trustPlaces = Boolean(places) && (
+    input.staticFacts.sourceType === 'google_maps'
+    || rawPlaceConfidence >= 0.6
+    || (placesDomainMatchesSubmittedUrl && rawPlaceConfidence >= 0.45)
+  );
   const trustedPlaces = trustPlaces ? places : null;
   if (places && !trustPlaces && rawPlaceConfidence > 0) warnings.push('Google Places match was low confidence. Website details were kept for review.');
   if (trustedPlaces?.phone && input.staticFacts.phone.value && phoneComparableDigits(trustedPlaces.phone) !== phoneComparableDigits(input.staticFacts.phone.value)) warnings.push('Google Places phone differs from website phone. Review before saving.');

@@ -126,6 +126,40 @@ function filterDemoServices(services: Array<{ name: string }>): string[] {
     });
 }
 
+/** Mobile (≤768px) import checklist — labels differ from onboarding IMPORT_PROGRESS_STEPS on purpose. */
+const MOBILE_IMPORT_STEPS = [
+  'Fetching your site',
+  'Scanning pages',
+  'Extracting services and hours',
+  'Building your profile',
+] as const;
+
+type MobileImportRowStatus = 'pending' | 'spinning' | 'done';
+
+function useMediaMax768(): boolean {
+  const [m, setM] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width:768px)');
+    const fn = () => setM(mq.matches);
+    fn();
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+  return m;
+}
+
+function demoHostnameFromUrl(raw: string): string {
+  const t = raw.trim();
+  if (!t) return 'your site';
+  try {
+    const u = new URL(t.includes('://') ? t : `https://${t}`);
+    return u.hostname || 'your site';
+  } catch {
+    return 'your site';
+  }
+}
+
 type DemoBusinessConfig = {
   businessName: string;
   city: string;
@@ -558,6 +592,68 @@ const siteReadStyles: string = String.raw`
   .vd-trust-chip{font-size:11px;font-weight:700;color:#10B981;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:999px;padding:4px 10px}
 `;
 
+/** Mobile-only (≤768px). Desktop uses existing rules from `styles` / `siteReadStyles`. */
+const verticalDemoMobileStyles = String.raw`
+@media (max-width:768px){
+  .vd-m-page-sub{margin:0 0 14px;font-size:15px;line-height:1.55;color:#64748B;font-weight:500;text-align:center}
+  .vd-m-card{border:2px solid var(--va);border-radius:20px;background:#fff;padding:18px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+  .vd-m-card-title{margin:0 0 6px;font-size:15px;font-weight:900;color:#111827;letter-spacing:-.02em}
+  .vd-m-card-sub{margin:0 0 12px;font-size:13px;color:#64748B;line-height:1.5}
+  .vd-m-url-row{display:flex;flex-direction:column;gap:10px}
+  .vd-m-url-row .vd-url-btn{align-self:flex-start}
+  .vd-m-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#9CA3AF;font-size:12px;font-weight:700}
+  .vd-m-divider::before,.vd-m-divider::after{content:'';flex:1;height:1px;background:#E5E7EB}
+  .vd-m-acc{border:0;background:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#6B7280;padding:10px 0;width:100%;text-align:left}
+  .vd-m-acc-chev{font-size:10px;transition:transform .2s;display:inline-block}
+  .vd-m-acc-chev.open{transform:rotate(180deg)}
+  .vd-m-acc-body{border:1px solid #E5E7EB;border-radius:16px;background:#F9FAFB;padding:14px;display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+  .vd-m-grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .vd-m-load-subtitle{margin:0 0 14px;font-size:14px;line-height:1.5;color:#475569;text-align:center}
+  .vd-m-spin{border:3px solid color-mix(in srgb,var(--va) 22%,#E5E7EB);border-top-color:var(--va);border-radius:999px;width:32px;height:32px;animation:vdSpin .75s linear infinite;margin:0 auto 14px}
+  .vd-m-prog{height:6px;border-radius:999px;background:#E5E7EB;overflow:hidden;margin:14px 0 16px}
+  .vd-m-prog-fill{height:100%;border-radius:999px;background:var(--va);width:0;transition:width .45s ease}
+  .vd-m-rows{display:flex;flex-direction:column;gap:10px;text-align:left}
+  .vd-m-row{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#9CA3AF}
+  .vd-m-row.done{color:#10B981}
+  .vd-m-row.active{color:#111827}
+  .vd-m-ico{width:22px;height:22px;border-radius:999px;border:2px solid #E5E7EB;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+  .vd-m-row.done .vd-m-ico{background:#10B981;border-color:#10B981;color:#fff}
+  .vd-m-row.active .vd-m-ico{border-color:var(--va)}
+  .vd-m-row-spin{width:10px;height:10px;border:2px solid #D1D5DB;border-top-color:var(--va);border-radius:999px;animation:vdSpin .75s linear infinite}
+  .vd-m-pill{font-size:12px;color:#6B7280;line-height:1.45;text-align:center;background:#F3F4F6;border-radius:12px;padding:10px 12px;margin-top:10px}
+  .vd-m-escape{background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:#9CA3AF;padding:0;margin-top:10px;display:block;width:100%;text-align:center;text-decoration:underline;text-underline-offset:2px}
+  .vd-m-escape:hover{color:#6B7280}
+  .vd-m-badge{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:6px 14px;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin:0 auto 12px;width:fit-content}
+  .vd-m-badge-dot{width:8px;height:8px;border-radius:50%}
+  .vd-m-badge--ready{border:1px solid #A7F3D0;background:#ECFDF5;color:#047857}
+  .vd-m-badge--ready .vd-m-badge-dot{background:#10B981}
+  .vd-m-badge--amber{border:1px solid #FDE68A;background:#FFFBEB;color:#92400E}
+  .vd-m-badge--amber .vd-m-badge-dot{background:#F59E0B}
+  .vd-m-badge--grey{border:1px solid #E5E7EB;background:#F9FAFB;color:#6B7280}
+  .vd-m-badge--grey .vd-m-badge-dot{background:#9CA3AF}
+  .vd-m-found-info{font-size:12px;color:#64748B;line-height:1.5;margin:12px 0 0;padding:10px 12px;background:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0}
+  .vd-m-found-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:13px}
+  .vd-m-found-row:last-child{margin-bottom:0}
+  .vd-m-found-ic{font-size:16px;line-height:1;width:24px;text-align:center;flex-shrink:0}
+  .vd-m-found-k{font-weight:800;color:#64748B;min-width:72px;flex-shrink:0}
+  .vd-m-found-v{color:#111827;font-weight:600;flex:1;min-width:0}
+  .vd-m-link{background:none;border:none;cursor:pointer;padding:0;margin-top:8px;font-size:13px;font-weight:700;color:var(--va);text-decoration:underline;text-underline-offset:2px;text-align:left}
+  .vd-m-sms-card{border-radius:16px;background:#F1F5F9;padding:14px;margin:14px 0;font-size:14px;line-height:1.55;color:#334155}
+  .vd-m-cap{background:#F8FAFC;border-radius:16px;padding:14px;margin-bottom:14px}
+  .vd-m-cap-label{font-size:10px;font-weight:900;letter-spacing:.1em;color:#64748B;margin-bottom:10px}
+  .vd-m-cap-row{display:flex;gap:10px;font-size:13px;margin-bottom:8px;align-items:flex-start}
+  .vd-m-cap-row:last-child{margin-bottom:0}
+  .vd-m-banner{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#EFF6FF;border:1px solid #BFDBFE;font-size:13px;color:#1E40AF;line-height:1.5;margin-bottom:14px}
+  .vd-m-trust-line{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 18px;font-size:12px;font-weight:600;color:#64748B;margin:12px 0 8px}
+  .vd-m-pay-pill{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:600;color:#475569;background:#F3F4F6;border-radius:999px;padding:10px 14px;margin:0 auto 12px;max-width:420px;text-align:center}
+  .vd-m-try{font-size:13px;color:#9CA3AF;text-decoration:underline;text-underline-offset:3px;background:none;border:none;cursor:pointer;padding:0;margin:10px auto 0;display:block;text-align:center;font-weight:500}
+  .vd-m-try:hover{color:#64748B}
+  .vd-m-live-tweak .vd-status-pill.completed{background:#F3F4F6;border-color:#E5E7EB;color:#6B7280}
+  .vd-m-live-tweak .vd-status-pill.completed .vd-status-dot{background:#9CA3AF;animation:none}
+  .vd-m-live-tweak .vd-status-body{color:#6B7280}
+}
+`;
+
 function cloneServices(services: DemoServiceCategory[]): DemoServiceCategory[] {
   return services.map((c) => ({ ...c, items: c.items.map((i) => ({ ...i })) }));
 }
@@ -667,6 +763,27 @@ export function MarketingVerticalDemoTemplate({
   const siteLoadTimersRef = useRef<number[]>([]);
   const siteLoadStartRef = useRef<number>(0);
 
+  const isMobileDemo = useMediaMax768();
+  const isMobileDemoRef = useRef(false);
+  useEffect(() => {
+    isMobileDemoRef.current = isMobileDemo;
+  }, [isMobileDemo]);
+
+  const demoDisplayName = useMemo(
+    () => business.businessName.trim() || config.defaultBusinessName,
+    [business.businessName, config.defaultBusinessName],
+  );
+
+  const [siteManualFallback, setSiteManualFallback] = useState(false);
+  const [mobileFoundEdit, setMobileFoundEdit] = useState(false);
+  const [mobileImportRows, setMobileImportRows] = useState<MobileImportRowStatus[]>(['pending', 'pending', 'pending', 'pending']);
+  const [mobileImportProgress, setMobileImportProgress] = useState(0);
+  const [mobileImportHeadline, setMobileImportHeadline] = useState('Reading your website...');
+  const [mobileImportSubline, setMobileImportSubline] = useState('Pulling business name, hours, and services.');
+  const [mobileImportPill, setMobileImportPill] = useState<string | null>(null);
+  const [mobileImportEscape, setMobileImportEscape] = useState(false);
+  const mobileImportTimersRef = useRef<number[]>([]);
+
   const [captchaHint, setCaptchaHint] = useState<string | null>(null);
   const [captchaEpoch, setCaptchaEpoch] = useState(0);
 
@@ -683,6 +800,8 @@ export function MarketingVerticalDemoTemplate({
     clearPollTimer();
     cleanupDirectRealtime();
     cancelSiteLoadTimers();
+    mobileImportTimersRef.current.forEach((t) => window.clearTimeout(t));
+    mobileImportTimersRef.current = [];
   }, []);
 
   /** When leaving the form for the live demo, remove Turnstile so the widget can mount again on return. */
@@ -776,43 +895,113 @@ export function MarketingVerticalDemoTemplate({
     siteLoadTimersRef.current = [];
   }
 
+  function cancelMobileImportUiTimers() {
+    mobileImportTimersRef.current.forEach((t) => window.clearTimeout(t));
+    mobileImportTimersRef.current = [];
+  }
+
+  function resetMobileImportUi() {
+    cancelMobileImportUiTimers();
+    setMobileImportRows(['pending', 'pending', 'pending', 'pending']);
+    setMobileImportProgress(0);
+    setMobileImportHeadline('Reading your website...');
+    setMobileImportSubline('Pulling business name, hours, and services.');
+    setMobileImportPill(null);
+    setMobileImportEscape(false);
+  }
+
+  function startMobileImportUi() {
+    cancelMobileImportUiTimers();
+    setMobileImportRows(['spinning', 'pending', 'pending', 'pending']);
+    setMobileImportProgress(12);
+    setMobileImportHeadline('Reading your website...');
+    setMobileImportSubline('Pulling business name, hours, and services.');
+    setMobileImportPill(null);
+    setMobileImportEscape(false);
+    mobileImportTimersRef.current.push(
+      window.setTimeout(() => {
+        setMobileImportRows(['done', 'spinning', 'pending', 'pending']);
+        setMobileImportProgress(34);
+      }, 2000),
+    );
+    mobileImportTimersRef.current.push(
+      window.setTimeout(() => {
+        setMobileImportRows(['done', 'done', 'spinning', 'pending']);
+        setMobileImportProgress(60);
+        setMobileImportPill('Still importing your website — some websites take a moment to read.');
+      }, 5000),
+    );
+    mobileImportTimersRef.current.push(
+      window.setTimeout(() => {
+        setMobileImportSubline("We're still reading your site. Please wait a little longer.");
+        setMobileImportEscape(true);
+      }, 10000),
+    );
+  }
+
+  function completeMobileImportUiSuccess() {
+    cancelMobileImportUiTimers();
+    setMobileImportRows(['done', 'done', 'done', 'done']);
+    setMobileImportProgress(100);
+    setMobileImportPill(null);
+    setMobileImportEscape(false);
+  }
+
   function exitToManualForm() {
     cancelSiteLoadTimers();
+    cancelMobileImportUiTimers();
+    resetMobileImportUi();
+    if (isMobileDemoRef.current) {
+      setSiteManualFallback(true);
+    }
     setSitePhase('idle');
     setSiteLoadStep(0);
     setSiteDelayMessage(null);
+    setSiteLoadError(null);
   }
 
   async function readWebsite() {
     const url = siteUrl.trim();
     if (!url) return;
     cancelSiteLoadTimers();
+    cancelMobileImportUiTimers();
     setSitePhase('loading');
     setSiteLoadStep(0);
     setSiteLoadError(null);
     setSiteDelayMessage(null);
     siteLoadStartRef.current = Date.now();
 
-    // Step timers — reuse importProgressStepIndex from onboarding (1800/4000/6500ms)
-    const stepCheckpoints = [1800, 4000, 6500];
-    // Delay messages — spec timing: 5s and 10s
-    const delayCheckpoints: Array<[number, string]> = [
-      [5000, 'Still importing your website — some websites take a moment to read.'],
-      [10000, "We're still reading your site. Please wait a little longer."],
-    ];
-    siteLoadTimersRef.current = [
-      ...stepCheckpoints.map((delay) =>
-        window.setTimeout(() => setSiteLoadStep(importProgressStepIndex(delay)), delay),
-      ),
-      ...delayCheckpoints.map(([delay, msg]) =>
-        window.setTimeout(() => setSiteDelayMessage(msg), delay),
-      ),
-      // 20s hard timeout → error
-      window.setTimeout(() => {
-        setSiteLoadError("We couldn't read your website.");
-        setSitePhase('error');
-      }, 20000),
-    ];
+    const mobile = isMobileDemoRef.current;
+    if (mobile) {
+      startMobileImportUi();
+    } else {
+      const stepCheckpoints = [1800, 4000, 6500];
+      const delayCheckpoints: Array<[number, string]> = [
+        [5000, 'Still importing your website — some websites take a moment to read.'],
+        [10000, "We're still reading your site. Please wait a little longer."],
+      ];
+      siteLoadTimersRef.current = [
+        ...stepCheckpoints.map((delay) =>
+          window.setTimeout(() => setSiteLoadStep(importProgressStepIndex(delay)), delay),
+        ),
+        ...delayCheckpoints.map(([delay, msg]) =>
+          window.setTimeout(() => setSiteDelayMessage(msg), delay),
+        ),
+        window.setTimeout(() => {
+          setSiteLoadError("We couldn't read your website.");
+          setSitePhase('error');
+        }, 20000),
+      ];
+    }
+    if (mobile) {
+      mobileImportTimersRef.current.push(
+        window.setTimeout(() => {
+          resetMobileImportUi();
+          setSiteLoadError("We couldn't read your website.");
+          setSitePhase('error');
+        }, 20000),
+      );
+    }
 
     try {
       const res = await fetch('/api/backend/public/demo/import-website', {
@@ -823,6 +1012,7 @@ export function MarketingVerticalDemoTemplate({
       const data = (await res.json()) as { ok: boolean; suggestions?: DemoImportSuggestions; error?: string; message?: string };
 
       cancelSiteLoadTimers();
+      cancelMobileImportUiTimers();
 
       if (data.ok && data.suggestions) {
         const s = data.suggestions;
@@ -832,8 +1022,11 @@ export function MarketingVerticalDemoTemplate({
         const hours = formatDemoApiHours(s.hours?.value);
         const services = filterDemoServices(s.serviceCatalog?.services ?? []).slice(0, 12);
 
-        // Advance all steps to done — same as completeImportProgress()
-        setSiteLoadStep(IMPORT_PROGRESS_STEPS.length);
+        if (isMobileDemoRef.current) {
+          completeMobileImportUiSuccess();
+        } else {
+          setSiteLoadStep(IMPORT_PROGRESS_STEPS.length);
+        }
         setSiteDelayMessage(null);
 
         const elapsed = Date.now() - siteLoadStartRef.current;
@@ -845,16 +1038,21 @@ export function MarketingVerticalDemoTemplate({
             city: formCity || cur.city,
             primaryHours: hours || cur.primaryHours,
           }));
+          setSiteManualFallback(false);
           setSitePhase('ready');
+          setMobileFoundEdit(false);
         }, Math.max(0, 900 - elapsed));
       } else {
         setSiteLoadError(data.message ?? 'Could not read that website. You can fill in the details manually.');
         setSitePhase('error');
+        if (isMobileDemoRef.current) resetMobileImportUi();
       }
     } catch {
       cancelSiteLoadTimers();
+      cancelMobileImportUiTimers();
       setSiteLoadError('Network error. Please try again.');
       setSitePhase('error');
+      if (isMobileDemoRef.current) resetMobileImportUi();
     }
   }
 
@@ -1458,6 +1656,9 @@ export function MarketingVerticalDemoTemplate({
     setStage('idle');
     setRequestError(null);
     setStatusText('');
+    setSiteManualFallback(false);
+    setMobileFoundEdit(false);
+    resetMobileImportUi();
     setSitePhase(extractedData ? 'ready' : 'idle');
   }
 
@@ -1473,7 +1674,7 @@ export function MarketingVerticalDemoTemplate({
   };
 
   return (
-    <MarketingLayout styles={[...styles, siteReadStyles]} scriptPrefix={`vertical-demo-${config.slug}`}>
+    <MarketingLayout styles={[...styles, siteReadStyles, verticalDemoMobileStyles]} scriptPrefix={`vertical-demo-${config.slug}`}>
       <>
         {turnstileSiteKey ? (
           <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" onLoad={() => setTurnstileReady(true)} />
@@ -1503,6 +1704,366 @@ export function MarketingVerticalDemoTemplate({
             <div>
               {/* ── FORM ── */}
               {!isActive ? (
+                isMobileDemo ? (
+                  sitePhase === 'loading' ? (
+                    <div className="vd-form-card">
+                      <p className="vd-m-load-subtitle">
+                        Reading {demoHostnameFromUrl(siteUrl)} to personalise your AI receptionist.
+                      </p>
+                      <div className="vd-m-spin" role="status" aria-label="Loading" />
+                      <p className="vd-load-head">{mobileImportHeadline}</p>
+                      <p className="vd-load-sub">{mobileImportSubline}</p>
+                      <div className="vd-m-prog" aria-hidden>
+                        <div className="vd-m-prog-fill" style={{ width: `${mobileImportProgress}%` }} />
+                      </div>
+                      <div className="vd-m-rows">
+                        {MOBILE_IMPORT_STEPS.map((label, i) => {
+                          const st = mobileImportRows[i] ?? 'pending';
+                          return (
+                            <div
+                              key={label}
+                              className={`vd-m-row${st === 'done' ? ' done' : ''}${st === 'spinning' ? ' active' : ''}`}
+                            >
+                              <span className="vd-m-ico">
+                                {st === 'done' ? '✓' : st === 'spinning' ? <span className="vd-m-row-spin" aria-hidden /> : i + 1}
+                              </span>
+                              <span>{label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {mobileImportPill ? <div className="vd-m-pill">{mobileImportPill}</div> : null}
+                      {mobileImportEscape ? (
+                        <button type="button" className="vd-m-escape" onClick={exitToManualForm}>
+                          Continue without website →
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : sitePhase === 'ready' && extractedData && !siteManualFallback ? (
+                    <div className="vd-form-card">
+                      <div className="vd-m-badge vd-m-badge--ready">
+                        <span className="vd-m-badge-dot" aria-hidden />
+                        Ready to demo
+                      </div>
+                      <h2 className="vd-status-h" style={{ marginTop: 0 }}>Your AI receptionist is ready</h2>
+                      <p className="vd-status-body">We set up the demo using your salon&apos;s info.</p>
+                      <div className="vd-found-card">
+                        <div className="vd-found-head">What we found</div>
+                        {!mobileFoundEdit ? (
+                          <>
+                            {extractedData.businessName ? (
+                              <div className="vd-m-found-row">
+                                <span className="vd-m-found-ic" aria-hidden>🏪</span>
+                                <span className="vd-m-found-k">Business</span>
+                                <span className="vd-m-found-v">{extractedData.businessName}</span>
+                              </div>
+                            ) : null}
+                            {extractedData.city ? (
+                              <div className="vd-m-found-row">
+                                <span className="vd-m-found-ic" aria-hidden>📍</span>
+                                <span className="vd-m-found-k">City</span>
+                                <span className="vd-m-found-v">{extractedData.city}</span>
+                              </div>
+                            ) : null}
+                            <div className="vd-m-found-row">
+                              <span className="vd-m-found-ic" aria-hidden>🕐</span>
+                              <span className="vd-m-found-k">Hours</span>
+                              <span className="vd-m-found-v">{extractedData.hours || business.primaryHours || '—'}</span>
+                            </div>
+                            {extractedData.services.length > 0 ? (
+                              <div className="vd-m-found-row" style={{ flexWrap: 'wrap' }}>
+                                <span className="vd-m-found-ic" aria-hidden>✂️</span>
+                                <span className="vd-m-found-k">Services</span>
+                                <span className="vd-m-found-v" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                  {extractedData.services.slice(0, 10).map((s) => (
+                                    <span key={s} className="vd-found-chip">{s}</span>
+                                  ))}
+                                </span>
+                              </div>
+                            ) : null}
+                            <button type="button" className="vd-m-link" onClick={() => setMobileFoundEdit(true)}>
+                              Edit details →
+                            </button>
+                          </>
+                        ) : (
+                          <div className="vd-m-acc-body" style={{ marginTop: 8 }}>
+                            <div className="vd-field vd-field-compact">
+                              <label htmlFor="vd-m-edit-name">Business</label>
+                              <input
+                                id="vd-m-edit-name"
+                                value={business.businessName}
+                                onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))}
+                              />
+                            </div>
+                            <div className="vd-m-grid2">
+                              <div className="vd-field vd-field-compact">
+                                <label htmlFor="vd-m-edit-city">City / state</label>
+                                <input
+                                  id="vd-m-edit-city"
+                                  value={business.city}
+                                  onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
+                                />
+                              </div>
+                              <div className="vd-field vd-field-compact">
+                                <label htmlFor="vd-m-edit-hours">Hours</label>
+                                <input
+                                  id="vd-m-edit-hours"
+                                  value={business.primaryHours}
+                                  onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))}
+                                  placeholder="e.g. Mon–Sat 9am–7pm"
+                                />
+                              </div>
+                            </div>
+                            <button type="button" className="vd-m-link" onClick={() => setMobileFoundEdit(false)}>
+                              Done editing
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <p className="vd-m-found-info">You&apos;ll review everything during onboarding before going live.</p>
+                      {turnstileSiteKey ? (
+                        <div style={{ marginBottom: 14 }}>
+                          <div className="vd-captcha-label">Human verification</div>
+                          <div className="vd-captcha">
+                            <div className="vd-captcha-inner" ref={turnstileRef} />
+                          </div>
+                          {captchaHint ? <p className="vd-captcha-hint">{captchaHint}</p> : null}
+                        </div>
+                      ) : null}
+                      {errors.length > 0 || requestError ? (
+                        <div className="vd-errors">
+                          {errors.map((e) => <div key={e} className="vd-error">{e}</div>)}
+                          {requestError ? <div className="vd-error">{requestError}</div> : null}
+                        </div>
+                      ) : null}
+                      <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
+                        {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                      </button>
+                      <p className="vd-cta-note">AI receptionist configured with your real salon data.</p>
+                      <div className="vd-phone-demo-secondary">
+                        <div className="vd-phone-demo-title">Prefer to call?</div>
+                        <p className="vd-phone-demo-text">Call the demo line and speak with the AI receptionist.</p>
+                        <div className="vd-phone-demo-num-row">
+                          <span className="vd-phone-demo-num">{verticalDemoPhoneDisplay}</span>
+                          <button type="button" className="vd-phone-demo-copy" onClick={() => void copyDemoPhoneNumber()}>
+                            {demoLineCopied ? 'Copied' : 'Copy number'}
+                          </button>
+                        </div>
+                        <a className="vd-phone-demo-tel" href={verticalDemoPhoneTel}>
+                          Call demo number
+                        </a>
+                        <p className="vd-phone-demo-note">The phone demo uses a sample nail salon profile.</p>
+                      </div>
+                    </div>
+                  ) : sitePhase === 'error' || siteManualFallback ? (
+                    <div className="vd-form-card">
+                      <div className="vd-m-badge vd-m-badge--amber">
+                        <span className="vd-m-badge-dot" aria-hidden />
+                        Couldn&apos;t read your website
+                      </div>
+                      <h2 className="vd-status-h" style={{ marginTop: 0 }}>Set up manually</h2>
+                      <p className="vd-status-body">Takes 30 seconds — then hear your AI in action.</p>
+                      <div className="vd-m-banner" role="note">
+                        <span aria-hidden>ℹ️</span>
+                        <span>
+                          {siteLoadError
+                            ? "We couldn't read your website. Enter your salon info below."
+                            : 'Enter your salon info below to personalise the browser demo.'}
+                        </span>
+                      </div>
+                      <div className="vd-m-card" style={{ borderWidth: 1, borderColor: '#E5E7EB' }}>
+                        <div className="vd-field vd-field-compact">
+                          <label htmlFor="vd-m6-biz">Business name</label>
+                          <input
+                            id="vd-m6-biz"
+                            required
+                            value={business.businessName}
+                            onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))}
+                          />
+                        </div>
+                        <div className="vd-m-grid2" style={{ marginTop: 10 }}>
+                          <div className="vd-field vd-field-compact">
+                            <label htmlFor="vd-m6-city">City / state</label>
+                            <input
+                              id="vd-m6-city"
+                              value={business.city}
+                              onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))}
+                            />
+                          </div>
+                          <div className="vd-field vd-field-compact">
+                            <label htmlFor="vd-m6-hours">Hours</label>
+                            <input
+                              id="vd-m6-hours"
+                              value={business.primaryHours}
+                              onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))}
+                              placeholder="e.g. Mon–Sat 9am–7pm"
+                            />
+                          </div>
+                        </div>
+                        <div className="vd-field vd-field-compact" style={{ marginTop: 10 }}>
+                          <label htmlFor="vd-m6-staff">{config.staffLabel} (optional)</label>
+                          <input
+                            id="vd-m6-staff"
+                            value={business.staff}
+                            placeholder={config.staffPlaceholder}
+                            onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      {turnstileSiteKey ? (
+                        <div style={{ marginBottom: 14 }}>
+                          <div className="vd-captcha-label">Human verification</div>
+                          <div className="vd-captcha">
+                            <div className="vd-captcha-inner" ref={turnstileRef} />
+                          </div>
+                          {captchaHint ? <p className="vd-captcha-hint">{captchaHint}</p> : null}
+                        </div>
+                      ) : null}
+                      {errors.length > 0 || requestError ? (
+                        <div className="vd-errors">
+                          {errors.map((e) => <div key={e} className="vd-error">{e}</div>)}
+                          {requestError ? <div className="vd-error">{requestError}</div> : null}
+                        </div>
+                      ) : null}
+                      <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
+                        {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                      </button>
+                      <p className="vd-cta-note">Talk to RingBooker in your browser. No phone number required.</p>
+                      <div className="vd-phone-demo-secondary">
+                        <div className="vd-phone-demo-title">Prefer to call?</div>
+                        <p className="vd-phone-demo-text">Call the demo line and speak with the AI receptionist.</p>
+                        <div className="vd-phone-demo-num-row">
+                          <span className="vd-phone-demo-num">{verticalDemoPhoneDisplay}</span>
+                          <button type="button" className="vd-phone-demo-copy" onClick={() => void copyDemoPhoneNumber()}>
+                            {demoLineCopied ? 'Copied' : 'Copy number'}
+                          </button>
+                        </div>
+                        <a className="vd-phone-demo-tel" href={verticalDemoPhoneTel}>
+                          Call demo number
+                        </a>
+                        <p className="vd-phone-demo-note">{config.phoneDemoProfileCopy}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="vd-m-page-sub">{config.subtitle}</p>
+                      <div className="vd-m-card">
+                        <h3 className="vd-m-card-title">Try with your real {config.businessType.replace(/-/g, ' ')}</h3>
+                        <p className="vd-m-card-sub">Paste your website — we&apos;ll personalise the demo automatically.</p>
+                        <div className="vd-m-url-row">
+                          <input
+                            className="vd-url-input"
+                            type="url"
+                            placeholder="https://yoursalon.com"
+                            value={siteUrl}
+                            onChange={(e) => setSiteUrl(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') void readWebsite();
+                            }}
+                          />
+                          <button type="button" className="vd-url-btn" onClick={() => void readWebsite()} disabled={!siteUrl.trim()}>
+                            Read site
+                          </button>
+                        </div>
+                        {siteLoadError && !siteManualFallback ? <div className="vd-error" style={{ marginTop: 8 }}>{siteLoadError}</div> : null}
+                      </div>
+                      <div className="vd-m-divider">or use sample data below</div>
+                      <div className="vd-field" style={{ marginBottom: 12 }}>
+                        <label htmlFor="vd-m-biz">Business name for this demo</label>
+                        <input id="vd-m-biz" value={business.businessName} onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))} />
+                      </div>
+                      <button type="button" className="vd-m-acc" onClick={() => setShowAdvanced((v) => !v)}>
+                        <span className={`vd-m-acc-chev ${showAdvanced ? 'open' : ''}`}>▼</span>
+                        Customize hours, staff &amp; services
+                      </button>
+                      {showAdvanced ? (
+                        <div className="vd-m-acc-body">
+                          <div className="vd-m-grid2">
+                            <div className="vd-field vd-field-compact">
+                              <label htmlFor="vd-m-city">City / state</label>
+                              <input id="vd-m-city" value={business.city} onChange={(e) => setBusiness((c) => ({ ...c, city: e.target.value }))} />
+                            </div>
+                            <div className="vd-field vd-field-compact">
+                              <label htmlFor="vd-m-hours">Hours</label>
+                              <input
+                                id="vd-m-hours"
+                                value={business.primaryHours}
+                                onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))}
+                                placeholder="e.g. Mon–Sat 9am–7pm"
+                              />
+                            </div>
+                          </div>
+                          <div className="vd-field vd-field-compact">
+                            <label htmlFor="vd-m-staff">{config.staffLabel} (optional)</label>
+                            <input
+                              id="vd-m-staff"
+                              value={business.staff}
+                              placeholder={config.staffPlaceholder}
+                              onChange={(e) => setBusiness((c) => ({ ...c, staff: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <div className="vd-svc-label">{config.serviceLabel}</div>
+                            <div className="vd-tabs">
+                              {business.services.map((cat) => (
+                                <button key={cat.id} type="button" className={`vd-tab ${selectedCategory === cat.id ? 'on' : ''}`} onClick={() => setSelectedCategory(cat.id)}>
+                                  {cat.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="vd-svc-list">
+                              {activeCategory?.items.map((item, idx) => (
+                                <div className="vd-svc-row" key={`${activeCategory.id}-${item.name}`}>
+                                  <input type="checkbox" checked={item.enabled} onChange={(e) => updateService(activeCategory.id, idx, { enabled: e.target.checked })} />
+                                  <div>
+                                    <div className="vd-svc-name">{item.name}</div>
+                                    {item.duration ? <div className="vd-svc-dur">{item.duration}</div> : null}
+                                  </div>
+                                  <input className="vd-svc-price" type="number" inputMode="numeric" min={0} value={item.price} onChange={(e) => updateService(activeCategory.id, idx, { price: Number(e.target.value) || 0 })} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                      {turnstileSiteKey ? (
+                        <div style={{ marginBottom: 14 }}>
+                          <div className="vd-captcha-label">Human verification</div>
+                          <div className="vd-captcha">
+                            <div className="vd-captcha-inner" ref={turnstileRef} />
+                          </div>
+                          {captchaHint ? <p className="vd-captcha-hint">{captchaHint}</p> : null}
+                        </div>
+                      ) : null}
+                      {errors.length > 0 || requestError ? (
+                        <div className="vd-errors">
+                          {errors.map((e) => <div key={e} className="vd-error">{e}</div>)}
+                          {requestError ? <div className="vd-error">{requestError}</div> : null}
+                        </div>
+                      ) : null}
+                      <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
+                        {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                      </button>
+                      <p className="vd-cta-note">
+                        Talk to RingBooker in your browser using this demo setup. No phone number required.
+                      </p>
+                      <div className="vd-phone-demo-secondary">
+                        <div className="vd-phone-demo-title">Prefer to call?</div>
+                        <p className="vd-phone-demo-text">Call the demo line and speak with the AI receptionist.</p>
+                        <div className="vd-phone-demo-num-row">
+                          <span className="vd-phone-demo-num">{verticalDemoPhoneDisplay}</span>
+                          <button type="button" className="vd-phone-demo-copy" onClick={() => void copyDemoPhoneNumber()}>
+                            {demoLineCopied ? 'Copied' : 'Copy number'}
+                          </button>
+                        </div>
+                        <a className="vd-phone-demo-tel" href={verticalDemoPhoneTel}>
+                          Call demo number
+                        </a>
+                        <p className="vd-phone-demo-note">{config.phoneDemoProfileCopy}</p>
+                      </div>
+                    </div>
+                  )
+                ) : (
                 sitePhase === 'loading' ? (
                   <div className="vd-form-card vd-loading-card">
                     {siteLoadStep < IMPORT_PROGRESS_STEPS.length ? (
@@ -1725,9 +2286,10 @@ export function MarketingVerticalDemoTemplate({
                   </div>
                 </div>
                 )
+                )
               ) : (
                 /* ── STATUS VIEW ── */
-                <div>
+                <div className={isMobileDemo ? 'vd-m-live-tweak' : undefined}>
                   <div className={`vd-status-pill ${stage}`}>
                     <span className={`vd-status-dot ${stage === 'queued' || stage === 'dialing' || stage === 'live' ? 'pulse' : ''}`} />
                     {stageLabel(stage)}
@@ -1736,7 +2298,7 @@ export function MarketingVerticalDemoTemplate({
                   <h2 className="vd-status-h">
                     {stage === 'queued' || stage === 'dialing' ? 'Connecting…' :
                      stage === 'live' ? 'Your AI receptionist demo is ready' :
-                     stage === 'completed' ? `Your AI just answered as ${business.businessName || config.defaultBusinessName}` : 'Something went wrong'}
+                     stage === 'completed' ? `Your AI just answered as ${demoDisplayName}` : 'Something went wrong'}
                   </h2>
                   <p className="vd-status-body">{statusText}</p>
 
@@ -1785,20 +2347,63 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                       </div>
 
-                      <div className="vd-ai-card">
-                        <div className="vd-ai-card-head">AI captured this call</div>
-                        <div className="vd-ai-card-body">{config.smsPreview.replace(/^[^:]+:/, `${business.businessName || config.defaultBusinessName}:`)}</div>
-                        <div className="vd-trust-row">
-                          <span className="vd-trust-chip">✓ No missed calls</span>
-                          <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
-                          <span className="vd-trust-chip">✓ 24/7 coverage</span>
+                      {isMobileDemo ? (
+                        <>
+                          <div className="vd-m-sms-card">
+                            <strong>{demoDisplayName}:</strong>{' '}
+                            Hi Sarah! Your gel manicure on Friday at 2pm is confirmed. Reply CANCEL to reschedule anytime.
+                          </div>
+                          <div className="vd-m-cap">
+                            <div className="vd-m-cap-label">AI CAPTURED FROM THIS CALL</div>
+                            <div className="vd-m-cap-row">
+                              <span className="vd-m-found-ic" aria-hidden>👤</span>
+                              <span className="vd-m-found-k">Client</span>
+                              <span className="vd-m-found-v">Sarah M.</span>
+                            </div>
+                            <div className="vd-m-cap-row">
+                              <span className="vd-m-found-ic" aria-hidden>✂️</span>
+                              <span className="vd-m-found-k">Service</span>
+                              <span className="vd-m-found-v">Gel manicure</span>
+                            </div>
+                            <div className="vd-m-cap-row">
+                              <span className="vd-m-found-ic" aria-hidden>📅</span>
+                              <span className="vd-m-found-k">Requested</span>
+                              <span className="vd-m-found-v">Friday 2pm</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="vd-ai-card">
+                          <div className="vd-ai-card-head">AI captured this call</div>
+                          <div className="vd-ai-card-body">{config.smsPreview.replace(/^[^:]+:/, `${demoDisplayName}:`)}</div>
+                          <div className="vd-trust-row">
+                            <span className="vd-trust-chip">✓ No missed calls</span>
+                            <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
+                            <span className="vd-trust-chip">✓ 24/7 coverage</span>
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       <div className="vd-complete-cta">
                         <Link href="/pricing" className="vd-btn-primary">Start 14-Day Free Trial →</Link>
                       </div>
-                      <button type="button" className="vd-retry-link" onClick={resetDemo}>Try another scenario</button>
+                      {isMobileDemo ? (
+                        <>
+                          <div className="vd-m-trust-line">
+                            <span>✓ No charge for 14 days</span>
+                            <span>✓ Cancel anytime</span>
+                          </div>
+                          <div className="vd-m-pay-pill">
+                            <span aria-hidden>🔒</span>
+                            Card required to go live — not charged until day 15.
+                          </div>
+                          <button type="button" className="vd-m-try" onClick={resetDemo}>
+                            Try another scenario
+                          </button>
+                        </>
+                      ) : (
+                        <button type="button" className="vd-retry-link" onClick={resetDemo}>Try another scenario</button>
+                      )}
                     </>
                   ) : null}
 
@@ -1832,7 +2437,7 @@ export function MarketingVerticalDemoTemplate({
                   <span className="vd-phone-icons">● ▲ ■</span>
                 </div>
                 <div className="vd-phone-avatar" aria-hidden />
-                <div className="vd-phone-name">{business.businessName || config.defaultBusinessName}</div>
+                <div className="vd-phone-name">{demoDisplayName}</div>
                 <div className="vd-phone-subtitle">
                   {stage === 'queued' || stage === 'dialing'
                     ? 'Connecting…'

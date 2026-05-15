@@ -109,7 +109,8 @@ a{text-decoration:none;color:inherit}
 .section.tight{padding-top:64px}
 .sec-label{font-size:var(--mk-eyebrow);font-weight:600;color:#5B21B6;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px;text-align:center}
 .sec-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);text-align:center;margin-bottom:14px;max-width:22ch;margin-left:auto;margin-right:auto;text-wrap:balance}
-.sec-sub{font-size:var(--mk-section-lead);color:var(--mk-text-desc,#64748B);text-align:center;margin:0 auto 44px;line-height:var(--mk-section-lead-lh);max-width:740px;font-weight:400}
+.sec-sub{font-size:var(--mk-section-lead);color:var(--mk-text-desc,#64748B);text-align:center;margin:0 auto 0;line-height:var(--mk-section-lead-lh);max-width:740px;font-weight:400}
+.sec-trust-line{font-size:14px;color:var(--mk-text-desc,#64748B);text-align:center;margin:0.5rem auto 1.5rem;line-height:1.5;max-width:740px;font-weight:400}
 .pt-toggle{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 auto 30px;width:max-content;padding:6px;border:1px solid var(--border);border-radius:999px;background:#fff;box-shadow:var(--shadow)}
 .pt-btn{padding:10px 18px;border-radius:999px;border:none;background:transparent;font:inherit;font-size:var(--mk-btn-sm);font-weight:600;color:var(--text-gray);cursor:pointer;transition:all .2s}
 .pt-btn.on{background:var(--purple);color:#fff;box-shadow:0 6px 18px rgba(124,58,237,.28)}
@@ -125,7 +126,9 @@ a{text-decoration:none;color:inherit}
 .plan-desc{font-size:14px;color:var(--mk-text-desc,#64748B);margin-bottom:16px;line-height:1.55;font-weight:400}
 .plan-price{font-size:38px;font-weight:700;letter-spacing:-1.5px;margin-bottom:5px;color:var(--text-dark)}
 .plan-price-custom{font-size:30px;letter-spacing:-1px}
-.plan-price span{font-size:var(--mk-body);font-weight:500;color:var(--text-gray);letter-spacing:0}
+.plan-price .plan-price-period{font-size:var(--mk-body);font-weight:500;color:var(--text-gray);letter-spacing:0}
+.plan-price .plan-price-billed{display:block;font-size:13px;font-weight:500;color:var(--mk-text-desc,#64748B);letter-spacing:0;line-height:1.45;margin-top:4px}
+.plan-cta-subnote{font-size:12px;color:var(--mk-text-desc,#64748B);text-align:center;margin:8px 0 0;font-weight:400;line-height:1.45}
 .plan-div{height:1px;background:var(--border);margin:16px 0}
 .plan-feats{list-style:none;display:flex;flex-direction:column;gap:9px;flex:1;margin-bottom:22px}
 .plan-feats li{display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#475569;line-height:1.45;font-weight:400}
@@ -217,7 +220,8 @@ a{text-decoration:none;color:inherit}
   .hero-actions{flex-direction:column;align-items:stretch}
   .btn-demo-live,.btn-trial-soft,.btn-dark,.btn-outline{width:100%}
   .section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
-  .sec-sub{margin-bottom:32px}
+  .sec-sub{margin-bottom:0}
+  .sec-trust-line{font-size:13px}
   .plan{padding:22px 18px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
   .plan:hover{transform:none;box-shadow:0 1px 2px rgba(17,24,39,.04)}
   .plan.star,.plan.star:hover{box-shadow:0 0 0 1px rgba(139,92,246,.08)}
@@ -240,8 +244,12 @@ const scripts: string[] = [
     const monthly = mode === 'monthly';
     monthlyButton.classList.toggle('on', monthly);
     annualButton.classList.toggle('on', !monthly);
-    starterPrice.innerHTML = monthly ? '$79 <span>/ month</span>' : '$63 <span>/ month</span>';
-    proPrice.innerHTML = monthly ? '$149 <span>/ month</span>' : '$119 <span>/ month</span>';
+    starterPrice.innerHTML = monthly
+      ? '$79<span class="plan-price-period">/ month</span>'
+      : '$63<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $758/year</span>';
+    proPrice.innerHTML = monthly
+      ? '$149<span class="plan-price-period">/ month</span>'
+      : '$119<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $1,428/year</span>';
   };
 
   monthlyButton.addEventListener('click', () => setMode('monthly'));
@@ -304,11 +312,12 @@ const plans = [
     name: 'Custom',
     kicker: 'Advanced setup',
     icon: '🏬',
-    description: 'Custom is for multi-location teams, higher volume, and custom routing.',
+    description: 'Multi-location setup, custom routing, and higher call volume — built around your operation.',
     priceId: undefined,
-    price: 'Let’s talk',
+    price: 'For multiple locations or high volume',
     note: 'Best when you need implementation planning before rollout.',
-    cta: 'Talk to us',
+    cta: 'Book a 15-min call →',
+    ctaSubnote: 'Usually responds within 1 business day',
     href: '/contact?intent=enterprise&source=pricing_custom',
     featured: false,
     benefits: [
@@ -430,10 +439,13 @@ export function MarketingPricingTemplate() {
                 <p className="sec-sub">
                   From after-hours coverage to follow-up and multi-location routing — each plan adds more control.
                 </p>
+                <p className="sec-trust-line">
+                  No contract · Keep your current number · Cancel before day 15, pay nothing
+                </p>
                 <div className="pt-toggle">
                   <button className="pt-btn on" id="pricing-tog-m" type="button">Monthly</button>
                   <button className="pt-btn" id="pricing-tog-a" type="button">Annual</button>
-                  <span className="pt-save">Save 20%</span>
+                  <span className="pt-save">Save up to $358/year</span>
                 </div>
 
                 <div className="plan-grid">
@@ -442,7 +454,16 @@ export function MarketingPricingTemplate() {
                       {plan.featured ? <div className="plan-badge">Most popular</div> : null}
                       <div className="plan-name">{plan.name}</div>
                       <div className="plan-desc">{plan.description}</div>
-                      <div className={`plan-price ${plan.priceId ? '' : 'plan-price-custom'}`} id={plan.priceId}>{plan.price} {plan.priceId ? <span>/ month</span> : <span>/ contact us</span>}</div>
+                      <div className={`plan-price ${plan.priceId ? '' : 'plan-price-custom'}`} id={plan.priceId}>
+                        {plan.priceId ? (
+                          <>
+                            {plan.price}
+                            <span className="plan-price-period">/ month</span>
+                          </>
+                        ) : (
+                          plan.price
+                        )}
+                      </div>
                       <div className="plan-div" />
                       <ul className="plan-feats">
                         {plan.benefits.map((benefit) => (
@@ -450,6 +471,9 @@ export function MarketingPricingTemplate() {
                         ))}
                       </ul>
                       <a className={`plan-btn ${plan.featured ? 'pb-dark' : 'pb-outline'}`} href={plan.href}>{plan.cta}</a>
+                      {'ctaSubnote' in plan && plan.ctaSubnote ? (
+                        <p className="plan-cta-subnote">{plan.ctaSubnote}</p>
+                      ) : null}
                     </div>
                   ))}
                 </div>
