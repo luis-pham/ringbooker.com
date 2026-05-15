@@ -14,10 +14,76 @@ import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { apiUserVisibleMessage } from '@/lib/api-user-message';
 import { DIRECT_REALTIME_DEMO_DURATION_MESSAGE, userMessageForDirectDemoRealtimeJson } from '@/lib/marketing-vertical-demo-errors';
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
+import {
+  IMPORT_PROGRESS_STEPS,
+  importProgressStepIndex,
+  importProgressDelayMessage,
+} from '@/components/user/user-onboarding-live';
 
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
 type SitePhase = 'idle' | 'loading' | 'ready' | 'error';
-type ExtractedDemoData = { businessName: string; city: string; hours: string; services: string[] };
+type DemoApiHours = Record<string, { closed: true } | { open: string; close: string }>;
+type ExtractedDemoData = { businessName: string; city: string; hours: string; services: string[]; staff: string[] };
+type DemoImportSuggestions = {
+  status?: string;
+  businessProfile?: {
+    name?: { value: string | null };
+    address?: { value: string | null };
+    phone?: { value: string | null };
+  };
+  hours?: { value: DemoApiHours | null };
+  serviceCatalog?: { services: Array<{ name: string }> };
+  staffSuggestions?: Array<{ name?: string }>;
+};
+
+function formatDemoApiHours(hours: DemoApiHours | null | undefined): string {
+  if (!hours) return '';
+  const ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const ABB: Record<string, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+  const fmtTime = (t: string) => {
+    const [hStr, mStr] = t.split(':');
+    const h = parseInt(hStr ?? '0', 10);
+    const m = parseInt(mStr ?? '0', 10);
+    if (isNaN(h)) return t;
+    const ampm = h < 12 ? 'am' : 'pm';
+    const hr = h % 12 || 12;
+    return m === 0 ? `${hr}${ampm}` : `${hr}:${String(m).padStart(2, '0')}${ampm}`;
+  };
+  const parts: string[] = [];
+  let rangeStart: string | null = null;
+  let rangePrev: string | null = null;
+  let rangeTime: string | null = null;
+  const flush = () => {
+    if (!rangeStart) return;
+    const label = rangeStart === rangePrev
+      ? (ABB[rangeStart] ?? rangeStart)
+      : `${ABB[rangeStart] ?? rangeStart}–${ABB[rangePrev ?? rangeStart] ?? rangePrev}`;
+    if (rangeTime) parts.push(`${label} ${rangeTime}`);
+    rangeStart = null; rangePrev = null; rangeTime = null;
+  };
+  for (const day of ORDER) {
+    const entry = hours[day];
+    if (!entry || 'closed' in entry) { flush(); continue; }
+    const timeStr = `${fmtTime(entry.open)}–${fmtTime(entry.close)}`;
+    if (timeStr === rangeTime) { rangePrev = day; }
+    else { flush(); rangeStart = day; rangePrev = day; rangeTime = timeStr; }
+  }
+  flush();
+  return parts.join(', ');
+}
+
+function parseCityFromAddress(address: string): { displayCity: string; formCity: string } {
+  const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 3) {
+    const city = parts[parts.length - 2] ?? '';
+    const stateZip = (parts[parts.length - 1] ?? '').replace(/\s*\d{5}.*$/, '').trim();
+    return { displayCity: stateZip ? `${city}, ${stateZip}` : city, formCity: city };
+  }
+  if (parts.length === 2) {
+    return { displayCity: parts.join(', '), formCity: parts[0] ?? '' };
+  }
+  return { displayCity: parts[0] ?? '', formCity: parts[0] ?? '' };
+}
 
 type DemoBusinessConfig = {
   businessName: string;
@@ -405,16 +471,22 @@ const siteReadStyles: string = String.raw`
   .vd-url-divider::before,.vd-url-divider::after{content:'';flex:1;height:1px;background:#E5E7EB}
 
   /* ─── loading card ──────────────────────────────────────── */
-  .vd-loading-card{min-height:200px;display:flex;flex-direction:column;justify-content:center;padding:32px 24px}
-  .vd-load-head{font-size:16px;font-weight:900;color:#111827;margin:0 0 6px}
-  .vd-load-sub{font-size:13px;color:#6B7280;margin:0 0 24px}
-  .vd-load-steps{display:flex;flex-direction:column;gap:12px}
-  .vd-load-step{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:#9CA3AF;transition:color .3s}
+  .vd-loading-card{min-height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center}
+  .vd-spinner{width:28px;height:28px;border:3px solid color-mix(in srgb,var(--va) 20%,#E5E7EB);border-top-color:var(--va);border-radius:999px;animation:vdSpin .75s linear infinite;margin:0 auto 18px;flex-shrink:0}
+  @keyframes vdSpin{to{transform:rotate(360deg)}}
+  .vd-load-head{font-size:16px;font-weight:900;color:#111827;margin:0 0 4px}
+  .vd-load-sub{font-size:13px;color:#6B7280;margin:0 0 20px}
+  .vd-load-steps{display:flex;flex-direction:column;gap:10px;width:100%;text-align:left}
+  .vd-load-step{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700;color:#9CA3AF;transition:color .25s}
   .vd-load-step.done{color:#10B981}
   .vd-load-step.active{color:#111827}
-  .vd-load-step-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;border:2px solid #E5E7EB;background:#fff;transition:all .3s}
+  .vd-load-step-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;border:2px solid #E5E7EB;background:#fff;transition:border-color .25s,background .25s}
   .vd-load-step.done .vd-load-step-icon{background:#10B981;border-color:#10B981;color:#fff}
-  .vd-load-step.active .vd-load-step-icon{border-color:var(--va);animation:vdPulse 1s ease-in-out infinite}
+  .vd-load-step.active .vd-load-step-icon{border-color:var(--va)}
+  .vd-load-step-spinner{width:10px;height:10px;border:2px solid #D1D5DB;border-top-color:var(--va);border-radius:999px;animation:vdSpin .75s linear infinite}
+  .vd-load-delay{font-size:12px;color:#6B7280;margin-top:14px;line-height:1.5;text-align:center}
+  .vd-load-escape{background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:#9CA3AF;padding:0;margin-top:8px;display:inline-block;text-decoration:underline;text-underline-offset:2px}
+  .vd-load-escape:hover{color:#6B7280}
 
   /* ─── found card ────────────────────────────────────────── */
   .vd-found-card{border:1px solid color-mix(in srgb,var(--va) 25%,#E5E7EB);border-radius:18px;background:color-mix(in srgb,var(--va) 4%,#fff);padding:16px;margin-bottom:16px}
@@ -547,10 +619,12 @@ export function MarketingVerticalDemoTemplate({
 
   const [sitePhase, setSitePhase] = useState<SitePhase>('idle');
   const [siteLoadStep, setSiteLoadStep] = useState(0);
+  const [siteDelayMessage, setSiteDelayMessage] = useState<string | null>(null);
   const [siteUrl, setSiteUrl] = useState('');
   const [extractedData, setExtractedData] = useState<ExtractedDemoData | null>(null);
   const [siteLoadError, setSiteLoadError] = useState<string | null>(null);
   const siteLoadTimersRef = useRef<number[]>([]);
+  const siteLoadStartRef = useRef<number>(0);
 
   const [captchaHint, setCaptchaHint] = useState<string | null>(null);
   const [captchaEpoch, setCaptchaEpoch] = useState(0);
@@ -567,7 +641,7 @@ export function MarketingVerticalDemoTemplate({
   useEffect(() => () => {
     clearPollTimer();
     cleanupDirectRealtime();
-    siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
+    cancelSiteLoadTimers();
   }, []);
 
   /** When leaving the form for the live demo, remove Turnstile so the widget can mount again on return. */
@@ -656,43 +730,82 @@ export function MarketingVerticalDemoTemplate({
     return errs;
   }
 
+  function cancelSiteLoadTimers() {
+    siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
+    siteLoadTimersRef.current = [];
+  }
+
+  function exitToManualForm() {
+    cancelSiteLoadTimers();
+    setSitePhase('idle');
+    setSiteLoadStep(0);
+    setSiteDelayMessage(null);
+  }
+
   async function readWebsite() {
     const url = siteUrl.trim();
     if (!url) return;
+    cancelSiteLoadTimers();
     setSitePhase('loading');
     setSiteLoadStep(0);
     setSiteLoadError(null);
-    siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
-    siteLoadTimersRef.current = [];
-    siteLoadTimersRef.current.push(window.setTimeout(() => setSiteLoadStep(1), 3000));
-    siteLoadTimersRef.current.push(window.setTimeout(() => setSiteLoadStep(2), 7000));
-    siteLoadTimersRef.current.push(window.setTimeout(() => setSiteLoadStep(3), 12000));
+    setSiteDelayMessage(null);
+    siteLoadStartRef.current = Date.now();
+
+    // Onboarding-style checkpoint timers — same values as startImportProgressTimers()
+    const checkpoints = [1800, 4000, 6500, 8500, 20000];
+    siteLoadTimersRef.current = checkpoints.map((delay) =>
+      window.setTimeout(() => {
+        if (delay >= 20000) {
+          setSiteLoadError("We couldn't read your website.");
+          setSitePhase('error');
+          return;
+        }
+        setSiteLoadStep(importProgressStepIndex(delay));
+        setSiteDelayMessage(importProgressDelayMessage(delay));
+      }, delay),
+    );
+
     try {
       const res = await fetch('/api/backend/public/demo/import-website', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       });
-      const data = (await res.json()) as { ok: boolean; data?: ExtractedDemoData; error?: string; message?: string };
-      siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
-      siteLoadTimersRef.current = [];
-      setSiteLoadStep(3);
-      if (data.ok && data.data) {
-        setExtractedData(data.data);
-        setBusiness((cur) => ({
-          ...cur,
-          businessName: data.data!.businessName || cur.businessName,
-          city: data.data!.city || cur.city,
-          primaryHours: data.data!.hours || cur.primaryHours,
-        }));
-        window.setTimeout(() => setSitePhase('ready'), 900);
+      const data = (await res.json()) as { ok: boolean; suggestions?: DemoImportSuggestions; error?: string; message?: string };
+
+      cancelSiteLoadTimers();
+
+      if (data.ok && data.suggestions) {
+        const s = data.suggestions;
+        const businessName = s.businessProfile?.name?.value ?? '';
+        const address = s.businessProfile?.address?.value ?? '';
+        const { displayCity, formCity } = parseCityFromAddress(address);
+        const hours = formatDemoApiHours(s.hours?.value);
+        const services = (s.serviceCatalog?.services ?? []).slice(0, 12).map((sv) => sv.name);
+        const staff = (s.staffSuggestions ?? []).map((st) => st.name ?? '').filter(Boolean).slice(0, 6);
+
+        // Advance all steps to done — same as completeImportProgress()
+        setSiteLoadStep(IMPORT_PROGRESS_STEPS.length);
+        setSiteDelayMessage(null);
+
+        const elapsed = Date.now() - siteLoadStartRef.current;
+        window.setTimeout(() => {
+          setExtractedData({ businessName, city: displayCity, hours, services, staff });
+          setBusiness((cur) => ({
+            ...cur,
+            businessName: businessName || cur.businessName,
+            city: formCity || cur.city,
+            primaryHours: hours || cur.primaryHours,
+          }));
+          setSitePhase('ready');
+        }, Math.max(0, 900 - elapsed));
       } else {
         setSiteLoadError(data.message ?? 'Could not read that website. You can fill in the details manually.');
         setSitePhase('error');
       }
     } catch {
-      siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
-      siteLoadTimersRef.current = [];
+      cancelSiteLoadTimers();
       setSiteLoadError('Network error. Please try again.');
       setSitePhase('error');
     }
@@ -1345,16 +1458,33 @@ export function MarketingVerticalDemoTemplate({
               {!isActive ? (
                 sitePhase === 'loading' ? (
                   <div className="vd-form-card vd-loading-card">
-                    <p className="vd-load-head">Reading your website…</p>
+                    {siteLoadStep < IMPORT_PROGRESS_STEPS.length ? (
+                      <div className="vd-spinner" role="status" aria-label="Loading" />
+                    ) : null}
+                    <p className="vd-load-head">
+                      {IMPORT_PROGRESS_STEPS[Math.min(siteLoadStep, IMPORT_PROGRESS_STEPS.length - 1)]}
+                    </p>
                     <p className="vd-load-sub">Pulling business name, hours, and services.</p>
                     <div className="vd-load-steps">
-                      {(['Fetching your site', 'Scanning pages', 'Extracting data'] as const).map((label, i) => (
-                        <div key={label} className={`vd-load-step${siteLoadStep > i ? ' done' : siteLoadStep === i ? ' active' : ''}`}>
-                          <span className="vd-load-step-icon">{siteLoadStep > i ? '✓' : i + 1}</span>
-                          {label}
-                        </div>
-                      ))}
+                      {IMPORT_PROGRESS_STEPS.map((label, i) => {
+                        const isDone = i < siteLoadStep;
+                        const isActive = i === siteLoadStep;
+                        return (
+                          <div key={label} className={`vd-load-step${isDone ? ' done' : isActive ? ' active' : ''}`}>
+                            <span className="vd-load-step-icon">
+                              {isDone ? '✓' : isActive ? <span className="vd-load-step-spinner" aria-hidden /> : i + 1}
+                            </span>
+                            {label}
+                          </div>
+                        );
+                      })}
                     </div>
+                    {siteDelayMessage ? <p className="vd-load-delay">{siteDelayMessage}</p> : null}
+                    {siteDelayMessage ? (
+                      <button type="button" className="vd-load-escape" onClick={exitToManualForm}>
+                        Continue without website →
+                      </button>
+                    ) : null}
                   </div>
                 ) : sitePhase === 'ready' && extractedData ? (
                   <div className="vd-form-card">
@@ -1372,12 +1502,20 @@ export function MarketingVerticalDemoTemplate({
                           <span className="vd-found-val">{extractedData.city}</span>
                         </div>
                       ) : null}
-                      {extractedData.hours ? (
-                        <div className="vd-found-row">
-                          <span className="vd-found-key">Hours</span>
+                      <div className="vd-found-row">
+                        <span className="vd-found-key">Hours</span>
+                        {extractedData.hours ? (
                           <span className="vd-found-val">{extractedData.hours}</span>
-                        </div>
-                      ) : null}
+                        ) : (
+                          <input
+                            className="vd-url-input"
+                            style={{ fontSize: 13, padding: '6px 10px' }}
+                            placeholder="e.g. Mon–Sat 9am–7pm"
+                            value={business.primaryHours}
+                            onChange={(e) => setBusiness((c) => ({ ...c, primaryHours: e.target.value }))}
+                          />
+                        )}
+                      </div>
                       {extractedData.services.length > 0 ? (
                         <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                           <span className="vd-found-key">Services</span>
@@ -1388,7 +1526,17 @@ export function MarketingVerticalDemoTemplate({
                           </div>
                         </div>
                       ) : null}
-                      <button type="button" className="vd-found-edit" onClick={() => setSitePhase('idle')}>Edit details →</button>
+                      {extractedData.staff.length > 0 ? (
+                        <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                          <span className="vd-found-key">Staff</span>
+                          <div className="vd-found-chips">
+                            {extractedData.staff.map((name) => (
+                              <span key={name} className="vd-found-chip">{name}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <button type="button" className="vd-found-edit" onClick={exitToManualForm}>Edit details →</button>
                     </div>
 
                     {/* Captcha */}
