@@ -422,8 +422,8 @@ export function MarketingHowItWorksTemplate() {
                       <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                     </svg>
                   </a>
-                  <a href="/contact" className="hiw-btn-outline">
-                    Talk through setup
+                  <a href="/user/signup?plan=starter" className="hiw-btn-outline">
+                    Start 14-Day Free Trial
                   </a>
                 </div>
               </div>
@@ -579,8 +579,8 @@ export function MarketingHowItWorksTemplate() {
                       <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
                     </svg>
                   </a>
-                  <a href="/contact" className="hiw-cta-btn-ghost">
-                    Talk to us
+                  <a href="/user/signup?plan=starter" className="hiw-cta-btn-ghost">
+                    Start 14-Day Free Trial
                   </a>
                 </div>
               </div>

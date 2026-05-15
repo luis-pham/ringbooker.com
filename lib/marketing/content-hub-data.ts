@@ -301,7 +301,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     title: 'Ready to recover bookings you are losing today?',
     subtitle: 'See how RingBooker handles after-hours, overflow, and missed-call follow-up for your beauty business.',
     primary: { href: '/demo', label: 'Try a live demo call' },
-    secondary: { href: '/contact', label: 'Book a walkthrough' },
+    secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };
 
@@ -501,7 +501,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     title: 'Keep your number. Add coverage.',
     subtitle: 'Walk through forwarding options and a rollout plan that fits your desk.',
     primary: { href: '/demo', label: 'Try a live demo call' },
-    secondary: { href: '/how-it-works', label: 'How it works' },
+    secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };
 
@@ -717,7 +717,7 @@ export const worksWithHub: ContentHubPageConfig = {
     title: 'See RingBooker alongside your stack',
     subtitle: 'No rip-and-replace — start with the phone layer and expand when you are ready.',
     primary: { href: '/demo', label: 'Try a live demo call' },
-    secondary: { href: '/pricing', label: 'View pricing' },
+    secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };
 
@@ -1055,7 +1055,7 @@ export const compareHub: ContentHubPageConfig = {
     title: 'Still deciding?',
     subtitle: 'Run a live call on the demo, then compare notes with our comparison pages above.',
     primary: { href: '/demo', label: 'Try a live demo call' },
-    secondary: { href: '/contact', label: 'Talk to us' },
+    secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };
 
@@ -1289,6 +1289,6 @@ export const trustHub: ContentHubPageConfig = {
     title: 'Questions about fit and rollout?',
     subtitle: 'We will walk through scope, boundaries, and a phased plan that matches your team.',
     primary: { href: '/contact', label: 'Book a walkthrough' },
-    secondary: { href: '/faq', label: 'Read the FAQ' },
+    secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };

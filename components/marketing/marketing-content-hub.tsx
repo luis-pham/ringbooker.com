@@ -258,8 +258,8 @@ export function ContentHubHeroActionsDefault() {
       <Link href="/demo" className="btn btn-purple btn-lg">
         Try a live demo
       </Link>
-      <Link href="/how-it-works" className="btn btn-outline btn-lg">
-        How it works
+      <Link href="/user/signup?plan=starter" className="btn btn-outline btn-lg">
+        Start 14-Day Free Trial
       </Link>
     </>
   );
@@ -276,8 +276,8 @@ export function ContentHubHeroActionsHomeStyle() {
           <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
         </svg>
       </Link>
-      <Link href="/how-it-works" className="btn-outline btn-hero-trial">
-        How it works
+      <Link href="/user/signup?plan=starter" className="btn-outline btn-hero-trial">
+        Start 14-Day Free Trial
       </Link>
     </>
   );
