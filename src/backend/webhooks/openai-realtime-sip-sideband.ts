@@ -204,8 +204,10 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     // Capture completed transcript segments.
     {
       const transcript = typeof evt.transcript === 'string' ? evt.transcript.trim() : '';
+      // GA Realtime emits `response.output_audio_transcript.done`; the legacy
+      // `response.audio_transcript.done` is kept as a fallback for beta-mode sessions.
       const speaker: 'assistant' | 'caller' | null =
-        evt.type === 'response.audio_transcript.done'
+        evt.type === 'response.output_audio_transcript.done' || evt.type === 'response.audio_transcript.done'
           ? 'assistant'
           : evt.type === 'conversation.item.input_audio_transcription.completed'
             ? 'caller'

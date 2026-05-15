@@ -315,9 +315,11 @@ async function createOpenAiRealtimeClientSecret(params: {
         type: 'realtime',
         model: params.model,
         instructions: params.instructions,
-        input_audio_transcription: { model: 'whisper-1' },
         audio: {
           input: {
+            // GA Realtime schema: transcription lives under audio.input.transcription,
+            // not the legacy top-level session.input_audio_transcription.
+            transcription: { model: 'gpt-4o-mini-transcribe' },
             turn_detection: turnDetectionForSecret,
           },
           output: {

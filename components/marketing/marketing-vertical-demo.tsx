@@ -22,7 +22,7 @@ import {
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
 type SitePhase = 'idle' | 'loading' | 'ready' | 'error';
 type DemoApiHours = Record<string, { closed: true } | { open: string; close: string }>;
-type ExtractedDemoData = { businessName: string; city: string; hours: string; services: string[] };
+type ExtractedDemoData = { businessName: string; address: string; city: string; hours: string; services: string[] };
 type TranscriptTurn = { role: 'user' | 'assistant'; text: string };
 type CallExtracted = {
   callerIntent: string | null;
@@ -39,7 +39,17 @@ type DemoImportSuggestions = {
     address?: { value: string | null };
   };
   hours?: { value: DemoApiHours | null };
-  serviceCatalog?: { services: Array<{ name: string; confidence?: number; needsReview?: boolean }> };
+  serviceCatalog?: {
+    services: Array<{
+      name: string;
+      categoryName?: string | null;
+      priceAmount?: number | null;
+      durationText?: string | null;
+      durationMinutes?: number | null;
+      confidence?: number;
+      needsReview?: boolean;
+    }>;
+  };
 };
 
 /** SMS preview text driven by real extracted call data; never references a hardcoded sample booking. */
@@ -58,8 +68,16 @@ function buildPersonalizedSmsPreview(extraction: CallExtracted | null, businessN
 
 function formatDemoApiHours(hours: DemoApiHours | null | undefined): string {
   if (!hours) return '';
-  const ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  const ABB: Record<string, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+  const ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const ABB: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+  // The website-import core emits 3-letter day keys (mon/tue/...); normalize any key
+  // shape (full names, capitalized) to 3-letter so a lookup never silently misses.
+  const byDay: DemoApiHours = {};
+  for (const [k, v] of Object.entries(hours)) {
+    const short = k.trim().toLowerCase().slice(0, 3);
+    if (ORDER.includes(short)) byDay[short] = v;
+  }
+  hours = byDay;
   const fmtTime = (t: string) => {
     const [hStr, mStr] = t.split(':');
     const h = parseInt(hStr ?? '0', 10);
@@ -137,19 +155,66 @@ const NAV_SERVICE_BLOCKLIST = new Set([
   'privacy policy', 'terms', 'terms of service', 'cookie policy',
 ]);
 
+function isUsableDemoServiceName(rawName: string): string | null {
+  const name = rawName.replace(/^Add\s+/i, '').trim();
+  if (!name || name.length < 2) return null;
+  if (NAV_SERVICE_BLOCKLIST.has(name.toLowerCase())) return null;
+  if (/^shop\s+\S/i.test(name)) return null;
+  return name;
+}
+
 function filterDemoServices(services: Array<{ name: string; confidence?: number; needsReview?: boolean }>): string[] {
   return services
     // Only feed services we are confident about into the demo voice agent — a
     // low-confidence or review-flagged extraction must not be spoken as fact.
     .filter((sv) => !sv.needsReview && (sv.confidence === undefined || sv.confidence >= 0.6))
-    .map((sv) => sv.name.replace(/^Add\s+/i, '').trim())
-    .filter((name) => {
-      if (!name || name.length < 2) return false;
-      if (NAV_SERVICE_BLOCKLIST.has(name.toLowerCase())) return false;
-      // Filter "Shop X" patterns
-      if (/^shop\s+\S/i.test(name)) return false;
-      return true;
+    .map((sv) => isUsableDemoServiceName(sv.name))
+    .filter((name): name is string => name !== null);
+}
+
+/**
+ * Groups the flat imported service list into the demo's category/item shape so the
+ * voice agent answers with the salon's REAL services (and prices/durations) instead
+ * of the vertical's default sample catalog. Returns [] when nothing usable was imported.
+ */
+function buildDemoServiceCategoriesFromImport(
+  services: Array<{
+    name: string;
+    categoryName?: string | null;
+    priceAmount?: number | null;
+    durationText?: string | null;
+    durationMinutes?: number | null;
+    confidence?: number;
+    needsReview?: boolean;
+  }>,
+): DemoServiceCategory[] {
+  const byCategory = new Map<string, DemoServiceCategory>();
+  let total = 0;
+  for (const sv of services) {
+    if (total >= 40) break;
+    if (sv.needsReview || (sv.confidence !== undefined && sv.confidence < 0.6)) continue;
+    const name = isUsableDemoServiceName(sv.name);
+    if (!name) continue;
+    const label = (sv.categoryName ?? '').trim() || 'Services';
+    const id = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'services';
+    let category = byCategory.get(id);
+    if (!category) {
+      category = { id, label, items: [] };
+      byCategory.set(id, category);
+    }
+    if (category.items.some((it) => it.name.toLowerCase() === name.toLowerCase())) continue;
+    const duration =
+      (sv.durationText ?? '').trim() ||
+      (typeof sv.durationMinutes === 'number' && sv.durationMinutes > 0 ? `${sv.durationMinutes} min` : undefined);
+    category.items.push({
+      name,
+      price: typeof sv.priceAmount === 'number' && sv.priceAmount > 0 ? sv.priceAmount : 0,
+      duration,
+      enabled: true,
     });
+    total += 1;
+  }
+  return [...byCategory.values()].filter((c) => c.items.length > 0);
 }
 
 /** Mobile (≤768px) import checklist — labels differ from onboarding IMPORT_PROGRESS_STEPS on purpose. */
@@ -1055,7 +1120,9 @@ export function MarketingVerticalDemoTemplate({
         const address = s.businessProfile?.address?.value ?? '';
         const { displayCity, formCity } = parseCityFromAddress(address);
         const hours = formatDemoApiHours(s.hours?.value);
-        const services = filterDemoServices(s.serviceCatalog?.services ?? []).slice(0, 12);
+        const services = filterDemoServices(s.serviceCatalog?.services ?? []).slice(0, 40);
+        // Real categorized services for the voice agent (not just the display chips).
+        const importedServiceCategories = buildDemoServiceCategoriesFromImport(s.serviceCatalog?.services ?? []);
 
         if (isMobileDemoRef.current) {
           completeMobileImportUiSuccess();
@@ -1066,14 +1133,19 @@ export function MarketingVerticalDemoTemplate({
 
         const elapsed = Date.now() - siteLoadStartRef.current;
         window.setTimeout(() => {
-          const extractedResult: ExtractedDemoData = { businessName, city: displayCity, hours, services };
+          const extractedResult: ExtractedDemoData = { businessName, address, city: displayCity, hours, services };
           setExtractedData(extractedResult);
           setBusiness((cur) => ({
             ...cur,
             businessName: businessName || cur.businessName,
             city: formCity || cur.city,
             primaryHours: hours || cur.primaryHours,
+            // Voice agent uses the salon's real imported services; keep defaults if none found.
+            services: importedServiceCategories.length > 0 ? importedServiceCategories : cur.services,
           }));
+          if (importedServiceCategories.length > 0 && importedServiceCategories[0]) {
+            setSelectedCategory(importedServiceCategories[0].id);
+          }
           setSiteManualFallback(false);
           setSitePhase('ready');
           setMobileFoundEdit(false);
@@ -1511,27 +1583,20 @@ export function MarketingVerticalDemoTemplate({
           if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) {
             logDemoRealtime('oai_event', { type: evType });
           }
-          if (data.type === 'session.created') {
-            // Enable caller speech transcription so the post-call summary has both sides of the conversation.
-            if (dc.readyState === 'open') {
-              try {
-                dc.send(
-                  JSON.stringify({
-                    type: 'session.update',
-                    session: { input_audio_transcription: { model: 'whisper-1' } },
-                  }),
-                );
-              } catch { /* non-fatal — assistant transcript still captured */ }
-            }
-            realtimeSessionReady = true;
-            requestInitialGreeting();
-          }
-          if (data.type === 'session.updated') {
+          if (data.type === 'session.created' || data.type === 'session.updated') {
+            // Caller-speech transcription is enabled at client-secret mint time
+            // (audio.input.transcription) — no session.update needed here.
             realtimeSessionReady = true;
             requestInitialGreeting();
           }
           // Transcript capture (in-memory only, used for post-call extraction; never persisted).
-          if (data.type === 'response.audio_transcript.done' && typeof data.transcript === 'string') {
+          // GA Realtime emits `response.output_audio_transcript.done`; the legacy name is kept
+          // as a fallback so a beta-mode session still captures the assistant transcript.
+          if (
+            (data.type === 'response.output_audio_transcript.done' ||
+              data.type === 'response.audio_transcript.done') &&
+            typeof data.transcript === 'string'
+          ) {
             const text = data.transcript.trim();
             if (text) transcriptTurnsRef.current.push({ role: 'assistant', text: text.slice(0, 1000) });
           }
@@ -1913,11 +1978,13 @@ export function MarketingVerticalDemoTemplate({
                                 <span className="vd-m-found-v">{extractedData.businessName}</span>
                               </div>
                             ) : null}
-                            {extractedData.city ? (
+                            {extractedData.address || extractedData.city ? (
                               <div className="vd-m-found-row">
                                 <span className="vd-m-found-ic" aria-hidden>📍</span>
-                                <span className="vd-m-found-k">City</span>
-                                <span className="vd-m-found-v">{extractedData.city}</span>
+                                <span className="vd-m-found-k">Address</span>
+                                <span className="vd-m-found-v" style={{ fontSize: 12, fontWeight: 500 }}>
+                                  {extractedData.address || extractedData.city}
+                                </span>
                               </div>
                             ) : null}
                             <div className="vd-m-found-row">
@@ -2258,10 +2325,12 @@ export function MarketingVerticalDemoTemplate({
                           <span className="vd-found-val">{extractedData.businessName}</span>
                         </div>
                       ) : null}
-                      {extractedData.city ? (
+                      {extractedData.address || extractedData.city ? (
                         <div className="vd-found-row">
-                          <span className="vd-found-key">City</span>
-                          <span className="vd-found-val">{extractedData.city}</span>
+                          <span className="vd-found-key">Address</span>
+                          <span className="vd-found-val" style={{ fontSize: 12, fontWeight: 500, color: '#4B5563' }}>
+                            {extractedData.address || extractedData.city}
+                          </span>
                         </div>
                       ) : null}
                       <div className="vd-found-row">
