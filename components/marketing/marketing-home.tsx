@@ -1012,7 +1012,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 }
 @media(max-width:768px){
   .legacy-marketing .save-tag{
-    font-size:12px !important;
+    font-size:11px !important;
     padding:10px 12px;
     line-height:1;
     letter-spacing:.02em;
