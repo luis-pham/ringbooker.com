@@ -23,6 +23,15 @@ type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed'
 type SitePhase = 'idle' | 'loading' | 'ready' | 'error';
 type DemoApiHours = Record<string, { closed: true } | { open: string; close: string }>;
 type ExtractedDemoData = { businessName: string; city: string; hours: string; services: string[] };
+type TranscriptTurn = { role: 'user' | 'assistant'; text: string };
+type CallExtracted = {
+  callerIntent: string | null;
+  serviceRequested: string | null;
+  requestedTime: string | null;
+  callerName: string | null;
+  additionalNotes: string | null;
+  hasRealData: boolean;
+};
 type DemoImportSuggestions = {
   status?: string;
   businessProfile?: {
@@ -30,8 +39,22 @@ type DemoImportSuggestions = {
     address?: { value: string | null };
   };
   hours?: { value: DemoApiHours | null };
-  serviceCatalog?: { services: Array<{ name: string }> };
+  serviceCatalog?: { services: Array<{ name: string; confidence?: number; needsReview?: boolean }> };
 };
+
+/** SMS preview text driven by real extracted call data; never references a hardcoded sample booking. */
+function buildPersonalizedSmsPreview(extraction: CallExtracted | null, businessName: string): string {
+  if (extraction?.hasRealData) {
+    const { serviceRequested, requestedTime } = extraction;
+    if (serviceRequested && requestedTime) {
+      return `${businessName}: Hi! Your ${serviceRequested} on ${requestedTime} has been noted. We'll confirm shortly.`;
+    }
+    if (serviceRequested) {
+      return `${businessName}: Hi! Your ${serviceRequested} request has been noted. We'll confirm your appointment shortly.`;
+    }
+  }
+  return `${businessName}: Thanks for calling! We captured your request and will follow up to confirm your appointment.`;
+}
 
 function formatDemoApiHours(hours: DemoApiHours | null | undefined): string {
   if (!hours) return '';
@@ -114,8 +137,11 @@ const NAV_SERVICE_BLOCKLIST = new Set([
   'privacy policy', 'terms', 'terms of service', 'cookie policy',
 ]);
 
-function filterDemoServices(services: Array<{ name: string }>): string[] {
+function filterDemoServices(services: Array<{ name: string; confidence?: number; needsReview?: boolean }>): string[] {
   return services
+    // Only feed services we are confident about into the demo voice agent — a
+    // low-confidence or review-flagged extraction must not be spoken as fact.
+    .filter((sv) => !sv.needsReview && (sv.confidence === undefined || sv.confidence >= 0.6))
     .map((sv) => sv.name.replace(/^Add\s+/i, '').trim())
     .filter((name) => {
       if (!name || name.length < 2) return false;
@@ -595,7 +621,6 @@ const siteReadStyles: string = String.raw`
 /** Mobile-only (≤768px). Desktop uses existing rules from `styles` / `siteReadStyles`. */
 const verticalDemoMobileStyles = String.raw`
 @media (max-width:768px){
-  .vd-m-page-sub{margin:0 0 14px;font-size:15px;line-height:1.55;color:#64748B;font-weight:500;text-align:center}
   .vd-m-card{border:2px solid var(--va);border-radius:20px;background:#fff;padding:18px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
   .vd-m-card-title{margin:0 0 6px;font-size:15px;font-weight:900;color:#111827;letter-spacing:-.02em}
   .vd-m-card-sub{margin:0 0 12px;font-size:13px;color:#64748B;line-height:1.5}
@@ -753,6 +778,13 @@ export function MarketingVerticalDemoTemplate({
   const directDurationTimerStartedRef = useRef(false);
   const directPeerFailureMutedRef = useRef(false);
   const demoStartLockRef = useRef(false);
+  const transcriptTurnsRef = useRef<TranscriptTurn[]>([]);
+  const suggestionsLoadedRef = useRef(false);
+
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[] | null>(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [callExtracted, setCallExtracted] = useState<CallExtracted | null>(null);
+  const [callExtracting, setCallExtracting] = useState(false);
 
   const [sitePhase, setSitePhase] = useState<SitePhase>('idle');
   const [siteLoadStep, setSiteLoadStep] = useState(0);
@@ -792,8 +824,10 @@ export function MarketingVerticalDemoTemplate({
     [business.services, selectedCategory],
   );
 
-  const visiblePrompts = showAllPrompts ? config.tryAsking : config.tryAsking.slice(0, 4);
-  const hiddenCount = Math.max(0, config.tryAsking.length - 4);
+  // Personalized AI questions when available; otherwise the static per-vertical defaults.
+  const activePrompts = suggestedQuestions ?? config.tryAsking;
+  const visiblePrompts = showAllPrompts ? activePrompts : activePrompts.slice(0, 4);
+  const hiddenCount = Math.max(0, activePrompts.length - 4);
   const isSubmitting = stage === 'queued' || stage === 'dialing' || stage === 'live';
   const isActive = stage !== 'idle';
   useEffect(() => () => {
@@ -1031,7 +1065,8 @@ export function MarketingVerticalDemoTemplate({
 
         const elapsed = Date.now() - siteLoadStartRef.current;
         window.setTimeout(() => {
-          setExtractedData({ businessName, city: displayCity, hours, services });
+          const extractedResult: ExtractedDemoData = { businessName, city: displayCity, hours, services };
+          setExtractedData(extractedResult);
           setBusiness((cur) => ({
             ...cur,
             businessName: businessName || cur.businessName,
@@ -1041,6 +1076,8 @@ export function MarketingVerticalDemoTemplate({
           setSiteManualFallback(false);
           setSitePhase('ready');
           setMobileFoundEdit(false);
+          // Pre-generate personalized questions once the website read succeeds with real services.
+          if (services.length > 0) void fetchSuggestedQuestions(extractedResult);
         }, Math.max(0, 900 - elapsed));
       } else {
         setSiteLoadError(data.message ?? 'Could not read that website. You can fill in the details manually.');
@@ -1208,7 +1245,15 @@ export function MarketingVerticalDemoTemplate({
     requestId: string,
     endReason: 'completed' | 'timeout' = 'completed',
   ) {
-    void fetch('/api/backend/public/demo/realtime-session/release', {
+    const url = '/api/backend/public/demo/realtime-session/release';
+    const payload = JSON.stringify({ requestId, endReason });
+    // sendBeacon is more reliable during page unload (tab close, navigation away).
+    // Use a Blob to preserve application/json so the server-side body parser works.
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      const sent = navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+      if (sent) return;
+    }
+    void fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1216,7 +1261,7 @@ export function MarketingVerticalDemoTemplate({
           ? { Origin: window.location.origin }
           : {}),
       },
-      body: JSON.stringify({ requestId, endReason }),
+      body: payload,
     }).catch(() => {
       /* ignore */
     });
@@ -1459,14 +1504,39 @@ export function MarketingVerticalDemoTemplate({
           const data = JSON.parse(String(event.data)) as {
             error?: { message?: string; code?: string; type?: string };
             type?: string;
+            transcript?: string;
           };
           const evType = data.type;
           if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) {
             logDemoRealtime('oai_event', { type: evType });
           }
-          if (data.type === 'session.created' || data.type === 'session.updated') {
+          if (data.type === 'session.created') {
+            // Enable caller speech transcription so the post-call summary has both sides of the conversation.
+            if (dc.readyState === 'open') {
+              try {
+                dc.send(
+                  JSON.stringify({
+                    type: 'session.update',
+                    session: { input_audio_transcription: { model: 'whisper-1' } },
+                  }),
+                );
+              } catch { /* non-fatal — assistant transcript still captured */ }
+            }
             realtimeSessionReady = true;
             requestInitialGreeting();
+          }
+          if (data.type === 'session.updated') {
+            realtimeSessionReady = true;
+            requestInitialGreeting();
+          }
+          // Transcript capture (in-memory only, used for post-call extraction; never persisted).
+          if (data.type === 'response.audio_transcript.done' && typeof data.transcript === 'string') {
+            const text = data.transcript.trim();
+            if (text) transcriptTurnsRef.current.push({ role: 'assistant', text: text.slice(0, 1000) });
+          }
+          if (data.type === 'conversation.item.input_audio_transcription.completed' && typeof data.transcript === 'string') {
+            const text = data.transcript.trim();
+            if (text) transcriptTurnsRef.current.push({ role: 'user', text: text.slice(0, 1000) });
           }
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
           if (data.type === 'response.done' || data.type === 'output_audio_buffer.stopped') {
@@ -1619,13 +1689,94 @@ export function MarketingVerticalDemoTemplate({
     try { await navigator.clipboard.writeText(prompt); setCopied(prompt); window.setTimeout(() => setCopied(null), 1600); } catch { /* ignore */ }
   }
 
+  /**
+   * Personalized suggested questions — generated from real website-read salon data.
+   * Called once per session after website import succeeds with a non-empty services list.
+   * Falls back silently to the static `config.tryAsking` defaults on any error/timeout.
+   */
+  async function fetchSuggestedQuestions(extracted: ExtractedDemoData) {
+    if (suggestionsLoadedRef.current) return;
+    if (!extracted.services.length) return;
+    suggestionsLoadedRef.current = true;
+    setSuggestionsLoading(true);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 3000);
+    try {
+      const res = await fetch('/api/backend/public/demo/suggested-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: business.businessName.trim() || config.defaultBusinessName,
+          vertical: config.slug,
+          services: extracted.services.slice(0, 40),
+          hours: extracted.hours || business.primaryHours || undefined,
+          city: extracted.city || business.city || undefined,
+          sessionId: ensureSessionId(),
+        }),
+        signal: controller.signal,
+      });
+      const data = (await res.json()) as { ok?: boolean; questions?: Array<{ id: string; text: string }> | null; source?: string };
+      if (data.ok && Array.isArray(data.questions) && data.questions.length > 0) {
+        const texts = data.questions.map((q) => q.text).filter((t) => typeof t === 'string' && t.trim());
+        if (texts.length > 0) setSuggestedQuestions(texts);
+      }
+    } catch {
+      /* timeout or network — keep defaults silently */
+    } finally {
+      window.clearTimeout(timeoutId);
+      setSuggestionsLoading(false);
+    }
+  }
+
+  /**
+   * Post-call extraction — sends the captured browser transcript to gpt-4o-mini for structured data.
+   * Transcript is processed in-memory only (never persisted client-side beyond this call).
+   * On error/timeout (>5s) `callExtracted` stays null so the UI shows the description card (State C).
+   */
+  async function extractCallData(turns: TranscriptTurn[]) {
+    if (turns.length < 2) return;
+    setCallExtracting(true);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 5000);
+    try {
+      const res = await fetch('/api/backend/public/demo/extract-call-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: turns.slice(0, 80),
+          vertical: config.slug,
+          businessName: business.businessName.trim() || config.defaultBusinessName,
+          sessionId: ensureSessionId(),
+        }),
+        signal: controller.signal,
+      });
+      const data = (await res.json()) as {
+        ok?: boolean;
+        extracted?: Omit<CallExtracted, 'hasRealData'> | null;
+        hasRealData?: boolean;
+      };
+      if (data.ok && data.extracted) {
+        setCallExtracted({ ...data.extracted, hasRealData: Boolean(data.hasRealData) });
+      }
+      /* extracted == null → leave callExtracted null → State C description card */
+    } catch {
+      /* timeout or network — leave null → State C */
+    } finally {
+      window.clearTimeout(timeoutId);
+      setCallExtracting(false);
+    }
+  }
+
   function endDirectDemo() {
     directPeerFailureMutedRef.current = true;
+    const turns = transcriptTurnsRef.current.slice();
+    transcriptTurnsRef.current = [];
     cleanupDirectRealtime();
     resetTurnstile();
     setStage('completed');
     setRequestError(null);
     setStatusText('Session ended. Here\'s what a follow-up SMS could look like.');
+    if (turns.length >= 2) void extractCallData(turns);
   }
 
   function endWebDemoFromPhone() {
@@ -1660,6 +1811,9 @@ export function MarketingVerticalDemoTemplate({
     setMobileFoundEdit(false);
     resetMobileImportUi();
     setSitePhase(extractedData ? 'ready' : 'idle');
+    transcriptTurnsRef.current = [];
+    setCallExtracted(null);
+    setCallExtracting(false);
   }
 
   const verticalLabel = config.businessType.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -1946,7 +2100,6 @@ export function MarketingVerticalDemoTemplate({
                     </div>
                   ) : (
                     <div>
-                      <p className="vd-m-page-sub">{config.subtitle}</p>
                       <div className="vd-m-card">
                         <h3 className="vd-m-card-title">Try with your real {config.businessType.replace(/-/g, ' ')}</h3>
                         <p className="vd-m-card-sub">Paste your website — we&apos;ll personalise the demo automatically.</p>
@@ -2306,15 +2459,25 @@ export function MarketingVerticalDemoTemplate({
                     <>
                       <div className="vd-wave"><span /><span /><span /><span /><span /></div>
                       <div className="vd-prompts-head">Say one of these</div>
-                      <div className="vd-prompts">
-                        {visiblePrompts.map((p) => (
-                          <button key={p} type="button" className="vd-prompt" onClick={() => void copyPrompt(p)}>
-                            <span>"{p}"</span>
-                            <span className="vd-prompt-copy">Copy</span>
-                          </button>
-                        ))}
-                      </div>
-                      {hiddenCount > 0 ? (
+                      {suggestionsLoading ? (
+                        <div className="vd-prompts">
+                          {[0, 1, 2, 3].map((i) => (
+                            <div key={i} className="vd-prompt" style={{ opacity: 0.45, pointerEvents: 'none' }}>
+                              <span>Preparing your demo…</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="vd-prompts">
+                          {visiblePrompts.map((p) => (
+                            <button key={p} type="button" className="vd-prompt" onClick={() => void copyPrompt(p)}>
+                              <span>"{p}"</span>
+                              <span className="vd-prompt-copy">Copy</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      {!suggestionsLoading && hiddenCount > 0 ? (
                         <button type="button" className="vd-prompt-more" onClick={() => setShowAllPrompts((v) => !v)}>
                           {showAllPrompts ? 'Show fewer' : `+${hiddenCount} more`}
                         </button>
@@ -2351,31 +2514,93 @@ export function MarketingVerticalDemoTemplate({
                         <>
                           <div className="vd-m-sms-card">
                             <strong>{demoDisplayName}:</strong>{' '}
-                            Hi Sarah! Your gel manicure on Friday at 2pm is confirmed. Reply CANCEL to reschedule anytime.
+                            {buildPersonalizedSmsPreview(callExtracted, demoDisplayName).replace(/^[^:]+:\s*/, '')}
                           </div>
                           <div className="vd-m-cap">
                             <div className="vd-m-cap-label">AI CAPTURED FROM THIS CALL</div>
-                            <div className="vd-m-cap-row">
-                              <span className="vd-m-found-ic" aria-hidden>👤</span>
-                              <span className="vd-m-found-k">Client</span>
-                              <span className="vd-m-found-v">Sarah M.</span>
-                            </div>
-                            <div className="vd-m-cap-row">
-                              <span className="vd-m-found-ic" aria-hidden>✂️</span>
-                              <span className="vd-m-found-k">Service</span>
-                              <span className="vd-m-found-v">Gel manicure</span>
-                            </div>
-                            <div className="vd-m-cap-row">
-                              <span className="vd-m-found-ic" aria-hidden>📅</span>
-                              <span className="vd-m-found-k">Requested</span>
-                              <span className="vd-m-found-v">Friday 2pm</span>
-                            </div>
+                            {callExtracting ? (
+                              <div className="vd-m-cap-row">
+                                <span className="vd-m-found-k" style={{ opacity: 0.6 }}>Capturing call details…</span>
+                              </div>
+                            ) : callExtracted?.hasRealData ? (
+                              <>
+                                {callExtracted.callerName ? (
+                                  <div className="vd-m-cap-row">
+                                    <span className="vd-m-found-ic" aria-hidden>👤</span>
+                                    <span className="vd-m-found-k">Client</span>
+                                    <span className="vd-m-found-v">{callExtracted.callerName}</span>
+                                  </div>
+                                ) : null}
+                                {callExtracted.serviceRequested ? (
+                                  <div className="vd-m-cap-row">
+                                    <span className="vd-m-found-ic" aria-hidden>✂️</span>
+                                    <span className="vd-m-found-k">Service</span>
+                                    <span className="vd-m-found-v">{callExtracted.serviceRequested}</span>
+                                  </div>
+                                ) : null}
+                                {callExtracted.requestedTime ? (
+                                  <div className="vd-m-cap-row">
+                                    <span className="vd-m-found-ic" aria-hidden>📅</span>
+                                    <span className="vd-m-found-k">Requested</span>
+                                    <span className="vd-m-found-v">{callExtracted.requestedTime}</span>
+                                  </div>
+                                ) : null}
+                              </>
+                            ) : callExtracted ? (
+                              <div className="vd-m-cap-row">
+                                <span className="vd-m-found-k" style={{ opacity: 0.75 }}>
+                                  No specific booking request captured in this demo. In a real call, RingBooker captures
+                                  the client name, service, and requested time.
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="vd-m-cap-row">
+                                <span className="vd-m-found-k" style={{ opacity: 0.75 }}>
+                                  In a real call, RingBooker captures the client&apos;s name, the service they want, their
+                                  preferred time, and sends an instant SMS summary.
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </>
-                      ) : (
+                      ) : callExtracting ? (
                         <div className="vd-ai-card">
                           <div className="vd-ai-card-head">AI captured this call</div>
-                          <div className="vd-ai-card-body">{config.smsPreview.replace(/^[^:]+:/, `${demoDisplayName}:`)}</div>
+                          <div className="vd-ai-card-body" style={{ opacity: 0.6 }}>Capturing details from your call…</div>
+                        </div>
+                      ) : callExtracted?.hasRealData ? (
+                        <div className="vd-ai-card">
+                          <div className="vd-ai-card-head">AI captured this call</div>
+                          <div className="vd-ai-card-body">{buildPersonalizedSmsPreview(callExtracted, demoDisplayName)}</div>
+                          <div className="vd-trust-row">
+                            <span className="vd-trust-chip">✓ No missed calls</span>
+                            <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
+                            <span className="vd-trust-chip">✓ 24/7 coverage</span>
+                          </div>
+                        </div>
+                      ) : callExtracted ? (
+                        <div className="vd-ai-card">
+                          <div className="vd-ai-card-head">AI captured this call</div>
+                          <div className="vd-ai-card-body">
+                            No specific booking request captured in this demo.
+                            <br />
+                            <span style={{ fontSize: 12, opacity: 0.7 }}>
+                              In a real call, RingBooker captures client name, service, requested time, and sends an SMS summary.
+                            </span>
+                          </div>
+                          <div className="vd-trust-row">
+                            <span className="vd-trust-chip">✓ No missed calls</span>
+                            <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
+                            <span className="vd-trust-chip">✓ 24/7 coverage</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="vd-ai-card">
+                          <div className="vd-ai-card-head">What RingBooker captures</div>
+                          <div className="vd-ai-card-body">
+                            In a real call, RingBooker captures the client&apos;s name, the service they want, their preferred
+                            time, and sends an instant SMS summary — all without your team picking up the phone.
+                          </div>
                           <div className="vd-trust-row">
                             <span className="vd-trust-chip">✓ No missed calls</span>
                             <span className="vd-trust-chip">✓ Auto follow-up SMS</span>

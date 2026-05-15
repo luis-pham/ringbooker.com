@@ -129,11 +129,15 @@ a{text-decoration:none;color:inherit}
 .hiw-list{list-style:none;display:grid;gap:10px;margin-top:16px}
 .hiw-list li{display:flex;gap:10px;font-size:var(--mk-body);color:#374151;line-height:1.55}
 .hiw-list li::before{content:"✓";width:20px;height:20px;color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;background:transparent;border:none;box-shadow:none}
-/* 3-step flow — hub-style cards: fixed column width (shorter lines), taller min-height */
+/* 3-step flow — full container width on desktop (matches setup / handle grids) */
 .hiw-grid-3.hiw-flow{
   gap:24px;
-  grid-template-columns:repeat(3,minmax(0,248px));
-  justify-content:center;
+}
+@media(min-width:961px){
+  .hiw-grid-3.hiw-flow{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    width:100%;
+  }
 }
 .hiw-grid-3.hiw-flow .hiw-step{
   position:relative;

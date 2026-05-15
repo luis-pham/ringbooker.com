@@ -35,6 +35,7 @@ import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commerc
 import { canProceedToGoLive, evaluateKnowledgeGate } from '@/src/backend/domain/go-live-gate';
 import { mergeImportedServicesIntoCatalog } from '@/src/backend/domain/service-catalog';
 import { importWebsiteForOnboarding } from '@/src/backend/services/website-import/importer';
+import { importWebsiteWithCache } from '@/src/backend/services/website-import/cache';
 import { buildApplyPatchForSuggestions, pendingSuggestionsFromImport, secondarySummary, validateSuggestionPayload } from '@/src/backend/domain/business-knowledge-suggestions';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import { startOrReuseForwardingTestSession } from '@/src/backend/services/go-live/start-forwarding-test-session';
@@ -84,7 +85,7 @@ import type {
   VoiceCallLegsRepository,
   CustomersRepository,
 } from '@/src/backend/ports/repositories';
-import type { WebDemoSessionStatus, WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
+import type { WebDemoSessionAdminRecord, WebDemoSessionStatus, WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import { createNoCardTrialForShop } from '@/src/backend/services/billing/no-card-trial';
 import { buildAdminShopStatus } from '@/src/backend/services/admin/admin-shop-status';
@@ -314,6 +315,7 @@ async function createOpenAiRealtimeClientSecret(params: {
         type: 'realtime',
         model: params.model,
         instructions: params.instructions,
+        input_audio_transcription: { model: 'whisper-1' },
         audio: {
           input: {
             turn_detection: turnDetectionForSecret,
@@ -2283,7 +2285,7 @@ function unifiedWebDemoRowMatchesFilters(
 }
 
 const adminDashboardChartPeriodSchema = z.enum(['today', 'week', 'month', 'year']);
-const adminDashboardChartMetricSchema = z.enum(['demo-calls', 'leads', 'shops', 'calls']);
+const adminDashboardChartMetricSchema = z.enum(['demo-calls', 'leads', 'shops', 'calls', 'web-demos']);
 
 function buildAdminCallChartDaily(calls: Array<{ startedAt?: string }>): Array<{ day: string; count: number }> {
   const map = new Map<string, number>();
@@ -3142,7 +3144,7 @@ export function createBackendApp(deps: {
 
       const requestId = `demo-direct-${randomUUID()}`;
       const ttlMs = directDemoActiveTtlMs();
-      if (!tryOccupyDirectDemoActiveSlot(ip, requestId, ttlMs)) {
+      if (!await tryOccupyDirectDemoActiveSlot(ip, requestId, ttlMs)) {
         if (deps.webDemoSessionsRepository) {
           try {
             await deps.webDemoSessionsRepository.insertRateLimited({
@@ -3383,7 +3385,7 @@ export function createBackendApp(deps: {
     }
 
     const ip = getClientIp({ get: (name: string) => c.req.header(name) ?? null });
-    const released = releaseDirectDemoActiveSlot(ip, releaseParsed.data.requestId);
+    const released = await releaseDirectDemoActiveSlot(ip, releaseParsed.data.requestId);
     if (!released) {
       return c.json(
         {
@@ -3850,18 +3852,230 @@ export function createBackendApp(deps: {
 
     try {
       const env = getEnv();
-      const result = await importWebsiteForOnboarding({ url: parsed.data.url }, {
-        googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
-        llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
-        openAiApiKey: env.OPENAI_API_KEY,
-        llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
-        llmMaxTokens: env.WEBSITE_IMPORT_LLM_MAX_TOKENS,
-        maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
-      });
+      const result = await importWebsiteWithCache({ url: parsed.data.url }, () =>
+        importWebsiteForOnboarding({ url: parsed.data.url }, {
+          googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
+          llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
+          openAiApiKey: env.OPENAI_API_KEY,
+          llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
+          llmMaxTokens: env.WEBSITE_IMPORT_LLM_MAX_TOKENS,
+          maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
+          renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
+          renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
+          // Public demo is interactive — keep it snappy and well under the client timeout.
+          deadlineMs: 15_000,
+        }),
+      );
       return c.json({ ok: result.ok, suggestions: result.suggestions });
     } catch (err) {
       logger.warn({ err }, 'public_demo_import_website_failed');
       return c.json({ ok: false, error: 'import_failed', message: 'Could not read that website. You can fill in the details manually.' }, 200);
+    }
+  });
+
+  // Cost estimate: ~$0.001 per call (gpt-4o-mini, ~150 output tokens)
+  // At 1,000 demo sessions/month = ~$1/month; at 10,000 = ~$10/month
+  app.post(path('/public/demo/suggested-questions'), async (c) => {
+    const ip = getClientIp({ get: (n: string) => c.req.header(n) ?? null });
+    const ipLimited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_suggested_questions_ip, ip);
+    if (ipLimited) {
+      return c.json({ ok: true, questions: null, source: 'default' });
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = z.object({
+      businessName: z.string().max(120),
+      vertical: z.string().max(60),
+      services: z.array(z.string().max(80)).max(40),
+      hours: z.string().max(200).optional(),
+      city: z.string().max(100).optional(),
+      sessionId: z.string().max(80).optional(),
+    }).safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    if (parsed.data.sessionId) {
+      const sessLimited = await enforceRateLimit(
+        c,
+        RATE_LIMIT_POLICIES.public_demo_suggested_questions_session,
+        `sugq:${parsed.data.sessionId}`,
+      );
+      if (sessLimited) return c.json({ ok: true, questions: null, source: 'default' });
+    }
+
+    if (!parsed.data.services.length) {
+      return c.json({ ok: true, questions: null, source: 'default' });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      logger.warn('demo_suggested_questions_no_openai_key');
+      return c.json({ ok: true, questions: null, source: 'default' });
+    }
+
+    const t0 = Date.now();
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 200,
+          temperature: 0.7,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are generating realistic sample caller questions for a voice AI demo for a beauty salon. ' +
+                'Generate exactly 4 questions a real caller might ask this specific salon over the phone. ' +
+                'Rules: use the actual service names provided — do not invent services; ' +
+                'questions must be natural spoken language, not formal; ' +
+                'mix question types: pricing, availability, booking, info; ' +
+                'keep each question under 12 words; ' +
+                'do not repeat the same question type twice. ' +
+                'Return JSON only: { "questions": ["q1", "q2", "q3", "q4"] }',
+            },
+            {
+              role: 'user',
+              content: [
+                `Salon: ${parsed.data.businessName}`,
+                parsed.data.city ? `Location: ${parsed.data.city}` : '',
+                `Vertical: ${parsed.data.vertical}`,
+                `Services offered: ${parsed.data.services.slice(0, 20).join(', ')}`,
+                parsed.data.hours ? `Hours: ${parsed.data.hours}` : '',
+                '',
+                'Generate 4 realistic caller questions for this salon.',
+              ].filter(Boolean).join('\n'),
+            },
+          ],
+        }),
+      });
+
+      const elapsed = Date.now() - t0;
+      const data = res.ok ? ((await res.json().catch(() => null)) as { choices?: Array<{ message?: { content?: string } }> } | null) : null;
+      const content = data?.choices?.[0]?.message?.content?.trim() ?? '';
+      let questions: string[] | null = null;
+      try {
+        const parsed2 = JSON.parse(content) as { questions?: unknown };
+        if (Array.isArray(parsed2.questions) && parsed2.questions.length > 0) {
+          questions = (parsed2.questions as unknown[])
+            .filter((q): q is string => typeof q === 'string' && q.trim().length > 0)
+            .slice(0, 5);
+        }
+      } catch { /* fall through to default */ }
+
+      logger.info({
+        vertical: parsed.data.vertical,
+        servicesCount: parsed.data.services.length,
+        elapsedMs: elapsed,
+        fallback: questions === null,
+      }, 'demo_suggested_questions_generated');
+
+      if (!questions?.length) return c.json({ ok: true, questions: null, source: 'default' });
+      return c.json({ ok: true, questions: questions.map((text, i) => ({ id: `q${i}`, text })), source: 'ai' });
+    } catch (err) {
+      logger.warn({ err, elapsedMs: Date.now() - t0 }, 'demo_suggested_questions_failed');
+      return c.json({ ok: true, questions: null, source: 'default' });
+    }
+  });
+
+  // Cost estimate: ~$0.001 per call (gpt-4o-mini, ~100 output tokens)
+  // At 1,000 demo sessions/month = ~$1/month; at 10,000 = ~$10/month
+  app.post(path('/public/demo/extract-call-summary'), async (c) => {
+    const ip = getClientIp({ get: (n: string) => c.req.header(n) ?? null });
+    const ipLimited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_extract_call_ip, ip);
+    if (ipLimited) return c.json({ ok: true, hasRealData: false });
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = z.object({
+      transcript: z.array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(1000) })).max(80),
+      vertical: z.string().max(60),
+      businessName: z.string().max(120),
+      sessionId: z.string().max(80).optional(),
+    }).safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    if (parsed.data.sessionId) {
+      const sessLimited = await enforceRateLimit(
+        c,
+        RATE_LIMIT_POLICIES.public_demo_extract_call_session,
+        `extract:${parsed.data.sessionId}`,
+      );
+      if (sessLimited) return c.json({ ok: true, hasRealData: false });
+    }
+
+    const turns = parsed.data.transcript;
+    if (turns.length < 2) return c.json({ ok: true, hasRealData: false });
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) return c.json({ ok: true, hasRealData: false });
+
+    const transcriptText = turns
+      .map((t) => `${t.role === 'user' ? 'Caller' : 'AI'}: ${t.text}`)
+      .join('\n')
+      .slice(0, 3000);
+
+    const t0 = Date.now();
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          max_tokens: 200,
+          temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are extracting structured data from a demo call transcript for a beauty salon AI receptionist. ' +
+                'Extract only information explicitly mentioned by the caller. ' +
+                'Do not infer or assume — if not mentioned, return null. ' +
+                'Return JSON only: { "callerIntent": "booking|pricing|info|reschedule|null", ' +
+                '"serviceRequested": "exact service name or null", ' +
+                '"requestedTime": "time mentioned or null", ' +
+                '"callerName": "name if mentioned or null", ' +
+                '"additionalNotes": "any other booking detail or null" }',
+            },
+            {
+              role: 'user',
+              content: `Vertical: ${parsed.data.vertical}\nBusiness: ${parsed.data.businessName}\n\nTranscript:\n${transcriptText}`,
+            },
+          ],
+        }),
+      });
+
+      const elapsed = Date.now() - t0;
+      const data = res.ok ? ((await res.json().catch(() => null)) as { choices?: Array<{ message?: { content?: string } }> } | null) : null;
+      const content = data?.choices?.[0]?.message?.content?.trim() ?? '';
+
+      let extracted: { callerIntent: string | null; serviceRequested: string | null; requestedTime: string | null; callerName: string | null; additionalNotes: string | null } | null = null;
+      try {
+        const p = JSON.parse(content) as Record<string, unknown>;
+        extracted = {
+          callerIntent: typeof p.callerIntent === 'string' ? p.callerIntent : null,
+          serviceRequested: typeof p.serviceRequested === 'string' ? p.serviceRequested : null,
+          requestedTime: typeof p.requestedTime === 'string' ? p.requestedTime : null,
+          callerName: typeof p.callerName === 'string' ? p.callerName : null,
+          additionalNotes: typeof p.additionalNotes === 'string' ? p.additionalNotes : null,
+        };
+      } catch { /* fall through */ }
+
+      const hasRealData = extracted !== null &&
+        (extracted.serviceRequested !== null || extracted.requestedTime !== null || extracted.callerName !== null);
+
+      logger.info({
+        vertical: parsed.data.vertical,
+        turnCount: turns.length,
+        elapsedMs: elapsed,
+        hasRealData,
+      }, 'demo_extract_call_summary_done');
+
+      return c.json({ ok: true, extracted: extracted ?? null, confidence: hasRealData ? 'high' : 'low', hasRealData });
+    } catch (err) {
+      logger.warn({ err, elapsedMs: Date.now() - t0 }, 'demo_extract_call_summary_failed');
+      return c.json({ ok: true, hasRealData: false });
     }
   });
 
@@ -4866,14 +5080,20 @@ export function createBackendApp(deps: {
 
     try {
       const env = getEnv();
-      const result = await importWebsiteForOnboarding({ url: parsed.data.url }, {
-        googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
-        llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
-        openAiApiKey: env.OPENAI_API_KEY,
-        llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
-        llmMaxTokens: env.WEBSITE_IMPORT_LLM_MAX_TOKENS,
-        maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
-      });
+      const result = await importWebsiteWithCache({ url: parsed.data.url }, () =>
+        importWebsiteForOnboarding({ url: parsed.data.url }, {
+          googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
+          llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
+          openAiApiKey: env.OPENAI_API_KEY,
+          llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
+          llmMaxTokens: env.WEBSITE_IMPORT_LLM_MAX_TOKENS,
+          maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
+          renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
+          renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
+          // Onboarding can afford a longer crawl for a more complete import.
+          deadlineMs: 28_000,
+        }),
+      );
       if (result.diagnostics.warnings.length > 0) {
         logger.info({ shopId: shop.id, warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])], selectedPageCount: result.diagnostics.selectedPages.length }, 'website_import_completed_with_warnings');
       }
@@ -8653,6 +8873,26 @@ export function createBackendApp(deps: {
         createdAfter: spec.from,
         createdBefore: spec.to,
       });
+    } else if (metric === 'web-demos') {
+      if (!deps.webDemoSessionsRepository) {
+        repositoryAvailable = false;
+      } else {
+        let offset = 0;
+        for (;;) {
+          const batch = await deps.webDemoSessionsRepository.listForAdmin({
+            startedAfter: spec.from,
+            startedBefore: spec.to,
+            limit: pageSize,
+            offset,
+          });
+          for (const row of batch) {
+            if (row.status !== 'rate_limited') timestamps.push(row.startedAt);
+          }
+          if (batch.length < pageSize) break;
+          offset += pageSize;
+          if (offset > 250_000) break;
+        }
+      }
     }
 
     const values = aggregateIntoBuckets(spec.labels, timestamps, spec.bucketOf);
@@ -8667,6 +8907,79 @@ export function createBackendApp(deps: {
       labelTitles: spec.labelTitles,
       values,
       repositoryAvailable,
+    });
+  });
+
+  app.get(path('/admin/dashboard/demo-health'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_api, 'admin_demo_health');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+
+    if (!deps.webDemoSessionsRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+
+    const now = new Date();
+    const todayFrom = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const weekFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [todayRows, weekRows] = await Promise.all([
+      deps.webDemoSessionsRepository.listForAdmin({ startedAfter: todayFrom, startedBefore: now, limit: 5000, offset: 0 }),
+      deps.webDemoSessionsRepository.listForAdmin({ startedAfter: weekFrom, startedBefore: now, limit: 10000, offset: 0 }),
+    ]);
+
+    function countByStatus(rows: WebDemoSessionAdminRecord[]) {
+      const counts = { started: 0, connected: 0, completed: 0, failed: 0, timed_out: 0, rate_limited: 0 };
+      for (const row of rows) {
+        const key = row.status as keyof typeof counts;
+        if (key in counts) counts[key]++;
+      }
+      return counts;
+    }
+
+    const todayCounts = countByStatus(todayRows);
+    const weekCounts = countByStatus(weekRows);
+
+    const weekNonRateLimited = weekCounts.started + weekCounts.connected + weekCounts.completed + weekCounts.failed + weekCounts.timed_out;
+    const weekCompletionRatePct = weekNonRateLimited > 0
+      ? Math.round((weekCounts.completed / weekNonRateLimited) * 100)
+      : null;
+
+    const durationsWeek = weekRows.filter((r) => r.durationSeconds !== null).map((r) => r.durationSeconds as number);
+    const weekAvgDurationSecs = durationsWeek.length > 0
+      ? Math.round(durationsWeek.reduce((a, b) => a + b, 0) / durationsWeek.length)
+      : null;
+
+    const verticalCounts = new Map<string, number>();
+    for (const row of weekRows) {
+      if (row.status === 'rate_limited') continue;
+      const slug = row.verticalSlug ?? 'unknown';
+      verticalCounts.set(slug, (verticalCounts.get(slug) ?? 0) + 1);
+    }
+    const byVertical = [...verticalCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([slug, count]) => ({ slug, count }));
+
+    return c.json({
+      ok: true,
+      today: {
+        started: todayCounts.started + todayCounts.connected,
+        completed: todayCounts.completed,
+        failed: todayCounts.failed,
+        timedOut: todayCounts.timed_out,
+        rateLimited: todayCounts.rate_limited,
+      },
+      week: {
+        total: weekNonRateLimited,
+        completed: weekCounts.completed,
+        failed: weekCounts.failed,
+        timedOut: weekCounts.timed_out,
+        rateLimited: weekCounts.rate_limited,
+        completionRatePct: weekCompletionRatePct,
+        avgDurationSecs: weekAvgDurationSecs,
+        byVertical,
+      },
     });
   });
 

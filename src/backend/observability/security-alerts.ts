@@ -29,6 +29,27 @@ const AUDIT_ALERT_RULES: Record<string, AlertRule> = {
     cooldownMs: 5 * 60_000,
     severity: 'critical',
   },
+  // Single honeypot trigger is immediately suspicious — alert on first occurrence.
+  public_demo_honeypot_triggered: {
+    threshold: 1,
+    windowMs: 15 * 60_000,
+    cooldownMs: 15 * 60_000,
+    severity: 'warning',
+  },
+  // Captcha failures in burst indicate bot activity.
+  public_demo_captcha_failed: {
+    threshold: 5,
+    windowMs: 10 * 60_000,
+    cooldownMs: 15 * 60_000,
+    severity: 'warning',
+  },
+  // High rate-limit hit rate signals abuse or misconfigured client.
+  public_demo_rate_limited: {
+    threshold: 20,
+    windowMs: 10 * 60_000,
+    cooldownMs: 15 * 60_000,
+    severity: 'warning',
+  },
 };
 
 function bumpAndMaybeAlert(
@@ -86,6 +107,27 @@ export function trackApiStatusForAlerts(status: number, path: string): void {
 export function trackSecurityAuditForAlerts(action: string, path?: string): void {
   if (action === 'webhook_signature_invalid') {
     bumpAndMaybeAlert('security_webhook_signature_invalid', AUDIT_ALERT_RULES.security_webhook_signature_invalid, {
+      action,
+      path,
+    });
+    return;
+  }
+  if (action === 'public_demo_honeypot_triggered') {
+    bumpAndMaybeAlert('public_demo_honeypot_triggered', AUDIT_ALERT_RULES.public_demo_honeypot_triggered, {
+      action,
+      path,
+    });
+    return;
+  }
+  if (action === 'public_demo_captcha_failed') {
+    bumpAndMaybeAlert('public_demo_captcha_failed', AUDIT_ALERT_RULES.public_demo_captcha_failed, {
+      action,
+      path,
+    });
+    return;
+  }
+  if (action === 'public_demo_realtime_limit_blocked') {
+    bumpAndMaybeAlert('public_demo_rate_limited', AUDIT_ALERT_RULES.public_demo_rate_limited, {
       action,
       path,
     });

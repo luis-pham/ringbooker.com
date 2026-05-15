@@ -238,7 +238,7 @@ canvas {
 .nav-logo-icon,
 .brand-icon,
 .brand-mark {
-  background-image: url('/images/logo.jpg');
+  background-image: url('/images/logo.webp');
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;

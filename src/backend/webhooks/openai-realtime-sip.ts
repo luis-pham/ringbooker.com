@@ -50,6 +50,7 @@ import { normalizeInboundE164, resolveShopByInboundDid } from '@/src/backend/ser
 import { getShopBillingAccess, type ShopBillingAccess } from '@/src/backend/services/billing/access';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
+import { callControlHangup } from '@/src/backend/services/calls/call-control-client';
 import { buildOpenAiSipAcceptBody } from '@/src/backend/webhooks/openai-sip-accept-payload';
 import {
   collectOpenAiSipDidCandidates,
@@ -61,6 +62,39 @@ import {
 } from '@/src/backend/webhooks/openai-sip-did';
 import { startOpenAiRealtimeSipSideband } from '@/src/backend/webhooks/openai-realtime-sip-sideband';
 import { decodeCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
+
+/** 5-minute hard cap on Path-B (OpenAI SIP direct) demo calls. */
+const DEMO_SIP_MAX_DURATION_MS = 300_000;
+
+type DemoCallTimer = { timer: ReturnType<typeof setTimeout>; telnyxCallControlId: string };
+const demoCallTimers = new Map<string, DemoCallTimer>();
+
+function startDemoCallMaxDurationTimer(
+  callId: string,
+  telnyxCallControlId: string,
+  apiKey: string,
+  fetchImpl: typeof fetch,
+): () => void {
+  const existing = demoCallTimers.get(callId);
+  if (existing) clearTimeout(existing.timer);
+
+  const timer = setTimeout(() => {
+    demoCallTimers.delete(callId);
+    logger.warn({ callId }, 'openai_sip_demo_max_duration_hangup');
+    void callControlHangup(telnyxCallControlId, {}, { apiKey, fetchImpl });
+  }, DEMO_SIP_MAX_DURATION_MS);
+
+  demoCallTimers.set(callId, { timer, telnyxCallControlId });
+  logger.info({ callId, maxDurationMs: DEMO_SIP_MAX_DURATION_MS }, 'openai_sip_demo_max_duration_timer_started');
+
+  return () => {
+    const entry = demoCallTimers.get(callId);
+    if (entry) {
+      clearTimeout(entry.timer);
+      demoCallTimers.delete(callId);
+    }
+  };
+}
 
 const incomingEventSchema = z.object({
   type: z.string(),
@@ -639,20 +673,72 @@ export async function handleOpenAiRealtimeSipWebhook(
       'openai_sip_accept_failed',
     );
     incrementMetric('openai_sip_call_outcomes_total', { outcome: 'accept_http_error' });
+    // Accept failed → the call is still pending at OpenAI. Reject it so the caller drops
+    // immediately instead of hanging on dead air until a provider-side timeout fires.
+    if (apiKey) {
+      await rejectCall(503, 'accept_failed').catch((err) => {
+        logger.warn({ err, callId }, 'openai_sip_post_accept_failure_reject_failed');
+      });
+    }
+    await deps.providerEventsRepository.markProcessed({
+      provider: 'openai',
+      providerEventId: webhookId,
+      eventType: 'realtime.call.incoming',
+      payload: {
+        callId,
+        route: route.kind,
+        shopId: route.kind === 'shop' ? route.shop.id : undefined,
+        outcome: 'accept_failed',
+        acceptStatus: acceptRes.status,
+      },
+    });
+    return c.json({ ok: true, accepted: false });
   } else {
     logger.info({ callId, model }, 'openai_sip_call_accepted');
     incrementMetric('openai_sip_call_outcomes_total', { outcome: 'accepted' });
+    // Path B demo duration cap: start server-side 5-minute timer regardless of sideband.
+    // Only demo calls reach this branch (shop calls are handled above with billing-plan limits).
+    if (route.kind === 'demo') {
+      const telnyxCcId = extractSipHeader(data.sip_headers, 'X-Telnyx-Call-Control-Id') ?? null;
+      if (telnyxCcId && env.TELNYX_API_KEY) {
+        const clearDemoTimer = startDemoCallMaxDurationTimer(callId, telnyxCcId, env.TELNYX_API_KEY, fetchImpl);
+        // clearDemoTimer is passed to sideband so WS close (call ended) cancels it immediately.
+        if (env.OPENAI_SIP_SIDEBAND_ENABLED) {
+          const acceptedAtMs = Date.now();
+          startOpenAiRealtimeSipSideband({
+            variant: 'demo',
+            callId,
+            apiKey: apiKey!,
+            enableToolLoop: true,
+            acceptedAtMs,
+            initialResponseInstructions: demoInitialResponseInstructions,
+            onEnded: clearDemoTimer,
+          });
+        }
+      } else {
+        logger.warn(
+          { callId, hasCcId: Boolean(telnyxCcId), hasTelnyxKey: Boolean(env.TELNYX_API_KEY) },
+          'openai_sip_demo_max_duration_timer_skipped',
+        );
+        if (env.OPENAI_SIP_SIDEBAND_ENABLED) {
+          const acceptedAtMs = Date.now();
+          startOpenAiRealtimeSipSideband({
+            variant: 'demo',
+            callId,
+            apiKey: apiKey!,
+            enableToolLoop: true,
+            acceptedAtMs,
+            initialResponseInstructions: demoInitialResponseInstructions,
+          });
+        }
+      }
+    }
+
     if (env.OPENAI_SIP_SIDEBAND_ENABLED) {
       const acceptedAtMs = Date.now();
       if (route.kind === 'demo') {
-        startOpenAiRealtimeSipSideband({
-          variant: 'demo',
-          callId,
-          apiKey: apiKey!,
-          enableToolLoop: true,
-          acceptedAtMs,
-          initialResponseInstructions: demoInitialResponseInstructions,
-        });
+        // already handled above — sideband started inside demo branch
+        void 0;
       } else if (shopToolsAndSideband && shopRoomContext && route.kind === 'shop') {
         const executorDeps: SipToolExecutorDeps = {
           shopsRepository: deps.shopsRepository!,

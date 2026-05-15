@@ -5,16 +5,16 @@ import type { Context } from 'hono';
 /**
  * Direct OpenAI Realtime marketing demo guards (browser → `POST /public/demo/realtime-session`).
  *
- * **Known limitations**
- * - **In-memory active session ledger** (`activeByIp`): one concurrent mint per IP is enforced per Node
- *   process. It does not coordinate across multiple server instances; use sticky sessions or move the
- *   ledger to Redis if you horizontally scale this route.
- * - **Serialized per-IP handler** (`runDirectDemoSerialized`): same-IP requests are queued so limits + slot
- *   checks stay consistent in memory; different IPs run in parallel (global limit still applies via its own key).
- * - Clients should `POST /public/demo/realtime-session/release` when a demo ends so another tab can start
- *   sooner than the 5-minute TTL; otherwise the slot expires naturally.
+ * Active slot ledger is backed by Redis (SET NX EX) for multi-node correctness.
+ * Falls back to an in-process Map when Redis is unavailable — single-node only in that case.
+ * Serialized per-IP handler (`runDirectDemoSerialized`) queues same-IP requests to prevent races
+ * on in-process rate-limit checks; different IPs run in parallel.
+ * Clients should `POST /public/demo/realtime-session/release` when a demo ends so another tab can
+ * start sooner than the TTL; otherwise the slot expires naturally via Redis TTL or in-memory prune.
  */
 import { getEnv } from '@/src/backend/config/env';
+import { getRedisClient } from '@/src/backend/cache/redis';
+import { logger } from '@/src/backend/observability/logger';
 import { securityAudit } from '@/src/backend/security/audit-log';
 import { consumeRateLimit, getClientIp, type RateLimitPolicy } from '@/src/backend/security/rate-limit';
 
@@ -65,8 +65,57 @@ export const PUBLIC_DEMO_REALTIME_BLOCKED: Record<
 
 type ActiveSlot = { requestId: string; expiresAt: number };
 
+/** In-process fallback when Redis is unavailable. */
 const activeByIp = new Map<string, ActiveSlot>();
 const serializedTails = new Map<string, Promise<unknown>>();
+
+const DEMO_SLOT_REDIS_PREFIX = 'demo:active:ip:';
+
+function demoSlotRedisKey(ip: string): string {
+  return `${DEMO_SLOT_REDIS_PREFIX}${createHash('sha256').update(ip).digest('hex').slice(0, 32)}`;
+}
+
+/** Lua: delete key only if its value matches requestId. Returns 1 on delete, 0 if mismatch/missing. */
+const LUA_COMPARE_AND_DELETE = `if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end`;
+
+async function tryOccupySlotRedis(ip: string, requestId: string, ttlMs: number): Promise<boolean | null> {
+  const redis = getRedisClient();
+  if (!redis) return null;
+  try {
+    if (redis.status === 'wait') await redis.connect();
+    const result = await redis.set(demoSlotRedisKey(ip), requestId, 'PX', ttlMs, 'NX');
+    return result === 'OK';
+  } catch {
+    return null;
+  }
+}
+
+async function releaseSlotRedis(ip: string, requestId: string): Promise<boolean | null> {
+  const redis = getRedisClient();
+  if (!redis) return null;
+  try {
+    if (redis.status === 'wait') await redis.connect();
+    const result = await redis.eval(LUA_COMPARE_AND_DELETE, 1, demoSlotRedisKey(ip), requestId);
+    return result === 1;
+  } catch {
+    return null;
+  }
+}
+
+async function clearSlotRedis(ip: string, requestId?: string): Promise<void> {
+  const redis = getRedisClient();
+  if (!redis) return;
+  try {
+    if (redis.status === 'wait') await redis.connect();
+    if (requestId) {
+      await redis.eval(LUA_COMPARE_AND_DELETE, 1, demoSlotRedisKey(ip), requestId);
+    } else {
+      await redis.del(demoSlotRedisKey(ip));
+    }
+  } catch {
+    // best-effort
+  }
+}
 
 function buildPoliciesFromEnv(): {
   burst: RateLimitPolicy;
@@ -115,10 +164,14 @@ export function pruneExpiredDirectDemoActives(now = Date.now()): void {
 }
 
 /**
- * One active direct-demo reservation per IP (marketing default).
- * Known limitation: in-process only — horizontal scale or cold restarts drop the ledger until TTL would have passed.
+ * One active direct-demo reservation per IP.
+ * Redis-backed (SET NX EX) for multi-node correctness; falls back to in-process Map with a warning
+ * when Redis is unavailable (single-node enforcement only in that case).
  */
-export function tryOccupyDirectDemoActiveSlot(ip: string, requestId: string, ttlMs: number, now = Date.now()): boolean {
+export async function tryOccupyDirectDemoActiveSlot(ip: string, requestId: string, ttlMs: number, now = Date.now()): Promise<boolean> {
+  const redisResult = await tryOccupySlotRedis(ip, requestId, ttlMs);
+  if (redisResult !== null) return redisResult;
+  logger.warn({ ipHash: hashIpForDemoLog(ip) }, 'demo_slot_redis_unavailable_fallback_to_memory');
   pruneExpiredDirectDemoActives(now);
   const cur = activeByIp.get(ip);
   if (cur && cur.expiresAt > now) return false;
@@ -127,18 +180,78 @@ export function tryOccupyDirectDemoActiveSlot(ip: string, requestId: string, ttl
 }
 
 export function clearDirectDemoActiveSlot(ip: string, requestId?: string): void {
+  void clearSlotRedis(ip, requestId);
+  // also clear memory fallback
   const cur = activeByIp.get(ip);
   if (!cur) return;
   if (!requestId || cur.requestId === requestId) activeByIp.delete(ip);
 }
 
 /** Removes the active slot only when `requestId` matches (used by client release beacon). */
-export function releaseDirectDemoActiveSlot(ip: string, requestId: string): boolean {
+export async function releaseDirectDemoActiveSlot(ip: string, requestId: string): Promise<boolean> {
+  const redisResult = await releaseSlotRedis(ip, requestId);
+  if (redisResult !== null) {
+    // also clear memory fallback if present
+    const cur = activeByIp.get(ip);
+    if (cur?.requestId === requestId) activeByIp.delete(ip);
+    return redisResult;
+  }
+  // fallback: memory only
   const cur = activeByIp.get(ip);
   if (!cur || cur.requestId !== requestId) return false;
   activeByIp.delete(ip);
   return true;
 }
+
+// ─── Global cap monitoring ────────────────────────────────────────────────────
+
+const GLOBAL_CAP_ALERT_THRESHOLD_PCT = 0.20; // alert when ≤ 20% remaining
+const GLOBAL_CAP_ALERT_COOLDOWN_MS = 60 * 60_000; // max 1 capacity alert per hour
+
+let lastGlobalCapAlertAt: number | undefined;
+
+function trackDemoGlobalCapAlert(limit: number, remaining: number): void {
+  const now = Date.now();
+  const pct = remaining / limit;
+
+  if (remaining <= 0) {
+    // CRITICAL: cap fully reached
+    if (!lastGlobalCapAlertAt || now - lastGlobalCapAlertAt >= GLOBAL_CAP_ALERT_COOLDOWN_MS) {
+      lastGlobalCapAlertAt = now;
+      logger.error(
+        {
+          alert: true,
+          severity: 'critical',
+          key: 'demo_global_cap_reached',
+          globalLimit: limit,
+          remaining: 0,
+        },
+        'Demo global daily cap REACHED — all new demo sessions are being rejected',
+      );
+    }
+    return;
+  }
+
+  if (pct <= GLOBAL_CAP_ALERT_THRESHOLD_PCT) {
+    if (!lastGlobalCapAlertAt || now - lastGlobalCapAlertAt >= GLOBAL_CAP_ALERT_COOLDOWN_MS) {
+      lastGlobalCapAlertAt = now;
+      const usedPct = Math.round((1 - pct) * 100);
+      logger.warn(
+        {
+          alert: true,
+          severity: 'warning',
+          key: 'demo_global_cap_threshold',
+          globalLimit: limit,
+          remaining,
+          usedPercent: usedPct,
+        },
+        `Demo global daily cap at ${usedPct}% — ${remaining} sessions remaining`,
+      );
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 /** Serialize direct-demo work per client IP to avoid races on in-memory limits + active slot. */
 export function runDirectDemoSerialized<T>(ip: string, task: () => Promise<T>): Promise<T> {
@@ -164,7 +277,15 @@ export async function consumePublicDemoRealtimeLimits(
   ];
   for (const [policy, identity, code] of steps) {
     const r = await consumeRateLimit(policy, identity);
-    if (!r.ok) return { ok: false, code };
+    if (!r.ok) {
+      if (code === 'demo_rate_limited_global') {
+        trackDemoGlobalCapAlert(p.global.limit, 0);
+      }
+      return { ok: false, code };
+    }
+    if (code === 'demo_rate_limited_global') {
+      trackDemoGlobalCapAlert(p.global.limit, r.remaining);
+    }
   }
   return { ok: true };
 }

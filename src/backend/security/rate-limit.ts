@@ -345,4 +345,11 @@ export const RATE_LIMIT_POLICIES = {
   public_demo_realtime_release: { name: 'public_demo_realtime_release', limit: 60, windowMs: 60_000 },
   /** Public demo website import — no auth required, tight per-IP limit. */
   public_demo_import_website: { name: 'public_demo_import_website', limit: 6, windowMs: 60_000, blockMs: 5 * 60_000 },
+  /** AI-generated suggested questions for demo — gpt-4o-mini call, 10/hour per IP. */
+  public_demo_suggested_questions_ip: { name: 'public_demo_suggested_questions_ip', limit: 10, windowMs: 60 * 60_000 },
+  /** Per-session cap for suggested questions — at most 1 AI call per session. */
+  public_demo_suggested_questions_session: { name: 'public_demo_suggested_questions_session', limit: 1, windowMs: 60 * 60_000 },
+  /** Post-call AI extraction — gpt-4o-mini, 5/hour per IP, 1 per session. */
+  public_demo_extract_call_ip: { name: 'public_demo_extract_call_ip', limit: 5, windowMs: 60 * 60_000 },
+  public_demo_extract_call_session: { name: 'public_demo_extract_call_session', limit: 1, windowMs: 60 * 60_000 },
 } as const;

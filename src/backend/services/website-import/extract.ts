@@ -113,6 +113,27 @@ export function inferPrimaryType(text: string): string | null {
   return null;
 }
 
+// Languages a salon explicitly advertises it speaks — these are what the AI
+// receptionist must be able to handle, distinct from the site's own UI language.
+const SPOKEN_LANGUAGE_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
+  { name: 'Spanish', pattern: /\b(?:se\s+habla\s+español|hablamos\s+español|spanish\s+spoken|we\s+(?:also\s+)?speak\s+spanish)\b/i },
+  { name: 'Vietnamese', pattern: /\b(?:vietnamese\s+spoken|we\s+(?:also\s+)?speak\s+vietnamese|nói\s+tiếng\s+việt)\b/i },
+  { name: 'Mandarin', pattern: /\b(?:mandarin\s+spoken|chinese\s+spoken|we\s+(?:also\s+)?speak\s+(?:mandarin|chinese))\b/i },
+  { name: 'Korean', pattern: /\b(?:korean\s+spoken|we\s+(?:also\s+)?speak\s+korean)\b/i },
+  { name: 'Russian', pattern: /\b(?:russian\s+spoken|we\s+(?:also\s+)?speak\s+russian)\b/i },
+  { name: 'French', pattern: /\b(?:french\s+spoken|we\s+(?:also\s+)?speak\s+french)\b/i },
+  { name: 'Tagalog', pattern: /\b(?:tagalog\s+spoken|filipino\s+spoken|we\s+(?:also\s+)?speak\s+(?:tagalog|filipino))\b/i },
+];
+
+export function extractLanguages(text: string): Array<ImportField<string>> {
+  const found = SPOKEN_LANGUAGE_PATTERNS
+    .filter((lang) => lang.pattern.test(text))
+    .map((lang) => field(lang.name, 0.7, 'Website'));
+  // A salon that advertises an extra language still serves English-speaking callers.
+  if (found.length) found.unshift(field('English', 0.8, 'Website'));
+  return found;
+}
+
 function dayKey(value: string): string | null {
   const cleaned = value.toLowerCase().replace(/^https?:\/\/schema\.org\//, '').replace(/[^a-z]/g, '');
   return DAY_ALIASES[cleaned] ?? DAY_ALIASES[cleaned.slice(0, 3)] ?? DAY_ALIASES[cleaned.slice(0, 2)] ?? null;
@@ -1500,7 +1521,7 @@ export function buildSuggestions(input: { sourceUrl: string; sourceType: ImportS
       hours: websiteHours ?? field<Record<string, unknown>>(null, 0, null),
       services: deduped,
       bookingUrl: field(bookingLink, bookingLink ? 0.8 : 0, bookingLink ? 'Website' : null),
-      languages: [],
+      languages: extractLanguages(allText),
       ...secondary,
       warnings,
     },

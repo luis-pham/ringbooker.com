@@ -57,7 +57,7 @@ export function UserForgotPasswordForm() {
       <div className={styles.topbar}>
         <a className={styles.brand} href="/">
           <span className={styles.brandMark}>
-            <img src="/images/logo.png" alt="RingBooker logo" className={styles.brandLogoImage} />
+            <img src="/images/logo.webp" alt="RingBooker logo" className={styles.brandLogoImage} />
           </span>
           <span>RingBooker</span>
         </a>

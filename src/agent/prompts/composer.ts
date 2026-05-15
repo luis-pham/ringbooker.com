@@ -9,7 +9,7 @@ import {
   filterCoreVoicePromptForProductionPlan,
   filterVerticalPackForProductionPlan,
 } from './production-plan-prompt-filter';
-import { renderRuntimeBusinessConfig } from './runtime-config';
+import { renderRuntimeBusinessConfig, STATIC_SERVICE_SCOPE_RULES } from './runtime-config';
 import type { VoicePromptInput } from './types';
 import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/production-language-policy';
 
@@ -57,14 +57,16 @@ export function composeVoicePrompt(input: VoicePromptInput): string {
     input.mode === 'demo' ? DEMO_GUARDRAIL_PROMPT : null,
     verticalText,
     callTypePack.content,
+    STATIC_SERVICE_SCOPE_RULES,
+    COMPOSITION_NOTE,
   ];
   const prefix = prefixSections.filter(Boolean).join('\n\n---\n\n').trim();
   const separator = '\n\n---\n\n';
-  const tail = `${runtimeText}${separator}${COMPOSITION_NOTE}`;
+  const tail = runtimeText;
   const prompt = `${prefix}${separator}${tail}`.trim();
   if (prompt.length <= MAX_PROMPT_CHARS) return prompt;
 
-  /** Keep the tail (runtime facts + welcome + composition note); trim from the end of prefix packs only. */
+  /** Keep the tail (runtime business facts); trim from the end of prefix packs only. */
   const tailBytes = tail.length + separator.length + COMPACTED_MARKER.length;
   const maxPrefix = MAX_PROMPT_CHARS - tailBytes;
   if (maxPrefix <= 0) {

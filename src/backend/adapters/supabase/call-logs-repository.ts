@@ -216,6 +216,27 @@ export class SupabaseCallLogsRepository implements CallLogsRepository {
     }
   }
 
+  async recordProviderCostByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    costAmount: number | null;
+    costCurrency: string | null;
+    recordedAt?: Date;
+  }): Promise<void> {
+    const { error } = await this.supabase
+      .from('call_logs')
+      .update({
+        provider_cost_amount: params.costAmount,
+        provider_cost_currency: params.costCurrency,
+        provider_cost_recorded_at: (params.recordedAt ?? new Date()).toISOString(),
+      })
+      .eq('provider', params.provider)
+      .eq('provider_call_id', params.providerCallId);
+    if (error) {
+      throw new Error(`call_logs_record_provider_cost_failed:${error.message}`);
+    }
+  }
+
   async countByShop(
     shopId: string,
     params?: CallLogsQueryParams,

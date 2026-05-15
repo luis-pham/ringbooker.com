@@ -344,7 +344,7 @@ export const currentNumberHub: ContentHubPageConfig = {
         { icon: '📱', label: 'Client calls', line: 'Your existing number', badge: 'No change', badgeStyle: 'green' },
         { icon: '☎️', label: 'Your front desk', line: 'Answers if available', badge: 'Current workflow', badgeStyle: 'green' },
         {
-          iconSrc: '/images/logo.jpg',
+          iconSrc: '/images/logo.webp',
           label: 'RingBooker covers',
           line: 'After-hours & overflow',
           badge: 'AI layer',

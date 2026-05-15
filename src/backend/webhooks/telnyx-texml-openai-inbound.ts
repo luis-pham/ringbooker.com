@@ -21,8 +21,10 @@ import { getEnv } from '@/src/backend/config/env';
 import { getTelnyxInboundRoutingMode } from '@/src/backend/config/voice-transport';
 import { logger } from '@/src/backend/observability/logger';
 import { incrementMetric } from '@/src/backend/observability/metrics';
+import { securityAudit } from '@/src/backend/security/audit-log';
 import { maskPhone } from '@/src/backend/security/pii';
 import { consumeRateLimit, getClientIp, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
+import { verifyTelnyxSignature } from '@/src/backend/security/telnyx-signature';
 import type {
   BillingSubscriptionsRepository,
   ForwardingTestSessionsRepository,
@@ -48,9 +50,14 @@ function escapeXmlText(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-export function buildTelnyxTexmlDialOpenAiXml(sipUri: string): string {
+export function buildTelnyxTexmlDialOpenAiXml(sipUri: string, opts?: { timeLimitSecs?: number }): string {
   const trimmed = sipUri.trim();
-  return `${XML_DECL}\n<Response><Dial><Sip>${escapeXmlText(trimmed)}</Sip></Dial></Response>`;
+  // `timeLimit` is enforced provider-side by Telnyx — survives app restarts (unlike an in-process timer).
+  const timeLimitAttr =
+    typeof opts?.timeLimitSecs === 'number' && Number.isFinite(opts.timeLimitSecs) && opts.timeLimitSecs > 0
+      ? ` timeLimit="${Math.floor(opts.timeLimitSecs)}"`
+      : '';
+  return `${XML_DECL}\n<Response><Dial${timeLimitAttr}><Sip>${escapeXmlText(trimmed)}</Sip></Dial></Response>`;
 }
 
 function buildTelnyxTexmlRejectXml(): string {
@@ -146,16 +153,40 @@ export async function handleTelnyxTexmlOpenAiInbound(
     return texmlXmlResponse(buildTelnyxTexmlRejectXml());
   }
 
-  let form: Record<string, string> = {};
-  try {
-    const parsed = await c.req.parseBody();
-    if (parsed && typeof parsed === 'object') {
-      for (const [k, v] of Object.entries(parsed)) {
-        if (typeof v === 'string') form[k] = v;
-      }
+  const bodyText = await c.req.text().catch(() => '');
+
+  // Verify the Telnyx Ed25519 signature on the TeXML Voice URL POST (same scheme as the JSON webhooks).
+  // Without this, anyone who knows the URL can spoof `From`/`To` and trigger a billed `<Dial><Sip>` to OpenAI.
+  if (env.TELNYX_TEXML_VERIFY_SIGNATURE) {
+    const signature = c.req.header('telnyx-signature-ed25519') ?? null;
+    const sigTimestamp = c.req.header('telnyx-timestamp') ?? null;
+    const verified = verifyTelnyxSignature({
+      body: bodyText,
+      timestamp: sigTimestamp,
+      signature,
+      publicKey: env.TELNYX_WEBHOOK_PUBLIC_KEY,
+      maxSkewSeconds: env.TELNYX_WEBHOOK_MAX_SKEW_SECONDS,
+    });
+    if (!verified) {
+      logger.warn({ ip, path: c.req.path, rb_call_id: rbCallId }, 'telnyx_texml_openai_inbound_invalid_signature');
+      incrementMetric('texml_openai_inbound_total', { outcome: 'reject_invalid_signature' });
+      securityAudit({
+        action: 'webhook_signature_invalid',
+        actorType: 'provider',
+        ip,
+        path: c.req.path,
+        provider: 'telnyx_texml',
+      });
+      return texmlXmlResponse(buildTelnyxTexmlRejectXml());
     }
+  }
+
+  // TeXML Voice URL POSTs are application/x-www-form-urlencoded. Parse from the same raw body that was signed.
+  const form: Record<string, string> = {};
+  try {
+    for (const [k, v] of new URLSearchParams(bodyText).entries()) form[k] = v;
   } catch {
-    form = {};
+    /* leave form empty */
   }
 
   const sipHost =
@@ -237,8 +268,16 @@ export async function handleTelnyxTexmlOpenAiInbound(
     return texmlXmlResponse(buildTelnyxTexmlRejectXml());
   }
 
-  const xml = buildTelnyxTexmlDialOpenAiXml(sipUriConfigured);
+  // Demo lines get a provider-side hard duration cap via `<Dial timeLimit>` — Telnyx enforces it,
+  // so it survives app restarts (unlike the in-process timer on the OpenAI SIP webhook path).
+  const xml = buildTelnyxTexmlDialOpenAiXml(
+    sipUriConfigured,
+    isDemoNumber ? { timeLimitSecs: env.TELNYX_TEXML_DEMO_MAX_DURATION_SECS } : undefined,
+  );
   incrementMetric('texml_openai_inbound_total', { outcome: 'dial_openai' });
-  logger.info({ responseChars: xml.length, rb_call_id: rbCallId }, 'telnyx_texml_openai_inbound_response_returned');
+  logger.info(
+    { responseChars: xml.length, rb_call_id: rbCallId, demo_time_limit_applied: isDemoNumber },
+    'telnyx_texml_openai_inbound_response_returned',
+  );
   return texmlXmlResponse(xml);
 }

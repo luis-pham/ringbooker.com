@@ -306,7 +306,7 @@ export async function handleTelnyxCallControlWebhook(
     return processCallHangup(c, { ...deps, shopsRepository }, event, bodyText, log);
   }
   if (isCallCostEvent(event.event_type)) {
-    return processCallCost(c, deps.providerEventsRepository, event, bodyText, log);
+    return processCallCost(c, deps.providerEventsRepository, event, bodyText, log, deps.callLogsRepository);
   }
 
   return c.json({ ok: true, ignored: true }, 200);
@@ -1306,6 +1306,7 @@ async function processCallCost(
   event: { event_type: string; id: string; payload?: unknown },
   bodyText: string,
   log: ReturnType<typeof withLogContext>,
+  callLogsRepository?: CallLogsRepository,
 ) {
   try {
     const alreadyProcessed = await providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
@@ -1327,14 +1328,47 @@ async function processCallCost(
     const currency = firstStringFromPayload(payload, ['currency']) ?? 'USD';
     const callControlId = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
     const callSessionId = firstStringFromPayload(payload, ['call_session_id']);
+    // Attribute the cost to a shop/call via the encoded client_state so it is queryable
+    // in log aggregation (e.g. cost-per-shop dashboards) instead of being an orphan line.
+    const costClientState = firstStringFromPayload(payload, ['client_state']);
+    const costDecoded = decodeCallControlClientState(costClientState);
+
+    // Telnyx sends `cost` as a decimal string (e.g. "0.0042"); tolerate a numeric payload too.
+    const rawCost = payload && typeof payload === 'object' ? (payload as Record<string, unknown>).cost : undefined;
+    const costAmount =
+      typeof rawCost === 'number' && Number.isFinite(rawCost)
+        ? rawCost
+        : typeof rawCost === 'string' && rawCost.trim() !== '' && Number.isFinite(Number(rawCost))
+          ? Number(rawCost)
+          : null;
+
+    // Persist onto the call_logs row so per-call / per-shop telephony spend is queryable in the DB.
+    if (callLogsRepository && callControlId) {
+      try {
+        await callLogsRepository.recordProviderCostByProviderCallId({
+          provider: 'telnyx_call_control',
+          providerCallId: callControlId,
+          costAmount,
+          costCurrency: currency,
+        });
+      } catch (err) {
+        log.warn({ err, callControlId }, 'telnyx_call_cost_persist_failed');
+      }
+    }
 
     incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+    incrementMetric('telnyx_call_cost_events_total', { currency });
     log.info(
       {
+        event: 'telnyx_call_cost',
         cost,
+        cost_amount: costAmount,
         currency,
         callControlId,
         callSessionId,
+        shop_id: costDecoded?.shopId ?? null,
+        rbCallId: costDecoded?.rbCallId ?? costDecoded?.requestId ?? null,
+        route_kind: costDecoded?.routeKind ?? null,
       },
       'telnyx_call_cost_received',
     );

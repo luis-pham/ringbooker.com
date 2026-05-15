@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { generateKeyPairSync, sign } from 'node:crypto';
 
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
@@ -12,6 +13,14 @@ import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
 import { buildTelnyxTexmlDialOpenAiXml } from '@/src/backend/webhooks/telnyx-texml-openai-inbound';
 
+const keyPair = generateKeyPairSync('ed25519');
+const publicPem = keyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+
+function signTelnyxPayload(params: { body: string; timestamp: string }): string {
+  const message = Buffer.from(`${params.timestamp}|${params.body}`, 'utf8');
+  return sign(null, message, keyPair.privateKey).toString('base64');
+}
+
 test('TeXML unit: buildTelnyxTexmlDialOpenAiXml escapes XML in SIP URI', () => {
   const xml = buildTelnyxTexmlDialOpenAiXml('sip:proj_x&y@sip.api.openai.com;transport=tls');
   assert.ok(xml.includes('&amp;'));
@@ -19,9 +28,10 @@ test('TeXML unit: buildTelnyxTexmlDialOpenAiXml escapes XML in SIP URI', () => {
   assert.ok(xml.includes('</Sip>'));
 });
 
-test('TeXML inbound returns Dial XML when OPENAI_SIP_URI set', async () => {
+test('TeXML inbound returns Dial XML for a signed request when OPENAI_SIP_URI set', async () => {
   applyRequiredTestEnv({
     OPENAI_SIP_URI: 'sip:proj_texml_test@sip.api.openai.com;transport=tls',
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
   });
   resetEnvCacheForTests();
 
@@ -34,11 +44,14 @@ test('TeXML inbound returns Dial XML when OPENAI_SIP_URI set', async () => {
     To: '+16265013960',
     CallSid: 'CA_texml_integration',
   }).toString();
+  const ts = String(Math.floor(Date.now() / 1000));
 
   const res = await app.request('/telnyx/texml/inbound', {
     method: 'POST',
     headers: {
       'content-type': 'application/x-www-form-urlencoded',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
     },
     body,
   });
@@ -50,6 +63,40 @@ test('TeXML inbound returns Dial XML when OPENAI_SIP_URI set', async () => {
   assert.ok(text.includes('<Dial>'));
   assert.ok(text.includes('sip:proj_texml_test@sip.api.openai.com;transport=tls'));
   assert.ok(text.includes('</Dial>'));
+});
+
+test('TeXML inbound rejects a POST with an invalid signature', async () => {
+  applyRequiredTestEnv({
+    OPENAI_SIP_URI: 'sip:proj_texml_test@sip.api.openai.com;transport=tls',
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+  });
+  resetEnvCacheForTests();
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+  });
+
+  const body = new URLSearchParams({
+    From: '+15551234001',
+    To: '+16265013960',
+    CallSid: 'CA_texml_bad_sig',
+  }).toString();
+  const ts = String(Math.floor(Date.now() / 1000));
+
+  const res = await app.request('/telnyx/texml/inbound', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': 'AAAAinvalidsignatureAAAA',
+    },
+    body,
+  });
+
+  assert.equal(res.status, 200);
+  const text = await res.text();
+  assert.ok(text.includes('<Reject'));
+  assert.ok(!text.includes('<Dial'));
 });
 
 test('TeXML inbound GET never invokes mutable handler', async () => {

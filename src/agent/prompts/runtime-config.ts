@@ -3,6 +3,15 @@ import type { RuntimeBusinessConfig, RuntimeService, VoicePromptVertical } from 
 const MAX_SERVICES_IN_PROMPT = 28;
 const MAX_LINE_CHARS = 280;
 
+export const STATIC_SERVICE_SCOPE_RULES = [
+  'SERVICE SCOPE RULES:',
+  '- Services in SERVICES / PRICING are offered; answer with the configured group, price, duration, notes, and booking behavior.',
+  '- If a caller asks for a broad service group, ask which specific service they want.',
+  '- If a caller asks for a service in NOT OFFERED SERVICES, say it is not offered and redirect to configured services.',
+  '- If a caller asks for an unknown service that is neither in SERVICES / PRICING nor NOT OFFERED SERVICES, do not deny it; say you are not certain and offer team follow-up.',
+  '- If a caller asks for a cross-service combo, confirm only the configured services and offer follow-up for anything uncertain.',
+].join('\n');
+
 export const RUNTIME_CONFIG_TEMPLATE = [
   'RUNTIME CONFIG TEMPLATE',
   'Purpose:',
@@ -123,14 +132,6 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
     services.length ? ['SERVICES / PRICING:', ...services].join('\n') : 'SERVICES / PRICING: Not configured. Use consultation or callback framing.',
     config.services?.some((service) => service.variants?.length) ? 'SERVICE OPTION RULE: When a service has options, explain the available durations/prices and ask which option the caller prefers; do not quote only the cheapest option as the full answer.' : null,
     config.notOfferedServices?.length ? `NOT OFFERED SERVICES: ${config.notOfferedServices.slice(0, 30).join(', ')}` : null,
-    [
-      'SERVICE SCOPE RULES:',
-      '- Services in SERVICES / PRICING are offered; answer with the configured group, price, duration, notes, and booking behavior.',
-      '- If a caller asks for a broad service group, ask which specific service they want.',
-      '- If a caller asks for a service in NOT OFFERED SERVICES, say it is not offered and redirect to configured services.',
-      '- If a caller asks for an unknown service that is neither in SERVICES / PRICING nor NOT OFFERED SERVICES, do not deny it; say you are not certain and offer team follow-up.',
-      '- If a caller asks for a cross-service combo, confirm only the configured services and offer follow-up for anything uncertain.',
-    ].join('\n'),
     config.promotions ? `PROMOTIONS: ${compactPromptLine(config.promotions, 400)}` : null,
     config.cancellationPolicy ? `CANCELLATION POLICY: ${compactPromptLine(config.cancellationPolicy, 400)}` : null,
     config.bookingUrl ? `BOOKING URL: ${config.bookingUrl}` : null,

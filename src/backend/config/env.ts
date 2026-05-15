@@ -47,6 +47,8 @@ function createValidatedEnv() {
       WEBSITE_IMPORT_LLM_MODEL: optionalNonEmptyStringEnv,
       WEBSITE_IMPORT_LLM_MAX_TOKENS: optionalPositiveIntEnv,
       WEBSITE_IMPORT_MAX_BYTES: z.coerce.number().int().min(100_000).max(5_000_000).default(1_500_000),
+      WEBSITE_IMPORT_RENDER_URL: optionalNonEmptyStringEnv,
+      WEBSITE_IMPORT_RENDER_API_KEY: optionalNonEmptyStringEnv,
       AGENT_RUNTIME_MODE: z.enum(['mock', 'livekit_gemini', 'livekit_native_gemini', 'livekit_openai', 'livekit_native_openai']).default('mock'),
       AGENT_TRANSPORT: z.enum(['mock', 'livekit']).default('mock'),
       AGENT_VOICE_PROVIDER: z.enum(['none', 'gemini_live', 'openai_realtime']).default('none'),
@@ -100,13 +102,26 @@ function createValidatedEnv() {
       TELNYX_RINGBACK_AUDIO_URL: z.string().url().optional(),
       /** Outbound OpenAI SIP leg ring/answer timeout for `POST /v2/calls` (`timeout_secs`). Default 15 in code when unset. */
       TELNYX_OPENAI_SIP_LEG_TIMEOUT_SECS: z.coerce.number().int().min(5).max(120).optional(),
-      /** When true, include `max_duration_secs` on inbound `answer` (Telnyx may reject unknown fields — keep off until verified). */
+      // Demo-only duration cap. Shop calls set max_duration_secs from billing plan at line 588 of
+      // telnyx-call-control-webhook.ts before this condition is evaluated — production calls are unaffected.
       TELNYX_ANSWER_MAX_DURATION_ENABLED: z
         .string()
         .optional()
+        .default('true')
         .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
-      /** Cap for inbound parent call duration when answer max-duration is enabled. */
-      TELNYX_INBOUND_MAX_DURATION_SECS: z.coerce.number().int().min(60).max(28_800).default(1800),
+      /** Cap for inbound parent call duration when answer max-duration is enabled. Default 300 = 5-min demo cap. */
+      TELNYX_INBOUND_MAX_DURATION_SECS: z.coerce.number().int().min(60).max(28_800).default(300),
+      /**
+       * Verify the Ed25519 signature on TeXML Voice URL POSTs (`/telnyx/texml/inbound`).
+       * Default true. Set false only if your Telnyx TeXML application is not configured to sign webhooks.
+       */
+      TELNYX_TEXML_VERIFY_SIGNATURE: z
+        .string()
+        .optional()
+        .default('true')
+        .transform((s) => s?.trim().toLowerCase() === 'true' || s === '1'),
+      /** Hard duration cap (seconds) applied to demo TeXML `<Dial timeLimit>` — provider-side, survives restarts. */
+      TELNYX_TEXML_DEMO_MAX_DURATION_SECS: z.coerce.number().int().min(60).max(3600).default(300),
       /** transfer | create_and_bridge | texml_fallback | disabled */
       TELNYX_OPENAI_CONNECT_MODE: z.string().optional(),
       /** Override default per-action timeouts for all Call Control POST actions (ms). */

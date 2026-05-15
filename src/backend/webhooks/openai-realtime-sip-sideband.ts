@@ -21,6 +21,8 @@ export type OpenAiRealtimeSipSidebandParams =
       initialResponseInstructions?: string | null;
       /** When set, used for accepted-to-first-response timing. */
       acceptedAtMs?: number;
+      /** Called when the sideband WS closes (call ended or dropped) — used to cancel duration timers. */
+      onEnded?: () => void;
     }
   | {
       variant: 'shop';
@@ -199,14 +201,26 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
       maybeResumeDemoVadAfterWelcome(evt.type ?? 'unknown');
     }
 
-    // Capture completed transcript segments for shop calls.
-    if (params.variant === 'shop' && params.onTranscript) {
+    // Capture completed transcript segments.
+    {
       const transcript = typeof evt.transcript === 'string' ? evt.transcript.trim() : '';
-      if (transcript) {
-        if (evt.type === 'response.audio_transcript.done') {
-          params.onTranscript('assistant', transcript);
-        } else if (evt.type === 'conversation.item.input_audio_transcription.completed') {
-          params.onTranscript('caller', transcript);
+      const speaker: 'assistant' | 'caller' | null =
+        evt.type === 'response.audio_transcript.done'
+          ? 'assistant'
+          : evt.type === 'conversation.item.input_audio_transcription.completed'
+            ? 'caller'
+            : null;
+      if (transcript && speaker) {
+        // Shop calls persist the full transcript via the callback.
+        if (params.variant === 'shop' && params.onTranscript) {
+          params.onTranscript(speaker, transcript);
+        }
+        // Demo calls: log segment metadata only (no PII text) so the transcript pipeline is observable.
+        if (params.variant === 'demo') {
+          logger.info(
+            { callId: params.callId, speaker, segmentChars: transcript.length },
+            'openai_sip_demo_transcript_segment',
+          );
         }
       }
     }
@@ -275,5 +289,6 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     cancelInitialTimer();
     clearTimeout(t);
     logger.info({ callId: params.callId }, 'openai_sip_sideband_ws_close');
+    if (params.variant === 'demo') params.onEnded?.();
   });
 }

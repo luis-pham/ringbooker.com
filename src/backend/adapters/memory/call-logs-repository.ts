@@ -36,6 +36,9 @@ type MemoryCallLog = {
   capturedCallerReason?: string | null;
   capturedAt?: Date | null;
   durationSecs?: number;
+  providerCostAmount?: number | null;
+  providerCostCurrency?: string | null;
+  providerCostRecordedAt?: Date | null;
 };
 
 function callKey(provider: string, providerCallId: string): string {
@@ -218,6 +221,24 @@ export class InMemoryCallLogsRepository implements CallLogsRepository {
     const existing = this.logsByCall.get(key);
     if (!existing) return;
     this.logsByCall.set(key, { ...existing, outcome: params.outcome });
+  }
+
+  async recordProviderCostByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    costAmount: number | null;
+    costCurrency: string | null;
+    recordedAt?: Date;
+  }): Promise<void> {
+    const key = callKey(params.provider, params.providerCallId);
+    const existing = this.logsByCall.get(key);
+    if (!existing) return;
+    this.logsByCall.set(key, {
+      ...existing,
+      providerCostAmount: params.costAmount,
+      providerCostCurrency: params.costCurrency,
+      providerCostRecordedAt: params.recordedAt ?? new Date(),
+    });
   }
 
   async countByShop(

@@ -6,6 +6,7 @@ import { buildSuggestions } from './extract';
 import { lookupGooglePlaces } from './google-places';
 import { extractWebsiteImportWithLlm } from './llm';
 import { classifyCandidate, selectPages, toDiagnostic } from './scoring';
+import { renderHtml, type RenderConfig } from './render';
 import type { CandidateUrl, PagePreview, WebsiteImportResult } from './types';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
@@ -41,9 +42,42 @@ type ImportOptions = {
   openAiApiKey?: string | null;
   llmModel?: string | null;
   llmMaxTokens?: number | null;
+  /** Overall wall-clock budget for the whole import (crawl + Google Places + LLM). */
+  deadlineMs?: number;
+  /** Maximum number of parallel page fetches. */
+  fetchConcurrency?: number;
+  /** Optional headless-render service endpoint for JS-rendered sites (Wix, SPAs, booking platforms). */
+  renderEndpoint?: string | null;
+  /** Optional bearer token for the headless-render service. */
+  renderApiKey?: string | null;
+  /** Internal: absolute timestamp (ms) at which the import budget expires. */
+  deadline?: number;
 };
 
 export const DEFAULT_WEBSITE_IMPORT_MAX_BYTES = 1_500_000;
+/** Default total import budget. The caller (demo vs onboarding) overrides this. */
+const DEFAULT_DEADLINE_MS = 25_000;
+const DEFAULT_FETCH_CONCURRENCY = 6;
+/** LLM needs at least this much remaining budget to be worth calling. */
+const MIN_LLM_BUDGET_MS = 4_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Runs `fn` over `items` with at most `concurrency` in flight; preserves index order in the result. */
+async function mapPool<T, R>(items: T[], concurrency: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const workerCount = Math.max(1, Math.min(concurrency, items.length || 1));
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await fn(items[index], index);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
 
 async function readResponseTextWithLimit(response: Response, maxBytes: number): Promise<string> {
   if (!response.body) {
@@ -66,58 +100,78 @@ async function readResponseTextWithLimit(response: Response, maxBytes: number): 
   return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
+const FETCH_HEADERS = {
+  'user-agent': 'RingBookerBot/1.0 (+https://ringbooker.com/bot)',
+  'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'accept-language': 'en-US,en;q=0.9',
+  'cache-control': 'no-cache',
+} as const;
+
 async function fetchText(url: string, opts: ImportOptions): Promise<{ url: string; text: string } | null> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), opts.timeoutMs ?? 5000);
   try {
     let current = (await preflightUrl(url, { lookup: opts.lookup })).toString();
     let redirectsFollowed = 0;
+    // One retry shared across the whole fetch (covers a transient network error
+    // OR a single rate-limit / 5xx response — whichever happens first).
+    let retriesLeft = 1;
     while (true) {
-      const fetchHeaders = {
-        'user-agent': 'RingBookerBot/1.0 (+https://ringbooker.com/bot)',
-        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'accept-language': 'en-US,en;q=0.9',
-        'cache-control': 'no-cache',
-      };
-      const response = await (opts.fetcher ?? fetch)(current, {
-        redirect: 'manual',
-        signal: controller.signal,
-        headers: fetchHeaders,
-      });
-      if ([301, 302, 303, 307, 308].includes(response.status)) {
-        const location = response.headers.get('location');
-        if (!location) return null;
-        if (redirectsFollowed >= 5) return null;
-        redirectsFollowed += 1;
-        const redirectTarget = new URL(location, current).toString();
-        await preflightUrl(redirectTarget, { lookup: opts.lookup });
-        current = redirectTarget;
-        continue;
-      }
-      const finalUrl = response.url || current;
-      await preflightUrl(finalUrl, { lookup: opts.lookup });
-      if (!response.ok) {
-        if (response.status === 429) {
-          await new Promise((res) => setTimeout(res, 1500));
-          const retried = await (opts.fetcher ?? fetch)(current, { signal: controller.signal, headers: fetchHeaders }).catch(() => null);
-          if (!retried?.ok) return null;
-          const retryType = retried.headers.get('content-type') ?? '';
-          if (retryType && !/html|xml|text|markdown/i.test(retryType)) return null;
-          const retryRaw = await readResponseTextWithLimit(retried, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
-          return { url: finalUrl, text: retryRaw };
+      if (opts.deadline !== undefined && Date.now() >= opts.deadline) return null;
+      const budgetMs = opts.deadline !== undefined ? opts.deadline - Date.now() : Number.POSITIVE_INFINITY;
+      const perFetchTimeout = Math.min(opts.timeoutMs ?? 5000, budgetMs);
+      if (perFetchTimeout <= 0) return null;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), perFetchTimeout);
+      try {
+        let response: Response;
+        try {
+          response = await (opts.fetcher ?? fetch)(current, {
+            redirect: 'manual',
+            signal: controller.signal,
+            headers: FETCH_HEADERS,
+          });
+        } catch {
+          // Network error or timeout abort. Retry once if the budget allows.
+          if (retriesLeft > 0 && (opts.deadline === undefined || Date.now() < opts.deadline)) {
+            retriesLeft -= 1;
+            await sleep(800);
+            continue;
+          }
+          return null;
         }
-        return null;
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+          const location = response.headers.get('location');
+          if (!location) return null;
+          if (redirectsFollowed >= 5) return null;
+          redirectsFollowed += 1;
+          const redirectTarget = new URL(location, current).toString();
+          await preflightUrl(redirectTarget, { lookup: opts.lookup });
+          current = redirectTarget;
+          continue;
+        }
+        const finalUrl = response.url || current;
+        await preflightUrl(finalUrl, { lookup: opts.lookup });
+        if (!response.ok) {
+          // Retry rate-limit / transient server errors by re-entering the loop, so the
+          // retried request is preflighted and redirect-checked exactly like the first.
+          if ((response.status === 429 || response.status >= 500)
+            && retriesLeft > 0
+            && (opts.deadline === undefined || Date.now() < opts.deadline)) {
+            retriesLeft -= 1;
+            await sleep(response.status === 429 ? 1200 : 600);
+            continue;
+          }
+          return null;
+        }
+        const contentType = response.headers.get('content-type') ?? '';
+        if (!/html|xml|text|markdown/i.test(contentType) && contentType) return null;
+        const raw = await readResponseTextWithLimit(response, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
+        return { url: finalUrl, text: raw };
+      } finally {
+        clearTimeout(timeout);
       }
-      const contentType = response.headers.get('content-type') ?? '';
-      if (!/html|xml|text|markdown/i.test(contentType) && contentType) return null;
-      const raw = await readResponseTextWithLimit(response, opts.maxBytes ?? DEFAULT_WEBSITE_IMPORT_MAX_BYTES);
-      return { url: finalUrl, text: raw };
     }
-    return null;
   } catch {
     return null;
-  } finally {
-    clearTimeout(timeout);
   }
 }
 
@@ -158,24 +212,31 @@ function commonServicePageCandidates(origin: string, discoveredFrom: string): Ca
     .filter((candidate): candidate is CandidateUrl => Boolean(candidate));
 }
 
-async function discoverSitemapCandidates(origin: string, opts: ImportOptions) {
+async function discoverSitemapCandidates(origin: string, opts: ImportOptions, concurrency: number) {
   const sitemapSourcesFound: string[] = [];
   const candidates: CandidateUrl[] = [];
   const robots = await fetchText(`${origin}/robots.txt`, opts);
   const sitemapUrls = new Set<string>(commonSitemapUrls(origin));
   if (robots?.text) parseRobotsSitemaps(robots.text).forEach((url) => sitemapUrls.add(url));
-  for (const sitemapUrl of [...sitemapUrls].slice(0, 12)) {
+  const topLevel = await mapPool([...sitemapUrls].slice(0, 12), concurrency, async (sitemapUrl) => {
     const sitemap = await fetchText(sitemapUrl, opts);
-    if (!sitemap?.text) continue;
-    sitemapSourcesFound.push(sitemapUrl);
-    const parsed = parseSitemapXml(sitemap.text);
-    for (const child of prioritizeChildSitemaps(parsed.childSitemaps, 5)) {
+    if (!sitemap?.text) return null;
+    return { sitemapUrl, parsed: parseSitemapXml(sitemap.text) };
+  });
+  for (const entry of topLevel) {
+    if (!entry) continue;
+    sitemapSourcesFound.push(entry.sitemapUrl);
+    const childResults = await mapPool(prioritizeChildSitemaps(entry.parsed.childSitemaps, 5), concurrency, async (child) => {
       const childText = await fetchText(child, opts);
-      if (!childText?.text) continue;
-      sitemapSourcesFound.push(child);
-      candidates.push(...sitemapUrlsToCandidates(parseSitemapXml(childText.text).urls, child, origin, 200));
+      if (!childText?.text) return null;
+      return { child, urls: parseSitemapXml(childText.text).urls };
+    });
+    for (const childResult of childResults) {
+      if (!childResult) continue;
+      sitemapSourcesFound.push(childResult.child);
+      candidates.push(...sitemapUrlsToCandidates(childResult.urls, childResult.child, origin, 200));
     }
-    candidates.push(...sitemapUrlsToCandidates(parsed.urls, sitemapUrl, origin, 200));
+    candidates.push(...sitemapUrlsToCandidates(entry.parsed.urls, entry.sitemapUrl, origin, 200));
   }
   return { candidates, sitemapSourcesFound };
 }
@@ -190,6 +251,13 @@ function emptyResult(sourceUrl: string, sourceType = detectImportSource(new URL(
 }
 
 export async function importWebsiteForOnboarding(input: { url: string }, opts: ImportOptions = {}): Promise<WebsiteImportResult> {
+  // Whole-import wall-clock budget. Every fetch clamps its timeout to the remaining
+  // budget, so the import returns within ~deadlineMs even on slow/large sites.
+  const deadline = Date.now() + (opts.deadlineMs ?? DEFAULT_DEADLINE_MS);
+  const fetchOpts: ImportOptions = { ...opts, deadline };
+  const concurrency = Math.max(1, opts.fetchConcurrency ?? DEFAULT_FETCH_CONCURRENCY);
+  const remainingBudget = () => Math.max(0, deadline - Date.now());
+
   let startUrl: URL;
   try {
     startUrl = await preflightUrl(input.url, { lookup: opts.lookup });
@@ -202,25 +270,68 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
 
   const sourceType = detectImportSource(startUrl);
   let googlePlaces = sourceType === 'google_maps'
-    ? await lookupGooglePlaces({ url: startUrl, sourceType, apiKey: opts.googlePlacesApiKey, fetcher: opts.fetcher, timeoutMs: opts.timeoutMs })
+    ? await lookupGooglePlaces({ url: startUrl, sourceType, apiKey: opts.googlePlacesApiKey, fetcher: opts.fetcher, timeoutMs: Math.min(opts.timeoutMs ?? 5_000, remainingBudget()) })
     : null;
-  const homepage = await fetchText(startUrl.toString(), opts);
+  const homepage = await fetchText(startUrl.toString(), fetchOpts);
   if (!homepage) {
+    // The website is unreadable (down, slow, or blocking the crawler). For normal
+    // websites, fall back to the Google Places business listing so a broken site
+    // still yields name/phone/address/hours instead of an empty import.
+    if (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey) {
+      googlePlaces = await lookupGooglePlaces({
+        url: startUrl,
+        sourceType,
+        hints: { website: startUrl.toString() },
+        apiKey: opts.googlePlacesApiKey,
+        fetcher: opts.fetcher,
+        timeoutMs: Math.min(opts.timeoutMs ?? 5_000, remainingBudget()),
+      }).catch(() => null);
+    }
     if (googlePlaces) {
       const suggestions = buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: [], googlePlaces });
-      const result = {
+      return {
         ok: suggestions.status !== 'failed',
         suggestions,
-        diagnostics: { selectedPages: [], skippedPagesSummary: [], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: { hours: suggestions.hours.confidence, contact: suggestions.businessProfile.phone.confidence }, warnings: suggestions.warnings, fallbackUsed: ['google_places'] },
+        diagnostics: {
+          selectedPages: [],
+          skippedPagesSummary: [],
+          sitemapSourcesFound: [],
+          serviceHubPagesFound: [],
+          childServicePagesFound: [],
+          confidenceSummary: { hours: suggestions.hours.confidence, contact: suggestions.businessProfile.phone.confidence },
+          warnings: [...suggestions.warnings, 'The website could not be read. Details came from the Google Places business listing — please review them.'],
+          fallbackUsed: ['google_places'],
+        },
       };
-      return result;
     }
     return emptyResult(startUrl.toString(), sourceType);
   }
-  const homepagePreview = previewHtml(homepage.text, homepage.url);
-  const siteBuilder = detectSiteBuilder(homepage.text);
-  const spaWarning = siteBuilder && hasThinContent(homepage.text)
-    ? `Site appears to be a JavaScript SPA (${siteBuilder}). Extracted content may be incomplete — full extraction requires a headless browser.`
+  // Recover JS-rendered sites (Wix, SPAs, booking-platform profiles) through an
+  // optional headless-render service. No-op when no render endpoint is configured.
+  let homepageHtml = homepage.text;
+  let renderUsed = false;
+  const renderConfig: RenderConfig = { endpoint: opts.renderEndpoint ?? null, apiKey: opts.renderApiKey ?? null };
+  const preRenderBuilder = detectSiteBuilder(homepageHtml);
+  const shouldTryRender = Boolean(renderConfig.endpoint)
+    && remainingBudget() > 3_000
+    && ((hasThinContent(homepageHtml) && preRenderBuilder !== null) || !shouldDeepCrawlSource(sourceType));
+  if (shouldTryRender) {
+    const rendered = await renderHtml(homepage.url, renderConfig, { fetcher: opts.fetcher, timeoutMs: Math.min(12_000, remainingBudget()) });
+    if (rendered && rendered.length > homepageHtml.length && !hasThinContent(rendered)) {
+      homepageHtml = rendered;
+      renderUsed = true;
+    }
+  }
+  const homepagePreview = previewHtml(homepageHtml, homepage.url);
+  const siteBuilder = detectSiteBuilder(homepageHtml);
+  const thinHomepage = hasThinContent(homepageHtml);
+  const spaWarning = siteBuilder && thinHomepage && !renderUsed
+    ? `Site appears to be a JavaScript SPA (${siteBuilder}). Extracted content may be incomplete — configure a headless-render service (WEBSITE_IMPORT_RENDER_URL) for full extraction.`
+    : null;
+  // Thin content without a known SPA builder usually means an image-based site
+  // (service menu shipped as images) or a custom JS-rendered site we cannot read.
+  const thinContentWarning = !siteBuilder && thinHomepage
+    ? 'The homepage has very little readable text — the site may be image-based or render content with JavaScript. Imported details may be incomplete; please review carefully.'
     : null;
 
   if (!shouldDeepCrawlSource(sourceType)) {
@@ -229,7 +340,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     return {
       ok: suggestions.status !== 'failed',
       suggestions,
-      diagnostics: { selectedPages: [{ url: homepage.url, bucket: 'homepage', score: 100, source: 'homepage', reason: 'Platform profile; deep crawl skipped' }], skippedPagesSummary: ['Platform/social URLs are not recursively crawled.'], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: { services: suggestions.serviceCatalog.confidence }, warnings: suggestions.warnings, fallbackUsed: ['static'] },
+      diagnostics: { selectedPages: [{ url: homepage.url, bucket: 'homepage', score: 100, source: 'homepage', reason: 'Platform profile; deep crawl skipped' }], skippedPagesSummary: ['Platform/social URLs are not recursively crawled.'], sitemapSourcesFound: [], serviceHubPagesFound: [], childServicePagesFound: [], confidenceSummary: { services: suggestions.serviceCatalog.confidence }, warnings: suggestions.warnings, fallbackUsed: renderUsed ? ['headless_render'] : ['static'] },
     };
   }
 
@@ -239,14 +350,14 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
     const rootCandidate = candidateFromUrl(rootUrl, 'nav', 'Home', homepage.url);
     if (rootCandidate) candidates.push(rootCandidate);
   }
-  for (const link of extractLinks(homepage.text, homepage.url)) {
+  for (const link of extractLinks(homepageHtml, homepage.url)) {
     if (new URL(link.href).origin === startUrl.origin) {
       const candidate = candidateFromUrl(link.href, /contact|hours|location/i.test(link.text) ? 'footer' : 'nav', link.text, homepage.url);
       if (candidate) candidates.push(candidate);
     }
   }
   candidates.push(...commonServicePageCandidates(startUrl.origin, homepage.url));
-  const sitemap = await discoverSitemapCandidates(startUrl.origin, opts);
+  const sitemap = await discoverSitemapCandidates(startUrl.origin, fetchOpts, concurrency);
   candidates.push(...sitemap.candidates);
 
   const seen = new Map<string, CandidateUrl>();
@@ -254,14 +365,26 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const unique = [...seen.values()].slice(0, 200);
 
   const previewMap = new Map<string, PagePreview>([[homepage.url, homepagePreview]]);
-  for (const candidate of unique.filter((c) => c.source !== 'homepage').slice(0, 24)) {
-    const fetched = await fetchText(candidate.url, opts);
+  // Preview-fetch budget is 24 pages. Rank candidates by path/anchor relevance first
+  // so the budget is spent on likely service/contact/staff pages instead of being
+  // consumed by sitemap insertion order.
+  const nonHomepage = unique.filter((c) => c.source !== 'homepage');
+  const previewTargets = nonHomepage
+    .map((candidate) => ({ candidate, score: classifyCandidate(candidate).score }))
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.candidate)
+    .slice(0, 24);
+  // Always preview the site root — salons routinely keep hours/contact in the footer.
+  const rootCandidate = nonHomepage.find((c) => c.url === rootUrl);
+  if (rootCandidate && !previewTargets.includes(rootCandidate)) previewTargets.push(rootCandidate);
+  await mapPool(previewTargets, concurrency, async (candidate) => {
+    const fetched = await fetchText(candidate.url, fetchOpts);
     if (fetched) {
       const preview = previewHtml(fetched.text, fetched.url);
       previewMap.set(candidate.url, preview);
       previewMap.set(fetched.url, preview);
     }
-  }
+  });
 
   let scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
   let selected = selectPages(scored, opts.maxPages ?? 8);
@@ -276,9 +399,9 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
       if (child) childCandidates.push(child);
     }
   }
-  for (const child of childCandidates.slice(0, opts.maxChildServicePages ?? 3)) {
+  await mapPool(childCandidates.slice(0, opts.maxChildServicePages ?? 3), concurrency, async (child) => {
     if (!previewMap.has(child.url)) {
-      const fetched = await fetchText(child.url, opts);
+      const fetched = await fetchText(child.url, fetchOpts);
       if (fetched) {
         const preview = previewHtml(fetched.text, fetched.url);
         previewMap.set(child.url, preview);
@@ -286,20 +409,20 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
       }
     }
     if (!unique.some((c) => c.url === child.url)) unique.push(child);
-  }
+  });
   scored = unique.map((candidate) => ({ candidate, ...classifyCandidate(candidate, previewMap.get(candidate.url)) }));
   selected = selectPages(scored, opts.maxPages ?? 8);
 
-  for (const item of selected) {
+  await mapPool(selected, concurrency, async (item) => {
     const existingPreview = previewMap.get(item.candidate.url);
-    if (existingPreview && !(item.bucket === 'service_child' && existingPreview.priceCount === 0 && existingPreview.durationCount === 0)) continue;
-    const fetched = await fetchText(item.candidate.url, opts);
+    if (existingPreview && !(item.bucket === 'service_child' && existingPreview.priceCount === 0 && existingPreview.durationCount === 0)) return;
+    const fetched = await fetchText(item.candidate.url, fetchOpts);
     if (fetched) {
       const preview = previewHtml(fetched.text, fetched.url);
       previewMap.set(item.candidate.url, preview);
       previewMap.set(fetched.url, preview);
     }
-  }
+  });
 
   const selectedPreviews = selected.map((item) => previewMap.get(item.candidate.url)).filter((p): p is PagePreview => Boolean(p));
   const supplementalRootPreview = previewMap.get(rootUrl);
@@ -309,6 +432,8 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const finalPreviews = [...finalPreviewMap.values()];
   // Run Google Places lookup and LLM extraction in parallel to save ~500ms.
   // LLM receives googlePlaces: null here; the merged result is used in buildSuggestions below.
+  // Both calls are clamped to the remaining import budget so the whole import stays within deadlineMs.
+  const budgetForEnrichment = remainingBudget();
   const staticHints = (!googlePlaces && sourceType === 'normal_website' && opts.googlePlacesApiKey)
     ? buildSuggestions({ sourceUrl: startUrl.toString(), sourceType, previews: finalPreviews })
     : null;
@@ -325,12 +450,20 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
           },
           apiKey: opts.googlePlacesApiKey!,
           fetcher: opts.fetcher,
-          timeoutMs: opts.timeoutMs,
+          timeoutMs: Math.min(opts.timeoutMs ?? 5_000, budgetForEnrichment),
         })
       : Promise.resolve(googlePlaces),
     extractWebsiteImportWithLlm(
       { sourceUrl: startUrl.toString(), previews: finalPreviews, googlePlaces: null, selectedPages: selected.map(toDiagnostic) },
-      { enabled: opts.llmEnabled, apiKey: opts.openAiApiKey, model: opts.llmModel, maxTokens: opts.llmMaxTokens, fetcher: opts.fetcher, timeoutMs: opts.timeoutMs },
+      {
+        // Skip the LLM entirely when there is not enough budget left for a useful call.
+        enabled: opts.llmEnabled && budgetForEnrichment >= MIN_LLM_BUDGET_MS,
+        apiKey: opts.openAiApiKey,
+        model: opts.llmModel,
+        maxTokens: opts.llmMaxTokens,
+        fetcher: opts.fetcher,
+        timeoutMs: Math.min(15_000, budgetForEnrichment),
+      },
     ),
   ]);
   const finalGooglePlaces = googlePlacesResult.status === 'fulfilled' ? googlePlacesResult.value : googlePlaces;
@@ -341,6 +474,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
   const allWarnings = [
     ...suggestions.warnings,
     ...(spaWarning ? [spaWarning] : []),
+    ...(thinContentWarning ? [thinContentWarning] : []),
     ...(siteBuilder && !spaWarning ? [`Site built with ${siteBuilder}. Content is server-rendered and should extract normally.`] : []),
   ];
   const result = {
@@ -354,7 +488,7 @@ export async function importWebsiteForOnboarding(input: { url: string }, opts: I
       childServicePagesFound,
       confidenceSummary: { services: suggestions.serviceCatalog.confidence, businessProfile: suggestions.businessProfile.name.confidence, contact: suggestions.businessProfile.phone.confidence, overall: suggestions.completeness?.overallConfidence ?? 0 },
       warnings: allWarnings,
-      fallbackUsed: ['static', ...(finalGooglePlaces ? ['google_places'] : []), ...(llmExtraction ? ['llm'] : [])],
+      fallbackUsed: ['static', ...(renderUsed ? ['headless_render'] : []), ...(finalGooglePlaces ? ['google_places'] : []), ...(llmExtraction ? ['llm'] : [])],
     },
   };
   return result;

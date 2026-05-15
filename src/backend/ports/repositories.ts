@@ -317,6 +317,14 @@ export interface CallLogsRepository {
   }): Promise<void>;
   /** Mid-call outcome update (e.g. transferred_to_owner) without ending the call. */
   setOutcomeByProviderCallId(params: { provider: string; providerCallId: string; outcome: string }): Promise<void>;
+  /** Persist a provider `call.cost` event (telephony spend) onto the matching call_logs row. */
+  recordProviderCostByProviderCallId(params: {
+    provider: string;
+    providerCallId: string;
+    costAmount: number | null;
+    costCurrency: string | null;
+    recordedAt?: Date;
+  }): Promise<void>;
   listByShop(
     shopId: string,
     params?: CallLogsQueryParams,

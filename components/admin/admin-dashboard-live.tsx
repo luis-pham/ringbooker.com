@@ -24,7 +24,27 @@ type TrialEndingSoonItem = {
 
 type ChartPeriod = 'today' | 'week' | 'month' | 'year';
 
-type DashboardChartMetric = 'demo-calls' | 'leads' | 'shops' | 'calls';
+type DashboardChartMetric = 'demo-calls' | 'leads' | 'shops' | 'calls' | 'web-demos';
+
+type DemoHealthData = {
+  today: {
+    started: number;
+    completed: number;
+    failed: number;
+    timedOut: number;
+    rateLimited: number;
+  };
+  week: {
+    total: number;
+    completed: number;
+    failed: number;
+    timedOut: number;
+    rateLimited: number;
+    completionRatePct: number | null;
+    avgDurationSecs: number | null;
+    byVertical: Array<{ slug: string; count: number }>;
+  };
+};
 
 type SingleChartResponse = {
   ok: boolean;
@@ -51,7 +71,31 @@ const METRIC_SOURCE: Record<DashboardChartMetric, string> = {
   leads: 'Aggregated from `contact_requests.created_at` (same source as Admin → Leads).',
   shops: 'Aggregated from `shops.created_at` (new business rows in the selected UTC window).',
   calls: 'Aggregated from `call_logs.started_at` (inbound / logged calls).',
+  'web-demos': 'Aggregated from `web_demo_sessions.started_at` — browser voice demo sessions only, rate-limited attempts excluded.',
 };
+
+function formatDuration(secs: number | null): string {
+  if (secs === null) return '—';
+  if (secs < 60) return `${secs}s`;
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
+function DemoStatusBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 2 }}>
+        <span>{label}</span>
+        <span>{value} ({pct}%)</span>
+      </div>
+      <div style={{ height: 6, background: 'var(--bg-secondary, #1e293b)', borderRadius: 3, overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s' }} />
+      </div>
+    </div>
+  );
+}
 
 function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
@@ -231,6 +275,7 @@ function DashboardMetricChart({
 export function AdminDashboardLive() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [trialEndingSoon, setTrialEndingSoon] = useState<TrialEndingSoonItem[]>([]);
+  const [demoHealth, setDemoHealth] = useState<DemoHealthData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -251,6 +296,15 @@ export function AdminDashboardLive() {
         setTrialEndingSoon(Array.isArray(body.trialEndingSoon) ? body.trialEndingSoon : []);
       })
       .catch(() => setError('network_error'));
+  }, []);
+
+  useEffect(() => {
+    void fetch('/api/backend/admin/dashboard/demo-health')
+      .then(async (r) => {
+        const body = (await r.json()) as { ok: boolean } & Partial<DemoHealthData>;
+        if (body.ok && body.today && body.week) setDemoHealth({ today: body.today, week: body.week });
+      })
+      .catch(() => undefined);
   }, []);
 
   async function signOut() {
@@ -354,9 +408,82 @@ export function AdminDashboardLive() {
                 </div>
               </section>
 
+              {demoHealth ? (
+                <>
+                  <div style={{ marginTop: 24, marginBottom: 8 }}>
+                    <h2 style={{ fontSize: 14, fontWeight: 600, opacity: 0.7, margin: 0 }}>Web demo health</h2>
+                  </div>
+                  <section className="grid grid-4">
+                    <div className="stat-card">
+                      <div className="stat-top">
+                        <div className="stat-icon">
+                          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 3" /></svg>
+                        </div>
+                        <span className="tag blue">Today</span>
+                      </div>
+                      <div className="stat-value">{demoHealth.today.started + demoHealth.today.completed + demoHealth.today.timedOut + demoHealth.today.failed}</div>
+                      <div className="stat-meta">Web demo sessions started today</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-top">
+                        <div className="stat-icon">
+                          <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                        </div>
+                        <span className="tag green">7d rate</span>
+                      </div>
+                      <div className="stat-value">
+                        {demoHealth.week.completionRatePct !== null ? `${demoHealth.week.completionRatePct}%` : '—'}
+                      </div>
+                      <div className="stat-meta">Completion rate (last 7 days)</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-top">
+                        <div className="stat-icon">
+                          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15 15" /></svg>
+                        </div>
+                        <span className="tag purple">Avg duration</span>
+                      </div>
+                      <div className="stat-value">{formatDuration(demoHealth.week.avgDurationSecs)}</div>
+                      <div className="stat-meta">Average session duration (7d)</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-top">
+                        <div className="stat-icon">
+                          <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                        </div>
+                        <span className={`tag ${demoHealth.today.rateLimited > 10 ? 'red' : 'orange'}`}>Blocked</span>
+                      </div>
+                      <div className="stat-value">{demoHealth.today.rateLimited}</div>
+                      <div className="stat-meta">Rate-limited requests today</div>
+                    </div>
+                  </section>
+
+                  {demoHealth.week.total > 0 ? (
+                    <div style={{ marginTop: 16, padding: '16px 20px', background: 'var(--card-bg, #0f172a)', borderRadius: 10, border: '1px solid var(--border, #1e293b)' }}>
+                      <h3 style={{ fontSize: 13, fontWeight: 600, margin: '0 0 12px' }}>7-day status breakdown</h3>
+                      <DemoStatusBar label="Completed" value={demoHealth.week.completed} total={demoHealth.week.total} color="#4ade80" />
+                      <DemoStatusBar label="Timed out" value={demoHealth.week.timedOut} total={demoHealth.week.total} color="#facc15" />
+                      <DemoStatusBar label="Failed" value={demoHealth.week.failed} total={demoHealth.week.total} color="#f87171" />
+                      <DemoStatusBar label="In progress / started" value={demoHealth.week.total - demoHealth.week.completed - demoHealth.week.timedOut - demoHealth.week.failed} total={demoHealth.week.total} color="#60a5fa" />
+                      {demoHealth.week.byVertical.length > 0 ? (
+                        <div style={{ marginTop: 14 }}>
+                          <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 6 }}>Top verticals (7d)</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {demoHealth.week.byVertical.slice(0, 5).map(({ slug, count }) => (
+                              <span key={slug} className="tag blue" style={{ fontSize: 11 }}>{slug} · {count}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+
               <div className="admin-overview-split">
                 <section className="admin-chart-grid">
-                  <DashboardMetricChart metric="demo-calls" title="Demo calls" stroke="#a78bfa" chartId="demo" />
+                  <DashboardMetricChart metric="web-demos" title="Web demo sessions" stroke="#818cf8" chartId="web-demos" />
+                  <DashboardMetricChart metric="demo-calls" title="Demo calls (phone)" stroke="#a78bfa" chartId="demo" />
                   <DashboardMetricChart metric="leads" title="Leads" stroke="#60a5fa" chartId="leads" />
                   <DashboardMetricChart metric="shops" title="Businesses created" stroke="#4ade80" chartId="shops" />
                   <DashboardMetricChart metric="calls" title="Calls" stroke="#c4b5fd" chartId="calls" />
@@ -389,6 +516,31 @@ export function AdminDashboardLive() {
                       ))}
                     </ul>
                   )}
+                  {demoHealth ? (
+                    <>
+                      <h3 style={{ marginTop: 20 }}>Demo alerts</h3>
+                      {demoHealth.week.completionRatePct !== null && demoHealth.week.completionRatePct < 50 ? (
+                        <div className="note" style={{ fontSize: 12, marginBottom: 8 }}>
+                          Low completion rate: {demoHealth.week.completionRatePct}% over last 7 days.
+                        </div>
+                      ) : null}
+                      {demoHealth.today.rateLimited > 20 ? (
+                        <div className="note" style={{ fontSize: 12, marginBottom: 8 }}>
+                          High rate-limit blocks today: {demoHealth.today.rateLimited} requests blocked.
+                        </div>
+                      ) : null}
+                      {demoHealth.week.total === 0 && demoHealth.week.rateLimited === 0 ? (
+                        <div className="note" style={{ fontSize: 12, marginBottom: 8 }}>
+                          No web demo sessions in the last 7 days — check service health.
+                        </div>
+                      ) : null}
+                      {(demoHealth.week.completionRatePct === null || demoHealth.week.completionRatePct >= 50) &&
+                       demoHealth.today.rateLimited <= 20 &&
+                       demoHealth.week.total > 0 ? (
+                        <p className="sub" style={{ margin: 0, fontSize: 12 }}>No active alerts.</p>
+                      ) : null}
+                    </>
+                  ) : null}
                 </aside>
               </div>
             </>

@@ -41,9 +41,34 @@ const runtimePromptFiles = {
   productionCustomInstructions: 'runtime/production-custom-instructions.txt',
 };
 
+/**
+ * Extract only the ### Prompt Content section from structured prompt files.
+ * Files use a standard layout:
+ *   ## FILE HEADER
+ *   ### Purpose          ← documentation, stripped
+ *   ### What belongs here ← documentation, stripped
+ *   ### What must NOT belong here ← documentation, stripped
+ *   ### Prompt Content   ← behavioral instructions, KEPT
+ *   ### Notes ...        ← documentation, stripped
+ *
+ * For files without the ### Prompt Content marker (e.g. core/*.txt, runtime/*.txt),
+ * the full content is returned — those files contain only instructions with no doc sections.
+ */
+function stripDocSections(raw) {
+  const normalized = raw.replace(/\r\n/g, '\n');
+  const marker = /^### Prompt Content\s*$/m;
+  const match = marker.exec(normalized);
+  if (!match) return normalized.trim();
+  const afterMarker = normalized.slice(match.index + match[0].length);
+  // Stop at next ### section (e.g. ### Notes for maintainability)
+  const nextSection = /^###\s+/m.exec(afterMarker);
+  const content = nextSection ? afterMarker.slice(0, nextSection.index) : afterMarker;
+  return content.trim();
+}
+
 async function readPrompt(relativePath) {
   const raw = await readFile(path.join(promptsRoot, relativePath), 'utf8');
-  return raw.replace(/\r\n/g, '\n').trim();
+  return stripDocSections(raw);
 }
 
 function titleFromPrompt(content, fallback) {
@@ -72,24 +97,27 @@ const corePrompt = await readPrompt('core/system.txt');
 const guardrailPrompt = await readPrompt('core/guardrails.txt');
 const demoGuardrailPrompt = await readPrompt('core/demo-guardrails.txt');
 
+async function readRawTitle(relativePath, fallback) {
+  const raw = await readFile(path.join(promptsRoot, relativePath), 'utf8');
+  return titleFromPrompt(raw, fallback);
+}
+
 const verticalPacks = {};
 for (const [vertical, relativePath] of Object.entries(verticalFiles)) {
-  const content = await readPrompt(relativePath);
-  verticalPacks[vertical] = {
-    id: `vertical:${vertical}`,
-    title: titleFromPrompt(content, vertical),
-    content,
-  };
+  const [content, title] = await Promise.all([
+    readPrompt(relativePath),
+    readRawTitle(relativePath, vertical),
+  ]);
+  verticalPacks[vertical] = { id: `vertical:${vertical}`, title, content };
 }
 
 const callTypePacks = {};
 for (const [callType, relativePath] of Object.entries(callTypeFiles)) {
-  const content = await readPrompt(relativePath);
-  callTypePacks[callType] = {
-    id: `call-type:${callType}`,
-    title: titleFromPrompt(content, callType),
-    content,
-  };
+  const [content, title] = await Promise.all([
+    readPrompt(relativePath),
+    readRawTitle(relativePath, callType),
+  ]);
+  callTypePacks[callType] = { id: `call-type:${callType}`, title, content };
 }
 
 const runtimePrompts = {};
