@@ -125,7 +125,7 @@ a{text-decoration:none;color:inherit}
 .plan-name{font-size:var(--mk-card-title);font-weight:600;margin-bottom:5px;color:var(--text-dark)}
 .plan-desc{font-size:14px;color:var(--mk-text-desc,#64748B);margin-bottom:16px;line-height:1.55;font-weight:400}
 .plan-price{font-size:38px;font-weight:700;letter-spacing:-1.5px;margin-bottom:5px;color:var(--text-dark)}
-.plan-price-custom{font-size:30px;letter-spacing:-1px}
+.plan-price-custom{font-size:var(--mk-card-title);font-weight:600;letter-spacing:0;line-height:1.35}
 .plan-price .plan-price-period{font-size:var(--mk-body);font-weight:500;color:var(--text-gray);letter-spacing:0}
 .plan-price .plan-price-billed{display:block;font-size:13px;font-weight:500;color:var(--mk-text-desc,#64748B);letter-spacing:0;line-height:1.45;margin-top:4px}
 .plan-cta-subnote{font-size:12px;color:var(--mk-text-desc,#64748B);text-align:center;margin:8px 0 0;font-weight:400;line-height:1.45}
@@ -233,28 +233,43 @@ a{text-decoration:none;color:inherit}
 
 const scripts: string[] = [
   String.raw`
-(() => {
+function setPricingPageMode(mode) {
+  const monthly = mode === 'monthly';
   const monthlyButton = document.getElementById('pricing-tog-m');
   const annualButton = document.getElementById('pricing-tog-a');
   const starterPrice = document.getElementById('pricing-starter-price');
   const proPrice = document.getElementById('pricing-pro-price');
-  if (!monthlyButton || !annualButton || !starterPrice || !proPrice) return;
+  if (!monthlyButton || !annualButton || !starterPrice || !proPrice) return false;
+  monthlyButton.classList.toggle('on', monthly);
+  annualButton.classList.toggle('on', !monthly);
+  starterPrice.innerHTML = monthly
+    ? '$79<span class="plan-price-period">/ month</span>'
+    : '$63<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $758/year</span>';
+  proPrice.innerHTML = monthly
+    ? '$149<span class="plan-price-period">/ month</span>'
+    : '$119<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $1,428/year</span>';
+  return true;
+}
+window.__ringbookerPricingSetMode = setPricingPageMode;
 
-  const setMode = (mode) => {
-    const monthly = mode === 'monthly';
-    monthlyButton.classList.toggle('on', monthly);
-    annualButton.classList.toggle('on', !monthly);
-    starterPrice.innerHTML = monthly
-      ? '$79<span class="plan-price-period">/ month</span>'
-      : '$63<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $758/year</span>';
-    proPrice.innerHTML = monthly
-      ? '$149<span class="plan-price-period">/ month</span>'
-      : '$119<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $1,428/year</span>';
-  };
+document.addEventListener('click', (event) => {
+  const target = event.target && event.target.closest
+    ? event.target.closest('#pricing-tog-m,#pricing-tog-a')
+    : null;
+  if (!target) return;
+  event.preventDefault();
+  setPricingPageMode(target.id === 'pricing-tog-a' ? 'annual' : 'monthly');
+});
 
-  monthlyButton.addEventListener('click', () => setMode('monthly'));
-  annualButton.addEventListener('click', () => setMode('annual'));
-})();
+function initPricingPageToggle() {
+  if (setPricingPageMode('monthly')) return;
+  requestAnimationFrame(initPricingPageToggle);
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPricingPageToggle);
+} else {
+  initPricingPageToggle();
+}
 `,
 ];
 

@@ -457,14 +457,14 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   border-right:1px solid rgba(241,245,249,.95);
   display:flex;
   flex-direction:column;
-  align-items:flex-start;
-  text-align:left;
+  align-items:center;
+  text-align:center;
 }
 .metrics-cell:nth-child(4n){border-right:none}
 .metrics-value{font-size:34px;font-weight:700;letter-spacing:-.8px;color:var(--text-dark);line-height:1.1;margin:12px 0 8px}
 .metrics-label{font-size:15px;font-weight:700;color:var(--text-dark);line-height:1.35;margin-bottom:6px}
 .metrics-sublabel{font-size:13px;color:var(--text-desc);line-height:1.5;font-weight:400}
-.metrics-lang-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-start;margin-top:2px}
+.metrics-lang-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:2px}
 .metric-pill{
   display:inline-flex;
   align-items:center;
@@ -518,12 +518,9 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
   .metrics-cell{
     border-right:1px solid rgba(241,245,249,.95);
     border-bottom:1px solid rgba(241,245,249,.95);
-    align-items:center;
-    text-align:center;
   }
   .metrics-cell:nth-child(2n){border-right:none}
   .metrics-cell:nth-last-child(-n+2){border-bottom:none}
-  .metrics-lang-row{justify-content:center}
   .metrics-trust-line{display:none}
   .metrics-trust{gap:0}
   .metrics-checks{flex-direction:column;align-items:center;gap:14px}
@@ -625,8 +622,10 @@ h1.hero-h .hl{display:inline-block;background:var(--purple);color:#fff;border-ra
 .plan-name{font-size:var(--mk-card-title);font-weight:600;margin-bottom:5px;color:var(--text-dark)}
 .plan-desc{font-size:var(--mk-caption);color:var(--text-desc);margin-bottom:16px;line-height:1.55;font-weight:400}
 .plan-price{font-size:38px;font-weight:700;letter-spacing:-1.5px;margin-bottom:5px;color:var(--text-dark)}
-.plan-price-custom{font-size:30px;letter-spacing:-1px}
-.plan-price span{font-size:var(--mk-body);font-weight:500;color:var(--text-gray);letter-spacing:0}
+.plan-price-custom{font-size:var(--mk-card-title);font-weight:600;letter-spacing:0;line-height:1.35}
+.plan-price .plan-price-period{font-size:var(--mk-body);font-weight:500;color:var(--text-gray);letter-spacing:0}
+.plan-price .plan-price-billed{display:block;font-size:13px;font-weight:500;color:var(--mk-text-desc,#64748B);letter-spacing:0;line-height:1.45;margin-top:4px}
+.plan-cta-subnote{font-size:12px;color:var(--mk-text-desc,#64748B);text-align:center;margin:8px 0 0;font-weight:400;line-height:1.45}
 .plan-div{height:1px;background:var(--border);margin:16px 0}
 .plan-feats{list-style:none;display:flex;flex-direction:column;gap:9px;margin-bottom:22px;flex:1}
 .plan-feats li{display:flex;align-items:flex-start;gap:10px;font-size:var(--mk-caption);color:#475569;line-height:1.45;font-weight:400}
@@ -1026,8 +1025,12 @@ function setPrice(m) {
   if (!monthlyToggle || !annualToggle || !starterPrice || !proPrice) return
   monthlyToggle.classList.toggle('on', mo)
   annualToggle.classList.toggle('on', !mo)
-  starterPrice.innerHTML = mo ? '$79<span>/ month</span>' : '$63<span>/ month</span>'
-  proPrice.innerHTML = mo ? '$149<span>/ month</span>' : '$119<span>/ month</span>'
+  starterPrice.innerHTML = mo
+    ? '$79<span class="plan-price-period">/ month</span>'
+    : '$63<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $758/year</span>'
+  proPrice.innerHTML = mo
+    ? '$149<span class="plan-price-period">/ month</span>'
+    : '$119<span class="plan-price-period">/mo</span><span class="plan-price-billed">Billed $1,428/year</span>'
 }
 window.__ringbookerSetPrice = setPrice
 
@@ -1715,14 +1718,14 @@ export function MarketingHomeTemplate() {
             <div className="price-toggle">
               <button className="pt-btn on" id="tog-m" type="button">Monthly</button>
               <button className="pt-btn" id="tog-a" type="button">Annual</button>
-              <span className="save-tag">SAVE 20%</span>
+              <span className="save-tag">Save up to $358/year</span>
             </div>
             <div className="home-carousel" id="pricingCarousel">
             <div className="price-grid home-carousel-track reveal">
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Starter</div>
                 <div className="plan-desc">For smaller salons, spas, and clinics that need reliable after-hours and overflow call coverage.</div>
-                <div className="plan-price" id="ps">$79<span>/month</span></div>
+                <div className="plan-price" id="ps">$79<span className="plan-price-period">/ month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Up to 100 captured callers/month</li>
@@ -1740,7 +1743,7 @@ export function MarketingHomeTemplate() {
                 <div className="plan-badge">Most popular</div>
                 <div className="plan-name">Professional</div>
                 <div className="plan-desc">For busier teams that need stronger follow-up, caller context, and provider preference capture.</div>
-                <div className="plan-price" id="pp">$149<span>/month</span></div>
+                <div className="plan-price" id="pp">$149<span className="plan-price-period">/ month</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Up to 300 captured callers/month</li>
@@ -1758,8 +1761,8 @@ export function MarketingHomeTemplate() {
               </div>
               <div className="plan home-carousel-slide">
                 <div className="plan-name">Custom</div>
-                <div className="plan-desc">For multi-location groups, higher-volume call flows, or businesses with custom routing needs.</div>
-                <div className="plan-price plan-price-custom">Let&apos;s talk<span>/contact us</span></div>
+                <div className="plan-desc">Multi-location setup, custom routing, and higher call volume — built around your operation.</div>
+                <div className="plan-price plan-price-custom">For multiple locations or high volume</div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
                   <li>Multi-location setup</li>
@@ -1770,7 +1773,8 @@ export function MarketingHomeTemplate() {
                   <li>Concierge onboarding</li>
                   <li>Priority implementation support</li>
                 </ul>
-                <a className="plan-btn pb-outline" href="/contact?intent=enterprise&source=homepage_custom">Talk to us →</a>
+                <a className="plan-btn pb-outline" href="/contact?intent=enterprise&source=homepage_custom">Book a 15-min call →</a>
+                <p className="plan-cta-subnote">Usually responds within 1 business day</p>
               </div>
             </div>
               <div className="home-carousel-controls" aria-label="Pricing carousel controls">
