@@ -17,23 +17,20 @@ import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 import {
   IMPORT_PROGRESS_STEPS,
   importProgressStepIndex,
-  importProgressDelayMessage,
 } from '@/components/user/user-onboarding-live';
 
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
 type SitePhase = 'idle' | 'loading' | 'ready' | 'error';
 type DemoApiHours = Record<string, { closed: true } | { open: string; close: string }>;
-type ExtractedDemoData = { businessName: string; city: string; hours: string; services: string[]; staff: string[] };
+type ExtractedDemoData = { businessName: string; city: string; hours: string; services: string[] };
 type DemoImportSuggestions = {
   status?: string;
   businessProfile?: {
     name?: { value: string | null };
     address?: { value: string | null };
-    phone?: { value: string | null };
   };
   hours?: { value: DemoApiHours | null };
   serviceCatalog?: { services: Array<{ name: string }> };
-  staffSuggestions?: Array<{ name?: string }>;
 };
 
 function formatDemoApiHours(hours: DemoApiHours | null | undefined): string {
@@ -72,17 +69,61 @@ function formatDemoApiHours(hours: DemoApiHours | null | undefined): string {
   return parts.join(', ');
 }
 
+const STATE_ABBR: Record<string, string> = {
+  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
+  colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
+  hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
+  kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
+  massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO',
+  montana: 'MT', nebraska: 'NE', nevada: 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
+  'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND',
+  ohio: 'OH', oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI',
+  'south carolina': 'SC', 'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT',
+  vermont: 'VT', virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI',
+  wyoming: 'WY', 'district of columbia': 'DC',
+};
+
 function parseCityFromAddress(address: string): { displayCity: string; formCity: string } {
-  const parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+  let parts = address.split(',').map((p) => p.trim()).filter(Boolean);
+  // Strip trailing pure-digit zip codes (e.g. "75204")
+  while (parts.length > 1 && /^\d{4,5}$/.test(parts[parts.length - 1] ?? '')) {
+    parts = parts.slice(0, -1);
+  }
   if (parts.length >= 3) {
-    const city = parts[parts.length - 2] ?? '';
-    const stateZip = (parts[parts.length - 1] ?? '').replace(/\s*\d{5}.*$/, '').trim();
-    return { displayCity: stateZip ? `${city}, ${stateZip}` : city, formCity: city };
+    // "3699 McKinney Ave, Dallas, Texas" → city = "Dallas", state = "Texas"
+    const cityPart = parts[parts.length - 2] ?? '';
+    const statePart = parts[parts.length - 1] ?? '';
+    const stateAbbr = STATE_ABBR[statePart.toLowerCase()] ?? statePart.replace(/\s*\d{5}.*$/, '').trim();
+    return { displayCity: stateAbbr ? `${cityPart}, ${stateAbbr}` : cityPart, formCity: cityPart };
   }
   if (parts.length === 2) {
-    return { displayCity: parts.join(', '), formCity: parts[0] ?? '' };
+    const cityPart = parts[0] ?? '';
+    const statePart = parts[1] ?? '';
+    const stateAbbr = STATE_ABBR[statePart.toLowerCase()] ?? statePart.replace(/\s*\d{5}.*$/, '').trim();
+    return { displayCity: stateAbbr ? `${cityPart}, ${stateAbbr}` : cityPart, formCity: cityPart };
   }
   return { displayCity: parts[0] ?? '', formCity: parts[0] ?? '' };
+}
+
+const NAV_SERVICE_BLOCKLIST = new Set([
+  'home', 'about', 'about us', 'contact', 'contact us', 'gallery', 'photos', 'portfolio',
+  'blog', 'news', 'faq', 'faqs', 'shop', 'store', 'careers', 'jobs', 'promotions',
+  'specials', 'deals', 'offers', 'gift cards', 'gift card', 'login', 'sign in',
+  'register', 'book now', 'booking', 'appointments', 'appointment', 'schedule',
+  'reviews', 'testimonials', 'our team', 'team', 'staff', 'menu', 'sitemap',
+  'privacy policy', 'terms', 'terms of service', 'cookie policy',
+]);
+
+function filterDemoServices(services: Array<{ name: string }>): string[] {
+  return services
+    .map((sv) => sv.name.replace(/^Add\s+/i, '').trim())
+    .filter((name) => {
+      if (!name || name.length < 2) return false;
+      if (NAV_SERVICE_BLOCKLIST.has(name.toLowerCase())) return false;
+      // Filter "Shop X" patterns
+      if (/^shop\s+\S/i.test(name)) return false;
+      return true;
+    });
 }
 
 type DemoBusinessConfig = {
@@ -752,19 +793,26 @@ export function MarketingVerticalDemoTemplate({
     setSiteDelayMessage(null);
     siteLoadStartRef.current = Date.now();
 
-    // Onboarding-style checkpoint timers — same values as startImportProgressTimers()
-    const checkpoints = [1800, 4000, 6500, 8500, 20000];
-    siteLoadTimersRef.current = checkpoints.map((delay) =>
+    // Step timers — reuse importProgressStepIndex from onboarding (1800/4000/6500ms)
+    const stepCheckpoints = [1800, 4000, 6500];
+    // Delay messages — spec timing: 5s and 10s
+    const delayCheckpoints: Array<[number, string]> = [
+      [5000, 'Still importing your website — some websites take a moment to read.'],
+      [10000, "We're still reading your site. Please wait a little longer."],
+    ];
+    siteLoadTimersRef.current = [
+      ...stepCheckpoints.map((delay) =>
+        window.setTimeout(() => setSiteLoadStep(importProgressStepIndex(delay)), delay),
+      ),
+      ...delayCheckpoints.map(([delay, msg]) =>
+        window.setTimeout(() => setSiteDelayMessage(msg), delay),
+      ),
+      // 20s hard timeout → error
       window.setTimeout(() => {
-        if (delay >= 20000) {
-          setSiteLoadError("We couldn't read your website.");
-          setSitePhase('error');
-          return;
-        }
-        setSiteLoadStep(importProgressStepIndex(delay));
-        setSiteDelayMessage(importProgressDelayMessage(delay));
-      }, delay),
-    );
+        setSiteLoadError("We couldn't read your website.");
+        setSitePhase('error');
+      }, 20000),
+    ];
 
     try {
       const res = await fetch('/api/backend/public/demo/import-website', {
@@ -782,8 +830,7 @@ export function MarketingVerticalDemoTemplate({
         const address = s.businessProfile?.address?.value ?? '';
         const { displayCity, formCity } = parseCityFromAddress(address);
         const hours = formatDemoApiHours(s.hours?.value);
-        const services = (s.serviceCatalog?.services ?? []).slice(0, 12).map((sv) => sv.name);
-        const staff = (s.staffSuggestions ?? []).map((st) => st.name ?? '').filter(Boolean).slice(0, 6);
+        const services = filterDemoServices(s.serviceCatalog?.services ?? []).slice(0, 12);
 
         // Advance all steps to done — same as completeImportProgress()
         setSiteLoadStep(IMPORT_PROGRESS_STEPS.length);
@@ -791,7 +838,7 @@ export function MarketingVerticalDemoTemplate({
 
         const elapsed = Date.now() - siteLoadStartRef.current;
         window.setTimeout(() => {
-          setExtractedData({ businessName, city: displayCity, hours, services, staff });
+          setExtractedData({ businessName, city: displayCity, hours, services });
           setBusiness((cur) => ({
             ...cur,
             businessName: businessName || cur.businessName,
@@ -1526,16 +1573,6 @@ export function MarketingVerticalDemoTemplate({
                           </div>
                         </div>
                       ) : null}
-                      {extractedData.staff.length > 0 ? (
-                        <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                          <span className="vd-found-key">Staff</span>
-                          <div className="vd-found-chips">
-                            {extractedData.staff.map((name) => (
-                              <span key={name} className="vd-found-chip">{name}</span>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null}
                       <button type="button" className="vd-found-edit" onClick={exitToManualForm}>Edit details →</button>
                     </div>
 
@@ -1699,7 +1736,7 @@ export function MarketingVerticalDemoTemplate({
                   <h2 className="vd-status-h">
                     {stage === 'queued' || stage === 'dialing' ? 'Connecting…' :
                      stage === 'live' ? 'Your AI receptionist demo is ready' :
-                     stage === 'completed' ? 'Demo complete' : 'Something went wrong'}
+                     stage === 'completed' ? `Your AI just answered as ${business.businessName || config.defaultBusinessName}` : 'Something went wrong'}
                   </h2>
                   <p className="vd-status-body">{statusText}</p>
 
@@ -1750,7 +1787,7 @@ export function MarketingVerticalDemoTemplate({
 
                       <div className="vd-ai-card">
                         <div className="vd-ai-card-head">AI captured this call</div>
-                        <div className="vd-ai-card-body">{config.smsPreview}</div>
+                        <div className="vd-ai-card-body">{config.smsPreview.replace(/^[^:]+:/, `${business.businessName || config.defaultBusinessName}:`)}</div>
                         <div className="vd-trust-row">
                           <span className="vd-trust-chip">✓ No missed calls</span>
                           <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
