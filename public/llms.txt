@@ -44,9 +44,10 @@ RingBooker includes a customer-facing setup interface designed so businesses can
 ## Integrations
 
 - **Square Appointments** — live integration (real-time slot booking)
-- **Vagaro** — coming soon
-- **Mindbody** — coming soon
-- **Booksy** — coming soon
+- **Mindbody** — live integration (availability checks and booking request capture)
+- **Acuity Scheduling** — live integration (appointment types, availability checks, and booking capture)
+- **Vagaro** — booking link via SMS
+- **Booksy** — booking link via SMS
 
 ## Pricing
 

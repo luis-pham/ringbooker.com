@@ -55,8 +55,8 @@ type BookingToolIntegration = {
 /** Logos under /public/images — same assets as user portal calendar integrations. */
 const BOOKING_TOOL_INTEGRATIONS: BookingToolIntegration[] = [
   { id: 'square', name: 'Square', logoSrc: '/images/square.png', status: 'live' },
+  { id: 'mindbody', name: 'Mindbody', logoSrc: '/images/mindbody.webp', status: 'live' },
   { id: 'vagaro', name: 'Vagaro', logoSrc: '/images/vagaro.png', status: 'compatible' },
-  { id: 'mindbody', name: 'Mindbody', logoSrc: '/images/mindbody.webp', status: 'soon' },
   { id: 'booksy', name: 'Booksy', logoSrc: '/images/booksy.png', status: 'compatible' },
 ];
 
