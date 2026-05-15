@@ -1010,6 +1010,15 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 .legacy-marketing .footer-col a{
   font-size:14px !important;
 }
+@media(max-width:768px){
+  .legacy-marketing .save-tag{
+    font-size:12px !important;
+    padding:10px 12px;
+    line-height:1;
+    letter-spacing:.02em;
+    box-shadow:0 1px 4px rgba(16,185,129,.1);
+  }
+}
 `,
 ];
 
