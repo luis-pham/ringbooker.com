@@ -364,6 +364,14 @@ async function createOpenAiRealtimeClientSecret(params: {
 }
 
 
+/**
+ * Shared website-import wall-clock budget for BOTH the public demo and onboarding.
+ * They must use the identical budget — a shorter demo budget truncates the LLM /
+ * Google Places enrichment on slower sites and yields partial/wrong hours & services,
+ * so the demo import would diverge from onboarding for the same URL.
+ */
+const WEBSITE_IMPORT_BUDGET_MS = 28_000;
+
 const contactIntentValues = ['demo', 'enterprise', 'sales', 'support', 'general'] as const;
 const contactPlanInterestValues = ['starter', 'professional', 'enterprise', 'unknown'] as const;
 
@@ -3868,11 +3876,8 @@ export function createBackendApp(deps: {
 
     try {
       const env = getEnv();
-      // Demo budget must leave room for the LLM extractor (needs >=4s after the crawl);
-      // 15s was too short — the LLM was skipped, so the demo returned far fewer services,
-      // a partial address and no hours. 25s matches the LLM-capable onboarding crawl.
-      const demoImportBudgetMs = 25_000;
-      const result = await importWebsiteWithCache({ url: parsed.data.url, qualityBudgetMs: demoImportBudgetMs }, () =>
+      // Identical budget + options to the onboarding import so the demo never diverges.
+      const result = await importWebsiteWithCache({ url: parsed.data.url, qualityBudgetMs: WEBSITE_IMPORT_BUDGET_MS }, () =>
         importWebsiteForOnboarding({ url: parsed.data.url }, {
           googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
           llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
@@ -3882,7 +3887,7 @@ export function createBackendApp(deps: {
           maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
           renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
           renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
-          deadlineMs: demoImportBudgetMs,
+          deadlineMs: WEBSITE_IMPORT_BUDGET_MS,
         }),
       );
       return c.json({ ok: result.ok, suggestions: result.suggestions });
@@ -5099,9 +5104,7 @@ export function createBackendApp(deps: {
 
     try {
       const env = getEnv();
-      // Onboarding can afford a longer crawl for a more complete import.
-      const onboardingImportBudgetMs = 28_000;
-      const result = await importWebsiteWithCache({ url: parsed.data.url, qualityBudgetMs: onboardingImportBudgetMs }, () =>
+      const result = await importWebsiteWithCache({ url: parsed.data.url, qualityBudgetMs: WEBSITE_IMPORT_BUDGET_MS }, () =>
         importWebsiteForOnboarding({ url: parsed.data.url }, {
           googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
           llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
@@ -5111,7 +5114,7 @@ export function createBackendApp(deps: {
           maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
           renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
           renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
-          deadlineMs: onboardingImportBudgetMs,
+          deadlineMs: WEBSITE_IMPORT_BUDGET_MS,
         }),
       );
       if (result.diagnostics.warnings.length > 0) {

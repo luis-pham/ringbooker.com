@@ -615,6 +615,14 @@ export const worksWithHub: ContentHubPageConfig = {
           status: 'Booking link',
           statusKind: 'workflow',
         },
+        {
+          href: '/works-with',
+          logoSrc: '/images/boulevard.png',
+          title: 'Boulevard',
+          body: 'Sends your Boulevard booking link via SMS when callers want to book.',
+          status: 'Booking link',
+          statusKind: 'workflow',
+        },
       ],
     },
     {
@@ -706,7 +714,7 @@ export const worksWithHub: ContentHubPageConfig = {
       a: 'Yes. Square Appointments is a live integration on this page, alongside Mindbody and Acuity Scheduling.',
     },
     {
-      q: 'What does booking link mean for Vagaro, Booksy, or GlossGenius?',
+      q: 'What does booking link mean for Vagaro, Booksy, Boulevard, or GlossGenius?',
       a: 'RingBooker texts your existing booking URL after the call so callers can finish booking in the tool your team already uses — without replacing your calendar or front-desk workflow.',
     },
     {

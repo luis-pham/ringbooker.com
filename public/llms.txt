@@ -48,6 +48,7 @@ RingBooker includes a customer-facing setup interface designed so businesses can
 - **Acuity Scheduling** — live integration (appointment types, availability checks, and booking capture)
 - **Vagaro** — booking link via SMS
 - **Booksy** — booking link via SMS
+- **Boulevard** — booking link via SMS
 
 ## Pricing
 
