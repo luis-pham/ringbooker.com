@@ -217,20 +217,20 @@ a{text-decoration:none;color:inherit}
   display:block;
   color:rgba(255,255,255,.72);
   font-size:var(--mk-body);
-  line-height:1.68;
+  line-height:var(--mk-body-lh);
 }
 .hiw-experience{display:grid;grid-template-columns:.9fr 1.1fr;gap:20px;align-items:stretch}
 .hiw-call-card{background:linear-gradient(160deg,#1a0533 0%,#2d1b69 44%,#1a0d3a 100%);border-radius:30px;padding:26px;color:#fff;box-shadow:0 24px 70px rgba(45,27,105,.22);overflow:hidden;position:relative}
 .hiw-call-card::after{content:"";position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)}
 .hiw-live{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;background:rgba(16,185,129,.16);color:#86efac;border:1px solid rgba(16,185,129,.25);font-size:12px;font-weight:700;margin-bottom:24px;position:relative}
 .hiw-call-card h3{font-size:24px;font-weight:700;line-height:1.18;letter-spacing:-.7px;margin-bottom:10px;position:relative}
-.hiw-call-card p{font-size:14.5px;color:rgba(255,255,255,.78);line-height:1.75;position:relative}
+.hiw-call-card p{font-size:var(--mk-section-lead);color:rgba(255,255,255,.74);line-height:var(--mk-section-lead-lh);font-weight:400;position:relative}
 .hiw-call-steps{display:grid;gap:12px}
 .hiw-call-step{display:flex;gap:13px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
 .hiw-call-step:hover{transform:translateY(-2px);box-shadow:0 18px 36px -10px rgba(17,24,39,.12);border-color:#d1d5db}
 .hiw-call-step span{width:30px;height:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;border:none;box-shadow:none}
 .hiw-call-step strong{display:block;margin-bottom:3px;font-size:var(--mk-body-md);font-weight:700;line-height:1.45}
-.hiw-call-step p{font-size:var(--mk-body);color:var(--text-gray);line-height:1.6}
+.hiw-call-step p{font-size:var(--mk-body);color:var(--text-gray);line-height:var(--mk-body-lh)}
 .hiw-trust-caller-stack .hiw-caller-after-trust{padding-top:86px;margin-top:0}
 .hiw-faq-cta-lower .hiw-cta-box{margin-top:48px}
 .hiw-cta-box{max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#7C3AED 0%,#A855F7 100%);color:#fff;border-radius:32px;padding:42px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;box-shadow:0 20px 56px rgba(124,58,237,.2),0 8px 24px rgba(17,24,39,.08)}
