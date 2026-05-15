@@ -331,6 +331,9 @@ export function extractServicesFromText(text: string, source: string): ImportedS
     const name = collapseRepeatedServiceName(cleanServiceName(input.name));
     if (name.length < 3 || name.length > 90) return;
     if (/\$/.test(name)) return;
+    // A real service name never contains an embedded price token ("Lip 425+ Brow and Lip")
+    // — that is a mangled price-table parse where the leading "$" was dropped.
+    if (/\d{2,}\s*\+/.test(name)) return;
     if (/\b\d{1,3}\s*(?:min|mins|minutes|hour|hours|hr)\+?\s*$/i.test(name)) return;
     if (/^[a-z]\s+\w/.test(name)) return;
     if (SERVICE_MENU_SOURCE_RE.test(name)) return;
@@ -464,8 +467,12 @@ function parseMatrixPriceCell(value: string): { priceAmount: number | null; pric
   if (/varies|call/i.test(text)) return { priceAmount: null, priceType: 'varies' };
   const match = text.match(/\$?\s*(\d{2,4})(?:\.\d{1,2})?\s*\+?/);
   if (!match) return null;
+  const priceAmount = Number(match[1]);
+  // A single duration-priced salon service variant above ~$2000 is almost always a
+  // mangled parse (e.g. "$140" read as "4140"). Drop the bogus price rather than show it.
+  if (!Number.isFinite(priceAmount) || priceAmount > 2000) return null;
   return {
-    priceAmount: Number(match[1]),
+    priceAmount,
     priceType: /from|starting|starts|\+/i.test(text) ? 'from' : 'fixed',
   };
 }
@@ -488,6 +495,41 @@ function currentMatrixGroupFromLine(line: string, currentGroup: string | null): 
   if (/^massage(?:\s+therapy)?$/i.test(cleaned)) return currentGroup ?? 'Massage';
   if (isServiceMenuGroupHeading(cleaned) && !/therapy$/i.test(cleaned)) return cleaned;
   return currentGroup;
+}
+
+/** Service nouns — a matrix row label containing one already names a concrete service. */
+const MATRIX_SERVICE_NOUN_RE =
+  /\b(massage|facial|hydrafacial|treatment|wax|waxing|manicure|pedicure|reflexology|cut|haircut|colou?r|highlights?|blowout|blow[ -]?dry|peel|wrap|scrub|therapy|extension|tint|balayage|lash(?:es)?)\b/i;
+
+/**
+ * Category keyword → the service-type word appended to a bare matrix row label.
+ * First match wins. Only categories whose matrix rows are commonly bare modifiers
+ * (e.g. Massage "Relaxing", Manicure "Deluxe", Lashes "Volume") are listed here.
+ */
+const MATRIX_CATEGORY_TYPE_WORDS: Array<[RegExp, string]> = [
+  [/massage/i, 'Massage'],
+  [/facial|hydrafacial/i, 'Facial'],
+  [/manicure/i, 'Manicure'],
+  [/pedicure/i, 'Pedicure'],
+  [/haircut/i, 'Haircut'],
+  [/colou?r/i, 'Color'],
+  [/wax(?:ing)?/i, 'Wax'],
+  [/lash(?:es)?/i, 'Lashes'],
+  [/blowout|blow[ -]?dry/i, 'Blowout'],
+];
+
+/**
+ * Matrix-table rows are often bare modifiers ("Relaxing", "Hot Stone") under a typed
+ * category ("Massage Therapy"). Append the category's service-type word so the name
+ * reads as a real service ("Relaxing Massage") — but only when the row label carries
+ * no service noun of its own (leaves "Add Reflexology", "Stress-Fix Massage" untouched).
+ */
+function qualifyMatrixServiceName(name: string, categoryName: string): string {
+  if (MATRIX_SERVICE_NOUN_RE.test(name)) return name;
+  for (const [categoryRe, typeWord] of MATRIX_CATEGORY_TYPE_WORDS) {
+    if (categoryRe.test(categoryName)) return `${name} ${typeWord}`;
+  }
+  return name;
 }
 
 function buildMatrixService(params: {
@@ -518,7 +560,7 @@ function buildMatrixService(params: {
   const categoryName = params.group || inferGroup(parsedName);
   return {
     categoryName,
-    name: parsedName,
+    name: qualifyMatrixServiceName(parsedName, categoryName),
     description: params.description && params.description.length <= 240 ? params.description : null,
     priceAmount: null,
     priceCurrency: CURRENCY,

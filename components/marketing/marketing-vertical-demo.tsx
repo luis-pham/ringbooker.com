@@ -22,7 +22,16 @@ import {
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
 type SitePhase = 'idle' | 'loading' | 'ready' | 'error';
 type DemoApiHours = Record<string, { closed: true } | { open: string; close: string }>;
-type ExtractedDemoData = { businessName: string; address: string; city: string; hours: string; services: string[] };
+type ExtractedDemoData = {
+  businessName: string;
+  address: string;
+  city: string;
+  hours: string;
+  /** Flat service names — feeds suggested-questions generation. */
+  services: string[];
+  /** Parent service categories with item counts — shown as chips in the "What we found" card. */
+  serviceCategories: Array<{ label: string; count: number }>;
+};
 type TranscriptTurn = { role: 'user' | 'assistant'; text: string };
 type CallExtracted = {
   callerIntent: string | null;
@@ -156,10 +165,13 @@ const NAV_SERVICE_BLOCKLIST = new Set([
 ]);
 
 function isUsableDemoServiceName(rawName: string): string | null {
-  const name = rawName.replace(/^Add\s+/i, '').trim();
+  const name = rawName.replace(/^Add\s+/i, '').replace(/[™®]/g, '').trim();
   if (!name || name.length < 2) return null;
   if (NAV_SERVICE_BLOCKLIST.has(name.toLowerCase())) return null;
   if (/^shop\s+\S/i.test(name)) return null;
+  // Reject rows the importer mangled — a real service name never contains an embedded
+  // price token (e.g. "Lip 425+ Brow and Lip" from a broken price-table parse).
+  if (/\d{2,}\s*\+/.test(name)) return null;
   return name;
 }
 
@@ -1141,7 +1153,14 @@ export function MarketingVerticalDemoTemplate({
 
         const elapsed = Date.now() - siteLoadStartRef.current;
         window.setTimeout(() => {
-          const extractedResult: ExtractedDemoData = { businessName, address, city: displayCity, hours, services };
+          const extractedResult: ExtractedDemoData = {
+            businessName,
+            address,
+            city: displayCity,
+            hours,
+            services,
+            serviceCategories: importedServiceCategories.map((c) => ({ label: c.label, count: c.items.length })),
+          };
           setExtractedData(extractedResult);
           setBusiness((cur) => ({
             ...cur,
@@ -2000,14 +2019,17 @@ export function MarketingVerticalDemoTemplate({
                               <span className="vd-m-found-k">Hours</span>
                               <span className="vd-m-found-v">{extractedData.hours || business.primaryHours || '—'}</span>
                             </div>
-                            {extractedData.services.length > 0 ? (
+                            {extractedData.serviceCategories.length > 0 ? (
                               <div className="vd-m-found-row" style={{ flexWrap: 'wrap' }}>
                                 <span className="vd-m-found-ic" aria-hidden>✂️</span>
                                 <span className="vd-m-found-k">Services</span>
                                 <span className="vd-m-found-v" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                  {extractedData.services.slice(0, 10).map((s) => (
-                                    <span key={s} className="vd-found-chip">{s}</span>
+                                  {extractedData.serviceCategories.slice(0, 8).map((cat) => (
+                                    <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
                                   ))}
+                                  {extractedData.serviceCategories.length > 8 ? (
+                                    <span className="vd-found-chip">+{extractedData.serviceCategories.length - 8} more</span>
+                                  ) : null}
                                 </span>
                               </div>
                             ) : null}
@@ -2355,13 +2377,16 @@ export function MarketingVerticalDemoTemplate({
                           />
                         )}
                       </div>
-                      {extractedData.services.length > 0 ? (
+                      {extractedData.serviceCategories.length > 0 ? (
                         <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                           <span className="vd-found-key">Services</span>
                           <div className="vd-found-chips">
-                            {extractedData.services.slice(0, 8).map((s) => (
-                              <span key={s} className="vd-found-chip">{s}</span>
+                            {extractedData.serviceCategories.slice(0, 8).map((cat) => (
+                              <span key={cat.label} className="vd-found-chip">{cat.label} · {cat.count}</span>
                             ))}
+                            {extractedData.serviceCategories.length > 8 ? (
+                              <span className="vd-found-chip">+{extractedData.serviceCategories.length - 8} more</span>
+                            ) : null}
                           </div>
                         </div>
                       ) : null}

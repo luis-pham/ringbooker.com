@@ -32,6 +32,69 @@ export function visibleTextFromHtml(html: string): string {
   return $('body').text().replace(/[ \t]+/g, ' ').replace(/\n\s+/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
+/**
+ * Converts HTML to structure-preserving Markdown for the LLM extractor.
+ *  - `<table>` → Markdown table rows: keeps cell/row boundaries. A flattened table
+ *    mashes "<td>Lip</td><td>$25</td><td>Brow and Lip</td>" into "Lip $25 Brow and Lip";
+ *    a Markdown table does not.
+ *  - headings → `#` prefixes, `<li>` → `- ` bullets.
+ *  - block elements → line breaks, so each service / `<div>` card sits on its own line.
+ *  - inline elements → a space, so adjacent `<span>`s never mash ("Lip"+"$25" ≠ "Lip$25").
+ * Structure only — it does not fix source-side typos (a website's "425+" stays "425+").
+ */
+export function htmlToStructuredMarkdown(html: string): string {
+  const $ = cheerio.load(html);
+  $('script, style, noscript, svg, img, iframe, head, template, link, meta').remove();
+  $('br').replaceWith('\n');
+
+  // Tables first — replace each with Markdown rows before later transforms strip <tr>/<td>.
+  $('table').each((_, tableEl) => {
+    const rows: string[] = [];
+    $(tableEl)
+      .find('tr')
+      .each((_, trEl) => {
+        const cells = $(trEl)
+          .find('th, td')
+          .map((_, cellEl) => $(cellEl).text().replace(/\s+/g, ' ').trim())
+          .get();
+        if (cells.some((cell) => cell.length > 0)) rows.push(`| ${cells.join(' | ')} |`);
+      });
+    if (rows.length === 0) {
+      $(tableEl).remove();
+      return;
+    }
+    const columnCount = Math.max(1, (rows[0].match(/\|/g)?.length ?? 2) - 1);
+    const separator = `| ${Array.from({ length: columnCount }, () => '---').join(' | ')} |`;
+    $(tableEl).replaceWith(`\n\n${rows[0]}\n${separator}\n${rows.slice(1).join('\n')}\n\n`);
+  });
+
+  // Headings → Markdown headings.
+  for (let level = 1; level <= 6; level += 1) {
+    $(`h${level}`).each((_, el) => {
+      const text = $(el).text().replace(/\s+/g, ' ').trim();
+      $(el).replaceWith(text ? `\n\n${'#'.repeat(level)} ${text}\n` : '\n');
+    });
+  }
+
+  // List items → bullets.
+  $('li').each((_, el) => {
+    const text = $(el).text().replace(/\s+/g, ' ').trim();
+    $(el).replaceWith(text ? `\n- ${text}` : '');
+  });
+
+  // Block elements → line breaks so each service / card lands on its own line.
+  $('p, div, section, article, header, footer, main, ul, ol, dl, dd').append('\n');
+  // Inline elements → a space so adjacent text never mashes.
+  $('span, a, label, strong, b, em, i, small').append(' ');
+
+  return $('body')
+    .text()
+    .replace(/[ \t]+/g, ' ')
+    .replace(/ *\n */g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export function extractJsonLd(html: string): unknown[] {
   const $ = cheerio.load(html);
   const out: unknown[] = [];
@@ -690,6 +753,7 @@ export function previewHtml(html: string, url: string): PagePreview {
   const structuredStaff = structuredStaffText($, url);
   const policyBlocks = extractPolicyBlocks($);
   const text = [structuredServices, structuredStaff, visibleTextFromHtml(html)].filter(Boolean).join('\n');
+  const markdown = htmlToStructuredMarkdown(html);
   const links = extractLinks(html, url);
   const priceCount = (text.match(PRICE_PATTERN) ?? []).length;
   const durationCount = (text.match(DURATION_PATTERN) ?? []).length;
@@ -705,6 +769,7 @@ export function previewHtml(html: string, url: string): PagePreview {
     h1,
     h2s,
     firstTextChars: text.slice(0, 8000),
+    markdown: markdown.slice(0, 16000),
     serviceBlocks,
     priceCount,
     durationCount,

@@ -46,6 +46,12 @@ export type PagePreview = {
   h1: string;
   h2s: string[];
   firstTextChars: string;
+  /**
+   * Structure-preserving Markdown (tables, headings, one service per line) — fed to the
+   * LLM extractor. Optional: always set by `previewHtml`; consumers fall back to
+   * `firstTextChars` when absent (e.g. hand-built test fixtures).
+   */
+  markdown?: string;
   serviceBlocks?: Array<{
     groupHeading?: string | null;
     serviceName: string;

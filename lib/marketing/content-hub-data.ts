@@ -555,7 +555,7 @@ export const worksWithHub: ContentHubPageConfig = {
     },
     {
       kind: 'tool_strip',
-      html: { eyebrow: 'Booking Tool Compatibility', eyebrowTone: 'blue' },
+      html: { eyebrow: 'Booking Tool Compatibility' },
       heading: 'Tools beauty businesses already use',
       sub: 'Square Appointments, Mindbody, and Acuity Scheduling connect directly today. Other booking tools can still work with RingBooker through booking-link SMS, call capture, summaries, and handoff.',
       tools: [
@@ -629,7 +629,6 @@ export const worksWithHub: ContentHubPageConfig = {
       kind: 'step_track',
       html: {
         eyebrow: 'Getting Started',
-        eyebrowTone: 'green',
         section: 'leak',
         stepsCentered4: true,
         stepTrackHideNumbers: true,

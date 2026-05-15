@@ -726,6 +726,42 @@ export const HTML_HUB_SCOPED_CSS = `
 .html-hub-page .section-label.blue{color:var(--blue)}
 .html-hub-page .section-label.amber{color:var(--amber)}
 .html-hub-page .section-label.dark{color:rgba(255,255,255,.8)}
+/* Hub variant eyebrows — must follow generic .green|.blue|.amber above (source order). */
+.html-hub-page.html-hub-page--beauty-clinic .section-label:not(.dark),
+.html-hub-page.html-hub-page--beauty-clinic .section-label.green,
+.html-hub-page.html-hub-page--beauty-clinic .section-label.purple,
+.html-hub-page.html-hub-page--beauty-clinic .section-label.blue,
+.html-hub-page.html-hub-page--beauty-clinic .section-label.amber{
+  color:#a21caf;
+}
+.html-hub-page.html-hub-page--trust .section-label:not(.dark),
+.html-hub-page.html-hub-page--trust .section-label.green,
+.html-hub-page.html-hub-page--trust .section-label.purple,
+.html-hub-page.html-hub-page--trust .section-label.blue,
+.html-hub-page.html-hub-page--trust .section-label.amber{
+  color:var(--purple);
+}
+.html-hub-page.html-hub-page--teal .section-label:not(.dark),
+.html-hub-page.html-hub-page--teal .section-label.green,
+.html-hub-page.html-hub-page--teal .section-label.purple,
+.html-hub-page.html-hub-page--teal .section-label.blue,
+.html-hub-page.html-hub-page--teal .section-label.amber{
+  color:#0f7669;
+}
+.html-hub-page.html-hub-page--hair .section-label:not(.dark),
+.html-hub-page.html-hub-page--hair .section-label.green,
+.html-hub-page.html-hub-page--hair .section-label.purple,
+.html-hub-page.html-hub-page--hair .section-label.blue,
+.html-hub-page.html-hub-page--hair .section-label.amber{
+  color:#b45309;
+}
+.html-hub-page.html-hub-page--med-spa .section-label:not(.dark),
+.html-hub-page.html-hub-page--med-spa .section-label.green,
+.html-hub-page.html-hub-page--med-spa .section-label.purple,
+.html-hub-page.html-hub-page--med-spa .section-label.blue,
+.html-hub-page.html-hub-page--med-spa .section-label.amber{
+  color:#4338ca;
+}
 
 .html-hub-page .section h2{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);margin:0 auto 14px;color:#111827;max-width:22ch;text-wrap:balance}
 .html-hub-page .section h3{font-size:17px;font-weight:600;margin-bottom:8px;color:#111827}
@@ -908,18 +944,22 @@ export const HTML_HUB_SCOPED_CSS = `
   gap:24px;
   counter-reset:step;
 }
-/* Four steps — centered block (works-with Getting Started) */
+/* Four steps — full section width (works-with Getting Started, trust rollout, …) */
 .html-hub-page .steps.steps--centered-4{
-  grid-template-columns:repeat(4,minmax(0,200px));
-  justify-content:center;
-  max-width:920px;
-  margin-left:auto;
-  margin-right:auto;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  justify-content:stretch;
+  width:100%;
+  max-width:none;
+  margin-left:0;
+  margin-right:0;
+}
+.html-hub-page--landing-width .section .section-inner > .steps.steps--centered-4{
+  align-self:stretch;
 }
 @media(max-width:1100px){
   .html-hub-page .steps.steps--centered-4{
     grid-template-columns:repeat(2,minmax(0,1fr));
-    max-width:640px;
+    max-width:none;
   }
 }
 @media(max-width:520px){

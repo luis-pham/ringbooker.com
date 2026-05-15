@@ -288,7 +288,9 @@ export function buildLlmImportPayload(input: LlmPayloadInput) {
       h1: page.h1,
       h2s: page.h2s.slice(0, 8),
       serviceBlocks: (page.serviceBlocks ?? []).slice(0, 30),
-      text: page.firstTextChars.slice(0, 2500),
+      // Structure-preserving Markdown (tables/headings/one service per line) so the
+      // model never sees a flattened blob like "Lip 425+ Brow and Lip $45+".
+      text: (page.markdown || page.firstTextChars).slice(0, 3500),
     };
   });
   return {
