@@ -16,6 +16,8 @@ import { DIRECT_REALTIME_DEMO_DURATION_MESSAGE, userMessageForDirectDemoRealtime
 import { buildFaqPageJsonLd } from '@/lib/seo/faq-page-jsonld';
 
 type DemoStage = 'idle' | 'queued' | 'dialing' | 'live' | 'completed' | 'failed';
+type SitePhase = 'idle' | 'loading' | 'ready' | 'error';
+type ExtractedDemoData = { businessName: string; city: string; hours: string; services: string[] };
 
 type DemoBusinessConfig = {
   businessName: string;
@@ -389,6 +391,60 @@ const styles: string[] = [
   `,
 ];
 
+const siteReadStyles: string = String.raw`
+  /* ─── site-read URL section ─────────────────────────────── */
+  .vd-url-section{margin-bottom:14px}
+  .vd-url-label{font-size:13px;font-weight:700;color:#374151;margin-bottom:8px;display:block}
+  .vd-url-row{display:flex;gap:8px;align-items:center}
+  .vd-url-input{flex:1;border:1px solid #E5E7EB;border-radius:13px;padding:11px 13px;font-size:14px;color:#111827;background:#fff;outline:none;transition:border-color .15s;-webkit-appearance:none;min-width:0}
+  .vd-url-input:focus{border-color:var(--va)}
+  .vd-url-btn{flex-shrink:0;border:none;border-radius:999px;background:var(--va);color:#fff;padding:11px 16px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;transition:.15s}
+  .vd-url-btn:hover:not(:disabled){filter:brightness(1.08)}
+  .vd-url-btn:disabled{opacity:.55;cursor:not-allowed}
+  .vd-url-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#9CA3AF;font-size:12px;font-weight:700}
+  .vd-url-divider::before,.vd-url-divider::after{content:'';flex:1;height:1px;background:#E5E7EB}
+
+  /* ─── loading card ──────────────────────────────────────── */
+  .vd-loading-card{min-height:200px;display:flex;flex-direction:column;justify-content:center;padding:32px 24px}
+  .vd-load-head{font-size:16px;font-weight:900;color:#111827;margin:0 0 6px}
+  .vd-load-sub{font-size:13px;color:#6B7280;margin:0 0 24px}
+  .vd-load-steps{display:flex;flex-direction:column;gap:12px}
+  .vd-load-step{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;color:#9CA3AF;transition:color .3s}
+  .vd-load-step.done{color:#10B981}
+  .vd-load-step.active{color:#111827}
+  .vd-load-step-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;border:2px solid #E5E7EB;background:#fff;transition:all .3s}
+  .vd-load-step.done .vd-load-step-icon{background:#10B981;border-color:#10B981;color:#fff}
+  .vd-load-step.active .vd-load-step-icon{border-color:var(--va);animation:vdPulse 1s ease-in-out infinite}
+
+  /* ─── found card ────────────────────────────────────────── */
+  .vd-found-card{border:1px solid color-mix(in srgb,var(--va) 25%,#E5E7EB);border-radius:18px;background:color-mix(in srgb,var(--va) 4%,#fff);padding:16px;margin-bottom:16px}
+  .vd-found-head{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--va);margin-bottom:12px}
+  .vd-found-row{display:flex;gap:8px;align-items:baseline;margin-bottom:8px;font-size:13px}
+  .vd-found-row:last-child{margin-bottom:0}
+  .vd-found-key{font-weight:700;color:#6B7280;flex-shrink:0;min-width:60px}
+  .vd-found-val{color:#111827;font-weight:600}
+  .vd-found-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+  .vd-found-chip{background:rgba(255,255,255,.85);border:1px solid color-mix(in srgb,var(--va) 20%,#E5E7EB);border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700;color:#374151}
+  .vd-found-edit{background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--va);padding:0;margin-top:10px;display:block}
+  .vd-found-edit:hover{text-decoration:underline}
+
+  /* ─── retry link ────────────────────────────────────────── */
+  .vd-retry-link{background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:#9CA3AF;padding:0;margin-top:8px;display:block;text-align:center;text-decoration:none}
+  .vd-retry-link:hover{color:#6B7280}
+
+  /* ─── post-demo steps ───────────────────────────────────── */
+  .vd-post-steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:20px}
+  .vd-post-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+  .vd-post-step-dot{width:28px;height:28px;border-radius:50%;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
+  .vd-post-step-label{font-size:11px;font-weight:700;color:#6B7280;text-align:center;line-height:1.3}
+  .vd-post-step-bar{flex:1;height:2px;background:color-mix(in srgb,var(--va) 30%,#E5E7EB);margin:-14px 0 0}
+  .vd-ai-card{border:1px solid color-mix(in srgb,var(--va) 20%,#E5E7EB);border-radius:18px;background:color-mix(in srgb,var(--va) 3%,#fff);padding:16px;margin-bottom:16px}
+  .vd-ai-card-head{font-size:13px;font-weight:900;color:#111827;margin-bottom:8px}
+  .vd-ai-card-body{font-size:13px;color:#374151;line-height:1.6}
+  .vd-trust-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .vd-trust-chip{font-size:11px;font-weight:700;color:#10B981;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:999px;padding:4px 10px}
+`;
+
 function cloneServices(services: DemoServiceCategory[]): DemoServiceCategory[] {
   return services.map((c) => ({ ...c, items: c.items.map((i) => ({ ...i })) }));
 }
@@ -489,6 +545,13 @@ export function MarketingVerticalDemoTemplate({
   const directPeerFailureMutedRef = useRef(false);
   const demoStartLockRef = useRef(false);
 
+  const [sitePhase, setSitePhase] = useState<SitePhase>('idle');
+  const [siteLoadStep, setSiteLoadStep] = useState(0);
+  const [siteUrl, setSiteUrl] = useState('');
+  const [extractedData, setExtractedData] = useState<ExtractedDemoData | null>(null);
+  const [siteLoadError, setSiteLoadError] = useState<string | null>(null);
+  const siteLoadTimersRef = useRef<number[]>([]);
+
   const [captchaHint, setCaptchaHint] = useState<string | null>(null);
   const [captchaEpoch, setCaptchaEpoch] = useState(0);
 
@@ -504,6 +567,7 @@ export function MarketingVerticalDemoTemplate({
   useEffect(() => () => {
     clearPollTimer();
     cleanupDirectRealtime();
+    siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
   }, []);
 
   /** When leaving the form for the live demo, remove Turnstile so the widget can mount again on return. */
@@ -590,6 +654,48 @@ export function MarketingVerticalDemoTemplate({
     if (!business.businessName.trim()) errs.push('Business name is required.');
     if (turnstileSiteKey && !captchaToken) errs.push('Please complete human verification (checkbox above).');
     return errs;
+  }
+
+  async function readWebsite() {
+    const url = siteUrl.trim();
+    if (!url) return;
+    setSitePhase('loading');
+    setSiteLoadStep(0);
+    setSiteLoadError(null);
+    siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
+    siteLoadTimersRef.current = [];
+    siteLoadTimersRef.current.push(window.setTimeout(() => setSiteLoadStep(1), 3000));
+    siteLoadTimersRef.current.push(window.setTimeout(() => setSiteLoadStep(2), 7000));
+    siteLoadTimersRef.current.push(window.setTimeout(() => setSiteLoadStep(3), 12000));
+    try {
+      const res = await fetch('/api/backend/public/demo/import-website', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = (await res.json()) as { ok: boolean; data?: ExtractedDemoData; error?: string; message?: string };
+      siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
+      siteLoadTimersRef.current = [];
+      setSiteLoadStep(3);
+      if (data.ok && data.data) {
+        setExtractedData(data.data);
+        setBusiness((cur) => ({
+          ...cur,
+          businessName: data.data!.businessName || cur.businessName,
+          city: data.data!.city || cur.city,
+          primaryHours: data.data!.hours || cur.primaryHours,
+        }));
+        window.setTimeout(() => setSitePhase('ready'), 900);
+      } else {
+        setSiteLoadError(data.message ?? 'Could not read that website. You can fill in the details manually.');
+        setSitePhase('error');
+      }
+    } catch {
+      siteLoadTimersRef.current.forEach((t) => window.clearTimeout(t));
+      siteLoadTimersRef.current = [];
+      setSiteLoadError('Network error. Please try again.');
+      setSitePhase('error');
+    }
   }
 
   function clearPollTimer() {
@@ -1192,6 +1298,7 @@ export function MarketingVerticalDemoTemplate({
     setStage('idle');
     setRequestError(null);
     setStatusText('');
+    setSitePhase(extractedData ? 'ready' : 'idle');
   }
 
   const verticalLabel = config.businessType.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -1206,7 +1313,7 @@ export function MarketingVerticalDemoTemplate({
   };
 
   return (
-    <MarketingLayout styles={styles} scriptPrefix={`vertical-demo-${config.slug}`}>
+    <MarketingLayout styles={[...styles, siteReadStyles]} scriptPrefix={`vertical-demo-${config.slug}`}>
       <>
         {turnstileSiteKey ? (
           <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" onLoad={() => setTurnstileReady(true)} />
@@ -1236,7 +1343,99 @@ export function MarketingVerticalDemoTemplate({
             <div>
               {/* ── FORM ── */}
               {!isActive ? (
+                sitePhase === 'loading' ? (
+                  <div className="vd-form-card vd-loading-card">
+                    <p className="vd-load-head">Reading your website…</p>
+                    <p className="vd-load-sub">Pulling business name, hours, and services.</p>
+                    <div className="vd-load-steps">
+                      {(['Fetching your site', 'Scanning pages', 'Extracting data'] as const).map((label, i) => (
+                        <div key={label} className={`vd-load-step${siteLoadStep > i ? ' done' : siteLoadStep === i ? ' active' : ''}`}>
+                          <span className="vd-load-step-icon">{siteLoadStep > i ? '✓' : i + 1}</span>
+                          {label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : sitePhase === 'ready' && extractedData ? (
+                  <div className="vd-form-card">
+                    <div className="vd-found-card">
+                      <div className="vd-found-head">What we found</div>
+                      {extractedData.businessName ? (
+                        <div className="vd-found-row">
+                          <span className="vd-found-key">Name</span>
+                          <span className="vd-found-val">{extractedData.businessName}</span>
+                        </div>
+                      ) : null}
+                      {extractedData.city ? (
+                        <div className="vd-found-row">
+                          <span className="vd-found-key">City</span>
+                          <span className="vd-found-val">{extractedData.city}</span>
+                        </div>
+                      ) : null}
+                      {extractedData.hours ? (
+                        <div className="vd-found-row">
+                          <span className="vd-found-key">Hours</span>
+                          <span className="vd-found-val">{extractedData.hours}</span>
+                        </div>
+                      ) : null}
+                      {extractedData.services.length > 0 ? (
+                        <div className="vd-found-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                          <span className="vd-found-key">Services</span>
+                          <div className="vd-found-chips">
+                            {extractedData.services.slice(0, 8).map((s) => (
+                              <span key={s} className="vd-found-chip">{s}</span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <button type="button" className="vd-found-edit" onClick={() => setSitePhase('idle')}>Edit details →</button>
+                    </div>
+
+                    {/* Captcha */}
+                    {turnstileSiteKey ? (
+                      <div style={{ marginBottom: 14 }}>
+                        <div className="vd-captcha-label">Human verification</div>
+                        <div className="vd-captcha">
+                          <div className="vd-captcha-inner" ref={turnstileRef} />
+                        </div>
+                        {captchaHint ? <p className="vd-captcha-hint">{captchaHint}</p> : null}
+                      </div>
+                    ) : null}
+
+                    {errors.length > 0 || requestError ? (
+                      <div className="vd-errors">
+                        {errors.map((e) => <div key={e} className="vd-error">{e}</div>)}
+                        {requestError ? <div className="vd-error">{requestError}</div> : null}
+                      </div>
+                    ) : null}
+
+                    <button type="button" className="vd-cta" onClick={() => void startWebDemo()} disabled={isSubmitting}>
+                      {isSubmitting ? 'Starting…' : 'Start Demo Call'}
+                    </button>
+                    <p className="vd-cta-note">AI receptionist configured with your real salon data.</p>
+                  </div>
+                ) : (
                 <div className="vd-form-card">
+                  {/* URL input */}
+                  <div className="vd-url-section">
+                    <label className="vd-url-label">Try with your real {config.businessType.replace(/-/g, ' ')}</label>
+                    <div className="vd-url-row">
+                      <input
+                        className="vd-url-input"
+                        type="url"
+                        placeholder="https://yoursalon.com"
+                        value={siteUrl}
+                        onChange={(e) => setSiteUrl(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') void readWebsite(); }}
+                      />
+                      <button type="button" className="vd-url-btn" onClick={() => void readWebsite()} disabled={!siteUrl.trim()}>
+                        Read site
+                      </button>
+                    </div>
+                    {siteLoadError ? <div className="vd-error" style={{ marginTop: 8 }}>{siteLoadError}</div> : null}
+                  </div>
+                  <div className="vd-url-divider">or use sample data below</div>
+
                   <div className="vd-field" style={{ marginBottom: 14 }}>
                     <label htmlFor="vd-biz">Business name for this demo</label>
                     <input id="vd-biz" value={business.businessName} onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))} />
@@ -1340,6 +1539,7 @@ export function MarketingVerticalDemoTemplate({
                     <p className="vd-phone-demo-note">{config.phoneDemoProfileCopy}</p>
                   </div>
                 </div>
+                )
               ) : (
                 /* ── STATUS VIEW ── */
                 <div>
@@ -1383,14 +1583,37 @@ export function MarketingVerticalDemoTemplate({
 
                   {stage === 'completed' ? (
                     <>
-                      <div className="vd-sms">
-                        <div className="vd-sms-label">Demo SMS preview</div>
-                        <div className="vd-sms-bubble">{config.smsPreview}</div>
+                      <div className="vd-post-steps">
+                        <div className="vd-post-step">
+                          <div className="vd-post-step-dot">✓</div>
+                          <div className="vd-post-step-label">Demo call</div>
+                        </div>
+                        <div className="vd-post-step-bar" />
+                        <div className="vd-post-step">
+                          <div className="vd-post-step-dot">2</div>
+                          <div className="vd-post-step-label">Start trial</div>
+                        </div>
+                        <div className="vd-post-step-bar" />
+                        <div className="vd-post-step">
+                          <div className="vd-post-step-dot">3</div>
+                          <div className="vd-post-step-label">Go live</div>
+                        </div>
                       </div>
+
+                      <div className="vd-ai-card">
+                        <div className="vd-ai-card-head">AI captured this call</div>
+                        <div className="vd-ai-card-body">{config.smsPreview}</div>
+                        <div className="vd-trust-row">
+                          <span className="vd-trust-chip">✓ No missed calls</span>
+                          <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
+                          <span className="vd-trust-chip">✓ 24/7 coverage</span>
+                        </div>
+                      </div>
+
                       <div className="vd-complete-cta">
                         <Link href="/pricing" className="vd-btn-primary">Start 14-Day Free Trial →</Link>
-                        <button type="button" className="vd-btn-ghost" onClick={resetDemo}>Try another scenario</button>
                       </div>
+                      <button type="button" className="vd-retry-link" onClick={resetDemo}>Try another scenario</button>
                     </>
                   ) : null}
 
@@ -1434,7 +1657,11 @@ export function MarketingVerticalDemoTemplate({
                         ? 'Call Summary'
                         : stage === 'failed'
                           ? 'Call failed'
-                          : 'LIVE DEMO CALL'}
+                          : sitePhase === 'loading'
+                            ? 'Reading site…'
+                            : sitePhase === 'ready'
+                              ? 'Ready to call'
+                              : 'LIVE DEMO CALL'}
                 </div>
                 <div className="vd-phone-mid">
                   {stage === 'queued' || stage === 'dialing' ? (
@@ -1442,6 +1669,13 @@ export function MarketingVerticalDemoTemplate({
                       <span className="vd-phone-connecting-dot" aria-hidden />
                       Connecting…
                     </div>
+                  ) : sitePhase === 'loading' ? (
+                    <div className="vd-phone-connecting" aria-live="polite">
+                      <span className="vd-phone-connecting-dot" aria-hidden />
+                      Reading…
+                    </div>
+                  ) : sitePhase === 'ready' && stage === 'idle' ? (
+                    <div style={{ textAlign: 'center', fontSize: 28 }}>✓</div>
                   ) : (
                     <div className="vd-phone-wave">
                       <span />
@@ -1470,14 +1704,14 @@ export function MarketingVerticalDemoTemplate({
                   ) : null}
                   {stage === 'idle' ? (
                     <div className="vd-phone-ios-act">
-                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--accept" onClick={() => void startWebDemo()} disabled={isSubmitting} aria-label="Start Demo Call">
+                      <button type="button" className="vd-phone-ios-btn vd-phone-ios-btn--accept" onClick={() => void startWebDemo()} disabled={isSubmitting || sitePhase === 'loading'} aria-label="Start Demo Call">
                         <span className="vd-phone-ios-btn-face" aria-hidden>
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                           </svg>
                         </span>
                       </button>
-                      <span className="vd-phone-ios-label">Start Demo Call</span>
+                      <span className="vd-phone-ios-label">{sitePhase === 'ready' ? 'Start Your Demo' : 'Start Demo Call'}</span>
                     </div>
                   ) : null}
                   {stage === 'completed' || stage === 'failed' ? (

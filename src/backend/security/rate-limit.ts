@@ -343,4 +343,6 @@ export const RATE_LIMIT_POLICIES = {
   openai_sip_per_did: { name: 'openai_sip_per_did', limit: 60, windowMs: 60_000 },
   /** Client beacon to release concurrent direct-demo slot (per IP). */
   public_demo_realtime_release: { name: 'public_demo_realtime_release', limit: 60, windowMs: 60_000 },
+  /** Public demo website import — no auth required, tight per-IP limit. */
+  public_demo_import_website: { name: 'public_demo_import_website', limit: 6, windowMs: 60_000, blockMs: 5 * 60_000 },
 } as const;

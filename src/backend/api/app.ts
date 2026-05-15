@@ -748,6 +748,47 @@ const forwardingCodeQuerySchema = z.object({
   forwardingType: z.enum(['no_answer', 'all', 'busy', 'unreachable']).optional(),
 });
 
+function formatDemoHoursFromApi(hours: Record<string, unknown> | null | undefined): string {
+  if (!hours) return '';
+  const ORDER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const ABB: Record<string, string> = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
+  const fmt = (t: string) => {
+    const [hStr, mStr] = t.split(':');
+    const h = parseInt(hStr ?? '0', 10);
+    const m = parseInt(mStr ?? '0', 10);
+    if (isNaN(h)) return t;
+    const ampm = h < 12 ? 'am' : 'pm';
+    const hr = h % 12 || 12;
+    return m === 0 ? `${hr}${ampm}` : `${hr}:${String(m).padStart(2, '0')}${ampm}`;
+  };
+  const parts: string[] = [];
+  let start: string | null = null;
+  let prev: string | null = null;
+  let curTime: string | null = null;
+  const flush = () => {
+    if (!start || !curTime) return;
+    const label = start === prev ? (ABB[start] ?? start) : `${ABB[start] ?? start}-${ABB[prev ?? start] ?? prev}`;
+    parts.push(`${label} ${curTime}`);
+    start = null; prev = null; curTime = null;
+  };
+  for (const day of ORDER) {
+    const entry = hours[day] as { closed?: boolean; open?: string; close?: string } | undefined;
+    if (!entry || entry.closed === true) {
+      flush();
+      continue;
+    }
+    const timeStr = entry.open && entry.close ? `${fmt(entry.open)}-${fmt(entry.close)}` : '';
+    if (timeStr === curTime) {
+      prev = day;
+    } else {
+      flush();
+      start = day; prev = day; curTime = timeStr;
+    }
+  }
+  flush();
+  return parts.join(', ');
+}
+
 function telnyxCountryCodeFromForwardingCountry(value: string | null | undefined): string {
   const v = (value ?? 'us').trim().toLowerCase();
   if (v === 'ca' || v === 'can') return 'CA';
@@ -3834,6 +3875,42 @@ export function createBackendApp(deps: {
           }
         : null,
     });
+  });
+
+  app.post(path('/public/demo/import-website'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_import_website, 'public_demo_import_website');
+    if (limited) return limited;
+
+    if (!getEnv().WEBSITE_IMPORT_ENABLED) {
+      return c.json({ ok: false, error: 'website_import_disabled' }, 503);
+    }
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = importWebsiteSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    try {
+      const env = getEnv();
+      const result = await importWebsiteForOnboarding({ url: parsed.data.url }, {
+        googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
+        llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
+        openAiApiKey: env.OPENAI_API_KEY,
+        llmModel: env.WEBSITE_IMPORT_LLM_MODEL,
+        llmMaxTokens: env.WEBSITE_IMPORT_LLM_MAX_TOKENS,
+        maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
+      });
+      const s = result.suggestions;
+      const businessName = s.businessProfile.name.value ?? '';
+      const address = s.businessProfile.address.value ?? '';
+      const cityRaw = address.split(',').slice(-2, -1)[0]?.trim() ?? '';
+      const city = cityRaw.replace(/^\s*\d{5}.*$/, '').trim();
+      const services = s.serviceCatalog.services.slice(0, 12).map((sv) => sv.name);
+      const hours = formatDemoHoursFromApi(s.hours.value as Record<string, unknown> | null | undefined);
+      return c.json({ ok: true, data: { businessName, city, hours, services } });
+    } catch (err) {
+      logger.warn({ err }, 'public_demo_import_website_failed');
+      return c.json({ ok: false, error: 'import_failed', message: 'Could not read that website. You can fill in the details manually.' }, 200);
+    }
   });
 
   app.post(path('/auth/user/signup/phone-search'), async (c) => {
