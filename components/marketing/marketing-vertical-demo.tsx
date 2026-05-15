@@ -164,12 +164,20 @@ function isUsableDemoServiceName(rawName: string): string | null {
 }
 
 function filterDemoServices(services: Array<{ name: string; confidence?: number; needsReview?: boolean }>): string[] {
-  return services
-    // Only feed services we are confident about into the demo voice agent — a
-    // low-confidence or review-flagged extraction must not be spoken as fact.
-    .filter((sv) => !sv.needsReview && (sv.confidence === undefined || sv.confidence >= 0.6))
-    .map((sv) => isUsableDemoServiceName(sv.name))
-    .filter((name): name is string => name !== null);
+  // Show the same services onboarding shows — do NOT drop low-confidence rows here
+  // (that made the demo list far shorter than onboarding for the same site). Only
+  // strip nav junk and de-duplicate, since the importer can list a service twice.
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const sv of services) {
+    const name = isUsableDemoServiceName(sv.name);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+  }
+  return out;
 }
 
 /**
@@ -192,7 +200,7 @@ function buildDemoServiceCategoriesFromImport(
   let total = 0;
   for (const sv of services) {
     if (total >= 40) break;
-    if (sv.needsReview || (sv.confidence !== undefined && sv.confidence < 0.6)) continue;
+    // Parity with onboarding: keep low-confidence / review-flagged rows too.
     const name = isUsableDemoServiceName(sv.name);
     if (!name) continue;
     const label = (sv.categoryName ?? '').trim() || 'Services';
