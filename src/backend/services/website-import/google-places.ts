@@ -82,7 +82,13 @@ export async function lookupGooglePlaces(input: {
           'places.primaryTypeDisplayName',
         ].join(','),
       },
-      body: JSON.stringify({ textQuery: query, maxResultCount: input.sourceType === 'google_maps' ? 1 : 3 }),
+      // Pin language so the server's IP geolocation can't localize the response
+      // (e.g. Vietnamese day names / addresses when the API is called from VN).
+      body: JSON.stringify({
+        textQuery: query,
+        maxResultCount: input.sourceType === 'google_maps' ? 1 : 3,
+        languageCode: 'en',
+      }),
       signal: controller.signal,
     });
     if (!response.ok) return null;

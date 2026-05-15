@@ -1021,10 +1021,11 @@ export function MarketingVerticalDemoTemplate({
         ...delayCheckpoints.map(([delay, msg]) =>
           window.setTimeout(() => setSiteDelayMessage(msg), delay),
         ),
+        // Backend demo import budget is 25s (runs the LLM extractor); allow margin over it.
         window.setTimeout(() => {
           setSiteLoadError("We couldn't read your website.");
           setSitePhase('error');
-        }, 20000),
+        }, 32000),
       ];
     }
     if (mobile) {
@@ -1033,7 +1034,7 @@ export function MarketingVerticalDemoTemplate({
           resetMobileImportUi();
           setSiteLoadError("We couldn't read your website.");
           setSitePhase('error');
-        }, 20000),
+        }, 32000),
       );
     }
 

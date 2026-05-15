@@ -326,18 +326,32 @@ async function createOpenAiRealtimeClientSecret(params: {
         },
       },
     }),
-  }).catch(() => null);
+  }).catch((err: unknown) => {
+    logger.error(
+      { err, model: params.model },
+      'openai_realtime_client_secret_network_error',
+    );
+    return null;
+  });
 
   if (!response) {
     throw new Error('realtime_session_failed');
   }
   if (!response.ok) {
+    // Capture OpenAI's real rejection reason — without this the failure collapses to a
+    // generic 502 and the actual cause (quota exhausted, rate limit, bad model) is lost.
+    const detail = await response.text().catch(() => '');
+    logger.error(
+      { status: response.status, body: detail.slice(0, 600), model: params.model },
+      'openai_realtime_client_secret_rejected',
+    );
     throw new Error(response.status === 401 || response.status === 403 ? 'openai_config_missing' : 'realtime_session_failed');
   }
 
   const body = (await response.json().catch(() => null)) as OpenAiRealtimeClientSecretResponse | null;
   const value = body?.value ?? body?.client_secret?.value;
   if (!value) {
+    logger.error({ model: params.model }, 'openai_realtime_client_secret_missing_value');
     throw new Error('realtime_session_failed');
   }
   return {
@@ -3852,7 +3866,11 @@ export function createBackendApp(deps: {
 
     try {
       const env = getEnv();
-      const result = await importWebsiteWithCache({ url: parsed.data.url }, () =>
+      // Demo budget must leave room for the LLM extractor (needs >=4s after the crawl);
+      // 15s was too short — the LLM was skipped, so the demo returned far fewer services,
+      // a partial address and no hours. 25s matches the LLM-capable onboarding crawl.
+      const demoImportBudgetMs = 25_000;
+      const result = await importWebsiteWithCache({ url: parsed.data.url, qualityBudgetMs: demoImportBudgetMs }, () =>
         importWebsiteForOnboarding({ url: parsed.data.url }, {
           googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
           llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
@@ -3862,8 +3880,7 @@ export function createBackendApp(deps: {
           maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
           renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
           renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
-          // Public demo is interactive — keep it snappy and well under the client timeout.
-          deadlineMs: 15_000,
+          deadlineMs: demoImportBudgetMs,
         }),
       );
       return c.json({ ok: result.ok, suggestions: result.suggestions });
@@ -5080,7 +5097,9 @@ export function createBackendApp(deps: {
 
     try {
       const env = getEnv();
-      const result = await importWebsiteWithCache({ url: parsed.data.url }, () =>
+      // Onboarding can afford a longer crawl for a more complete import.
+      const onboardingImportBudgetMs = 28_000;
+      const result = await importWebsiteWithCache({ url: parsed.data.url, qualityBudgetMs: onboardingImportBudgetMs }, () =>
         importWebsiteForOnboarding({ url: parsed.data.url }, {
           googlePlacesApiKey: env.GOOGLE_PLACES_API_KEY,
           llmEnabled: env.WEBSITE_IMPORT_LLM_ENABLED,
@@ -5090,8 +5109,7 @@ export function createBackendApp(deps: {
           maxBytes: env.WEBSITE_IMPORT_MAX_BYTES,
           renderEndpoint: env.WEBSITE_IMPORT_RENDER_URL,
           renderApiKey: env.WEBSITE_IMPORT_RENDER_API_KEY,
-          // Onboarding can afford a longer crawl for a more complete import.
-          deadlineMs: 28_000,
+          deadlineMs: onboardingImportBudgetMs,
         }),
       );
       if (result.diagnostics.warnings.length > 0) {
