@@ -20,6 +20,8 @@ export type OpenAiRealtimeAcceptBody = {
   audio?: {
     input?: {
       turn_detection?: Record<string, unknown> | null;
+      /** Enables caller-speech transcription so the sideband can capture both sides of the call. */
+      transcription?: { model: string } | null;
     };
     output?: {
       voice?: string;
@@ -162,7 +164,12 @@ export function buildOpenAiSipAcceptBody(params: {
     model: params.model,
     instructions: params.instructions,
     audio: {
-      input: audioInput,
+      input: {
+        ...audioInput,
+        // Caller-speech transcription — required for the sideband to capture the caller side
+        // (without it OpenAI never emits conversation.item.input_audio_transcription.completed).
+        transcription: { model: 'gpt-4o-mini-transcribe' },
+      },
       output: {
         voice: params.voice,
       },

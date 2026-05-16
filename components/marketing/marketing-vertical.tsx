@@ -45,21 +45,6 @@ const SERVICE_BY_VERTICAL: Record<
   },
 };
 
-type BookingToolIntegration = {
-  id: string;
-  name: string;
-  logoSrc: string;
-  status: 'live' | 'compatible' | 'soon';
-};
-
-/** Logos under /public/images — same assets as user portal calendar integrations. */
-const BOOKING_TOOL_INTEGRATIONS: BookingToolIntegration[] = [
-  { id: 'square', name: 'Square', logoSrc: '/images/square.png', status: 'live' },
-  { id: 'mindbody', name: 'Mindbody', logoSrc: '/images/mindbody.webp', status: 'live' },
-  { id: 'vagaro', name: 'Vagaro', logoSrc: '/images/vagaro.png', status: 'compatible' },
-  { id: 'booksy', name: 'Booksy', logoSrc: '/images/booksy.png', status: 'compatible' },
-];
-
 const TRIAL_CTA_SECONDARY =
   'inline-flex w-full sm:w-auto items-center justify-center rounded-full border bg-white/55 px-5 py-[11px] text-[13px] font-semibold transition hover:-translate-y-px hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
 
@@ -185,68 +170,6 @@ const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessN
     ],
   },
 };
-
-type IntegrationRowLabels = {
-  eyebrow: string;
-  live: string;
-  compatible: string;
-  soon: string;
-  logoAlt: (name: string) => string;
-};
-
-const DEFAULT_INTEGRATION_ROW_LABELS: IntegrationRowLabels = {
-  eyebrow: 'Works with your booking tools',
-  live: 'Live',
-  compatible: 'Workflow compatible',
-  soon: 'Coming soon',
-  logoAlt: (name) => `${name} logo`,
-};
-
-function IntegrationRow({
-  eyebrowClass = 'text-slate-400',
-  labels = DEFAULT_INTEGRATION_ROW_LABELS,
-}: {
-  eyebrowClass?: string;
-  labels?: IntegrationRowLabels;
-}) {
-  return (
-    <div className="mt-6">
-      <p className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{labels.eyebrow}</p>
-      <div className="flex flex-wrap items-start gap-x-8 gap-y-4 sm:gap-x-10">
-        {BOOKING_TOOL_INTEGRATIONS.map((item) => {
-          const isLive = item.status === 'live';
-          const isCompatible = item.status === 'compatible';
-          return (
-            <div key={item.id} className="flex items-start gap-2.5">
-              <img
-                src={item.logoSrc}
-                alt={labels.logoAlt(item.name)}
-                width={40}
-                height={40}
-                className="h-10 w-10 shrink-0 object-contain"
-                loading="lazy"
-                decoding="async"
-              />
-              <div className="flex min-w-0 flex-col justify-center pt-0.5">
-                <span className="text-[13px] font-bold leading-tight tracking-tight text-slate-900">{item.name}</span>
-                {isLive ? (
-                  <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-emerald-600">
-                    <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden />
-                    {labels.live}
-                  </div>
-                ) : isCompatible ? (
-                  <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-500">{labels.compatible}</div>
-                ) : (
-                  <div className="mt-1 text-[10px] font-semibold tracking-wide text-slate-400">{labels.soon}</div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 function Faq({
   items,
@@ -586,7 +509,6 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
               🇻🇳 Tiếng Việt
             </Link>
           </div>
-          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['nail-salon']} />
@@ -795,16 +717,6 @@ export async function MarketingNailSalonVietnameseTemplate() {
                 🇺🇸 English
               </Link>
             </div>
-            <IntegrationRow
-              eyebrowClass={theme.accentClass}
-              labels={{
-                eyebrow: 'Hoạt động cùng phần mềm tiệm đang dùng',
-                live: 'Đang hoạt động',
-                compatible: 'Tương thích quy trình',
-                soon: 'Sắp có',
-                logoAlt: (name) => `Logo ${name}`,
-              }}
-            />
           </div>
           <div className="hidden lg:block lg:pt-8">
             <CallPreviewPlayer {...VI_NAIL_CALL_PREVIEW} />
@@ -1008,7 +920,6 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
               Start 14-Day Free Trial
             </Link>
           </div>
-          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} />
@@ -1133,7 +1044,6 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
               Start 14-Day Free Trial
             </Link>
           </div>
-          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['spa']} />
@@ -1278,7 +1188,6 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
               Start 14-Day Free Trial
             </Link>
           </div>
-          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} />
@@ -1425,7 +1334,6 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
               Start 14-Day Free Trial
             </Link>
           </div>
-          <IntegrationRow eyebrowClass={theme.accentClass} />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} />

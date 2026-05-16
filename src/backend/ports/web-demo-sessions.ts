@@ -68,6 +68,9 @@ export interface WebDemoSessionsRepository {
 
   finalizeByRequestId(requestId: string, params: { endReason: 'completed' | 'timeout' }): Promise<void>;
 
+  /** Persist the captured browser-demo transcript (array of conversation turns). */
+  saveTranscriptByRequestId(requestId: string, transcript: unknown): Promise<void>;
+
   listForAdmin(params: {
     startedAfter: Date;
     startedBefore: Date;

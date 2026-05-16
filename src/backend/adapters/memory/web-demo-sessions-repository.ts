@@ -182,6 +182,14 @@ export class InMemoryWebDemoSessionsRepository implements WebDemoSessionsReposit
     }
   }
 
+  async saveTranscriptByRequestId(requestId: string, transcript: unknown): Promise<void> {
+    for (const row of this.rows.values()) {
+      if (row.requestId !== requestId) continue;
+      this.rows.set(row.id, { ...row, transcript, updatedAt: nowIso() });
+      return;
+    }
+  }
+
   async listForAdmin(params: {
     startedAfter: Date;
     startedBefore: Date;

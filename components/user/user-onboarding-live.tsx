@@ -2232,7 +2232,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   background:var(--surface-page);
   box-sizing:border-box;
 }
-.onboarding-flow input,.onboarding-flow select,.onboarding-flow textarea{font-size:16px!important;-webkit-text-size-adjust:100%}
+.onboarding-flow{color-scheme:light}
+.onboarding-flow input,.onboarding-flow select,.onboarding-flow textarea{font-size:15px!important;-webkit-text-size-adjust:100%;background-color:#fff;color:#111827}
 .onboarding-flow input:focus,.onboarding-flow select:focus,.onboarding-flow textarea:focus{transform:none!important}
 .onb-card{background:transparent;border:none;box-shadow:none;border-radius:0;padding:32px 0;max-width:816px;margin:0 auto;width:100%}
 .onb-card.wide{max-width:864px}
@@ -2256,7 +2257,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .choice-card.active{background:#faf5ff;border-color:#7c3aed;border-width:1.5px;box-shadow:none}
 .choice-card .emoji{font-size:2rem;line-height:1}.choice-card h4{margin:12px 0 0;font-size:15px;font-weight:500;color:#111827}
 .onb-field{display:grid;gap:6px;margin-bottom:20px}.onb-field label{font-size:11px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
-.onb-field input,.onb-field select,.onb-field textarea,.hours-row select{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:16px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit;box-sizing:border-box}.onb-field textarea{min-height:72px;resize:vertical}
+.onb-field input,.onb-field select,.onb-field textarea,.hours-row select{min-height:40px;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:15px;line-height:1.5;background:#fff;color:#111827;width:100%;font-family:inherit;box-sizing:border-box}.onb-field textarea{min-height:72px;resize:vertical}
 .onb-field input:focus,.onb-field select:focus,.onb-field textarea:focus,.hours-row select:focus{border-color:#7c3aed;outline:none;box-shadow:0 0 0 2px rgba(124,58,237,.15)}
 .onb-help{font-size:13px;color:#64748b;margin:0}.onb-help-link{border:0;background:transparent;padding:8px 0;cursor:pointer;text-decoration:none;font-family:inherit;font-weight:400;line-height:1.5;text-align:inherit;transition:color .15s ease}.onb-help-link:hover{color:#334155;text-decoration:underline;text-underline-offset:2px}
 .onb-import-panel{background-color:#7c3aed!important;border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:16px}
@@ -2331,7 +2332,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-step2-languages-card{margin-top:0}
 .onb-step2-lang-chips.preset-row{margin-bottom:0}
 .onb-step2-field-card-editing{border-color:#7c3aed!important}
-.onb-step2-inline-input{width:100%;font-size:16px!important;padding:8px 12px;border:1.5px solid #7c3aed;border-radius:8px;color:#111;background:#fff;outline:none;margin-top:4px;font-family:inherit;box-sizing:border-box}
+.onb-step2-inline-input{width:100%;font-size:15px!important;padding:8px 12px;border:1.5px solid #7c3aed;border-radius:8px;color:#111;background:#fff;outline:none;margin-top:4px;font-family:inherit;box-sizing:border-box}
 .onb-step2-inline-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 .onb-step2-inline-cancel{padding:6px 14px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px;color:#6b7280;background:#fff;cursor:pointer;font-family:inherit}
 .onb-step2-inline-save{padding:6px 16px;border:none;border-radius:8px;font-size:13px;font-weight:500;color:#fff;background:#111;cursor:pointer;font-family:inherit}
@@ -2340,7 +2341,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-step2-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 20px calc(40px + env(safe-area-inset-bottom));width:100%;max-width:100%;max-height:80vh;overflow-y:auto;box-sizing:border-box}
 .onb-step2-sheet-handle{width:36px;height:4px;background:#e5e7eb;border-radius:2px;margin:0 auto 20px}
 .onb-step2-sheet-title{font-size:15px;font-weight:600;color:#111;margin-bottom:16px}
-.onb-step2-sheet input,.onb-step2-sheet select,.onb-step2-sheet textarea{font-size:16px!important;width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;font-family:inherit;color:#111;box-sizing:border-box;background:#fff;-webkit-text-size-adjust:100%}
+.onb-step2-sheet input,.onb-step2-sheet select,.onb-step2-sheet textarea{font-size:15px!important;width:100%;padding:12px 14px;border:1px solid #e5e7eb;border-radius:10px;font-family:inherit;color:#111;box-sizing:border-box;background:#fff;-webkit-text-size-adjust:100%}
 .onb-step2-sheet input:focus,.onb-step2-sheet select:focus,.onb-step2-sheet textarea:focus{outline:none;border-color:#7c3aed}
 .onb-step2-sheet-actions{display:flex;gap:10px;margin-top:20px}
 .onb-step2-sheet-cancel{flex:1;padding:13px;border:1px solid #e5e7eb;border-radius:10px;font-size:14px;color:#6b7280;background:#fff;cursor:pointer;font-family:inherit}
@@ -2352,7 +2353,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-step2-hours-editor{display:flex;flex-direction:column;gap:10px}
 .onb-step2-hours-editor-row{display:grid;grid-template-columns:40px minmax(0,auto) minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
 .onb-step2-hours-day{font-size:13px;font-weight:500;color:#6b7280}
-.onb-step2-hours-time{font-size:16px!important;padding:8px 6px;border:1px solid #e5e7eb;border-radius:8px;text-align:center;width:100%;box-sizing:border-box;font-family:inherit;background:#fff}
+.onb-step2-hours-time{font-size:15px!important;padding:8px 6px;border:1px solid #e5e7eb;border-radius:8px;text-align:center;width:100%;box-sizing:border-box;font-family:inherit;background:#fff}
 .onb-step2-hours-time:disabled{background:#f9fafb;color:#d1d5db}
 .onb-step2-hours-toggle{width:36px;height:20px;border-radius:999px;border:1px solid #cbd5e1;background:#e5e7eb;cursor:pointer;position:relative;flex-shrink:0;padding:0}
 .onb-step2-hours-toggle.on{background:#7c3aed;border-color:#7c3aed}

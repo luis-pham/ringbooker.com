@@ -1871,16 +1871,39 @@ export function MarketingVerticalDemoTemplate({
     }
   }
 
+  /** Persist the captured transcript onto the web_demo_session row so Admin → Demos can show it. */
+  function persistDemoTranscript(requestId: string, turns: TranscriptTurn[]) {
+    const url = '/api/backend/public/demo/realtime-session/transcript';
+    const payload = JSON.stringify({ requestId, transcript: turns.slice(0, 120) });
+    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+      if (navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }))) return;
+    }
+    void fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(typeof window !== 'undefined' && window.location?.origin ? { Origin: window.location.origin } : {}),
+      },
+      body: payload,
+    }).catch(() => {
+      /* ignore */
+    });
+  }
+
   function endDirectDemo() {
     directPeerFailureMutedRef.current = true;
     const turns = transcriptTurnsRef.current.slice();
     transcriptTurnsRef.current = [];
+    const transcriptRequestId = directRealtimeRequestIdRef.current;
     cleanupDirectRealtime();
     resetTurnstile();
     setStage('completed');
     setRequestError(null);
     setStatusText('Session ended. Here\'s what a follow-up SMS could look like.');
-    if (turns.length >= 2) void extractCallData(turns);
+    if (turns.length >= 2) {
+      void extractCallData(turns);
+      if (transcriptRequestId) persistDemoTranscript(transcriptRequestId, turns);
+    }
   }
 
   function endWebDemoFromPhone() {

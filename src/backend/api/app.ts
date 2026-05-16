@@ -3437,6 +3437,43 @@ export function createBackendApp(deps: {
     return c.json({ ok: true });
   });
 
+  // Persists the browser-captured demo transcript onto the web_demo_sessions row so it is
+  // viewable in Admin → Demos. Separate from /release because the slot may already be freed.
+  app.post(path('/public/demo/realtime-session/transcript'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_realtime_release, 'demo_realtime_transcript');
+    if (limited) return limited;
+
+    const originDenied = enforcePublicDemoRealtimeOrigin(c);
+    if (originDenied) return originDenied;
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = z
+      .object({
+        requestId: z.string().min(1).max(200),
+        transcript: z
+          .array(z.object({ role: z.enum(['user', 'assistant']), text: z.string().max(2000) }))
+          .max(120),
+      })
+      .safeParse(body);
+    if (!parsed.success) {
+      return c.json({ ok: false, code: 'invalid_demo_payload' }, 400);
+    }
+    if (!parsed.data.requestId.startsWith('demo-direct-')) {
+      return c.json({ ok: false, code: 'invalid_request_id' }, 400);
+    }
+    if (parsed.data.transcript.length === 0) {
+      return c.json({ ok: true });
+    }
+    if (deps.webDemoSessionsRepository) {
+      try {
+        await deps.webDemoSessionsRepository.saveTranscriptByRequestId(parsed.data.requestId, parsed.data.transcript);
+      } catch (error) {
+        logger.warn({ err: error, requestId: parsed.data.requestId }, 'web_demo_session_save_transcript_failed');
+      }
+    }
+    return c.json({ ok: true });
+  });
+
   app.post(path('/public/demo/web-session'), async (c) => {
     const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.public_demo_web_session, 'public_demo_web_session');
     if (limited) return limited;

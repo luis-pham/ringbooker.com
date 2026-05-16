@@ -147,6 +147,14 @@ export class SupabaseWebDemoSessionsRepository implements WebDemoSessionsReposit
     if (error) throw new Error(`web_demo_session_mark_connected_failed:${error.message}`);
   }
 
+  async saveTranscriptByRequestId(requestId: string, transcript: unknown): Promise<void> {
+    const { error } = await this.supabase
+      .from('web_demo_sessions')
+      .update({ transcript, updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+    if (error) throw new Error(`web_demo_session_save_transcript_failed:${error.message}`);
+  }
+
   async markFailedByRequestId(requestId: string, params: { errorCode: string; errorMessage?: string | null }): Promise<void> {
     const now = new Date().toISOString();
     const { error } = await this.supabase
