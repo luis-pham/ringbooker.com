@@ -67,6 +67,8 @@ export interface DemoCallRunRecord {
   endedAt?: string | null;
   outcome?: string | null;
   expiresAt?: string | null;
+  transcript?: unknown | null;
+  transcriptStatus?: string | null;
 }
 
 /** One marketing demo call run with session context for admin list UIs. */
@@ -169,6 +171,8 @@ export interface DemoSessionsRepository {
     occurredAt?: Date;
   }): Promise<void>;
   findCallRunByRequestId(requestId: string): Promise<DemoCallRunRecord | null>;
+  /** Persist the captured phone-demo transcript (array of conversation turns) onto the call run. */
+  saveDemoCallTranscriptByRequestId(requestId: string, transcript: unknown): Promise<void>;
   /**
    * Latest non-expired demo session for this caller phone (any vertical).
    * Used for one shared pilot DID: vertical + shop context come from the newest matching session.

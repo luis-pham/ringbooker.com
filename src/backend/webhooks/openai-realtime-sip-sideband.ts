@@ -23,6 +23,8 @@ export type OpenAiRealtimeSipSidebandParams =
       acceptedAtMs?: number;
       /** Called when the sideband WS closes (call ended or dropped) — used to cancel duration timers. */
       onEnded?: () => void;
+      /** Called for each completed transcript segment (AI speech or caller speech). Fire-and-forget. */
+      onTranscript?: (speaker: 'caller' | 'assistant', text: string) => void;
     }
   | {
       variant: 'shop';
@@ -213,17 +215,8 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
             ? 'caller'
             : null;
       if (transcript && speaker) {
-        // Shop calls persist the full transcript via the callback.
-        if (params.variant === 'shop' && params.onTranscript) {
-          params.onTranscript(speaker, transcript);
-        }
-        // Demo calls: log segment metadata only (no PII text) so the transcript pipeline is observable.
-        if (params.variant === 'demo') {
-          logger.info(
-            { callId: params.callId, speaker, segmentChars: transcript.length },
-            'openai_sip_demo_transcript_segment',
-          );
-        }
+        // Both shop and demo calls persist the full transcript via the callback.
+        params.onTranscript?.(speaker, transcript);
       }
     }
 

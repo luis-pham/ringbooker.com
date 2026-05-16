@@ -699,6 +699,20 @@ export async function handleOpenAiRealtimeSipWebhook(
     // Path B demo duration cap: start server-side 5-minute timer regardless of sideband.
     // Only demo calls reach this branch (shop calls are handled above with billing-plan limits).
     if (route.kind === 'demo') {
+      // Accumulate the sideband transcript and persist it onto the demo_call_runs row on call end,
+      // so Admin → Demos can show the phone-demo transcript. Only when the call has a demo requestId.
+      const demoTranscriptRequestId = ccDecoded?.requestId ?? null;
+      const demoTranscriptTurns: Array<{ role: 'caller' | 'assistant'; text: string }> = [];
+      const persistDemoTranscript = () => {
+        if (!demoTranscriptRequestId || !deps.demoSessionsRepository || demoTranscriptTurns.length === 0) return;
+        void deps.demoSessionsRepository
+          .saveDemoCallTranscriptByRequestId(demoTranscriptRequestId, demoTranscriptTurns.slice())
+          .catch((err: unknown) => logger.warn({ err, callId }, 'openai_sip_demo_transcript_persist_failed'));
+      };
+      const demoOnTranscript = (speaker: 'caller' | 'assistant', text: string) => {
+        demoTranscriptTurns.push({ role: speaker, text });
+      };
+
       const telnyxCcId = extractSipHeader(data.sip_headers, 'X-Telnyx-Call-Control-Id') ?? null;
       if (telnyxCcId && env.TELNYX_API_KEY) {
         const clearDemoTimer = startDemoCallMaxDurationTimer(callId, telnyxCcId, env.TELNYX_API_KEY, fetchImpl);
@@ -712,7 +726,11 @@ export async function handleOpenAiRealtimeSipWebhook(
             enableToolLoop: true,
             acceptedAtMs,
             initialResponseInstructions: demoInitialResponseInstructions,
-            onEnded: clearDemoTimer,
+            onTranscript: demoOnTranscript,
+            onEnded: () => {
+              clearDemoTimer();
+              persistDemoTranscript();
+            },
           });
         }
       } else {
@@ -729,6 +747,8 @@ export async function handleOpenAiRealtimeSipWebhook(
             enableToolLoop: true,
             acceptedAtMs,
             initialResponseInstructions: demoInitialResponseInstructions,
+            onTranscript: demoOnTranscript,
+            onEnded: persistDemoTranscript,
           });
         }
       }

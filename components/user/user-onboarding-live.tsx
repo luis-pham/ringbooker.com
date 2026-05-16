@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 
+import { canUseBilingualWorkflow } from '@/src/backend/domain/shop-plan-capabilities';
 import { formatPhoneForDisplay, normalizePhoneForStorage } from '@/lib/phone-number';
 import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder';
 import { UserLayout } from '@/components/user/user-layout';
@@ -636,10 +637,33 @@ function friendlySaveError(error?: string | null, fields: string[] = []): string
   return error || 'Unable to save. Please check your details and try again.';
 }
 
-export function applyVerticalLanguageSelection(vertical: string, languages: string[]): string[] {
-  const next = new Set(['en', ...languages]);
-  if (vertical === 'nail_salon') next.add('vi');
-  return [...next];
+function normalizeOnboardingLanguageCodes(languages: string[]): string[] {
+  return languages
+    .map((code) => code.trim().toLowerCase())
+    .filter((code) => code && code !== 'other');
+}
+
+/** Enforces plan limits: Starter = English only; paid plans = English + at most one extra language. */
+export function applyVerticalLanguageSelection(
+  vertical: string,
+  languages: string[],
+  plan: ShopPlan = 'starter',
+): string[] {
+  const cleaned = normalizeOnboardingLanguageCodes(languages);
+  if (!canUseBilingualWorkflow(plan)) {
+    return ['en'];
+  }
+
+  const extras = cleaned.filter((code) => code !== 'en');
+  if (extras.length > 0) {
+    return ['en', extras[extras.length - 1]!];
+  }
+
+  if (vertical === 'nail_salon') {
+    return ['en', 'vi'];
+  }
+
+  return ['en'];
 }
 
 function trackOnboarding(event: string, payload?: Record<string, unknown>) {
@@ -1209,28 +1233,30 @@ const STEP2_LANGUAGE_CHIPS: Array<{ code: string; label: string; required?: bool
   { code: 'es', label: 'Spanish' },
   { code: 'zh', label: 'Mandarin' },
   { code: 'vi', label: 'Vietnamese' },
-  { code: 'other', label: 'Other' },
+  { code: 'ko', label: 'Korean' },
 ];
 
-function toggleStep2Language(current: string[], code: string, selected: boolean): string[] {
-  if (code === 'en') return current;
-  const withoutOther = current.filter((c) => c !== 'other');
-  const next = new Set(withoutOther);
-  if (code === 'other') {
-    if (selected) next.add('other');
-    else next.delete('other');
-  } else if (selected) next.add(code);
-  else next.delete(code);
-  next.add('en');
-  const out = [...next];
-  return out.includes('other') ? [...out.filter((c) => c !== 'other'), 'other'] : out;
-}
+export function toggleStep2Language(
+  current: string[],
+  code: string,
+  selected: boolean,
+  plan: ShopPlan,
+  vertical: string,
+): string[] {
+  if (code === 'en') {
+    return applyVerticalLanguageSelection(vertical, current, plan);
+  }
 
-function toggleLanguage(current: string[], language: string, checked: boolean): string[] {
-  const next = new Set(['en', ...current]);
-  if (checked) next.add(language);
-  else next.delete(language);
-  return [...next];
+  if (!canUseBilingualWorkflow(plan)) {
+    return ['en'];
+  }
+
+  if (!selected) {
+    const next = current.filter((item) => item !== code && item !== 'other');
+    return applyVerticalLanguageSelection(vertical, next, plan);
+  }
+
+  return applyVerticalLanguageSelection(vertical, ['en', code], plan);
 }
 
 export function UserOnboardingLive({ initialData = null }: { initialData?: OnboardingStatusResponse | null }) {
@@ -1265,7 +1291,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [hours, setHours] = useState<WizardHours>(() => initialShop ? apiHoursToWizard(initialShop.hours ?? {}) : defaultHours());
   const [selectedCountry, setSelectedCountry] = useState(initialShop ? findCountryForTimezone(initialShop.timezone || 'America/Los_Angeles')?.country ?? 'United States' : '');
   const [timezone, setTimezone] = useState(initialShop?.timezone || 'America/Los_Angeles');
-  const [languages, setLanguages] = useState<string[]>(applyVerticalLanguageSelection(initialVertical, initialShop?.languages ?? ['en']));
+  const [languages, setLanguages] = useState<string[]>(() =>
+    applyVerticalLanguageSelection(
+      initialVertical,
+      initialShop?.languages ?? ['en'],
+      initialShop?.plan ?? 'starter',
+    ),
+  );
   const [shopPlan, setShopPlan] = useState<ShopPlan>(initialShop?.plan ?? 'starter');
   const [websiteUrl, setWebsiteUrl] = useState(initialShop?.website_url ?? '');
   const [websiteLoading, setWebsiteLoading] = useState(false);
@@ -1417,10 +1449,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   }, []);
 
   useEffect(() => {
-    if (vertical === 'nail_salon') {
-      setLanguages((current) => applyVerticalLanguageSelection(vertical, current));
-    }
-  }, [vertical]);
+    setLanguages((current) => applyVerticalLanguageSelection(vertical, current, shopPlan));
+  }, [vertical, shopPlan]);
 
   useEffect(() => {
     serviceNameInputRef.current?.focus();
@@ -1594,7 +1624,13 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     setTimezone(savedTimezone);
     setSelectedCountry(findCountryForTimezone(savedTimezone)?.country ?? 'United States');
     setHours(apiHoursToWizard(body.shop.hours ?? {}));
-    setLanguages(applyVerticalLanguageSelection(body.shop.vertical ?? '', body.shop.languages ?? ['en']));
+    setLanguages(
+      applyVerticalLanguageSelection(
+        body.shop.vertical ?? '',
+        body.shop.languages ?? ['en'],
+        body.shop.plan ?? 'starter',
+      ),
+    );
     const savedSite = body.shop.website_url ?? '';
     setWebsiteUrl(savedSite);
     setWebsiteImportAttempted(Boolean(savedSite.trim()));
@@ -1918,10 +1954,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
       vertical_detail: vertical === 'beauty_clinic' && beautySubtype ? beautySubtype : null,
       hours: wizardHoursToApi(hours),
       timezone,
-      languages:
-        shopPlan === 'starter'
-          ? ['en']
-          : applyVerticalLanguageSelection(vertical, languages.filter((code) => code !== 'other')),
+      languages: applyVerticalLanguageSelection(vertical, languages, shopPlan),
       ...(addr ? { address: addr } : { address: null }),
       ...(websiteUrl.trim() ? { website_url: normalizeWebsiteUrl(websiteUrl) } : { website_url: '' }),
       current_onboarding_step: 3,
@@ -3228,13 +3261,15 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           </div>
           <p className="onb-subtitle" style={{ marginTop: 0, marginBottom: 12 }}>
             {shopPlan === 'starter'
-              ? 'Stored for your team and onboarding notes. Starter keeps live dialogue in English unless your plan enables bilingual workflows.'
-              : 'Beyond English, RingBooker can respond in the languages you enable here during live calls.'}
+              ? 'Starter keeps live calls in English. Other languages unlock on Professional and Enterprise.'
+              : shopPlan === 'enterprise'
+                ? 'English is always included. Choose one additional language for live calls, or work with implementation for custom multilingual routing.'
+                : 'English is always included. Choose one additional language for live calls on Professional.'}
           </p>
           <div className="preset-row onb-step2-lang-chips" style={{ marginTop: 0 }}>
             {STEP2_LANGUAGE_CHIPS.map(({ code, label, required }) => {
               const selected = languages.includes(code);
-              if (shopPlan === 'starter' && !required) {
+              if (!canUseBilingualWorkflow(shopPlan) && !required) {
                 return (
                   <button key={code} type="button" className="preset-chip mixed-chip locked" disabled>
                     {label}
@@ -3253,7 +3288,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
                   key={code}
                   type="button"
                   className={`preset-chip mixed-chip ${selected ? 'active' : ''}`}
-                  onClick={() => setLanguages(toggleStep2Language(languages, code, !selected))}
+                  onClick={() => setLanguages(toggleStep2Language(languages, code, !selected, shopPlan, vertical))}
                 >
                   {label}
                   {selected ? ' ✓' : ''}
@@ -3261,7 +3296,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               );
             })}
           </div>
-          {vertical === 'nail_salon' && shopPlan !== 'starter' && languages.includes('vi') ? (
+          {vertical === 'nail_salon' && canUseBilingualWorkflow(shopPlan) && languages.includes('vi') ? (
             <p className="onb-help" style={{ marginTop: 10, marginBottom: 0 }}>
               Vietnamese is included for nail salons — turn off if you don&apos;t need it.
             </p>

@@ -44,6 +44,8 @@ type MemoryDemoCallRun = {
   endedAt?: Date | null;
   outcome?: string | null;
   createdAt: Date;
+  transcript?: unknown | null;
+  transcriptStatus?: string | null;
 };
 
 function createId(): string {
@@ -245,7 +247,15 @@ export class InMemoryDemoSessionsRepository implements DemoSessionsRepository {
       endedAt: call.endedAt?.toISOString() ?? null,
       outcome: call.outcome,
       expiresAt: session.expiresAt.toISOString(),
+      transcript: call.transcript ?? null,
+      transcriptStatus: call.transcriptStatus ?? null,
     };
+  }
+
+  async saveDemoCallTranscriptByRequestId(requestId: string, transcript: unknown): Promise<void> {
+    const current = this.callRunsByRequestId.get(requestId);
+    if (!current) return;
+    this.callRunsByRequestId.set(requestId, { ...current, transcript, transcriptStatus: 'completed' });
   }
 
   async countAdminDemoCallRuns(params: {

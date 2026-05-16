@@ -252,7 +252,7 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
     const { data, error } = await this.supabase
       .from('demo_call_runs')
       .select(
-        'request_id,provider,provider_call_id,room_name,status,started_at,connected_at,ended_at,outcome,demo_sessions!inner(public_session_id,vertical_slug,demo_mode,callback_phone,expires_at)',
+        'request_id,provider,provider_call_id,room_name,status,started_at,connected_at,ended_at,outcome,transcript,transcript_status,demo_sessions!inner(public_session_id,vertical_slug,demo_mode,callback_phone,expires_at)',
       )
       .eq('request_id', requestId)
       .maybeSingle<{
@@ -265,6 +265,8 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
         connected_at: string | null;
         ended_at: string | null;
         outcome: string | null;
+        transcript: unknown | null;
+        transcript_status: string | null;
         demo_sessions: {
           public_session_id: string;
           vertical_slug: string;
@@ -290,7 +292,17 @@ export class SupabaseDemoSessionsRepository implements DemoSessionsRepository {
       endedAt: data.ended_at,
       outcome: data.outcome,
       expiresAt: data.demo_sessions.expires_at,
+      transcript: data.transcript,
+      transcriptStatus: data.transcript_status,
     };
+  }
+
+  async saveDemoCallTranscriptByRequestId(requestId: string, transcript: unknown): Promise<void> {
+    const { error } = await this.supabase
+      .from('demo_call_runs')
+      .update({ transcript, transcript_status: 'completed', transcript_updated_at: new Date().toISOString() })
+      .eq('request_id', requestId);
+    if (error) throw new Error(`demo_call_run_save_transcript_failed:${error.message}`);
   }
 
   async expireOlderThan(now: Date): Promise<number> {

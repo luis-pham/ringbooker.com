@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import {
   applyVerticalLanguageSelection,
+  toggleStep2Language,
   validateOnboardingProfileReview,
   validateOnboardingStep1,
   validateOnboardingStep1Quick,
@@ -108,8 +109,24 @@ test('onboarding normalizes imported AM/PM hours before settings save', () => {
   assert.equal(normalizeOnboardingTimeValue('bad time', '18:00'), '18:00');
 });
 
-test('Vietnamese auto-selected for nail salon', () => {
-  assert.deepEqual(applyVerticalLanguageSelection('nail_salon', ['en']).sort(), ['en', 'vi']);
+test('Vietnamese auto-selected for nail salon on paid plans', () => {
+  assert.deepEqual(applyVerticalLanguageSelection('nail_salon', ['en'], 'professional').sort(), ['en', 'vi']);
+});
+
+test('Starter plan keeps English only in onboarding languages', () => {
+  assert.deepEqual(applyVerticalLanguageSelection('nail_salon', ['en', 'vi', 'ko'], 'starter'), ['en']);
+});
+
+test('Professional plan keeps English plus one extra language', () => {
+  assert.deepEqual(applyVerticalLanguageSelection('hair_salon', ['en', 'es', 'vi'], 'professional'), ['en', 'vi']);
+});
+
+test('toggleStep2Language swaps the single extra language on paid plans', () => {
+  assert.deepEqual(toggleStep2Language(['en', 'es'], 'ko', true, 'professional', 'hair_salon'), ['en', 'ko']);
+});
+
+test('toggleStep2Language ignores non-English picks on Starter', () => {
+  assert.deepEqual(toggleStep2Language(['en'], 'ko', true, 'starter', 'hair_salon'), ['en']);
 });
 
 test('onboarding import confidence labels map to review states', () => {

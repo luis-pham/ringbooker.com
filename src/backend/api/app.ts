@@ -10006,19 +10006,39 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'admin');
     if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.callLogsRepository) {
+    if (!deps.demoSessionsRepository && !deps.callLogsRepository) {
       return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
     }
     const requestId = c.req.param('requestId')?.trim() ?? '';
     if (!requestId.startsWith('demo-') || requestId.length > 120) {
       return c.json({ ok: false, error: 'invalid_request_id' }, 400);
     }
-    const env = getEnv();
-    const row = await deps.callLogsRepository.findTranscriptByShopAndRequestId({
-      shopId: env.PUBLIC_DEMO_SHOP_ID,
-      requestId,
-    });
-    if (!row) {
+
+    // Phone / SIP demo transcript lives on the demo_call_runs row (demos are isolated from
+    // production call_logs). Fall back to call_logs for legacy LiveKit web demos.
+    const callRun = deps.demoSessionsRepository
+      ? await deps.demoSessionsRepository.findCallRunByRequestId(requestId)
+      : null;
+    let transcriptText = callRun ? formatWebDemoTranscriptForAdmin(callRun.transcript) : null;
+    let transcriptStatus = callRun?.transcriptStatus ?? null;
+    let startedAt = callRun?.startedAt ?? null;
+    let endedAt = callRun?.endedAt ?? null;
+
+    if (!transcriptText && deps.callLogsRepository) {
+      const env = getEnv();
+      const legacyRow = await deps.callLogsRepository.findTranscriptByShopAndRequestId({
+        shopId: env.PUBLIC_DEMO_SHOP_ID,
+        requestId,
+      });
+      if (legacyRow) {
+        transcriptText = legacyRow.transcriptText ?? null;
+        transcriptStatus = legacyRow.transcriptStatus ?? transcriptStatus;
+        startedAt = legacyRow.startedAt ?? startedAt;
+        endedAt = legacyRow.endedAt ?? endedAt;
+      }
+    }
+
+    if (!callRun && !transcriptText) {
       return c.json({ ok: false, error: 'transcript_not_found' }, 404);
     }
     securityAudit({
@@ -10032,10 +10052,10 @@ export function createBackendApp(deps: {
     return c.json({
       ok: true,
       requestId,
-      transcriptStatus: row.transcriptStatus ?? null,
-      transcriptText: row.transcriptText ?? null,
-      startedAt: row.startedAt ?? null,
-      endedAt: row.endedAt ?? null,
+      transcriptStatus,
+      transcriptText,
+      startedAt,
+      endedAt,
     });
   });
 
