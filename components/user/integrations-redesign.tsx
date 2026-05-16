@@ -13,6 +13,14 @@ import {
 import { useIntegrations } from '@/hooks/useIntegrations';
 
 function AppLogo({ app }: { app: IntegrationApp }) {
+  if (app.logoSrc) {
+    return (
+      <span className="integration-app-logo integration-app-logo--image" aria-hidden="true">
+        <img src={app.logoSrc} alt="" width={38} height={38} loading="lazy" decoding="async" />
+      </span>
+    );
+  }
+
   return (
     <span
       className="integration-app-logo"

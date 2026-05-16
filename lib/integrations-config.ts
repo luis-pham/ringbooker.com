@@ -24,6 +24,8 @@ export type IntegrationApp = {
   logoText: string;
   logoColor: string;
   logoTextColor: string;
+  /** Brand asset under `/public` — when set, UI shows the image instead of the letter placeholder. */
+  logoSrc?: string;
   connectionType: 'api' | 'link';
   category: 'full-sync' | 'booking-link';
   placeholder?: string;
@@ -33,13 +35,23 @@ export type IntegrationApp = {
 };
 
 export const INTEGRATION_APPS: IntegrationApp[] = [
-  { key: 'square', name: 'Square Appointments', logoText: 'S', logoColor: '#00a0df', logoTextColor: '#fff', connectionType: 'api', category: 'full-sync' },
+  {
+    key: 'square',
+    name: 'Square Appointments',
+    logoText: 'S',
+    logoColor: '#00a0df',
+    logoTextColor: '#fff',
+    logoSrc: '/images/square.png',
+    connectionType: 'api',
+    category: 'full-sync',
+  },
   {
     key: 'mindbody',
     name: 'Mindbody',
     logoText: 'M',
     logoColor: '#4a90d9',
     logoTextColor: '#fff',
+    logoSrc: '/images/mindbody.webp',
     connectionType: 'api',
     category: 'full-sync',
     helpUrl: 'https://developers.mindbodyonline.com/',
@@ -51,6 +63,7 @@ export const INTEGRATION_APPS: IntegrationApp[] = [
     logoText: 'A',
     logoColor: '#006bff',
     logoTextColor: '#fff',
+    logoSrc: '/images/acuity.png',
     connectionType: 'api',
     category: 'full-sync',
     placeholder: 'https://your-business.as.me/',
@@ -63,16 +76,57 @@ export const INTEGRATION_APPS: IntegrationApp[] = [
     logoText: 'V',
     logoColor: '#8b5cf6',
     logoTextColor: '#fff',
+    logoSrc: '/images/vagaro.png',
     connectionType: 'link',
     category: 'booking-link',
     placeholder: 'https://vagaro.com/your-business',
     helpUrl: 'https://vagaro.com/pro/marketplace',
     note: 'Vagaro API requires enterprise approval. Add your booking link so callers can receive it by SMS while you wait for API access.',
   },
-  { key: 'fresha', name: 'Fresha', logoText: 'F', logoColor: '#00c896', logoTextColor: '#fff', connectionType: 'link', category: 'booking-link', placeholder: 'https://fresha.com/your-business' },
-  { key: 'boulevard', name: 'Boulevard', logoText: 'Bl', logoColor: '#1a1a2e', logoTextColor: '#fff', connectionType: 'link', category: 'booking-link', placeholder: 'https://boulevard.com/...' },
-  { key: 'booksy', name: 'Booksy', logoText: 'Bk', logoColor: '#1a1a2e', logoTextColor: '#fff', connectionType: 'link', category: 'booking-link', placeholder: 'https://booksy.com/en-us/...' },
-  { key: 'glossgenius', name: 'GlossGenius', logoText: 'G', logoColor: '#f4a261', logoTextColor: '#fff', connectionType: 'link', category: 'booking-link', placeholder: 'https://glossgenius.com/...' },
+  {
+    key: 'fresha',
+    name: 'Fresha',
+    logoText: 'F',
+    logoColor: '#00c896',
+    logoTextColor: '#fff',
+    logoSrc: '/images/fresha.png',
+    connectionType: 'link',
+    category: 'booking-link',
+    placeholder: 'https://fresha.com/your-business',
+  },
+  {
+    key: 'boulevard',
+    name: 'Boulevard',
+    logoText: 'Bl',
+    logoColor: '#1a1a2e',
+    logoTextColor: '#fff',
+    logoSrc: '/images/boulevard.png',
+    connectionType: 'link',
+    category: 'booking-link',
+    placeholder: 'https://boulevard.com/...',
+  },
+  {
+    key: 'booksy',
+    name: 'Booksy',
+    logoText: 'Bk',
+    logoColor: '#1a1a2e',
+    logoTextColor: '#fff',
+    logoSrc: '/images/booksy.png',
+    connectionType: 'link',
+    category: 'booking-link',
+    placeholder: 'https://booksy.com/en-us/...',
+  },
+  {
+    key: 'glossgenius',
+    name: 'GlossGenius',
+    logoText: 'G',
+    logoColor: '#f4a261',
+    logoTextColor: '#fff',
+    logoSrc: '/images/glossgenius.png',
+    connectionType: 'link',
+    category: 'booking-link',
+    placeholder: 'https://glossgenius.com/...',
+  },
   { key: 'calendly', name: 'Calendly', logoText: 'C', logoColor: '#006bff', logoTextColor: '#fff', connectionType: 'link', category: 'booking-link', placeholder: 'https://calendly.com/your-name' },
   { key: 'styleseat', name: 'StyleSeat', logoText: 'SS', logoColor: '#111111', logoTextColor: '#fff', connectionType: 'link', category: 'booking-link', placeholder: 'https://styleseat.com/...' },
   { key: 'mangomint', name: 'Mangomint', logoText: 'Mg', logoColor: '#ff6b6b', logoTextColor: '#fff', connectionType: 'link', category: 'booking-link', placeholder: 'https://mangomint.com/...' },

@@ -231,6 +231,12 @@ button.subtle-link:hover{text-decoration:underline}
   width:38px;height:38px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;
   font-size:12px;font-weight:700;line-height:1;flex-shrink:0;
 }
+.integration-app-logo--image{
+  background:#fff;border:1px solid var(--border);overflow:hidden;padding:0;
+}
+.integration-app-logo--image img{
+  width:100%;height:100%;object-fit:contain;padding:5px;box-sizing:border-box;display:block;
+}
 .integration-app-copy{display:grid;gap:4px;min-width:0}
 .integration-app-copy strong{font-size:13px;font-weight:500;line-height:1.25}
 .integration-app-copy small{font-size:11px;color:var(--text-gray);line-height:1.25}
@@ -1382,6 +1388,7 @@ html[data-user-theme="dark"] button.subtle-link:hover{color:#d2a8ff}
 html[data-user-theme="dark"] .calendar-int-badge{background:#21262d;color:var(--text-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-method-card:hover{background:var(--bg-gray);border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-card:hover:not(.selected){background:var(--bg-gray);border-color:var(--border)}
+html[data-user-theme="dark"] .integration-app-logo--image{background:#0d1117;border-color:var(--border)}
 html[data-user-theme="dark"] .integration-app-card.selected:hover{
   background:rgba(56,139,253,.12);
   border-color:rgba(56,139,253,.55);
@@ -1743,6 +1750,7 @@ html[data-user-theme="dark"] .plan-chip{
   .integrations-app-grid--link{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   .integration-app-card{min-height:92px;padding:10px}
   .integration-app-logo{width:32px;height:32px;border-radius:8px;font-size:11px}
+  .integration-app-logo--image img{padding:4px}
   .integration-config-head{align-items:flex-start;flex-wrap:wrap}
   .integration-config-head .btn{margin-left:0}
   .card-section-form{padding:0}
