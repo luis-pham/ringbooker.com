@@ -687,7 +687,7 @@ const siteReadStyles: string = String.raw`
   .vd-found-edit:hover{text-decoration:underline}
 
   /* ─── retry link ────────────────────────────────────────── */
-  .vd-retry-link{background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:#9CA3AF;padding:0;margin-top:8px;display:block;text-align:center;text-decoration:none}
+  .vd-retry-link{background:none;border:none;cursor:pointer;font-size:13px;font-weight:500;color:#9CA3AF;padding:0;margin-top:8px;display:block;text-align:center;text-decoration:underline;text-underline-offset:3px}
   .vd-retry-link:hover{color:#6B7280}
 
   /* ─── post-demo steps ───────────────────────────────────── */
@@ -696,11 +696,22 @@ const siteReadStyles: string = String.raw`
   .vd-post-step-dot{width:28px;height:28px;border-radius:50%;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
   .vd-post-step-label{font-size:11px;font-weight:700;color:#6B7280;text-align:center;line-height:1.3}
   .vd-post-step-bar{flex:1;height:2px;background:color-mix(in srgb,var(--va) 30%,#E5E7EB);margin:-14px 0 0}
-  .vd-ai-card{border:1px solid color-mix(in srgb,var(--va) 20%,#E5E7EB);border-radius:18px;background:color-mix(in srgb,var(--va) 3%,#fff);padding:16px;margin-bottom:16px}
-  .vd-ai-card-head{font-size:13px;font-weight:900;color:#111827;margin-bottom:8px}
-  .vd-ai-card-body{font-size:13px;color:#374151;line-height:1.6}
-  .vd-trust-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-  .vd-trust-chip{font-size:11px;font-weight:700;color:#10B981;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:999px;padding:4px 10px}
+  /* ─── post-demo blocks (shared mobile + desktop) ────────── */
+  .vd-pd-label{font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#64748B;margin-bottom:8px}
+  .vd-pd-sms-card{border-radius:16px;background:#F1F5F9;padding:14px 16px;margin-bottom:14px}
+  .vd-pd-sms-text{font-size:14px;line-height:1.55;color:#334155}
+  .vd-pd-cap{background:#F8FAFC;border-radius:16px;padding:14px 16px;margin-bottom:16px}
+  .vd-pd-cap-row{display:flex;align-items:center;gap:10px;font-size:13px;padding:9px 0;border-bottom:1px solid #E2E8F0}
+  .vd-pd-cap-row:last-child{border-bottom:none}
+  .vd-pd-cap-ic{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+  .vd-pd-cap-k{color:#64748B;font-weight:700;width:60px;flex-shrink:0}
+  .vd-pd-cap-v{color:#111827;font-weight:700;flex:1;min-width:0}
+  .vd-pd-cap-empty{font-size:13px;color:#64748B;line-height:1.5}
+  .vd-pd-cap-empty-sub{font-size:12px;color:#9CA3AF;line-height:1.5;margin-top:4px}
+  .vd-pd-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;font-size:12px;font-weight:600;color:#64748B;margin-top:8px}
+  .vd-pd-trust-check{color:#10B981;font-weight:900}
+  .vd-pd-pay-wrap{display:flex;justify-content:center;margin-top:8px}
+  .vd-pd-pay{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#64748B;background:#F3F4F6;border-radius:999px;padding:6px 14px}
 `;
 
 /** Mobile-only (≤768px). Desktop uses existing rules from `styles` / `siteReadStyles`. */
@@ -2613,125 +2624,73 @@ export function MarketingVerticalDemoTemplate({
                         </div>
                       </div>
 
-                      {isMobileDemo ? (
-                        <>
-                          <div className="vd-m-sms-card">
-                            <strong>{demoDisplayName}:</strong>{' '}
-                            {buildPersonalizedSmsPreview(callExtracted, demoDisplayName).replace(/^[^:]+:\s*/, '')}
-                          </div>
-                          <div className="vd-m-cap">
-                            <div className="vd-m-cap-label">AI CAPTURED FROM THIS CALL</div>
-                            {callExtracting ? (
-                              <div className="vd-m-cap-row">
-                                <span className="vd-m-found-k" style={{ opacity: 0.6 }}>Capturing call details…</span>
-                              </div>
-                            ) : callExtracted?.hasRealData ? (
-                              <>
-                                {callExtracted.callerName ? (
-                                  <div className="vd-m-cap-row">
-                                    <span className="vd-m-found-ic" aria-hidden>👤</span>
-                                    <span className="vd-m-found-k">Client</span>
-                                    <span className="vd-m-found-v">{callExtracted.callerName}</span>
-                                  </div>
-                                ) : null}
-                                {callExtracted.serviceRequested ? (
-                                  <div className="vd-m-cap-row">
-                                    <span className="vd-m-found-ic" aria-hidden>✂️</span>
-                                    <span className="vd-m-found-k">Service</span>
-                                    <span className="vd-m-found-v">{callExtracted.serviceRequested}</span>
-                                  </div>
-                                ) : null}
-                                {callExtracted.requestedTime ? (
-                                  <div className="vd-m-cap-row">
-                                    <span className="vd-m-found-ic" aria-hidden>📅</span>
-                                    <span className="vd-m-found-k">Requested</span>
-                                    <span className="vd-m-found-v">{callExtracted.requestedTime}</span>
-                                  </div>
-                                ) : null}
-                              </>
-                            ) : callExtracted ? (
-                              <div className="vd-m-cap-row">
-                                <span className="vd-m-found-k" style={{ opacity: 0.75 }}>
-                                  No specific booking request captured in this demo. In a real call, RingBooker captures
-                                  the client name, service, and requested time.
-                                </span>
-                              </div>
-                            ) : (
-                              <div className="vd-m-cap-row">
-                                <span className="vd-m-found-k" style={{ opacity: 0.75 }}>
-                                  In a real call, RingBooker captures the client&apos;s name, the service they want, their
-                                  preferred time, and sends an instant SMS summary.
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      ) : callExtracting ? (
-                        <div className="vd-ai-card">
-                          <div className="vd-ai-card-head">AI captured this call</div>
-                          <div className="vd-ai-card-body" style={{ opacity: 0.6 }}>Capturing details from your call…</div>
+                      {/* Block 1 — Sample SMS to client */}
+                      <div className="vd-pd-sms-card">
+                        <div className="vd-pd-label">Sample SMS to client</div>
+                        <div className="vd-pd-sms-text">
+                          {buildPersonalizedSmsPreview(callExtracted, demoDisplayName)}
                         </div>
-                      ) : callExtracted?.hasRealData ? (
-                        <div className="vd-ai-card">
-                          <div className="vd-ai-card-head">AI captured this call</div>
-                          <div className="vd-ai-card-body">{buildPersonalizedSmsPreview(callExtracted, demoDisplayName)}</div>
-                          <div className="vd-trust-row">
-                            <span className="vd-trust-chip">✓ No missed calls</span>
-                            <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
-                            <span className="vd-trust-chip">✓ 24/7 coverage</span>
-                          </div>
-                        </div>
-                      ) : callExtracted ? (
-                        <div className="vd-ai-card">
-                          <div className="vd-ai-card-head">AI captured this call</div>
-                          <div className="vd-ai-card-body">
-                            No specific booking request captured in this demo.
-                            <br />
-                            <span style={{ fontSize: 12, opacity: 0.7 }}>
-                              In a real call, RingBooker captures client name, service, requested time, and sends an SMS summary.
-                            </span>
-                          </div>
-                          <div className="vd-trust-row">
-                            <span className="vd-trust-chip">✓ No missed calls</span>
-                            <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
-                            <span className="vd-trust-chip">✓ 24/7 coverage</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="vd-ai-card">
-                          <div className="vd-ai-card-head">What RingBooker captures</div>
-                          <div className="vd-ai-card-body">
-                            In a real call, RingBooker captures the client&apos;s name, the service they want, their preferred
-                            time, and sends an instant SMS summary — all without your team picking up the phone.
-                          </div>
-                          <div className="vd-trust-row">
-                            <span className="vd-trust-chip">✓ No missed calls</span>
-                            <span className="vd-trust-chip">✓ Auto follow-up SMS</span>
-                            <span className="vd-trust-chip">✓ 24/7 coverage</span>
-                          </div>
-                        </div>
-                      )}
+                      </div>
 
+                      {/* Block 2 — AI captured from this call */}
+                      <div className="vd-pd-cap">
+                        <div className="vd-pd-label">AI captured from this call</div>
+                        {callExtracting ? (
+                          <div className="vd-pd-cap-empty">Capturing call details…</div>
+                        ) : callExtracted?.hasRealData &&
+                          (callExtracted.callerName || callExtracted.serviceRequested || callExtracted.requestedTime) ? (
+                          <>
+                            {callExtracted.callerName ? (
+                              <div className="vd-pd-cap-row">
+                                <span className="vd-pd-cap-ic" aria-hidden>👤</span>
+                                <span className="vd-pd-cap-k">Client</span>
+                                <span className="vd-pd-cap-v">{callExtracted.callerName}</span>
+                              </div>
+                            ) : null}
+                            {callExtracted.serviceRequested ? (
+                              <div className="vd-pd-cap-row">
+                                <span className="vd-pd-cap-ic" aria-hidden>✂️</span>
+                                <span className="vd-pd-cap-k">Service</span>
+                                <span className="vd-pd-cap-v">{callExtracted.serviceRequested}</span>
+                              </div>
+                            ) : null}
+                            {callExtracted.requestedTime ? (
+                              <div className="vd-pd-cap-row">
+                                <span className="vd-pd-cap-ic" aria-hidden>📅</span>
+                                <span className="vd-pd-cap-k">Requested</span>
+                                <span className="vd-pd-cap-v">{callExtracted.requestedTime}</span>
+                              </div>
+                            ) : null}
+                          </>
+                        ) : (
+                          <>
+                            <div className="vd-pd-cap-empty">No specific booking request was captured in this demo.</div>
+                            <div className="vd-pd-cap-empty-sub">
+                              In a real call, RingBooker captures client name, service, and requested time automatically.
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Block 3 — CTA */}
                       <div className="vd-complete-cta">
                         <Link href="/pricing" className="vd-btn-primary">Start 14-Day Free Trial →</Link>
                       </div>
-                      {isMobileDemo ? (
-                        <>
-                          <div className="vd-m-trust-line">
-                            <span>✓ No charge for 14 days</span>
-                            <span>✓ Cancel anytime</span>
-                          </div>
-                          <div className="vd-m-pay-pill">
-                            <span aria-hidden>🔒</span>
-                            Card required to go live — not charged until day 15.
-                          </div>
-                          <button type="button" className="vd-m-try" onClick={resetDemo}>
-                            Try another scenario
-                          </button>
-                        </>
-                      ) : (
-                        <button type="button" className="vd-retry-link" onClick={resetDemo}>Try another scenario</button>
-                      )}
+
+                      {/* Block 4 — trust signals */}
+                      <div className="vd-pd-trust">
+                        <span><span className="vd-pd-trust-check">✓</span> No charge for 14 days</span>
+                        <span><span className="vd-pd-trust-check">✓</span> Cancel anytime</span>
+                      </div>
+                      <div className="vd-pd-pay-wrap">
+                        <span className="vd-pd-pay">
+                          <span aria-hidden>🔒</span>
+                          Card required to go live — not charged until day 15.
+                        </span>
+                      </div>
+
+                      {/* Block 5 — try another scenario */}
+                      <button type="button" className="vd-retry-link" onClick={resetDemo}>Try another scenario</button>
                     </>
                   ) : null}
 
