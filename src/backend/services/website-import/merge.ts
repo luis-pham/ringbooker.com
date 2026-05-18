@@ -360,6 +360,7 @@ export function mergeImportSuggestions(input: { staticFacts: StaticImportFacts; 
     promotionSuggestions,
     bookingSetupSuggestions,
     warnings: [...new Set(warnings)],
+    country: places?.country ?? null,
   };
   return { ...base, completeness: computeCompleteness(base) };
 }

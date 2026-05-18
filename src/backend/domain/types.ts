@@ -292,6 +292,8 @@ export interface Shop {
   google_cal_credentials_encrypted?: string | null;
   /** Provider-neutral credentials for booking/calendar integrations such as Mindbody. */
   integration_credentials_encrypted?: string | null;
+  /** ISO 3166-1 alpha-2 country code for the business location (e.g. 'US', 'AU', 'GB'). Defaults to 'US'. */
+  country_code?: string | null;
 }
 
 export type BusinessKnowledgeSuggestionType = 'staff' | 'policy' | 'faq' | 'promotion' | 'booking_hint';

@@ -77,6 +77,7 @@ type ShopsRow = {
   google_cal_id: string | null;
   google_cal_credentials_encrypted: string | null;
   integration_credentials_encrypted: string | null;
+  country_code: string | null;
 };
 
 const SHOP_SELECT_COLUMNS = [
@@ -135,6 +136,7 @@ const SHOP_SELECT_COLUMNS = [
   'google_cal_id',
   'google_cal_credentials_encrypted',
   'integration_credentials_encrypted',
+  'country_code',
 ] as const;
 
 const CORE_SHOP_SELECT_COLUMNS = [
@@ -436,6 +438,7 @@ function toShop(row: ShopsRow): Shop {
     google_cal_id: row.google_cal_id,
     google_cal_credentials_encrypted: row.google_cal_credentials_encrypted,
     integration_credentials_encrypted: row.integration_credentials_encrypted,
+    country_code: row.country_code ?? 'US',
   };
 }
 
@@ -514,6 +517,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'google_cal_id',
           'google_cal_credentials_encrypted',
           'integration_credentials_encrypted',
+          'country_code',
         ].join(','),
       )
       .eq('phone_number', destinationPhone)
@@ -583,6 +587,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'google_cal_id',
           'google_cal_credentials_encrypted',
           'integration_credentials_encrypted',
+          'country_code',
         ].join(','),
       )
       .eq('telnyx_number', e164)
@@ -654,6 +659,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'google_cal_id',
           'google_cal_credentials_encrypted',
           'integration_credentials_encrypted',
+          'country_code',
         ].join(','),
       )
       .order('created_at', { ascending: false })
@@ -753,6 +759,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'google_cal_id',
           'google_cal_credentials_encrypted',
           'integration_credentials_encrypted',
+          'country_code',
         ].join(','),
       )
       .single<ShopsRow>();
@@ -808,6 +815,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'carrier_detected_at'
         | 'test_call_count'
         | 'test_call_limit'
+        | 'country_code'
       >
     >,
   ): Promise<Shop | null> {
@@ -866,6 +874,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.carrier_detected_at !== undefined) payload.carrier_detected_at = patch.carrier_detected_at;
     if (patch.test_call_count !== undefined) payload.test_call_count = patch.test_call_count;
     if (patch.test_call_limit !== undefined) payload.test_call_limit = patch.test_call_limit;
+    if (patch.country_code !== undefined) payload.country_code = patch.country_code;
 
     let result = await this.supabase
       .from('shops')
@@ -1177,6 +1186,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'google_cal_id',
           'google_cal_credentials_encrypted',
           'integration_credentials_encrypted',
+          'country_code',
         ].join(','),
       )
       .maybeSingle<ShopsRow>();
@@ -1277,6 +1287,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'google_cal_id',
           'google_cal_credentials_encrypted',
           'integration_credentials_encrypted',
+          'country_code',
         ].join(','),
       )
       .maybeSingle<ShopsRow>();
@@ -1357,6 +1368,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'google_cal_id',
           'google_cal_credentials_encrypted',
           'integration_credentials_encrypted',
+          'country_code',
         ].join(','),
       )
       .maybeSingle<ShopsRow>();
@@ -1434,6 +1446,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'google_cal_id',
           'google_cal_credentials_encrypted',
           'integration_credentials_encrypted',
+          'country_code',
         ].join(','),
       )
       .maybeSingle<ShopsRow>();

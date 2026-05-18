@@ -31,6 +31,7 @@ import {
 } from '@/src/backend/domain/shop-plan-capabilities';
 import { createShopWithPlaceholderPhoneRetry } from '@/src/backend/domain/signup-placeholder-phone';
 import { normalizePhoneForStorage } from '@/lib/phone-number';
+import { getCountryConfig } from '@/lib/countries/config';
 import { isCommercialGoLiveApprovalRequired } from '@/src/backend/domain/commercial-approval';
 import { canProceedToGoLive, evaluateKnowledgeGate } from '@/src/backend/domain/go-live-gate';
 import { mergeImportedServicesIntoCatalog } from '@/src/backend/domain/service-catalog';
@@ -776,9 +777,9 @@ const forwardingCodeQuerySchema = z.object({
 });
 
 function telnyxCountryCodeFromForwardingCountry(value: string | null | undefined): string {
-  const v = (value ?? 'us').trim().toLowerCase();
-  if (v === 'ca' || v === 'can') return 'CA';
-  return 'US';
+  const v = (value ?? '').trim().toUpperCase();
+  const config = getCountryConfig(v || null);
+  return config.telnyx.countryIso;
 }
 
 function normalizeForwardingNumberForCode(value: string | null | undefined): string {
@@ -1363,7 +1364,7 @@ function splitUserSettingsPatchByPlan(
     }
 
     if ((key === 'phone_number' || key === 'user_phone' || key === 'backup_phone') && typeof value === 'string') {
-      basicPatch[key] = normalizePhoneForStorage(value, typeof patch.address === 'string' ? patch.address : typeof shop.address === 'string' ? shop.address : undefined) ?? value;
+      basicPatch[key] = normalizePhoneForStorage(value, shop.country_code ?? 'US') ?? value;
       continue;
     }
 
@@ -4488,6 +4489,8 @@ export function createBackendApp(deps: {
         return c.redirect(`${appBaseUrl}/pricing?reason=plan_required`, 302);
       }
       const shopName = buildDefaultShopNameFromEmail(googleProfile.email);
+      const signupCountry = normalizeCfIpCountry(c.req.header('CF-IPCountry')) ?? 'US';
+      const signupCountryConfig = getCountryConfig(signupCountry);
       shop = await createShopWithPlaceholderPhoneRetry((placeholder) =>
         deps.shopsRepository!.create({
           name: shopName,
@@ -4495,7 +4498,7 @@ export function createBackendApp(deps: {
           phone_number: placeholder,
           user_phone: placeholder,
           user_name: googleProfile.name?.trim() || null,
-          timezone: process.env.DEFAULT_SHOP_TIMEZONE ?? 'America/Los_Angeles',
+          timezone: process.env.DEFAULT_SHOP_TIMEZONE ?? signupCountryConfig.defaultTimezone,
           plan: selectedPlan!,
           active: true,
         }),
@@ -5157,6 +5160,11 @@ export function createBackendApp(deps: {
       );
       if (result.diagnostics.warnings.length > 0) {
         logger.info({ shopId: shop.id, warnings: [...new Set([...result.diagnostics.warnings, ...result.suggestions.warnings])], selectedPageCount: result.diagnostics.selectedPages.length }, 'website_import_completed_with_warnings');
+      }
+      // Persist country_code when Google Places resolves it — used for Telnyx provisioning and SMS sender selection.
+      const importedCountry = result.suggestions.country?.toUpperCase() ?? null;
+      if (importedCountry && importedCountry !== (shop.country_code ?? 'US')) {
+        await deps.shopsRepository.updateUserSettings(shop.id, { country_code: importedCountry }).catch(() => undefined);
       }
       const secondaryCreates = pendingSuggestionsFromImport(result.suggestions);
       if (secondaryCreates.length > 0 && deps.businessKnowledgeSuggestionsRepository) {

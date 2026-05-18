@@ -202,6 +202,8 @@ export type ImportSuggestions = {
   bookingSetupSuggestions: BookingSetupSuggestion[];
   warnings: string[];
   completeness?: WebsiteImportCompleteness;
+  /** ISO 3166-1 alpha-2 country code from Google Places addressComponents, if resolved. */
+  country?: string | null;
 };
 
 export type WebsiteImportCompleteness = {

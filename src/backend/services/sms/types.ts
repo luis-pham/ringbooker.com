@@ -21,6 +21,7 @@ export interface SmsService {
     from: string;
     body: string;
     shopId: string;
+    countryCode?: string;
     category: SmsCategory;
     bookingId?: string;
     idempotencyKey: string;

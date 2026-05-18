@@ -7,6 +7,7 @@ export class NoopSmsService implements SmsService {
     from: string;
     body: string;
     shopId: string;
+    countryCode?: string;
     category:
       | 'booking_confirmation'
       | 'reminder_24h'

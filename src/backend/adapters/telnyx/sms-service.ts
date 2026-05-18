@@ -4,6 +4,7 @@ import { getTelnyxSmsTimeoutMs } from '@/src/backend/adapters/telnyx/telnyx-time
 import { getEnv } from '@/src/backend/config/env';
 import { withLogContext } from '@/src/backend/observability/logger';
 import type { SmsSendResult, SmsService } from '@/src/backend/services/sms/types';
+import { getCountryConfig } from '@/lib/countries/config';
 import { RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
 import { retryAsync } from '@/src/backend/net/retry';
 
@@ -21,6 +22,7 @@ export class TelnyxSmsService implements SmsService {
     from: string;
     body: string;
     shopId: string;
+    countryCode?: string;
     category:
       | 'booking_confirmation'
       | 'reminder_24h'
@@ -34,7 +36,10 @@ export class TelnyxSmsService implements SmsService {
     bookingId?: string;
     idempotencyKey: string;
   }): Promise<SmsSendResult> {
-    const from = getEnv().TELNYX_SMS_SENDER_NUMBER || '+18888401886';
+    const countryConfig = getCountryConfig(params.countryCode);
+    const from = countryConfig.sms.senderType === 'sender_id' && countryConfig.sms.senderId
+      ? countryConfig.sms.senderId
+      : getEnv().TELNYX_SMS_SENDER_NUMBER || '+18888401886';
     const log = withLogContext({
       shopId: params.shopId,
       provider: 'telnyx',

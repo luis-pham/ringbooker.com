@@ -10,6 +10,8 @@ export type GooglePlacesSuggestion = {
   categories?: string[];
   hours?: Record<string, unknown> | null;
   timezone?: string | null;
+  /** ISO 3166-1 alpha-2 country code extracted from Google Places addressComponents. */
+  country?: string | null;
   matchConfidence?: number;
   warnings?: string[];
 };
@@ -73,6 +75,7 @@ export async function lookupGooglePlaces(input: {
         'x-goog-fieldmask': [
           'places.displayName',
           'places.formattedAddress',
+          'places.addressComponents',
           'places.nationalPhoneNumber',
           'places.internationalPhoneNumber',
           'places.websiteUri',
@@ -108,15 +111,20 @@ export async function lookupGooglePlaces(input: {
     const primaryTypeDisplayName = place.primaryTypeDisplayName as { text?: string } | undefined;
     const types = Array.isArray(place.types) ? place.types.filter((item): item is string => typeof item === 'string') : [];
     const categories = [primaryTypeDisplayName?.text, typeof place.primaryType === 'string' ? place.primaryType : null, ...types].filter((item): item is string => Boolean(item));
+    const addressComponents = Array.isArray(place.addressComponents) ? place.addressComponents as Array<{ shortText?: string; types?: string[] }> : [];
+    const countryComponent = addressComponents.find((c) => Array.isArray(c.types) && c.types.includes('country'));
+    const country = countryComponent?.shortText ?? null;
+    const formattedAddress = typeof place.formattedAddress === 'string' ? place.formattedAddress : null;
     return {
       name: displayName?.text ?? null,
       phone: typeof place.nationalPhoneNumber === 'string' ? place.nationalPhoneNumber : typeof place.internationalPhoneNumber === 'string' ? place.internationalPhoneNumber : null,
-      address: typeof place.formattedAddress === 'string' ? place.formattedAddress : null,
+      address: formattedAddress,
       website: typeof place.websiteUri === 'string' ? place.websiteUri : null,
       primaryType: mapPrimaryType(categories),
       categories,
       hours: mapHours(place.regularOpeningHours),
-      timezone: inferTimezoneFromAddress(typeof place.formattedAddress === 'string' ? place.formattedAddress : null),
+      timezone: inferTimezoneFromAddress(formattedAddress, country),
+      country,
       matchConfidence: input.sourceType === 'google_maps' ? 0.95 : best.score,
       warnings: best.warnings,
     };
@@ -127,7 +135,24 @@ export async function lookupGooglePlaces(input: {
   }
 }
 
-function inferTimezoneFromAddress(address?: string | null): string | null {
+function inferTimezoneFromAddress(address?: string | null, country?: string | null): string | null {
+  if (country === 'AU') {
+    if (!address) return 'Australia/Sydney';
+    if (/\b(western australia|perth)\b/i.test(address)) return 'Australia/Perth';
+    if (/\b(south australia|adelaide)\b/i.test(address)) return 'Australia/Adelaide';
+    if (/\b(queensland|brisbane)\b/i.test(address)) return 'Australia/Brisbane';
+    if (/\b(northern territory|darwin)\b/i.test(address)) return 'Australia/Darwin';
+    return 'Australia/Sydney';
+  }
+  if (country === 'GB') return 'Europe/London';
+  if (country === 'NZ') return 'Pacific/Auckland';
+  if (country === 'IE') return 'Europe/Dublin';
+  if (country === 'CA') {
+    if (!address) return 'America/Toronto';
+    if (/\b(british columbia|vancouver|victoria)\b/i.test(address)) return 'America/Vancouver';
+    if (/\b(alberta|calgary|edmonton)\b/i.test(address)) return 'America/Edmonton';
+    return 'America/Toronto';
+  }
   if (!address) return null;
   if (/\b(california|ca|los angeles|san francisco|san diego|san jose|sacramento|washington|oregon|nevada|seattle|portland|las vegas)\b/i.test(address)) return 'America/Los_Angeles';
   if (/\b(new york|ny|new jersey|nj|florida|fl|massachusetts|ma|pennsylvania|pa|washington dc|district of columbia|boston|miami|orlando|philadelphia)\b/i.test(address)) return 'America/New_York';
