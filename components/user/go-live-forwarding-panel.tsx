@@ -377,6 +377,7 @@ export function GoLiveForwardingPanel({
 
   const selectedCarrier = goLive.selectedCarrier;
   const selectedCarrierRecord = findCarrier(goLive.selectedCountry, selectedCarrier ?? undefined);
+  const selectedCarrierHasDialCodes = (selectedCarrierRecord?.forwardingCodes.length ?? 0) > 0;
 
   useEffect(() => {
     if (selectedStep !== 1 || carrierDetectionLoaded) return;
@@ -503,7 +504,9 @@ export function GoLiveForwardingPanel({
                   {showCarrierGrid ? <CarrierPicker countryCode={goLive.selectedCountry} selected={goLive.selectedCarrier} onSelect={goLive.selectCarrier} /> : null}
                   <button type="button" className="gl-advanced-toggle gl-country-change" onClick={goLive.showCountryPicker}>Wrong country? Change</button>
                 </div>
-                <div><span className="gl-section-label">When should RingBooker answer?</span><ForwardingTypeSelector selected={goLive.selectedForwardingType} showAdvanced={showAdvancedOptions} onToggleAdvanced={() => setShowAdvancedOptions((value) => !value)} onSelect={goLive.selectForwardingType} /></div>
+                {selectedCarrierHasDialCodes ? (
+                  <div><span className="gl-section-label">When should RingBooker answer?</span><ForwardingTypeSelector selected={goLive.selectedForwardingType} showAdvanced={showAdvancedOptions} onToggleAdvanced={() => setShowAdvancedOptions((value) => !value)} onSelect={goLive.selectForwardingType} /></div>
+                ) : null}
                 <div><DialCodeBlock dialCode={dialCode} turnOffCode={turnOffCode} instructions={instructions} /></div>
               </div>
               <div className="gl-action-row">
