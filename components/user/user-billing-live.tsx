@@ -384,17 +384,17 @@ function billingUiCopy(state: BillingUiState) {
     case 'billing_not_configured':
       return {
         title: 'Start your 14-day trial',
-        body: 'Your AI receptionist is ready for setup and test calls. To let RingBooker answer real calls on your business number, start your 14-day trial and complete phone forwarding.',
+        body: 'Add your card to start your 14-day free trial and enable live answering.',
       };
     case 'setup_allowed_no_payment':
       return {
         title: 'Start your 14-day trial',
-        body: 'Your AI receptionist is ready for setup and test calls. To let RingBooker answer real calls on your business number, start your 14-day trial and complete phone forwarding.',
+        body: 'Add your card to start your 14-day free trial and enable live answering.',
       };
     case 'payment_method_required':
       return {
         title: 'Start your 14-day trial',
-        body: 'Your AI receptionist is ready for setup and test calls. To let RingBooker answer real calls on your business number, start your 14-day trial and complete phone forwarding.',
+        body: 'Add your card to start your 14-day free trial and enable live answering.',
       };
     case 'checkout_pending':
       return {
@@ -670,13 +670,21 @@ export function UserBillingLive({
       (subscription.status === 'unknown' &&
         (subscription.provider === 'paddle' || data?.billing?.provider === 'paddle') &&
         Boolean(subscription.providerCustomerId?.trim() || subscription.providerSubscriptionId?.trim() || data?.billing?.customer?.providerCustomerId?.trim())));
+  const forwardingState = goLiveStatus?.status?.forwarding?.status ?? 'none';
   const showTrialCtaRow =
     Boolean(data?.billing) &&
     !isEnterprisePlan &&
+    forwardingState === 'verified' &&
     billingState !== 'trialing_valid' &&
     billingState !== 'active' &&
     billingState !== 'checkout_pending';
-  const forwardingState = goLiveStatus?.status?.forwarding?.status ?? 'none';
+  const showForwardingNudge =
+    Boolean(data?.billing) &&
+    !isEnterprisePlan &&
+    forwardingState !== 'verified' &&
+    billingState !== 'trialing_valid' &&
+    billingState !== 'active' &&
+    billingState !== 'checkout_pending';
 
   const selectBillingTab = useCallback((tab: BillingSectionTab) => {
     setBillingTab(tab);
@@ -908,6 +916,20 @@ export function UserBillingLive({
                     <button type="button" className="btn" onClick={() => void refreshBilling()}>
                       Refresh status
                     </button>
+                  </section>
+                ) : null}
+
+                {showForwardingNudge ? (
+                  <section className="billing-alert-strip" style={{ borderColor: '#e2e8f0', background: '#f8fafc', color: '#374151' }} aria-label="Complete forwarding setup">
+                    <p style={{ margin: 0 }}>
+                      <strong>{forwardingState === 'configured' ? 'Test your forwarding to continue.' : 'Set up call forwarding to continue.'}</strong>{' '}
+                      {forwardingState === 'configured'
+                        ? 'Run a test call to verify forwarding is working, then return here to start your trial.'
+                        : 'Forward missed calls to RingBooker first, then return here to start your 14-day trial.'}
+                    </p>
+                    <a className="btn user-save" href="/user/go-live#go-live-forwarding">
+                      {forwardingState === 'configured' ? 'Test forwarding →' : 'Set up forwarding →'}
+                    </a>
                   </section>
                 ) : null}
 
