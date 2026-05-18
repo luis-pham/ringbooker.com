@@ -1085,6 +1085,7 @@ export function MarketingVerticalDemoTemplate({
     cancelSiteLoadTimers();
     cancelMobileImportUiTimers();
     resetMobileImportUi();
+    resetTurnstile();
     if (isMobileDemoRef.current) {
       setSiteManualFallback(true);
     }
@@ -1189,6 +1190,7 @@ export function MarketingVerticalDemoTemplate({
             setSelectedCategory(importedServiceCategories[0].id);
           }
           setSiteManualFallback(false);
+          resetTurnstile();
           setSitePhase('ready');
           setMobileFoundEdit(false);
           // Pre-generate personalized questions once the website read succeeds with real services.
@@ -1196,6 +1198,7 @@ export function MarketingVerticalDemoTemplate({
         }, Math.max(0, 900 - elapsed));
       } else {
         setSiteLoadError(data.message ?? 'Could not read that website. You can fill in the details manually.');
+        resetTurnstile();
         setSitePhase('error');
         if (isMobileDemoRef.current) resetMobileImportUi();
       }
@@ -1203,6 +1206,7 @@ export function MarketingVerticalDemoTemplate({
       cancelSiteLoadTimers();
       cancelMobileImportUiTimers();
       setSiteLoadError('Network error. Please try again.');
+      resetTurnstile();
       setSitePhase('error');
       if (isMobileDemoRef.current) resetMobileImportUi();
     }
