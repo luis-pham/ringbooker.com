@@ -137,6 +137,7 @@ export function UserAccountLive({ initialNav = null }: { initialNav?: NavStateRe
   const [contactNameDraft, setContactNameDraft] = useState('');
   const [accountSaveLoading, setAccountSaveLoading] = useState(false);
   const [accountSaveMessage, setAccountSaveMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
+  const [signOutLoading, setSignOutLoading] = useState(false);
 
   useLayoutEffect(() => {
     const cached = readCachedAccountNavPanel();
@@ -329,6 +330,19 @@ button.rb-account-link:hover{text-decoration:underline}
   display:flex;align-items:center;gap:12px;
   border:1px solid var(--border);
 }
+.rb-account-session-footer{
+  margin-top:24px;padding-top:22px;border-top:1px solid var(--border);
+  display:flex;flex-direction:column;align-items:flex-start;gap:14px;
+}
+.rb-account-sign-out{
+  font:inherit;font-size:14px;font-weight:600;color:var(--red-deep);
+  background:transparent;border:1px solid color-mix(in srgb,var(--red-deep) 35%,var(--border));
+  border-radius:8px;padding:10px 16px;cursor:pointer;
+}
+.rb-account-sign-out:hover:not(:disabled){
+  background:#fef2f2;border-color:color-mix(in srgb,var(--red-deep) 50%,var(--border));
+}
+.rb-account-sign-out:disabled{opacity:.55;cursor:not-allowed}
 .rb-account-subsection{margin-top:28px;padding-top:22px;border-top:1px solid var(--border)}
 .rb-account-subsection:first-of-type{margin-top:0;padding-top:0;border-top:none}
 .rb-account-subsection-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
@@ -370,6 +384,8 @@ button.rb-account-link:hover{text-decoration:underline}
   }
 }
 html[data-user-theme="dark"] .rb-account-callout{background:#161b22;border-color:var(--border)}
+html[data-user-theme="dark"] .rb-account-sign-out{color:#f85149;border-color:color-mix(in srgb,#f85149 35%,var(--border))}
+html[data-user-theme="dark"] .rb-account-sign-out:hover:not(:disabled){background:rgba(248,81,73,.12);border-color:color-mix(in srgb,#f85149 55%,var(--border))}
 html[data-user-theme="dark"] .rb-account-plan-pill{background:rgba(35,134,54,0.18);color:#3fb950}
 html[data-user-theme="dark"] .rb-account-btn-ghost:hover:not(:disabled){background:#21262d;border-color:#58a6ff}
 html[data-user-theme="dark"] .rb-account-frame{box-shadow:none}
@@ -492,6 +508,16 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
       setAccountSaveLoading(false);
     }
   }, [contactNameDraft]);
+
+  const signOut = useCallback(async () => {
+    setSignOutLoading(true);
+    try {
+      await fetch('/api/backend/auth/logout', { method: 'POST' });
+      window.location.href = '/user/login';
+    } catch {
+      setSignOutLoading(false);
+    }
+  }, []);
 
   const showBillingHint =
     nav?.ok &&
@@ -671,12 +697,24 @@ html[data-user-theme="dark"] .rb-account-skel-bar{
                       </>
                     )}
 
-                    {showBillingHint ? (
-                      <div className="rb-account-callout">
-                        <IconInfo className="rb-account-section-icon" />
-                        <a href="/user/billing" className="rb-account-link">
-                          Billing
-                        </a>
+                    {nav?.ok ? (
+                      <div className="rb-account-session-footer">
+                        {showBillingHint ? (
+                          <div className="rb-account-callout" style={{ marginTop: 0, width: '100%', boxSizing: 'border-box' }}>
+                            <IconInfo className="rb-account-section-icon" />
+                            <a href="/user/billing" className="rb-account-link">
+                              Billing
+                            </a>
+                          </div>
+                        ) : null}
+                        <button
+                          type="button"
+                          className="rb-account-sign-out"
+                          disabled={signOutLoading}
+                          onClick={() => void signOut()}
+                        >
+                          {signOutLoading ? 'Signing out…' : 'Sign Out'}
+                        </button>
                       </div>
                     ) : null}
                   </div>
