@@ -8,6 +8,9 @@ import { isSignupSyntheticPlaceholderPhone } from '@/lib/shop-phone-placeholder'
 import { UserLayout } from '@/components/user/user-layout';
 import { OnboardingAddGroupSheet } from '@/components/user/onboarding-add-group-sheet';
 import { userSettingsScripts, userSettingsStyles } from '@/components/user/user-settings';
+import { DemoCallModal } from '@/components/user/demo-call-modal';
+import { DemoBottomSheet } from '@/components/user/demo-bottom-sheet';
+import type { DemoVerticalSlug } from '@/components/marketing/demo-vertical-config';
 
 type Vertical = 'nail_salon' | 'hair_salon' | 'day_spa' | 'med_spa' | 'beauty_clinic';
 export type BeautySubtype =
@@ -960,20 +963,14 @@ function parseBeautySubtype(raw: string | null | undefined): BeautySubtype | '' 
   return allowed.includes(v as BeautySubtype) ? (v as BeautySubtype) : '';
 }
 
-function verticalToWebDemoPath(v: Vertical | ''): string {
+function verticalToDemoSlug(v: Vertical | ''): DemoVerticalSlug | null {
   switch (v) {
-    case 'nail_salon':
-      return '/industries/nail-salon';
-    case 'hair_salon':
-      return '/industries/hair-salon';
-    case 'day_spa':
-      return '/industries/spa';
-    case 'med_spa':
-      return '/industries/med-spa';
-    case 'beauty_clinic':
-      return '/industries/beauty-clinic';
-    default:
-      return '/demo';
+    case 'nail_salon': return 'nail-salon';
+    case 'hair_salon': return 'hair-salon';
+    case 'day_spa': return 'day-spa';
+    case 'med_spa': return 'med-spa';
+    case 'beauty_clinic': return 'beauty-clinic';
+    default: return null;
   }
 }
 
@@ -1284,6 +1281,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
   const [shopId, setShopId] = useState(initialShop?.id ?? '');
   const [currentStep, setCurrentStep] = useState<WizardStep>(normalizeStep(initialShop?.current_onboarding_step));
   const [businessName, setBusinessName] = useState(initialShop?.name ?? '');
+  const [demoOpen, setDemoOpen] = useState(false);
   const [address, setAddress] = useState(typeof initialShop?.address === 'string' ? initialShop.address : '');
   const [vertical, setVertical] = useState<Vertical | ''>(initialVertical);
   const [businessPhone, setBusinessPhone] = useState(initialSyntheticPhone ? '' : formatPhoneForDisplay(initialRawPhone));
@@ -2498,7 +2496,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
     );
   }
 
-  const webDemoHref = verticalToWebDemoPath(vertical);
+  const demoVerticalSlug = verticalToDemoSlug(vertical);
+  const demoServices = useMemo(() => services.map((s) => s.name).filter(Boolean), [services]);
 
   function renderStep1() {
     if (step1View === 'manual_vertical') {
@@ -4093,18 +4092,17 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               <div className="test-card">
                 <h3>Web voice test</h3>
                 <p>Talk to RingBooker in your browser using your business setup.</p>
-                <a
+                <button
                   className="onb-btn-primary onb-actions-desktop"
-                  href={webDemoHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  type="button"
                   style={{ marginTop: 'auto', alignSelf: 'flex-start' }}
                   onClick={() => {
-                    trackOnboarding('web_voice_test_started', { href: webDemoHref });
+                    trackOnboarding('web_voice_test_started', { source: 'onboarding_embed' });
+                    setDemoOpen(true);
                   }}
                 >
                   Start web voice test
-                </a>
+                </button>
               </div>
               <div className="test-card">
                 <h3>Call me for a test</h3>
@@ -4153,17 +4151,16 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
         <div className="onb-sticky-cta">
           {step4Phase === 'try' ? (
             <>
-              <a
+              <button
                 className="onb-btn-primary"
-                href={webDemoHref}
-                target="_blank"
-                rel="noopener noreferrer"
+                type="button"
                 onClick={() => {
-                  trackOnboarding('web_voice_test_started', { href: webDemoHref });
+                  trackOnboarding('web_voice_test_started', { source: 'onboarding_embed' });
+                  setDemoOpen(true);
                 }}
               >
                 Start web voice test
-              </a>
+              </button>
               <button className="onb-btn-secondary" type="button" onClick={() => void requestTestCall()}>
                 Call me now
               </button>
@@ -4200,6 +4197,24 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
           </div>
         </section>
       </main>
+      {demoVerticalSlug ? (
+        <>
+          <DemoCallModal
+            isOpen={demoOpen}
+            onClose={() => setDemoOpen(false)}
+            vertical={demoVerticalSlug}
+            shopServices={demoServices}
+            businessName={businessName}
+          />
+          <DemoBottomSheet
+            isOpen={demoOpen}
+            onClose={() => setDemoOpen(false)}
+            vertical={demoVerticalSlug}
+            shopServices={demoServices}
+            businessName={businessName}
+          />
+        </>
+      ) : null}
     </UserLayout>
   );
 }
