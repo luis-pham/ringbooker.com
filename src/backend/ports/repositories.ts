@@ -433,6 +433,9 @@ export interface ShopsRepository {
         | 'forwarding_number_provisioned_at'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
+        | 'detected_carrier'
+        | 'detected_line_type'
+        | 'carrier_detected_at'
       >
     >,
   ): Promise<Shop | null>;

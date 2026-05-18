@@ -1,0 +1,4 @@
+ALTER TABLE shops
+ADD COLUMN IF NOT EXISTS detected_carrier TEXT,
+ADD COLUMN IF NOT EXISTS detected_line_type TEXT,
+ADD COLUMN IF NOT EXISTS carrier_detected_at TIMESTAMPTZ;

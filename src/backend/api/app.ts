@@ -38,6 +38,7 @@ import { importWebsiteForOnboarding } from '@/src/backend/services/website-impor
 import { importWebsiteWithCache } from '@/src/backend/services/website-import/cache';
 import { buildApplyPatchForSuggestions, pendingSuggestionsFromImport, secondarySummary, validateSuggestionPayload } from '@/src/backend/domain/business-knowledge-suggestions';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
+import { detectCarrierFromTelnyx } from '@/src/backend/services/go-live/detect-carrier';
 import { startOrReuseForwardingTestSession } from '@/src/backend/services/go-live/start-forwarding-test-session';
 import type {
   BillingProvider,
@@ -5478,6 +5479,44 @@ export function createBackendApp(deps: {
         },
       },
     });
+  });
+
+  app.get(path('/user/go-live/detected-carrier'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_api, 'user_go_live_detected_carrier');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+
+    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const cachedCarrier = shop.detected_carrier?.trim() || null;
+    if (cachedCarrier) {
+      return c.json({
+        ok: true,
+        detected: true,
+        carrier: cachedCarrier,
+        line_type: shop.detected_line_type?.trim() || null,
+        raw_carrier_name: null,
+      });
+    }
+
+    const detected = await detectCarrierFromTelnyx({
+      apiKey: getEnv().TELNYX_API_KEY,
+      phoneNumber: shop.phone_number,
+      shopId: shop.id,
+    });
+
+    if (detected.detected && detected.carrier) {
+      await deps.shopsRepository.updateUserSettings(shop.id, {
+        detected_carrier: detected.carrier,
+        detected_line_type: detected.line_type,
+        carrier_detected_at: new Date().toISOString(),
+      });
+    }
+
+    return c.json({ ok: true, ...detected });
   });
 
   app.get(path('/user/go-live/forwarding-code'), async (c) => {

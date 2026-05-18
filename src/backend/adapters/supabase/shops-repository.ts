@@ -56,6 +56,9 @@ type ShopsRow = {
   forwarding_number_provisioned_at: string | null;
   forwarding_number_provider_order_id: string | null;
   forwarding_number_last_error: string | null;
+  detected_carrier: string | null;
+  detected_line_type: string | null;
+  carrier_detected_at: string | null;
   ai_voice: string | null;
   ai_welcome_message: string | null;
   ai_custom_instructions: string | null;
@@ -108,6 +111,9 @@ const SHOP_SELECT_COLUMNS = [
   'forwarding_number_provisioned_at',
   'forwarding_number_provider_order_id',
   'forwarding_number_last_error',
+  'detected_carrier',
+  'detected_line_type',
+  'carrier_detected_at',
   'ai_voice',
   'ai_welcome_message',
   'ai_custom_instructions',
@@ -401,6 +407,9 @@ function toShop(row: ShopsRow): Shop {
     forwarding_number_provisioned_at: row.forwarding_number_provisioned_at,
     forwarding_number_provider_order_id: row.forwarding_number_provider_order_id,
     forwarding_number_last_error: row.forwarding_number_last_error,
+    detected_carrier: row.detected_carrier,
+    detected_line_type: row.detected_line_type,
+    carrier_detected_at: row.carrier_detected_at,
     ai_voice: row.ai_voice ?? 'Aoede',
     ai_welcome_message: row.ai_welcome_message,
     ai_custom_instructions: row.ai_custom_instructions,
@@ -477,6 +486,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
+  'detected_carrier',
+  'detected_line_type',
+  'carrier_detected_at',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -543,6 +555,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
+  'detected_carrier',
+  'detected_line_type',
+  'carrier_detected_at',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -710,6 +725,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
+  'detected_carrier',
+  'detected_line_type',
+  'carrier_detected_at',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -771,6 +789,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'forwarding_number_provisioned_at'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
+        | 'detected_carrier'
+        | 'detected_line_type'
+        | 'carrier_detected_at'
       >
     >,
   ): Promise<Shop | null> {
@@ -818,6 +839,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.forwarding_number_last_error !== undefined) {
       payload.forwarding_number_last_error = patch.forwarding_number_last_error;
     }
+    if (patch.detected_carrier !== undefined) payload.detected_carrier = patch.detected_carrier;
+    if (patch.detected_line_type !== undefined) payload.detected_line_type = patch.detected_line_type;
+    if (patch.carrier_detected_at !== undefined) payload.carrier_detected_at = patch.carrier_detected_at;
 
     let result = await this.supabase
       .from('shops')
@@ -1111,6 +1135,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
+  'detected_carrier',
+  'detected_line_type',
+  'carrier_detected_at',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -1208,6 +1235,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
+  'detected_carrier',
+  'detected_line_type',
+  'carrier_detected_at',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -1285,6 +1315,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
+  'detected_carrier',
+  'detected_line_type',
+  'carrier_detected_at',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',
@@ -1359,6 +1392,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
+  'detected_carrier',
+  'detected_line_type',
+  'carrier_detected_at',
           'ai_voice',
           'ai_welcome_message',
           'ai_custom_instructions',

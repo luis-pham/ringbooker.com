@@ -269,6 +269,9 @@ export interface Shop {
   forwarding_number_provisioned_at?: string | null;
   forwarding_number_provider_order_id?: string | null;
   forwarding_number_last_error?: string | null;
+  detected_carrier?: string | null;
+  detected_line_type?: string | null;
+  carrier_detected_at?: string | null;
   ai_voice?: string | null;
   ai_welcome_message?: string | null;
   ai_custom_instructions?: string | null;

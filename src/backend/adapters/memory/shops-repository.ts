@@ -59,6 +59,9 @@ const defaultShop: Shop = {
   forwarding_number_provisioned_at: null,
   forwarding_number_provider_order_id: null,
   forwarding_number_last_error: null,
+  detected_carrier: null,
+  detected_line_type: null,
+  carrier_detected_at: null,
   ai_voice: 'Aoede',
   ai_welcome_message: 'Thanks for calling RingBooker Demo Salon. How can I help you today?',
   ai_custom_instructions: 'Prioritize manicure and pedicure bookings and keep answers concise.',
@@ -175,6 +178,9 @@ export class InMemoryShopsRepository implements ShopsRepository {
       forwarding_number_provisioned_at: null,
       forwarding_number_provider_order_id: null,
       forwarding_number_last_error: null,
+      detected_carrier: null,
+      detected_line_type: null,
+      carrier_detected_at: null,
       allow_transfers: enableProfessionalDefaults,
       allow_callbacks: true,
       sms_owner_opted_in: false,
@@ -227,6 +233,9 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'forwarding_number_provisioned_at'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
+        | 'detected_carrier'
+        | 'detected_line_type'
+        | 'carrier_detected_at'
       >
     >,
   ): Promise<Shop | null> {
