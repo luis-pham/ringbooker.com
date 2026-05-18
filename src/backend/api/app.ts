@@ -5488,7 +5488,16 @@ export function createBackendApp(deps: {
     if (sessionResult instanceof Response) return sessionResult;
     if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
 
-    const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    let shop;
+    try {
+      shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
+    } catch (error) {
+      logger.warn(
+        { err: error, shopId: sessionResult.shopId ?? null },
+        'go_live_detected_carrier_shop_lookup_failed',
+      );
+      return c.json({ ok: true, detected: false, carrier: null, line_type: null, raw_carrier_name: null });
+    }
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
     const cachedCarrier = shop.detected_carrier?.trim() || null;
@@ -5509,11 +5518,18 @@ export function createBackendApp(deps: {
     });
 
     if (detected.detected && detected.carrier) {
-      await deps.shopsRepository.updateUserSettings(shop.id, {
-        detected_carrier: detected.carrier,
-        detected_line_type: detected.line_type,
-        carrier_detected_at: new Date().toISOString(),
-      });
+      try {
+        await deps.shopsRepository.updateUserSettings(shop.id, {
+          detected_carrier: detected.carrier,
+          detected_line_type: detected.line_type,
+          carrier_detected_at: new Date().toISOString(),
+        });
+      } catch (error) {
+        logger.warn(
+          { err: error, shopId: shop.id },
+          'go_live_detected_carrier_cache_write_failed',
+        );
+      }
     }
 
     return c.json({ ok: true, ...detected });
