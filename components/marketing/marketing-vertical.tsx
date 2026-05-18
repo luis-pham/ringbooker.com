@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Script from 'next/script';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
@@ -211,12 +212,25 @@ const verticalStepCarouselScript = `
       });
     };
 
+    const isHorizontalCarousel = () => {
+      const style = window.getComputedStyle(scroller);
+      return style.overflowX === 'auto' || style.overflowX === 'scroll';
+    };
+
+    const scrollCardIntoView = (idx) => {
+      if (!isHorizontalCarousel()) return;
+      cards[idx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    };
+
     const updateActiveByScroll = () => {
-      const centerX = scroller.scrollLeft + scroller.clientWidth / 2;
+      if (!isHorizontalCarousel()) return;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const centerX = scrollerRect.left + scroller.clientWidth / 2;
       let bestIdx = 0;
       let bestDist = Number.POSITIVE_INFINITY;
       cards.forEach((card, i) => {
-        const cardCenter = card.offsetLeft + card.clientWidth / 2;
+        const r = card.getBoundingClientRect();
+        const cardCenter = r.left + r.width / 2;
         const dist = Math.abs(cardCenter - centerX);
         if (dist < bestDist) {
           bestDist = dist;
@@ -229,8 +243,15 @@ const verticalStepCarouselScript = `
     buttons.forEach((btn, i) => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
-        cards[i]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        scrollCardIntoView(i);
         setActive(i);
+      });
+    });
+
+    cards.forEach((card, i) => {
+      card.addEventListener('click', () => {
+        setActive(i);
+        scrollCardIntoView(i);
       });
     });
 
@@ -287,7 +308,7 @@ function HowItWorks({
             key={s.n}
             id={`vertical-step-${s.n}`}
             data-vertical-step-card
-            className="relative w-[84%] shrink-0 snap-center rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg md:w-auto md:shrink md:snap-none"
+            className="relative w-[84%] shrink-0 snap-center rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg max-md:cursor-pointer md:w-auto md:shrink md:snap-none"
           >
             <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-bold text-white`}>{s.n}</div>
             <p className="text-[15px] font-bold text-slate-900">{s.title}</p>
@@ -886,7 +907,11 @@ export async function MarketingNailSalonVietnameseTemplate() {
       <MarketingFooter descriptionOverride="Lễ tân AI cho tiệm nail người Việt tại Mỹ — nghe máy tiếng Việt và tiếng Anh, giữ nguyên số tiệm, đọc website tự động, và hỗ trợ giảm cuộc gọi nhỡ trong giờ cao điểm." />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
-      <script dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }} />
+      <Script
+        id="vertical-step-carousel"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }}
+      />
     </>
   );
 }
@@ -1854,7 +1879,11 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
-      <script dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }} />
+      <Script
+        id="vertical-step-carousel"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }}
+      />
     </>
   );
 }
