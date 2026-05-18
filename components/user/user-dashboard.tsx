@@ -366,7 +366,7 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .call-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:18px}
 .call-grid-phase-simple{grid-template-columns:1fr}
 .overview-page{margin-bottom:8px}
-.overview-grid{display:grid;grid-template-columns:1fr minmax(280px,320px);gap:16px;align-items:start}
+.overview-grid{display:grid;grid-template-columns:1fr minmax(280px,320px);gap:16px;align-items:start}.overview-grid--full{grid-template-columns:1fr}
 .overview-banner{display:flex;align-items:center;gap:16px;padding:12px 20px;border-radius:12px;margin-bottom:16px;background:#fff;border:1px solid #e5e7eb}
 .overview-banner.post-live{background:#f0fdf4;border-color:#bbf7d0}
 .banner-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}

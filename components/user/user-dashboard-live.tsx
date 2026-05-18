@@ -728,10 +728,11 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 ) : null}
                 {(() => {
                   const hasEverBeenLive = Boolean(data.goLive.liveCallsEnabled || data.goLive.activatedAt);
+                  const gridClass = `overview-grid${hasEverBeenLive ? '' : ' overview-grid--full'}`;
                   return expandedOverview && overviewState ? (
                     <>
                       {showBkNudgeBanner ? <OverviewBkNudgeBanner onDismiss={dismissBkNudge} /> : null}
-                      <div className="overview-grid">
+                      <div className={gridClass}>
                         <div className="overview-left">
                           <OverviewSystemStatusCard
                             state={overviewState}
@@ -748,7 +749,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                       </div>
                     </>
                   ) : (
-                    <div className="overview-grid">
+                    <div className={gridClass}>
                       <div className="overview-left">
                         <div className="checklist-card">
                           <div className="card-title">Go-live checklist</div>
