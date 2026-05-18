@@ -133,6 +133,12 @@ export const CARRIER_DATA: CountryCarriers[] = [
         'Go to Settings → your number → Call Routing',
         'Add your RingBooker number as forwarding destination',
       ] },
+      { id: 'twilio', name: 'Twilio', logoPath: '/provider-logos/twilio-logo.png', color: '#f22f46', defaultType: 'all', forwardingCodes: [], appSteps: [
+        'Open the Twilio Console and go to Phone Numbers → Manage → Active numbers',
+        'Select the Twilio number customers call',
+        'Under Voice & Fax, set “A call comes in” to a Studio Flow or webhook that forwards to your RingBooker number',
+        'Publish or save the change, then call the Twilio number to confirm forwarding works',
+      ] },
       { id: 'other', name: 'Other', logoPath: null, color: '#6b7280', defaultType: 'no_answer', forwardingCodes: [], appSteps: [
         'Contact your carrier to enable call forwarding',
         'Ask them to forward unanswered calls to your RingBooker number',

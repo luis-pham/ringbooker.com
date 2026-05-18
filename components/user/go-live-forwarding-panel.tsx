@@ -61,7 +61,7 @@ function carrierTypeLabel(carrier: Carrier) {
   const name = carrier.name.toLowerCase();
   if (id === 'other') return 'Other';
   if (name.includes('business') || ['comcast', 'nextiva', 'ringcentral', 'openphone', 'ooma'].includes(id)) return 'Business';
-  if (['googlevoice', 'openphone', 'ringcentral', 'ooma'].includes(id)) return 'VoIP';
+  if (['googlevoice', 'openphone', 'ringcentral', 'ooma', 'twilio'].includes(id)) return 'VoIP';
   return 'Mobile';
 }
 
@@ -77,6 +77,7 @@ function carrierDisplayName(carrier: string | null | undefined): string {
     comcast: 'Comcast Business',
     ooma: 'Ooma',
     openphone: 'OpenPhone',
+    twilio: 'Twilio',
   };
   return carrier ? map[carrier] ?? carrier : '';
 }

@@ -34,6 +34,7 @@ function mapCarrierNameToRingBookerCarrier(value: string | null | undefined): st
   if (name.includes('comcast')) return 'comcast';
   if (name.includes('ooma')) return 'ooma';
   if (name.includes('openphone') || name.includes('open phone')) return 'openphone';
+  if (name.includes('twilio')) return 'twilio';
   return 'other';
 }
 
