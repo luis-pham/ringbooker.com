@@ -5714,9 +5714,6 @@ export function createBackendApp(deps: {
     if (access.liveCallsEnabled) {
       return c.json({ ok: true, forwardingSetupVerified: access.forwardingSetupVerified, liveCallsEnabled: true });
     }
-    if (!access.setupWizardComplete) {
-      return c.json({ ok: false, error: 'onboarding_incomplete', message: 'Finish setup wizard first.' }, 409);
-    }
     if (access.subscriptionStatus !== 'active' && access.subscriptionStatus !== 'trialing') {
       return c.json({ ok: false, error: access.blockReason || 'subscription_inactive' }, 409);
     }

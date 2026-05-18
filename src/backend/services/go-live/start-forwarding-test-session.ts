@@ -1,4 +1,3 @@
-import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
 import type { Shop } from '@/src/backend/domain/types';
 import type {
   BillingSubscriptionsRepository,
@@ -61,15 +60,6 @@ export async function startOrReuseForwardingTestSession(params: {
       httpStatus: 403,
       error: 'commercial_approval_required',
       message: 'Your Custom setup must be approved by the RingBooker team before live answering can be enabled.',
-    };
-  }
-
-  if (!isShopSetupWizardComplete(shop)) {
-    return {
-      ok: false,
-      httpStatus: 409,
-      error: 'onboarding_incomplete',
-      message: 'Finish the setup wizard first.',
     };
   }
 

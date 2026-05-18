@@ -726,52 +726,59 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                     ) : null}
                   </div>
                 ) : null}
-                {expandedOverview && overviewState ? (
-                  <>
-                    {showBkNudgeBanner ? <OverviewBkNudgeBanner onDismiss={dismissBkNudge} /> : null}
+                {(() => {
+                  const hasEverBeenLive = Boolean(data.goLive.liveCallsEnabled || data.goLive.activatedAt);
+                  return expandedOverview && overviewState ? (
+                    <>
+                      {showBkNudgeBanner ? <OverviewBkNudgeBanner onDismiss={dismissBkNudge} /> : null}
+                      <div className="overview-grid">
+                        <div className="overview-left">
+                          <OverviewSystemStatusCard
+                            state={overviewState}
+                            totalCalls={data?.metrics?.callCount ?? 0}
+                            shopTimezone={shopTimezone}
+                            recentCalls={recentCallsForStatus}
+                          />
+                        </div>
+                        {hasEverBeenLive ? (
+                          <div className="overview-right overview-rail">
+                            <OverviewQuickAccessCard rows={overviewShortcutRows} />
+                          </div>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : (
                     <div className="overview-grid">
                       <div className="overview-left">
-                        <OverviewSystemStatusCard
-                          state={overviewState}
-                          totalCalls={data?.metrics?.callCount ?? 0}
-                          shopTimezone={shopTimezone}
-                          recentCalls={recentCallsForStatus}
-                        />
-                      </div>
-                      <div className="overview-right overview-rail">
-                        <OverviewQuickAccessCard rows={overviewShortcutRows} />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="overview-grid">
-                    <div className="overview-left">
-                      <div className="checklist-card">
-                        <div className="card-title">Go-live checklist</div>
-                        <div className="card-sub">
-                          Complete these steps to activate live answering on your business number.
+                        <div className="checklist-card">
+                          <div className="card-title">Go-live checklist</div>
+                          <div className="card-sub">
+                            Complete these steps to activate live answering on your business number.
+                          </div>
+                          {activationChecklist.map((item) => (
+                            <a key={item.id} className="cl-item" href={item.href}>
+                              <div className={`cl-circle ${item.done ? 'done' : ''}`}>
+                                {item.done ? <IconCheckSmall /> : null}
+                              </div>
+                              <div className="cl-body">
+                                <div className="cl-name">{item.name}</div>
+                                {item.desc ? <div className="cl-desc">{item.desc}</div> : null}
+                              </div>
+                              <div className="cl-arrow" aria-hidden>
+                                ›
+                              </div>
+                            </a>
+                          ))}
                         </div>
-                        {activationChecklist.map((item) => (
-                          <a key={item.id} className="cl-item" href={item.href}>
-                            <div className={`cl-circle ${item.done ? 'done' : ''}`}>
-                              {item.done ? <IconCheckSmall /> : null}
-                            </div>
-                            <div className="cl-body">
-                              <div className="cl-name">{item.name}</div>
-                              {item.desc ? <div className="cl-desc">{item.desc}</div> : null}
-                            </div>
-                            <div className="cl-arrow" aria-hidden>
-                              ›
-                            </div>
-                          </a>
-                        ))}
                       </div>
+                      {hasEverBeenLive ? (
+                        <div className="overview-right overview-rail">
+                          <OverviewQuickAccessCard rows={overviewShortcutRows} />
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="overview-right overview-rail">
-                      <OverviewQuickAccessCard rows={overviewShortcutRows} />
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             ) : null}
             {dashboardReady && expandedOverview ? (
