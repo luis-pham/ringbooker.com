@@ -226,12 +226,14 @@ function DetectedCarrierSummary({
   carrierId,
   carrierName,
   lineType,
+  badge,
   onChange,
 }: {
   countryCode: string;
   carrierId: string | null;
   carrierName: string;
   lineType: string | null;
+  badge: string;
   onChange: () => void;
 }) {
   const carrier = carrierId ? findCarrier(countryCode, carrierId) : null;
@@ -242,7 +244,7 @@ function DetectedCarrierSummary({
         <strong>{carrierName}</strong>
         {lineType ? <small>{lineType}</small> : null}
       </span>
-      <span className="tag green gl-detected-badge">Detected</span>
+      <span className="tag green gl-detected-badge">{badge}</span>
       <button type="button" className="gl-inline-link" onClick={onChange}>Wrong carrier? Change →</button>
     </div>
   );
@@ -344,7 +346,7 @@ export function GoLiveForwardingPanel({
   const [smsOwnerOptedIn, setSmsOwnerOptedIn] = useState(false);
   const [detectedCarrier, setDetectedCarrier] = useState<DetectedCarrierState | null>(null);
   const [carrierDetectionLoaded, setCarrierDetectionLoaded] = useState(false);
-  const [showCarrierGrid, setShowCarrierGrid] = useState(true);
+  const [showCarrierGrid, setShowCarrierGrid] = useState(() => !initialStatus?.status?.forwarding.carrier);
 
   useEffect(() => {
     if (initialBilling?.ok && initialBilling.shop) {
@@ -379,6 +381,11 @@ export function GoLiveForwardingPanel({
   const selectedCarrierRecord = findCarrier(goLive.selectedCountry, selectedCarrier ?? undefined);
   const selectedCarrierHasDialCodes = (selectedCarrierRecord?.forwardingCodes.length ?? 0) > 0;
   const detectedGridCarrier = detectedCarrierToGridId(detectedCarrier?.carrier ?? null);
+  const compactCarrierId = detectedGridCarrier ?? selectedCarrier ?? null;
+  const compactCarrierRecord = findCarrier(goLive.selectedCountry, compactCarrierId ?? undefined);
+  const compactCarrierName = detectedCarrier?.detected && detectedCarrier.carrier && detectedCarrier.carrier !== 'other'
+    ? carrierDisplayName(detectedCarrier.carrier)
+    : compactCarrierRecord?.name ?? '';
 
   useEffect(() => {
     if (selectedStep !== 1 || carrierDetectionLoaded) return;
@@ -499,12 +506,13 @@ export function GoLiveForwardingPanel({
                 {goLive.countryPickerVisible ? <div><span className="gl-section-label">Country</span><CountrySelector selected={goLive.selectedCountry} onSelect={goLive.selectCountry} /></div> : null}
                 <div>
                   <span className="gl-section-label">Who is your phone provider?</span>
-                  {detectedCarrier?.detected && detectedCarrier.carrier && detectedCarrier.carrier !== 'other' ? (
+                  {!showCarrierGrid && compactCarrierId && compactCarrierName ? (
                     <DetectedCarrierSummary
                       countryCode={goLive.selectedCountry}
-                      carrierId={detectedCarrierToGridId(detectedCarrier.carrier)}
-                      carrierName={carrierDisplayName(detectedCarrier.carrier)}
-                      lineType={detectedCarrier.line_type}
+                      carrierId={compactCarrierId}
+                      carrierName={compactCarrierName}
+                      lineType={detectedCarrier?.line_type ?? null}
+                      badge={detectedCarrier?.detected ? 'Detected' : 'Selected'}
                       onChange={() => setShowCarrierGrid(true)}
                     />
                   ) : null}
@@ -615,7 +623,7 @@ export function GoLiveForwardingPanel({
           ))}
         </aside>
         <main className="gl-desktop-panel">
-          <GoLiveStepCard step={selectedStep} title={steps.find((step) => step.step === selectedStep)?.title ?? 'Go Live'} meta={steps.find((step) => step.step === selectedStep)?.meta ?? ''} state={steps.find((step) => step.step === selectedStep)?.state ?? 'active'} expanded onSelect={() => undefined}>
+          <GoLiveStepCard step={selectedStep} title={steps.find((step) => step.step === selectedStep)?.title ?? 'Go Live'} meta={steps.find((step) => step.step === selectedStep)?.meta ?? ''} state={selectedStep === 1 ? (steps.find((step) => step.step === selectedStep)?.state ?? 'active') : 'done'} expanded onSelect={() => undefined}>
             {renderStepContent(selectedStep)}
           </GoLiveStepCard>
         </main>
