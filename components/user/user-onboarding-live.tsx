@@ -2301,10 +2301,10 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-import-steps{display:grid;gap:8px;margin:2px 0}.onb-import-step{display:flex;align-items:center;gap:10px;color:#64748b;font-size:13px;font-weight:500}.onb-import-step.done{color:#166534}.onb-import-step.active{color:#111827}
 .onb-import-step-mark{width:22px;height:22px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:#64748b}.onb-import-step.done .onb-import-step-mark{border-color:#86efac;background:#ecfdf5;color:#166534}.onb-import-step.active .onb-import-step-mark{border-color:#111827;color:#111827}
 .onb-spinner{width:12px;height:12px;border:2px solid #d1d5db;border-top-color:#111827;border-radius:999px;animation:onbSpin .8s linear infinite}
-.onb-import-delay{border-radius:10px;background:#fff7ed;color:#9a3412;padding:10px 12px;font-size:13px;line-height:1.45}.onb-import-progress-actions{display:flex;justify-content:flex-start}.onb-import-progress-actions .onb-help-link{color:#111827;text-decoration:underline;text-underline-offset:3px}
+.onb-import-delay{border-radius:10px;background:#fff7ed;color:#9a3412;padding:10px 12px;font-size:13px;line-height:1.45}.onb-import-progress-actions{display:flex;justify-content:center;width:100%}.onb-import-progress-actions .onb-help-link{color:#111827;font-size:12px;font-weight:500;text-align:center;text-decoration:none;width:100%;padding:8px 0}.onb-import-progress-actions .onb-help-link:hover{color:#5b21b6;text-decoration:none}
 @keyframes onbSpin{to{transform:rotate(360deg)}}
-.onb-import-manual-link-desktop{display:none;margin-top:14px;text-align:center;border:0;background:transparent;color:#111827;font-size:14px;font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px;font:inherit;padding:0;width:100%;box-sizing:border-box}
-.onb-import-manual-link-desktop:hover{color:#5b21b6}
+.onb-import-manual-link-desktop{display:none;margin-top:14px;text-align:center;border:0;background:transparent;color:#111827;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;font:inherit;padding:0;width:100%;box-sizing:border-box}
+.onb-import-manual-link-desktop:hover{color:#5b21b6;text-decoration:none}
 @media(min-width:641px){.onb-import-manual-link-desktop{display:block}}
 .onb-manual-panel{border-top:0;padding-top:0}
 .onb-step1-manual{max-width:none;margin:0;width:100%;padding:0;box-sizing:border-box;display:flex;flex-direction:column;gap:20px}
