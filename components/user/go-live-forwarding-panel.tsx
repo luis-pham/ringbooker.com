@@ -378,6 +378,7 @@ export function GoLiveForwardingPanel({
   const selectedCarrier = goLive.selectedCarrier;
   const selectedCarrierRecord = findCarrier(goLive.selectedCountry, selectedCarrier ?? undefined);
   const selectedCarrierHasDialCodes = (selectedCarrierRecord?.forwardingCodes.length ?? 0) > 0;
+  const detectedGridCarrier = detectedCarrierToGridId(detectedCarrier?.carrier ?? null);
 
   useEffect(() => {
     if (selectedStep !== 1 || carrierDetectionLoaded) return;
@@ -416,6 +417,12 @@ export function GoLiveForwardingPanel({
       active = false;
     };
   }, [carrierDetectionLoaded, goLive, selectedStep]);
+
+  useEffect(() => {
+    if (!detectedCarrier?.detected || !detectedGridCarrier || showCarrierGrid) return;
+    if (goLive.selectedCarrier === detectedGridCarrier) return;
+    goLive.selectCarrier(detectedGridCarrier);
+  }, [detectedCarrier?.detected, detectedGridCarrier, goLive, showCarrierGrid]);
 
   useEffect(() => {
     if (!numberReady || !selectedCarrier) {
