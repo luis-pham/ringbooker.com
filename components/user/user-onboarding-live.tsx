@@ -2434,7 +2434,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-service-name{flex:1;color:#111;font-size:13px;font-weight:400;line-height:1.35;text-transform:capitalize;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.onb-ai-badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:#ede9fe;color:#6d28d9;font-size:10px;font-weight:600;vertical-align:middle;text-transform:none;white-space:nowrap}.onb-service-variants-preview{display:block;margin-top:3px;color:#6b7280;font-size:12px;text-transform:none;white-space:normal}.svc-variants{margin:0 0 3px;color:#9ca3af;font-size:12px;line-height:1.35}.onb-service-price{color:#374151;font-size:13px;font-weight:500;white-space:nowrap}.onb-service-price.warn{color:#dc2626}.onb-service-duration{color:#9ca3af;font-size:12px;font-weight:400;white-space:nowrap}.onb-service-duration.warn{color:#f59e0b}.onb-service-edit-link{color:#9ca3af;font-size:12px;font-weight:500;opacity:0;transition:opacity .15s ease}.onb-service-row-wrap:hover .onb-service-edit-link{opacity:1}
 .onb-service-row-mobile{display:none}.onb-service-mobile-meta{color:#6b7280;font-size:12px;text-align:right;white-space:nowrap}.onb-service-mobile-arrow{color:#9ca3af;font-size:22px;line-height:1}
 .svc-row{display:none}.svc-body{flex:1;min-width:0}.svc-name{font-size:13px;font-weight:400;color:#111;text-transform:capitalize;line-height:1.35;margin-bottom:3px;overflow-wrap:anywhere}.svc-meta{display:flex;align-items:center;gap:6px;font-size:12px;color:#9ca3af;flex-wrap:nowrap;min-width:0}.svc-price{color:#374151;font-weight:500;white-space:nowrap}.svc-price.zero{color:#dc2626}.svc-duration{white-space:nowrap}.svc-duration.missing{color:#f59e0b}.svc-remove{margin-left:auto;font-size:12px;color:#9ca3af;background:none;border:none;padding:0;cursor:pointer;flex-shrink:0}.svc-remove:active{color:#dc2626}.svc-arrow{color:#d1d5db;font-size:16px;flex-shrink:0;align-self:flex-start;margin-top:1px}
-.onb-service-edit-row{display:grid;gap:8px;align-items:center;padding:8px 0}.onb-service-edit-main-row{display:flex;gap:8px;align-items:center}.onb-service-edit-main-row>input:first-child{flex:1;min-width:0}.onb-service-edit-main-row>.onb-service-price-input,.onb-service-edit-main-row>input[aria-label="Duration"]{width:90px;flex:0 0 90px}.onb-service-edit-row input,.onb-service-sheet-fields input{min-height:34px;border:1px solid #7c3aed;border-radius:8px;padding:6px 10px;font-size:16px;font-family:inherit;color:#111827;box-sizing:border-box;background:#fff;width:100%}.onb-service-price-input{position:relative}.onb-service-price-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px}.onb-service-price-input input{padding-left:24px!important}.onb-service-variants-editor{grid-column:1 / -1;display:grid;gap:8px;border:1px solid #ede9fe;border-radius:10px;background:#faf5ff;padding:10px}.onb-service-variants-label{font-size:12px;font-weight:700;color:#6d28d9}.onb-service-variant-edit{display:grid;grid-template-columns:minmax(0,1fr) 100px 90px 28px;gap:8px}.onb-service-variant-edit button{border:0;border-radius:999px;background:#f3f4f6;color:#6b7280;cursor:pointer}.onb-service-add-option{grid-column:1 / -1;border:1px dashed #ddd6fe;border-radius:8px;background:#fff;color:#7c3aed;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer}
+.onb-service-edit-row{display:grid;gap:8px;align-items:center;padding:8px 0}.onb-service-edit-main-row{display:flex;gap:8px;align-items:center}.onb-service-edit-main-row>input:first-child{flex:1;min-width:0}.onb-service-edit-main-row>.onb-service-price-input,.onb-service-edit-main-row>input[aria-label="Duration"]{width:90px;flex:0 0 90px}.onb-service-edit-row input,.onb-service-sheet-fields input{min-height:34px;border:1px solid #7c3aed;border-radius:8px;padding:6px 10px;font-size:16px;font-family:inherit;color:#111827;box-sizing:border-box;background:#fff;width:100%}.onb-service-price-input{position:relative}.onb-service-price-input span{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#6b7280;font-size:12px}.onb-service-price-input input{padding-left:24px!important}.onb-service-variants-editor{grid-column:1 / -1;display:grid;gap:8px;border:1px solid #ede9fe;border-radius:10px;background:#faf5ff;padding:10px}.onb-service-variants-label{font-size:12px;font-weight:700;color:#6d28d9}.onb-service-variant-edit{display:grid;gap:8px}.onb-svc-var-row1{display:flex;gap:8px;align-items:center}.onb-svc-var-row1>input{flex:1;min-width:0}.onb-svc-var-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.onb-service-variant-edit button{border:0;border-radius:999px;background:#f3f4f6;color:#6b7280;cursor:pointer}.onb-service-add-option{grid-column:1 / -1;border:1px dashed #ddd6fe;border-radius:8px;background:#fff;color:#7c3aed;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer}
 .onb-service-save-dot,.onb-service-cancel-dot{width:30px;height:30px;border-radius:999px;border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;font-weight:600;flex:0 0 30px}.onb-service-save-dot{background:#111;color:#fff}.onb-service-cancel-dot{background:#f3f4f6;color:#6b7280}
 .onb-group-add-service-mobile{display:none}
 .service-remove-btn{min-height:32px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}.service-remove-btn:hover{border-color:#fecaca;background:#fff1f2;color:#be123c}.onb-service-remove-compact{position:absolute;right:0;bottom:4px;opacity:0;pointer-events:none}.onb-service-row-wrap:hover .onb-service-remove-compact{opacity:1;pointer-events:auto}
@@ -2475,7 +2475,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
 .onb-sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:50;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:10px;align-items:stretch}
 .onb-sticky-cta .onb-btn-primary,.onb-sticky-cta .onb-btn-secondary{width:100%;justify-content:center}
 @media(min-width:641px){.onb-sticky-cta{display:none}}
-@media(max-width:640px){.onb-shell{padding-bottom:120px;padding-left:max(16px, env(safe-area-inset-left));padding-right:max(16px, env(safe-area-inset-right));overflow-x:hidden}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:0}.onb-service-row-desktop,.onb-service-row-mobile{display:none}.svc-row{display:flex;align-items:center;padding:12px 16px;border-top:1px solid #f9fafb;cursor:pointer;gap:8px}.svc-row:active{background:#fafafa}.onb-service-name{font-size:13px}.onb-service-remove-compact{display:none}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:flex;width:100%;box-sizing:border-box}.onb-service-edit-row{grid-template-columns:minmax(0,1fr)!important;gap:10px}.onb-service-variant-edit{grid-template-columns:minmax(0,1fr)!important;gap:8px}.onb-step2-hours-editor-row{grid-template-columns:minmax(0,1fr);gap:8px}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
+@media(max-width:640px){.onb-shell{padding-bottom:120px;padding-left:max(16px, env(safe-area-inset-left));padding-right:max(16px, env(safe-area-inset-right));overflow-x:hidden}.onb-card{padding:16px 0;max-width:none}.onb-progress{gap:10px}.onb-progress-track{grid-template-columns:30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px minmax(20px,1fr) 30px;gap:6px}.onb-progress-node{width:28px;height:28px;font-size:13px}.onb-grid,.onb-compact-grid,.profile-review-grid{grid-template-columns:1fr}.onb-import-row{grid-template-columns:1fr}.onb-import-button{width:100%}.test-grid{grid-template-columns:1fr}.manual-header{display:none}.service-row{grid-template-columns:1fr}.service-row select{grid-column:1 / -1}.onb-actions-desktop{display:none!important}.onb-import-manual-desktop-row{display:none!important}.onb-desktop-copy{display:none}.onb-mobile-copy{display:inline}.onb-services-review-shell,.onb-service-mode-b,.onb-service-groups,.service-group-card{max-width:none}.service-group-card{border-radius:12px}.service-group-head{height:56px;padding:0 14px}.service-group-title{font-size:14px}.service-group-warning{font-size:11px;padding:2px 7px}.service-group-body{padding:0}.onb-service-row-wrap{border-bottom:0}.onb-service-row-desktop,.onb-service-row-mobile{display:none}.svc-row{display:flex;align-items:center;padding:12px 16px;border-top:1px solid #f9fafb;cursor:pointer;gap:8px}.svc-row:active{background:#fafafa}.onb-service-name{font-size:13px}.onb-service-remove-compact{display:none}.onb-group-add-service-desktop{display:none}.onb-group-add-service-mobile{display:flex;width:100%;box-sizing:border-box}.onb-service-edit-row{grid-template-columns:minmax(0,1fr)!important;gap:10px}.onb-svc-var-row2{grid-template-columns:1fr 1fr}.onb-step2-hours-editor-row{grid-template-columns:minmax(0,1fr);gap:8px}.onb-also-offers-row .preset-chip{padding:7px 14px;font-size:13px;font-weight:400;color:#6b7280}.onb-also-offers-row .preset-chip.active{border-color:#7c3aed;background:#f5f3ff;color:#7c3aed}}
 @media(max-width:640px){.hours-row{display:grid;grid-template-columns:1fr 1fr}}
 `,
     ],
@@ -3680,26 +3680,33 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               <span className="onb-service-variants-label">Options</span>
               {draft.variants.map((variant, variantIndex) => (
                 <div className="onb-service-variant-edit" key={`${variant.label}-${variantIndex}`}>
-                  <input
-                    value={variant.label}
-                    onChange={(event) => updateServiceDraftVariant(variantIndex, { label: event.target.value })}
-                    placeholder="Option"
-                    aria-label="Option label"
-                  />
-                  <input
-                    value={variant.durationText ?? ''}
-                    onChange={(event) => updateServiceDraftVariant(variantIndex, { durationText: event.target.value, durationMinutes: parseDurationTextToMinutes(event.target.value) })}
-                    placeholder="30 min"
-                    aria-label="Option duration"
-                  />
-                  <input
-                    type="number"
-                    value={variant.priceAmount ?? ''}
-                    onChange={(event) => updateServiceDraftVariant(variantIndex, { priceAmount: event.target.value === '' ? null : Number(event.target.value) })}
-                    placeholder="Price"
-                    aria-label="Option price"
-                  />
-                  <button type="button" onClick={() => removeServiceDraftVariant(variantIndex)} aria-label="Remove option">×</button>
+                  <div className="onb-svc-var-row1">
+                    <input
+                      value={variant.label}
+                      onChange={(event) => updateServiceDraftVariant(variantIndex, { label: event.target.value })}
+                      placeholder="Name (optional)"
+                      aria-label="Option label"
+                    />
+                    <button type="button" onClick={() => removeServiceDraftVariant(variantIndex)} aria-label="Remove option">×</button>
+                  </div>
+                  <div className="onb-svc-var-row2">
+                    <div className="onb-service-price-input">
+                      <span>$</span>
+                      <input
+                        type="number"
+                        value={variant.priceAmount ?? ''}
+                        onChange={(event) => updateServiceDraftVariant(variantIndex, { priceAmount: event.target.value === '' ? null : Number(event.target.value) })}
+                        placeholder="Price"
+                        aria-label="Option price"
+                      />
+                    </div>
+                    <input
+                      value={variant.durationText ?? ''}
+                      onChange={(event) => updateServiceDraftVariant(variantIndex, { durationText: event.target.value, durationMinutes: parseDurationTextToMinutes(event.target.value) })}
+                      placeholder="30 min"
+                      aria-label="Option duration"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
