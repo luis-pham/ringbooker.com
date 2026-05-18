@@ -167,13 +167,6 @@ export function buildDashboardOverviewRail(params: {
 
     const checklist: DashboardOverviewRailChecklistItem[] = [
       {
-        id: 'payment',
-        title: 'Add your card',
-        detail: 'Starts your free 14-day trial — no charge today',
-        done: goLive.paymentMethodValid,
-        href: '/user/billing',
-      },
-      {
         id: 'forwarding',
         title: 'Forward missed calls to RingBooker',
         detail: 'One code to dial on your phone — takes 2 minutes',
@@ -186,6 +179,13 @@ export function buildDashboardOverviewRail(params: {
         detail: "We'll make a quick test call to confirm",
         done: goLive.forwardingSetupVerified,
         href: '/user/go-live#go-live-forwarding',
+      },
+      {
+        id: 'payment',
+        title: 'Add your card',
+        detail: 'Starts your free 14-day trial — no charge today',
+        done: goLive.paymentMethodValid,
+        href: '/user/billing',
       },
       {
         id: 'live_enable',

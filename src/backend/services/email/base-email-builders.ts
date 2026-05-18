@@ -315,23 +315,22 @@ export function buildAddPaymentMethodGoLiveEmailPayload(params: {
     title: 'Start your 14-day trial',
     previewText: 'Start your 14-day trial before RingBooker answers real callers.',
     heroTitle: 'Start your 14-day trial',
-    heroSubtitleHtml: `<p style="margin:0">RingBooker setup for <strong>${escapeHtmlText(params.shopName)}</strong> can continue without a card.</p>`,
+    heroSubtitleHtml: `<p style="margin:0">RingBooker setup for <strong>${escapeHtmlText(params.shopName)}</strong> is almost done.</p>`,
     greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
     bodyHtml: [
       `<p style="margin:0 0 12px 0">${escapeHtmlText(trialCopy)}</p>`,
-      '<p style="margin:0 0 12px 0">You keep your current business number. After payment is verified, RingBooker will create a forwarding number and guide you through forwarding missed or after-hours calls.</p>',
-      '<p style="margin:0">Live answering is not active yet.</p>',
+      `<p style="margin:0 0 12px 0">You&apos;ve set up call forwarding successfully for <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
+      '<p style="margin:0">To enable live answering, add a payment method to complete your setup.</p>',
     ].join(''),
     ctaLabel: 'Start 14-day trial',
     ctaUrl: billingUrl,
     signatureHtml: '<p style="margin:0">Thanks,<br />Luis Pham<br />RingBooker</p>',
   };
   const text = [
-    `RingBooker setup for "${params.shopName}" is ready for the next step.`,
+    `RingBooker setup for "${params.shopName}" is almost done.`,
     trialCopy,
-    'You keep your current business number.',
-    'After payment is verified, RingBooker will create a forwarding number and guide you through forwarding missed or after-hours calls.',
-    'Live answering is not active yet.',
+    `You've set up call forwarding successfully for "${params.shopName}".`,
+    'To enable live answering, add a payment method to complete your setup.',
     `Start 14-day trial: ${billingUrl}`,
   ].join('\n');
   return { input, text };

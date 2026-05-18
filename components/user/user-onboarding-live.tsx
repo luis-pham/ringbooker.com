@@ -4137,14 +4137,14 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               Setup complete
             </h3>
             <p className="onb-subtitle" style={{ marginTop: 8 }}>
-              Open your dashboard to finish going live when you&apos;re ready. Start your 14-day trial from Billing — live answering stays off until billing and phone forwarding are complete.
+              Open your dashboard to go live — you&apos;ll set up call forwarding, run a test call, then start your free trial. Takes about 5 minutes.
             </p>
             <div className="onb-actions-desktop" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
               <button className="onb-btn-primary" type="button" onClick={completeSetup}>
                 Open dashboard
               </button>
-              <a className="onb-btn-secondary" href="/user/billing">
-                Start 14-day trial
+              <a className="onb-btn-secondary" href="/user/go-live">
+                Set up call forwarding
               </a>
             </div>
           </div>
@@ -4176,8 +4176,8 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               <button className="onb-btn-primary" type="button" onClick={completeSetup}>
                 Open dashboard
               </button>
-              <a className="onb-btn-secondary" href="/user/billing">
-                Start 14-day trial
+              <a className="onb-btn-secondary" href="/user/go-live">
+                Set up call forwarding
               </a>
             </>
           )}

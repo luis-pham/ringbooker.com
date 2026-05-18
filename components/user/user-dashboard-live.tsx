@@ -679,15 +679,11 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                       </span>
                     </div>
                     <div className="banner-actions portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                      {!data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike ? (
-                        <a className="btn user-save" href="/user/billing">
-                          Start 14-day trial
-                        </a>
-                      ) : data.goLive.forwardingSetupVerified ? (
+                      {!data.goLive.hasForwardingNumber ? (
                         <a className="btn user-save" href="/user/go-live#go-live-forwarding">
-                          Switch it on →
+                          Set up call forwarding
                         </a>
-                      ) : data.goLive.hasForwardingNumber ? (
+                      ) : !data.goLive.forwardingSetupVerified ? (
                         <>
                           <button
                             type="button"
@@ -701,9 +697,13 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                             Continue setup →
                           </a>
                         </>
+                      ) : !data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike ? (
+                        <a className="btn user-save" href="/user/billing">
+                          Start 14-day trial
+                        </a>
                       ) : (
                         <a className="btn user-save" href="/user/go-live#go-live-forwarding">
-                          Continue setup →
+                          Switch it on →
                         </a>
                       )}
                     </div>
