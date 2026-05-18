@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { CARRIER_DATA, FORWARDING_TYPE_META, findCarrier, findCountry, type Carrier, type CountryCarriers, type ForwardingType } from '@/lib/call-forwarding/carrier-data';
 import { useGoLive, type GoLiveStatusResponse, type KnowledgeGateItem } from '@/hooks/useGoLive';
@@ -296,6 +296,19 @@ function DialCodeBlock({
   turnOffCode: string | null;
   instructions: string[];
 }) {
+  const [copyMsg, setCopyMsg] = useState<string | null>(null);
+
+  async function copyCode() {
+    if (!dialCode) return;
+    try {
+      await navigator.clipboard.writeText(dialCode);
+      setCopyMsg('Copied — open your dialer and paste');
+      window.setTimeout(() => setCopyMsg(null), 2000);
+    } catch {}
+  }
+
+  const telUri = dialCode ? `tel:${dialCode.replace(/[^0-9+*#]/g, '')}` : null;
+
   if (!dialCode && !instructions.length) return null;
   return (
     <div className="gl-dial-wrap">
@@ -304,7 +317,13 @@ function DialCodeBlock({
           <span className="gl-section-label">Dial this on your business phone</span>
           <div className="gl-dial-code">
             <code>{dialCode}</code>
-            <CopyButton value={dialCode} />
+            <div className="gl-dial-copy-desktop">
+              {copyMsg ? <span className="gl-copy-toast">{copyMsg}</span> : <button type="button" className="btn" onClick={copyCode}>Copy</button>}
+            </div>
+          </div>
+          <div className="gl-dial-mobile-actions">
+            {telUri ? <a className="btn user-save gl-open-dialer" href={telUri}>Open dialer →</a> : null}
+            {copyMsg ? <span className="gl-copy-toast">{copyMsg}</span> : <button type="button" className="gl-inline-link" onClick={copyCode}>Copy code</button>}
           </div>
           <p className="gl-dial-hint">Open your dialer, type this exactly, then tap call.</p>
         </div>
@@ -323,7 +342,7 @@ function DialCodeBlock({
 function GoLiveStyles() {
   return (
     <style>{`
-.gl-hero{display:grid;gap:12px}.gl-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px}.gl-sidebar{position:sticky;top:82px;align-self:start;display:grid;gap:8px}.gl-sidebar-btn{width:100%;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;display:flex;gap:10px;align-items:flex-start;color:var(--text-gray);cursor:pointer}.gl-sidebar-btn.active{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--text-dark)}.gl-sidebar-btn:disabled{opacity:.45;cursor:not-allowed}.gl-sidebar-num{width:24px;height:24px;border-radius:999px;background:#f3f4f6;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-sidebar-btn.active .gl-sidebar-num{background:var(--purple-light);color:var(--purple-dark)}.gl-sidebar-copy{display:grid;gap:3px}.gl-sidebar-copy strong{font-size:13px;font-weight:600}.gl-sidebar-copy small{font-size:11px;line-height:1.35}.gl-mobile-steps{display:none}.gl-desktop-panel{min-width:0}.gl-step-card{padding:0;overflow:hidden}.gl-step-card--active{border-color:var(--purple-dark)}.gl-step-card--locked{opacity:.48}.gl-step-head{width:100%;border:0;background:transparent;padding:16px 18px;display:flex;align-items:center;gap:12px;text-align:left;color:inherit;cursor:pointer}.gl-step-head:disabled{cursor:not-allowed}.gl-step-num{width:30px;height:30px;border-radius:999px;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-step-card--active .gl-step-num{border-color:var(--purple-dark);color:var(--purple-dark);background:var(--purple-ultra)}.gl-step-card--done .gl-step-num{border-color:var(--green);background:#ecfdf5;color:#047857}.gl-step-copy{display:grid;gap:4px;min-width:0}.gl-step-copy strong{font-size:15px;font-weight:600;color:var(--text-dark)}.gl-step-copy small{font-size:12px;color:var(--text-gray);line-height:1.35}.gl-step-chevron{margin-left:auto;color:var(--text-light)}.gl-step-card.expanded .gl-step-chevron{transform:rotate(180deg)}.gl-step-body{border-top:1px solid var(--border);padding:18px}.gl-gate-card{border-color:#fed7aa;background:#fff7ed}.gl-gate-list{display:grid;gap:8px}.gl-gate-item{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-gray)}.gl-gate-item a{margin-left:auto;color:var(--purple-dark);font-weight:500}.gl-gate-dot{width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#f3f4f6;color:var(--text-gray);flex-shrink:0}.gl-gate-item.done .gl-gate-dot{background:#ecfdf5;color:#047857}.gl-gate-item.missing .gl-gate-dot{background:#fef2f2;color:#b91c1c}.gl-gate-item.warn .gl-gate-dot{background:#fff7ed;color:#c2410c}.gl-section-label{display:block;margin:0 0 8px;color:var(--text-light);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}.gl-number-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gl-number-card{margin:0;padding:16px}.gl-number-card strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px}.gl-number-card p.sub{margin:8px 0 0}.gl-number-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.gl-country-row{display:flex;flex-wrap:wrap;gap:8px}.gl-country-pill{border:1px solid var(--border);background:var(--surface-card);border-radius:999px;padding:9px 14px;display:inline-flex;align-items:center;gap:7px;color:var(--text-gray);font-size:13px;font-weight:500;cursor:pointer}.gl-country-pill.selected{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--purple-dark)}.gl-country-short{display:none}.gl-carrier-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.gl-carrier-card{min-height:62px;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;display:flex;align-items:center;gap:9px;padding:10px;cursor:pointer;color:var(--text-dark);text-align:left}.gl-carrier-card:hover{border-color:var(--purple-light)}.gl-carrier-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--purple-dark)}.gl-carrier-logo{width:30px;height:30px;border-radius:7px;object-fit:contain;flex-shrink:0}.gl-carrier-fallback{width:30px;height:30px;border-radius:7px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}.gl-carrier-fallback--muted{background:var(--text-light)!important}.gl-carrier-copy{display:grid;gap:3px;min-width:0}.gl-carrier-copy strong{font-size:13px;font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gl-carrier-copy small{font-size:10.5px;color:var(--text-light);line-height:1}.gl-detected-carrier{border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:11px 12px;display:flex;align-items:center;gap:10px}.gl-detected-copy{display:grid;gap:2px;min-width:0}.gl-detected-copy strong{font-size:13px;font-weight:600;color:var(--text-dark)}.gl-detected-copy small{font-size:11px;color:var(--text-light);text-transform:capitalize}.gl-detected-badge{margin-left:auto}.gl-inline-link{border:0;background:transparent;color:var(--text-gray);font-size:12px;text-decoration:underline;cursor:pointer;padding:0}.gl-inline-link:hover{color:var(--purple-dark)}.gl-forwarding-options{display:grid;gap:8px}.gl-type-grid{display:grid;gap:8px}.gl-type-card{border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;cursor:pointer;display:flex;gap:10px;align-items:flex-start;width:100%}.gl-type-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra)}.gl-type-card strong{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}.gl-type-card strong em{font-style:normal;border-radius:999px;background:var(--purple-light);color:var(--purple-dark);font-size:10px;font-weight:600;padding:2px 7px}.gl-type-card small{display:block;margin-top:4px;color:var(--text-gray);font-size:12px;line-height:1.35}.gl-radio-dot{width:16px;height:16px;border-radius:999px;border:1.5px solid var(--border);flex-shrink:0;margin-top:1px}.gl-radio-dot.selected{border-color:var(--purple-dark);background:radial-gradient(circle,#fff 0 35%,var(--purple-dark) 38%)}.gl-advanced-toggle{border:0;background:transparent;color:var(--purple-dark);font-size:13px;font-weight:500;padding:2px 0;text-align:left;cursor:pointer;display:inline-flex;gap:6px;align-items:center;justify-self:start}.gl-advanced-mobile{display:none}.gl-dial-wrap{display:grid;gap:12px}.gl-dial-box{border:1px solid var(--border);background:#f3f4f6;border-radius:12px;padding:13px}.gl-dial-box .gl-section-label{margin-bottom:9px}.gl-dial-code{display:flex;align-items:center;justify-content:space-between;gap:12px}.gl-dial-code code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:19px;font-weight:700;color:var(--text-dark);overflow-wrap:anywhere}.gl-dial-hint{margin:8px 0 0;color:var(--text-gray);font-size:12px;line-height:1.4}.gl-turn-off{margin:0!important}.gl-instructions{display:grid;gap:10px;margin:0;padding:0;list-style:none}.gl-instructions li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text-gray);line-height:1.5}.gl-instructions span{width:24px;height:24px;border-radius:999px;background:var(--purple-light);color:var(--purple-dark);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-guide-link{color:var(--purple-dark);font-size:13px;font-weight:500}.gl-action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}.gl-action-row .gl-later-link{border:0;background:transparent;color:var(--text-gray);font-size:12px;text-decoration:underline;padding:0;min-height:auto}.gl-message{font-size:13px;line-height:1.5;color:var(--text-gray);margin:12px 0 0}.gl-message.error{color:#b91c1c}.gl-live-banner{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.gl-live-banner h3{color:#166534}.gl-empty-note{margin:0;color:var(--text-gray);font-size:13px;line-height:1.6}.gl-loading{padding:30px;text-align:center}.gl-spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:var(--purple-dark);border-radius:999px;animation:glSpin 1s linear infinite;margin:0 auto 10px}@keyframes glSpin{to{transform:rotate(360deg)}}@media(max-width:767px){.gl-layout{display:block}.gl-sidebar,.gl-desktop-panel{display:none}.gl-mobile-steps{display:grid;gap:12px}.gl-mobile-steps .gl-step-card--active{border-color:var(--border)}.gl-mobile-steps .gl-step-card--active .gl-step-num{border-color:var(--border);color:var(--text-gray);background:#f3f4f6}.gl-number-grid{grid-template-columns:1fr}.gl-step-body{padding:16px}.gl-action-row{flex-direction:column;align-items:flex-start}.gl-action-row .btn:not(.gl-later-link){width:100%;min-height:48px}.gl-country-pill{padding:7px 12px;font-size:12px}.gl-country-name{display:none}.gl-country-short{display:inline}.gl-carrier-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.gl-carrier-card{min-height:50px}.gl-carrier-logo,.gl-carrier-fallback{width:26px;height:26px}.gl-carrier-copy small{display:none}.gl-detected-carrier{align-items:flex-start;flex-wrap:wrap}.gl-detected-badge{margin-left:0}.gl-dial-code code{font-size:15px}.gl-dial-code .btn{flex-shrink:0}}html[data-user-theme="dark"] .gl-mobile-steps .gl-step-card--active .gl-step-num{background:#21262d;color:var(--text-gray)}`}</style>
+.gl-hero{display:grid;gap:12px}.gl-layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px}.gl-sidebar{position:sticky;top:82px;align-self:start;display:grid;gap:8px}.gl-sidebar-btn{width:100%;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;display:flex;gap:10px;align-items:flex-start;color:var(--text-gray);cursor:pointer}.gl-sidebar-btn.active{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--text-dark)}.gl-sidebar-btn:disabled{opacity:.45;cursor:not-allowed}.gl-sidebar-num{width:24px;height:24px;border-radius:999px;background:#f3f4f6;color:var(--text-gray);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-sidebar-btn.active .gl-sidebar-num{background:var(--purple-light);color:var(--purple-dark)}.gl-sidebar-copy{display:grid;gap:3px}.gl-sidebar-copy strong{font-size:13px;font-weight:600}.gl-sidebar-copy small{font-size:11px;line-height:1.35}.gl-mobile-steps{display:none}.gl-desktop-panel{min-width:0}.gl-step-card{padding:0;overflow:hidden}.gl-step-card--active{border-color:var(--purple-dark)}.gl-step-card--locked{opacity:.48}.gl-step-head{width:100%;border:0;background:transparent;padding:16px 18px;display:flex;align-items:center;gap:12px;text-align:left;color:inherit;cursor:pointer}.gl-step-head:disabled{cursor:not-allowed}.gl-step-num{width:30px;height:30px;border-radius:999px;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-step-card--active .gl-step-num{border-color:var(--purple-dark);color:var(--purple-dark);background:var(--purple-ultra)}.gl-step-card--done .gl-step-num{border-color:var(--green);background:#ecfdf5;color:#047857}.gl-step-copy{display:grid;gap:4px;min-width:0}.gl-step-copy strong{font-size:15px;font-weight:600;color:var(--text-dark)}.gl-step-copy small{font-size:12px;color:var(--text-gray);line-height:1.35}.gl-step-chevron{margin-left:auto;color:var(--text-light)}.gl-step-card.expanded .gl-step-chevron{transform:rotate(180deg)}.gl-step-body{border-top:1px solid var(--border);padding:18px}.gl-gate-card{border-color:#fed7aa;background:#fff7ed}.gl-gate-list{display:grid;gap:8px}.gl-gate-item{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text-gray)}.gl-gate-item a{margin-left:auto;color:var(--purple-dark);font-weight:500}.gl-gate-dot{width:22px;height:22px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#f3f4f6;color:var(--text-gray);flex-shrink:0}.gl-gate-item.done .gl-gate-dot{background:#ecfdf5;color:#047857}.gl-gate-item.missing .gl-gate-dot{background:#fef2f2;color:#b91c1c}.gl-gate-item.warn .gl-gate-dot{background:#fff7ed;color:#c2410c}.gl-section-label{display:block;margin:0 0 8px;color:var(--text-light);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}.gl-number-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.gl-number-card{margin:0;padding:16px}.gl-number-card strong{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:15px}.gl-number-card p.sub{margin:8px 0 0}.gl-number-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.gl-country-row{display:flex;flex-wrap:wrap;gap:8px}.gl-country-pill{border:1px solid var(--border);background:var(--surface-card);border-radius:999px;padding:9px 14px;display:inline-flex;align-items:center;gap:7px;color:var(--text-gray);font-size:13px;font-weight:500;cursor:pointer}.gl-country-pill.selected{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--purple-dark)}.gl-country-short{display:none}.gl-carrier-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.gl-carrier-card{min-height:62px;border:1px solid var(--border);background:var(--surface-card);border-radius:12px;display:flex;align-items:center;gap:9px;padding:10px;cursor:pointer;color:var(--text-dark);text-align:left}.gl-carrier-card:hover{border-color:var(--purple-light)}.gl-carrier-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra);color:var(--purple-dark)}.gl-carrier-logo{width:30px;height:30px;border-radius:7px;object-fit:contain;flex-shrink:0}.gl-carrier-fallback{width:30px;height:30px;border-radius:7px;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}.gl-carrier-fallback--muted{background:var(--text-light)!important}.gl-carrier-copy{display:grid;gap:3px;min-width:0}.gl-carrier-copy strong{font-size:13px;font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gl-carrier-copy small{font-size:10.5px;color:var(--text-light);line-height:1}.gl-detected-carrier{border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:11px 12px;display:flex;align-items:center;gap:10px}.gl-detected-copy{display:grid;gap:2px;min-width:0}.gl-detected-copy strong{font-size:13px;font-weight:600;color:var(--text-dark)}.gl-detected-copy small{font-size:11px;color:var(--text-light);text-transform:capitalize}.gl-detected-badge{margin-left:auto}.gl-inline-link{border:0;background:transparent;color:var(--text-gray);font-size:12px;text-decoration:underline;cursor:pointer;padding:0}.gl-inline-link:hover{color:var(--purple-dark)}.gl-forwarding-options{display:grid;gap:8px}.gl-type-grid{display:grid;gap:8px}.gl-type-card{border:1px solid var(--border);background:var(--surface-card);border-radius:12px;padding:12px;text-align:left;cursor:pointer;display:flex;gap:10px;align-items:flex-start;width:100%}.gl-type-card.selected{border-color:var(--purple-dark);background:var(--purple-ultra)}.gl-type-card strong{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}.gl-type-card strong em{font-style:normal;border-radius:999px;background:var(--purple-light);color:var(--purple-dark);font-size:10px;font-weight:600;padding:2px 7px}.gl-type-card small{display:block;margin-top:4px;color:var(--text-gray);font-size:12px;line-height:1.35}.gl-radio-dot{width:16px;height:16px;border-radius:999px;border:1.5px solid var(--border);flex-shrink:0;margin-top:1px}.gl-radio-dot.selected{border-color:var(--purple-dark);background:radial-gradient(circle,#fff 0 35%,var(--purple-dark) 38%)}.gl-advanced-toggle{border:0;background:transparent;color:var(--purple-dark);font-size:13px;font-weight:500;padding:2px 0;text-align:left;cursor:pointer;display:inline-flex;gap:6px;align-items:center;justify-self:start}.gl-advanced-mobile{display:none}.gl-dial-wrap{display:grid;gap:12px}.gl-dial-box{border:1px solid var(--border);background:#f3f4f6;border-radius:12px;padding:13px}.gl-dial-box .gl-section-label{margin-bottom:9px}.gl-dial-code{display:flex;align-items:center;justify-content:space-between;gap:12px}.gl-dial-code code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:19px;font-weight:700;color:var(--text-dark);overflow-wrap:anywhere}.gl-dial-hint{margin:8px 0 0;color:var(--text-gray);font-size:12px;line-height:1.4}.gl-turn-off{margin:0!important}.gl-instructions{display:grid;gap:10px;margin:0;padding:0;list-style:none}.gl-instructions li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text-gray);line-height:1.5}.gl-instructions span{width:24px;height:24px;border-radius:999px;background:var(--purple-light);color:var(--purple-dark);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}.gl-guide-link{color:var(--purple-dark);font-size:13px;font-weight:500}.gl-action-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}.gl-action-row .gl-later-link{border:0;background:transparent;color:var(--text-gray);font-size:12px;text-decoration:underline;padding:0;min-height:auto}.gl-message{font-size:13px;line-height:1.5;color:var(--text-gray);margin:12px 0 0}.gl-message.error{color:#b91c1c}.gl-live-banner{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.gl-live-banner h3{color:#166534}.gl-empty-note{margin:0;color:var(--text-gray);font-size:13px;line-height:1.6}.gl-loading{padding:30px;text-align:center}.gl-spinner{width:32px;height:32px;border:3px solid #e5e7eb;border-top-color:var(--purple-dark);border-radius:999px;animation:glSpin 1s linear infinite;margin:0 auto 10px}@keyframes glSpin{to{transform:rotate(360deg)}}@media(max-width:767px){.gl-layout{display:block}.gl-sidebar,.gl-desktop-panel{display:none}.gl-mobile-steps{display:grid;gap:12px}.gl-mobile-steps .gl-step-card--active{border-color:var(--border)}.gl-mobile-steps .gl-step-card--active .gl-step-num{border-color:var(--border);color:var(--text-gray);background:#f3f4f6}.gl-number-grid{grid-template-columns:1fr}.gl-step-body{padding:16px}.gl-action-row{flex-direction:column;align-items:flex-start}.gl-action-row .btn:not(.gl-later-link){width:100%;min-height:48px}.gl-country-pill{padding:7px 12px;font-size:12px}.gl-country-name{display:none}.gl-country-short{display:inline}.gl-carrier-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.gl-carrier-card{min-height:50px}.gl-carrier-logo,.gl-carrier-fallback{width:26px;height:26px}.gl-carrier-copy small{display:none}.gl-detected-carrier{align-items:flex-start;flex-wrap:wrap}.gl-detected-badge{margin-left:0}.gl-dial-code code{font-size:15px}.gl-dial-code .btn{flex-shrink:0}}html[data-user-theme="dark"] .gl-mobile-steps .gl-step-card--active .gl-step-num{background:#21262d;color:var(--text-gray)}.gl-pulse-dot{width:8px;height:8px;border-radius:999px;background:#7c3aed;flex-shrink:0;display:inline-block;animation:glPulse 1.4s ease-in-out infinite}@keyframes glPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}.gl-test-calling{display:flex!important;align-items:center;gap:8px}.gl-verified-anim{font-size:20px;font-weight:700;color:#047857;flex-shrink:0}.gl-action-row--col{flex-direction:column!important;align-items:flex-start!important}.gl-action-row--col>div{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}.gl-hint{font-size:12px;color:var(--text-gray);line-height:1.5;margin:0 0 8px}.gl-intro-hints{display:grid;gap:3px;margin-bottom:2px}.gl-intro-hint{font-size:12px;color:var(--text-light);margin:0;line-height:1.5}.gl-dial-copy-desktop{display:flex;align-items:center}.gl-dial-mobile-actions{display:none;margin-top:10px;gap:10px;align-items:center;flex-wrap:wrap}.gl-copy-toast{font-size:12px;color:#047857;font-weight:500;white-space:nowrap}.gl-open-dialer{flex:1;text-align:center}@media(max-width:767px){.gl-dial-copy-desktop{display:none}.gl-dial-mobile-actions{display:flex}.gl-open-dialer{min-height:44px;display:flex!important;align-items:center;justify-content:center}}`}</style>
   );
 }
 
@@ -347,6 +366,11 @@ export function GoLiveForwardingPanel({
   const [detectedCarrier, setDetectedCarrier] = useState<DetectedCarrierState | null>(null);
   const [carrierDetectionLoaded, setCarrierDetectionLoaded] = useState(false);
   const [showCarrierGrid, setShowCarrierGrid] = useState(() => !initialStatus?.status?.forwarding.carrier);
+  const [testCallPending, setTestCallPending] = useState(false);
+  const [testCallPendingAt, setTestCallPendingAt] = useState<number | null>(null);
+  const [showDidntReceive, setShowDidntReceive] = useState(false);
+  const [forwardingJustVerified, setForwardingJustVerified] = useState(false);
+  const prevForwardingVerifiedRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     if (initialBilling?.ok && initialBilling.shop) {
@@ -457,6 +481,38 @@ export function GoLiveForwardingPanel({
     };
   }, [goLive, numberReady, selectedCarrier, selectedCarrierRecord?.appSteps, goLive.selectedCountry, goLive.selectedForwardingType]);
 
+  useEffect(() => {
+    if (goLive.forwardingTestStatus !== 'pending' || forwardingVerified) return;
+    const id = window.setInterval(() => void goLive.refresh().catch(() => undefined), 5000);
+    return () => window.clearInterval(id);
+  }, [goLive.forwardingTestStatus, forwardingVerified, goLive.refresh]);
+
+  useEffect(() => {
+    if (!testCallPending || testCallPendingAt === null) return;
+    const elapsed = Date.now() - testCallPendingAt;
+    const remaining = Math.max(0, 60000 - elapsed);
+    if (remaining === 0) { setShowDidntReceive(true); return; }
+    const id = window.setTimeout(() => setShowDidntReceive(true), remaining);
+    return () => window.clearTimeout(id);
+  }, [testCallPending, testCallPendingAt]);
+
+  useEffect(() => {
+    if (prevForwardingVerifiedRef.current === null) {
+      prevForwardingVerifiedRef.current = forwardingVerified;
+      return;
+    }
+    const prev = prevForwardingVerifiedRef.current;
+    prevForwardingVerifiedRef.current = forwardingVerified;
+    if (!forwardingVerified || prev) return;
+    setForwardingJustVerified(true);
+    const id = window.setTimeout(() => {
+      setForwardingJustVerified(false);
+      setTestCallPending(false);
+      setSelectedStep(3);
+    }, 2000);
+    return () => window.clearTimeout(id);
+  }, [forwardingVerified]);
+
   async function run(label: string, action: () => Promise<void>, success?: string) {
     setBusyAction(label);
     setMessage(null);
@@ -487,6 +543,22 @@ export function GoLiveForwardingPanel({
   async function startTrialWithOptionalSmsConsent() {
     await saveSmsOwnerOptInIfChecked();
     await goLive.startTrial();
+  }
+
+  function carrierHelpUrl(carrierId: string | null): string {
+    // TODO: replace with per-carrier deep links once dedicated guide pages exist
+    const map: Record<string, string> = {
+      verizon: '/current-number/call-forwarding?carrier=verizon',
+      att: '/current-number/call-forwarding?carrier=att',
+      tmobile: '/current-number/call-forwarding?carrier=tmobile',
+      nextiva: '/current-number/call-forwarding?carrier=nextiva',
+      ringcentral: '/current-number/call-forwarding?carrier=ringcentral',
+      googlevoice: '/current-number/call-forwarding?carrier=googlevoice',
+      comcast: '/current-number/call-forwarding?carrier=comcast',
+      ooma: '/current-number/call-forwarding?carrier=ooma',
+      openphone: '/current-number/call-forwarding?carrier=openphone',
+    };
+    return (carrierId && map[carrierId]) ? map[carrierId] : '/current-number/call-forwarding';
   }
 
   function renderStepContent(step: StepId) {
@@ -539,10 +611,24 @@ export function GoLiveForwardingPanel({
       const testCallLimit = goLive.testCallLimit ?? 3;
       const testCallCount = goLive.testCallCount ?? 0;
       const testLimitReached = showPreBillingTestLimit && testCallCount >= testCallLimit;
+      const helpUrl = carrierHelpUrl(compactCarrierId);
+      // TODO: add per-carrier deep links when carrier-specific guide pages are available
+      const helpLabel = compactCarrierName ? `Get help for ${compactCarrierName} →` : 'View setup guide →';
+
+      let counterCopy: string | null = null;
+      if (showPreBillingTestLimit && testCallCount > 0) {
+        if (testCallCount >= testCallLimit) {
+          counterCopy = 'Test call limit reached';
+        } else {
+          const remaining = testCallLimit - testCallCount;
+          counterCopy = `${testCallCount} test call${testCallCount !== 1 ? 's' : ''} used · ${remaining} remaining`;
+        }
+      }
+
       return (
         <div>
-          <p className="gl-empty-note">We'll call you to make sure RingBooker is receiving calls.</p>
-          {showPreBillingTestLimit ? <p className="gl-message">{Math.min(testCallCount, testCallLimit)} of {testCallLimit} test calls used</p> : null}
+          <p className="gl-empty-note">We'll call your business number to confirm forwarding is working. You'll hear a short confirmation message — your AI receptionist activates when you go live.</p>
+          {counterCopy ? <p className="gl-message">{counterCopy}</p> : null}
           {testLimitReached ? (
             <section className="card soft gl-limit-card" style={{ marginTop: 14 }}>
               <h3>Add your card to continue</h3>
@@ -550,14 +636,87 @@ export function GoLiveForwardingPanel({
               <button type="button" className="btn user-save" onClick={() => setSelectedStep(3)}>Add your card →</button>
             </section>
           ) : null}
-          {goLive.forwardingTestStatus === 'pending' ? <p className="gl-message">Waiting for a forwarded call. Call your current business number from another phone and let it forward to RingBooker.</p> : null}
-          {goLive.forwardingTestStatus === 'failed' ? <p className="gl-message error">The call didn't reach RingBooker. Make sure you dialed the forwarding code correctly, then try again.</p> : null}
-          {forwardingVerified ? <section className="card soft gl-live-banner" style={{ marginTop: 14 }}><h3>✓ It works — RingBooker is receiving calls</h3><p className="sub">Your forwarding setup is verified.</p></section> : null}
-          <div className="gl-action-row">
-            {!forwardingVerified ? <button type="button" className="btn user-save" disabled={testLimitReached || busyAction === 'verify'} onClick={() => run('verify', goLive.runVerification, 'Verification started. Call your business number from another phone.')}>{busyAction === 'verify' ? 'Starting...' : 'Run the test call'}</button> : null}
-            {!forwardingVerified ? <button type="button" className="btn" disabled={busyAction === 'confirm'} onClick={() => run('confirm', goLive.confirmForwarding, 'Forwarding marked verified.')}>{busyAction === 'confirm' ? 'Saving...' : 'I completed the test'}</button> : null}
-            <a className="btn" href="/current-number/call-forwarding" target="_blank" rel="noreferrer">Need help?</a>
-          </div>
+          {goLive.forwardingTestStatus === 'failed' && !testCallPending ? <p className="gl-message error">The call didn't reach RingBooker. Make sure you dialed the forwarding code correctly, then try again.</p> : null}
+          {forwardingJustVerified ? (
+            <section className="card soft gl-live-banner" style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="gl-verified-anim">✓</span>
+              <div>
+                <h3 style={{ margin: 0 }}>Forwarding confirmed!</h3>
+                <p className="sub" style={{ margin: '2px 0 0' }}>RingBooker is ready to handle your calls.</p>
+              </div>
+            </section>
+          ) : forwardingVerified ? (
+            <section className="card soft gl-live-banner" style={{ marginTop: 14 }}><h3>✓ It works — RingBooker is receiving calls</h3><p className="sub">Your forwarding setup is verified.</p></section>
+          ) : null}
+          {!forwardingVerified && !forwardingJustVerified ? (
+            <div>
+              {testCallPending ? (
+                <div style={{ marginTop: 14 }}>
+                  <p className="gl-message gl-test-calling">
+                    <span className="gl-pulse-dot" aria-hidden />
+                    Calling {formatPhone(goLive.businessPhone)} now...
+                  </p>
+                  <p className="gl-hint" style={{ marginTop: 8 }}>Pick up to hear the confirmation message.</p>
+                  <p className="gl-hint">We'll confirm automatically when the call comes through.</p>
+                  {showDidntReceive ? (
+                    <button
+                      type="button"
+                      className="gl-inline-link"
+                      style={{ display: 'block', marginTop: 6 }}
+                      onClick={() => { setTestCallPending(false); setShowDidntReceive(false); }}
+                    >
+                      Didn't receive a call? Try again →
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="gl-inline-link"
+                    style={{ display: 'block', marginTop: 10 }}
+                    disabled={busyAction === 'confirm'}
+                    onClick={() => run('confirm', goLive.confirmForwarding, 'Forwarding marked verified.')}
+                  >
+                    {busyAction === 'confirm' ? 'Saving...' : 'Mark as done manually →'}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="gl-hint" style={{ marginTop: 12 }}>Make sure your business phone is nearby and not in use.</p>
+                  <div className="gl-action-row gl-action-row--col" style={{ marginTop: 10 }}>
+                    <button
+                      type="button"
+                      className="btn user-save"
+                      disabled={testLimitReached || busyAction === 'verify'}
+                      onClick={async () => {
+                        setBusyAction('verify');
+                        setMessage(null);
+                        setTestCallPending(false);
+                        setShowDidntReceive(false);
+                        try {
+                          await goLive.runVerification();
+                          setTestCallPending(true);
+                          setTestCallPendingAt(Date.now());
+                        } catch (err) {
+                          setMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+                        } finally {
+                          setBusyAction(null);
+                        }
+                      }}
+                    >
+                      {busyAction === 'verify' ? 'Starting...' : 'Run the test call'}
+                    </button>
+                    <div>
+                      <button type="button" className="gl-inline-link" disabled={busyAction === 'confirm'} onClick={() => run('confirm', goLive.confirmForwarding, 'Forwarding marked verified.')}>
+                        {busyAction === 'confirm' ? 'Saving...' : 'Already tested it? Mark as done →'}
+                      </button>
+                      <a className="gl-inline-link" href={helpUrl} target="_blank" rel="noreferrer">
+                        Having trouble? {helpLabel}
+                      </a>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
       );
     }
@@ -616,6 +775,12 @@ export function GoLiveForwardingPanel({
       <GoLiveStyles />
       <KnowledgeGateBanner items={goLive.gate} />
       {message || goLive.error ? <p className={`gl-message ${goLive.error ? 'error' : ''}`}>{message ?? goLive.error}</p> : null}
+
+      {!forwardingConfigured ? (
+        <div className="gl-intro-hints">
+          <p className="gl-intro-hint">You'll need: your business phone nearby · 2 minutes · a card to activate</p>
+        </div>
+      ) : null}
 
       <div className="gl-mobile-steps">
         {steps.map((step) => (
