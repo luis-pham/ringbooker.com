@@ -213,8 +213,8 @@ export const RATE_LIMIT_POLICIES = {
   user_provision_forwarding_number: {
     name: 'user_provision_forwarding_number',
     limit: 3,
-    windowMs: 60 * 60_000,
-    blockMs: 60 * 60_000,
+    windowMs: 24 * 60 * 60_000,
+    blockMs: 24 * 60 * 60_000,
   },
   user_test_calls_call_me: {
     name: 'user_test_calls_call_me',

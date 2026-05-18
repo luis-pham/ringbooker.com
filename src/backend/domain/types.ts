@@ -266,6 +266,7 @@ export interface Shop {
   telnyx_number?: string | null;
   forwarding_number_status?: 'none' | 'provisioning' | 'provisioned' | 'failed' | null;
   forwarding_number_provisioning_started_at?: string | null;
+  forwarding_number_provisioned_at?: string | null;
   forwarding_number_provider_order_id?: string | null;
   forwarding_number_last_error?: string | null;
   ai_voice?: string | null;

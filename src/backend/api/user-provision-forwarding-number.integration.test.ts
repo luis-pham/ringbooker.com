@@ -34,6 +34,10 @@ class TrackingPhoneProvisioning implements PhoneProvisioningService {
   searchCalls = 0;
   provisionCalls = 0;
   releaseCalls = 0;
+  searchResults: Array<{ phoneNumber: string }> = [
+    { phoneNumber: '+17145559901' },
+    { phoneNumber: '+17145559902' },
+  ];
   released: Array<{
     phoneNumber: string;
     providerNumberId?: string;
@@ -45,10 +49,7 @@ class TrackingPhoneProvisioning implements PhoneProvisioningService {
 
   async searchAvailableNumbers(): Promise<Array<{ phoneNumber: string }>> {
     this.searchCalls += 1;
-    return [
-      { phoneNumber: '+17145559901' },
-      { phoneNumber: '+17145559902' },
-    ];
+    return this.searchResults;
   }
 
   async provisionNumber(params: { phoneNumber: string; requestId: string }) {
@@ -187,22 +188,26 @@ const userHeaders = (cookie: string) => ({
   'content-type': 'application/json',
 });
 
-test('provision forwarding returns 402 when payment method is not valid', async () => {
-  const { app, cookie } = await createFixture({ paymentMethodStatus: 'none' });
-  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+test('go-live provision can create forwarding number before payment method is valid', async () => {
+  const { app, shopsRepository, fakeProvisioning, shop, cookie } = await createFixture({ paymentMethodStatus: 'none' });
+  const res = await app.request('/user/go-live/provision-number', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmGoLiveIntent: true }),
   });
-  assert.equal(res.status, 402);
-  const body = (await res.json()) as { ok: boolean; error?: string };
-  assert.equal(body.ok, false);
-  assert.equal(body.error, 'payment_method_required');
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok: boolean; forwardingNumber?: string; status?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.forwardingNumber, '+17145559901');
+  assert.equal(body.status, 'provisioned');
+  assert.equal(fakeProvisioning.provisionCalls, 1);
+  const updated = await shopsRepository.findById(shop.id);
+  assert.equal(updated?.forwarding_number_provisioned_at != null, true);
 });
 
 test('provision forwarding returns 400 confirmation_required without explicit intent', async () => {
   const { app, cookie } = await createFixture({ paymentMethodStatus: 'valid' });
-  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+  const res = await app.request('/user/go-live/provision-number', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({}),
@@ -218,7 +223,7 @@ test('enterprise cannot provision forwarding number without commercial approval'
     paymentMethodStatus: 'valid',
     plan: 'enterprise',
   });
-  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+  const res = await app.request('/user/go-live/provision-number', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmGoLiveIntent: true }),
@@ -235,7 +240,7 @@ test('enterprise with commercial approval can provision forwarding number', asyn
     plan: 'enterprise',
     commercialApproved: true,
   });
-  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+  const res = await app.request('/user/go-live/provision-number', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmGoLiveIntent: true }),
@@ -252,7 +257,7 @@ test('provision forwarding with valid payment calls provisionNumber once and pre
   });
   const businessBefore = (await shopsRepository.findById(shop.id))?.phone_number;
 
-  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+  const res = await app.request('/user/go-live/provision-number', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmGoLiveIntent: true }),
@@ -275,6 +280,44 @@ test('provision forwarding with valid payment calls provisionNumber once and pre
   const updated = await shopsRepository.findById(shop.id);
   assert.equal(updated?.telnyx_number, '+17145559901');
   assert.equal(updated?.phone_number, businessBefore);
+  assert.equal(updated?.forwarding_number_provisioned_at != null, true);
+});
+
+test('legacy provision endpoint remains a compatibility alias', async () => {
+  const { app, fakeProvisioning, cookie } = await createFixture({
+    paymentMethodStatus: 'none',
+  });
+
+  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({ confirmGoLiveIntent: true }),
+  });
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { forwardingNumber?: string; status?: string };
+  assert.equal(body.forwardingNumber, '+17145559901');
+  assert.equal(body.status, 'provisioned');
+  assert.equal(fakeProvisioning.provisionCalls, 1);
+});
+
+test('go-live provision is rate limited to 3 attempts per shop per 24h', async () => {
+  const { app, fakeProvisioning, cookie } = await createFixture({
+    paymentMethodStatus: 'none',
+  });
+  fakeProvisioning.searchResults = [];
+
+  const request = () =>
+    app.request('/user/go-live/provision-number', {
+      method: 'POST',
+      headers: userHeaders(cookie),
+      body: JSON.stringify({ confirmGoLiveIntent: true }),
+    });
+
+  assert.equal((await request()).status, 503);
+  assert.equal((await request()).status, 503);
+  assert.equal((await request()).status, 503);
+  const limited = await request();
+  assert.equal(limited.status, 429);
 });
 
 test('provision forwarding is idempotent when telnyx_number already set', async () => {
@@ -284,7 +327,7 @@ test('provision forwarding is idempotent when telnyx_number already set', async 
     telnyxPreset: preset,
   });
 
-  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+  const res = await app.request('/user/go-live/provision-number', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmGoLiveIntent: true }),
@@ -306,7 +349,7 @@ test('provision forwarding returns 409 when provisioning lock is active', async 
     forwarding_number_provisioning_started_at: new Date().toISOString(),
   });
 
-  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+  const res = await app.request('/user/go-live/provision-number', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmGoLiveIntent: true }),
@@ -331,7 +374,7 @@ test('concurrent provision forwarding requests call provisionNumber once', async
   });
 
   const request = () =>
-    app.request('/user/phone-numbers/provision-forwarding-number', {
+    app.request('/user/go-live/provision-number', {
       method: 'POST',
       headers: userHeaders(cookie),
       body: JSON.stringify({ confirmGoLiveIntent: true }),
@@ -353,7 +396,7 @@ test('provision forwarding releases Telnyx number when shop persist fails', asyn
     failTelnyxPersist: true,
   });
 
-  const res = await app.request('/user/phone-numbers/provision-forwarding-number', {
+  const res = await app.request('/user/go-live/provision-number', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmGoLiveIntent: true }),

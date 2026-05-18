@@ -430,6 +430,7 @@ export interface ShopsRepository {
         | 'telnyx_number'
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'
+        | 'forwarding_number_provisioned_at'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
       >

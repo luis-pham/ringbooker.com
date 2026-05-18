@@ -53,6 +53,7 @@ type ShopsRow = {
   telnyx_number: string | null;
   forwarding_number_status: Shop['forwarding_number_status'] | null;
   forwarding_number_provisioning_started_at: string | null;
+  forwarding_number_provisioned_at: string | null;
   forwarding_number_provider_order_id: string | null;
   forwarding_number_last_error: string | null;
   ai_voice: string | null;
@@ -104,6 +105,7 @@ const SHOP_SELECT_COLUMNS = [
   'telnyx_number',
   'forwarding_number_status',
   'forwarding_number_provisioning_started_at',
+  'forwarding_number_provisioned_at',
   'forwarding_number_provider_order_id',
   'forwarding_number_last_error',
   'ai_voice',
@@ -396,6 +398,7 @@ function toShop(row: ShopsRow): Shop {
     telnyx_number: row.telnyx_number,
     forwarding_number_status: row.forwarding_number_status ?? 'none',
     forwarding_number_provisioning_started_at: row.forwarding_number_provisioning_started_at,
+    forwarding_number_provisioned_at: row.forwarding_number_provisioned_at,
     forwarding_number_provider_order_id: row.forwarding_number_provider_order_id,
     forwarding_number_last_error: row.forwarding_number_last_error,
     ai_voice: row.ai_voice ?? 'Aoede',
@@ -471,6 +474,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'telnyx_number',
           'forwarding_number_status',
           'forwarding_number_provisioning_started_at',
+          'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
           'ai_voice',
@@ -536,6 +540,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'telnyx_number',
           'forwarding_number_status',
           'forwarding_number_provisioning_started_at',
+          'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
           'ai_voice',
@@ -702,6 +707,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'telnyx_number',
           'forwarding_number_status',
           'forwarding_number_provisioning_started_at',
+          'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
           'ai_voice',
@@ -762,6 +768,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'telnyx_number'
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'
+        | 'forwarding_number_provisioned_at'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
       >
@@ -801,6 +808,9 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.forwarding_number_status !== undefined) payload.forwarding_number_status = patch.forwarding_number_status;
     if (patch.forwarding_number_provisioning_started_at !== undefined) {
       payload.forwarding_number_provisioning_started_at = patch.forwarding_number_provisioning_started_at;
+    }
+    if (patch.forwarding_number_provisioned_at !== undefined) {
+      payload.forwarding_number_provisioned_at = patch.forwarding_number_provisioned_at;
     }
     if (patch.forwarding_number_provider_order_id !== undefined) {
       payload.forwarding_number_provider_order_id = patch.forwarding_number_provider_order_id;
@@ -1049,6 +1059,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
       .update({
         forwarding_number_status: 'provisioning',
         forwarding_number_provisioning_started_at: startedIso,
+        forwarding_number_provisioned_at: null,
         forwarding_number_provider_order_id: null,
         forwarding_number_last_error: null,
         updated_at: startedIso,
@@ -1097,6 +1108,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'telnyx_number',
           'forwarding_number_status',
           'forwarding_number_provisioning_started_at',
+          'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
           'ai_voice',
@@ -1193,6 +1205,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'telnyx_number',
           'forwarding_number_status',
           'forwarding_number_provisioning_started_at',
+          'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
           'ai_voice',
@@ -1269,6 +1282,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'telnyx_number',
           'forwarding_number_status',
           'forwarding_number_provisioning_started_at',
+          'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
           'ai_voice',
@@ -1342,6 +1356,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'telnyx_number',
           'forwarding_number_status',
           'forwarding_number_provisioning_started_at',
+          'forwarding_number_provisioned_at',
           'forwarding_number_provider_order_id',
           'forwarding_number_last_error',
           'ai_voice',

@@ -214,13 +214,6 @@ function buildActivationChecklist(
   void rail;
   return [
     {
-      id: 'billing',
-      name: 'Add your card',
-      desc: 'Starts your free 14-day trial — no charge today',
-      done: hasBilling,
-      href: '/user/billing',
-    },
-    {
       id: 'forwarding',
       name: 'Forward missed calls to RingBooker',
       desc: 'One code to dial on your phone — takes 2 minutes',
@@ -233,6 +226,13 @@ function buildActivationChecklist(
       desc: "We'll make a quick test call to confirm",
       done: goLive.forwardingSetupVerified,
       href: '/user/go-live#go-live-forwarding',
+    },
+    {
+      id: 'billing',
+      name: 'Add your card',
+      desc: 'Starts your free 14-day trial — no charge today',
+      done: hasBilling,
+      href: '/user/billing',
     },
     {
       id: 'live_answering',

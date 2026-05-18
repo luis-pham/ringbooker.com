@@ -56,6 +56,7 @@ const defaultShop: Shop = {
   telnyx_number: null,
   forwarding_number_status: 'none',
   forwarding_number_provisioning_started_at: null,
+  forwarding_number_provisioned_at: null,
   forwarding_number_provider_order_id: null,
   forwarding_number_last_error: null,
   ai_voice: 'Aoede',
@@ -171,6 +172,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
       telnyx_number: null,
       forwarding_number_status: 'none',
       forwarding_number_provisioning_started_at: null,
+      forwarding_number_provisioned_at: null,
       forwarding_number_provider_order_id: null,
       forwarding_number_last_error: null,
       allow_transfers: enableProfessionalDefaults,
@@ -222,6 +224,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'telnyx_number'
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'
+        | 'forwarding_number_provisioned_at'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
       >
@@ -340,6 +343,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
       ...current,
       forwarding_number_status: 'provisioning',
       forwarding_number_provisioning_started_at: params.startedAt.toISOString(),
+      forwarding_number_provisioned_at: null,
       forwarding_number_provider_order_id: null,
       forwarding_number_last_error: null,
     };

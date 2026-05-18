@@ -189,7 +189,7 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
   }, [status.billing.status]);
 
   const provisionNumber = useCallback(async () => {
-    await postJson('/api/backend/user/phone-numbers/provision-forwarding-number', { confirmGoLiveIntent: true });
+    await postJson('/api/backend/user/go-live/provision-number', { confirmGoLiveIntent: true });
     await refresh();
   }, [refresh]);
 

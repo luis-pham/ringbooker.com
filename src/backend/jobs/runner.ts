@@ -313,9 +313,9 @@ export async function scheduleTrialLifecycleJobsWithRuntime(
       }
 
       if (shop.telnyx_number?.trim() && !accessState?.forwardingSetupVerifiedAt && !accessState?.liveCallsEnabled && subscriptionId) {
-        const provisionedAt = shop.forwarding_number_provisioning_started_at
-          ? new Date(shop.forwarding_number_provisioning_started_at)
-          : trialStartedAt;
+        const forwardingProvisionedAt =
+          shop.forwarding_number_provisioned_at ?? shop.forwarding_number_provisioning_started_at;
+        const provisionedAt = forwardingProvisionedAt ? new Date(forwardingProvisionedAt) : trialStartedAt;
         const hoursSinceForwarding =
           provisionedAt && Number.isFinite(provisionedAt.getTime())
             ? (now.getTime() - provisionedAt.getTime()) / (60 * 60 * 1000)

@@ -8001,14 +8001,12 @@ export function createBackendApp(deps: {
   });
 
   /**
-   * P1.1 — Provision Telnyx DID into `shops.telnyx_number` only after valid payment + explicit go-live intent.
+   * Provisions a Telnyx DID into `shops.telnyx_number` after explicit go-live intent.
    * Does not modify `shop.phone_number` (business line). Idempotent when `telnyx_number` already set.
    */
-  app.post(path('/user/phone-numbers/provision-forwarding-number'), async (c) => {
+  const provisionForwardingNumberHandler = async (c: Context) => {
     const csrfBlocked = enforceSameOriginForCookieMutation(c);
     if (csrfBlocked) return csrfBlocked;
-    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.user_provision_forwarding_number, 'user_provision_forwarding_number');
-    if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
 
@@ -8027,7 +8025,6 @@ export function createBackendApp(deps: {
 
     if (
       !deps.shopsRepository ||
-      !deps.billingSubscriptionsRepository ||
       !deps.shopAccessStatesRepository ||
       !deps.phoneProvisioningService
     ) {
@@ -8058,39 +8055,6 @@ export function createBackendApp(deps: {
       return c.json({ ok: false, error: 'live_already_enabled' }, 409);
     }
 
-    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
-    if (!subscription) {
-      return c.json({ ok: false, error: 'no_subscription' }, 409);
-    }
-
-    const now = new Date();
-    const subscriptionActive =
-      subscription.status === 'active' || isBillingTrialStillValid(subscription, now);
-    if (!subscriptionActive) {
-      const expired =
-        subscription.status === 'trial_expired' ||
-        (subscription.status === 'trialing' && !isBillingTrialStillValid(subscription, now));
-      return c.json(
-        {
-          ok: false,
-          error: expired ? 'trial_expired' : 'subscription_inactive',
-        },
-        409,
-      );
-    }
-
-    if (subscription.paymentMethodStatus !== 'valid') {
-      return c.json(
-        {
-          ok: false,
-          error: 'payment_method_required',
-          message: 'Add a valid payment method before provisioning a forwarding number.',
-          billingUrl: '/user/billing',
-        },
-        402,
-      );
-    }
-
     const existingForwarding = shop.telnyx_number?.trim();
     if (existingForwarding) {
       return c.json({
@@ -8100,6 +8064,18 @@ export function createBackendApp(deps: {
         nextStep: 'show_forwarding_instructions',
       });
     }
+
+    const provisionLimited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.user_provision_forwarding_number,
+      `shop:${shop.id}`,
+    );
+    if (provisionLimited) return provisionLimited;
+
+    const subscription = deps.billingSubscriptionsRepository
+      ? await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id)
+      : null;
+    const subscriptionId = subscription?.id ?? null;
 
     const lockStartedAt = new Date();
     const lock = await deps.shopsRepository.tryBeginForwardingNumberProvisioning({
@@ -8160,6 +8136,7 @@ export function createBackendApp(deps: {
       await deps.shopsRepository.updateUserSettings(shop.id, {
         forwarding_number_status: 'failed',
         forwarding_number_provisioning_started_at: null,
+        forwarding_number_provisioned_at: null,
         forwarding_number_last_error: error instanceof Error ? error.message.slice(0, 500) : 'forwarding_number_search_failed',
       });
       securityAudit({
@@ -8177,13 +8154,13 @@ export function createBackendApp(deps: {
       await enqueueLifecycleEmail({
         shopId: shop.id,
         kind: 'forwarding_number_failed_user',
-        subscriptionId: subscription.id,
+        subscriptionId,
         idempotencySuffix: 'forwarding_number_failed_user:search',
       });
       await enqueueLifecycleEmail({
         shopId: shop.id,
         kind: 'forwarding_number_failed_internal',
-        subscriptionId: subscription.id,
+        subscriptionId,
         title: 'Telnyx forwarding number search failed',
         summary: 'Forwarding number search failed during user go-live setup.',
         fields: { shop_id: shop.id, phase: 'search' },
@@ -8196,6 +8173,7 @@ export function createBackendApp(deps: {
       await deps.shopsRepository.updateUserSettings(shop.id, {
         forwarding_number_status: 'failed',
         forwarding_number_provisioning_started_at: null,
+        forwarding_number_provisioned_at: null,
         forwarding_number_last_error: 'no_numbers_available',
       });
       securityAudit({
@@ -8209,13 +8187,13 @@ export function createBackendApp(deps: {
       await enqueueLifecycleEmail({
         shopId: shop.id,
         kind: 'forwarding_number_failed_user',
-        subscriptionId: subscription.id,
+        subscriptionId,
         idempotencySuffix: 'forwarding_number_failed_user:no_numbers_available',
       });
       await enqueueLifecycleEmail({
         shopId: shop.id,
         kind: 'forwarding_number_failed_internal',
-        subscriptionId: subscription.id,
+        subscriptionId,
         title: 'No Telnyx forwarding numbers available',
         summary: 'No forwarding number candidates were available for a shop.',
         fields: { shop_id: shop.id, country_code: countryCode },
@@ -8238,6 +8216,7 @@ export function createBackendApp(deps: {
             telnyx_number: order.phoneNumber,
             forwarding_number_status: 'provisioned',
             forwarding_number_provisioning_started_at: null,
+            forwarding_number_provisioned_at: new Date().toISOString(),
             forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
             forwarding_number_last_error: null,
           });
@@ -8279,19 +8258,20 @@ export function createBackendApp(deps: {
           await deps.shopsRepository.updateUserSettings(shop.id, {
             forwarding_number_status: 'failed',
             forwarding_number_provisioning_started_at: null,
+            forwarding_number_provisioned_at: null,
             forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
             forwarding_number_last_error: persistError instanceof Error ? persistError.message.slice(0, 500) : 'shop_persist_failed',
           }).catch(() => undefined);
           await enqueueLifecycleEmail({
             shopId: shop.id,
             kind: 'forwarding_number_failed_user',
-            subscriptionId: subscription.id,
+            subscriptionId,
             idempotencySuffix: 'forwarding_number_failed_user:persist',
           });
           await enqueueLifecycleEmail({
             shopId: shop.id,
             kind: 'forwarding_number_failed_internal',
-            subscriptionId: subscription.id,
+            subscriptionId,
             title: 'Telnyx forwarding number persist failed',
             summary: 'A forwarding number was provisioned but could not be persisted to the shop record.',
             fields: {
@@ -8355,7 +8335,7 @@ export function createBackendApp(deps: {
         await enqueueLifecycleEmail({
           shopId: shop.id,
           kind: 'forwarding_number_ready',
-          subscriptionId: subscription.id,
+          subscriptionId,
           forwardingNumber: order.phoneNumber,
         });
         return c.json({
@@ -8372,6 +8352,7 @@ export function createBackendApp(deps: {
     await deps.shopsRepository.updateUserSettings(shop.id, {
       forwarding_number_status: 'failed',
       forwarding_number_provisioning_started_at: null,
+      forwarding_number_provisioned_at: null,
       forwarding_number_last_error: lastErrorMessage.slice(0, 500),
     });
 
@@ -8386,20 +8367,23 @@ export function createBackendApp(deps: {
     await enqueueLifecycleEmail({
       shopId: shop.id,
       kind: 'forwarding_number_failed_user',
-      subscriptionId: subscription.id,
+      subscriptionId,
       idempotencySuffix: 'forwarding_number_failed_user:provision',
     });
     await enqueueLifecycleEmail({
       shopId: shop.id,
       kind: 'forwarding_number_failed_internal',
-      subscriptionId: subscription.id,
+      subscriptionId,
       title: 'Telnyx forwarding number provisioning failed',
       summary: 'All forwarding number provisioning candidates failed.',
       fields: { shop_id: shop.id, phase: 'provision' },
       idempotencySuffix: `forwarding_number_failed_internal:provision:${Date.now()}`,
     });
     return c.json({ ok: false, error: 'forwarding_number_provision_failed' }, 502);
-  });
+  };
+
+  app.post(path('/user/go-live/provision-number'), provisionForwardingNumberHandler);
+  app.post(path('/user/phone-numbers/provision-forwarding-number'), provisionForwardingNumberHandler);
 
   /*
    * P1 (onboarding/go-live sprint): require forwarding number provisioned + forwarding test passed
