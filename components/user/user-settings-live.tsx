@@ -124,7 +124,7 @@ type ShopSettings = {
   phone_number: string;
   user_name?: string | null;
   user_phone: string;
-  backup_phone?: string | null;
+  handoff_phone?: string | null;
   address?: string | null;
   timezone: string;
   services: ServiceItem[];
@@ -178,6 +178,7 @@ export type UserSettingsResponse = {
   showGoLiveSettingsTab?: boolean;
   error?: string;
   fields?: string[];
+  warnings?: string[];
 };
 
 type CatalogGroupSheetState =
@@ -222,7 +223,7 @@ type SettingsState = {
   name: string;
   user_name: string;
   user_phone: string;
-  backup_phone: string;
+  handoff_phone: string;
   address: string;
   timezone: string;
   booking_url: string;
@@ -595,7 +596,7 @@ function buildInitialState(shop: ShopSettings): SettingsState {
     name: shop.name ?? '',
     user_name: shop.user_name ?? '',
     user_phone: shop.user_phone,
-    backup_phone: shop.backup_phone ?? '',
+    handoff_phone: shop.handoff_phone ?? '',
     address: shop.address ?? '',
     timezone: shop.timezone,
     booking_url: shop.booking_url ?? '',
@@ -627,7 +628,7 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   phone_number: '',
   user_name: '',
   user_phone: '',
-  backup_phone: '',
+  handoff_phone: '',
   address: '',
   timezone: 'America/Los_Angeles',
   services: [],
@@ -792,6 +793,9 @@ export function UserSettingsLive({
   const [suggestionEdits, setSuggestionEdits] = useState<Record<string, Record<string, unknown>>>({});
   const [suggestionStatus, setSuggestionStatus] = useState<string | null>(null);
   const [savingSuggestions, setSavingSuggestions] = useState(false);
+  const [handoffPhoneDraft, setHandoffPhoneDraft] = useState<string>(initialShop?.handoff_phone ?? '');
+  const [handoffPhoneStatus, setHandoffPhoneStatus] = useState<'idle' | 'saving' | 'saved' | string>('idle');
+  const [handoffPhoneWarnings, setHandoffPhoneWarnings] = useState<string[]>([]);
 
   const activateSettingsTab = useCallback((tabId: SettingsTabId) => {
     setActiveTab(tabId);
@@ -1659,6 +1663,8 @@ export function UserSettingsLive({
       setServiceCatalogEnabled(body.serviceCatalogEnabled === true);
       const nextState = buildInitialState(nextShop);
       setForm(nextState);
+      setHandoffPhoneDraft(nextShop.handoff_phone ?? '');
+      if (body.warnings?.length) setHandoffPhoneWarnings(body.warnings);
       setCancelPreset(getPresetMatch(nextState.cancel_policy, CANCEL_POLICY_PRESETS));
       setPromoPreset(getPresetMatch(nextState.promotions, PROMOTION_PRESETS));
       setGreetingPreset(
@@ -1673,6 +1679,30 @@ export function UserSettingsLive({
       setStatus('network_error');
     } finally {
       setSavingSection(null);
+    }
+  }
+
+  async function saveHandoffPhone() {
+    setHandoffPhoneStatus('saving');
+    setHandoffPhoneWarnings([]);
+    try {
+      const response = await fetch('/api/backend/user/settings', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ handoff_phone: handoffPhoneDraft.trim() || null }),
+      });
+      const body = (await response.json()) as UserSettingsResponse;
+      if (!response.ok || !body.ok || !body.shop) {
+        setHandoffPhoneStatus(body.error ?? 'save_failed');
+        return;
+      }
+      setShop(body.shop);
+      setHandoffPhoneDraft(body.shop.handoff_phone ?? '');
+      setHandoffPhoneWarnings(body.warnings ?? []);
+      setHandoffPhoneStatus('saved');
+      setTimeout(() => setHandoffPhoneStatus('idle'), 2500);
+    } catch {
+      setHandoffPhoneStatus('network_error');
     }
   }
 
@@ -1997,7 +2027,7 @@ export function UserSettingsLive({
                     name: currentForm.name,
                     user_name: currentForm.user_name,
                     user_phone: currentForm.user_phone,
-	                    backup_phone: currentForm.backup_phone || null,
+	                    handoff_phone: currentForm.handoff_phone || null,
 	                    address: currentForm.address || null,
 	                    timezone: currentForm.timezone,
 	                    website_url: currentForm.website_url.trim() ? currentForm.website_url.trim() : '',
@@ -2015,7 +2045,7 @@ export function UserSettingsLive({
 	                    <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
 	                    <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
 	                    <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
-	                    <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
+	                    <div className="field"><label>Handoff phone</label><input value={currentForm.handoff_phone} onChange={(event) => patchState('handoff_phone', event.target.value)} placeholder="Optional handoff line" /></div>
 	                    <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
 	                    <div className="field">
                       <label>Address</label>
@@ -2052,7 +2082,7 @@ export function UserSettingsLive({
                     name: currentForm.name,
                     user_name: currentForm.user_name,
                     user_phone: currentForm.user_phone,
-                    backup_phone: currentForm.backup_phone || null,
+                    handoff_phone: currentForm.handoff_phone || null,
                     address: currentForm.address || null,
                     timezone: currentForm.timezone,
                     booking_url: currentForm.booking_url.trim() ? currentForm.booking_url.trim() : null,
@@ -2064,7 +2094,7 @@ export function UserSettingsLive({
                     <div className="field"><label>Business name</label><input value={currentForm.name} onChange={(event) => patchState('name', event.target.value)} /></div>
                     <div className="field"><label>Primary contact name</label><input value={currentForm.user_name} onChange={(event) => patchState('user_name', event.target.value)} placeholder="Owner or manager name" /></div>
                     <div className="field"><label>Main user phone</label><input value={currentForm.user_phone} onChange={(event) => patchState('user_phone', event.target.value)} /></div>
-                    <div className="field"><label>Backup phone</label><input value={currentForm.backup_phone} onChange={(event) => patchState('backup_phone', event.target.value)} placeholder="Optional handoff line" /></div>
+                    <div className="field"><label>Handoff phone</label><input value={currentForm.handoff_phone} onChange={(event) => patchState('handoff_phone', event.target.value)} placeholder="Optional handoff line" /></div>
                     <div className="field"><label>Timezone</label><select value={currentForm.timezone} onChange={(event) => patchState('timezone', event.target.value)}><option value="America/Los_Angeles">America/Los_Angeles</option><option value="America/New_York">America/New_York</option><option value="America/Chicago">America/Chicago</option><option value="America/Denver">America/Denver</option></select></div>
                     <div className="field" style={{ gridColumn: '1 / -1' }}><label>Address</label><input value={currentForm.address} onChange={(event) => patchState('address', event.target.value)} /></div>
                     <div className="field" style={{ gridColumn: '1 / -1' }}><label>Booking link</label><input value={currentForm.booking_url} onChange={(event) => patchState('booking_url', event.target.value)} placeholder="https://..." /></div>
@@ -3231,6 +3261,47 @@ export function UserSettingsLive({
                         </button>
                       </div>
                     </div>
+                    {!ownerTransferUx.locked && currentForm.allow_transfers ? (
+                      <div className="handoff-phone-section" style={{ padding: '12px 0 4px' }}>
+                        {!effectiveShop.handoff_phone ? (
+                          <div className="handoff-phone-warning" style={{ marginBottom: 10 }}>
+                            <span style={{ color: '#b45309', fontSize: 13 }}>&#9888; Add a direct mobile so RingBooker knows where to transfer calls. Without it, callers who ask for you will receive a message instead.</span>
+                          </div>
+                        ) : handoffPhoneWarnings.includes('matches_business_line') || handoffPhoneWarnings.includes('possible_loop') ? (
+                          <div className="handoff-phone-warning" style={{ marginBottom: 10 }}>
+                            <span style={{ color: '#b45309', fontSize: 13 }}>&#9888; This looks like your business line. If it forwards to RingBooker, transfers may not work. Use a direct mobile instead.</span>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <span style={{ color: '#16a34a', fontSize: 13 }}>&#10003; Transfers will go to {effectiveShop.handoff_phone}</span>
+                          </div>
+                        )}
+                        <div className="field" style={{ marginBottom: 0 }}>
+                          <label style={{ fontSize: 13 }}>Transfer calls to</label>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                            <input
+                              value={handoffPhoneDraft}
+                              onChange={(e) => { setHandoffPhoneDraft(e.target.value); setHandoffPhoneStatus('idle'); }}
+                              placeholder="+1 (555) 000-0000"
+                              style={{ flex: 1 }}
+                              aria-label="Handoff phone number"
+                            />
+                            <button
+                              type="button"
+                              className="btn user-save"
+                              disabled={handoffPhoneStatus === 'saving'}
+                              onClick={() => { void saveHandoffPhone(); }}
+                              style={{ whiteSpace: 'nowrap' }}
+                            >
+                              {handoffPhoneStatus === 'saving' ? 'Saving...' : handoffPhoneStatus === 'saved' ? 'Saved' : 'Save number'}
+                            </button>
+                          </div>
+                          {handoffPhoneStatus !== 'idle' && handoffPhoneStatus !== 'saving' && handoffPhoneStatus !== 'saved' ? (
+                            <p style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>{handoffPhoneStatus}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="switch-row">
                       <div className="switch-copy"><h4>Offer callbacks</h4><p>When the team is busy, the AI can queue a callback instead of losing the lead.</p></div>
                       <div className="switch-stack"><button type="button" className={`switch ${currentForm.allow_callbacks ? 'on' : ''}`} onClick={() => patchState('allow_callbacks', !currentForm.allow_callbacks)}><span className="sr-only">Toggle callbacks</span></button></div>

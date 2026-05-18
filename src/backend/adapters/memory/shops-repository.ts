@@ -214,7 +214,7 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'vertical_detail'
         | 'user_name'
         | 'user_phone'
-        | 'backup_phone'
+        | 'handoff_phone'
         | 'address'
         | 'timezone'
         | 'services'

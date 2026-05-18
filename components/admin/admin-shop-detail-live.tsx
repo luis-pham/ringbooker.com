@@ -46,7 +46,7 @@ type ShopDetail = {
   brand_slug?: string | null;
   phone_number: string;
   user_phone: string;
-  backup_phone?: string | null;
+  handoff_phone?: string | null;
   user_name?: string | null;
   address?: string | null;
   timezone: string;
@@ -457,7 +457,7 @@ export function AdminShopDetailLive() {
         body: JSON.stringify({
           user_name: String(formData.get('user_name') ?? ''),
           user_phone: String(formData.get('user_phone') ?? ''),
-          backup_phone: String(formData.get('backup_phone') ?? '') || null,
+          handoff_phone: String(formData.get('handoff_phone') ?? '') || null,
           address: String(formData.get('address') ?? '') || null,
           timezone: String(formData.get('timezone') ?? shop.timezone),
           cancel_policy: String(formData.get('cancel_policy') ?? shop.cancel_policy),
@@ -1068,8 +1068,8 @@ export function AdminShopDetailLive() {
                             <input name="user_phone" defaultValue={shop.user_phone} />
                           </div>
                           <div className="field">
-                            <label>Backup phone</label>
-                            <input name="backup_phone" defaultValue={shop.backup_phone ?? ''} />
+                            <label>Handoff phone</label>
+                            <input name="handoff_phone" defaultValue={shop.handoff_phone ?? ''} />
                           </div>
                           <div className="field">
                             <label>Booking URL</label>

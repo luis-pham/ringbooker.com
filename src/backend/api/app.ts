@@ -506,7 +506,7 @@ const userSettingsBaseSchema = z.object({
   vertical_detail: z.string().min(1).max(120).nullable().optional(),
   user_name: z.string().min(1).optional(),
   user_phone: z.string().min(1).optional(),
-  backup_phone: z.string().min(1).nullable().optional(),
+  handoff_phone: z.string().min(1).nullable().optional(),
   address: z.string().min(1).nullable().optional(),
   timezone: z.string().min(1).optional(),
   cancel_policy: z.string().min(1).optional(),
@@ -1253,7 +1253,7 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   vertical_detail: 'edit_business_profile',
   user_name: 'edit_business_profile',
   user_phone: 'edit_business_profile',
-  backup_phone: 'edit_business_profile',
+  handoff_phone: 'edit_business_profile',
   address: 'edit_business_profile',
   timezone: 'edit_business_profile',
   booking_url: 'edit_booking_url',
@@ -1296,7 +1296,7 @@ function splitUserSettingsPatchByPlan(
         | 'vertical_detail'
         | 'user_name'
       | 'user_phone'
-      | 'backup_phone'
+      | 'handoff_phone'
       | 'address'
       | 'timezone'
       | 'services'
@@ -1363,7 +1363,7 @@ function splitUserSettingsPatchByPlan(
       continue;
     }
 
-    if ((key === 'phone_number' || key === 'user_phone' || key === 'backup_phone') && typeof value === 'string') {
+    if ((key === 'phone_number' || key === 'user_phone' || key === 'handoff_phone') && typeof value === 'string') {
       basicPatch[key] = normalizePhoneForStorage(value, shop.country_code ?? 'US') ?? value;
       continue;
     }
@@ -1377,7 +1377,7 @@ function splitUserSettingsPatchByPlan(
         Shop,
         | 'user_name'
         | 'user_phone'
-        | 'backup_phone'
+        | 'handoff_phone'
         | 'address'
         | 'timezone'
         | 'services'
@@ -4971,6 +4971,8 @@ export function createBackendApp(deps: {
         timezone: shop.timezone,
         plan: shop.plan,
         active: shop.active,
+        allow_transfers: shop.allow_transfers,
+        handoff_phone: shop.handoff_phone ?? null,
       },
       onboardingRequired,
       onboardingCompleted: isShopSetupWizardComplete(shop),
@@ -8754,12 +8756,26 @@ export function createBackendApp(deps: {
       testCallAttemptsRepository: deps.testCallAttemptsRepository,
     });
 
+    // Warn (non-blocking) when handoff_phone could cause a forwarding loop.
+    const handoffPhoneWarnings: string[] = [];
+    const savedHandoffPhone = updated.handoff_phone?.trim();
+    if (savedHandoffPhone && 'handoff_phone' in parsed.data) {
+      const cc = updated.country_code ?? 'US';
+      if (updated.phone_number && normalizePhoneForStorage(savedHandoffPhone, cc) === normalizePhoneForStorage(updated.phone_number, cc)) {
+        handoffPhoneWarnings.push('matches_business_line');
+      }
+      if (updated.telnyx_number && normalizePhoneForStorage(savedHandoffPhone, cc) === normalizePhoneForStorage(updated.telnyx_number, cc)) {
+        handoffPhoneWarnings.push('possible_loop');
+      }
+    }
+
     return c.json({
       ok: true,
       shop: serviceCatalogEnabled ? toUserFacingShop(updated) : { ...toUserFacingShop(updated), service_catalog: null },
       capabilities: getShopPlanCapabilities(updated.plan),
       showGoLiveSettingsTab,
       serviceCatalogEnabled,
+      ...(handoffPhoneWarnings.length > 0 ? { warnings: handoffPhoneWarnings } : {}),
     });
   });
 

@@ -240,7 +240,7 @@ export interface Shop {
   brand_slug?: string | null;
   phone_number: string;
   user_phone: string;
-  backup_phone?: string | null;
+  handoff_phone?: string | null;
   user_name?: string | null;
   address?: string | null;
   timezone: string;

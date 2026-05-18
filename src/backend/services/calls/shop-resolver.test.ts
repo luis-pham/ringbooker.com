@@ -13,7 +13,7 @@ function baseShop(overrides: Partial<Shop>): Shop {
     brand_slug: null,
     phone_number: '+15550001001',
     user_phone: '+15550001999',
-    backup_phone: null,
+    handoff_phone: null,
     user_name: null,
     address: null,
     timezone: 'America/Los_Angeles',

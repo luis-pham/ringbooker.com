@@ -1,4 +1,4 @@
-import { getCountryConfig } from 'lib/countries/config';
+import { getCountryConfig } from '@/lib/countries/config';
 
 function digitsOnly(value: string | null | undefined): string {
   return (value ?? '').replace(/\D/g, '');

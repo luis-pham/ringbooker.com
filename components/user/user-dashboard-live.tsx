@@ -37,6 +37,8 @@ export type UserDashboardResponse = {
     timezone: string;
     plan: string;
     active: boolean;
+    allow_transfers?: boolean;
+    handoff_phone?: string | null;
   };
   onboardingRequired?: boolean;
   onboardingCompleted?: boolean;
@@ -172,6 +174,43 @@ function IconQuickIntegrations() {
 }
 
 const BK_NUDGE_STORAGE_KEY = 'bk_nudge_dismissed';
+const HANDOFF_BANNER_DISMISSED_KEY = 'handoff_banner_dismissed';
+const LAST_KNOWN_PLAN_KEY = 'rba_last_known_plan';
+
+function HandoffSetupBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="overview-bk-nudge-banner" style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+      <span style={{ fontSize: 20, lineHeight: 1 }}>&#128241;</span>
+      <div style={{ flex: 1 }}>
+        <strong style={{ fontSize: 14 }}>Set up call transfers</strong>
+        <p style={{ margin: '2px 0 8px', fontSize: 13, color: '#6b7280' }}>
+          When a caller asks to speak to you, RingBooker will call your direct mobile. Add your number to enable transfers.
+        </p>
+        <a href="/settings#call-handling" style={{ fontSize: 13, fontWeight: 500, color: '#7c3aed' }}>Add my number →</a>
+      </div>
+      <button type="button" onClick={onDismiss} aria-label="Dismiss" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 18, lineHeight: 1 }}>×</button>
+    </div>
+  );
+}
+
+function UpgradeToProModal({ onDismiss, shopName }: { onDismiss: () => void; shopName: string }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: 32, maxWidth: 420, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <h3 style={{ margin: '0 0 8px', fontSize: 18 }}>Call transfers are now available</h3>
+        <p style={{ margin: '0 0 20px', fontSize: 14, color: '#6b7280', lineHeight: 1.5 }}>
+          With your Professional plan, RingBooker can transfer calls directly to you when a caller asks to speak to someone. Add your direct mobile to get started.
+        </p>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <a href="/settings#call-handling" className="btn user-save" style={{ flex: 1, textAlign: 'center', fontSize: 14 }}>Set up transfers →</a>
+          <button type="button" onClick={onDismiss} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 14, color: '#6b7280' }}>
+            Maybe later
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type OverviewState = {
   billingActive: boolean;
@@ -497,11 +536,45 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     setBkNudgeDismissed(true);
   }, []);
 
+  const [handoffBannerDismissed, setHandoffBannerDismissed] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  useEffect(() => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (localStorage.getItem(HANDOFF_BANNER_DISMISSED_KEY) === '1') setHandoffBannerDismissed(true);
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    if (!data?.shop?.plan) return;
+    try {
+      if (typeof window === 'undefined') return;
+      const lastPlan = localStorage.getItem(LAST_KNOWN_PLAN_KEY);
+      const currentPlan = data.shop.plan;
+      if (lastPlan === 'starter' && currentPlan === 'professional') {
+        setShowUpgradeModal(true);
+      }
+      localStorage.setItem(LAST_KNOWN_PLAN_KEY, currentPlan);
+    } catch { /* ignore */ }
+  }, [data?.shop?.plan]);
+  const dismissHandoffBanner = useCallback(() => {
+    try { localStorage.setItem(HANDOFF_BANNER_DISMISSED_KEY, '1'); } catch { /* ignore */ }
+    setHandoffBannerDismissed(true);
+  }, []);
+  const dismissUpgradeModal = useCallback(() => setShowUpgradeModal(false), []);
+
   const showBkNudgeBanner =
     expandedOverview &&
     overviewState &&
     !bkNudgeDismissed &&
     (!overviewState.liveAnsweringOn || !overviewState.hasServices || !overviewState.hasHours);
+
+  const showHandoffBanner =
+    expandedOverview &&
+    liveAnsweringOn &&
+    !handoffBannerDismissed &&
+    data?.shop?.plan === 'professional' &&
+    data?.shop?.allow_transfers === true &&
+    !data?.shop?.handoff_phone;
   const topbarSubtitle = useMemo(() => {
     if (!data?.ok) return 'Track calls, bookings, and reminders.';
     if (data.onboardingRequired) return "Complete setup — then we'll walk you through go-live.";
@@ -603,6 +676,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
   return (
     <UserLayout styles={userDashboardStyles} scripts={userDashboardScripts} scriptPrefix="user-dashboard-live">
       <>
+        {showUpgradeModal ? <UpgradeToProModal onDismiss={dismissUpgradeModal} shopName={data?.shop?.name ?? ''} /> : null}
         <div className="app-shell user-app-shell">
           <UserPortalSidebar active="overview" />
           <main className="main">
@@ -732,6 +806,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                   return expandedOverview && overviewState ? (
                     <>
                       {showBkNudgeBanner ? <OverviewBkNudgeBanner onDismiss={dismissBkNudge} /> : null}
+                      {showHandoffBanner ? <HandoffSetupBanner onDismiss={dismissHandoffBanner} /> : null}
                       <div className={gridClass}>
                         <div className="overview-left">
                           <OverviewSystemStatusCard

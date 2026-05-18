@@ -406,7 +406,7 @@ export interface ShopsRepository {
         | 'vertical_detail'
         | 'user_name'
         | 'user_phone'
-        | 'backup_phone'
+        | 'handoff_phone'
         | 'address'
         | 'timezone'
         | 'services'
@@ -440,6 +440,7 @@ export interface ShopsRepository {
         | 'carrier_detected_at'
         | 'test_call_count'
         | 'test_call_limit'
+        | 'country_code'
       >
     >,
   ): Promise<Shop | null>;

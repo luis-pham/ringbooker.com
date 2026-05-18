@@ -5,6 +5,7 @@ import type { AgentToolContext } from '@/src/agent/tools/types';
 import { getResolvedHandoffTransport, getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 import { logger } from '@/src/backend/observability/logger';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import { normalizePhone } from '@/lib/phone-number';
 
 const schema = z.object({
   reason: z.enum([
@@ -83,7 +84,7 @@ export async function requestHumanHandoffTool(
     };
   }
 
-  const ownerPhone = ctx.shop.user_phone?.trim();
+  const ownerPhone = ctx.shop.handoff_phone?.trim() || ctx.shop.user_phone?.trim();
   if (!ownerPhone) {
     return {
       success: false,
@@ -92,6 +93,24 @@ export async function requestHumanHandoffTool(
       message_for_ai:
         'I cannot reach the team on the phone right now, but I can send them your message after this call.',
     };
+  }
+
+  // Loop detection: if ownerPhone is our own Telnyx inbound number, the call would loop.
+  const countryCode = ctx.shop.country_code ?? 'US';
+  const telnyxNumber = ctx.shop.telnyx_number?.trim();
+  if (telnyxNumber && normalizePhone(ownerPhone, countryCode) === normalizePhone(telnyxNumber, countryCode)) {
+    logger.warn({ shopId: ctx.shop.id, ownerPhone }, 'handoff_loop_detected');
+    return {
+      success: false,
+      handoff_possible: false,
+      fallback: 'send_summary',
+      message_for_ai:
+        "I'm unable to transfer your call right now. I'll make sure the team receives your message and they'll get back to you shortly.",
+    };
+  }
+  // Warn (don't block) when ownerPhone matches the business line — possible forwarding loop.
+  if (ctx.shop.phone_number && normalizePhone(ownerPhone, countryCode) === normalizePhone(ctx.shop.phone_number, countryCode)) {
+    logger.warn({ shopId: ctx.shop.id, ownerPhone }, 'handoff_target_matches_business_line');
   }
 
   if (getResolvedVoiceTransport() !== 'openai_sip_direct') {

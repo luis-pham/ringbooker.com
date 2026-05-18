@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { getCountryConfig, type CountryConfig } from 'lib/countries/config';
+import { getCountryConfig, type CountryConfig } from '@/lib/countries/config';
 import { useGoLive } from './useGoLive';
 
 /**

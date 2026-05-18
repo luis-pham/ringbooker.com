@@ -29,7 +29,7 @@ type ShopsRow = {
   brand_slug: string | null;
   phone_number: string;
   user_phone: string;
-  backup_phone: string | null;
+  handoff_phone: string | null;
   user_name: string | null;
   address: string | null;
   timezone: string;
@@ -88,7 +88,7 @@ const SHOP_SELECT_COLUMNS = [
   'brand_slug',
   'phone_number',
   'user_phone',
-  'backup_phone',
+  'handoff_phone',
   'user_name',
   'address',
   'timezone',
@@ -147,7 +147,7 @@ const CORE_SHOP_SELECT_COLUMNS = [
   'brand_slug',
   'phone_number',
   'user_phone',
-  'backup_phone',
+  'handoff_phone',
   'user_name',
   'address',
   'timezone',
@@ -388,7 +388,7 @@ function toShop(row: ShopsRow): Shop {
     brand_slug: row.brand_slug,
     phone_number: row.phone_number,
     user_phone: row.user_phone,
-    backup_phone: row.backup_phone,
+    handoff_phone: row.handoff_phone,
     user_name: row.user_name,
     address: row.address,
     timezone: row.timezone,
@@ -473,7 +473,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'brand_slug',
           'phone_number',
           'user_phone',
-          'backup_phone',
+          'handoff_phone',
           'user_name',
           'address',
           'timezone',
@@ -543,7 +543,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'brand_slug',
           'phone_number',
           'user_phone',
-          'backup_phone',
+          'handoff_phone',
           'user_name',
           'address',
           'timezone',
@@ -636,7 +636,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'brand_slug',
           'phone_number',
           'user_phone',
-          'backup_phone',
+          'handoff_phone',
           'user_name',
           'address',
           'timezone',
@@ -715,7 +715,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'brand_slug',
           'phone_number',
           'user_phone',
-          'backup_phone',
+          'handoff_phone',
           'user_name',
           'address',
           'timezone',
@@ -781,7 +781,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'vertical_detail'
         | 'user_name'
         | 'user_phone'
-        | 'backup_phone'
+        | 'handoff_phone'
         | 'address'
         | 'timezone'
         | 'services'
@@ -828,7 +828,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.vertical_detail !== undefined) payload.vertical_detail = patch.vertical_detail;
     if (patch.user_name !== undefined) payload.user_name = patch.user_name;
     if (patch.user_phone !== undefined) payload.user_phone = patch.user_phone;
-    if (patch.backup_phone !== undefined) payload.backup_phone = patch.backup_phone;
+    if (patch.handoff_phone !== undefined) payload.handoff_phone = patch.handoff_phone;
     if (patch.address !== undefined) payload.address = patch.address;
     if (patch.timezone !== undefined) payload.timezone = patch.timezone;
     if (patch.services !== undefined) payload.services = patch.services;
@@ -1142,7 +1142,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'brand_slug',
           'phone_number',
           'user_phone',
-          'backup_phone',
+          'handoff_phone',
           'user_name',
           'address',
           'timezone',
@@ -1243,7 +1243,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'brand_slug',
           'phone_number',
           'user_phone',
-          'backup_phone',
+          'handoff_phone',
           'user_name',
           'address',
           'timezone',
@@ -1324,7 +1324,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'brand_slug',
           'phone_number',
           'user_phone',
-          'backup_phone',
+          'handoff_phone',
           'user_name',
           'address',
           'timezone',
@@ -1402,7 +1402,7 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'brand_slug',
           'phone_number',
           'user_phone',
-          'backup_phone',
+          'handoff_phone',
           'user_name',
           'address',
           'timezone',
