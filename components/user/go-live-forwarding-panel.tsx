@@ -397,7 +397,7 @@ export function GoLiveForwardingPanel({
           | null;
         if (!active) return;
         if (!res.ok || !body?.ok) {
-          setShowCarrierGrid(true);
+          setShowCarrierGrid(!goLive.selectedCarrier);
           return;
         }
         setDetectedCarrier({
@@ -411,11 +411,11 @@ export function GoLiveForwardingPanel({
           goLive.selectCarrier(gridCarrier);
           setShowCarrierGrid(false);
         } else {
-          setShowCarrierGrid(true);
+          setShowCarrierGrid(!goLive.selectedCarrier);
         }
       })
       .catch(() => {
-        if (active) setShowCarrierGrid(true);
+        if (active) setShowCarrierGrid(!goLive.selectedCarrier);
       })
       .finally(() => {
         if (active) setCarrierDetectionLoaded(true);
@@ -535,14 +535,26 @@ export function GoLiveForwardingPanel({
     }
 
     if (step === 2) {
+      const showPreBillingTestLimit = !billingReady && !liveEnabled;
+      const testCallLimit = goLive.testCallLimit ?? 3;
+      const testCallCount = goLive.testCallCount ?? 0;
+      const testLimitReached = showPreBillingTestLimit && testCallCount >= testCallLimit;
       return (
         <div>
           <p className="gl-empty-note">We'll call you to make sure RingBooker is receiving calls.</p>
+          {showPreBillingTestLimit ? <p className="gl-message">{Math.min(testCallCount, testCallLimit)} of {testCallLimit} test calls used</p> : null}
+          {testLimitReached ? (
+            <section className="card soft gl-limit-card" style={{ marginTop: 14 }}>
+              <h3>Add your card to continue</h3>
+              <p className="sub">You have used all pre-billing test calls. Add your card to keep testing and finish setup.</p>
+              <button type="button" className="btn user-save" onClick={() => setSelectedStep(3)}>Add your card →</button>
+            </section>
+          ) : null}
           {goLive.forwardingTestStatus === 'pending' ? <p className="gl-message">Waiting for a forwarded call. Call your current business number from another phone and let it forward to RingBooker.</p> : null}
           {goLive.forwardingTestStatus === 'failed' ? <p className="gl-message error">The call didn't reach RingBooker. Make sure you dialed the forwarding code correctly, then try again.</p> : null}
           {forwardingVerified ? <section className="card soft gl-live-banner" style={{ marginTop: 14 }}><h3>✓ It works — RingBooker is receiving calls</h3><p className="sub">Your forwarding setup is verified.</p></section> : null}
           <div className="gl-action-row">
-            {!forwardingVerified ? <button type="button" className="btn user-save" disabled={busyAction === 'verify'} onClick={() => run('verify', goLive.runVerification, 'Verification started. Call your business number from another phone.')}>{busyAction === 'verify' ? 'Starting...' : 'Run the test call'}</button> : null}
+            {!forwardingVerified ? <button type="button" className="btn user-save" disabled={testLimitReached || busyAction === 'verify'} onClick={() => run('verify', goLive.runVerification, 'Verification started. Call your business number from another phone.')}>{busyAction === 'verify' ? 'Starting...' : 'Run the test call'}</button> : null}
             {!forwardingVerified ? <button type="button" className="btn" disabled={busyAction === 'confirm'} onClick={() => run('confirm', goLive.confirmForwarding, 'Forwarding marked verified.')}>{busyAction === 'confirm' ? 'Saving...' : 'I completed the test'}</button> : null}
             <a className="btn" href="/current-number/call-forwarding" target="_blank" rel="noreferrer">Need help?</a>
           </div>
