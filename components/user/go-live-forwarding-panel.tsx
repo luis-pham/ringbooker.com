@@ -356,6 +356,7 @@ export function GoLiveForwardingPanel({
   const { setWorkspace } = useUserWorkspace();
   const goLive = useGoLive(initialStatus);
   const [selectedStep, setSelectedStep] = useState<StepId>(1);
+  const [mobileOpenStep, setMobileOpenStep] = useState<StepId | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [dialCode, setDialCode] = useState<string | null>(null);
@@ -395,10 +396,9 @@ export function GoLiveForwardingPanel({
   }, [billingReady, forwardingConfigured, forwardingVerified, liveEnabled, goLive.canGoLive, goLive.status.billing.trialEndsAt]);
 
   useEffect(() => {
-    if (!forwardingConfigured) setSelectedStep(1);
-    else if (!forwardingVerified) setSelectedStep(2);
-    else if (!billingReady) setSelectedStep(3);
-    else setSelectedStep(4);
+    const next: StepId = !forwardingConfigured ? 1 : !forwardingVerified ? 2 : !billingReady ? 3 : 4;
+    setSelectedStep(next);
+    setMobileOpenStep(next);
   }, [billingReady, forwardingConfigured, forwardingVerified]);
 
   const selectedCarrier = goLive.selectedCarrier;
@@ -509,6 +509,7 @@ export function GoLiveForwardingPanel({
       setForwardingJustVerified(false);
       setTestCallPending(false);
       setSelectedStep(3);
+      setMobileOpenStep(3);
     }, 2000);
     return () => window.clearTimeout(id);
   }, [forwardingVerified]);
@@ -784,7 +785,7 @@ export function GoLiveForwardingPanel({
 
       <div className="gl-mobile-steps">
         {steps.map((step) => (
-          <GoLiveStepCard key={step.step} step={step.step} title={step.title} meta={step.meta} state={step.state} expanded={selectedStep === step.step || step.state === 'active'} onSelect={() => step.state !== 'locked' && setSelectedStep(step.step)}>
+          <GoLiveStepCard key={step.step} step={step.step} title={step.title} meta={step.meta} state={step.state} expanded={mobileOpenStep === step.step} onSelect={() => step.state !== 'locked' && setMobileOpenStep((prev) => prev === step.step ? null : step.step)}>
             {renderStepContent(step.step)}
           </GoLiveStepCard>
         ))}
