@@ -535,6 +535,35 @@ test('fetch follows no more than five redirects', async () => {
   assert.equal(fetchCount, 6); // Initial request plus exactly five followed redirects.
 });
 
+test('fetch rejects DNS rebinding before network fetch', async () => {
+  let lookupCount = 0;
+  let fetchCount = 0;
+  const result = await importWebsiteForOnboarding({ url: 'https://rebind.test' }, {
+    lookup: async () => {
+      lookupCount += 1;
+      return [{ address: lookupCount === 1 ? '93.184.216.34' : '127.0.0.1', family: 4 }];
+    },
+    fetcher: async (url) => {
+      fetchCount += 1;
+      return response('<h1>Should Not Fetch</h1>', url);
+    },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(fetchCount, 0);
+});
+
+test('fetch blocks redirect targets that resolve private', async () => {
+  const result = await importWebsiteForOnboarding({ url: 'https://redirect-private.test' }, {
+    lookup: async (host) => [{ address: host === 'internal.test' ? '10.0.0.5' : '93.184.216.34', family: 4 }],
+    fetcher: async (url) =>
+      new Response('', {
+        status: 302,
+        headers: { location: 'http://internal.test/admin' },
+      }) as Response & { url: string },
+  });
+  assert.equal(result.ok, false);
+});
+
 
 test('missing response body fails safely without unbounded text fallback', async () => {
   const responseWithoutBody = new Response(null, { status: 200, headers: { 'content-type': 'text/html' } }) as Response & { url: string };

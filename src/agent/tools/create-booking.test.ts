@@ -121,6 +121,14 @@ function createContext(params?: {
     } as unknown as AgentToolContext['bookingsRepository'],
     callbacksRepository: {} as AgentToolContext['callbacksRepository'],
     shopsRepository: {} as AgentToolContext['shopsRepository'],
+    customersRepository: {
+      isSmsConsented: async () => true,
+      isSmsOptedOut: async () => false,
+      setSmsConsent: async () => {},
+      setSmsOptOut: async () => {},
+      setPlatformSmsOptOut: async () => {},
+      upsert: async (customer: never) => customer,
+    } as AgentToolContext['customersRepository'],
     telephonyService: {} as AgentToolContext['telephonyService'],
   };
 
@@ -331,6 +339,9 @@ test('Mindbody request-only booking creates pending request and owner alert with
 
   const ownerAlertJob = harness.enqueuedJobs.find((job) => (job as { type?: string }).type === 'new_booking_request_owner_alert');
   assert.ok(ownerAlertJob);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'appointment_reminder_24h'), false);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'appointment_reminder_2h'), false);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'review_request_sms'), false);
 });
 
 test('Acuity fallback booking creates pending request and owner alert without confirmed claim', async () => {
@@ -370,6 +381,9 @@ test('Acuity fallback booking creates pending request and owner alert without co
     | undefined;
   assert.equal(confirmationJob?.payload?.confirmed, false);
   assert.ok(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'new_booking_request_owner_alert'));
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'appointment_reminder_24h'), false);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'appointment_reminder_2h'), false);
+  assert.equal(harness.enqueuedJobs.some((job) => (job as { type?: string }).type === 'review_request_sms'), false);
 });
 
 test('Acuity missing mapping fallback saves missing_mapping and request SMS flag', async () => {

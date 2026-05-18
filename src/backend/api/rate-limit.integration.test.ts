@@ -39,6 +39,7 @@ test('user login is rate limited after repeated failed attempts', async () => {
       headers: {
         'content-type': 'application/json',
         'origin': 'http://localhost:3000',
+        'x-rb-remote-addr': '10.0.0.99',
         'x-forwarded-for': '10.0.0.99',
       },
       body: JSON.stringify({

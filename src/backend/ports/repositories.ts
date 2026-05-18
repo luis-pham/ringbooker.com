@@ -41,8 +41,14 @@ export interface ProviderEventRecord {
   payload: unknown;
 }
 
+export type ProviderEventProcessingState = 'processing' | 'processed' | 'failed';
+
 export interface ProviderEventsRepository {
   hasProcessed(provider: string, providerEventId: string): Promise<boolean>;
+  tryMarkProcessing(event: ProviderEventRecord): Promise<{
+    acquired: boolean;
+    state?: ProviderEventProcessingState;
+  }>;
   markProcessed(event: ProviderEventRecord): Promise<void>;
   markProcessingError(provider: string, providerEventId: string, reason: string): Promise<void>;
   clearProcessingError(provider: string, providerEventId: string): Promise<void>;
@@ -407,6 +413,8 @@ export interface ShopsRepository {
         | 'user_name'
         | 'user_phone'
         | 'handoff_phone'
+        | 'handoff_availability'
+        | 'handoff_custom_hours'
         | 'address'
         | 'timezone'
         | 'services'
@@ -1089,10 +1097,16 @@ export interface VoiceCallLegsRepository {
 }
 
 export interface CustomersRepository {
-  /** Returns true if the customer has opted out of automated SMS (replied STOP). */
+  /** Returns true if the customer has opted out of automated SMS (replied STOP, either shop-level or platform-wide). */
   isSmsOptedOut(shopId: string, phone: string): Promise<boolean>;
-  /** Persist an inbound STOP reply — prevents all future automated SMS to this number. */
+  /** Persist a shop-level STOP reply. */
   setSmsOptOut(shopId: string, phone: string, optOut: boolean): Promise<void>;
-  /** Upsert a customer record (visit tracking, name, etc.). Does not touch sms_opt_out. */
-  upsert(customer: Omit<Customer, 'sms_opt_out'>): Promise<Customer>;
+  /** Persist a platform-wide STOP reply (affects all shops). */
+  setPlatformSmsOptOut(phone: string): Promise<void>;
+  /** Returns true if the customer has given explicit SMS consent. */
+  isSmsConsented(shopId: string, phone: string): Promise<boolean>;
+  /** Record explicit SMS consent from the customer (e.g. verbally during call). */
+  setSmsConsent(shopId: string, phone: string): Promise<void>;
+  /** Upsert a customer record (visit tracking, name, etc.). Does not touch sms_opt_out or sms_consent. */
+  upsert(customer: Omit<Customer, 'sms_opt_out' | 'sms_consent' | 'sms_consent_at'>): Promise<Customer>;
 }

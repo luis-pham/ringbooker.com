@@ -198,6 +198,7 @@ export async function handleTelnyxTexmlOpenAiInbound(
 
   let shopId: string | undefined;
   let billingBlockedReason: string | undefined;
+  let shopCallMaxDurationSecs: number | null = null;
   let forwardingTestAckTexml = false;
   if (!isDemoNumber && deps?.shopsRepository && form.To) {
     try {
@@ -235,8 +236,19 @@ export async function handleTelnyxTexmlOpenAiInbound(
             { callLogsRepository: deps.callLogsRepository, shopActiveCallSessionsRepository: deps.shopActiveCallSessionsRepository },
             { shop, commercialAccount },
           );
+          shopCallMaxDurationSecs = usage.limits.maxCallDurationSeconds;
           if (usage.overCapturedCallerLimit) billingBlockedReason = 'usage_limit_reached';
           else if (usage.activeLiveCalls >= usage.maxConcurrentLiveCalls) billingBlockedReason = 'concurrency_limit_reached';
+        } else {
+          billingBlockedReason = 'usage_limit_unavailable';
+          logger.warn(
+            {
+              event: 'live_answering_usage_limit_unavailable',
+              shop_id: shop.id,
+              call_session_id: form.CallSid ?? rbCallId,
+            },
+            'live_answering_usage_limit_unavailable',
+          );
         }
       }
     } catch {
@@ -254,6 +266,7 @@ export async function handleTelnyxTexmlOpenAiInbound(
       shop_id: shopId,
       billing_blocked_reason: billingBlockedReason,
       forwarding_test_ack_texml: forwardingTestAckTexml,
+      max_call_duration_seconds: shopCallMaxDurationSecs,
     },
     'telnyx_texml_openai_sip_dial_selected',
   );
@@ -268,15 +281,34 @@ export async function handleTelnyxTexmlOpenAiInbound(
     return texmlXmlResponse(buildTelnyxTexmlRejectXml());
   }
 
-  // Demo lines get a provider-side hard duration cap via `<Dial timeLimit>` — Telnyx enforces it,
-  // so it survives app restarts (unlike the in-process timer on the OpenAI SIP webhook path).
+  if (!isDemoNumber && shopId && (!shopCallMaxDurationSecs || shopCallMaxDurationSecs <= 0)) {
+    logger.error(
+      {
+        shop_id: shopId,
+        call_session_id: form.CallSid ?? rbCallId,
+        max_call_duration_seconds: shopCallMaxDurationSecs,
+      },
+      'telnyx_texml_reject_missing_shop_duration_cap',
+    );
+    incrementMetric('texml_openai_inbound_total', { outcome: 'reject_missing_duration_cap' });
+    return texmlXmlResponse(buildTelnyxTexmlRejectXml());
+  }
+
+  // Every bridged line gets a provider-side hard duration cap via `<Dial timeLimit>` — Telnyx enforces it,
+  // so it survives app restarts (unlike an in-process timer).
   const xml = buildTelnyxTexmlDialOpenAiXml(
     sipUriConfigured,
-    isDemoNumber ? { timeLimitSecs: env.TELNYX_TEXML_DEMO_MAX_DURATION_SECS } : undefined,
+    { timeLimitSecs: isDemoNumber ? env.TELNYX_TEXML_DEMO_MAX_DURATION_SECS : shopCallMaxDurationSecs ?? undefined },
   );
   incrementMetric('texml_openai_inbound_total', { outcome: 'dial_openai' });
   logger.info(
-    { responseChars: xml.length, rb_call_id: rbCallId, demo_time_limit_applied: isDemoNumber },
+    {
+      responseChars: xml.length,
+      rb_call_id: rbCallId,
+      shop_id: shopId,
+      max_call_duration_seconds: isDemoNumber ? env.TELNYX_TEXML_DEMO_MAX_DURATION_SECS : shopCallMaxDurationSecs,
+      demo_time_limit_applied: isDemoNumber,
+    },
     'telnyx_texml_openai_inbound_response_returned',
   );
   return texmlXmlResponse(xml);

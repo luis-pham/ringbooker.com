@@ -153,8 +153,13 @@ export async function handleTelnyxWebhook(
   });
 
   try {
-    const alreadyProcessed = await deps.providerEventsRepository.hasProcessed('telnyx', event.id);
-    if (alreadyProcessed) {
+    const processing = await deps.providerEventsRepository.tryMarkProcessing({
+      provider: 'telnyx',
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: parsed.data,
+    });
+    if (!processing.acquired) {
       incrementMetric('webhook_requests_total', {
         provider: 'telnyx',
         outcome: 'duplicate',
@@ -369,10 +374,13 @@ export async function handleTelnyxWebhook(
       const destinationPhone = normalizePhone(firstString(event.payload, ['to', 'to_number']));
       const callerPhone = normalizePhone(firstString(event.payload, ['from', 'from_number']));
       if (destinationPhone && callerPhone) {
+        await deps.customersRepository.setPlatformSmsOptOut(callerPhone);
         const shop = await resolveShopByInboundDid({ shopsRepository: deps.shopsRepository }, destinationPhone);
         if (shop) {
           await deps.customersRepository.setSmsOptOut(shop.id, callerPhone, true);
           log.info({ eventId: event.id, shopId: shop.id, callerPhone }, 'telnyx_sms_stop_opt_out_recorded');
+        } else {
+          log.info({ eventId: event.id, callerPhone }, 'telnyx_sms_stop_platform_opt_out_recorded');
         }
       }
     }

@@ -6,6 +6,7 @@ import type {
   BillingSubscriptionsRepository,
   BookingsRepository,
   CallbacksRepository,
+  CustomersRepository,
   JobsRepository,
   ShopAccessStatesRepository,
   ShopsRepository,
@@ -25,6 +26,7 @@ export type AgentToolContext = {
   shopsRepository: ShopsRepository;
   billingSubscriptionsRepository?: BillingSubscriptionsRepository;
   shopAccessStatesRepository?: ShopAccessStatesRepository;
+  customersRepository?: CustomersRepository;
   telephonyService: TelephonyService;
   /** Present when inbound used Telnyx Call Control (client_state on SIP). Needed for owner handoff. */
   parentTelnyxCallControlId?: string | null;

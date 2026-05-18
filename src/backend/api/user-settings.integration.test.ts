@@ -33,6 +33,7 @@ async function loginUser(app: ReturnType<typeof createBackendApp>) {
     headers: {
       'content-type': 'application/json',
       'origin': 'http://localhost:3000',
+      'x-rb-remote-addr': `127.0.0.${loginCounter}`,
       'x-forwarded-for': `127.0.0.${loginCounter}`,
     },
     body: JSON.stringify({
@@ -203,7 +204,7 @@ test('user can save business knowledge staff and FAQ fields', async () => {
   assert.equal(body.shop.faqs[0]?.question, 'Do you accept walk-ins?');
 });
 
-test('user can save optional owner SMS alert opt-in preference', async () => {
+test('generic user settings cannot mutate owner SMS alert opt-in preference', async () => {
   const { app, shopsRepository } = createUserSettingsTestApp();
   const cookie = await loginUser(app);
 
@@ -218,11 +219,39 @@ test('user can save optional owner SMS alert opt-in preference', async () => {
     body: JSON.stringify({ sms_owner_opted_in: true }),
   });
 
-  assert.equal(response.status, 200);
-  const body = (await response.json()) as { ok: boolean; shop: { sms_owner_opted_in?: boolean } };
-  assert.equal(body.ok, true);
-  assert.equal(body.shop.sms_owner_opted_in, true);
-  assert.equal((await shopsRepository.findById('demo-shop'))?.sms_owner_opted_in, true);
+  assert.equal(response.status, 400);
+  assert.equal((await shopsRepository.findById('demo-shop'))?.sms_owner_opted_in, false);
+});
+
+test('generic user settings cannot mutate onboarding or forwarding state fields', async () => {
+  const { app, shopsRepository } = createUserSettingsTestApp();
+  const cookie = await loginUser(app);
+
+  const before = await shopsRepository.findById('demo-shop');
+  const response = await app.request('/user/settings', {
+    method: 'PUT',
+    headers: {
+      cookie,
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      current_onboarding_step: 99,
+      setup_method: 'new_number',
+      forwarding_type: 'all',
+      forwarding_carrier: 'att',
+      forwarding_country: 'us',
+    }),
+  });
+
+  assert.equal(response.status, 400);
+  const after = await shopsRepository.findById('demo-shop');
+  assert.equal(after?.current_onboarding_step, before?.current_onboarding_step);
+  assert.equal(after?.setup_method, before?.setup_method);
+  assert.equal(after?.forwarding_type, before?.forwarding_type);
+  assert.equal(after?.forwarding_carrier, before?.forwarding_carrier);
+  assert.equal(after?.forwarding_country, before?.forwarding_country);
 });
 
 test('user can save grouped service catalog and legacy services are derived for compatibility', async () => {

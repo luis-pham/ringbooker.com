@@ -1,7 +1,12 @@
-import type { ProviderEventRecord, ProviderEventsRepository } from '@/src/backend/ports/repositories';
+import type {
+  ProviderEventProcessingState,
+  ProviderEventRecord,
+  ProviderEventsRepository,
+} from '@/src/backend/ports/repositories';
 
 type StoredProviderEvent = ProviderEventRecord & {
   processingError?: string;
+  state: ProviderEventProcessingState;
 };
 
 function getDedupeKey(provider: string, providerEventId: string): string {
@@ -15,9 +20,21 @@ export class InMemoryProviderEventsRepository implements ProviderEventsRepositor
     return this.processed.has(getDedupeKey(provider, providerEventId));
   }
 
+  async tryMarkProcessing(event: ProviderEventRecord): Promise<{
+    acquired: boolean;
+    state?: ProviderEventProcessingState;
+  }> {
+    const dedupeKey = getDedupeKey(event.provider, event.providerEventId);
+    const existing = this.processed.get(dedupeKey);
+    if (existing) return { acquired: false, state: existing.state };
+    this.processed.set(dedupeKey, { ...event, state: 'processing' });
+    return { acquired: true, state: 'processing' };
+  }
+
   async markProcessed(event: ProviderEventRecord): Promise<void> {
     this.processed.set(getDedupeKey(event.provider, event.providerEventId), {
       ...event,
+      state: 'processed',
       processingError: undefined,
     });
   }
@@ -27,6 +44,7 @@ export class InMemoryProviderEventsRepository implements ProviderEventsRepositor
     const existing = this.processed.get(dedupeKey);
     if (!existing) return;
     existing.processingError = reason;
+    existing.state = 'failed';
     this.processed.set(dedupeKey, existing);
   }
 

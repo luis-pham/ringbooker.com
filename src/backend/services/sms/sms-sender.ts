@@ -30,7 +30,7 @@ function getCurrentHourInTimezone(timezone: string): number {
 export async function sendSms(
   smsService: SmsService,
   params: SendSmsParams,
-): Promise<{ sent: boolean; reason?: string }> {
+): Promise<{ sent: false; reason: string } | { sent: true; sms: Awaited<ReturnType<SmsService['sendSms']>> }> {
   const countryCode = (params.shop.country_code ?? 'US').toUpperCase();
   const config = getCountryConfig(countryCode);
 
@@ -38,12 +38,16 @@ export async function sendSms(
     return { sent: false, reason: `sms_not_supported:${config.iso2}` };
   }
 
+  if (!params.to.startsWith(config.phonePrefix)) {
+    return { sent: false, reason: 'international_recipient' };
+  }
+
   const hour = getCurrentHourInTimezone(params.shop.timezone);
   if (hour < config.sms.quietHours.start || hour >= config.sms.quietHours.end) {
     return { sent: false, reason: 'quiet_hours' };
   }
 
-  await smsService.sendSms({
+  const sms = await smsService.sendSms({
     to: params.to,
     from: '',
     body: params.body,
@@ -54,5 +58,5 @@ export async function sendSms(
     idempotencyKey: params.idempotencyKey,
   });
 
-  return { sent: true };
+  return { sent: true, sms };
 }

@@ -5,7 +5,14 @@ import type { AgentToolContext } from '@/src/agent/tools/types';
 import { getResolvedHandoffTransport, getResolvedVoiceTransport } from '@/src/backend/config/voice-transport';
 import { logger } from '@/src/backend/observability/logger';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import {
+  evaluateOwnerHandoffDestination,
+  logBlockedOwnerHandoffDestination,
+} from '@/src/backend/services/calls/destination-policy';
+import { consumeRateLimit, RATE_LIMIT_POLICIES } from '@/src/backend/security/rate-limit';
 import { normalizePhone } from '@/lib/phone-number';
+import { isWithinHours } from '@/lib/time-utils';
+import type { Shop } from '@/src/backend/domain/types';
 
 const schema = z.object({
   reason: z.enum([
@@ -46,6 +53,24 @@ export type RequestHumanHandoffResult =
       message_for_ai: string;
     };
 
+function isHandoffAvailable(shop: Shop): { available: boolean; reason?: 'outside_business_hours' | 'outside_custom_hours' } {
+  switch (shop.handoff_availability) {
+    case 'always':
+      return { available: true };
+    case 'custom':
+      if (!shop.handoff_custom_hours || !shop.timezone) return { available: true };
+      return isWithinHours(shop.handoff_custom_hours, shop.timezone)
+        ? { available: true }
+        : { available: false, reason: 'outside_custom_hours' };
+    case 'business_hours':
+    default:
+      if (!shop.hours || Object.keys(shop.hours).length === 0 || !shop.timezone) return { available: true };
+      return isWithinHours(shop.hours, shop.timezone)
+        ? { available: true }
+        : { available: false, reason: 'outside_business_hours' };
+  }
+}
+
 /**
  * Telnyx Call Control handoff for OpenAI SIP direct — requires parent PSTN `call_control_id`
  * (via Call Control ingress + client_state). Pure TeXML → OpenAI SIP does not carry that id → controlled failure.
@@ -84,6 +109,18 @@ export async function requestHumanHandoffTool(
     };
   }
 
+  const availability = isHandoffAvailable(ctx.shop);
+  if (!availability.available) {
+    logger.info({ shopId: ctx.shop.id, reason: availability.reason }, 'handoff_outside_availability_hours');
+    return {
+      success: false,
+      handoff_possible: false,
+      fallback: 'send_summary',
+      message_for_ai:
+        "The team isn't available to take calls right now. I can make sure they get your details and follow up during business hours.",
+    };
+  }
+
   const ownerPhone = ctx.shop.handoff_phone?.trim() || ctx.shop.user_phone?.trim();
   if (!ownerPhone) {
     return {
@@ -111,6 +148,43 @@ export async function requestHumanHandoffTool(
   // Warn (don't block) when ownerPhone matches the business line — possible forwarding loop.
   if (ctx.shop.phone_number && normalizePhone(ownerPhone, countryCode) === normalizePhone(ctx.shop.phone_number, countryCode)) {
     logger.warn({ shopId: ctx.shop.id, ownerPhone }, 'handoff_target_matches_business_line');
+  }
+
+  const destination = evaluateOwnerHandoffDestination({
+    shop: ctx.shop,
+    ownerPhone,
+  });
+  if (!destination.ok) {
+    logBlockedOwnerHandoffDestination({
+      shopId: ctx.shop.id,
+      rbCallId: ctx.rbCallId ?? ctx.requestId,
+      reason: destination.reason,
+    });
+    return {
+      success: false,
+      handoff_possible: false,
+      fallback: 'send_summary',
+      message_for_ai:
+        "I'm unable to transfer your call right now. I'll make sure the team receives your message and they'll get back to you shortly.",
+    };
+  }
+
+  const [shopHandoffLimit, globalHandoffLimit] = await Promise.all([
+    consumeRateLimit(RATE_LIMIT_POLICIES.owner_handoff_shop, `shop:${ctx.shop.id}`),
+    consumeRateLimit(RATE_LIMIT_POLICIES.owner_handoff_global, 'global'),
+  ]);
+  if (!shopHandoffLimit.ok || !globalHandoffLimit.ok) {
+    logger.warn(
+      { shopId: ctx.shop.id, shopLimited: !shopHandoffLimit.ok, globalLimited: !globalHandoffLimit.ok },
+      'owner_handoff_rate_limited',
+    );
+    return {
+      success: false,
+      handoff_possible: false,
+      fallback: 'send_summary',
+      message_for_ai:
+        "I'm unable to transfer your call right now. I'll make sure the team receives your message and they'll get back to you shortly.",
+    };
   }
 
   if (getResolvedVoiceTransport() !== 'openai_sip_direct') {
@@ -198,7 +272,9 @@ export async function requestHumanHandoffTool(
     shopId: ctx.shop.id,
     parentCallControlId: parentId,
     openAiLegCallControlId: ctx.openAiLegCallControlId ?? undefined,
-    ownerPhone,
+    ownerPhone: destination.e164,
+    ownerPhoneVerified: ctx.shop.sms_owner_opted_in === true,
+    shopCountryCode: ctx.shop.country_code ?? 'US',
     inboundDid: ctx.shop.phone_number ?? ctx.shop.telnyx_number ?? '',
     rbCallId,
     reason: parsed.data.reason,

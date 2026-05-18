@@ -30,10 +30,12 @@ export interface SmsService {
 
 export const SMS_REMINDER_24H = (shop: Shop, booking: BookingView) =>
   `${shop.name}: Reminder: You have ${booking.service} tomorrow at ${booking.localTimeLabel}. ` +
-  'Reply C to confirm or call/text us to reschedule.';
+  'Reply C to confirm or call/text us to reschedule.' +
+  '\nReply STOP to opt out.';
 
 export const SMS_REMINDER_2H = (shop: Shop, booking: BookingView) =>
-  `${shop.name}: Reminder: Your appointment is in 2 hours at ${booking.localTimeLabel}.`;
+  `${shop.name}: Reminder: Your appointment is in 2 hours at ${booking.localTimeLabel}.` +
+  '\nReply STOP to opt out.';
 
 export const SMS_MISSED_CALL = (shop: Shop) =>
   `${shop.name}: We missed your call. Reply YES and we will call you back, ` +

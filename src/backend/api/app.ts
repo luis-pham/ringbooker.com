@@ -90,6 +90,10 @@ import type {
 import type { WebDemoSessionAdminRecord, WebDemoSessionStatus, WebDemoSessionsRepository } from '@/src/backend/ports/web-demo-sessions';
 import type { BillingProviderAdapter } from '@/src/backend/services/billing/types';
 import { createNoCardTrialForShop } from '@/src/backend/services/billing/no-card-trial';
+import {
+  reminderSourceFromBooking,
+  scheduleBookingFollowupJobs,
+} from '@/src/backend/services/bookings/reminder-scheduling';
 import { buildAdminShopStatus } from '@/src/backend/services/admin/admin-shop-status';
 import { getShopBillingAccess, isBillingTrialStillValid, type BillingBlockReason, type ShopBillingAccess } from '@/src/backend/services/billing/access';
 import { resolveGoLiveDashboardPrimaryCta } from '@/src/backend/services/billing/go-live-dashboard';
@@ -201,6 +205,36 @@ const jobTypeSchema = z.enum([
   'trial_reminder_email',
   'trial_expiry_check',
 ]);
+
+const BODY_LIMITS = {
+  defaultPublic: 256 * 1024,
+  auth: 32 * 1024,
+  contact: 64 * 1024,
+  publicDemoRealtime: 96 * 1024,
+  websiteImport: 8 * 1024,
+  webhook: 1024 * 1024,
+} as const;
+
+function bodyLimitForPath(pathname: string): number {
+  if (pathname.includes('/webhooks/') || pathname.includes('/telnyx/texml/inbound')) return BODY_LIMITS.webhook;
+  if (pathname.includes('/auth/')) return BODY_LIMITS.auth;
+  if (pathname.includes('/public/contact/')) return BODY_LIMITS.contact;
+  if (pathname.includes('/public/demo/realtime-session')) return BODY_LIMITS.publicDemoRealtime;
+  if (pathname.includes('/import-website') || pathname.includes('/read-website')) return BODY_LIMITS.websiteImport;
+  return BODY_LIMITS.defaultPublic;
+}
+
+function enforceRequestBodySize(c: Context): Response | null {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(c.req.method.toUpperCase())) return null;
+  const raw = c.req.header('content-length')?.trim();
+  if (!raw) return null;
+  const bytes = Number(raw);
+  const limit = bodyLimitForPath(c.req.path);
+  if (Number.isFinite(bytes) && bytes > limit) {
+    return c.json({ ok: false, error: 'payload_too_large' }, 413);
+  }
+  return null;
+}
 
 const enqueueJobSchema = z.object({
   shopId: z.string().min(1),
@@ -515,12 +549,6 @@ const userSettingsBaseSchema = z.object({
   website_url: z.string().url().optional().or(z.literal('')),
   languages: z.array(z.string()).optional(),
   not_offered_services: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
-  current_onboarding_step: z.coerce.number().int().min(1).max(4).optional(),
-  setup_method: z.enum(['forward', 'new_number']).optional(),
-  forwarding_type: z.enum(['no_answer', 'all', 'busy', 'unreachable']).optional(),
-  forwarding_carrier: z.string().optional(),
-  forwarding_country: z.string().optional(),
-  sms_owner_opted_in: z.boolean().optional(),
 });
 
 const serviceItemSchema = z.object({
@@ -602,6 +630,8 @@ const userSettingsUpdateSchema = userSettingsBaseSchema.extend({
   staff: z.array(staffMemberSchema).max(50).optional(),
   faqs: z.array(businessFaqItemSchema).max(100).optional(),
   hours: z.record(z.string(), businessHoursEntrySchema).optional(),
+  handoff_availability: z.enum(['business_hours', 'always', 'custom']).optional(),
+  handoff_custom_hours: z.record(z.string(), businessHoursEntrySchema).nullable().optional(),
   ai_voice: z.string().min(1).max(80).nullable().optional(),
   ai_welcome_message: z.string().min(1).max(240).nullable().optional(),
   ai_custom_instructions: z.string().min(1).max(2000).nullable().optional(),
@@ -1254,17 +1284,13 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   user_name: 'edit_business_profile',
   user_phone: 'edit_business_profile',
   handoff_phone: 'edit_business_profile',
+  handoff_availability: 'edit_transfer_settings',
+  handoff_custom_hours: 'edit_transfer_settings',
   address: 'edit_business_profile',
   timezone: 'edit_business_profile',
   booking_url: 'edit_booking_url',
   website_url: 'edit_business_profile',
   languages: 'edit_business_profile',
-  current_onboarding_step: 'edit_business_profile',
-  setup_method: 'edit_business_profile',
-  forwarding_type: 'edit_business_profile',
-  forwarding_carrier: 'edit_business_profile',
-  forwarding_country: 'edit_business_profile',
-  sms_owner_opted_in: 'edit_business_profile',
   cancel_policy: 'edit_cancel_policy',
   promotions: 'edit_promotions',
   services: 'edit_services',
@@ -1297,6 +1323,8 @@ function splitUserSettingsPatchByPlan(
         | 'user_name'
       | 'user_phone'
       | 'handoff_phone'
+      | 'handoff_availability'
+      | 'handoff_custom_hours'
       | 'address'
       | 'timezone'
       | 'services'
@@ -1378,6 +1406,8 @@ function splitUserSettingsPatchByPlan(
         | 'user_name'
         | 'user_phone'
         | 'handoff_phone'
+        | 'handoff_availability'
+        | 'handoff_custom_hours'
         | 'address'
         | 'timezone'
         | 'services'
@@ -2433,6 +2463,9 @@ export function createBackendApp(deps: {
   };
 
   app.use('*', async (c, next) => {
+    const bodySizeBlocked = enforceRequestBodySize(c);
+    if (bodySizeBlocked) return bodySizeBlocked;
+
     c.header('X-Frame-Options', 'DENY');
     c.header('X-Content-Type-Options', 'nosniff');
     c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -2491,6 +2524,17 @@ export function createBackendApp(deps: {
 
   app.get(path('/health'), (c) => c.json({ ok: true }));
   app.get(path('/readiness'), (c) => {
+    if (!ensureInternalAccess(c.req.header('x-backend-key') ?? null)) {
+      securityAudit({
+        action: 'authz_denied',
+        actorType: 'public',
+        ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+        path: c.req.path,
+        details: { reason: 'internal_key_required' },
+      });
+      return c.json({ ok: false, error: 'unauthorized' }, 401);
+    }
+
     const isProduction = process.env.NODE_ENV === 'production';
     const mode = deps.runtimeInfo?.mode ?? 'memory';
     const commProvider = deps.runtimeInfo?.commProvider ?? 'noop';
@@ -6007,6 +6051,14 @@ export function createBackendApp(deps: {
 
     const updated = await deps.bookingsRepository.updateStatusByShop(shop.id, id, next);
     if (!updated) return c.json({ ok: false, error: 'booking_not_found' }, 404);
+    if (next === 'confirmed' && deps.jobsRepository) {
+      await scheduleBookingFollowupJobs({
+        jobsRepository: deps.jobsRepository,
+        shop,
+        booking: updated,
+        source: reminderSourceFromBooking(updated),
+      });
+    }
     return c.json({ ok: true, booking: toUserBookingResponse(updated) });
   });
 
@@ -8676,6 +8728,24 @@ export function createBackendApp(deps: {
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
+    if (parsed.data.handoff_phone != null) {
+      const cc = shop.country_code ?? 'US';
+      const normalized = normalizePhoneForStorage(parsed.data.handoff_phone, cc);
+      const countryConfig = getCountryConfig(cc);
+      if (!normalized || !normalized.startsWith(countryConfig.phonePrefix)) {
+        return c.json(
+          { ok: false, error: 'invalid_handoff_phone', fields: ['handoff_phone'] },
+          400,
+        );
+      }
+      if (shop.telnyx_number && normalized === normalizePhoneForStorage(shop.telnyx_number, cc)) {
+        return c.json(
+          { ok: false, error: 'handoff_phone_loop', fields: ['handoff_phone'] },
+          400,
+        );
+      }
+    }
+
     const serviceCatalogPatch = parsed.data.service_catalog;
     const serviceCatalogEnabled = getEnv().SERVICE_CATALOG_ENABLED;
     if (serviceCatalogPatch && !serviceCatalogEnabled) {
@@ -8756,16 +8826,13 @@ export function createBackendApp(deps: {
       testCallAttemptsRepository: deps.testCallAttemptsRepository,
     });
 
-    // Warn (non-blocking) when handoff_phone could cause a forwarding loop.
+    // Warn (non-blocking) when handoff_phone matches the business line (possible forwarding loop via carrier).
     const handoffPhoneWarnings: string[] = [];
     const savedHandoffPhone = updated.handoff_phone?.trim();
     if (savedHandoffPhone && 'handoff_phone' in parsed.data) {
       const cc = updated.country_code ?? 'US';
       if (updated.phone_number && normalizePhoneForStorage(savedHandoffPhone, cc) === normalizePhoneForStorage(updated.phone_number, cc)) {
         handoffPhoneWarnings.push('matches_business_line');
-      }
-      if (updated.telnyx_number && normalizePhoneForStorage(savedHandoffPhone, cc) === normalizePhoneForStorage(updated.telnyx_number, cc)) {
-        handoffPhoneWarnings.push('possible_loop');
       }
     }
 

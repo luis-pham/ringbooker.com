@@ -140,6 +140,7 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
     config.productionLanguageDirective
       ? `LANGUAGE DIRECTIVE: ${compactPromptLine(config.productionLanguageDirective, 1200)}`
       : null,
+    config.handoffPolicy ? `HANDOFF POLICY: ${compactPromptLine(config.handoffPolicy, 400)}` : null,
     config.callerContext ? `CALLER CONTEXT: ${compactPromptLine(config.callerContext, 900)}` : null,
     config.demoContext ? `DEMO CONTEXT: ${compactPromptLine(config.demoContext, 900)}` : null,
     config.customInstructions ? `CUSTOM INSTRUCTIONS: ${compactPromptLine(config.customInstructions, 900)}` : null,

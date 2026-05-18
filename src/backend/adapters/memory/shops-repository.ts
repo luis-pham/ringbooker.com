@@ -15,6 +15,8 @@ const defaultShop: Shop = {
   brand_slug: 'ringbooker-demo-salon',
   phone_number: '+17145550123',
   user_phone: '+17145550199',
+  handoff_availability: 'business_hours' as const,
+  handoff_custom_hours: null,
   user_name: 'Demo User',
   address: '123 Main St, Garden Grove, CA',
   timezone: 'America/Los_Angeles',
@@ -156,6 +158,8 @@ export class InMemoryShopsRepository implements ShopsRepository {
       brand_slug: params.brand_slug ?? null,
       phone_number: params.phone_number,
       user_phone: params.user_phone,
+      handoff_availability: 'business_hours',
+      handoff_custom_hours: null,
       user_name: params.user_name ?? null,
       timezone: params.timezone,
       services: [],
@@ -215,6 +219,8 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'user_name'
         | 'user_phone'
         | 'handoff_phone'
+        | 'handoff_availability'
+        | 'handoff_custom_hours'
         | 'address'
         | 'timezone'
         | 'services'

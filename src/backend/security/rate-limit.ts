@@ -1,4 +1,7 @@
 import Redis from 'ioredis';
+import { isIP } from 'node:net';
+
+import { logger } from '@/src/backend/observability/logger';
 
 export type RateLimitPolicy = {
   name: string;
@@ -158,19 +161,73 @@ export async function consumeRateLimit(policy: RateLimitPolicy, identity: string
   return consumeWithMemory(policy, identity);
 }
 
+function parseIpv4(value: string): number | null {
+  const parts = value.split('.');
+  if (parts.length !== 4) return null;
+  let out = 0;
+  for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part)) return null;
+    const n = Number(part);
+    if (n < 0 || n > 255) return null;
+    out = (out << 8) + n;
+  }
+  return out >>> 0;
+}
+
+function ipv4InCidr(ip: string, cidr: string): boolean {
+  const [base, bitsRaw] = cidr.split('/');
+  const ipNum = parseIpv4(ip);
+  const baseNum = parseIpv4(base ?? '');
+  const bits = bitsRaw === undefined ? 32 : Number(bitsRaw);
+  if (ipNum === null || baseNum === null || !Number.isInteger(bits) || bits < 0 || bits > 32) return false;
+  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0;
+  return (ipNum & mask) === (baseNum & mask);
+}
+
+function trustedProxyEntries(): string[] {
+  return (process.env.TRUSTED_PROXY_IPS ?? process.env.RB_TRUSTED_PROXY_IPS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function isTrustedProxyIp(ip: string): boolean {
+  if (!ip || ip === 'unknown') return false;
+  const entries = trustedProxyEntries();
+  if (entries.length === 0) return false;
+  return entries.some((entry) => {
+    if (entry === ip) return true;
+    if (entry.includes('/') && isIP(ip) === 4) return ipv4InCidr(ip, entry);
+    return false;
+  });
+}
+
+function firstHeaderIp(value: string | null | undefined): string | null {
+  const first = value?.split(',')[0]?.trim();
+  return first && isIP(first) ? first : null;
+}
+
 export function getClientIp(headers: {
   get: (name: string) => string | null | undefined;
 }): string {
-  const forwardedFor = headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    const first = forwardedFor.split(',')[0]?.trim();
-    if (first) return first;
+  const remotePeer =
+    firstHeaderIp(headers.get('x-rb-remote-addr')) ??
+    'unknown';
+  const trustedPeer = isTrustedProxyIp(remotePeer);
+
+  if (trustedPeer) {
+    const cf = firstHeaderIp(headers.get('cf-connecting-ip'));
+    if (cf) return cf;
+    const forwardedFor = firstHeaderIp(headers.get('x-forwarded-for'));
+    if (forwardedFor) return forwardedFor;
+  } else if (headers.get('x-forwarded-for') || headers.get('cf-connecting-ip')) {
+    logger.warn(
+      { remotePeer },
+      'untrusted_proxy_headers_ignored_for_rate_limit_identity',
+    );
   }
-  const cf = headers.get('cf-connecting-ip');
-  if (cf) return cf;
-  const realIp = headers.get('x-real-ip');
-  if (realIp) return realIp;
-  return 'unknown';
+
+  return remotePeer;
 }
 
 /**
@@ -333,6 +390,9 @@ export const RATE_LIMIT_POLICIES = {
   webhook_openai: { name: 'webhook_openai', limit: 240, windowMs: 60_000 },
   /** Telnyx TeXML Voice URL → OpenAI SIP dial (isolated from JSON `webhooks/telnyx`). */
   texml_telnyx_openai_inbound: { name: 'texml_telnyx_openai_inbound', limit: 180, windowMs: 60_000 },
+  /** AI owner handoff cost guard. */
+  owner_handoff_shop: { name: 'owner_handoff_shop', limit: 5, windowMs: 15 * 60_000, blockMs: 15 * 60_000 },
+  owner_handoff_global: { name: 'owner_handoff_global', limit: 100, windowMs: 60_000, blockMs: 5 * 60_000 },
   /** Save demo form context for inbound SIP pilot (no telephony). */
   public_demo_sip_prep: { name: 'public_demo_sip_prep', limit: 8, windowMs: 15 * 60_000, blockMs: 60 * 60_000 },
   /** Burst control per OpenAI `call_id` on SIP webhook path */

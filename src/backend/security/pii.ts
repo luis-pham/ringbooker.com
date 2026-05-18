@@ -32,6 +32,18 @@ export function sanitizeForLog(value: unknown): unknown {
 
   const entries = Object.entries(value as Record<string, unknown>).map(([key, item]) => {
     const normalizedKey = key.toLowerCase();
+    if (
+      normalizedKey.includes('token') ||
+      normalizedKey.includes('secret') ||
+      normalizedKey.includes('password') ||
+      normalizedKey.includes('authorization') ||
+      normalizedKey.includes('cookie') ||
+      normalizedKey.includes('signature') ||
+      normalizedKey.includes('api_key') ||
+      normalizedKey === 'apikey'
+    ) {
+      return [key, '[REDACTED]'];
+    }
     if (normalizedKey.includes('email') && typeof item === 'string') {
       return [key, maskEmail(item)];
     }

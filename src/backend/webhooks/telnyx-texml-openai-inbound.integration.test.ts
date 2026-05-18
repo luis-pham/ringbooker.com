@@ -4,6 +4,7 @@ import { generateKeyPairSync, sign } from 'node:crypto';
 
 import { createBackendApp } from '@/src/backend/api/app';
 import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
+import { InMemoryCallLogsRepository } from '@/src/backend/adapters/memory/call-logs-repository';
 import { InMemoryForwardingTestSessionsRepository } from '@/src/backend/adapters/memory/forwarding-test-sessions-repository';
 import { InMemoryProviderEventsRepository } from '@/src/backend/adapters/memory/provider-events-repository';
 import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
@@ -60,7 +61,7 @@ test('TeXML inbound returns Dial XML for a signed request when OPENAI_SIP_URI se
   assert.equal(res.headers.get('content-type')?.toLowerCase().split(';')[0], 'text/xml');
   const text = await res.text();
   assert.ok(text.includes('<Response>'));
-  assert.ok(text.includes('<Dial>'));
+  assert.ok(text.includes('<Dial'));
   assert.ok(text.includes('sip:proj_texml_test@sip.api.openai.com;transport=tls'));
   assert.ok(text.includes('</Dial>'));
 });
@@ -183,4 +184,149 @@ test('unsigned TeXML POST does not mark forwarding test passed', async () => {
   assert.equal(latest?.status, 'pending');
   const access = await shopAccessStatesRepository.findByShopId(shop.id);
   assert.equal(access?.forwardingSetupVerifiedAt ?? null, null);
+});
+
+test('TeXML production shop Dial always includes usage duration cap', async () => {
+  applyRequiredTestEnv({
+    OPENAI_SIP_URI: 'sip:proj_texml_test@sip.api.openai.com;transport=tls',
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+  });
+  resetEnvCacheForTests();
+
+  const shopsRepository = new InMemoryShopsRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const callLogsRepository = new InMemoryCallLogsRepository();
+  const shop = await shopsRepository.create({
+    name: 'TeXML Live Salon',
+    phone_number: '+15551110001',
+    user_phone: '+15551110002',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+    active: true,
+  });
+  await shopsRepository.updateUserSettings(shop.id, {
+    vertical: 'nail_salon',
+    user_name: 'Owner',
+    hours: { mon: { open: '09:00', close: '17:00' } },
+    services: [{ name: 'Manicure', duration_min: 30, price: 30 }],
+    current_onboarding_step: 4,
+    telnyx_number: '+15552223333',
+  });
+  await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'internal',
+    plan: 'professional',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 149,
+    paymentMethodStatus: 'valid',
+  });
+  await shopAccessStatesRepository.upsert({
+    shopId: shop.id,
+    liveCallsEnabled: true,
+    goLiveAt: new Date().toISOString(),
+    forwardingSetupVerifiedAt: new Date().toISOString(),
+    forwardingSetupVerifiedVia: 'forwarding_test',
+  });
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+    callLogsRepository,
+  });
+
+  const body = new URLSearchParams({
+    From: '+15551234001',
+    To: '+15552223333',
+    CallSid: 'CA_texml_live_cap',
+  }).toString();
+  const ts = String(Math.floor(Date.now() / 1000));
+  const res = await app.request('/telnyx/texml/inbound', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+    },
+    body,
+  });
+
+  const text = await res.text();
+  assert.ok(text.includes('<Dial timeLimit="720">'));
+});
+
+test('TeXML production shop rejects when usage limits cannot be loaded', async () => {
+  applyRequiredTestEnv({
+    OPENAI_SIP_URI: 'sip:proj_texml_test@sip.api.openai.com;transport=tls',
+    TELNYX_WEBHOOK_PUBLIC_KEY: publicPem,
+  });
+  resetEnvCacheForTests();
+
+  const shopsRepository = new InMemoryShopsRepository();
+  const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+  const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+  const shop = await shopsRepository.create({
+    name: 'TeXML Fail Closed Salon',
+    phone_number: '+15551110001',
+    user_phone: '+15551110002',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+    active: true,
+  });
+  await shopsRepository.updateUserSettings(shop.id, {
+    vertical: 'nail_salon',
+    user_name: 'Owner',
+    hours: { mon: { open: '09:00', close: '17:00' } },
+    services: [{ name: 'Manicure', duration_min: 30, price: 30 }],
+    current_onboarding_step: 4,
+    telnyx_number: '+15552224444',
+  });
+  await billingSubscriptionsRepository.upsert({
+    shopId: shop.id,
+    provider: 'internal',
+    plan: 'professional',
+    status: 'active',
+    interval: 'month',
+    currency: 'USD',
+    amount: 149,
+    paymentMethodStatus: 'valid',
+  });
+  await shopAccessStatesRepository.upsert({
+    shopId: shop.id,
+    liveCallsEnabled: true,
+    goLiveAt: new Date().toISOString(),
+    forwardingSetupVerifiedAt: new Date().toISOString(),
+    forwardingSetupVerifiedVia: 'forwarding_test',
+  });
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    shopsRepository,
+    billingSubscriptionsRepository,
+    shopAccessStatesRepository,
+  });
+
+  const body = new URLSearchParams({
+    From: '+15551234001',
+    To: '+15552224444',
+    CallSid: 'CA_texml_no_usage',
+  }).toString();
+  const ts = String(Math.floor(Date.now() / 1000));
+  const res = await app.request('/telnyx/texml/inbound', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      'telnyx-timestamp': ts,
+      'telnyx-signature-ed25519': signTelnyxPayload({ body, timestamp: ts }),
+    },
+    body,
+  });
+
+  const text = await res.text();
+  assert.ok(text.includes('<Reject'));
+  assert.ok(!text.includes('<Dial'));
 });

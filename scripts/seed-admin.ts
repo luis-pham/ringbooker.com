@@ -17,10 +17,15 @@ const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY ?? '';
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL ?? 'admin@ringbooker.com').trim().toLowerCase();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'AnhDung123@4!';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? '';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.error('❌  SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in .env');
+  process.exit(1);
+}
+
+if (!ADMIN_PASSWORD || ADMIN_PASSWORD.length < 12) {
+  console.error('❌  ADMIN_PASSWORD must be set and at least 12 characters.');
   process.exit(1);
 }
 

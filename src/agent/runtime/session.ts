@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 
 import type { RealtimeAgentRuntime, StartInboundRealtimeResult } from '@/src/agent/realtime/types';
 import type { Customer, Shop, ShopRoutingRule, ToolError } from '@/src/backend/domain/types';
-import type { BookingsRepository, CallbacksRepository, JobsRepository, ShopRoutingRulesRepository, ShopsRepository } from '@/src/backend/ports/repositories';
+import type { BookingsRepository, CallbacksRepository, CustomersRepository, JobsRepository, ShopRoutingRulesRepository, ShopsRepository } from '@/src/backend/ports/repositories';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import { getCalendarProvider, type CalendarProvider } from '@/src/backend/services/calendar/types';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -13,6 +13,7 @@ import { createBookingTool } from '@/src/agent/tools/create-booking';
 import { getShopInfoTool } from '@/src/agent/tools/get-shop-info';
 import { rescheduleBookingTool } from '@/src/agent/tools/reschedule-booking';
 import { scheduleCallbackTool } from '@/src/agent/tools/schedule-callback';
+import { recordSmsConsentTool } from '@/src/agent/tools/record-sms-consent';
 import { sendBookingLinkTool } from '@/src/agent/tools/send-booking-link';
 import { transferToUserTool } from '@/src/agent/tools/transfer-to-user';
 
@@ -21,6 +22,7 @@ export type InboundAgentSessionDeps = {
   jobsRepository: JobsRepository;
   bookingsRepository: BookingsRepository;
   callbacksRepository: CallbacksRepository;
+  customersRepository?: CustomersRepository;
   telephonyService: TelephonyService;
   realtimeAgentRuntime: RealtimeAgentRuntime;
   shopRoutingRulesRepository?: ShopRoutingRulesRepository;
@@ -42,7 +44,8 @@ export type AgentToolName =
   | 'get_shop_info'
   | 'transfer_to_user'
   | 'schedule_callback'
-  | 'send_booking_link';
+  | 'send_booking_link'
+  | 'record_sms_consent';
 
 export class InboundAgentSession {
   readonly requestId: string;
@@ -109,6 +112,7 @@ export class InboundAgentSession {
       bookingsRepository: this.deps.bookingsRepository,
       callbacksRepository: this.deps.callbacksRepository,
       shopsRepository: this.deps.shopsRepository,
+      customersRepository: this.deps.customersRepository,
       telephonyService: this.deps.telephonyService,
     };
 
@@ -129,6 +133,8 @@ export class InboundAgentSession {
         return scheduleCallbackTool(ctx, input);
       case 'send_booking_link':
         return sendBookingLinkTool(ctx, input);
+      case 'record_sms_consent':
+        return recordSmsConsentTool(ctx, input);
       default:
         return {
           error: 'Unknown tool.',

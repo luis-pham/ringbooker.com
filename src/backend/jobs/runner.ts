@@ -30,6 +30,8 @@ import { renderBaseEmailHtml } from '@/src/backend/services/email/base-email-mjm
 import type { BaseEmailInput } from '@/src/backend/services/email/base-email-types';
 import { emailDefaultFrom, emailFounderFrom, emailReplyTo, emailSupportAddress } from '@/src/backend/services/email/config';
 import type { EmailCategory } from '@/src/backend/services/email/types';
+import { getCountryConfig } from '@/lib/countries/config';
+import { sendGuardedSms } from '@/src/backend/services/sms/guarded-sms';
 import { SMS_MISSED_CALL, SMS_REMINDER_24H, SMS_REMINDER_2H } from '@/src/backend/services/sms/types';
 import { formatShopDate, formatShopTime } from '@/src/shared/timezone';
 
@@ -421,7 +423,16 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
 
   const reminderPayloadSchema = z.object({
     bookingId: z.string().uuid().or(z.string().min(1)),
+    attempt: z.number().int().nonnegative().optional(),
   });
+
+  function nextSendableWindowUtc(timezone: string, countryCode: string): Date {
+    const quietEnd = getCountryConfig(countryCode).sms.quietHours.end;
+    const tzNow = new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
+    const currentMinutes = tzNow.getHours() * 60 + tzNow.getMinutes();
+    const minutesUntilEnd = quietEnd * 60 - currentMinutes;
+    return new Date(Date.now() + Math.max(minutesUntilEnd, 1) * 60 * 1000);
+  }
   const realtimeDispatchPayloadSchema = z.object({
     requestId: z.string().min(1),
     roomName: z.string().min(1),
@@ -534,25 +545,31 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           (payload.data.appointmentDate ? `\nDate: ${payload.data.appointmentDate}` : '') +
           (payload.data.appointmentTime ? `\nTime: ${payload.data.appointmentTime}` : '') +
           (payload.data.techName ? `\nWith: ${payload.data.techName}` : '') +
-          '\nSee you soon!'
+          '\nSee you soon!' +
+          `\nReply STOP to opt out of texts from ${payload.data.shopName}.`
         : `${payload.data.shopName}: We received your booking request!` +
           (payload.data.serviceName ? `\nService: ${payload.data.serviceName}` : '') +
           (payload.data.appointmentDate ? `\nRequested: ${payload.data.appointmentDate}` : '') +
           (payload.data.appointmentTime ? ` at ${payload.data.appointmentTime}` : '') +
           (payload.data.techName ? `\nWith: ${payload.data.techName}` : '') +
-          '\nThe salon will confirm your appointment shortly.';
+          '\nThe salon will confirm your appointment shortly.' +
+          `\nReply STOP to opt out of texts from ${payload.data.shopName}.`;
       const idempotencyKey = `job:${params.jobId}:booking-confirmation`;
 
       try {
-        const sms = await runtime.smsService.sendSms({
+        const sms = await sendGuardedSms({
+          smsService: runtime.smsService,
+          customersRepository: runtime.customersRepository,
+          outboundMessagesRepository: runtime.outboundMessagesRepository,
+          shop,
           to: payload.data.toPhone,
-          from: shop.phone_number,
           body,
-          shopId: shop.id,
           category: 'booking_confirmation',
           bookingId: payload.data.bookingId,
           idempotencyKey,
+          audience: 'customer',
         });
+        if (!sms.sent) return;
 
         await runtime.outboundMessagesRepository.create({
           shopId: shop.id,
@@ -562,7 +579,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           body,
           idempotencyKey,
           status: 'sent',
-          providerMessageId: sms.providerMessageId,
+          providerMessageId: sms.sms.providerMessageId,
         });
       } catch (error) {
         logger.warn(
@@ -638,15 +655,34 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       });
       const idempotencyKey = `job:${params.jobId}:reminder24h`;
 
-      const sms = await runtime.smsService.sendSms({
+      const sms = await sendGuardedSms({
+        smsService: runtime.smsService,
+        customersRepository: runtime.customersRepository,
+        outboundMessagesRepository: runtime.outboundMessagesRepository,
+        shop,
         to: booking.customerPhone,
-        from: shop.phone_number,
         body: smsBody,
-        shopId: booking.shopId,
         category: 'reminder_24h',
         bookingId: booking.id,
         idempotencyKey,
+        audience: 'customer',
       });
+      if (!sms.sent) {
+        if (sms.reason === 'quiet_hours' && (payload.data.attempt ?? 0) < 1) {
+          const runAt = nextSendableWindowUtc(shop.timezone, shop.country_code ?? 'US');
+          await runtime.jobsRepository.enqueue({
+            shopId: shop.id,
+            type: 'appointment_reminder_24h',
+            payload: { bookingId: booking.id, attempt: 1 },
+            runAt,
+            idempotencyKey: `job:${params.jobId}:reminder24h:retry1`,
+          });
+          logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id, runAt }, 'reminder_24h_rescheduled_quiet_hours');
+          return;
+        }
+        await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
+        return;
+      }
 
       await runtime.outboundMessagesRepository.create({
         shopId: booking.shopId,
@@ -656,7 +692,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         body: smsBody,
         idempotencyKey,
         status: 'sent',
-        providerMessageId: sms.providerMessageId,
+        providerMessageId: sms.sms.providerMessageId,
       });
 
       await runtime.bookingsRepository.markReminderSent(booking.id, '24h');
@@ -723,15 +759,34 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       });
       const idempotencyKey = `job:${params.jobId}:reminder2h`;
 
-      const sms = await runtime.smsService.sendSms({
+      const sms = await sendGuardedSms({
+        smsService: runtime.smsService,
+        customersRepository: runtime.customersRepository,
+        outboundMessagesRepository: runtime.outboundMessagesRepository,
+        shop,
         to: booking.customerPhone,
-        from: shop.phone_number,
         body: smsBody,
-        shopId: booking.shopId,
         category: 'reminder_2h',
         bookingId: booking.id,
         idempotencyKey,
+        audience: 'customer',
       });
+      if (!sms.sent) {
+        if (sms.reason === 'quiet_hours' && (payload.data.attempt ?? 0) < 1) {
+          const runAt = nextSendableWindowUtc(shop.timezone, shop.country_code ?? 'US');
+          await runtime.jobsRepository.enqueue({
+            shopId: shop.id,
+            type: 'appointment_reminder_2h',
+            payload: { bookingId: booking.id, attempt: 1 },
+            runAt,
+            idempotencyKey: `job:${params.jobId}:reminder2h:retry1`,
+          });
+          logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id, runAt }, 'reminder_2h_rescheduled_quiet_hours');
+          return;
+        }
+        await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
+        return;
+      }
 
       await runtime.outboundMessagesRepository.create({
         shopId: booking.shopId,
@@ -741,7 +796,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         body: smsBody,
         idempotencyKey,
         status: 'sent',
-        providerMessageId: sms.providerMessageId,
+        providerMessageId: sms.sms.providerMessageId,
       });
 
       await runtime.bookingsRepository.markReminderSent(booking.id, '2h');
@@ -778,14 +833,17 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const idempotencyKey = `job:${params.jobId}:handoff-failed-owner`;
 
       try {
-        const sms = await runtime.smsService.sendSms({
+        const sms = await sendGuardedSms({
+          smsService: runtime.smsService,
+          outboundMessagesRepository: runtime.outboundMessagesRepository,
+          shop,
           to: shop.user_phone,
-          from: shop.phone_number,
           body,
-          shopId: shop.id,
           category: 'user_alert',
           idempotencyKey,
+          audience: 'owner',
         });
+        if (!sms.sent) return;
         await runtime.outboundMessagesRepository.create({
           shopId: shop.id,
           customerPhone: shop.user_phone,
@@ -793,7 +851,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           body,
           idempotencyKey,
           status: 'sent',
-          providerMessageId: sms.providerMessageId,
+          providerMessageId: sms.sms.providerMessageId,
         });
       } catch (error) {
         logger.error({ err: error, jobId: params.jobId, shopId: shop.id }, 'handoff_failed_owner_sms_failed');
@@ -834,14 +892,18 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const smsBody = SMS_MISSED_CALL(shop);
       const idempotencyKey = `job:${params.jobId}:missed-call`;
 
-      const sms = await runtime.smsService.sendSms({
+      const sms = await sendGuardedSms({
+        smsService: runtime.smsService,
+        customersRepository: runtime.customersRepository,
+        outboundMessagesRepository: runtime.outboundMessagesRepository,
+        shop,
         to: payload.data.customerPhone,
-        from: shop.phone_number,
         body: smsBody,
-        shopId: shop.id,
         category: 'missed_call',
         idempotencyKey,
+        audience: 'customer',
       });
+      if (!sms.sent) return;
 
       await runtime.outboundMessagesRepository.create({
         shopId: shop.id,
@@ -850,7 +912,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         body: smsBody,
         idempotencyKey,
         status: 'sent',
-        providerMessageId: sms.providerMessageId,
+        providerMessageId: sms.sms.providerMessageId,
       });
     },
     booking_link_sms: async (params) => {
@@ -877,14 +939,18 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const idempotencyKey = `job:${params.jobId}:booking-link`;
 
       try {
-        const sms = await runtime.smsService.sendSms({
+        const sms = await sendGuardedSms({
+          smsService: runtime.smsService,
+          customersRepository: runtime.customersRepository,
+          outboundMessagesRepository: runtime.outboundMessagesRepository,
+          shop,
           to: payload.data.toPhone,
-          from: shop.phone_number,
           body: payload.data.message,
-          shopId: shop.id,
           category: 'booking_link',
           idempotencyKey,
+          audience: 'customer',
         });
+        if (!sms.sent) return;
 
         await runtime.outboundMessagesRepository.create({
           shopId: shop.id,
@@ -893,7 +959,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           body: payload.data.message,
           idempotencyKey,
           status: 'sent',
-          providerMessageId: sms.providerMessageId,
+          providerMessageId: sms.sms.providerMessageId,
         });
       } catch (error) {
         logger.error(
@@ -935,14 +1001,17 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const idempotencyKey = `job:${params.jobId}:cancellation-alert`;
 
       try {
-        const sms = await runtime.smsService.sendSms({
+        const sms = await sendGuardedSms({
+          smsService: runtime.smsService,
+          outboundMessagesRepository: runtime.outboundMessagesRepository,
+          shop,
           to: shop.user_phone,
-          from: shop.phone_number,
           body,
-          shopId: shop.id,
           category: 'cancellation_alert',
           idempotencyKey,
+          audience: 'owner',
         });
+        if (!sms.sent) return;
 
         await runtime.outboundMessagesRepository.create({
           shopId: shop.id,
@@ -951,7 +1020,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           body,
           idempotencyKey,
           status: 'sent',
-          providerMessageId: sms.providerMessageId,
+          providerMessageId: sms.sms.providerMessageId,
         });
       } catch (error) {
         logger.error(
@@ -1008,14 +1077,17 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const idempotencyKey = `job:${params.jobId}:booking-request-owner-alert`;
 
       try {
-        const sms = await runtime.smsService.sendSms({
+        const sms = await sendGuardedSms({
+          smsService: runtime.smsService,
+          outboundMessagesRepository: runtime.outboundMessagesRepository,
+          shop,
           to: shop.user_phone,
-          from: shop.phone_number,
           body,
-          shopId: shop.id,
           category: 'booking_request_alert',
           idempotencyKey,
+          audience: 'owner',
         });
+        if (!sms.sent) return;
 
         await runtime.outboundMessagesRepository.create({
           shopId: shop.id,
@@ -1024,7 +1096,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           body,
           idempotencyKey,
           status: 'sent',
-          providerMessageId: sms.providerMessageId,
+          providerMessageId: sms.sms.providerMessageId,
         });
       } catch (error) {
         logger.error(
@@ -1191,15 +1263,34 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       const body = `${shop.name}: Thanks for visiting us! We'd love your feedback!${reviewLinkPart} Reply STOP to opt out.`;
       const idempotencyKey = `job:${params.jobId}:review-request`;
 
-      const sms = await runtime.smsService.sendSms({
+      const sms = await sendGuardedSms({
+        smsService: runtime.smsService,
+        customersRepository: runtime.customersRepository,
+        outboundMessagesRepository: runtime.outboundMessagesRepository,
+        shop,
         to: booking.customerPhone,
-        from: shop.phone_number,
         body,
-        shopId: shop.id,
         category: 'review_request',
         bookingId: booking.id,
         idempotencyKey,
+        audience: 'customer',
       });
+      if (!sms.sent) {
+        if (sms.reason === 'quiet_hours' && (payload.data.attempt ?? 0) < 1) {
+          const runAt = nextSendableWindowUtc(shop.timezone, shop.country_code ?? 'US');
+          await runtime.jobsRepository.enqueue({
+            shopId: shop.id,
+            type: 'review_request_sms',
+            payload: { bookingId: booking.id, attempt: 1 },
+            runAt,
+            idempotencyKey: `job:${params.jobId}:review-request:retry1`,
+          });
+          logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id, runAt }, 'review_request_rescheduled_quiet_hours');
+          return;
+        }
+        await runtime.bookingsRepository.markReviewRequestSent(booking.id);
+        return;
+      }
 
       await runtime.outboundMessagesRepository.create({
         shopId: shop.id,
@@ -1209,7 +1300,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         body,
         idempotencyKey,
         status: 'sent',
-        providerMessageId: sms.providerMessageId,
+        providerMessageId: sms.sms.providerMessageId,
       });
       await runtime.bookingsRepository.markReviewRequestSent(booking.id);
     },

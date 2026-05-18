@@ -12,7 +12,7 @@ import { applyRequiredTestEnv } from '@/src/backend/test-helpers/env';
 
 applyRequiredTestEnv();
 
-test('create_booking tool persists booking and enqueues reminder/review jobs', async () => {
+test('create_booking tool persists pending manual booking without reminder/review jobs', async () => {
   const bookingsRepository = new InMemoryBookingsRepository();
   const jobsRepository = new InMemoryJobsRepository();
   const session = await createInboundAgentSession(
@@ -46,6 +46,7 @@ test('create_booking tool persists booking and enqueues reminder/review jobs', a
   const booking = await bookingsRepository.findById(bookingId);
   assert.ok(booking);
   assert.equal(booking.customerName, 'Test Customer');
+  assert.equal(booking.status, 'pending');
 
   const leasedTypes = new Set<string>();
   const farFutureNow = new Date('2100-01-01T00:00:00.000Z');
@@ -59,7 +60,7 @@ test('create_booking tool persists booking and enqueues reminder/review jobs', a
     leasedTypes.add(leased.type);
   }
 
-  assert.equal(leasedTypes.has('appointment_reminder_24h'), true);
-  assert.equal(leasedTypes.has('appointment_reminder_2h'), true);
-  assert.equal(leasedTypes.has('review_request_sms'), true);
+  assert.equal(leasedTypes.has('appointment_reminder_24h'), false);
+  assert.equal(leasedTypes.has('appointment_reminder_2h'), false);
+  assert.equal(leasedTypes.has('review_request_sms'), false);
 });

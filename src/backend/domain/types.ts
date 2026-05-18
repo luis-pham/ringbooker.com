@@ -241,6 +241,8 @@ export interface Shop {
   phone_number: string;
   user_phone: string;
   handoff_phone?: string | null;
+  handoff_availability?: 'business_hours' | 'always' | 'custom';
+  handoff_custom_hours?: BusinessHours | null;
   user_name?: string | null;
   address?: string | null;
   timezone: string;
@@ -326,6 +328,8 @@ export interface Customer {
   visit_count: number;
   notes?: string | null;
   sms_opt_out: boolean;
+  sms_consent: boolean;
+  sms_consent_at?: string | null;
   last_visit_at?: string | null;
 }
 

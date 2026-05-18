@@ -1,31 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { maskEmail, maskPhone, sanitizeForLog } from '@/src/backend/security/pii';
+import { sanitizeForLog } from './pii';
 
-test('maskEmail keeps domain and masks local part', () => {
-  assert.equal(maskEmail('user@example.com'), 'u***@example.com');
-});
-
-test('maskPhone keeps only last 4 digits', () => {
-  assert.equal(maskPhone('+1 (714) 555-0100'), '***0100');
-});
-
-test('sanitizeForLog masks nested email and phone fields', () => {
-  const masked = sanitizeForLog({
-    actorId: 'admin@example.com',
-    details: {
-      customerPhone: '+1 (714) 555-0100',
-      nested: {
-        userEmail: 'user@ringbooker.local',
-      },
+test('sanitizeForLog redacts secret-like fields and masks PII', () => {
+  const sanitized = sanitizeForLog({
+    email: 'owner@example.com',
+    customerPhone: '+14155550100',
+    client_secret: 'sk-secret',
+    accessToken: 'token-value',
+    nested: {
+      authorization: 'Bearer secret',
+      paddleSignature: 'ts=1;h1=abc',
     },
-  }) as {
-    actorId: string;
-    details: { customerPhone: string; nested: { userEmail: string } };
-  };
+  }) as Record<string, unknown>;
 
-  assert.equal(masked.actorId, 'a***@example.com');
-  assert.equal(masked.details.customerPhone, '***0100');
-  assert.equal(masked.details.nested.userEmail, 'u***@ringbooker.local');
+  assert.equal(sanitized.email, 'o***@example.com');
+  assert.equal(sanitized.customerPhone, '***0100');
+  assert.equal(sanitized.client_secret, '[REDACTED]');
+  assert.equal(sanitized.accessToken, '[REDACTED]');
+  assert.deepEqual(sanitized.nested, {
+    authorization: '[REDACTED]',
+    paddleSignature: '[REDACTED]',
+  });
 });

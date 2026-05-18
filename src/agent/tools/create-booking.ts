@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 import type { ToolError } from '@/src/backend/domain/types';
-import { canUseReminderSms, canUseReviewRequestSms } from '@/src/backend/domain/shop-plan-capabilities';
 import { logger } from '@/src/backend/observability/logger';
+import { scheduleBookingFollowupJobs } from '@/src/backend/services/bookings/reminder-scheduling';
 import { getShopCalendarProviderMetadata } from '@/src/backend/services/calendar/types';
 import {
   dateSchema,
@@ -138,76 +138,39 @@ export async function createBookingTool(
       providerErrorReason: result.providerErrorReason,
     });
 
-    const bookingAt = new Date(utcIso).getTime();
-    if (Number.isFinite(bookingAt)) {
-      const canEnqueueReminderSms = canUseReminderSms(ctx.shop.plan);
-      const canEnqueueReviewRequestSms = canUseReviewRequestSms(ctx.shop.plan);
-      const reminder24hAt = new Date(bookingAt - 24 * 60 * 60 * 1000);
-      if (ctx.shop.send_reminder_sms && !canEnqueueReminderSms) {
-        logger.warn(
-          { shopId: ctx.shop.id, plan: ctx.shop.plan, feature: 'reminder_sms' },
-          'plan_feature_locked_booking_job_enqueue_skipped',
-        );
-      }
-      if (ctx.shop.send_reminder_sms && canEnqueueReminderSms && reminder24hAt.getTime() > Date.now()) {
+    await scheduleBookingFollowupJobs({
+      jobsRepository: ctx.jobsRepository,
+      shop: ctx.shop,
+      booking,
+      source: providerMeta.type === 'booking_link' ? 'booking_link' : 'ai',
+    });
+
+    const callerPhone = ctx.callerPhone;
+    const smsConsented = callerPhone && ctx.customersRepository
+      ? await ctx.customersRepository.isSmsConsented(ctx.shop.id, callerPhone).catch(() => false)
+      : false;
+    if (smsConsented && callerPhone) {
+      try {
         await ctx.jobsRepository.enqueue({
           shopId: ctx.shop.id,
-          type: 'appointment_reminder_24h',
-          payload: { bookingId: booking.id },
-          runAt: reminder24hAt,
-          idempotencyKey: `booking:${booking.id}:reminder24h`,
+          type: 'booking_confirmation_sms',
+          payload: {
+            shopId: ctx.shop.id,
+            toPhone: callerPhone,
+            bookingId: booking.id,
+            serviceName: parsed.data.service,
+            appointmentDate: parsed.data.date,
+            appointmentTime: parsed.data.time,
+            techName: parsed.data.techName,
+            shopName: ctx.shop.name,
+            confirmed: result.confirmed,
+          },
+          runAt: new Date(),
+          idempotencyKey: `booking:${booking.id}:confirmation`,
         });
+      } catch (smsEnqueueErr) {
+        logger.warn({ err: smsEnqueueErr, shopId: ctx.shop.id, bookingId: booking.id }, 'booking_confirmation_sms_enqueue_failed');
       }
-
-      const reminder2hAt = new Date(bookingAt - 2 * 60 * 60 * 1000);
-      if (ctx.shop.send_reminder_sms && canEnqueueReminderSms && reminder2hAt.getTime() > Date.now()) {
-        await ctx.jobsRepository.enqueue({
-          shopId: ctx.shop.id,
-          type: 'appointment_reminder_2h',
-          payload: { bookingId: booking.id },
-          runAt: reminder2hAt,
-          idempotencyKey: `booking:${booking.id}:reminder2h`,
-        });
-      }
-
-      const reviewAt = new Date(bookingAt + 4 * 60 * 60 * 1000);
-      if (ctx.shop.send_review_request_sms && !canEnqueueReviewRequestSms) {
-        logger.warn(
-          { shopId: ctx.shop.id, plan: ctx.shop.plan, feature: 'review_request_sms' },
-          'plan_feature_locked_booking_job_enqueue_skipped',
-        );
-      }
-      if (ctx.shop.send_review_request_sms && canEnqueueReviewRequestSms) {
-        await ctx.jobsRepository.enqueue({
-          shopId: ctx.shop.id,
-          type: 'review_request_sms',
-          payload: { bookingId: booking.id },
-          runAt: reviewAt,
-          idempotencyKey: `booking:${booking.id}:review`,
-        });
-      }
-    }
-
-    try {
-      await ctx.jobsRepository.enqueue({
-        shopId: ctx.shop.id,
-        type: 'booking_confirmation_sms',
-        payload: {
-          shopId: ctx.shop.id,
-          toPhone: ctx.callerPhone,
-          bookingId: booking.id,
-          serviceName: parsed.data.service,
-          appointmentDate: parsed.data.date,
-          appointmentTime: parsed.data.time,
-          techName: parsed.data.techName,
-          shopName: ctx.shop.name,
-          confirmed: result.confirmed,
-        },
-        runAt: new Date(),
-        idempotencyKey: `booking:${booking.id}:confirmation`,
-      });
-    } catch (smsEnqueueErr) {
-      console.warn('booking_confirmation_sms enqueue failed', smsEnqueueErr);
     }
 
     if (!result.confirmed) {

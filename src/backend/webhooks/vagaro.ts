@@ -130,8 +130,13 @@ export async function handleVagaroWebhook(
   });
 
   try {
-    const alreadyProcessed = await deps.providerEventsRepository.hasProcessed('vagaro', event.id);
-    if (alreadyProcessed) {
+    const processing = await deps.providerEventsRepository.tryMarkProcessing({
+      provider: 'vagaro',
+      providerEventId: event.id,
+      eventType: `${event.type}.${event.action}`,
+      payload: event,
+    });
+    if (!processing.acquired) {
       incrementMetric('webhook_requests_total', {
         provider: 'vagaro',
         outcome: 'duplicate',

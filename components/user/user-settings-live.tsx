@@ -125,6 +125,8 @@ type ShopSettings = {
   user_name?: string | null;
   user_phone: string;
   handoff_phone?: string | null;
+  handoff_availability?: 'business_hours' | 'always' | 'custom' | null;
+  handoff_custom_hours?: Record<string, BusinessHoursEntry> | null;
   address?: string | null;
   timezone: string;
   services: ServiceItem[];
@@ -224,6 +226,8 @@ type SettingsState = {
   user_name: string;
   user_phone: string;
   handoff_phone: string;
+  handoff_availability: 'business_hours' | 'always' | 'custom';
+  handoff_custom_hours: Record<string, BusinessHoursEntry>;
   address: string;
   timezone: string;
   booking_url: string;
@@ -597,6 +601,8 @@ function buildInitialState(shop: ShopSettings): SettingsState {
     user_name: shop.user_name ?? '',
     user_phone: shop.user_phone,
     handoff_phone: shop.handoff_phone ?? '',
+    handoff_availability: (shop.handoff_availability ?? 'business_hours') as 'business_hours' | 'always' | 'custom',
+    handoff_custom_hours: cloneHours((shop.handoff_custom_hours as Record<string, BusinessHoursEntry> | null | undefined) ?? {}),
     address: shop.address ?? '',
     timezone: shop.timezone,
     booking_url: shop.booking_url ?? '',
@@ -629,6 +635,8 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   user_name: '',
   user_phone: '',
   handoff_phone: '',
+  handoff_availability: 'business_hours',
+  handoff_custom_hours: {},
   address: '',
   timezone: 'America/Los_Angeles',
   services: [],
@@ -794,6 +802,12 @@ export function UserSettingsLive({
   const [suggestionStatus, setSuggestionStatus] = useState<string | null>(null);
   const [savingSuggestions, setSavingSuggestions] = useState(false);
   const [handoffPhoneDraft, setHandoffPhoneDraft] = useState<string>(initialShop?.handoff_phone ?? '');
+  const [handoffAvailabilityDraft, setHandoffAvailabilityDraft] = useState<'business_hours' | 'always' | 'custom'>(
+    (initialShop?.handoff_availability ?? 'business_hours') as 'business_hours' | 'always' | 'custom',
+  );
+  const [handoffCustomHoursDraft, setHandoffCustomHoursDraft] = useState<Record<string, BusinessHoursEntry>>(
+    cloneHours((initialShop?.handoff_custom_hours as Record<string, BusinessHoursEntry> | null | undefined) ?? {}),
+  );
   const [handoffPhoneStatus, setHandoffPhoneStatus] = useState<'idle' | 'saving' | 'saved' | string>('idle');
   const [handoffPhoneWarnings, setHandoffPhoneWarnings] = useState<string[]>([]);
 
@@ -1664,6 +1678,8 @@ export function UserSettingsLive({
       const nextState = buildInitialState(nextShop);
       setForm(nextState);
       setHandoffPhoneDraft(nextShop.handoff_phone ?? '');
+      setHandoffAvailabilityDraft((nextShop.handoff_availability ?? 'business_hours') as 'business_hours' | 'always' | 'custom');
+      setHandoffCustomHoursDraft(cloneHours((nextShop.handoff_custom_hours as Record<string, BusinessHoursEntry> | null | undefined) ?? {}));
       if (body.warnings?.length) setHandoffPhoneWarnings(body.warnings);
       setCancelPreset(getPresetMatch(nextState.cancel_policy, CANCEL_POLICY_PRESETS));
       setPromoPreset(getPresetMatch(nextState.promotions, PROMOTION_PRESETS));
@@ -1682,14 +1698,19 @@ export function UserSettingsLive({
     }
   }
 
-  async function saveHandoffPhone() {
+  async function saveTransferSettings() {
     setHandoffPhoneStatus('saving');
     setHandoffPhoneWarnings([]);
     try {
+      const payload: Record<string, unknown> = {
+        handoff_phone: handoffPhoneDraft.trim() || null,
+        handoff_availability: handoffAvailabilityDraft,
+        handoff_custom_hours: handoffAvailabilityDraft === 'custom' ? handoffCustomHoursDraft : null,
+      };
       const response = await fetch('/api/backend/user/settings', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ handoff_phone: handoffPhoneDraft.trim() || null }),
+        body: JSON.stringify(payload),
       });
       const body = (await response.json()) as UserSettingsResponse;
       if (!response.ok || !body.ok || !body.shop) {
@@ -1698,6 +1719,8 @@ export function UserSettingsLive({
       }
       setShop(body.shop);
       setHandoffPhoneDraft(body.shop.handoff_phone ?? '');
+      setHandoffAvailabilityDraft((body.shop.handoff_availability ?? 'business_hours') as 'business_hours' | 'always' | 'custom');
+      setHandoffCustomHoursDraft(cloneHours((body.shop.handoff_custom_hours as Record<string, BusinessHoursEntry> | null | undefined) ?? {}));
       setHandoffPhoneWarnings(body.warnings ?? []);
       setHandoffPhoneStatus('saved');
       setTimeout(() => setHandoffPhoneStatus('idle'), 2500);
@@ -3262,42 +3285,101 @@ export function UserSettingsLive({
                       </div>
                     </div>
                     {!ownerTransferUx.locked && currentForm.allow_transfers ? (
-                      <div className="handoff-phone-section" style={{ padding: '12px 0 4px' }}>
-                        {!effectiveShop.handoff_phone ? (
-                          <div className="handoff-phone-warning" style={{ marginBottom: 10 }}>
-                            <span style={{ color: '#b45309', fontSize: 13 }}>&#9888; Add a direct mobile so RingBooker knows where to transfer calls. Without it, callers who ask for you will receive a message instead.</span>
-                          </div>
-                        ) : handoffPhoneWarnings.includes('matches_business_line') || handoffPhoneWarnings.includes('possible_loop') ? (
-                          <div className="handoff-phone-warning" style={{ marginBottom: 10 }}>
-                            <span style={{ color: '#b45309', fontSize: 13 }}>&#9888; This looks like your business line. If it forwards to RingBooker, transfers may not work. Use a direct mobile instead.</span>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                            <span style={{ color: '#16a34a', fontSize: 13 }}>&#10003; Transfers will go to {effectiveShop.handoff_phone}</span>
-                          </div>
-                        )}
-                        <div className="field" style={{ marginBottom: 0 }}>
+                      <div className="handoff-phone-section" style={{ padding: '12px 0 4px', borderTop: '1px solid #e5e7eb', marginTop: 12 }}>
+                        <div className="field" style={{ marginBottom: 12 }}>
                           <label style={{ fontSize: 13 }}>Transfer calls to</label>
-                          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                            <input
-                              value={handoffPhoneDraft}
-                              onChange={(e) => { setHandoffPhoneDraft(e.target.value); setHandoffPhoneStatus('idle'); }}
-                              placeholder="+1 (555) 000-0000"
-                              style={{ flex: 1 }}
-                              aria-label="Handoff phone number"
-                            />
-                            <button
-                              type="button"
-                              className="btn user-save"
-                              disabled={handoffPhoneStatus === 'saving'}
-                              onClick={() => { void saveHandoffPhone(); }}
-                              style={{ whiteSpace: 'nowrap' }}
-                            >
-                              {handoffPhoneStatus === 'saving' ? 'Saving...' : handoffPhoneStatus === 'saved' ? 'Saved' : 'Save number'}
-                            </button>
+                          {!effectiveShop.handoff_phone ? (
+                            <p style={{ color: '#b45309', fontSize: 12, marginBottom: 6 }}>&#9888; Add a direct mobile so RingBooker knows where to transfer calls. Without it, callers who ask for you will receive a message instead.</p>
+                          ) : handoffPhoneWarnings.includes('matches_business_line') ? (
+                            <p style={{ color: '#b45309', fontSize: 12, marginBottom: 6 }}>&#9888; This looks like your business line. If it forwards to RingBooker, transfers may not work. Use a direct mobile instead.</p>
+                          ) : (
+                            <p style={{ color: '#16a34a', fontSize: 12, marginBottom: 6 }}>&#10003; Transfers will go to {effectiveShop.handoff_phone}</p>
+                          )}
+                          <input
+                            value={handoffPhoneDraft}
+                            onChange={(e) => { setHandoffPhoneDraft(e.target.value); setHandoffPhoneStatus('idle'); }}
+                            placeholder="+1 (555) 000-0000"
+                            aria-label="Handoff phone number"
+                          />
+                        </div>
+                        <div className="field" style={{ marginBottom: handoffAvailabilityDraft === 'custom' ? 12 : 0 }}>
+                          <label style={{ fontSize: 13 }}>Transfer availability</label>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                            {(['business_hours', 'always', 'custom'] as const).map((option) => (
+                              <label key={option} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+                                <input
+                                  type="radio"
+                                  name="handoff_availability"
+                                  value={option}
+                                  checked={handoffAvailabilityDraft === option}
+                                  onChange={() => setHandoffAvailabilityDraft(option)}
+                                />
+                                {option === 'business_hours' ? 'During business hours only' : option === 'always' ? 'Always available' : 'Custom hours'}
+                              </label>
+                            ))}
                           </div>
+                        </div>
+                        {handoffAvailabilityDraft === 'custom' ? (
+                          <div className="field" style={{ marginBottom: 12 }}>
+                            <label style={{ fontSize: 13 }}>Custom transfer hours</label>
+                            <div className="sh-hours-wrap" style={{ marginTop: 8 }}>
+                              <div className="sh-hours-thead" aria-hidden="true">
+                                <span>Day</span>
+                                <span>Opens</span>
+                                <span>Closes</span>
+                                <span>Status</span>
+                              </div>
+                              <div className="hours-grid">
+                                {DAY_ORDER.map((day) => {
+                                  const entry = handoffCustomHoursDraft[day] ?? { closed: true };
+                                  const isClosed = 'closed' in entry;
+                                  const openId = `handoff-hours-open-${day}`;
+                                  const closeId = `handoff-hours-close-${day}`;
+                                  const closedLabelId = `handoff-hours-closed-label-${day}`;
+                                  return (
+                                    <div key={day} className={`hours-row ${isClosed ? 'closed' : ''}`}>
+                                      <div className="hours-day">{DAY_LABELS[day]}</div>
+                                      <div className="small-field hours-field-open">
+                                        <label htmlFor={openId}>Open</label>
+                                        <select id={openId} value={isClosed ? '09:00' : entry.open} disabled={isClosed} onChange={(e) => setHandoffCustomHoursDraft({ ...handoffCustomHoursDraft, [day]: { open: e.target.value, close: isClosed ? '18:00' : entry.close } })}>
+                                          {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
+                                        </select>
+                                      </div>
+                                      <div className="small-field hours-field-close">
+                                        <label htmlFor={closeId}>Close</label>
+                                        <select id={closeId} value={isClosed ? '18:00' : entry.close} disabled={isClosed} onChange={(e) => setHandoffCustomHoursDraft({ ...handoffCustomHoursDraft, [day]: { open: isClosed ? '09:00' : entry.open, close: e.target.value } })}>
+                                          {TIME_OPTIONS.map((time) => <option key={time} value={time}>{time}</option>)}
+                                        </select>
+                                      </div>
+                                      <div className="hours-closed-cell">
+                                        <span className="hours-closed-label" id={closedLabelId}>Closed</span>
+                                        <button
+                                          type="button"
+                                          role="switch"
+                                          aria-checked={isClosed}
+                                          aria-labelledby={closedLabelId}
+                                          className="hours-closed-toggle"
+                                          onClick={() => setHandoffCustomHoursDraft({ ...handoffCustomHoursDraft, [day]: isClosed ? { open: '09:00', close: '18:00' } : { closed: true } })}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                          <button
+                            type="button"
+                            className="btn user-save"
+                            disabled={handoffPhoneStatus === 'saving'}
+                            onClick={() => { void saveTransferSettings(); }}
+                          >
+                            {handoffPhoneStatus === 'saving' ? 'Saving...' : handoffPhoneStatus === 'saved' ? 'Saved' : 'Save transfer settings'}
+                          </button>
                           {handoffPhoneStatus !== 'idle' && handoffPhoneStatus !== 'saving' && handoffPhoneStatus !== 'saved' ? (
-                            <p style={{ color: '#dc2626', fontSize: 12, marginTop: 4 }}>{handoffPhoneStatus}</p>
+                            <span style={{ color: '#dc2626', fontSize: 12 }}>{handoffPhoneStatus}</span>
                           ) : null}
                         </div>
                       </div>

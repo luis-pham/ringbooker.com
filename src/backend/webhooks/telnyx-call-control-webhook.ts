@@ -333,8 +333,13 @@ async function processCallInitiated(
   log: ReturnType<typeof withLogContext>,
 ) {
   try {
-    const alreadyProcessed = await deps.providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
-    if (alreadyProcessed) {
+    const processing = await deps.providerEventsRepository.tryMarkProcessing({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: { event_type: event.event_type, payload: event.payload },
+    });
+    if (!processing.acquired) {
       incrementMetric('webhook_requests_total', {
         provider: 'telnyx_call_control',
         outcome: 'duplicate',
@@ -707,8 +712,13 @@ async function processCallAnswered(
   log: ReturnType<typeof withLogContext>,
 ) {
   try {
-    const alreadyProcessed = await deps.providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
-    if (alreadyProcessed) {
+    const processing = await deps.providerEventsRepository.tryMarkProcessing({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: { event_type: event.event_type, payload: event.payload },
+    });
+    if (!processing.acquired) {
       incrementMetric('webhook_requests_total', {
         provider: 'telnyx_call_control',
         outcome: 'duplicate',
@@ -836,8 +846,17 @@ async function processCallAnswered(
           }
         }
         const commitKey = openAiBridgeCommitKey(parentCallControlId, openaiLegCallControlId);
-        const alreadyBridged = await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, commitKey);
-        if (alreadyBridged) {
+        const bridgeCommit = await deps.providerEventsRepository.tryMarkProcessing({
+          provider: OPENAI_BRIDGE_COMMIT_PROVIDER,
+          providerEventId: commitKey,
+          eventType: 'openai_bridge_commit',
+          payload: {
+            sourceEventId: event.id,
+            parentCallControlId,
+            openaiLegCallControlId,
+          },
+        });
+        if (!bridgeCommit.acquired) {
           bridged = true;
           bridgeReason = 'openai_bridge_idempotent_skip';
           clearSilentCallerRiskWatch(parentCallControlId);
@@ -888,6 +907,11 @@ async function processCallAnswered(
             );
             clearSilentCallerRiskWatch(parentCallControlId);
             bridgeReason = 'openai_bridge_http_error';
+            await deps.providerEventsRepository.markProcessingError(
+              OPENAI_BRIDGE_COMMIT_PROVIDER,
+              commitKey,
+              `openai_bridge_http_error:${br.status}`,
+            );
           } else {
             await deps.providerEventsRepository.markProcessed({
               provider: OPENAI_BRIDGE_COMMIT_PROVIDER,
@@ -1266,8 +1290,13 @@ async function processCallGatherEnded(
   log: ReturnType<typeof withLogContext>,
 ) {
   try {
-    const alreadyProcessed = await deps.providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
-    if (alreadyProcessed) {
+    const processing = await deps.providerEventsRepository.tryMarkProcessing({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: { event_type: event.event_type, payload: event.payload },
+    });
+    if (!processing.acquired) {
       incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'duplicate' });
       return c.json({ ok: true, duplicate: true }, 200);
     }
@@ -1309,8 +1338,13 @@ async function processCallCost(
   callLogsRepository?: CallLogsRepository,
 ) {
   try {
-    const alreadyProcessed = await providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
-    if (alreadyProcessed) {
+    const processing = await providerEventsRepository.tryMarkProcessing({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: { event_type: event.event_type, payload: event.payload },
+    });
+    if (!processing.acquired) {
       incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'duplicate' });
       return c.json({ ok: true, duplicate: true }, 200);
     }
@@ -1402,8 +1436,13 @@ async function processCallBridged(
   log: ReturnType<typeof withLogContext>,
 ) {
   try {
-    const alreadyProcessed = await deps.providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
-    if (alreadyProcessed) {
+    const processing = await deps.providerEventsRepository.tryMarkProcessing({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: { event_type: event.event_type, payload: event.payload },
+    });
+    if (!processing.acquired) {
       incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'duplicate' });
       return c.json({ ok: true, duplicate: true }, 200);
     }
@@ -1519,8 +1558,13 @@ async function processCallHangup(
   log: ReturnType<typeof withLogContext>,
 ) {
   try {
-    const alreadyProcessed = await deps.providerEventsRepository.hasProcessed(CALL_CONTROL_EVENTS_PROVIDER, event.id);
-    if (alreadyProcessed) {
+    const processing = await deps.providerEventsRepository.tryMarkProcessing({
+      provider: CALL_CONTROL_EVENTS_PROVIDER,
+      providerEventId: event.id,
+      eventType: event.event_type,
+      payload: { event_type: event.event_type, payload: event.payload },
+    });
+    if (!processing.acquired) {
       incrementMetric('webhook_requests_total', {
         provider: 'telnyx_call_control',
         outcome: 'duplicate',

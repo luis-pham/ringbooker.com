@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { ToolError } from '@/src/backend/domain/types';
+import { logger } from '@/src/backend/observability/logger';
 import { type AgentToolContext, toToolError } from '@/src/agent/tools/types';
 
 const schema = z.object({
@@ -26,7 +27,22 @@ export async function sendBookingLinkTool(
   const callerName = parsed.data.callerName?.trim() || 'there';
   const serviceInterest = parsed.data.serviceInterest?.trim() || 'appointment';
   const toPhone = ctx.callerPhone;
-  const smsText = `${ctx.shop.name}: Hi ${callerName}! Here is the link to book your ${serviceInterest} appointment:\n${bookingUrl}`;
+  if (!toPhone) {
+    logger.warn({ shopId: ctx.shop.id, requestId: ctx.requestId }, 'booking_link_sms_skipped_no_caller_phone');
+    return { success: false, message: 'Unable to send booking link — no caller phone available.' };
+  }
+
+  const smsConsented = ctx.customersRepository
+    ? await ctx.customersRepository.isSmsConsented(ctx.shop.id, toPhone).catch(() => false)
+    : false;
+  if (!smsConsented) {
+    return {
+      success: false,
+      message: 'The caller has not given SMS consent. Ask if they agree to receive a text before using this tool.',
+    };
+  }
+
+  const smsText = `${ctx.shop.name}: Hi ${callerName}! Here is the link to book your ${serviceInterest} appointment:\n${bookingUrl}\nReply STOP to opt out.`;
 
   try {
     await ctx.jobsRepository.enqueue({

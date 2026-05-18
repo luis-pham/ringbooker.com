@@ -1,6 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { ProviderEventRecord, ProviderEventsRepository } from '@/src/backend/ports/repositories';
+import type {
+  ProviderEventProcessingState,
+  ProviderEventRecord,
+  ProviderEventsRepository,
+} from '@/src/backend/ports/repositories';
+
+function isUniqueViolation(error: { code?: string; message?: string } | null): boolean {
+  return error?.code === '23505' || /duplicate key|unique/i.test(error?.message ?? '');
+}
 
 export class SupabaseProviderEventsRepository implements ProviderEventsRepository {
   constructor(private readonly supabase: SupabaseClient) {}
@@ -20,6 +28,28 @@ export class SupabaseProviderEventsRepository implements ProviderEventsRepositor
     return Boolean(data);
   }
 
+  async tryMarkProcessing(event: ProviderEventRecord): Promise<{
+    acquired: boolean;
+    state?: ProviderEventProcessingState;
+  }> {
+    const { error } = await this.supabase.from('provider_events').insert({
+      provider: event.provider,
+      provider_event_id: event.providerEventId,
+      event_type: event.eventType,
+      payload_raw: event.payload,
+      processed_at: null,
+      processing_error: null,
+    });
+
+    if (isUniqueViolation(error)) {
+      return { acquired: false, state: 'processing' };
+    }
+    if (error) {
+      throw new Error(`provider_events_try_mark_processing_failed:${error.message}`);
+    }
+    return { acquired: true, state: 'processing' };
+  }
+
   async markProcessed(event: ProviderEventRecord): Promise<void> {
     const { error } = await this.supabase.from('provider_events').upsert(
       {
@@ -31,7 +61,7 @@ export class SupabaseProviderEventsRepository implements ProviderEventsRepositor
       },
       {
         onConflict: 'provider,provider_event_id',
-        ignoreDuplicates: true,
+        ignoreDuplicates: false,
       },
     );
 

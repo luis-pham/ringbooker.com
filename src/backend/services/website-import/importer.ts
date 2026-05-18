@@ -1,4 +1,8 @@
-import { preflightUrl, type DnsLookup } from './security';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+import { Readable } from 'node:stream';
+
+import { preflightUrl, resolveSafeUrl, type DnsLookup } from './security';
 import { detectImportSource, shouldDeepCrawlSource } from './source-routing';
 import { extractLinks, previewHtml } from './html';
 import { commonSitemapUrls, parseRobotsSitemaps, parseSitemapXml, prioritizeChildSitemaps, sitemapUrlsToCandidates } from './sitemap';
@@ -107,6 +111,51 @@ const FETCH_HEADERS = {
   'cache-control': 'no-cache',
 } as const;
 
+async function safeFetchPinned(url: string, opts: ImportOptions & { signal: AbortSignal }): Promise<Response> {
+  const resolved = await resolveSafeUrl(url, { lookup: opts.lookup });
+  const current = resolved.url;
+  const requestImpl = current.protocol === 'https:' ? httpsRequest : httpRequest;
+
+  return new Promise<Response>((resolve, reject) => {
+    const req = requestImpl(
+      {
+        protocol: current.protocol,
+        hostname: resolved.address,
+        port: current.port || undefined,
+        path: `${current.pathname}${current.search}`,
+        method: 'GET',
+        headers: {
+          ...FETCH_HEADERS,
+          host: current.host,
+        },
+        servername: current.hostname,
+        lookup: (_hostname, _lookupOpts, callback) => {
+          callback(null, resolved.address, resolved.family);
+        },
+      },
+      (res) => {
+        const headers = new Headers();
+        for (const [key, value] of Object.entries(res.headers)) {
+          if (Array.isArray(value)) headers.set(key, value.join(', '));
+          else if (value !== undefined) headers.set(key, String(value));
+        }
+        const body = Readable.toWeb(res) as ReadableStream<Uint8Array>;
+        const response = new Response(body, {
+          status: res.statusCode ?? 0,
+          statusText: res.statusMessage,
+          headers,
+        }) as Response & { url: string };
+        Object.defineProperty(response, 'url', { value: current.toString() });
+        resolve(response);
+      },
+    );
+    req.on('error', reject);
+    if (opts.signal.aborted) req.destroy(new Error('aborted'));
+    opts.signal.addEventListener('abort', () => req.destroy(new Error('aborted')), { once: true });
+    req.end();
+  });
+}
+
 async function fetchText(url: string, opts: ImportOptions): Promise<{ url: string; text: string } | null> {
   try {
     let current = (await preflightUrl(url, { lookup: opts.lookup })).toString();
@@ -116,6 +165,10 @@ async function fetchText(url: string, opts: ImportOptions): Promise<{ url: strin
     let retriesLeft = 1;
     while (true) {
       if (opts.deadline !== undefined && Date.now() >= opts.deadline) return null;
+      // Re-run DNS/scheme preflight immediately before every network attempt.
+      // This closes the gap where an attacker can pass an earlier DNS check and
+      // rebind the hostname to an internal address before fetch resolves it.
+      current = (await preflightUrl(current, { lookup: opts.lookup })).toString();
       const budgetMs = opts.deadline !== undefined ? opts.deadline - Date.now() : Number.POSITIVE_INFINITY;
       const perFetchTimeout = Math.min(opts.timeoutMs ?? 5000, budgetMs);
       if (perFetchTimeout <= 0) return null;
@@ -124,11 +177,13 @@ async function fetchText(url: string, opts: ImportOptions): Promise<{ url: strin
       try {
         let response: Response;
         try {
-          response = await (opts.fetcher ?? fetch)(current, {
-            redirect: 'manual',
-            signal: controller.signal,
-            headers: FETCH_HEADERS,
-          });
+          response = opts.fetcher
+            ? await opts.fetcher(current, {
+                redirect: 'manual',
+                signal: controller.signal,
+                headers: FETCH_HEADERS,
+              })
+            : await safeFetchPinned(current, { ...opts, signal: controller.signal });
         } catch {
           // Network error or timeout abort. Retry once if the budget allows.
           if (retriesLeft > 0 && (opts.deadline === undefined || Date.now() < opts.deadline)) {

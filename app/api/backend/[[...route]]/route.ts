@@ -98,7 +98,17 @@ function getHonoApp(): Hono {
 }
 
 function honoFetch(req: Request): Response | Promise<Response> {
-  return getHonoApp().fetch(req);
+  const headers = new Headers(req.headers);
+  // This internal header is consumed by the backend rate limiter. Never pass
+  // through a client-supplied value; deployment must opt into a platform header
+  // that the edge/proxy controls (for example x-vercel-forwarded-for or x-real-ip).
+  headers.delete('x-rb-remote-addr');
+  const platformIpHeader = process.env.RB_PLATFORM_CLIENT_IP_HEADER?.trim().toLowerCase();
+  if (platformIpHeader) {
+    const platformIp = req.headers.get(platformIpHeader)?.split(',')[0]?.trim();
+    if (platformIp) headers.set('x-rb-remote-addr', platformIp);
+  }
+  return getHonoApp().fetch(new Request(req, { headers }));
 }
 
 export const runtime = 'nodejs';

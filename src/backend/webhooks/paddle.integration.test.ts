@@ -116,6 +116,50 @@ test('paddle webhook is idempotent by event_id', async () => {
   assert.equal(syncCount, 1);
 });
 
+test('paddle duplicate webhooks racing run one billing sync', async () => {
+  applyRequiredTestEnv({ PADDLE_WEBHOOK_SECRET: 'paddle_test_secret' });
+  resetEnvCacheForTests();
+  let syncCount = 0;
+  const billingProvider: BillingProviderAdapter = {
+    provider: 'paddle',
+    async createCheckoutSession() {
+      throw new Error('not_used');
+    },
+    async syncWebhookEvent() {
+      syncCount += 1;
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      return null;
+    },
+  };
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    billingProvider,
+  });
+  const rawBody = JSON.stringify({
+    event_id: 'evt_idempotent_race_1',
+    event_type: 'transaction.completed',
+    data: { custom_data: { shop_id: 'demo-shop' } },
+  });
+  const signature = signPaddlePayload(rawBody);
+
+  const [first, second] = await Promise.all([
+    app.request('/webhooks/paddle', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'paddle-signature': signature },
+      body: rawBody,
+    }),
+    app.request('/webhooks/paddle', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'paddle-signature': signature },
+      body: rawBody,
+    }),
+  ]);
+
+  assert.equal(first.status, 200);
+  assert.equal(second.status, 200);
+  assert.equal(syncCount, 1);
+});
+
 test('paddle unmapped customer events do not send internal alert emails', async () => {
   applyRequiredTestEnv({ PADDLE_WEBHOOK_SECRET: 'paddle_test_secret' });
   resetEnvCacheForTests();

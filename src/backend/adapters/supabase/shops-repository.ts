@@ -30,6 +30,8 @@ type ShopsRow = {
   phone_number: string;
   user_phone: string;
   handoff_phone: string | null;
+  handoff_availability: string | null;
+  handoff_custom_hours: unknown;
   user_name: string | null;
   address: string | null;
   timezone: string;
@@ -89,6 +91,8 @@ const SHOP_SELECT_COLUMNS = [
   'phone_number',
   'user_phone',
   'handoff_phone',
+  'handoff_availability',
+  'handoff_custom_hours',
   'user_name',
   'address',
   'timezone',
@@ -148,6 +152,8 @@ const CORE_SHOP_SELECT_COLUMNS = [
   'phone_number',
   'user_phone',
   'handoff_phone',
+  'handoff_availability',
+  'handoff_custom_hours',
   'user_name',
   'address',
   'timezone',
@@ -389,6 +395,8 @@ function toShop(row: ShopsRow): Shop {
     phone_number: row.phone_number,
     user_phone: row.user_phone,
     handoff_phone: row.handoff_phone,
+    handoff_availability: (row.handoff_availability ?? 'business_hours') as Shop['handoff_availability'],
+    handoff_custom_hours: (row.handoff_custom_hours as Shop['handoff_custom_hours']) ?? null,
     user_name: row.user_name,
     address: row.address,
     timezone: row.timezone,
@@ -474,6 +482,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'phone_number',
           'user_phone',
           'handoff_phone',
+          'handoff_availability',
+          'handoff_custom_hours',
           'user_name',
           'address',
           'timezone',
@@ -544,6 +554,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'phone_number',
           'user_phone',
           'handoff_phone',
+          'handoff_availability',
+          'handoff_custom_hours',
           'user_name',
           'address',
           'timezone',
@@ -637,6 +649,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'phone_number',
           'user_phone',
           'handoff_phone',
+          'handoff_availability',
+          'handoff_custom_hours',
           'user_name',
           'address',
           'timezone',
@@ -716,6 +730,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'phone_number',
           'user_phone',
           'handoff_phone',
+          'handoff_availability',
+          'handoff_custom_hours',
           'user_name',
           'address',
           'timezone',
@@ -782,6 +798,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'user_name'
         | 'user_phone'
         | 'handoff_phone'
+        | 'handoff_availability'
+        | 'handoff_custom_hours'
         | 'address'
         | 'timezone'
         | 'services'
@@ -829,6 +847,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.user_name !== undefined) payload.user_name = patch.user_name;
     if (patch.user_phone !== undefined) payload.user_phone = patch.user_phone;
     if (patch.handoff_phone !== undefined) payload.handoff_phone = patch.handoff_phone;
+    if (patch.handoff_availability !== undefined) payload.handoff_availability = patch.handoff_availability;
+    if (patch.handoff_custom_hours !== undefined) payload.handoff_custom_hours = patch.handoff_custom_hours;
     if (patch.address !== undefined) payload.address = patch.address;
     if (patch.timezone !== undefined) payload.timezone = patch.timezone;
     if (patch.services !== undefined) payload.services = patch.services;
@@ -1143,6 +1163,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'phone_number',
           'user_phone',
           'handoff_phone',
+          'handoff_availability',
+          'handoff_custom_hours',
           'user_name',
           'address',
           'timezone',
@@ -1244,6 +1266,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'phone_number',
           'user_phone',
           'handoff_phone',
+          'handoff_availability',
+          'handoff_custom_hours',
           'user_name',
           'address',
           'timezone',
@@ -1325,6 +1349,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'phone_number',
           'user_phone',
           'handoff_phone',
+          'handoff_availability',
+          'handoff_custom_hours',
           'user_name',
           'address',
           'timezone',
@@ -1403,6 +1429,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
           'phone_number',
           'user_phone',
           'handoff_phone',
+          'handoff_availability',
+          'handoff_custom_hours',
           'user_name',
           'address',
           'timezone',

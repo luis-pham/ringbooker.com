@@ -50,6 +50,7 @@ export type RuntimeBusinessConfig = {
   languageOptions?: string[];
   /** Production-only; Starter plan uses English-only policy + setup metadata */
   productionLanguageDirective?: string | null;
+  handoffPolicy?: string | null;
   callerContext?: string | null;
   demoContext?: string | null;
 };

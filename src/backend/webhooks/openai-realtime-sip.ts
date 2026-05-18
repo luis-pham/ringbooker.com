@@ -303,8 +303,13 @@ export async function handleOpenAiRealtimeSipWebhook(
   if (!data?.call_id) return c.json({ ok: false }, 400);
 
   const callId = data.call_id;
-  const already = await deps.providerEventsRepository.hasProcessed('openai', webhookId);
-  if (already) {
+  const processing = await deps.providerEventsRepository.tryMarkProcessing({
+    provider: 'openai',
+    providerEventId: webhookId,
+    eventType: 'realtime.call.incoming',
+    payload: { callId, state: 'processing' },
+  });
+  if (!processing.acquired) {
     return c.json({ ok: true, deduped: true });
   }
 

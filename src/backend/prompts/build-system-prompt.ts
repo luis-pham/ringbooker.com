@@ -31,6 +31,26 @@ function renderHours(shop: Shop): string {
   return hoursList;
 }
 
+function renderHandoffPolicy(shop: Shop): string | null {
+  if (!shop.allow_transfers) return null;
+  switch (shop.handoff_availability) {
+    case 'always':
+      return 'Live transfer available at any time; attempt request_human_handoff when appropriate.';
+    case 'custom': {
+      if (!shop.handoff_custom_hours || !shop.timezone) {
+        return 'Live transfer available during custom hours; attempt request_human_handoff when appropriate.';
+      }
+      const customHoursSummary = Object.entries(shop.handoff_custom_hours)
+        .map(([day, value]) => ('closed' in value ? `${day}: closed` : `${day}: ${value.open}-${value.close}`))
+        .join(', ');
+      return `Live transfer available during custom hours (${shop.timezone}): ${customHoursSummary}. Outside these hours, capture details for follow-up.`;
+    }
+    case 'business_hours':
+    default:
+      return 'Live transfer available during business hours only. Outside business hours, capture details for follow-up instead of attempting transfer.';
+  }
+}
+
 function buildCustomerSection(customer: Customer | null): string {
   if (!customer) return 'CUSTOMER: New customer. Be welcoming and clear.';
 
@@ -162,6 +182,7 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
     }),
     ...(languageFields.languageOptions?.length ? { languageOptions: languageFields.languageOptions } : {}),
     productionLanguageDirective: languageFields.productionLanguageDirective,
+    handoffPolicy: renderHandoffPolicy(shop),
     callerContext: buildCustomerSection(promptCustomer),
   };
 }

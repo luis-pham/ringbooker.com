@@ -4,6 +4,10 @@ import { canUseOwnerTransfer } from '@/src/backend/domain/shop-plan-capabilities
 import type { ToolError } from '@/src/backend/domain/types';
 import { logger } from '@/src/backend/observability/logger';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
+import {
+  evaluateOwnerHandoffDestination,
+  logBlockedOwnerHandoffDestination,
+} from '@/src/backend/services/calls/destination-policy';
 import { type AgentToolContext, toToolError } from '@/src/agent/tools/types';
 
 const schema = z.object({
@@ -71,10 +75,26 @@ export async function transferToUserTool(
     });
   }
 
+  const destination = evaluateOwnerHandoffDestination({
+    shop: ctx.shop,
+    ownerPhone: ctx.shop.user_phone,
+  });
+  if (!destination.ok) {
+    logBlockedOwnerHandoffDestination({
+      shopId: ctx.shop.id,
+      rbCallId: ctx.rbCallId ?? ctx.requestId,
+      reason: destination.reason,
+    });
+    return toToolError('Live transfers are unavailable right now. I can help schedule a callback instead.', {
+      code: 'TRANSFER_FAILED',
+      retryable: false,
+    });
+  }
+
   try {
     const result = await ctx.telephonyService.transferLiveCallToUser({
       shopId: ctx.shop.id,
-      userPhone: ctx.shop.user_phone,
+      userPhone: destination.e164,
       roomName: ctx.roomName,
       reason: parsed.data.reason,
       idempotencyKey: `transfer:${ctx.requestId}:${ctx.shop.id}:${ctx.roomName}`,

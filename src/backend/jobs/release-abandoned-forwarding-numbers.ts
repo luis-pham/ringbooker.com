@@ -14,6 +14,7 @@ import type { BaseEmailInput } from '@/src/backend/services/email/base-email-typ
 import { emailFounderFrom, emailReplyTo } from '@/src/backend/services/email/config';
 import type { EmailService } from '@/src/backend/services/email/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
+import { sendGuardedSms } from '@/src/backend/services/sms/guarded-sms';
 import type { SmsService } from '@/src/backend/services/sms/types';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -228,14 +229,16 @@ async function sendSmsOnce(params: {
   const body = params.released
     ? `RingBooker: Your temporary forwarding number was released. ${params.cancelInstructions} Reply STOP to opt out.`
     : `RingBooker: Your forwarding setup expires soon unless billing is completed. ${params.cancelInstructions} Reply STOP to opt out.`;
-  await params.runtime.smsService.sendSms({
+  const sms = await sendGuardedSms({
+    smsService: params.runtime.smsService,
+    shop: params.shop,
     to,
-    from,
     body,
-    shopId: params.shop.id,
     category: 'user_alert',
     idempotencyKey: `forwarding-abandoned:${params.shop.id}:${params.type}:sms`,
+    audience: 'owner',
   });
+  if (!sms.sent) return false;
   await params.runtime.billingNotificationsRepository.markSent({
     shopId: params.shop.id,
     subscriptionId: params.subscriptionId,

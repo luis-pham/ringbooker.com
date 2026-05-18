@@ -27,11 +27,12 @@ test.beforeEach(() => {
 
 function createBookingsTestApp() {
   const bookingsRepository = new InMemoryBookingsRepository();
+  const jobsRepository = new InMemoryJobsRepository();
   const outboundMessagesRepository = new InMemoryOutboundMessagesRepository();
   const callLogsRepository = new InMemoryCallLogsRepository();
   const app = createBackendApp({
     providerEventsRepository: new InMemoryProviderEventsRepository(),
-    jobsRepository: new InMemoryJobsRepository(),
+    jobsRepository,
     bookingsRepository,
     callbacksRepository: new InMemoryCallbacksRepository(),
     outboundMessagesRepository,
@@ -41,7 +42,7 @@ function createBookingsTestApp() {
     authUsersRepository: new InMemoryAuthUsersRepository(),
     realtimeAgentRuntime: new MockRealtimeAgentRuntime(),
   });
-  return { app, bookingsRepository, outboundMessagesRepository, callLogsRepository };
+  return { app, bookingsRepository, outboundMessagesRepository, callLogsRepository, jobsRepository };
 }
 
 async function loginUser(app: ReturnType<typeof createBackendApp>) {
@@ -152,4 +153,86 @@ test('user bookings endpoint returns real filtered data, stats, detail, sms log,
     body: JSON.stringify({ status: 'completed' }),
   });
   assert.equal(invalid.status, 400);
+});
+
+test('confirming a booking schedules reminders when appointment time is verified and future', async () => {
+  const { app, bookingsRepository, jobsRepository } = createBookingsTestApp();
+  const cookie = await loginUser(app);
+
+  await bookingsRepository.create({
+    id: 'booking-contacted-confirm-later',
+    shopId: 'demo-shop',
+    customerPhone: '+15551230003',
+    customerName: 'Later Confirm',
+    service: 'Haircut',
+    datetimeUtc: '2099-01-02T19:00:00.000Z',
+    timezone: 'America/Chicago',
+    status: 'contacted',
+    provider: 'manual',
+    providerStatus: 'request_only',
+  });
+
+  const patch = await app.request('/user/bookings/booking-contacted-confirm-later', {
+    method: 'PATCH',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ status: 'confirmed' }),
+  });
+  assert.equal(patch.status, 200);
+
+  const leasedTypes = new Set<string>();
+  const farFutureNow = new Date('2100-01-01T00:00:00.000Z');
+  while (true) {
+    const leased = await jobsRepository.leaseNext({
+      now: farFutureNow,
+      leaseSeconds: 30,
+      workerId: 'test-worker',
+    });
+    if (!leased) break;
+    leasedTypes.add(leased.type);
+  }
+
+  assert.equal(leasedTypes.has('appointment_reminder_24h'), true);
+  assert.equal(leasedTypes.has('appointment_reminder_2h'), true);
+  assert.equal(leasedTypes.has('review_request_sms'), true);
+});
+
+test('confirming a booking_link source does not schedule time-based followups', async () => {
+  const { app, bookingsRepository, jobsRepository } = createBookingsTestApp();
+  const cookie = await loginUser(app);
+
+  await bookingsRepository.create({
+    id: 'booking-link-confirm-later',
+    shopId: 'demo-shop',
+    customerPhone: '+15551230004',
+    customerName: 'Link Customer',
+    service: 'Haircut',
+    datetimeUtc: '2099-01-03T19:00:00.000Z',
+    timezone: 'America/Chicago',
+    status: 'contacted',
+    provider: 'booking_link',
+    providerStatus: 'request_only',
+  });
+
+  const patch = await app.request('/user/bookings/booking-link-confirm-later', {
+    method: 'PATCH',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ status: 'confirmed' }),
+  });
+  assert.equal(patch.status, 200);
+
+  const leasedTypes = new Set<string>();
+  const farFutureNow = new Date('2100-01-01T00:00:00.000Z');
+  while (true) {
+    const leased = await jobsRepository.leaseNext({
+      now: farFutureNow,
+      leaseSeconds: 30,
+      workerId: 'test-worker',
+    });
+    if (!leased) break;
+    leasedTypes.add(leased.type);
+  }
+
+  assert.equal(leasedTypes.has('appointment_reminder_24h'), false);
+  assert.equal(leasedTypes.has('appointment_reminder_2h'), false);
+  assert.equal(leasedTypes.has('review_request_sms'), false);
 });

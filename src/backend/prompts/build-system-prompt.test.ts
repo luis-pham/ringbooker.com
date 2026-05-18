@@ -34,6 +34,7 @@ const returningCustomer: Customer = {
   visit_count: 4,
   notes: 'Prefers quiet appointments',
   sms_opt_out: false,
+  sms_consent: false,
 };
 
 test('Starter prompt does not inject returning caller notes or preferences', () => {

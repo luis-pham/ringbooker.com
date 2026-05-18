@@ -17,7 +17,11 @@ test('preflight rejects private and metadata IPs', async () => {
   assert.equal(isPrivateOrLocalIp('10.0.0.1'), true);
   assert.equal(isPrivateOrLocalIp('172.16.0.1'), true);
   assert.equal(isPrivateOrLocalIp('192.168.1.1'), true);
+  assert.equal(isPrivateOrLocalIp('100.64.0.1'), true);
+  assert.equal(isPrivateOrLocalIp('224.0.0.1'), true);
   assert.equal(isPrivateOrLocalIp('169.254.169.254'), true);
+  assert.equal(isPrivateOrLocalIp('fc00::1'), true);
+  assert.equal(isPrivateOrLocalIp('fe80::1'), true);
   await assert.rejects(() => preflightUrl('http://169.254.169.254/latest/meta-data'));
 });
 

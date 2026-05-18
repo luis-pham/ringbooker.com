@@ -7,6 +7,8 @@ import type { Shop } from '@/src/backend/domain/types';
 import { InMemoryBookingsRepository } from '@/src/backend/adapters/memory/bookings-repository';
 import { InMemoryCallbacksRepository } from '@/src/backend/adapters/memory/callbacks-repository';
 import { InMemoryJobsRepository } from '@/src/backend/adapters/memory/jobs-repository';
+import { InMemoryBillingSubscriptionsRepository } from '@/src/backend/adapters/memory/billing-subscriptions-repository';
+import { InMemoryShopAccessStatesRepository } from '@/src/backend/adapters/memory/shop-access-states-repository';
 import { InMemoryShopsRepository } from '@/src/backend/adapters/memory/shops-repository';
 import { NoopTelephonyService } from '@/src/backend/adapters/noop/telephony-service';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
@@ -158,6 +160,29 @@ test('transfer_to_user delegates to telephony when transfers allowed', async () 
   process.env.VOICE_TRANSPORT = 'livekit_media';
   try {
     const shopsRepo = new InMemoryShopsRepository();
+    const billingSubscriptionsRepository = new InMemoryBillingSubscriptionsRepository();
+    const shopAccessStatesRepository = new InMemoryShopAccessStatesRepository();
+    await shopsRepo.updateUserSettings('demo-shop', {
+      sms_owner_opted_in: true,
+      current_onboarding_step: 4,
+      telnyx_number: '+15551239999',
+    });
+    await billingSubscriptionsRepository.upsert({
+      shopId: 'demo-shop',
+      provider: 'internal',
+      plan: 'professional',
+      status: 'active',
+      interval: 'month',
+      currency: 'USD',
+      amount: 149,
+      paymentMethodStatus: 'valid',
+    });
+    await shopAccessStatesRepository.upsert({
+      shopId: 'demo-shop',
+      liveCallsEnabled: true,
+      forwardingSetupVerifiedAt: new Date().toISOString(),
+      forwardingSetupVerifiedVia: 'forwarding_test',
+    });
     const shop = await shopsRepo.findById('demo-shop');
     assert.ok(shop);
     const ctx = createSipAgentToolContext({
@@ -171,6 +196,8 @@ test('transfer_to_user delegates to telephony when transfers allowed', async () 
         bookingsRepository: new InMemoryBookingsRepository(),
         callbacksRepository: new InMemoryCallbacksRepository(),
         telephonyService: transferOkTelephony(),
+        billingSubscriptionsRepository,
+        shopAccessStatesRepository,
       },
     });
     const json = await executeSipShopToolCall(ctx, 'transfer_to_user', { reason: 'Caller asks for the owner' });

@@ -17,8 +17,16 @@ class MockProviderEventsRepository implements ProviderEventsRepository {
     return this.processed.some((event) => event.provider === provider && event.providerEventId === providerEventId);
   }
 
-  async markProcessed(event: ProviderEventRecord): Promise<void> {
+  async tryMarkProcessing(event: ProviderEventRecord): Promise<{ acquired: boolean; state?: 'processing' | 'processed' | 'failed' }> {
+    if (await this.hasProcessed(event.provider, event.providerEventId)) {
+      return { acquired: false, state: 'processed' };
+    }
     this.processed.push(event);
+    return { acquired: true, state: 'processing' };
+  }
+
+  async markProcessed(event: ProviderEventRecord): Promise<void> {
+    if (!(await this.hasProcessed(event.provider, event.providerEventId))) this.processed.push(event);
   }
 
   async markProcessingError(provider: string, providerEventId: string, reason: string): Promise<void> {

@@ -42,6 +42,8 @@ export interface TelephonyService {
     parentCallControlId: string;
     openAiLegCallControlId?: string;
     ownerPhone: string;
+    ownerPhoneVerified?: boolean;
+    shopCountryCode?: string | null;
     inboundDid: string;
     rbCallId: string;
     reason: string;

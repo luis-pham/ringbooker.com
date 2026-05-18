@@ -12,6 +12,10 @@ import { resolveTelnyxOutboundCallsConnectionId } from '@/src/backend/adapters/t
 import { getTelnyxCallsCreateTimeoutMs } from '@/src/backend/adapters/telnyx/telnyx-timeouts';
 import { RETRY_POLICIES } from '@/src/backend/net/provider-retry-policy';
 import { retryAsync } from '@/src/backend/net/retry';
+import {
+  evaluateOwnerHandoffDestination,
+  logBlockedOwnerHandoffDestination,
+} from '@/src/backend/services/calls/destination-policy';
 
 type TelnyxCallCreateResponse = {
   data?: {
@@ -35,6 +39,8 @@ export class TelnyxTelephonyService implements TelephonyService {
     parentCallControlId: string;
     openAiLegCallControlId?: string;
     ownerPhone: string;
+    ownerPhoneVerified?: boolean;
+    shopCountryCode?: string | null;
     inboundDid: string;
     rbCallId: string;
     reason: string;
@@ -101,8 +107,28 @@ export class TelnyxTelephonyService implements TelephonyService {
       };
     }
 
-    const owner = params.ownerPhone.replace(/[^\d+]/g, '');
-    const ownerE164 = owner.startsWith('+') ? owner : `+${owner.replace(/^\+/, '')}`;
+    const destination = evaluateOwnerHandoffDestination({
+      shop: {
+        id: params.shopId,
+        country_code: params.shopCountryCode ?? 'US',
+        sms_owner_opted_in: params.ownerPhoneVerified === true,
+      },
+      ownerPhone: params.ownerPhone,
+    });
+    if (!destination.ok) {
+      logBlockedOwnerHandoffDestination({
+        shopId: params.shopId,
+        rbCallId: params.rbCallId,
+        reason: destination.reason,
+      });
+      return {
+        started: false,
+        failureCode: `destination_policy_${destination.reason}`,
+        messageForAi:
+          "I couldn't reach the team on the phone right now. I'll make sure they get your message after this call.",
+      };
+    }
+    const ownerE164 = destination.e164;
 
     const active = await handoffRepo.findActiveByRbCallId(params.shopId, params.rbCallId);
     if (active) {
