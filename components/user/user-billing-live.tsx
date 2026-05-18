@@ -870,10 +870,10 @@ export function UserBillingLive({
                 {billingNotice === 'checkout_success' ? (
                   <section className="billing-alert-strip" style={{ borderColor: '#bbf7d0', background: '#f0fdf4', color: '#166534' }}>
                     <p>
-                      <strong>Payment setup pending.</strong> We are waiting for billing to confirm your trial. Live answering stays off until billing and phone forwarding are complete.
+                      <strong>Payment setup pending.</strong> We are waiting for billing to confirm your trial. Once confirmed, return to Go Live to switch on live answering.
                     </p>
                     <a className="btn purple" href="/user/go-live#go-live-forwarding">
-                      Continue go-live setup
+                      Switch it on →
                     </a>
                   </section>
                 ) : billingNotice === 'checkout_cancelled' ? (
@@ -916,7 +916,7 @@ export function UserBillingLive({
                     <div className="billing-trial-cta__copy">
                       <h3>Start your 14-day free trial</h3>
                       <p>
-                        No charge today · RingBooker answers live calls after billing and phone forwarding are set up.
+                        No charge today · RingBooker answers live calls once your trial is active.
                       </p>
                     </div>
                     {checkoutAvailable && availableBillingIntervals.length > 1 ? (

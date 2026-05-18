@@ -90,7 +90,7 @@ export function getPhoneSetupCopy(state: PhoneSetupState): PhoneSetupCopy {
     },
     payment_method_required: {
       title: 'Start your 14-day trial',
-      explanation: 'Add a payment method to start your 14-day live answering trial. RingBooker will not answer real calls on your business number until billing and phone forwarding are set up.',
+      explanation: 'Add a payment method to start your 14-day live answering trial. RingBooker will not answer real calls on your business number until billing is confirmed.',
       primaryLabel: 'Start 14-day trial',
       primaryTarget: 'checkout',
       secondaryLabel: 'Open Billing',

@@ -1817,7 +1817,7 @@ export function buildGoLivePaymentRequiredMessage(params?: { paddleTrialConfigVe
   const verified = params?.paddleTrialConfigVerified ?? process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true';
   return verified
     ? "Start your 14-day trial. Due today: $0. You won't be charged until your 14-day trial ends. Final total may include applicable taxes based on your location."
-    : 'Start your 14-day trial. Due today: $0. Final total may include applicable taxes based on your location. RingBooker will not answer real calls on your business number until billing and phone forwarding are set up.';
+    : 'Start your 14-day trial. Due today: $0. Final total may include applicable taxes based on your location. RingBooker will not answer real calls on your business number until billing is confirmed.';
 }
 
 async function sendPasswordResetEmail(params: {

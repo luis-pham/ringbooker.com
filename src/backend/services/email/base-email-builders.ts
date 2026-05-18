@@ -344,22 +344,22 @@ export function buildPaymentMethodAddedEmailPayload(params: {
   const phoneSetupUrl = `${base}/user/go-live`;
   const input: BaseEmailInput = {
     title: 'Payment method verified',
-    previewText: 'Continue phone setup to connect your business number.',
+    previewText: 'Your trial is active — one step left to go live.',
     heroTitle: 'Payment method verified',
     heroSubtitleHtml: `<p style="margin:0">Billing is ready for <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
     bodyHtml: [
-      '<p style="margin:0 0 12px 0">Your payment method is saved. Live answering is still off until phone setup is complete.</p>',
-      '<p style="margin:0">Next, create your RingBooker forwarding number and connect your current business phone number.</p>',
+      '<p style="margin:0 0 12px 0">Your payment method is verified and your 14-day trial is active.</p>',
+      '<p style="margin:0">Return to Go Live to switch on live answering.</p>',
     ].join(''),
-    ctaLabel: 'Continue phone setup',
-    ctaUrl: phoneSetupUrl,
+    ctaLabel: 'Switch it on',
+    ctaUrl: `${phoneSetupUrl}#go-live-forwarding`,
     signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
   };
   const text = [
     `Payment method verified for "${params.shopName}".`,
-    'Live answering is still off until phone setup is complete.',
-    'Continue phone setup to create your RingBooker forwarding number.',
-    phoneSetupUrl,
+    'Your payment method is verified and your 14-day trial is active.',
+    'Return to Go Live to switch on live answering.',
+    `${phoneSetupUrl}#go-live-forwarding`,
   ].join('\n');
   return { input, text };
 }
@@ -460,22 +460,23 @@ export function buildForwardingVerifiedEmailPayload(params: {
   appBaseUrl: string;
 }): { input: BaseEmailInput; text: string } {
   const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
-  const goLiveUrl = `${base}/user/go-live`;
+  const billingUrl = `${base}/user/billing`;
   const input: BaseEmailInput = {
     title: 'Call forwarding verified',
-    previewText: 'Forwarded calls are reaching RingBooker. Enable live answering when ready.',
+    previewText: 'Forwarded calls are reaching RingBooker. Add your card to start your free trial.',
     heroTitle: 'Forwarding is verified',
     heroSubtitleHtml: `<p style="margin:0">RingBooker confirmed forwarded calls are reaching <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
     bodyHtml:
-      '<p style="margin:0">Your phone connection is ready. Live answering is still off until you enable it. When enabled, RingBooker can answer forwarded missed, after-hours, or overflow calls.</p>',
-    ctaLabel: 'Enable live answering',
-    ctaUrl: goLiveUrl,
+      '<p style="margin:0 0 12px 0">Your phone connection is ready. The last step is adding your card to start your 14-day free trial.</p><p style="margin:0">Once your trial is active, return to Go Live to switch on live answering.</p>',
+    ctaLabel: 'Start your free trial',
+    ctaUrl: billingUrl,
     signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
   };
   const text = [
     `Call forwarding is verified for "${params.shopName}".`,
-    'Live answering is still off until you enable it.',
-    `Enable live answering: ${goLiveUrl}`,
+    'Your phone connection is ready. The last step is adding your card to start your 14-day free trial.',
+    'Once your trial is active, return to Go Live to switch on live answering.',
+    `Start your free trial: ${billingUrl}`,
   ].join('\n');
   return { input, text };
 }

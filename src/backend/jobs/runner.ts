@@ -299,6 +299,7 @@ export async function scheduleTrialLifecycleJobsWithRuntime(
 
       if (
         isShopSetupWizardComplete(shop) &&
+        !!accessState?.forwardingSetupVerifiedAt &&
         subscription &&
         subscription.status === 'trialing' &&
         subscription.paymentMethodStatus !== 'valid' &&
@@ -1347,7 +1348,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           built = buildFinishOnboardingReminderEmailPayload({ email: to!, shopName: shop.name, appBaseUrl });
           break;
         case 'add_payment_method_go_live':
-          if (!shop || !subscription || !isShopSetupWizardComplete(shop) || subscription.paymentMethodStatus === 'valid' || accessState?.liveCallsEnabled) return;
+          if (!shop || !subscription || !isShopSetupWizardComplete(shop) || !accessState?.forwardingSetupVerifiedAt || subscription.paymentMethodStatus === 'valid' || accessState?.liveCallsEnabled) return;
           from = emailFounderFrom();
           replyTo = emailReplyTo();
           category = 'add_payment_method_go_live';
