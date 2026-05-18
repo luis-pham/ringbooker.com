@@ -687,8 +687,9 @@ const siteReadStyles: string = String.raw`
   .vd-found-edit:hover{text-decoration:underline}
 
   /* ─── retry link ────────────────────────────────────────── */
-  .vd-retry-link{background:none;border:none;cursor:pointer;font-size:13px;font-weight:500;color:#9CA3AF;padding:0;margin-top:8px;display:block;text-align:center;text-decoration:underline;text-underline-offset:3px}
-  .vd-retry-link:hover{color:#6B7280}
+  .vd-retry-wrap{display:flex;justify-content:center;width:100%;margin-top:8px}
+  .vd-retry-link{background:none;border:none;cursor:pointer;font-size:13px;font-weight:400;color:#9CA3AF;padding:0;text-align:center;text-decoration:none}
+  .vd-retry-link:hover{color:#6B7280;text-decoration:none}
 
   /* ─── post-demo steps ───────────────────────────────────── */
   .vd-post-steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:20px}
@@ -701,11 +702,14 @@ const siteReadStyles: string = String.raw`
   .vd-pd-sms-card{border-radius:16px;background:#F1F5F9;padding:14px 16px;margin-bottom:14px}
   .vd-pd-sms-text{font-size:14px;line-height:1.55;color:#334155}
   .vd-pd-cap{background:#F8FAFC;border-radius:16px;padding:14px 16px;margin-bottom:16px}
-  .vd-pd-cap-row{display:flex;align-items:center;gap:10px;font-size:13px;padding:9px 0;border-bottom:1px solid #E2E8F0}
+  .vd-pd-cap-row{
+    display:grid;grid-template-columns:22px minmax(4.75rem,auto) minmax(0,1fr);
+    column-gap:16px;align-items:center;font-size:13px;padding:9px 0;border-bottom:1px solid #E2E8F0;
+  }
   .vd-pd-cap-row:last-child{border-bottom:none}
-  .vd-pd-cap-ic{font-size:15px;width:20px;text-align:center;flex-shrink:0}
-  .vd-pd-cap-k{color:#64748B;font-weight:700;width:60px;flex-shrink:0}
-  .vd-pd-cap-v{color:#111827;font-weight:700;flex:1;min-width:0}
+  .vd-pd-cap-ic{font-size:15px;width:22px;text-align:center;flex-shrink:0}
+  .vd-pd-cap-k{color:#64748B;font-weight:700;white-space:nowrap}
+  .vd-pd-cap-v{color:#111827;font-weight:700;min-width:0}
   .vd-pd-cap-empty{font-size:13px;color:#64748B;line-height:1.5}
   .vd-pd-cap-empty-sub{font-size:12px;color:#9CA3AF;line-height:1.5;margin-top:4px}
   .vd-pd-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;font-size:12px;font-weight:600;color:#64748B;margin-top:8px}
@@ -2713,7 +2717,11 @@ export function MarketingVerticalDemoTemplate({
                       </div>
 
                       {/* Block 5 — try another scenario */}
-                      <button type="button" className="vd-retry-link" onClick={resetDemo}>Try another scenario</button>
+                      <div className="vd-retry-wrap">
+                        <button type="button" className="vd-retry-link" onClick={resetDemo}>
+                          Try another scenario
+                        </button>
+                      </div>
                     </>
                   ) : null}
 
