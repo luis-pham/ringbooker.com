@@ -7,6 +7,7 @@ import { JobExecutionError, JobWorker } from '@/src/backend/jobs/worker';
 import { logger } from '@/src/backend/observability/logger';
 import { buildSystemPrompt } from '@/src/backend/prompts/build-system-prompt';
 import { z } from 'zod';
+import { runReleaseAbandonedForwardingNumbersJob } from '@/src/backend/jobs/release-abandoned-forwarding-numbers';
 import { extractCallSummary } from '@/src/backend/services/calls/extract-call-summary';
 import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import { isShopSetupWizardComplete } from '@/src/backend/domain/shop-onboarding';
@@ -124,6 +125,15 @@ export function startJobsWorker(): WorkerControls {
     }
   }, workerConfig.jobPollIntervalMs);
 
+  const abandonedForwardingNumbersInterval = setInterval(async () => {
+    try {
+      const result = await runReleaseAbandonedForwardingNumbersJob(runtime);
+      logger.info({ ...result }, 'release_abandoned_forwarding_numbers_tick');
+    } catch (error) {
+      logger.error({ err: error, workerId }, 'release_abandoned_forwarding_numbers_tick_error');
+    }
+  }, 60 * 60 * 1000);
+
   logger.info(
     {
       mode: runtime.mode,
@@ -136,6 +146,7 @@ export function startJobsWorker(): WorkerControls {
   return {
     stop: () => {
       clearInterval(interval);
+      clearInterval(abandonedForwardingNumbersInterval);
       logger.info({ workerId }, 'jobs_worker_stopped');
     },
   };
