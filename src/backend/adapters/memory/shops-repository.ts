@@ -57,11 +57,15 @@ const defaultShop: Shop = {
   forwarding_number_status: 'none',
   forwarding_number_provisioning_started_at: null,
   forwarding_number_provisioned_at: null,
+  forwarding_number_released_at: null,
+  forwarding_number_release_reason: null,
   forwarding_number_provider_order_id: null,
   forwarding_number_last_error: null,
   detected_carrier: null,
   detected_line_type: null,
   carrier_detected_at: null,
+  test_call_count: 0,
+  test_call_limit: 3,
   ai_voice: 'Aoede',
   ai_welcome_message: 'Thanks for calling RingBooker Demo Salon. How can I help you today?',
   ai_custom_instructions: 'Prioritize manicure and pedicure bookings and keep answers concise.',
@@ -176,11 +180,15 @@ export class InMemoryShopsRepository implements ShopsRepository {
       forwarding_number_status: 'none',
       forwarding_number_provisioning_started_at: null,
       forwarding_number_provisioned_at: null,
+      forwarding_number_released_at: null,
+      forwarding_number_release_reason: null,
       forwarding_number_provider_order_id: null,
       forwarding_number_last_error: null,
       detected_carrier: null,
       detected_line_type: null,
       carrier_detected_at: null,
+      test_call_count: 0,
+      test_call_limit: 3,
       allow_transfers: enableProfessionalDefaults,
       allow_callbacks: true,
       sms_owner_opted_in: false,
@@ -231,11 +239,15 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'
         | 'forwarding_number_provisioned_at'
+        | 'forwarding_number_released_at'
+        | 'forwarding_number_release_reason'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
         | 'detected_carrier'
         | 'detected_line_type'
         | 'carrier_detected_at'
+        | 'test_call_count'
+        | 'test_call_limit'
       >
     >,
   ): Promise<Shop | null> {
@@ -353,6 +365,8 @@ export class InMemoryShopsRepository implements ShopsRepository {
       forwarding_number_status: 'provisioning',
       forwarding_number_provisioning_started_at: params.startedAt.toISOString(),
       forwarding_number_provisioned_at: null,
+      forwarding_number_released_at: null,
+      forwarding_number_release_reason: null,
       forwarding_number_provider_order_id: null,
       forwarding_number_last_error: null,
     };

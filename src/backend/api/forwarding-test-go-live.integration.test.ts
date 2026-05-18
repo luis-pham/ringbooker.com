@@ -136,14 +136,55 @@ async function createFixture(opts: Fx) {
   };
 }
 
-test('POST /user/go-live/start-forwarding-test returns 402 when payment method not valid', async () => {
-  const { app, cookie } = await createFixture({ paymentMethodStatus: 'none', telnyxNumber: '+17145559999' });
+test('POST /user/go-live/start-forwarding-test allows pre-billing test and increments count', async () => {
+  const { app, shopsRepository, shop, cookie } = await createFixture({ paymentMethodStatus: 'none', telnyxNumber: '+17145559999' });
   const res = await app.request('/user/go-live/start-forwarding-test', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({}),
   });
-  assert.equal(res.status, 402);
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok?: boolean; test_calls_remaining?: number; expiresAt?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.test_calls_remaining, 2);
+  assert.ok(body.expiresAt);
+  const updated = await shopsRepository.findById(shop.id);
+  assert.equal(updated?.test_call_count, 1);
+});
+
+test('POST /user/go-live/start-forwarding-test returns 429 when pre-billing test limit reached', async () => {
+  const { app, shopsRepository, shop, cookie } = await createFixture({ paymentMethodStatus: 'none', telnyxNumber: '+17145559999' });
+  await shopsRepository.updateUserSettings(shop.id, {
+    test_call_count: 3,
+    test_call_limit: 3,
+  });
+  const res = await app.request('/user/go-live/start-forwarding-test', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({}),
+  });
+  assert.equal(res.status, 429);
+  const body = (await res.json()) as { error?: string; test_calls_remaining?: number };
+  assert.equal(body.error, 'test_call_limit_reached');
+  assert.equal(body.test_calls_remaining, 0);
+});
+
+test('POST /user/go-live/start-forwarding-test skips limit after live answering is enabled', async () => {
+  const { app, shopsRepository, shop, cookie } = await createFixture({
+    paymentMethodStatus: 'none',
+    telnyxNumber: '+17145559999',
+    liveCallsEnabled: true,
+  });
+  await shopsRepository.updateUserSettings(shop.id, {
+    test_call_count: 3,
+    test_call_limit: 3,
+  });
+  const res = await app.request('/user/go-live/start-forwarding-test', {
+    method: 'POST',
+    headers: userHeaders(cookie),
+    body: JSON.stringify({}),
+  });
+  assert.equal(res.status, 200);
 });
 
 test('POST /user/go-live/start-forwarding-test returns 409 without telnyx_number', async () => {

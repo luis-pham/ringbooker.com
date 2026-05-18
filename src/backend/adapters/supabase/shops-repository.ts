@@ -54,11 +54,15 @@ type ShopsRow = {
   forwarding_number_status: Shop['forwarding_number_status'] | null;
   forwarding_number_provisioning_started_at: string | null;
   forwarding_number_provisioned_at: string | null;
+  forwarding_number_released_at: string | null;
+  forwarding_number_release_reason: string | null;
   forwarding_number_provider_order_id: string | null;
   forwarding_number_last_error: string | null;
   detected_carrier: string | null;
   detected_line_type: string | null;
   carrier_detected_at: string | null;
+  test_call_count: number | null;
+  test_call_limit: number | null;
   ai_voice: string | null;
   ai_welcome_message: string | null;
   ai_custom_instructions: string | null;
@@ -109,11 +113,15 @@ const SHOP_SELECT_COLUMNS = [
   'forwarding_number_status',
   'forwarding_number_provisioning_started_at',
   'forwarding_number_provisioned_at',
+  'forwarding_number_released_at',
+  'forwarding_number_release_reason',
   'forwarding_number_provider_order_id',
   'forwarding_number_last_error',
   'detected_carrier',
   'detected_line_type',
   'carrier_detected_at',
+  'test_call_count',
+  'test_call_limit',
   'ai_voice',
   'ai_welcome_message',
   'ai_custom_instructions',
@@ -405,11 +413,15 @@ function toShop(row: ShopsRow): Shop {
     forwarding_number_status: row.forwarding_number_status ?? 'none',
     forwarding_number_provisioning_started_at: row.forwarding_number_provisioning_started_at,
     forwarding_number_provisioned_at: row.forwarding_number_provisioned_at,
+    forwarding_number_released_at: row.forwarding_number_released_at,
+    forwarding_number_release_reason: row.forwarding_number_release_reason,
     forwarding_number_provider_order_id: row.forwarding_number_provider_order_id,
     forwarding_number_last_error: row.forwarding_number_last_error,
     detected_carrier: row.detected_carrier,
     detected_line_type: row.detected_line_type,
     carrier_detected_at: row.carrier_detected_at,
+    test_call_count: row.test_call_count ?? 0,
+    test_call_limit: row.test_call_limit ?? 3,
     ai_voice: row.ai_voice ?? 'Aoede',
     ai_welcome_message: row.ai_welcome_message,
     ai_custom_instructions: row.ai_custom_instructions,
@@ -787,11 +799,15 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'
         | 'forwarding_number_provisioned_at'
+        | 'forwarding_number_released_at'
+        | 'forwarding_number_release_reason'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
         | 'detected_carrier'
         | 'detected_line_type'
         | 'carrier_detected_at'
+        | 'test_call_count'
+        | 'test_call_limit'
       >
     >,
   ): Promise<Shop | null> {
@@ -833,6 +849,12 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.forwarding_number_provisioned_at !== undefined) {
       payload.forwarding_number_provisioned_at = patch.forwarding_number_provisioned_at;
     }
+    if (patch.forwarding_number_released_at !== undefined) {
+      payload.forwarding_number_released_at = patch.forwarding_number_released_at;
+    }
+    if (patch.forwarding_number_release_reason !== undefined) {
+      payload.forwarding_number_release_reason = patch.forwarding_number_release_reason;
+    }
     if (patch.forwarding_number_provider_order_id !== undefined) {
       payload.forwarding_number_provider_order_id = patch.forwarding_number_provider_order_id;
     }
@@ -842,6 +864,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.detected_carrier !== undefined) payload.detected_carrier = patch.detected_carrier;
     if (patch.detected_line_type !== undefined) payload.detected_line_type = patch.detected_line_type;
     if (patch.carrier_detected_at !== undefined) payload.carrier_detected_at = patch.carrier_detected_at;
+    if (patch.test_call_count !== undefined) payload.test_call_count = patch.test_call_count;
+    if (patch.test_call_limit !== undefined) payload.test_call_limit = patch.test_call_limit;
 
     let result = await this.supabase
       .from('shops')
@@ -1084,6 +1108,8 @@ export class SupabaseShopsRepository implements ShopsRepository {
         forwarding_number_status: 'provisioning',
         forwarding_number_provisioning_started_at: startedIso,
         forwarding_number_provisioned_at: null,
+        forwarding_number_released_at: null,
+        forwarding_number_release_reason: null,
         forwarding_number_provider_order_id: null,
         forwarding_number_last_error: null,
         updated_at: startedIso,

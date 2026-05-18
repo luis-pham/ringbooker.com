@@ -20,6 +20,7 @@ export type StartForwardingTestSessionResult =
       expiresAt: string;
       instruction: string;
       sessionId: string;
+      testCallsRemaining: number;
     }
   | {
       ok: false;
@@ -27,6 +28,7 @@ export type StartForwardingTestSessionResult =
       error: string;
       message?: string;
       billingUrl?: string;
+      testCallsRemaining?: number;
     };
 
 export async function startOrReuseForwardingTestSession(params: {
@@ -62,15 +64,6 @@ export async function startOrReuseForwardingTestSession(params: {
     };
   }
 
-  if (access.liveCallsEnabled) {
-    return {
-      ok: false,
-      httpStatus: 409,
-      error: 'live_already_enabled',
-      message: 'Live answering is already on.',
-    };
-  }
-
   if (!isShopSetupWizardComplete(shop)) {
     return {
       ok: false,
@@ -80,28 +73,11 @@ export async function startOrReuseForwardingTestSession(params: {
     };
   }
 
-  if (access.paymentMethodStatus !== 'valid') {
-    return {
-      ok: false,
-      httpStatus: 402,
-      error: 'payment_method_required',
-      message: 'Add a valid payment method before running this test.',
-      billingUrl: '/user/billing',
-    };
-  }
-
   const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
   const subscriptionActiveLike =
     subscription &&
     (subscription.status === 'active' || (subscription.status === 'trialing' && isBillingTrialStillValid(subscription, now)));
-  if (!subscriptionActiveLike) {
-    return {
-      ok: false,
-      httpStatus: 409,
-      error: 'subscription_inactive',
-      message: 'Your subscription must be active or trialing to run this test.',
-    };
-  }
+  const billingConfirmed = access.paymentMethodStatus === 'valid' && Boolean(subscriptionActiveLike);
 
   const tn = shop.telnyx_number?.trim();
   if (!tn) {
@@ -122,11 +98,32 @@ export async function startOrReuseForwardingTestSession(params: {
       expiresAt: existing.expiresAt,
       instruction: FORWARDING_TEST_INSTRUCTION,
       sessionId: existing.id,
+      testCallsRemaining: Math.max(0, (shop.test_call_limit ?? 3) - (shop.test_call_count ?? 0)),
     };
   }
 
+  const testCallLimit = Math.max(0, shop.test_call_limit ?? 3);
+  const testCallCount = Math.max(0, shop.test_call_count ?? 0);
+  let nextTestCallCount = testCallCount;
+  if (!access.liveCallsEnabled && !billingConfirmed) {
+    if (testCallCount >= testCallLimit) {
+      return {
+        ok: false,
+        httpStatus: 429,
+        error: 'test_call_limit_reached',
+        message: 'Add your card to continue.',
+        billingUrl: '/user/billing',
+        testCallsRemaining: 0,
+      };
+    }
+    await deps.shopsRepository.updateUserSettings(shop.id, {
+      test_call_count: testCallCount + 1,
+    });
+    nextTestCallCount = testCallCount + 1;
+  }
+
   const startedAt = now;
-  const expiresAt = new Date(now.getTime() + 10 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
   const expectedBusiness = normalizeInboundE164(shop.phone_number);
   const session = await deps.forwardingTestSessionsRepository.createSession({
     shopId: shop.id,
@@ -142,5 +139,6 @@ export async function startOrReuseForwardingTestSession(params: {
     expiresAt: session.expiresAt,
     instruction: FORWARDING_TEST_INSTRUCTION,
     sessionId: session.id,
+    testCallsRemaining: Math.max(0, testCallLimit - nextTestCallCount),
   };
 }

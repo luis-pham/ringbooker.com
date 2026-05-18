@@ -431,11 +431,15 @@ export interface ShopsRepository {
         | 'forwarding_number_status'
         | 'forwarding_number_provisioning_started_at'
         | 'forwarding_number_provisioned_at'
+        | 'forwarding_number_released_at'
+        | 'forwarding_number_release_reason'
         | 'forwarding_number_provider_order_id'
         | 'forwarding_number_last_error'
         | 'detected_carrier'
         | 'detected_line_type'
         | 'carrier_detected_at'
+        | 'test_call_count'
+        | 'test_call_limit'
       >
     >,
   ): Promise<Shop | null>;

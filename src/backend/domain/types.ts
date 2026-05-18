@@ -267,11 +267,15 @@ export interface Shop {
   forwarding_number_status?: 'none' | 'provisioning' | 'provisioned' | 'failed' | null;
   forwarding_number_provisioning_started_at?: string | null;
   forwarding_number_provisioned_at?: string | null;
+  forwarding_number_released_at?: string | null;
+  forwarding_number_release_reason?: string | null;
   forwarding_number_provider_order_id?: string | null;
   forwarding_number_last_error?: string | null;
   detected_carrier?: string | null;
   detected_line_type?: string | null;
   carrier_detected_at?: string | null;
+  test_call_count?: number;
+  test_call_limit?: number;
   ai_voice?: string | null;
   ai_welcome_message?: string | null;
   ai_custom_instructions?: string | null;
@@ -524,6 +528,9 @@ export type BillingNotificationType =
   | 'forwarding_number_failed_internal'
   | 'forwarding_not_verified_24h'
   | 'forwarding_not_verified_72h'
+  | 'forwarding_number_abandoned_24h'
+  | 'forwarding_number_abandoned_48h'
+  | 'forwarding_number_released_72h'
   | 'forwarding_verified'
   | 'subscription_active'
   | 'payment_failed'
@@ -537,7 +544,7 @@ export type BillingNotificationType =
   | 'internal_paddle_alert'
   | 'internal_telnyx_alert'
   | 'internal_live_billing_blocked_alert';
-export type BillingNotificationChannel = 'email' | 'app';
+export type BillingNotificationChannel = 'email' | 'sms' | 'app';
 
 export interface BillingNotification {
   id: string;

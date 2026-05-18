@@ -60,6 +60,9 @@ export type GoLiveStatusResponse = {
   forwardingNumber?: string | null;
   forwardingTestStatus?: 'none' | 'pending' | 'passed' | 'expired' | 'failed';
   forwardingTestExpiresAt?: string | null;
+  testCallCount?: number;
+  testCallLimit?: number;
+  testCallsRemaining?: number;
   error?: string;
 };
 
@@ -258,6 +261,9 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       businessPhone: response?.businessPhone ?? null,
       businessAddress: response?.businessAddress ?? null,
       forwardingTestStatus: response?.forwardingTestStatus ?? 'none',
+      testCallCount: response?.testCallCount ?? 0,
+      testCallLimit: response?.testCallLimit ?? 3,
+      testCallsRemaining: response?.testCallsRemaining ?? Math.max(0, 3 - (response?.testCallCount ?? 0)),
       startTrial,
       provisionNumber,
       selectedCountry,

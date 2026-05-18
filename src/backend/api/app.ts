@@ -5349,6 +5349,7 @@ export function createBackendApp(deps: {
         message: result.message,
       };
       if (result.billingUrl) body.billingUrl = result.billingUrl;
+      if (result.testCallsRemaining !== undefined) body.test_calls_remaining = result.testCallsRemaining;
       if (result.error === 'payment_method_required') {
         body.message = buildGoLivePaymentRequiredMessage();
       }
@@ -5361,6 +5362,7 @@ export function createBackendApp(deps: {
       expiresAt: result.expiresAt,
       instruction: result.instruction,
       sessionId: result.sessionId,
+      test_calls_remaining: result.testCallsRemaining,
     });
   });
 
@@ -5440,6 +5442,9 @@ export function createBackendApp(deps: {
       forwardingSetupVerifiedVia: accessState?.forwardingSetupVerifiedVia ?? null,
       forwardingTestStatus,
       forwardingTestExpiresAt,
+      testCallCount: shop.test_call_count ?? 0,
+      testCallLimit: shop.test_call_limit ?? 3,
+      testCallsRemaining: Math.max(0, (shop.test_call_limit ?? 3) - (shop.test_call_count ?? 0)),
       liveCallsEnabled: access.liveCallsEnabled,
       canGoLive,
       primaryCta: access.blockReason === 'commercial_approval_required' ? null : primaryCta,
@@ -5647,6 +5652,7 @@ export function createBackendApp(deps: {
         message: result.message,
       };
       if (result.billingUrl) resBody.billingUrl = result.billingUrl;
+      if (result.testCallsRemaining !== undefined) resBody.test_calls_remaining = result.testCallsRemaining;
       if (result.error === 'payment_method_required') {
         resBody.message = buildGoLivePaymentRequiredMessage();
       }
@@ -5660,6 +5666,7 @@ export function createBackendApp(deps: {
       expiresAt: result.expiresAt,
       instruction: result.instruction,
       sessionId: result.sessionId,
+      test_calls_remaining: result.testCallsRemaining,
       message:
         'Forwarding is not verified until RingBooker receives your forwarded call. Call your current business number from another phone.',
     });
