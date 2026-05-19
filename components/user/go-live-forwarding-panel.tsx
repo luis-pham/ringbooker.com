@@ -363,7 +363,7 @@ export function GoLiveForwardingPanel({
   const [turnOffCode, setTurnOffCode] = useState<string | null>(null);
   const [instructions, setInstructions] = useState<string[]>([]);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const [smsOwnerOptedIn, setSmsOwnerOptedIn] = useState(false);
+  const smsOwnerOptedIn = false;
   const [detectedCarrier, setDetectedCarrier] = useState<DetectedCarrierState | null>(null);
   const [carrierDetectionLoaded, setCarrierDetectionLoaded] = useState(false);
   const [showCarrierGrid, setShowCarrierGrid] = useState(() => !initialStatus?.status?.forwarding.carrier);
@@ -663,30 +663,20 @@ export function GoLiveForwardingPanel({
     if (step === 3) {
       return (
         <div>
-          <NumberDisplayRow businessPhone={goLive.businessPhone} ringbookerNumber={goLive.status.provision.ringbookerNumber} provisionStatus={goLive.status.provision.status} />
-          {billingReady && numberReady ? (
-            <span className="tag green">✓ Your RingBooker answering number is ready</span>
-          ) : billingReady ? (
-            <p className="gl-message">Payment method is added. Create your forwarding number next.</p>
+          <p className="gl-message">No charge for 14 days. Cancel anytime before your trial ends and you won't be billed.</p>
+          {forwardingVerified ? (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 12px', marginTop: 12, fontSize: 13, color: '#166534', lineHeight: 1.5 }}>
+              <span aria-hidden style={{ flexShrink: 0 }}>✓</span>
+              <span>Forwarding verified — live answering will start when you switch it on.</span>
+            </div>
           ) : (
-            <p className="gl-message">No charge for 14 days · Cancel anytime. Live answering stays off until forwarding is verified and you enable it.</p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 12px', marginTop: 12, fontSize: 13, color: '#92400e', lineHeight: 1.5 }}>
+              <span aria-hidden style={{ flexShrink: 0 }}>ℹ</span>
+              <span>Live answering stays off until forwarding is verified and you switch it on.</span>
+            </div>
           )}
-          {!billingReady ? (
-            <label
-              className="checkbox-line"
-              style={{ alignItems: 'flex-start', color: 'var(--text-gray)', display: 'flex', fontSize: 12, fontWeight: 400, gap: 9, lineHeight: 1.5, marginBottom: 12, marginTop: 12 }}
-            >
-              <input
-                type="checkbox"
-                checked={smsOwnerOptedIn}
-                onChange={(event) => setSmsOwnerOptedIn(event.currentTarget.checked)}
-              />
-              <span>Send me SMS alerts for new bookings, missed calls, and handoff requests. Msg &amp; data rates may apply. Reply STOP to opt out.</span>
-            </label>
-          ) : null}
           <div className="gl-action-row">
             {!billingReady ? <button type="button" className="btn user-save" disabled={busyAction === 'trial'} onClick={() => run('trial', startTrialWithOptionalSmsConsent)}>{busyAction === 'trial' ? 'Opening...' : 'Add card and start free trial'}</button> : null}
-            <a className="btn" href="/user/billing">Open Billing</a>
           </div>
         </div>
       );
