@@ -238,6 +238,30 @@ export async function squareRefreshIfNeeded(
   };
 }
 
+// M2: paginate through catalog so shops with >100 service variations don't lose items
+async function squareFetchAllCatalogItems(accessToken: string): Promise<SquareCatalogObject[]> {
+  const items: SquareCatalogObject[] = [];
+  let cursor: string | undefined;
+  const MAX_PAGES = 20;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const response = await squareJsonRequest<{ objects?: SquareCatalogObject[]; cursor?: string }>({
+      path: '/v2/catalog/search',
+      accessToken,
+      method: 'POST',
+      body: {
+        include_related_objects: false,
+        object_types: ['ITEM_VARIATION'],
+        limit: 100,
+        ...(cursor ? { cursor } : {}),
+      },
+    });
+    items.push(...(response.objects ?? []));
+    cursor = response.cursor;
+    if (!cursor) break;
+  }
+  return items;
+}
+
 export async function squareFetchConnectionOptions(
   credentials: SquareConnectionCredentials,
 ): Promise<{ credentials: SquareConnectionCredentials; options: SquareConnectionOptions }> {
@@ -246,22 +270,13 @@ export async function squareFetchConnectionOptions(
     throw new Error('square_connection_missing_access_token');
   }
 
-  const [locationsResponse, catalogResponse] = await Promise.all([
+  const [locationsResponse, allCatalogItems] = await Promise.all([
     squareJsonRequest<{ locations?: SquareLocation[] }>({
       path: '/v2/locations',
       accessToken: freshCredentials.access_token,
       method: 'GET',
     }),
-    squareJsonRequest<{ objects?: SquareCatalogObject[] }>({
-      path: '/v2/catalog/search',
-      accessToken: freshCredentials.access_token,
-      method: 'POST',
-      body: {
-        include_related_objects: false,
-        object_types: ['ITEM_VARIATION'],
-        limit: 100,
-      },
-    }),
+    squareFetchAllCatalogItems(freshCredentials.access_token),
   ]);
 
   const options: SquareConnectionOptions = {
@@ -270,7 +285,7 @@ export async function squareFetchConnectionOptions(
       name: location.name || location.business_name || location.id,
       status: location.status,
     })),
-    serviceVariations: (catalogResponse.objects ?? [])
+    serviceVariations: allCatalogItems
       .filter((item) => item.type === 'ITEM_VARIATION' && item.id && !item.is_deleted)
       .map((item) => ({
         id: item.id as string,

@@ -11,8 +11,9 @@ type ShopAccessStateRow = {
   live_calls_paused_reason: string | null;
   live_calls_paused_at: string | null;
   last_access_check_at: string | null;
-  forwarding_setup_verified_at: string | null;
-  forwarding_setup_verified_via: string | null;
+  forwarding_claimed_at: string | null;
+  forwarding_verified_at: string | null;
+  forwarding_verified_source: string | null;
   commercial_go_live_approved_at: string | null;
   commercial_go_live_approved_by: string | null;
   commercial_go_live_approval_note: string | null;
@@ -34,7 +35,11 @@ function forwardingViaFromRow(via: string | null): ShopAccessState['forwardingSe
 }
 
 function toShopAccessState(row: ShopAccessStateRow): ShopAccessState {
-  const via = row.forwarding_setup_verified_via;
+  const verifiedSource =
+    row.forwarding_verified_source === 'inbound_test' || row.forwarding_verified_source === 'admin_override'
+      ? row.forwarding_verified_source
+      : null;
+  const via = verifiedSource === 'inbound_test' ? 'inbound_test_call' : verifiedSource === 'admin_override' ? 'manual_confirmation' : null;
   return {
     id: row.id,
     shopId: row.shop_id,
@@ -43,7 +48,10 @@ function toShopAccessState(row: ShopAccessStateRow): ShopAccessState {
     liveCallsPausedReason: row.live_calls_paused_reason,
     liveCallsPausedAt: row.live_calls_paused_at,
     lastAccessCheckAt: row.last_access_check_at,
-    forwardingSetupVerifiedAt: row.forwarding_setup_verified_at,
+    forwardingClaimedAt: row.forwarding_claimed_at,
+    forwardingVerifiedAt: row.forwarding_verified_at,
+    forwardingVerifiedSource: verifiedSource,
+    forwardingSetupVerifiedAt: row.forwarding_verified_at,
     forwardingSetupVerifiedVia: forwardingViaFromRow(via),
     commercialGoLiveApprovedAt: row.commercial_go_live_approved_at,
     commercialGoLiveApprovedBy: row.commercial_go_live_approved_by,
@@ -90,6 +98,9 @@ export class SupabaseShopAccessStatesRepository implements ShopAccessStatesRepos
     liveCallsPausedReason?: string | null;
     liveCallsPausedAt?: string | null;
     lastAccessCheckAt?: string | null;
+    forwardingClaimedAt?: string | null;
+    forwardingVerifiedAt?: string | null;
+    forwardingVerifiedSource?: ShopAccessState['forwardingVerifiedSource'];
     forwardingSetupVerifiedAt?: string | null;
     forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
     commercialGoLiveApprovedAt?: string | null;
@@ -107,14 +118,22 @@ export class SupabaseShopAccessStatesRepository implements ShopAccessStatesRepos
           live_calls_paused_reason: params.liveCallsPausedReason ?? existing?.liveCallsPausedReason ?? null,
           live_calls_paused_at: params.liveCallsPausedAt ?? existing?.liveCallsPausedAt ?? null,
           last_access_check_at: params.lastAccessCheckAt ?? existing?.lastAccessCheckAt ?? null,
-          forwarding_setup_verified_at:
-            params.forwardingSetupVerifiedAt !== undefined
-              ? params.forwardingSetupVerifiedAt
-              : (existing?.forwardingSetupVerifiedAt ?? null),
-          forwarding_setup_verified_via:
-            params.forwardingSetupVerifiedVia !== undefined
-              ? params.forwardingSetupVerifiedVia
-              : (existing?.forwardingSetupVerifiedVia ?? null),
+          forwarding_claimed_at:
+            params.forwardingClaimedAt !== undefined
+              ? params.forwardingClaimedAt
+              : (existing?.forwardingClaimedAt ?? null),
+          forwarding_verified_at:
+            params.forwardingVerifiedAt !== undefined
+              ? params.forwardingVerifiedAt
+              : (params.forwardingSetupVerifiedAt !== undefined
+                ? params.forwardingSetupVerifiedAt
+                : (existing?.forwardingVerifiedAt ?? existing?.forwardingSetupVerifiedAt ?? null)),
+          forwarding_verified_source:
+            params.forwardingVerifiedSource !== undefined
+              ? params.forwardingVerifiedSource
+              : (params.forwardingSetupVerifiedVia === 'inbound_test_call' || params.forwardingSetupVerifiedVia === 'forwarding_test'
+                ? 'inbound_test'
+                : (existing?.forwardingVerifiedSource ?? null)),
           commercial_go_live_approved_at:
             params.commercialGoLiveApprovedAt !== undefined
               ? params.commercialGoLiveApprovedAt

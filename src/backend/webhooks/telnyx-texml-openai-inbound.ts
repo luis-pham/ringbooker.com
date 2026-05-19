@@ -39,6 +39,7 @@ import { getShopBillingAccess } from '@/src/backend/services/billing/access';
 import { getShopUsageForPeriod } from '@/src/backend/services/usage/shop-usage';
 import { resolveVerticalDemoInboundRoute } from '@/src/backend/demo/demo-vertical-phone-map';
 import type { ShopBillingAccess } from '@/src/backend/services/billing/access';
+import { completeForwardingTestFromInboundCall } from '@/src/backend/services/go-live/forwarding-test-inbound';
 
 const XML_DECL = '<?xml version="1.0" encoding="UTF-8"?>';
 
@@ -215,9 +216,19 @@ export async function handleTelnyxTexmlOpenAiInbound(
           { shopId: shop.id },
         );
         if (!access.canReceiveLiveCalls) {
-          if (meta.matchedBy === 'telnyx_number' && access.blockReason === 'forwarding_verification_required') {
-            forwardingTestAckTexml = true;
-          } else {
+          if (meta.matchedBy === 'telnyx_number' && deps.forwardingTestSessionsRepository) {
+            forwardingTestAckTexml = await completeForwardingTestFromInboundCall({
+                forwardingTestSessionsRepository: deps.forwardingTestSessionsRepository,
+                shopAccessStatesRepository: deps.shopAccessStatesRepository,
+                shopId: shop.id,
+                inboundDidE164: normalizeInboundE164(form.To) ?? form.To,
+                inboundCallSessionId: form.CallSid ?? rbCallId,
+                inboundCallControlId: null,
+                callerPhone: form.From ? normalizeInboundE164(form.From) ?? form.From : null,
+                now: new Date(),
+              });
+          }
+          if (!forwardingTestAckTexml) {
             billingBlockedReason = access.blockReason;
             logger.warn(
               liveAnsweringBillingBlockedLogFields({

@@ -92,6 +92,7 @@ export function getBusinessKnowledgeStatus(shop: Shop): BusinessKnowledgeStatus 
 type GoLiveOverviewInput = {
   liveCallsEnabled: boolean;
   forwardingSetupVerified: boolean;
+  forwardingConfigured?: boolean;
   hasForwardingNumber: boolean;
   paymentMethodValid: boolean;
   commercialApprovalRequired?: boolean;
@@ -175,8 +176,10 @@ export function buildDashboardOverviewRail(params: {
       },
       {
         id: 'forwarding_verify',
-        title: 'Test it works',
-        detail: "We'll make a quick test call to confirm",
+        title: 'Verify forwarding',
+        detail: goLive.forwardingConfigured && !goLive.forwardingSetupVerified
+          ? 'Configured but not verified — call your business number to complete'
+          : 'Call your business number to confirm calls reach RingBooker',
         done: goLive.forwardingSetupVerified,
         href: '/user/go-live#go-live-forwarding',
       },
@@ -190,7 +193,9 @@ export function buildDashboardOverviewRail(params: {
       {
         id: 'live_enable',
         title: 'Switch it on',
-        detail: 'RingBooker starts answering missed calls immediately',
+        detail: goLive.forwardingSetupVerified
+          ? 'RingBooker starts answering missed calls immediately'
+          : 'Verify call forwarding first',
         done: goLive.liveCallsEnabled,
         href: '/user/go-live#go-live-forwarding',
       },

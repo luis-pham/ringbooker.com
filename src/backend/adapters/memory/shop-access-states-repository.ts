@@ -28,6 +28,9 @@ export class InMemoryShopAccessStatesRepository implements ShopAccessStatesRepos
     liveCallsPausedReason?: string | null;
     liveCallsPausedAt?: string | null;
     lastAccessCheckAt?: string | null;
+    forwardingClaimedAt?: string | null;
+    forwardingVerifiedAt?: string | null;
+    forwardingVerifiedSource?: ShopAccessState['forwardingVerifiedSource'];
     forwardingSetupVerifiedAt?: string | null;
     forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
     commercialGoLiveApprovedAt?: string | null;
@@ -44,14 +47,36 @@ export class InMemoryShopAccessStatesRepository implements ShopAccessStatesRepos
       liveCallsPausedReason: params.liveCallsPausedReason ?? existing?.liveCallsPausedReason ?? null,
       liveCallsPausedAt: params.liveCallsPausedAt ?? existing?.liveCallsPausedAt ?? null,
       lastAccessCheckAt: params.lastAccessCheckAt ?? existing?.lastAccessCheckAt ?? null,
+      forwardingClaimedAt:
+        params.forwardingClaimedAt !== undefined
+          ? params.forwardingClaimedAt
+          : (existing?.forwardingClaimedAt ?? null),
+      forwardingVerifiedAt:
+        params.forwardingVerifiedAt !== undefined
+          ? params.forwardingVerifiedAt
+          : (params.forwardingSetupVerifiedAt !== undefined
+            ? params.forwardingSetupVerifiedAt
+            : (existing?.forwardingVerifiedAt ?? existing?.forwardingSetupVerifiedAt ?? null)),
+      forwardingVerifiedSource:
+        params.forwardingVerifiedSource !== undefined
+          ? params.forwardingVerifiedSource
+          : (params.forwardingSetupVerifiedVia === 'inbound_test_call' || params.forwardingSetupVerifiedVia === 'forwarding_test'
+            ? 'inbound_test'
+            : (existing?.forwardingVerifiedSource ?? null)),
       forwardingSetupVerifiedAt:
         params.forwardingSetupVerifiedAt !== undefined
           ? params.forwardingSetupVerifiedAt
-          : (existing?.forwardingSetupVerifiedAt ?? null),
+          : (params.forwardingVerifiedAt !== undefined
+            ? params.forwardingVerifiedAt
+            : (existing?.forwardingSetupVerifiedAt ?? existing?.forwardingVerifiedAt ?? null)),
       forwardingSetupVerifiedVia:
         params.forwardingSetupVerifiedVia !== undefined
           ? params.forwardingSetupVerifiedVia
-          : (existing?.forwardingSetupVerifiedVia ?? null),
+          : (params.forwardingVerifiedSource === 'inbound_test'
+            ? 'inbound_test_call'
+            : params.forwardingVerifiedSource === 'admin_override'
+              ? 'manual_confirmation'
+              : (existing?.forwardingSetupVerifiedVia ?? null)),
       commercialGoLiveApprovedAt:
         params.commercialGoLiveApprovedAt !== undefined
           ? params.commercialGoLiveApprovedAt

@@ -83,7 +83,7 @@ function buildGoLiveChecklist(params: {
   paymentMethodStatus: AdminShopStatus['paymentMethodStatus'];
 }): AdminShopStatus['goLiveChecklist'] {
   const commercialApprovedAt = params.accessState?.commercialGoLiveApprovedAt ?? null;
-  const forwardingVerifiedAt = params.accessState?.forwardingSetupVerifiedAt ?? null;
+  const forwardingVerifiedAt = params.accessState?.forwardingVerifiedAt ?? params.accessState?.forwardingSetupVerifiedAt ?? null;
   const goLiveAt = params.accessState?.goLiveAt ?? null;
   const hasForwardingNumber = Boolean(params.shop.telnyx_number?.trim());
   const paymentValid = params.paymentMethodStatus === 'valid';
@@ -133,9 +133,9 @@ function buildGoLiveChecklist(params: {
       label: 'Forwarding verification',
       status: forwardingVerifiedAt ? 'complete' : hasForwardingNumber ? 'pending' : 'blocked',
       detail: forwardingVerifiedAt
-        ? `Verified via ${params.accessState?.forwardingSetupVerifiedVia ?? 'unknown'}.`
+        ? `Verified via ${params.accessState?.forwardingVerifiedSource ?? params.accessState?.forwardingSetupVerifiedVia ?? 'unknown'}.`
         : hasForwardingNumber
-          ? 'Run forwarding test or record explicit manual confirmation.'
+          ? 'Call the business number to verify forwarding or use admin override.'
           : 'Provision a forwarding number before verification.',
       completedAt: forwardingVerifiedAt,
     },
@@ -180,12 +180,15 @@ function buildGoLiveTimeline(params: {
         : 'Approved by RingBooker.',
     });
   }
-  if (params.accessState?.forwardingSetupVerifiedAt) {
+  const forwardingVerifiedAt = params.accessState?.forwardingVerifiedAt ?? params.accessState?.forwardingSetupVerifiedAt;
+  if (forwardingVerifiedAt) {
+    const forwardingVerifiedSource =
+      params.accessState?.forwardingVerifiedSource ?? params.accessState?.forwardingSetupVerifiedVia ?? 'unknown';
     events.push({
       id: 'forwarding_verified',
       label: 'Forwarding setup verified',
-      occurredAt: params.accessState.forwardingSetupVerifiedAt,
-      detail: `Verified via ${params.accessState.forwardingSetupVerifiedVia ?? 'unknown'}.`,
+      occurredAt: forwardingVerifiedAt,
+      detail: `Verified via ${forwardingVerifiedSource}.`,
     });
   }
   if (params.accessState?.goLiveAt) {

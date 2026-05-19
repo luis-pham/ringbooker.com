@@ -30,8 +30,8 @@ export async function completeForwardingTestFromInboundCall(params: {
 
   await params.shopAccessStatesRepository.upsert({
     shopId: params.shopId,
-    forwardingSetupVerifiedAt: params.now.toISOString(),
-    forwardingSetupVerifiedVia: 'inbound_test_call',
+    forwardingVerifiedAt: params.now.toISOString(),
+    forwardingVerifiedSource: 'inbound_test',
   });
 
   incrementMetric('forwarding_test_passed_total', { shopId: params.shopId });

@@ -48,6 +48,14 @@ export async function createBookingTool(
     const durationMin = findServiceDuration(ctx.shop, parsed.data.service);
     const idempotencyKey = `booking:${ctx.requestId}:${ctx.callerPhone}:${parsed.data.date}:${parsed.data.time}:${parsed.data.service}`;
     const providerMeta = getShopCalendarProviderMetadata(ctx.shop);
+
+    if (providerMeta?.type === 'booking_link') {
+      return toToolError(
+        'This salon uses an external booking system. Use send_booking_link to text the caller a booking link instead of creating a booking directly.',
+        { code: 'BOOKING_LINK_PROVIDER', retryable: false },
+      );
+    }
+
     let teamMemberId: string | undefined;
 
     if (parsed.data.techName && providerMeta?.id === 'square_appointments' && ctx.calendarProvider.findTeamMemberByName) {
@@ -76,15 +84,15 @@ export async function createBookingTool(
 
           teamMemberId = foundTeamMemberId;
         } else {
-          console.warn(
-            `Tech "${parsed.data.techName}" not found in Square team members. Booking without staff preference.`,
+          logger.warn(
+            { shopId: ctx.shop.id, techName: parsed.data.techName },
+            'square_team_member_not_found_booking_without_preference',
           );
         }
       } catch (error) {
-        console.warn(
-          `Square tech lookup failed for "${parsed.data.techName}". Booking without staff preference. ${
-            error instanceof Error ? error.message : 'unknown_error'
-          }`,
+        logger.warn(
+          { shopId: ctx.shop.id, techName: parsed.data.techName, err: error },
+          'square_tech_lookup_failed_booking_without_preference',
         );
       }
     }
@@ -142,7 +150,7 @@ export async function createBookingTool(
       jobsRepository: ctx.jobsRepository,
       shop: ctx.shop,
       booking,
-      source: providerMeta.type === 'booking_link' ? 'booking_link' : 'ai',
+      source: 'ai',
     });
 
     const callerPhone = ctx.callerPhone;

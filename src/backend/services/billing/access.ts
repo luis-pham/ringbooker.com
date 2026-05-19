@@ -93,7 +93,7 @@ const inactiveAccess = (): ShopBillingAccess => ({
 });
 
 /**
- * Prefer persisted `forwarding_setup_verified_at`. Optional env grandfather (see
+ * Prefer persisted `forwarding_verified_at`. Optional env grandfather (see
  * RB_FORWARDING_VERIFICATION_GRANDFATHER_GO_LIVE_BEFORE) covers legacy shops until SQL backfill runs.
  */
 export function resolveForwardingSetupVerified(
@@ -101,7 +101,7 @@ export function resolveForwardingSetupVerified(
   accessState: ShopAccessState | null,
   grandfatherGoLiveBeforeIso?: string | null,
 ): boolean {
-  if (accessState?.forwardingSetupVerifiedAt?.trim()) return true;
+  if ((accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt)?.trim()) return true;
   const hasForwardingNumber = Boolean(shop.telnyx_number?.trim());
   if (!hasForwardingNumber || !accessState?.liveCallsEnabled) return false;
   const goLiveAt = accessState.goLiveAt?.trim();

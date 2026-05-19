@@ -57,6 +57,7 @@ export type UserDashboardResponse = {
     liveCallsEnabled: boolean;
     primaryCta: GoLiveDashboardPrimaryCta | null;
     forwardingSetupVerified: boolean;
+    forwardingConfigured?: boolean;
     hasForwardingNumber: boolean;
     paymentMethodValid: boolean;
     subscriptionActiveLike: boolean;
@@ -214,6 +215,7 @@ function UpgradeToProModal({ onDismiss, shopName }: { onDismiss: () => void; sho
 
 type OverviewState = {
   billingActive: boolean;
+  forwardingConfigured: boolean;
   forwardingVerified: boolean;
   liveAnsweringOn: boolean;
   hasServices: boolean;
@@ -227,6 +229,7 @@ function deriveOverviewState(data: UserDashboardResponse): OverviewState | null 
   const snap = data.overviewSnapshot;
   return {
     billingActive: data.goLive.paymentMethodValid && data.goLive.subscriptionActiveLike,
+    forwardingConfigured: Boolean(data.goLive.forwardingConfigured),
     forwardingVerified: data.goLive.forwardingSetupVerified && data.goLive.hasForwardingNumber,
     liveAnsweringOn: data.goLive.liveCallsEnabled === true,
     hasServices: snap?.hasServices ?? false,
@@ -261,8 +264,10 @@ function buildActivationChecklist(
     },
     {
       id: 'forwarding_test',
-      name: 'Test it works',
-      desc: "We'll make a quick test call to confirm",
+      name: 'Verify forwarding',
+      desc: goLive.forwardingConfigured && !goLive.forwardingSetupVerified
+        ? 'Configured but not verified — call your business number to complete'
+        : 'Call your business number to confirm calls reach RingBooker',
       done: goLive.forwardingSetupVerified,
       href: '/user/go-live#go-live-forwarding',
     },
@@ -276,7 +281,7 @@ function buildActivationChecklist(
     {
       id: 'live_answering',
       name: 'Switch it on',
-      desc: 'RingBooker starts answering missed calls immediately',
+      desc: goLive.forwardingSetupVerified ? 'RingBooker starts answering missed calls immediately' : 'Locked until call forwarding is verified',
       done: goLive.liveCallsEnabled,
       href: '/user/go-live#go-live-forwarding',
     },
@@ -726,54 +731,42 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
             {dashboardReady && data.goLive ? (
               <div className="overview-page">
                 {liveAnsweringOn ? (
-                  <div className="overview-banner post-live">
-                    <div className="banner-dot green pulse" aria-hidden />
-                    <div className="banner-text">
-                      <span className="banner-title">RingBooker is live on your business line.</span>
-                      <span className="banner-sub">{postLiveBannerSubtitle}</span>
-                    </div>
-                    <div className="banner-actions portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={testCallLoading}
-                        onClick={() => void requestDashboardTestCall()}
-                      >
-                        {testCallLoading ? 'Calling…' : 'Run test call'}
-                      </button>
-                    </div>
-                  </div>
+                  null
                 ) : !enterpriseApprovalPending ? (
                   <div className="overview-banner pre-live">
                     <div className="banner-dot amber" aria-hidden />
                     <div className="banner-text">
-                      <span className="banner-title">RingBooker is set up, but not live yet.</span>
+                      <span className="banner-title">
+                        {!data.goLive.hasForwardingNumber
+                          ? 'Set up call forwarding to get started'
+                          : data.goLive.forwardingConfigured && !data.goLive.forwardingSetupVerified
+                            ? 'Call forwarding not verified yet'
+                            : data.goLive.forwardingSetupVerified && (!data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike)
+                              ? 'Forwarding verified — add your card to go live'
+                              : 'Ready to go live'}
+                      </span>
                       <span className="banner-sub">
-                        When someone calls and you don't pick up, RingBooker will answer for them. Finish setup below.
+                        {!data.goLive.hasForwardingNumber
+                          ? 'Forward missed calls to RingBooker before enabling live answering.'
+                          : data.goLive.forwardingConfigured && !data.goLive.forwardingSetupVerified
+                            ? 'Call your business number from another phone to confirm forwarding is working.'
+                            : data.goLive.forwardingSetupVerified && (!data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike)
+                              ? 'Start your trial, then switch on live answering.'
+                              : 'Billing and forwarding are ready. Switch on live answering when you are ready.'}
                       </span>
                     </div>
                     <div className="banner-actions portal-card-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                       {!data.goLive.hasForwardingNumber ? (
                         <a className="btn user-save" href="/user/go-live#go-live-forwarding">
-                          Set up call forwarding
+                          Set up forwarding →
                         </a>
-                      ) : !data.goLive.forwardingSetupVerified ? (
-                        <>
-                          <button
-                            type="button"
-                            className="btn"
-                            disabled={testCallLoading}
-                            onClick={() => void requestDashboardTestCall()}
-                          >
-                            {testCallLoading ? 'Calling…' : 'Run test call'}
-                          </button>
-                          <a className="btn user-save" href="/user/go-live#go-live-forwarding">
-                            Continue setup →
-                          </a>
-                        </>
+                      ) : data.goLive.forwardingConfigured && !data.goLive.forwardingSetupVerified ? (
+                        <a className="btn user-save" href="/user/go-live#go-live-forwarding">
+                          Test forwarding →
+                        </a>
                       ) : !data.goLive.paymentMethodValid || !data.goLive.subscriptionActiveLike ? (
                         <a className="btn user-save" href="/user/billing">
-                          Start 14-day trial
+                          Start 14-day trial →
                         </a>
                       ) : (
                         <a className="btn user-save" href="/user/go-live#go-live-forwarding">

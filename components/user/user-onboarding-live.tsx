@@ -4142,7 +4142,7 @@ export function UserOnboardingLive({ initialData = null }: { initialData?: Onboa
               Setup complete
             </h3>
             <p className="onb-subtitle" style={{ marginTop: 8 }}>
-              Open your dashboard to go live — you&apos;ll set up call forwarding, run a test call, then start your free trial. Takes about 5 minutes.
+              Open your dashboard to go live — you&apos;ll set up call forwarding, call your business number to verify, then start your free trial. Takes about 5 minutes.
             </p>
             <div className="onb-actions-desktop" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
               <button className="onb-btn-primary" type="button" onClick={completeSetup}>

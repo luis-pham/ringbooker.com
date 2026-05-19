@@ -34,6 +34,7 @@ import { getCountryConfig } from '@/lib/countries/config';
 import { sendGuardedSms } from '@/src/backend/services/sms/guarded-sms';
 import { SMS_MISSED_CALL, SMS_REMINDER_24H, SMS_REMINDER_2H } from '@/src/backend/services/sms/types';
 import { formatShopDate, formatShopTime } from '@/src/shared/timezone';
+import { isWithinBusinessHours as checkWithinBusinessHours } from '@/src/backend/services/calls/business-hours';
 
 type WorkerControls = {
   stop: () => void;
@@ -301,7 +302,7 @@ export async function scheduleTrialLifecycleJobsWithRuntime(
 
       if (
         isShopSetupWizardComplete(shop) &&
-        !!accessState?.forwardingSetupVerifiedAt &&
+        !!(accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt) &&
         subscription &&
         subscription.status === 'trialing' &&
         subscription.paymentMethodStatus !== 'valid' &&
@@ -326,7 +327,7 @@ export async function scheduleTrialLifecycleJobsWithRuntime(
         }
       }
 
-      if (shop.telnyx_number?.trim() && !accessState?.forwardingSetupVerifiedAt && !accessState?.liveCallsEnabled && subscriptionId) {
+      if (shop.telnyx_number?.trim() && !(accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt) && !accessState?.liveCallsEnabled && subscriptionId) {
         const forwardingProvisionedAt =
           shop.forwarding_number_provisioned_at ?? shop.forwarding_number_provisioning_started_at;
         const provisionedAt = forwardingProvisionedAt ? new Date(forwardingProvisionedAt) : trialStartedAt;
@@ -446,12 +447,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
   }
 
   function isWithinBusinessHours(shop: Shop): boolean {
-    const day = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: shop.timezone }).format(new Date()).toLowerCase();
-    const entry = shop.hours?.[day];
-    if (!entry || 'closed' in entry) return false;
-    const tzNow = new Date(new Date().toLocaleString('en-US', { timeZone: shop.timezone }));
-    const currentMinutes = tzNow.getHours() * 60 + tzNow.getMinutes();
-    return currentMinutes >= parseTimeMinutes(entry.open, '09:00') && currentMinutes < parseTimeMinutes(entry.close, '17:00');
+    return checkWithinBusinessHours(shop);
   }
 
   function ownerSmsTimingAllowsNow(shop: Shop, timing: 'business_hours' | 'always' | undefined): boolean {
@@ -1555,7 +1551,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           built = buildFinishOnboardingReminderEmailPayload({ email: to!, shopName: shop.name, appBaseUrl });
           break;
         case 'add_payment_method_go_live':
-          if (!shop || !subscription || !isShopSetupWizardComplete(shop) || !accessState?.forwardingSetupVerifiedAt || subscription.paymentMethodStatus === 'valid' || accessState?.liveCallsEnabled) return;
+          if (!shop || !subscription || !isShopSetupWizardComplete(shop) || !(accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt) || subscription.paymentMethodStatus === 'valid' || accessState?.liveCallsEnabled) return;
           from = emailFounderFrom();
           replyTo = emailReplyTo();
           category = 'add_payment_method_go_live';
@@ -1569,7 +1565,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         case 'payment_method_added':
           if (!shop || !subscription || subscription.paymentMethodStatus !== 'valid' || !['trialing', 'active'].includes(subscription.status)) return;
           category = 'billing_payment_method_added';
-          built = buildPaymentMethodAddedEmailPayload({ shopName: shop.name, appBaseUrl });
+          built = buildPaymentMethodAddedEmailPayload({
+            shopName: shop.name,
+            appBaseUrl,
+            forwardingVerified: Boolean((accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt)?.trim()),
+          });
           break;
         case 'forwarding_number_ready':
           if (!shop || !forwardingNumber.trim()) return;
@@ -1583,7 +1583,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           break;
         case 'forwarding_not_verified_24h':
         case 'forwarding_not_verified_72h':
-          if (!shop || !forwardingNumber.trim() || accessState?.forwardingSetupVerifiedAt || accessState?.liveCallsEnabled) return;
+          if (!shop || !forwardingNumber.trim() || (accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt) || accessState?.liveCallsEnabled) return;
           from = emailFounderFrom();
           replyTo = emailReplyTo();
           category = 'forwarding_not_verified_reminder';
@@ -1595,7 +1595,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
           });
           break;
         case 'forwarding_verified':
-          if (!shop || !accessState?.forwardingSetupVerifiedAt) return;
+          if (!shop || !(accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt)) return;
           category = 'forwarding_verified';
           built = buildForwardingVerifiedEmailPayload({ shopName: shop.name, appBaseUrl });
           break;
@@ -1819,6 +1819,94 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         });
         await runtime.billingNotificationsRepository.markSent({ shopId: params.shopId, subscriptionId: expired.id, type: 'trial_ended', channel: 'email' });
       }
+    },
+    technical_failure_callback: async (params) => {
+      const payload = z
+        .object({ shopId: z.string().min(1), callerPhone: z.string().min(1), callId: z.string().min(1) })
+        .safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId }, 'technical_failure_callback_invalid_payload');
+        return;
+      }
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop) return;
+      logger.info(
+        { jobId: params.jobId, shopId: shop.id, callerPhone: payload.data.callerPhone, callId: payload.data.callId },
+        'technical_failure_callback_logged',
+      );
+      if (shop.sms_owner_opted_in) {
+        const body = `${shop.name}: A technical issue interrupted a call from ${payload.data.callerPhone}. Please follow up with the customer.`;
+        await sendGuardedSms({
+          smsService: runtime.smsService,
+          outboundMessagesRepository: runtime.outboundMessagesRepository,
+          shop,
+          to: shop.user_phone,
+          body,
+          category: 'user_alert',
+          idempotencyKey: `job:${params.jobId}:tech-failure-callback`,
+          audience: 'owner',
+        }).catch((err: unknown) => {
+          logger.warn({ err, jobId: params.jobId, shopId: shop.id }, 'technical_failure_callback_owner_sms_failed');
+        });
+      }
+    },
+
+    ai_failure_owner_alert: async (params) => {
+      const payload = z
+        .object({
+          shopId: z.string().min(1),
+          callerPhone: z.string().min(1),
+          callId: z.string().min(1),
+          wsCloseCode: z.number().optional(),
+        })
+        .safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId }, 'ai_failure_owner_alert_invalid_payload');
+        return;
+      }
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop) return;
+      logger.warn(
+        {
+          jobId: params.jobId,
+          shopId: shop.id,
+          callerPhone: payload.data.callerPhone,
+          callId: payload.data.callId,
+          wsCloseCode: payload.data.wsCloseCode,
+        },
+        'ai_failure_owner_alert_processed',
+      );
+      if (shop.sms_owner_opted_in) {
+        const body = `${shop.name}: AI service was interrupted on a call from ${payload.data.callerPhone}. Recovery was attempted. Please check call logs.`;
+        await sendGuardedSms({
+          smsService: runtime.smsService,
+          outboundMessagesRepository: runtime.outboundMessagesRepository,
+          shop,
+          to: shop.user_phone,
+          body,
+          category: 'user_alert',
+          idempotencyKey: `job:${params.jobId}:ai-failure-alert`,
+          audience: 'owner',
+        }).catch((err: unknown) => {
+          logger.warn({ err, jobId: params.jobId, shopId: shop.id }, 'ai_failure_owner_alert_sms_failed');
+        });
+      }
+    },
+
+    max_duration_alert: async (params) => {
+      const payload = z
+        .object({ shopId: z.string().min(1), callId: z.string().min(1), reason: z.string().optional() })
+        .safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId }, 'max_duration_alert_invalid_payload');
+        return;
+      }
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop) return;
+      logger.info(
+        { jobId: params.jobId, shopId: shop.id, callId: payload.data.callId, reason: payload.data.reason },
+        'max_duration_alert_processed',
+      );
     },
   };
   return handlers;

@@ -711,6 +711,10 @@ const adminCommercialGoLiveApprovalSchema = z.object({
   note: z.string().trim().max(1000).optional(),
 });
 
+const adminVerifyForwardingSchema = z.object({
+  reason: z.string().trim().min(1).max(1000),
+});
+
 const jsonRecordSchema = z.record(z.string(), z.unknown());
 
 const adminShopLocationSchema = z.object({
@@ -862,10 +866,11 @@ function provisionStatusForGoLive(shop: Shop): 'none' | 'provisioning' | 'ready'
 
 function forwardingStatusForGoLive(params: {
   shop: Shop;
-  forwardingSetupVerified: boolean;
+  forwardingClaimed: boolean;
+  forwardingVerified: boolean;
 }): 'none' | 'configured' | 'verified' {
-  if (params.forwardingSetupVerified) return 'verified';
-  if (params.shop.forwarding_carrier?.trim()) return 'configured';
+  if (params.forwardingVerified) return 'verified';
+  if (params.forwardingClaimed || params.shop.forwarding_carrier?.trim()) return 'configured';
   return 'none';
 }
 
@@ -4977,6 +4982,7 @@ export function createBackendApp(deps: {
       liveCallsEnabled: boolean;
       primaryCta: ReturnType<typeof resolveGoLiveDashboardPrimaryCta>;
       forwardingSetupVerified: boolean;
+      forwardingConfigured: boolean;
       hasForwardingNumber: boolean;
       paymentMethodValid: boolean;
       subscriptionActiveLike: boolean;
@@ -4997,6 +5003,9 @@ export function createBackendApp(deps: {
         { shopId: shop.id },
       );
       const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
+      const accessState = await deps.shopAccessStatesRepository.findByShopId(shop.id);
+      const forwardingVerified = Boolean((accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt)?.trim());
+      const forwardingConfigured = Boolean(accessState?.forwardingClaimedAt?.trim());
       const now = new Date();
       const commercialApprovalRequired = access.blockReason === 'commercial_approval_required';
       goLive = {
@@ -5006,10 +5015,11 @@ export function createBackendApp(deps: {
           subscription,
           paymentMethodStatus: access.paymentMethodStatus,
           hasForwardingNumber: access.hasForwardingNumber,
-          forwardingSetupVerified: access.forwardingSetupVerified,
+          forwardingSetupVerified: forwardingVerified,
           now,
         }),
-        forwardingSetupVerified: access.forwardingSetupVerified,
+        forwardingSetupVerified: forwardingVerified,
+        forwardingConfigured,
         hasForwardingNumber: access.hasForwardingNumber,
         paymentMethodValid: access.paymentMethodStatus === 'valid',
         subscriptionActiveLike:
@@ -5459,8 +5469,18 @@ export function createBackendApp(deps: {
       return c.json(body, result.httpStatus as 400);
     }
 
+    securityAudit({
+      action: 'forwarding_inbound_test_started',
+      actorType: 'user',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { shopId: shop.id, sessionId: result.sessionId },
+    });
+
     return c.json({
       ok: true,
+      mode: 'inbound_required',
       status: result.status,
       expiresAt: result.expiresAt,
       instruction: result.instruction,
@@ -5497,6 +5517,11 @@ export function createBackendApp(deps: {
     const now = new Date();
     const gate = evaluateKnowledgeGate(shop);
     const knowledgeGatePassed = canProceedToGoLive(gate);
+    const forwardingClaimedAt = accessState?.forwardingClaimedAt ?? null;
+    const forwardingVerifiedAt = accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt ?? null;
+    const forwardingVerifiedSource = accessState?.forwardingVerifiedSource ?? null;
+    const forwardingClaimed = Boolean(forwardingClaimedAt);
+    const forwardingVerified = Boolean(forwardingVerifiedAt);
 
     let forwardingTestStatus: 'none' | 'pending' | 'passed' | 'expired' | 'failed' = 'none';
     let forwardingTestExpiresAt: string | null = null;
@@ -5540,9 +5565,15 @@ export function createBackendApp(deps: {
       hasPaymentMethod: access.paymentMethodStatus === 'valid',
       forwardingNumber: shop.telnyx_number?.trim() || null,
       hasForwardingNumber: access.hasForwardingNumber,
-      forwardingSetupVerified: access.forwardingSetupVerified,
-      forwardingSetupVerifiedAt: accessState?.forwardingSetupVerifiedAt ?? null,
-      forwardingSetupVerifiedVia: accessState?.forwardingSetupVerifiedVia ?? null,
+      forwardingSetupVerified: forwardingVerified,
+      forwardingSetupVerifiedAt: forwardingVerifiedAt,
+      forwardingSetupVerifiedVia: forwardingVerifiedSource,
+      forwarding: {
+        configured: forwardingClaimed,
+        verified: forwardingVerified,
+        verified_at: forwardingVerifiedAt,
+        verified_source: forwardingVerifiedSource,
+      },
       forwardingTestStatus,
       forwardingTestExpiresAt,
       testCallCount: shop.test_call_count ?? 0,
@@ -5574,12 +5605,15 @@ export function createBackendApp(deps: {
           telnyx_number_id: shop.forwarding_number_provider_order_id ?? null,
         },
         forwarding: {
-          status: forwardingStatusForGoLive({ shop, forwardingSetupVerified: access.forwardingSetupVerified }),
+          status: forwardingStatusForGoLive({ shop, forwardingClaimed, forwardingVerified }),
           country: shop.forwarding_country ?? 'us',
           carrier: shop.forwarding_carrier?.trim() || null,
           forwardingType: shop.forwarding_type ?? 'no_answer',
           dialCode: null,
-          verifiedAt: accessState?.forwardingSetupVerifiedAt ?? null,
+          verifiedAt: forwardingVerifiedAt,
+          configured: forwardingClaimed,
+          verified: forwardingVerified,
+          verifiedSource: forwardingVerifiedSource,
         },
         liveAnswering: {
           enabled: access.liveCallsEnabled,
@@ -5594,7 +5628,7 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    if (!deps.shopsRepository || !deps.shopAccessStatesRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
 
     let shop;
     try {
@@ -5648,7 +5682,9 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    if (!deps.shopsRepository || !deps.shopAccessStatesRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
@@ -5691,7 +5727,9 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const sessionResult = await requireSession(c, 'user');
     if (sessionResult instanceof Response) return sessionResult;
-    if (!deps.shopsRepository) return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    if (!deps.shopsRepository || !deps.shopAccessStatesRepository) {
+      return c.json({ ok: false, error: 'user_dependencies_unavailable' }, 500);
+    }
 
     const body = await c.req.json().catch(() => null);
     const parsed = markForwardingConfiguredSchema.safeParse(body);
@@ -5708,8 +5746,17 @@ export function createBackendApp(deps: {
       forwarding_country: parsed.data.country ?? shop.forwarding_country ?? 'us',
       forwarding_type: parsed.data.forwardingType,
     });
+    await deps.shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      forwardingClaimedAt: new Date().toISOString(),
+    });
 
-    return c.json({ ok: true, forwardingStatus: 'configured' });
+    return c.json({
+      ok: true,
+      forwardingStatus: 'configured',
+      status: 'claimed',
+      message: 'Call your business number to complete verification',
+    });
   });
 
   app.post(path('/user/test-call-forwarding'), async (c) => {
@@ -5795,45 +5842,6 @@ export function createBackendApp(deps: {
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
 
-    const access = await getShopBillingAccess(
-      {
-        shopsRepository: deps.shopsRepository,
-        billingSubscriptionsRepository: deps.billingSubscriptionsRepository,
-        shopAccessStatesRepository: deps.shopAccessStatesRepository,
-        testCallAttemptsRepository: deps.testCallAttemptsRepository,
-      },
-      { shopId: shop.id },
-    );
-    if (access.blockReason === 'commercial_approval_required') {
-      return c.json(
-        {
-          ok: false,
-          error: 'commercial_approval_required',
-          message: 'Your Custom setup must be approved by the RingBooker team before live answering can be enabled.',
-        },
-        403,
-      );
-    }
-    if (access.liveCallsEnabled) {
-      return c.json({ ok: true, forwardingSetupVerified: access.forwardingSetupVerified, liveCallsEnabled: true });
-    }
-    if (access.subscriptionStatus !== 'active' && access.subscriptionStatus !== 'trialing') {
-      return c.json({ ok: false, error: access.blockReason || 'subscription_inactive' }, 409);
-    }
-    if (access.blockReason === 'trial_expired' || access.subscriptionStatus === 'trialing' && access.trialDaysRemaining === 0) {
-      return c.json({ ok: false, error: 'trial_expired' }, 409);
-    }
-    if (access.paymentMethodStatus !== 'valid') {
-      return c.json(
-        {
-          ok: false,
-          error: 'payment_method_required',
-          message: buildGoLivePaymentRequiredMessage(),
-          billingUrl: '/user/billing',
-        },
-        402,
-      );
-    }
     if (!shop.telnyx_number?.trim()) {
       return c.json(
         {
@@ -5847,17 +5855,10 @@ export function createBackendApp(deps: {
 
     await deps.shopAccessStatesRepository.upsert({
       shopId: shop.id,
-      forwardingSetupVerifiedAt: new Date().toISOString(),
-      forwardingSetupVerifiedVia: 'manual_confirmation',
-    });
-    const subscription = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
-    await enqueueLifecycleEmail({
-      shopId: shop.id,
-      kind: 'forwarding_verified',
-      subscriptionId: subscription?.id ?? null,
+      forwardingClaimedAt: new Date().toISOString(),
     });
     securityAudit({
-      action: 'forwarding_setup_manual_confirmed',
+      action: 'forwarding_setup_claimed',
       actorType: 'user',
       actorId: sessionResult.email,
       ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
@@ -5865,7 +5866,12 @@ export function createBackendApp(deps: {
       details: { shopId: shop.id },
     });
 
-    return c.json({ ok: true, forwardingSetupVerified: true });
+    return c.json({
+      ok: true,
+      status: 'claimed',
+      forwardingSetupVerified: false,
+      message: 'Call your business number to complete verification',
+    });
   });
 
   // ── Nav state: minimal authenticated data for the marketing nav ──────────────
@@ -8499,8 +8505,9 @@ export function createBackendApp(deps: {
         });
         await deps.shopAccessStatesRepository.upsert({
           shopId: shop.id,
-          forwardingSetupVerifiedAt: null,
-          forwardingSetupVerifiedVia: null,
+          forwardingClaimedAt: null,
+          forwardingVerifiedAt: null,
+          forwardingVerifiedSource: null,
         });
         await enqueueLifecycleEmail({
           shopId: shop.id,
@@ -8592,6 +8599,18 @@ export function createBackendApp(deps: {
       },
       { shopId: shop.id },
     );
+    const accessState = await deps.shopAccessStatesRepository.findByShopId(shop.id);
+    if (!(accessState?.forwardingVerifiedAt ?? accessState?.forwardingSetupVerifiedAt)?.trim()) {
+      return c.json(
+        {
+          ok: false,
+          error: 'forwarding_not_verified',
+          message:
+            'Call forwarding must be verified before going live. Call your business number from another phone to verify.',
+        },
+        403,
+      );
+    }
     if (!access.canGoLive) {
       const status = access.blockReason === 'payment_method_required' ? 402 : access.blockReason === 'commercial_approval_required' ? 403 : 409;
       const messageByReason: Partial<Record<BillingBlockReason, string>> = {
@@ -8601,7 +8620,7 @@ export function createBackendApp(deps: {
         forwarding_number_required:
           'Provision your RingBooker forwarding number before enabling live answering.',
         forwarding_verification_required:
-          'Run a forwarding connectivity check or confirm setup before enabling live answering.',
+          'Call your business number from another phone to verify forwarding before enabling live answering.',
         onboarding_incomplete: 'Finish the setup wizard before enabling live answering.',
       };
       const message =
@@ -9627,6 +9646,41 @@ export function createBackendApp(deps: {
       },
     });
     return c.json({ ok: true, alreadyApproved: false, accessState: next, approvalEvent: approvalEvent ?? null });
+  });
+
+  app.post(path('/admin/shops/:id/verify-forwarding'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.admin_mutation, 'admin_shop_verify_forwarding');
+    if (limited) return limited;
+    const sessionResult = await requireSession(c, 'admin');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.shopsRepository || !deps.shopAccessStatesRepository) {
+      return c.json({ ok: false, error: 'admin_dependencies_unavailable' }, 500);
+    }
+    const shopId = parseAdminShopIdParam(c.req.param('id'));
+    if (!shopId) return c.json({ ok: false, error: 'invalid_shop_id' }, 400);
+    const parsed = adminVerifyForwardingSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+    const shop = await deps.shopsRepository.findById(shopId);
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    const verifiedAt = new Date().toISOString();
+    const next = await deps.shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      forwardingClaimedAt: verifiedAt,
+      forwardingVerifiedAt: verifiedAt,
+      forwardingVerifiedSource: 'admin_override',
+    });
+    securityAudit({
+      action: 'forwarding_verified_admin_override',
+      actorType: 'admin',
+      actorId: sessionResult.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+      details: { shopId: shop.id, reason: parsed.data.reason },
+    });
+    return c.json({ ok: true, accessState: next });
   });
 
 

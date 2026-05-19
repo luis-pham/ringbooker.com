@@ -94,23 +94,7 @@ export async function startOrReuseForwardingTestSession(params: {
 
   const testCallLimit = Math.max(0, shop.test_call_limit ?? 3);
   const testCallCount = Math.max(0, shop.test_call_count ?? 0);
-  let nextTestCallCount = testCallCount;
-  if (!access.liveCallsEnabled && !billingConfirmed) {
-    if (testCallCount >= testCallLimit) {
-      return {
-        ok: false,
-        httpStatus: 429,
-        error: 'test_call_limit_reached',
-        message: 'Add your card to continue.',
-        billingUrl: '/user/billing',
-        testCallsRemaining: 0,
-      };
-    }
-    await deps.shopsRepository.updateUserSettings(shop.id, {
-      test_call_count: testCallCount + 1,
-    });
-    nextTestCallCount = testCallCount + 1;
-  }
+  void billingConfirmed;
 
   const startedAt = now;
   const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
@@ -129,6 +113,6 @@ export async function startOrReuseForwardingTestSession(params: {
     expiresAt: session.expiresAt,
     instruction: FORWARDING_TEST_INSTRUCTION,
     sessionId: session.id,
-    testCallsRemaining: Math.max(0, testCallLimit - nextTestCallCount),
+    testCallsRemaining: Math.max(0, testCallLimit - testCallCount),
   };
 }

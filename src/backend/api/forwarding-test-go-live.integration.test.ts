@@ -136,7 +136,7 @@ async function createFixture(opts: Fx) {
   };
 }
 
-test('POST /user/go-live/start-forwarding-test allows pre-billing test and increments count', async () => {
+test('POST /user/go-live/start-forwarding-test starts inbound-required verification without incrementing test count', async () => {
   const { app, shopsRepository, shop, cookie } = await createFixture({ paymentMethodStatus: 'none', telnyxNumber: '+17145559999' });
   const res = await app.request('/user/go-live/start-forwarding-test', {
     method: 'POST',
@@ -144,15 +144,16 @@ test('POST /user/go-live/start-forwarding-test allows pre-billing test and incre
     body: JSON.stringify({}),
   });
   assert.equal(res.status, 200);
-  const body = (await res.json()) as { ok?: boolean; test_calls_remaining?: number; expiresAt?: string };
+  const body = (await res.json()) as { ok?: boolean; mode?: string; test_calls_remaining?: number; expiresAt?: string };
   assert.equal(body.ok, true);
-  assert.equal(body.test_calls_remaining, 2);
+  assert.equal(body.mode, 'inbound_required');
+  assert.equal(body.test_calls_remaining, 3);
   assert.ok(body.expiresAt);
   const updated = await shopsRepository.findById(shop.id);
-  assert.equal(updated?.test_call_count, 1);
+  assert.equal(updated?.test_call_count, 0);
 });
 
-test('POST /user/go-live/start-forwarding-test returns 429 when pre-billing test limit reached', async () => {
+test('POST /user/go-live/start-forwarding-test ignores legacy pre-billing test limit', async () => {
   const { app, shopsRepository, shop, cookie } = await createFixture({ paymentMethodStatus: 'none', telnyxNumber: '+17145559999' });
   await shopsRepository.updateUserSettings(shop.id, {
     test_call_count: 3,
@@ -163,9 +164,10 @@ test('POST /user/go-live/start-forwarding-test returns 429 when pre-billing test
     headers: userHeaders(cookie),
     body: JSON.stringify({}),
   });
-  assert.equal(res.status, 429);
-  const body = (await res.json()) as { error?: string; test_calls_remaining?: number };
-  assert.equal(body.error, 'test_call_limit_reached');
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok?: boolean; mode?: string; test_calls_remaining?: number };
+  assert.equal(body.ok, true);
+  assert.equal(body.mode, 'inbound_required');
   assert.equal(body.test_calls_remaining, 0);
 });
 
@@ -275,19 +277,24 @@ test('POST /user/test-call-forwarding does not mark verified without inbound (le
   assert.ok(!access?.forwardingSetupVerifiedAt);
 });
 
-test('POST /user/go-live/confirm-forwarding-setup rejects without valid payment', async () => {
-  const { app, cookie } = await createFixture({ paymentMethodStatus: 'none', telnyxNumber: '+17145559999' });
+test('POST /user/go-live/confirm-forwarding-setup claims configured forwarding without requiring payment', async () => {
+  const { app, shopAccessStatesRepository, shop, cookie } = await createFixture({ paymentMethodStatus: 'none', telnyxNumber: '+17145559999' });
   const res = await app.request('/user/go-live/confirm-forwarding-setup', {
     method: 'POST',
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmForwardingReady: true }),
   });
-  assert.equal(res.status, 402);
-  const body = (await res.json()) as { error?: string };
-  assert.equal(body.error, 'payment_method_required');
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok?: boolean; status?: string; forwardingSetupVerified?: boolean };
+  assert.equal(body.ok, true);
+  assert.equal(body.status, 'claimed');
+  assert.equal(body.forwardingSetupVerified, false);
+  const access = await shopAccessStatesRepository.findByShopId(shop.id);
+  assert.ok(access?.forwardingClaimedAt);
+  assert.equal(access?.forwardingVerifiedAt ?? null, null);
 });
 
-test('POST /user/go-live/confirm-forwarding-setup rejects expired trial', async () => {
+test('POST /user/go-live/confirm-forwarding-setup allows manual claim with expired trial', async () => {
   const { app, cookie } = await createFixture({
     paymentMethodStatus: 'valid',
     telnyxNumber: '+17145559999',
@@ -298,12 +305,13 @@ test('POST /user/go-live/confirm-forwarding-setup rejects expired trial', async 
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmForwardingReady: true }),
   });
-  assert.equal(res.status, 409);
-  const body = (await res.json()) as { error?: string };
-  assert.equal(body.error, 'trial_expired');
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok?: boolean; status?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.status, 'claimed');
 });
 
-test('POST /user/go-live/confirm-forwarding-setup rejects incomplete onboarding', async () => {
+test('POST /user/go-live/confirm-forwarding-setup allows manual claim with incomplete onboarding', async () => {
   const { app, cookie } = await createFixture({
     paymentMethodStatus: 'valid',
     telnyxNumber: '+17145559999',
@@ -314,9 +322,10 @@ test('POST /user/go-live/confirm-forwarding-setup rejects incomplete onboarding'
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmForwardingReady: true }),
   });
-  assert.equal(res.status, 409);
-  const body = (await res.json()) as { error?: string };
-  assert.equal(body.error, 'onboarding_incomplete');
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok?: boolean; status?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.status, 'claimed');
 });
 
 test('POST /user/go-live/confirm-forwarding-setup rejects missing forwarding number', async () => {
@@ -331,7 +340,7 @@ test('POST /user/go-live/confirm-forwarding-setup rejects missing forwarding num
   assert.equal(body.error, 'forwarding_number_required');
 });
 
-test('POST /user/go-live/confirm-forwarding-setup succeeds for valid state', async () => {
+test('POST /user/go-live/confirm-forwarding-setup sets claimed only for valid state', async () => {
   const { app, shopAccessStatesRepository, shop, cookie } = await createFixture({
     paymentMethodStatus: 'valid',
     telnyxNumber: '+17145559999',
@@ -343,8 +352,9 @@ test('POST /user/go-live/confirm-forwarding-setup succeeds for valid state', asy
   });
   assert.equal(res.status, 200);
   const access = await shopAccessStatesRepository.findByShopId(shop.id);
-  assert.ok(access?.forwardingSetupVerifiedAt);
-  assert.equal(access?.forwardingSetupVerifiedVia, 'manual_confirmation');
+  assert.ok(access?.forwardingClaimedAt);
+  assert.equal(access?.forwardingVerifiedAt ?? null, null);
+  assert.equal(access?.forwardingVerifiedSource ?? null, null);
 });
 
 test('inbound call.initiated to telnyx_number marks forwarding test passed when session pending', async () => {
@@ -412,8 +422,8 @@ test('inbound call.initiated to telnyx_number marks forwarding test passed when 
   assert.equal(result.decision === 'answer' || result.decision === 'dry_run', true);
 
   const access = await shopAccessStatesRepository.findByShopId(shop.id);
-  assert.ok(access?.forwardingSetupVerifiedAt);
-  assert.equal(access?.forwardingSetupVerifiedVia, 'inbound_test_call');
+  assert.ok(access?.forwardingVerifiedAt);
+  assert.equal(access?.forwardingVerifiedSource, 'inbound_test');
 });
 
 test('expired pending session is not marked passed on inbound', async () => {
@@ -482,7 +492,7 @@ test('expired pending session is not marked passed on inbound', async () => {
   assert.equal(result.decision, 'reject');
 
   const access = await shopAccessStatesRepository.findByShopId(shop.id);
-  assert.ok(!access?.forwardingSetupVerifiedAt);
+  assert.ok(!access?.forwardingVerifiedAt);
 });
 
 test('POST /user/go-live/enable is blocked without forwarding verification', async () => {
@@ -495,20 +505,20 @@ test('POST /user/go-live/enable is blocked without forwarding verification', asy
     headers: userHeaders(cookie),
     body: JSON.stringify({}),
   });
-  assert.equal(res.status, 409);
+  assert.equal(res.status, 403);
   const body = (await res.json()) as { error?: string };
-  assert.equal(body.error, 'forwarding_verification_required');
+  assert.equal(body.error, 'forwarding_not_verified');
 });
 
-test('POST /user/go-live/enable succeeds after manual_confirmation', async () => {
+test('POST /user/go-live/enable succeeds after system forwarding verification', async () => {
   const { app, shopAccessStatesRepository, shop, cookie } = await createFixture({
     paymentMethodStatus: 'valid',
     telnyxNumber: '+17145559999',
   });
   await shopAccessStatesRepository.upsert({
     shopId: shop.id,
-    forwardingSetupVerifiedAt: new Date().toISOString(),
-    forwardingSetupVerifiedVia: 'manual_confirmation',
+    forwardingVerifiedAt: new Date().toISOString(),
+    forwardingVerifiedSource: 'inbound_test',
   });
   const res = await app.request('/user/go-live/enable', {
     method: 'POST',
@@ -521,7 +531,7 @@ test('POST /user/go-live/enable succeeds after manual_confirmation', async () =>
 });
 
 
-test('enterprise without commercial approval cannot confirm forwarding setup', async () => {
+test('enterprise without commercial approval can claim forwarding setup but cannot go live', async () => {
   const { app, cookie } = await createFixture({
     paymentMethodStatus: 'valid',
     telnyxNumber: '+17145559999',
@@ -532,9 +542,10 @@ test('enterprise without commercial approval cannot confirm forwarding setup', a
     headers: userHeaders(cookie),
     body: JSON.stringify({ confirmForwardingReady: true }),
   });
-  assert.equal(res.status, 403);
-  const body = (await res.json()) as { error?: string };
-  assert.equal(body.error, 'commercial_approval_required');
+  assert.equal(res.status, 200);
+  const body = (await res.json()) as { ok?: boolean; status?: string };
+  assert.equal(body.ok, true);
+  assert.equal(body.status, 'claimed');
 });
 
 test('enterprise without commercial approval cannot enable live answering', async () => {
@@ -545,8 +556,8 @@ test('enterprise without commercial approval cannot enable live answering', asyn
   });
   await shopAccessStatesRepository.upsert({
     shopId: shop.id,
-    forwardingSetupVerifiedAt: new Date().toISOString(),
-    forwardingSetupVerifiedVia: 'forwarding_test',
+    forwardingVerifiedAt: new Date().toISOString(),
+    forwardingVerifiedSource: 'inbound_test',
   });
   const res = await app.request('/user/go-live/enable', {
     method: 'POST',

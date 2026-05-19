@@ -36,11 +36,14 @@ export type GoLiveStatus = {
   };
   forwarding: {
     status: GoLiveForwardingStatus;
+    configured: boolean;
+    verified: boolean;
     country: string;
     carrier: string | null;
     forwardingType: GoLiveForwardingType;
     dialCode: string | null;
     verifiedAt: string | null;
+    verifiedSource?: string | null;
   };
   liveAnswering: {
     enabled: boolean;
@@ -57,6 +60,12 @@ export type GoLiveStatusResponse = {
   canGoLive?: boolean;
   blockReason?: string | null;
   primaryCta?: string | null;
+  forwarding?: {
+    configured: boolean;
+    verified: boolean;
+    verified_at: string | null;
+    verified_source: string | null;
+  };
   forwardingNumber?: string | null;
   forwardingTestStatus?: 'none' | 'pending' | 'passed' | 'expired' | 'failed';
   forwardingTestExpiresAt?: string | null;
@@ -77,7 +86,7 @@ function fallbackStatus(): GoLiveStatus {
     knowledgeGate: { businessName: false, timezone: false, hours: false, hasServices: false, passed: false },
     billing: { status: 'none', trialEndsAt: null, paymentMethodAdded: false },
     provision: { status: 'none', ringbookerNumber: null, telnyx_number_id: null },
-    forwarding: { status: 'none', country: 'us', carrier: null, forwardingType: 'no_answer', dialCode: null, verifiedAt: null },
+    forwarding: { status: 'none', configured: false, verified: false, country: 'us', carrier: null, forwardingType: 'no_answer', dialCode: null, verifiedAt: null, verifiedSource: null },
     liveAnswering: { enabled: false, enabledAt: null },
   };
 }
@@ -155,6 +164,12 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
   const status = response?.status ?? fallbackStatus();
   const gate = response?.gate ?? [];
   const canGoLive = Boolean(response?.canGoLive && status.knowledgeGate.passed);
+
+  useEffect(() => {
+    if (status.forwarding.verified || status.forwarding.status !== 'configured') return;
+    const id = window.setInterval(() => void refresh().catch(() => undefined), 5000);
+    return () => window.clearInterval(id);
+  }, [refresh, status.forwarding.status, status.forwarding.verified]);
 
   async function postJson<T>(url: string, payload: Record<string, unknown> = {}): Promise<T> {
     setError(null);

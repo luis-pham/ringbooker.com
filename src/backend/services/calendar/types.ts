@@ -99,7 +99,7 @@ export function getCalendarProvider(shop: Shop, options?: CalendarProviderOption
   }
 
   if (providerId === 'square_appointments') {
-    return new SquareAppointmentsProvider(shop);
+    return new SquareAppointmentsProvider(shop, { persistCredentials: options?.persistCredentials });
   }
 
   if (providerId === 'vagaro') {

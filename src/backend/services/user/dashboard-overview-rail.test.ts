@@ -90,9 +90,9 @@ test('dashboard setup rail keeps go-live checklist focused on activation steps',
 
   assert.equal(rail.variant, 'setup');
   assert.deepEqual(rail.checklist.map((item) => item.title), [
-    'Add your card',
     'Forward missed calls to RingBooker',
-    'Test it works',
+    'Verify forwarding',
+    'Add your card',
     'Switch it on',
   ]);
   assert.equal(rail.checklist.some((item) => item.id === 'business_knowledge'), false);

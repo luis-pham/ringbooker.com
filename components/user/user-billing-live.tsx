@@ -674,7 +674,6 @@ export function UserBillingLive({
   const showTrialCtaRow =
     Boolean(data?.billing) &&
     !isEnterprisePlan &&
-    forwardingState === 'verified' &&
     billingState !== 'trialing_valid' &&
     billingState !== 'active' &&
     billingState !== 'checkout_pending';
@@ -878,10 +877,10 @@ export function UserBillingLive({
                 {billingNotice === 'checkout_success' ? (
                   <section className="billing-alert-strip" style={{ borderColor: '#bbf7d0', background: '#f0fdf4', color: '#166534' }}>
                     <p>
-                      <strong>Payment setup pending.</strong> We are waiting for billing to confirm your trial. Once confirmed, return to Go Live to switch on live answering.
+                      <strong>{forwardingState === 'verified' ? 'Payment confirmed — switch on live answering now!' : 'Payment confirmed — verify forwarding to go live.'}</strong>
                     </p>
                     <a className="btn purple" href="/user/go-live#go-live-forwarding">
-                      Switch it on →
+                      {forwardingState === 'verified' ? 'Switch it on →' : 'Verify forwarding →'}
                     </a>
                   </section>
                 ) : billingNotice === 'checkout_cancelled' ? (
@@ -920,15 +919,15 @@ export function UserBillingLive({
                 ) : null}
 
                 {showForwardingNudge ? (
-                  <section className="billing-alert-strip" style={{ borderColor: '#e2e8f0', background: '#f8fafc', color: '#374151' }} aria-label="Complete forwarding setup">
+                  <section className="billing-alert-strip" style={{ borderColor: '#bfdbfe', background: '#eff6ff', color: '#1e40af' }} aria-label="Complete forwarding setup">
                     <p style={{ margin: 0 }}>
-                      <strong>{forwardingState === 'configured' ? 'Test your forwarding to continue.' : 'Set up call forwarding to continue.'}</strong>{' '}
+                      <strong>{forwardingState === 'configured' ? 'One more step after this — verify your call forwarding to go live.' : 'Set up call forwarding to continue.'}</strong>{' '}
                       {forwardingState === 'configured'
-                        ? 'Run a test call to verify forwarding is working, then return here to start your trial.'
+                        ? 'It only takes 30 seconds. Call your business number from another phone.'
                         : 'Forward missed calls to RingBooker first, then return here to start your 14-day trial.'}
                     </p>
                     <a className="btn user-save" href="/user/go-live#go-live-forwarding">
-                      {forwardingState === 'configured' ? 'Test forwarding →' : 'Set up forwarding →'}
+                      {forwardingState === 'configured' ? 'How to verify →' : 'Set up forwarding →'}
                     </a>
                   </section>
                 ) : null}
@@ -1096,7 +1095,7 @@ export function UserBillingLive({
                                     <span className="tag orange" style={{ marginTop: 6, display: 'inline-flex' }}>
                                       Pending verification
                                     </span>
-                                    <p className="sub">Forwarding is configured — run a test call to verify.</p>
+                                    <p className="sub">Forwarding is configured — call your business number to verify.</p>
                                   </>
                                 ) : (
                                   <>

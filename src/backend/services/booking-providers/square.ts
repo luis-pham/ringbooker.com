@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon';
 
 import type { BookingInput, BookingResult, Shop, TimeSlot } from '@/src/backend/domain/types';
+import { logger } from '@/src/backend/observability/logger';
 import type { BookingProvider } from '@/src/backend/services/booking-providers/types';
 
 type SquareCredentials = {
@@ -202,15 +203,28 @@ function isUnauthorizedStatus(status: number): boolean {
   return status === 401 || status === 403;
 }
 
+// M1: increased from 120s → 300s so a slow refresh never races against expiry
 function isTokenNearExpiry(expiresAt?: string): boolean {
   if (!expiresAt) return false;
   const expires = DateTime.fromISO(expiresAt, { zone: 'utc' });
   if (!expires.isValid) return false;
-  return expires.diffNow('seconds').seconds <= 120;
+  return expires.diffNow('seconds').seconds <= 300;
 }
 
 function normalizeTeamMemberName(name: string): string {
   return name.trim().toLowerCase();
+}
+
+// H1: encode refreshed credentials so the caller can persist them to the DB
+function encodeRefreshedCredentials(c: SquareCredentials): string {
+  return Buffer.from(
+    JSON.stringify({
+      provider: 'square_appointments',
+      access_token: c.accessToken,
+      refresh_token: c.refreshToken,
+      expires_at: c.expiresAt,
+    }),
+  ).toString('base64');
 }
 
 export class SquareAppointmentsProvider implements BookingProvider {
@@ -220,12 +234,15 @@ export class SquareAppointmentsProvider implements BookingProvider {
   private readonly timeoutMs: number;
   private refreshInFlight: Promise<void> | null = null;
   private teamMembersCache: { items: SquareTeamMember[]; fetchedAtMs: number } | null = null;
+  // H1: optional callback to persist refreshed tokens to DB
+  private readonly onCredentialsRefreshed?: (encodedCredentials: string) => Promise<void>;
 
-  constructor(shop: Shop) {
+  constructor(shop: Shop, options?: { persistCredentials?: (encodedCredentials: string) => Promise<void> }) {
     this.shop = shop;
     this.credentials = resolveSquareCredentials(shop);
     this.baseUrl = squareApiBaseUrl();
     this.timeoutMs = squareTimeoutMs();
+    this.onCredentialsRefreshed = options?.persistCredentials;
   }
 
   private async fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
@@ -285,6 +302,14 @@ export class SquareAppointmentsProvider implements BookingProvider {
       if (payload.expires_at) {
         this.credentials.expiresAt = payload.expires_at;
       }
+
+      // H1: persist refreshed token to DB so next cold-start doesn't use stale credentials
+      if (this.onCredentialsRefreshed) {
+        const encoded = encodeRefreshedCredentials(this.credentials);
+        this.onCredentialsRefreshed(encoded).catch((err: unknown) => {
+          logger.warn({ err, shopId: this.shop.id }, 'square_token_persist_failed');
+        });
+      }
     })();
 
     try {
@@ -301,26 +326,9 @@ export class SquareAppointmentsProvider implements BookingProvider {
     retryOnAuth?: boolean;
   }): Promise<T> {
     await this.refreshAccessTokenIfNeeded(false);
-    const response = await this.fetchWithTimeout(`${this.baseUrl}${params.path}`, {
-      method: params.method,
-      headers: {
-        Authorization: `Bearer ${this.credentials.accessToken}`,
-        'Content-Type': 'application/json',
-        'Square-Version': squareApiVersion(),
-      },
-      body: params.body ? JSON.stringify(params.body) : undefined,
-    });
 
-    if (response.ok) {
-      if (response.status === 204) {
-        return {} as T;
-      }
-      return (await response.json()) as T;
-    }
-
-    if (params.retryOnAuth !== false && isUnauthorizedStatus(response.status)) {
-      await this.refreshAccessTokenIfNeeded(true);
-      const retried = await this.fetchWithTimeout(`${this.baseUrl}${params.path}`, {
+    const makeRequest = () =>
+      this.fetchWithTimeout(`${this.baseUrl}${params.path}`, {
         method: params.method,
         headers: {
           Authorization: `Bearer ${this.credentials.accessToken}`,
@@ -329,11 +337,30 @@ export class SquareAppointmentsProvider implements BookingProvider {
         },
         body: params.body ? JSON.stringify(params.body) : undefined,
       });
+
+    const response = await makeRequest();
+
+    if (response.ok) {
+      return response.status === 204 ? ({} as T) : ((await response.json()) as T);
+    }
+
+    // H2: retry once after Retry-After delay on rate limit
+    if (response.status === 429) {
+      const retryAfterMs = Math.min(Number(response.headers.get('Retry-After') ?? '1') * 1000, 8000);
+      await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+      const retried = await makeRequest();
       if (retried.ok) {
-        if (retried.status === 204) {
-          return {} as T;
-        }
-        return (await retried.json()) as T;
+        return retried.status === 204 ? ({} as T) : ((await retried.json()) as T);
+      }
+      const rateLimitBody = await retried.text().catch(() => '');
+      throw new Error(`square_rate_limit_retry_failed:${retried.status}:${rateLimitBody}`);
+    }
+
+    if (params.retryOnAuth !== false && isUnauthorizedStatus(response.status)) {
+      await this.refreshAccessTokenIfNeeded(true);
+      const retried = await makeRequest();
+      if (retried.ok) {
+        return retried.status === 204 ? ({} as T) : ((await retried.json()) as T);
       }
       const retryBody = await retried.text().catch(() => '');
       throw new Error(`square_request_failed_after_refresh:${retried.status}:${retryBody}`);
@@ -343,7 +370,12 @@ export class SquareAppointmentsProvider implements BookingProvider {
     throw new Error(`square_request_failed:${response.status}:${bodyText}`);
   }
 
-  private async findOrCreateCustomerId(phone: string, customerName?: string): Promise<string> {
+  // C2 + M3: idempotency key prevents duplicate customers; DUPLICATE_VALUE handles race condition
+  private async findOrCreateCustomerId(
+    phone: string,
+    customerName?: string,
+    idempotencyKey?: string,
+  ): Promise<string> {
     const search = await this.squareJsonRequest<SquareSearchCustomersResponse>({
       path: '/v2/customers/search',
       method: 'POST',
@@ -368,13 +400,26 @@ export class SquareAppointmentsProvider implements BookingProvider {
       body: {
         phone_number: phone,
         given_name: customerName?.trim() || undefined,
+        ...(idempotencyKey ? { idempotency_key: `${idempotencyKey}:customer` } : {}),
       },
     });
+
     const createdId = create.customer?.id;
-    if (!createdId) {
-      throw new Error(`square_customer_create_failed:${extractSquareError(create.errors)}`);
+    if (createdId) return createdId;
+
+    // M3: concurrent calls with same phone → DUPLICATE_VALUE → search again
+    const isDuplicate = create.errors?.some((e) => e.code === 'DUPLICATE_VALUE');
+    if (isDuplicate) {
+      const retry = await this.squareJsonRequest<SquareSearchCustomersResponse>({
+        path: '/v2/customers/search',
+        method: 'POST',
+        body: { limit: 1, query: { filter: { phone_number: { exact: phone } } } },
+      });
+      const found = retry.customers?.[0]?.id;
+      if (found) return found;
     }
-    return createdId;
+
+    throw new Error(`square_customer_create_failed:${extractSquareError(create.errors)}`);
   }
 
   async getTeamMembers(): Promise<SquareTeamMember[]> {
@@ -390,7 +435,8 @@ export class SquareAppointmentsProvider implements BookingProvider {
       });
 
       if (response.errors?.length) {
-        console.warn(`Square team member lookup failed: ${extractSquareError(response.errors)}`);
+        // H3: structured logger instead of console.warn
+        logger.warn({ shopId: this.shop.id, error: extractSquareError(response.errors) }, 'square_team_member_lookup_failed');
         return [];
       }
 
@@ -413,7 +459,8 @@ export class SquareAppointmentsProvider implements BookingProvider {
       };
       return items;
     } catch (error) {
-      console.warn(`Square team member lookup failed: ${error instanceof Error ? error.message : 'unknown_error'}`);
+      // H3: structured logger
+      logger.warn({ shopId: this.shop.id, err: error }, 'square_team_member_lookup_error');
       return [];
     }
   }
@@ -431,11 +478,12 @@ export class SquareAppointmentsProvider implements BookingProvider {
       null;
 
     if (match) {
-      console.warn(`Team member found: ${name} -> ${match.id}`);
+      // H3: structured logger (debug level — operational, not a warning)
+      logger.debug({ shopId: this.shop.id, name, teamMemberId: match.id }, 'square_team_member_matched');
       return match.id;
     }
 
-    console.warn(`Team member not found: ${name}`);
+    logger.debug({ shopId: this.shop.id, name }, 'square_team_member_not_found');
     return null;
   }
 
@@ -556,7 +604,8 @@ export class SquareAppointmentsProvider implements BookingProvider {
   }
 
   async createBooking(input: BookingInput): Promise<BookingResult> {
-    const customerId = await this.findOrCreateCustomerId(input.customerPhone, input.customerName);
+    // C2: pass idempotencyKey so customer creation is idempotency-safe
+    const customerId = await this.findOrCreateCustomerId(input.customerPhone, input.customerName, input.idempotencyKey);
     const resolvedTeamMemberId = input.teamMemberId ?? this.credentials.teamMemberId;
     const response = await this.squareJsonRequest<SquareBookingResponse>({
       path: '/v2/bookings',
@@ -611,6 +660,7 @@ export class SquareAppointmentsProvider implements BookingProvider {
       method: 'POST',
       body: {
         booking_version: version,
+        idempotency_key: params.idempotencyKey, // C1: was missing — prevents duplicate cancels on retry
       },
     });
 
@@ -641,6 +691,11 @@ export class SquareAppointmentsProvider implements BookingProvider {
       throw new Error('square_reschedule_missing_current_booking');
     }
 
+    // M4: throw instead of silently falling back to a hardcoded 60-minute segment
+    if (!booking.appointment_segments || booking.appointment_segments.length === 0) {
+      throw new Error('square_reschedule_missing_segments');
+    }
+
     const updateResponse = await this.squareJsonRequest<SquareBookingResponse>({
       path: `/v2/bookings/${encodeURIComponent(params.bookingId)}`,
       method: 'PUT',
@@ -650,16 +705,7 @@ export class SquareAppointmentsProvider implements BookingProvider {
           version: booking.version,
           start_at: localStart.toUTC().toISO(),
           location_id: booking.location_id ?? this.credentials.locationId,
-          appointment_segments:
-            booking.appointment_segments && booking.appointment_segments.length > 0
-              ? booking.appointment_segments
-              : [
-                  {
-                    duration_minutes: 60,
-                    service_variation_id: this.credentials.serviceVariationId,
-                    ...(this.credentials.teamMemberId ? { team_member_id: this.credentials.teamMemberId } : {}),
-                  },
-                ],
+          appointment_segments: booking.appointment_segments,
         },
       },
     });
@@ -672,7 +718,10 @@ export class SquareAppointmentsProvider implements BookingProvider {
       bookingId: params.bookingId,
       calendarEventId: updateResponse.booking?.id ?? params.bookingId,
       confirmed: updateResponse.booking?.status ? updateResponse.booking.status !== 'PENDING' : true,
-      providerStatus: updateResponse.booking?.status && updateResponse.booking.status === 'PENDING' ? 'request_only' : 'provider_confirmed',
+      providerStatus:
+        updateResponse.booking?.status && updateResponse.booking.status === 'PENDING'
+          ? 'request_only'
+          : 'provider_confirmed',
     };
   }
 }

@@ -611,6 +611,9 @@ export interface ShopAccessStatesRepository {
     liveCallsPausedReason?: string | null;
     liveCallsPausedAt?: string | null;
     lastAccessCheckAt?: string | null;
+    forwardingClaimedAt?: string | null;
+    forwardingVerifiedAt?: string | null;
+    forwardingVerifiedSource?: ShopAccessState['forwardingVerifiedSource'];
     forwardingSetupVerifiedAt?: string | null;
     forwardingSetupVerifiedVia?: ShopAccessState['forwardingSetupVerifiedVia'];
     commercialGoLiveApprovedAt?: string | null;

@@ -372,6 +372,7 @@ export function GoLiveForwardingPanel({
   const [showDidntReceive, setShowDidntReceive] = useState(false);
   const [forwardingJustVerified, setForwardingJustVerified] = useState(false);
   const prevForwardingVerifiedRef = useRef<boolean | null>(null);
+  const startedInboundVerificationRef = useRef(false);
 
   useEffect(() => {
     if (initialBilling?.ok && initialBilling.shop) {
@@ -381,16 +382,16 @@ export function GoLiveForwardingPanel({
 
   const billingReady = goLive.status.billing.paymentMethodAdded && ['trial', 'active'].includes(goLive.status.billing.status);
   const numberReady = goLive.status.provision.status === 'ready' && Boolean(goLive.status.provision.ringbookerNumber);
-  const forwardingConfigured = goLive.status.forwarding.status === 'configured' || goLive.status.forwarding.status === 'verified';
-  const forwardingVerified = goLive.status.forwarding.status === 'verified';
+  const forwardingConfigured = goLive.status.forwarding.configured || goLive.status.forwarding.status === 'configured' || goLive.status.forwarding.status === 'verified';
+  const forwardingVerified = goLive.status.forwarding.verified || goLive.status.forwarding.status === 'verified';
   const liveEnabled = goLive.status.liveAnswering.enabled;
 
   const steps = useMemo(() => {
     const active: StepId = !forwardingConfigured ? 1 : !forwardingVerified ? 2 : !billingReady ? 3 : 4;
     return [
       { step: 1 as StepId, title: 'Forward missed calls to RingBooker', meta: 'One code to dial · ~2 min', done: forwardingConfigured, locked: false },
-      { step: 2 as StepId, title: 'Test it works', meta: "We'll call to confirm", done: forwardingVerified, locked: !forwardingConfigured },
-      { step: 3 as StepId, title: 'Add your card', meta: billingReady ? `Trial active${formatDate(goLive.status.billing.trialEndsAt) ? ` until ${formatDate(goLive.status.billing.trialEndsAt)}` : ''}` : 'Starts free 14-day trial', done: billingReady, locked: !forwardingVerified },
+      { step: 2 as StepId, title: 'Verify forwarding', meta: 'Call your business number', done: forwardingVerified, locked: !forwardingConfigured },
+      { step: 3 as StepId, title: 'Add your card', meta: billingReady ? `Trial active${formatDate(goLive.status.billing.trialEndsAt) ? ` until ${formatDate(goLive.status.billing.trialEndsAt)}` : ''}` : 'Starts free 14-day trial', done: billingReady, locked: !forwardingConfigured },
       { step: 4 as StepId, title: 'Switch it on', meta: 'Go live instantly', done: liveEnabled, locked: !billingReady || !forwardingVerified || !goLive.canGoLive },
     ].map((item) => ({ ...item, state: item.done ? 'done' as StepState : item.locked ? 'locked' as StepState : item.step === active ? 'active' as StepState : 'active' as StepState }));
   }, [billingReady, forwardingConfigured, forwardingVerified, liveEnabled, goLive.canGoLive, goLive.status.billing.trialEndsAt]);
@@ -482,10 +483,14 @@ export function GoLiveForwardingPanel({
   }, [goLive, numberReady, selectedCarrier, selectedCarrierRecord?.appSteps, goLive.selectedCountry, goLive.selectedForwardingType]);
 
   useEffect(() => {
-    if (goLive.forwardingTestStatus !== 'pending' || forwardingVerified) return;
+    if (selectedStep !== 2 || forwardingVerified) return;
+    if (!startedInboundVerificationRef.current) {
+      startedInboundVerificationRef.current = true;
+      void goLive.runVerification().catch(() => undefined);
+    }
     const id = window.setInterval(() => void goLive.refresh().catch(() => undefined), 5000);
     return () => window.clearInterval(id);
-  }, [goLive.forwardingTestStatus, forwardingVerified, goLive.refresh]);
+  }, [selectedStep, forwardingVerified, goLive.refresh, goLive.runVerification]);
 
   useEffect(() => {
     if (!testCallPending || testCallPendingAt === null) return;
@@ -608,114 +613,47 @@ export function GoLiveForwardingPanel({
     }
 
     if (step === 2) {
-      const showPreBillingTestLimit = !billingReady && !liveEnabled;
-      const testCallLimit = goLive.testCallLimit ?? 3;
-      const testCallCount = goLive.testCallCount ?? 0;
-      const testLimitReached = showPreBillingTestLimit && testCallCount >= testCallLimit;
       const helpUrl = carrierHelpUrl(compactCarrierId);
-      // TODO: add per-carrier deep links when carrier-specific guide pages are available
-      const helpLabel = compactCarrierName ? `Get help for ${compactCarrierName} →` : 'View setup guide →';
-
-      let counterCopy: string | null = null;
-      if (showPreBillingTestLimit && testCallCount > 0) {
-        if (testCallCount >= testCallLimit) {
-          counterCopy = 'Test call limit reached';
-        } else {
-          const remaining = testCallLimit - testCallCount;
-          counterCopy = `${testCallCount} test call${testCallCount !== 1 ? 's' : ''} used · ${remaining} remaining`;
-        }
-      }
+      const helpLabel = compactCarrierName ? `Contact support about ${compactCarrierName} →` : 'Having trouble? Contact support →';
 
       return (
         <div>
-          <p className="gl-empty-note">We'll call your business number to confirm forwarding is working. You'll hear a short confirmation message — your AI receptionist activates when you go live.</p>
-          {counterCopy ? <p className="gl-message">{counterCopy}</p> : null}
-          {testLimitReached ? (
-            <section className="card soft gl-limit-card" style={{ marginTop: 14 }}>
-              <h3>Add your card to continue</h3>
-              <p className="sub">You have used all pre-billing test calls. Add your card to keep testing and finish setup.</p>
-              <button type="button" className="btn user-save" onClick={() => setSelectedStep(3)}>Add your card →</button>
-            </section>
-          ) : null}
-          {goLive.forwardingTestStatus === 'failed' && !testCallPending ? <p className="gl-message error">The call didn't reach RingBooker. Make sure you dialed the forwarding code correctly, then try again.</p> : null}
           {forwardingJustVerified ? (
             <section className="card soft gl-live-banner" style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 10 }}>
               <span className="gl-verified-anim">✓</span>
               <div>
                 <h3 style={{ margin: 0 }}>Forwarding confirmed!</h3>
-                <p className="sub" style={{ margin: '2px 0 0' }}>RingBooker is ready to handle your calls.</p>
+                <p className="sub" style={{ margin: '2px 0 0' }}>RingBooker is ready to receive calls.</p>
               </div>
             </section>
           ) : forwardingVerified ? (
-            <section className="card soft gl-live-banner" style={{ marginTop: 14 }}><h3>✓ It works — RingBooker is receiving calls</h3><p className="sub">Your forwarding setup is verified.</p></section>
+            <section className="card soft gl-live-banner" style={{ marginTop: 14 }}><h3>✓ Forwarding confirmed!</h3><p className="sub">RingBooker is ready to receive calls.</p></section>
           ) : null}
           {!forwardingVerified && !forwardingJustVerified ? (
             <div>
-              {testCallPending ? (
-                <div style={{ marginTop: 14 }}>
-                  <p className="gl-message gl-test-calling">
-                    <span className="gl-pulse-dot" aria-hidden />
-                    Calling {formatPhone(goLive.businessPhone)} now...
-                  </p>
-                  <p className="gl-hint" style={{ marginTop: 8 }}>Pick up to hear the confirmation message.</p>
-                  <p className="gl-hint">We'll confirm automatically when the call comes through.</p>
-                  {showDidntReceive ? (
-                    <button
-                      type="button"
-                      className="gl-inline-link"
-                      style={{ display: 'block', marginTop: 6 }}
-                      onClick={() => { setTestCallPending(false); setShowDidntReceive(false); }}
-                    >
-                      Didn't receive a call? Try again →
-                    </button>
+              <p className="gl-empty-note">Call your business number from another phone and don't answer. RingBooker will confirm automatically when the forwarded call comes through.</p>
+              <div className="gl-dial-box" style={{ marginTop: 14 }}>
+                <span className="gl-section-label">Business number to call</span>
+                <div className="gl-dial-code">
+                  <code>{formatPhone(goLive.businessPhone) || 'Your business number'}</code>
+                  {goLive.businessPhone ? (
+                    <button type="button" className="btn gl-dial-copy-desktop" onClick={() => void navigator.clipboard?.writeText(goLive.businessPhone ?? '')}>Copy</button>
                   ) : null}
-                  <button
-                    type="button"
-                    className="gl-inline-link"
-                    style={{ display: 'block', marginTop: 10 }}
-                    disabled={busyAction === 'confirm'}
-                    onClick={() => run('confirm', goLive.confirmForwarding, 'Forwarding marked verified.')}
-                  >
-                    {busyAction === 'confirm' ? 'Saving...' : 'Mark as done manually →'}
-                  </button>
                 </div>
-              ) : (
-                <>
-                  <p className="gl-hint" style={{ marginTop: 12 }}>Make sure your business phone is nearby and not in use.</p>
-                  <div className="gl-action-row gl-action-row--col" style={{ marginTop: 10 }}>
-                    <button
-                      type="button"
-                      className="btn user-save"
-                      disabled={testLimitReached || busyAction === 'verify'}
-                      onClick={async () => {
-                        setBusyAction('verify');
-                        setMessage(null);
-                        setTestCallPending(false);
-                        setShowDidntReceive(false);
-                        try {
-                          await goLive.runVerification();
-                          setTestCallPending(true);
-                          setTestCallPendingAt(Date.now());
-                        } catch (err) {
-                          setMessage(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-                        } finally {
-                          setBusyAction(null);
-                        }
-                      }}
-                    >
-                      {busyAction === 'verify' ? 'Starting...' : 'Run the test call'}
-                    </button>
-                    <div>
-                      <button type="button" className="gl-inline-link" disabled={busyAction === 'confirm'} onClick={() => run('confirm', goLive.confirmForwarding, 'Forwarding marked verified.')}>
-                        {busyAction === 'confirm' ? 'Saving...' : 'Already tested it? Mark as done →'}
-                      </button>
-                      <a className="gl-inline-link" href={helpUrl} target="_blank" rel="noreferrer">
-                        Having trouble? {helpLabel}
-                      </a>
-                    </div>
-                  </div>
-                </>
-              )}
+                <div className="gl-dial-mobile-actions">
+                  {goLive.businessPhone ? <button type="button" className="btn" onClick={() => void navigator.clipboard?.writeText(goLive.businessPhone ?? '')}>Copy</button> : null}
+                  {goLive.businessPhone ? <a className="btn user-save gl-open-dialer" href={`tel:${goLive.businessPhone}`}>Open dialer →</a> : null}
+                </div>
+              </div>
+              <p className="gl-message gl-test-calling">
+                <span className="gl-pulse-dot" aria-hidden />
+                Waiting for forwarded call...
+              </p>
+              <p className="gl-hint" style={{ marginTop: 8 }}>Use your personal phone — not your business phone.</p>
+              <p className="gl-hint">We'll detect it automatically — keep your business phone free.</p>
+              <a className="gl-inline-link" href={helpUrl} target="_blank" rel="noreferrer">
+                {helpLabel}
+              </a>
             </div>
           ) : null}
         </div>
@@ -756,9 +694,15 @@ export function GoLiveForwardingPanel({
 
     return (
       <div>
-        {liveEnabled ? <section className="card soft gl-live-banner"><h3>RingBooker is now answering missed calls on your business line.</h3><p className="sub">Forwarded calls can now be answered by RingBooker.</p></section> : <p className="gl-empty-note">Billing, forwarding, and verification must be complete before live answering can be enabled.</p>}
+        {liveEnabled ? <section className="card soft gl-live-banner"><h3>RingBooker is now answering missed calls on your business line.</h3><p className="sub">Forwarded calls can now be answered by RingBooker.</p></section> : !forwardingVerified ? (
+          <section className="card soft gl-gate-card">
+            <h3>Verify call forwarding first</h3>
+            <p className="sub">Call your business number from another phone to confirm forwarding works before going live.</p>
+            <button type="button" className="btn user-save" onClick={() => { setSelectedStep(2); setMobileOpenStep(2); }}>Go to verification →</button>
+          </section>
+        ) : <p className="gl-empty-note">Billing, forwarding, and verification must be complete before live answering can be enabled.</p>}
         <div className="gl-action-row">
-          {!liveEnabled ? <button type="button" className="btn user-save" disabled={!goLive.canGoLive || busyAction === 'enable'} onClick={() => run('enable', goLive.enableLive, 'Live answering is now active.')}>{busyAction === 'enable' ? 'Enabling...' : 'Switch on live answering'}</button> : null}
+          {!liveEnabled ? <button type="button" className="btn user-save" title={!forwardingVerified ? 'Call forwarding must be verified to go live' : undefined} disabled={!goLive.canGoLive || !forwardingVerified || busyAction === 'enable'} onClick={() => run('enable', goLive.enableLive, 'Live answering is now active.')}>{busyAction === 'enable' ? 'Enabling...' : 'Switch on live answering'}</button> : null}
           {liveEnabled ? <button type="button" className="btn" disabled={busyAction === 'disable'} onClick={() => { if (window.confirm('Callers will no longer be answered by RingBooker. Your forwarding setup stays intact.')) void run('disable', goLive.disableLive, 'Live answering is disabled.'); }}>{busyAction === 'disable' ? 'Disabling...' : 'Disable live answering'}</button> : null}
           <a className="btn" href="/user/calls">View call logs</a>
         </div>

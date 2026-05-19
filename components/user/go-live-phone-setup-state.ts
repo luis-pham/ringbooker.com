@@ -72,10 +72,10 @@ export function getPhoneSetupCopy(state: PhoneSetupState): PhoneSetupCopy {
       blockingReason: 'Setup is not complete yet.',
     },
     setup_ready_for_test: {
-      title: 'Test RingBooker before going live',
-      explanation: 'You can run setup tests without a card. Start your 14-day trial only when you are ready to connect your business phone.',
-      primaryLabel: 'Run a test call',
-      primaryTarget: 'test_call',
+      title: 'Verify forwarding before going live',
+      explanation: 'Call your business number from another phone after setup. RingBooker will confirm automatically when the forwarded call arrives.',
+      primaryLabel: 'Verify forwarding',
+      primaryTarget: 'start_forwarding_test',
       secondaryLabel: 'Start 14-day trial',
       secondaryTarget: '/user/billing',
     },
@@ -114,10 +114,8 @@ export function getPhoneSetupCopy(state: PhoneSetupState): PhoneSetupCopy {
     forwarding_verification_needed: {
       title: 'Verify call forwarding',
       explanation: 'After setting up forwarding with your carrier, call your current business number from another phone so RingBooker can confirm the call reaches the right place.',
-      primaryLabel: 'Start verification',
+      primaryLabel: 'Verify forwarding',
       primaryTarget: 'start_forwarding_test',
-      secondaryLabel: 'I have verified it manually',
-      secondaryTarget: 'confirm_forwarding',
       blockingReason: 'Forwarding must be verified before live answering.',
     },
     ready_to_enable_live: {
@@ -131,8 +129,6 @@ export function getPhoneSetupCopy(state: PhoneSetupState): PhoneSetupCopy {
       explanation: 'RingBooker can answer forwarded calls from your current business number.',
       primaryLabel: 'View call logs',
       primaryTarget: '/user/calls',
-      secondaryLabel: 'Run a test call',
-      secondaryTarget: 'test_call',
     },
     billing_issue: {
       title: 'Live answering is paused',

@@ -62,7 +62,10 @@ export type JobType =
   | 'callback_request_owner_alert'
   | 'lifecycle_email'
   | 'trial_reminder_email'
-  | 'trial_expiry_check';
+  | 'trial_expiry_check'
+  | 'technical_failure_callback'
+  | 'ai_failure_owner_alert'
+  | 'max_duration_alert';
 
 export type TranscriptStatus = 'pending' | 'completed' | 'failed';
 
@@ -394,6 +397,7 @@ export type ToolErrorCode =
   | 'NOT_FOUND'
   | 'CALENDAR_TIMEOUT'
   | 'CALENDAR_CONFLICT'
+  | 'BOOKING_LINK_PROVIDER'
   | 'SMS_FAILED'
   | 'TRANSFER_FAILED'
   | 'RATE_LIMITED'
@@ -498,7 +502,12 @@ export interface ShopAccessState {
   liveCallsPausedReason?: string | null;
   liveCallsPausedAt?: string | null;
   lastAccessCheckAt?: string | null;
+  forwardingClaimedAt?: string | null;
+  forwardingVerifiedAt?: string | null;
+  forwardingVerifiedSource?: 'inbound_test' | 'admin_override' | null;
+  /** @deprecated Use forwardingVerifiedAt. Kept as a compatibility alias during rollout. */
   forwardingSetupVerifiedAt?: string | null;
+  /** @deprecated Use forwardingVerifiedSource. Kept as a compatibility alias during rollout. */
   forwardingSetupVerifiedVia?: ForwardingSetupVerifiedVia | null;
   commercialGoLiveApprovedAt?: string | null;
   commercialGoLiveApprovedBy?: string | null;

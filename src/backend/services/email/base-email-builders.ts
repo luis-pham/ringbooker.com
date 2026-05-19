@@ -339,26 +339,32 @@ export function buildAddPaymentMethodGoLiveEmailPayload(params: {
 export function buildPaymentMethodAddedEmailPayload(params: {
   shopName: string;
   appBaseUrl: string;
+  forwardingVerified?: boolean;
 }): { input: BaseEmailInput; text: string } {
   const base = ensureAbsoluteBaseUrl(params.appBaseUrl);
   const phoneSetupUrl = `${base}/user/go-live`;
+  const forwardingVerified = params.forwardingVerified === true;
   const input: BaseEmailInput = {
     title: 'Payment method verified',
-    previewText: 'Your trial is active — one step left to go live.',
+    previewText: forwardingVerified ? 'Your trial is active — switch on live answering now.' : 'Your trial is active — verify forwarding to go live.',
     heroTitle: 'Payment method verified',
     heroSubtitleHtml: `<p style="margin:0">Billing is ready for <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
     bodyHtml: [
       '<p style="margin:0 0 12px 0">Your payment method is verified and your 14-day trial is active.</p>',
-      '<p style="margin:0">Return to Go Live to switch on live answering.</p>',
+      forwardingVerified
+        ? '<p style="margin:0">Forwarding is verified. Return to Go Live to switch on live answering.</p>'
+        : '<p style="margin:0">To go live, call your business number from another phone — RingBooker will confirm forwarding automatically.</p>',
     ].join(''),
-    ctaLabel: 'Switch it on',
+    ctaLabel: forwardingVerified ? 'Switch it on' : 'Verify forwarding',
     ctaUrl: `${phoneSetupUrl}#go-live-forwarding`,
     signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
   };
   const text = [
     `Payment method verified for "${params.shopName}".`,
     'Your payment method is verified and your 14-day trial is active.',
-    'Return to Go Live to switch on live answering.',
+    forwardingVerified
+      ? 'Forwarding is verified. Return to Go Live to switch on live answering.'
+      : 'To go live, call your business number from another phone — RingBooker will confirm forwarding automatically.',
     `${phoneSetupUrl}#go-live-forwarding`,
   ].join('\n');
   return { input, text };
@@ -440,7 +446,7 @@ export function buildForwardingNotVerifiedReminderEmailPayload(params: {
     greetingHtml: `<p style="margin:0">Hi ${escapeHtmlText(displayNameFromEmail(params.email))},</p>`,
     bodyHtml: [
       `<p style="margin:0 0 12px 0">RingBooker has not detected forwarding yet. Please forward missed or after-hours calls from your current business number to <strong>${escapeHtmlText(params.forwardingNumber)}</strong>.</p>`,
-      '<p style="margin:0">After that, place a test call or run verification in your dashboard. Live answering is not active until forwarding is verified and enabled.</p>',
+      '<p style="margin:0">After that, call your business number from another phone. RingBooker will confirm forwarding automatically. Live answering is not active until forwarding is verified and enabled.</p>',
     ].join(''),
     ctaLabel: 'Verify forwarding',
     ctaUrl: setupUrl,
@@ -449,6 +455,7 @@ export function buildForwardingNotVerifiedReminderEmailPayload(params: {
   const text = [
     `Please verify call forwarding for "${params.shopName}".`,
     `Forward calls to: ${params.forwardingNumber}`,
+    'Call your business number from another phone to verify forwarding is working.',
     'Live answering is not active until forwarding is verified and enabled.',
     `Verify forwarding: ${setupUrl}`,
   ].join('\n');

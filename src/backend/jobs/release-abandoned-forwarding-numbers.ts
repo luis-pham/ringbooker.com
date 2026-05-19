@@ -322,8 +322,9 @@ export async function runReleaseAbandonedForwardingNumbersJob(
         });
         await runtime.shopAccessStatesRepository.upsert({
           shopId: shop.id,
-          forwardingSetupVerifiedAt: null,
-          forwardingSetupVerifiedVia: null,
+          forwardingClaimedAt: null,
+          forwardingVerifiedAt: null,
+          forwardingVerifiedSource: null,
         });
         await runtime.shopsRepository.updateUserSettings(shop.id, {
           telnyx_number: null,
