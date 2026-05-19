@@ -70,7 +70,7 @@ const softwareJsonLd = {
     priceCurrency: 'USD',
   },
   description:
-    'AI phone answering and booking revenue recovery for salons, spas, med spas, and clinics: after-hours and peak-hour overflow, missed-call text back, protected revenue, and guided setup in about 15 minutes on your current number.',
+    'RingBooker is an AI receptionist and answering service for salons, spas, med spas, and clinics: after-hours and peak-hour overflow, missed-call text back, protected revenue, and guided setup in about 15 minutes on your current number.',
 };
 
 /** 24×24 stroke icons — homepage only, matches soft “line” icon treatment */
@@ -1209,7 +1209,7 @@ setPriceSafe('monthly')
 ];
 
 export const templateTitle =
-  'AI Phone Answering for Salons, Spas & Clinics | Recover Missed Bookings & Revenue';
+  'AI Receptionist and Answering Service for Salons, Spas & Clinics | Recover Missed Bookings & Revenue';
 
 export function MarketingHomeTemplate() {
   return (
@@ -1496,7 +1496,7 @@ export function MarketingHomeTemplate() {
               <div className="industries-track">
                 <a href="/industries/nail-salon" className="industry-card" data-index={0}>
                   <div className="industry-thumb">
-                    <Image src="/images/nail.webp" alt="Nail salon technician performing gel manicure — AI phone answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <Image src="/images/nail.webp" alt="Nail salon technician performing gel manicure — AI receptionist and answering service for nail salons handles pricing calls and walk-in bookings" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
                     <div className="industry-overlay" aria-hidden="true" />
                   </div>
                   <div className="industry-body">
@@ -1506,7 +1506,7 @@ export function MarketingHomeTemplate() {
                 </a>
                 <a href="/industries/hair-salon" className="industry-card" data-index={1}>
                   <div className="industry-thumb">
-                    <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI phone answering captures overflow and in-service calls for bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <Image src="/images/hair_shop.webp" alt="Hair salon stylist performing color treatment — AI receptionist and answering service captures overflow and in-service calls for bookings and reschedules" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
                     <div className="industry-overlay" aria-hidden="true" />
                   </div>
                   <div className="industry-body">
@@ -1516,7 +1516,7 @@ export function MarketingHomeTemplate() {
                 </a>
                 <a href="/industries/spa" className="industry-card" data-index={2}>
                   <div className="industry-thumb">
-                    <Image src="/images/spa.webp" alt="Day spa massage and wellness treatment room — AI phone answering captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <Image src="/images/spa.webp" alt="Day spa massage and wellness treatment room — AI receptionist and answering service captures spa booking calls and couples massage requests 24/7" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
                     <div className="industry-overlay" aria-hidden="true" />
                   </div>
                   <div className="industry-body">
@@ -1526,7 +1526,7 @@ export function MarketingHomeTemplate() {
                 </a>
                 <a href="/industries/med-spa" className="industry-card" data-index={3}>
                   <div className="industry-thumb">
-                    <Image src="/images/med_spa.webp" alt="Med spa aesthetic treatment consultation room — AI phone answering for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
+                    <Image src="/images/med_spa.webp" alt="Med spa aesthetic treatment consultation room — AI receptionist and answering service for Botox, filler, and laser inquiry calls after hours" width={1024} height={1024} sizes="(max-width: 640px) 84vw, (max-width: 960px) 50vw, 20vw" quality={70} />
                     <div className="industry-overlay" aria-hidden="true" />
                   </div>
                   <div className="industry-body">

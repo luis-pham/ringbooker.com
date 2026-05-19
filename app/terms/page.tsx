@@ -27,7 +27,7 @@ const termsOfServiceFaqs: MarketingFaqItem[] = [
 
 export const metadata = buildMetadata({
   title: 'Terms of Service',
-  description: 'RingBooker terms of service, acceptable use, and subscription rules for the AI phone answering platform.',
+  description: 'RingBooker terms of service, acceptable use, and subscription rules for the AI receptionist and answering service platform.',
   path: '/terms',
 });
 

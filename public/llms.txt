@@ -1,114 +1,270 @@
 # RingBooker
 
-> RingBooker is an AI phone answering and booking revenue recovery layer built for beauty and wellness businesses — nail salons, hair salons, day spas, med spas, and beauty clinics — that answers missed and overflow calls on the business's existing phone number, captures booking intent, supports reschedules and cancellations, and sends SMS follow-up when configured.
+> RingBooker is an AI receptionist and answering service — a booking revenue recovery layer for beauty and wellness businesses — nail salons, hair salons, day spas, med spas, and beauty clinics. It answers missed and overflow calls on the business's existing phone number (via call forwarding), captures booking intent, handles reschedules and cancellations based on your rules, and sends SMS follow-up when configured. Guided setup takes about 15 minutes. Website URL import can pre-fill business profile, services, and hours.
 
-## What RingBooker Does
+Canonical site: https://ringbooker.com
+Sitemap: https://ringbooker.com/sitemap.xml
 
-RingBooker acts as an AI phone answering layer. When a salon or spa's staff is with clients or the business is closed, RingBooker answers incoming calls on the business's current number (via call forwarding — no new number required). It handles natural voice conversations: quoting configured prices, capturing booking intent, collecting stylist or provider preferences, supporting reschedule and cancellation flows, sharing approved pre-care or post-care information, and sending SMS confirmations or follow-up when configured.
+## What RingBooker Is
 
-RingBooker does not replace a phone system. It sits on top of the existing number using overflow or after-hours call forwarding.
+RingBooker is a SaaS AI receptionist that sits on the **phone layer** — not a replacement for your phone carrier, booking software, or front-desk staff. When technicians or providers are with clients, when the desk is on another call, or when the business is closed, RingBooker answers on your configured line, speaks naturally, quotes configured services and prices, captures intent, and sends your team actionable summaries.
 
-## Core Features
+RingBooker is built for appointment-driven beauty businesses where **the phone still drives bookings** and silent hang-ups mean lost revenue.
 
-- **Works on the existing business phone number** — call forwarding for overflow, after-hours, or full-time coverage
-- **24/7 call answering** — captures after-hours and weekend booking intent when staff are unavailable
-- **Missed-call recovery** — follows up with callers who hung up before being answered
-- **Bilingual workflows** — English and Vietnamese call flows and summaries can be configured, particularly for nail salons
-- **Booking intent capture** — records caller name, service interest, preferred time, and contact for every call
-- **Reschedule and cancellation support** — captures and handles routine change requests based on business rules
-- **SMS confirmations** — sends booking confirmation texts to clients when the booking flow is configured
-- **Reminder workflows** — automated SMS reminders can be configured before appointments
-- **Call transcripts and summaries** — every call logged with outcome and intent for staff review
-- **Provider preference capture** — records preferred stylist or provider requests and routes or summarizes them based on configured workflow
+## What RingBooker Is Not
+
+- Not a replacement for Square, Vagaro, Mindbody, Booksy, or other booking platforms — it works alongside them
+- Not a full phone system migration — callers keep dialing the number they already know
+- Not meant to replace human receptionists — it covers gaps (after-hours, overflow, missed-call recovery) and escalates with context when needed
+- Not an open-source project — hosted SaaS with per-account private call data
+
+## Core Capabilities
+
+- **Current-number setup** — call forwarding for after-hours, peak-hour overflow, or broader coverage; optional dedicated RingBooker number for pilots or campaigns
+- **After-hours and overflow answering** — 24/7 coverage when staff cannot pick up
+- **Missed-call text back** — follows up when callers hang up, call after hours, or reach a busy line
+- **Booking intent capture** — name, phone, service, timing, provider preference, and next steps
+- **Reschedule and cancellation handling** — based on business rules; uncertain cases summarized for staff
+- **SMS to callers** — confirmations and follow-up when flows are configured (reminder and review-request SMS on higher plans)
+- **Call transcripts and summaries** — dashboard history with outcomes and intent
+- **Provider / stylist preference** — captured and surfaced for follow-up or routing rules
+- **Human handoff** — callback capture on all plans; live owner call transfer on Professional and Custom when configured
+- **Website import (onboarding and demo)** — paste a business website URL to extract name, address, hours, and service catalog instead of typing everything manually
 
 ## Supported Business Types (Verticals)
 
-RingBooker is purpose-built for five categories of beauty and wellness businesses:
+RingBooker ships industry-specific marketing pages, demo personas, and call patterns for:
 
-1. **Nail Salons** — pricing questions (full set, gel, acrylic, dip, pedicure), same-day and walk-in booking, bilingual English/Vietnamese support, overflow during service hours
-2. **Hair Salons** — stylist preference capture, color appointment context (balayage, keratin, extensions), reschedule and cancellation flows
-3. **Day Spas** — couples massage detail capture, treatment package questions, multi-person and group booking context, after-hours inquiry capture
-4. **Med Spas** — consultation-first intake calls, Botox/filler/laser inquiry routing, reminder workflows, provider preference capture, after-hours lead capture
-5. **Beauty & Aesthetic Clinics** — premium consultation intake, provider preference for returning clients, approved pre-care and post-care information, multi-session treatment context
+1. **Nail salons** — pricing (gel, acrylic, dip, pedicure), walk-ins, same-day requests, peak-hour overflow; strong English/Vietnamese positioning for Vietnamese-owned salons in the US
+2. **Hair salons** — stylist preference, color and long-service context (balayage, keratin, extensions), reschedule-heavy workflows
+3. **Day spas** — couples massage, packages, calm pacing, after-hours inquiries
+4. **Med spas** — consultation-first intake, injectables/laser inquiries, provider preference, reminder workflows
+5. **Beauty & aesthetic clinics** — premium consult intake, returning-client continuity, approved pre/post-care information
 
-## How It Works
+### Vertical landing pages
 
-1. Business sets up call forwarding on their existing phone number (overflow or after-hours)
-2. RingBooker is configured with the business's services, pricing, staff, and hours
-3. Incoming calls are answered by RingBooker's AI voice agent in real time
-4. Booking intent and call summaries are logged to the business dashboard
-5. SMS confirmation or follow-up is sent to the caller when configured
+- [Nail salon (English)](https://ringbooker.com/industries/nail-salon)
+- [Nail salon (Tiếng Việt)](https://ringbooker.com/industries/nail-salon/vi) — Vietnamese marketing page; emphasizes website auto-read and bilingual call flows
+- [Hair salon](https://ringbooker.com/industries/hair-salon)
+- [Day spa](https://ringbooker.com/industries/spa)
+- [Med spa](https://ringbooker.com/industries/med-spa)
+- [Beauty clinic](https://ringbooker.com/industries/beauty-clinic)
 
-RingBooker includes a customer-facing setup interface designed so businesses can configure the essentials in about 15 minutes. Call forwarding requires no new public phone number or hardware, though timing can vary by phone provider and workflow scope.
+Vertical articles (CMS): `https://ringbooker.com/industries/{vertical}/{article-slug}`
+
+### Industry context (cited on marketing pages)
+
+Nail salon pages reference Zenoti 2025-style benchmarks, e.g. ~37% of calls missed, ~82% during business hours, ~80% of callers not leaving voicemail. Med spa pages reference high caller comfort with AI answering for that vertical. Treat these as marketing citations, not guarantees for every shop.
+
+## Languages
+
+**Marketing breadth:** The homepage highlights support for English, Spanish, Korean, Chinese (Mandarin), and Vietnamese as part of the product vision for diverse salon communities.
+
+**Production live-call configuration (by plan):**
+
+- **Starter** — English only for live answering
+- **Professional and Custom (enterprise)** — English plus **one** additional live-call language chosen during onboarding: Spanish, Mandarin, Vietnamese, or Korean
+- **Nail salons on Professional+** — Vietnamese is commonly pre-selected as the second language when appropriate; owners can turn it off if not needed
+- **Custom / multi-location** — custom multilingual routing and workflows available with implementation planning
+
+**Demos:** Industry demo pages include vertical-appropriate sample prompts (e.g. nail salon demo supports natural English and Vietnamese example questions). Demo language behavior previews tone; production language policy follows account plan and settings.
+
+## How It Works (Production)
+
+### Phone setup paths
+
+1. **Recommended — current business number:** Forward after-hours, overflow, or missed-call traffic to RingBooker. Customers keep calling the same number on Google, cards, and signage. Carrier-specific guides: https://ringbooker.com/current-number/call-forwarding
+2. **Optional — dedicated RingBooker number:** Separate line for testing, campaigns, or multi-location pilots; can run alongside your main number strategy
+
+### Operational flow
+
+1. Connect coverage (forwarding or dedicated line)
+2. Configure services, hours, staff/providers, booking rules, SMS preferences, and escalation paths (dashboard onboarding + settings)
+3. RingBooker answers live calls with your AI voice agent
+4. Intent, transcripts, and summaries appear in the business dashboard
+5. SMS confirmations, reminders, missed-call text back, and owner notifications fire when configured and within quiet-hour rules
+
+Target setup time: **about 15 minutes** for essentials, excluding carrier forwarding propagation (varies by provider).
+
+## Onboarding (New Accounts)
+
+Signup: https://ringbooker.com/user/signup (plans: `?plan=starter` or `?plan=professional`)
+
+Onboarding is a guided **4-step** flow in the user portal (`/user/onboarding`):
+
+| Step | Label | What happens |
+|------|-------|----------------|
+| 1 | Find | Enter business website URL and/or Google Business Profile link, or choose manual vertical. Website import extracts profile, hours, and services when available (`NEXT_PUBLIC_WEBSITE_IMPORT_ACTIVE`). Quick path can defer phone review. |
+| 2 | Profile | Review and edit business name, phone, address, hours, timezone, vertical, and **live-call languages** (plan-gated). |
+| 3 | Services | Confirm or edit service groups, prices, and durations; vertical-specific chip suggestions (nail, hair, spa, med spa, beauty clinic, mixed). |
+| 4 | Test | Run a test call in the portal before going live. |
+
+After onboarding, owners configure deeper knowledge in **Business Knowledge** (`/user/knowledge`) and AI behavior in **AI Settings** (`/user/ai-settings`).
+
+## Go Live
+
+Go live is a separate activation path (`/user/go-live`) after onboarding:
+
+1. **Trial / billing** — 14-day trial can start without a credit card for setup and test calls; a payment method is required before RingBooker answers **real customer calls** on the business line
+2. **Forwarding number** — RingBooker provisions a forwarding destination; owner configures carrier forwarding (missed, after-hours, or overflow as chosen)
+3. **Verification** — optional forwarding test call to confirm routing
+4. **Enable live answering** — toggles production inbound coverage when gates pass (knowledge completeness, billing, forwarding verified per account state)
+
+Owners keep their public business number; only forwarding rules change.
+
+## Pricing & Plans
+
+Full page: https://ringbooker.com/pricing
+
+| Plan | Monthly | Annual (billed yearly) | Captured callers / month | Best for |
+|------|---------|------------------------|-------------------------|----------|
+| **Starter** | $79 | ~$63/mo ($758/yr) | Up to 100 | After-hours, overflow, missed-call recovery, booking capture, basic reschedule/cancel, missed-call text back, call summaries |
+| **Professional** | $149 | ~$119/mo ($1,428/yr) | Up to 300 | Everything in Starter plus reminder SMS, returning caller context, provider preference, **owner call transfer**, bilingual workflows (one extra language), advanced recovery insights, priority support |
+| **Custom** | Contact sales | Custom | Custom volume | Multi-location, custom routing/escalation, custom multilingual workflows, custom integration planning, concierge onboarding |
+
+- **14-day free trial** — no credit card required to sign up, complete setup, and run test calls
+- **Captured caller** — a caller where RingBooker records useful business information (name, phone, service request, time preference, callback need). Demo and test calls do not count toward limits
+- **Human escalation** — Starter captures callback requests and summaries; Professional+ can transfer live to the owner with context when configured
+- Homepage trust line: no long-term contract; keep your current number; cancel before day 15 of trial and pay nothing (see Terms for billing details)
+
+Signup CTAs: `/user/signup?plan=starter`, `/user/signup?plan=professional`, Custom → `/contact?intent=enterprise&source=pricing_custom`
 
 ## Integrations
 
-- **Square Appointments** — live integration (real-time slot booking)
-- **Mindbody** — live integration (availability checks and booking request capture)
-- **Acuity Scheduling** — live integration (appointment types, availability checks, and booking capture)
-- **Vagaro** — booking link via SMS
-- **Booksy** — booking link via SMS
-- **Boulevard** — booking link via SMS
+RingBooker integrates at two depths:
 
-## Pricing
+**Live calendar / booking (deeper):**
 
-RingBooker offers a free 14-day trial with no credit card required. Paid plans are subscription-based and designed for small-to-medium beauty and wellness businesses. See full pricing at https://ringbooker.com/pricing
+- **Square Appointments** — live; real-time slot booking when connected
+- **Mindbody** — live; availability checks and booking request capture
+- **Acuity Scheduling** — live; appointment types, availability, booking capture
 
-## Live Demo
+**Booking-link handoff (SMS or workflow):**
 
-RingBooker offers browser web voice demos: visitors open an industry-specific demo page, optionally customize sample business context (name, hours, staff, services), allow the microphone, and speak with the AI receptionist in real time. No app download or account is required. You can also call the public demo line to hear a fixed sample profile for that vertical.
+- **Vagaro**, **Booksy**, **Boulevard** — typically booking link via SMS or summary handoff while deeper integrations expand
 
-Demo entry: https://ringbooker.com/demo
+Works-with hub and articles: https://ringbooker.com/works-with
 
-Industry-specific demo pages:
-- https://ringbooker.com/demo/nail-salon
-- https://ringbooker.com/demo/hair-salon
-- https://ringbooker.com/demo/day-spa
-- https://ringbooker.com/demo/med-spa
-- https://ringbooker.com/demo/beauty-clinic
+RingBooker does **not** require switching booking software. Many shops start with call summaries and manual confirmation in existing tools.
 
-## Key Pages
+## Live Demo (Industry-Specific & Personalized)
 
-- [Home](https://ringbooker.com/): Product overview, feature highlights, social proof, pricing summary
-- [How It Works](https://ringbooker.com/how-it-works): Step-by-step explanation of setup and call flow
-- [Pricing](https://ringbooker.com/pricing): Plan details and free trial information
-- [FAQ](https://ringbooker.com/faq): Common questions about setup, integrations, billing, and call handling
-- [Missed Booking Protection](https://ringbooker.com/missed-booking-protection): Hub for after-hours, overflow, and missed-call follow-up
-- [After-Hours Calls](https://ringbooker.com/missed-booking-protection/after-hours-calls): How RingBooker handles calls outside business hours
-- [Peak-Hour Overflow](https://ringbooker.com/missed-booking-protection/peak-hour-overflow-calls): Answering when the front desk is busy
-- [Missed-Call Recovery](https://ringbooker.com/missed-booking-protection/missed-call-recovery): How RingBooker follows up on unanswered calls
-- [Contact](https://ringbooker.com/contact): Contact form and demo booking
+Demo hub: https://ringbooker.com/demo
 
-## Vertical Landing Pages
+Interactive demos run **in the browser** with the visitor's microphone (HTTPS or localhost required). They do **not** change the visitor's real business phone line or forwarding. An optional **demo phone line** per vertical plays a **fixed sample profile** (not the visitor's imported website data).
 
-- [AI Phone Answering for Nail Salons](https://ringbooker.com/industries/nail-salon): Covers bilingual workflows, pricing Q&A, walk-in intent, overflow handling
-- [AI Phone Answering for Hair Salons](https://ringbooker.com/industries/hair-salon): Covers stylist preference, color booking context, reschedule flows
-- [AI Phone Answering for Spas & Day Spas](https://ringbooker.com/industries/spa): Covers couples booking details, package questions, after-hours capture
-- [AI Phone Answering for Med Spas](https://ringbooker.com/industries/med-spa): Covers consultation intake, no-show reduction, high-ticket lead capture
-- [AI Phone Answering for Beauty Clinics](https://ringbooker.com/industries/beauty-clinic): Covers consultation-first flows, provider preference, approved pre/post-care information
+### Industry demo pages
 
-## Comparisons
+Each vertical has tailored defaults (persona, tone, sample services, “try asking” prompts, quick-start chips):
 
-- [All Comparisons](https://ringbooker.com/compare): Overview comparison page and deep-dive guides (including voicemail vs AI receptionist)
+| Vertical | URL | Sample focus |
+|----------|-----|----------------|
+| Nail salon | https://ringbooker.com/demo/nail-salon | Bilingual booking/pricing/reschedule; gel, acrylic, walk-ins |
+| Hair salon | https://ringbooker.com/demo/hair-salon | Stylist preference, color timing, consult tone |
+| Day spa | https://ringbooker.com/demo/day-spa | Couples massage, packages, calm front-desk energy |
+| Med spa | https://ringbooker.com/demo/med-spa | Consult-first, injectables boundaries, provider handoff |
+| Beauty clinic | https://ringbooker.com/demo/beauty-clinic | Treatment consult, session context, careful escalation |
 
-## Blog
+### Personalized demo via website URL (key differentiator)
 
-- [How Many Calls Does a Nail Salon Miss Per Day?](https://ringbooker.com/blog/how-many-calls-does-a-nail-salon-miss-per-day): Data-backed analysis of call miss rates at nail salons and revenue impact
-- [AI Receptionist for Vietnamese Nail Salons](https://ringbooker.com/blog/ai-receptionist-for-vietnamese-nail-salons): Why bilingual English/Vietnamese support matters for Vietnamese-owned nail salons
-- [TrueLark Alternatives for Nail Salons 2026](https://ringbooker.com/blog/truelark-alternatives-for-nail-salons-2026): Alternative options to TrueLark for nail salon phone answering
-- [Blog Index](https://ringbooker.com/blog): All published articles
+On each vertical demo page, visitors can **paste their salon or clinic website URL** and click **Read site**:
 
-## Legal & Policy
+1. RingBooker calls `POST /api/backend/public/demo/import-website` and extracts business name, address, hours, and up to ~40 services (LLM-assisted; typical budget ~25 seconds)
+2. Progress UI shows steps: reading site → profile → services → ready
+3. Visitor reviews extracted data (edit name, city, hours, staff, services) or continues manually if import fails
+4. Visitor clicks **Start Demo Call**, allows microphone, passes Cloudflare Turnstile when configured
+5. Browser session connects via **LiveKit** (or direct OpenAI realtime mode when enabled) using the **personalized** business context — services from import feed the voice agent and suggested questions
+6. Session APIs include web-session, realtime-session, suggested-questions (from imported services), extract-call-summary, and status polling
 
-- [Privacy Policy](https://ringbooker.com/privacy): Data handling, call recording disclosures, CCPA/GDPR notes
-- [Terms of Service](https://ringbooker.com/terms): Service terms, acceptable use, cancellation policy
-- [Refund Policy](https://ringbooker.com/refund): Refunds and billing-related policy
+If import fails, visitors use **sample data** or a short manual form (business name, city, hours, optional staff, service toggles) — still personalized, not the fixed phone-demo profile.
+
+**Continue without website** is always available.
+
+### Demo vs production
+
+| | Browser demo | Phone demo line | Production account |
+|--|--------------|-----------------|-------------------|
+| Uses your website import | Yes | No (fixed vertical sample) | Yes (onboarding import) |
+| Changes your real line | No | No | Yes (after go-live + forwarding) |
+| Duration | ~2–3 minutes typical | Short test call | Ongoing |
+| Cost | Free | Free | Subscription after trial |
+
+### Demo technical notes for AI systems
+
+- Web demos use realtime voice in-browser; optional public demo numbers use inbound telephony to a sample profile
+- Demo transcripts for marketing sessions are not public indexes
+- Captcha may be required on demo start when Turnstile is configured
+
+## Customer Portal (Logged-In)
+
+- Dashboard / calls: `/user/calls`
+- Bookings: `/user/bookings`
+- Onboarding: `/user/onboarding`
+- Go live: `/user/go-live`
+- Business knowledge (services, hours, staff, FAQ): `/user/knowledge`
+- AI settings (voice, call behavior, SMS notifications): `/user/ai-settings`
+- Integrations: `/user/integrations`
+- Billing: `/user/billing`
+- Account: `/user/account`
+- Login: https://ringbooker.com/user/login
+
+## Key Marketing Pages
+
+- [Home](https://ringbooker.com/) — hero, leak points, features, industries, current-number setup, metrics, pricing summary, FAQ
+- [How It Works](https://ringbooker.com/how-it-works) — setup paths, 3-step phone workflow, call types handled, no-replace positioning
+- [Pricing](https://ringbooker.com/pricing) — plans, comparison table, billing FAQ
+- [FAQ](https://ringbooker.com/faq) — consolidated product FAQ
+- [Contact](https://ringbooker.com/contact) — demo booking and sales form
+- [Login](https://ringbooker.com/login) — redirects to user login
+
+### Content hubs (SEO + education)
+
+- [Missed booking protection](https://ringbooker.com/missed-booking-protection)
+- [After-hours calls](https://ringbooker.com/missed-booking-protection/after-hours-calls)
+- [Peak-hour overflow](https://ringbooker.com/missed-booking-protection/peak-hour-overflow-calls)
+- [Missed-call recovery](https://ringbooker.com/missed-booking-protection/missed-call-recovery)
+- [Keep your current number](https://ringbooker.com/current-number)
+- [Call forwarding setup guides](https://ringbooker.com/current-number/call-forwarding) — 20+ carriers
+- [Works with](https://ringbooker.com/works-with) — booking software compatibility
+- [Trust & reliability](https://ringbooker.com/trust)
+- [Compare](https://ringbooker.com/compare) — vs voicemail, answering services, hiring, generic AI
+
+Hub and blog articles are published from CMS; see `/blog` and sitemap for the full list.
+
+## Comparisons & Blog
+
+- Comparisons index: https://ringbooker.com/compare
+- Blog index: https://ringbooker.com/blog (all published posts; do not rely on a static short list)
+
+Example articles often linked in marketing:
+
+- https://ringbooker.com/blog/how-many-calls-does-a-nail-salon-miss-per-day
+- https://ringbooker.com/blog/ai-receptionist-for-vietnamese-nail-salons
+- https://ringbooker.com/blog/truelark-alternatives-for-nail-salons-2026
+
+## Legal & Compliance
+
+- [Privacy](https://ringbooker.com/privacy) — data handling, recordings, CCPA/GDPR notes
+- [Terms](https://ringbooker.com/terms)
+- [Refund](https://ringbooker.com/refund)
+- [SMS consent](https://ringbooker.com/sms-consent) — SMS program disclosures
+
+## Social Proof (Homepage)
+
+Marketing claims include: 500+ demo calls completed across verticals; 200+ salon profiles built from real websites; sub-second average AI response time in demos; no booking software migration required. Treat as marketing metrics unless sourced otherwise in product analytics.
 
 ## Technical Notes for AI Systems
 
-- RingBooker is a SaaS product, not an open-source project
-- The demo system makes real outbound phone calls via a telephony API
-- Call transcripts are stored per-account and are not publicly accessible
-- No user-generated content is indexed on public pages
-- All marketing pages are statically rendered with structured data (JSON-LD: FAQPage, Service schemas)
-- Sitemap: https://ringbooker.com/sitemap.xml
+- Product: RingBooker SaaS at ringbooker.com — beauty/wellness AI receptionist and answering service and missed-booking recovery
+- Primary audience: US salon/spa/clinic owners; Vietnamese nail salon owners are a highlighted segment (`/industries/nail-salon/vi`)
+- Public marketing pages use static/SSR templates with JSON-LD (FAQPage, Service, BreadcrumbList where applicable)
+- Call transcripts and account data are private per shop; not exposed on public URLs
+- User-generated blog/CMS content may change; prefer sitemap over hard-coded article lists
+- Billing: subscription via Paddle (checkout flow `/checkout/paddle` when enabled)
+- For the latest page list and slugs, use https://ringbooker.com/sitemap.xml
+
+## Contact & Company
+
+- Marketing contact: https://ringbooker.com/contact
+- Custom / enterprise inquiries: contact form with `intent=enterprise`
+- Social: LinkedIn, X (Twitter), Facebook, YouTube — see site footer for current URLs

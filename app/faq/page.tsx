@@ -63,7 +63,7 @@ const faqs = [
 ];
 
 export const metadata = buildMetadata({
-  title: 'Salon AI Phone Answering FAQ | RingBooker',
+  title: 'Salon AI Receptionist and Answering Service FAQ | RingBooker',
   description:
     'Answers to common questions about using RingBooker with your current number, covering after-hours calls, peak-hour overflow, missed-call recovery, and salon revenue protection.',
   path: '/faq',
@@ -91,7 +91,7 @@ export default function FaqPage() {
         }
         badge={null}
         title="Questions Salon Owners Ask Before Replacing Voicemail"
-        intro="Quick answers for nail salons, hair salons, day spas, med spas, and aesthetic clinics evaluating AI phone answering, missed-call recovery, after-hours and peak-hour overflow coverage, and how RingBooker recovers booking revenue without replacing your booking software."
+        intro="Quick answers for nail salons, hair salons, day spas, med spas, and aesthetic clinics evaluating AI receptionist and answering service, missed-call recovery, after-hours and peak-hour overflow coverage, and how RingBooker recovers booking revenue without replacing your booking software."
         sections={[
           {
             heading: 'The short version',

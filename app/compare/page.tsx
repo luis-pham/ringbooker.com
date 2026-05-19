@@ -36,7 +36,7 @@ export default async function CompareIndexPage() {
       mainExtraClassName="hub-compare-index"
       seoHub={{
         path: '/compare',
-        webPageName: 'Compare salon and spa phone answering options',
+        webPageName: 'Compare salon and spa AI receptionist and answering service options',
         description: compareWebPageDescription,
       }}
     />

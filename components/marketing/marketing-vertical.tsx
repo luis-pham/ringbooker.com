@@ -15,31 +15,31 @@ const SERVICE_BY_VERTICAL: Record<
   { name: string; serviceType: string; description: string }
 > = {
   'nail-salon': {
-    name: 'AI Phone Answering Service for Nail Salons',
+    name: 'AI receptionist and answering service for Nail Salons',
     serviceType: 'Nail salon answering service',
     description:
       'After-hours and overflow AI call answering for nail salons, including current-number forwarding, missed-call text back, configurable English and Vietnamese workflows, booking intent capture, walk-in handling, pricing questions, and reschedule support.',
   },
   'hair-salon': {
-    name: 'AI Phone Answering Service for Hair Salons',
+    name: 'AI receptionist and answering service for Hair Salons',
     serviceType: 'Hair salon answering service',
     description:
       'AI call answering for hair salons that handles overflow calls, stylist preference capture, color and extension booking questions, reschedules, cancellation intent, and appointment confirmations.',
   },
   spa: {
-    name: 'AI Phone Answering for Day Spas and Wellness Studios',
+    name: 'AI receptionist and answering service for Day Spas and Wellness Studios',
     serviceType: 'Spa answering service',
     description:
-      'After-hours and overflow AI phone answering for day spas and wellness studios — treatment-aware booking scripts, couples massage scheduling, package questions, missed-call recovery, and SMS follow-up on your current number.',
+      'After-hours and overflow AI receptionist and answering service for day spas and wellness studios — treatment-aware booking scripts, couples massage scheduling, package questions, missed-call recovery, and SMS follow-up on your current number.',
   },
   'med-spa': {
-    name: 'AI Phone Answering Service for Med Spas',
+    name: 'AI receptionist and answering service for Med Spas',
     serviceType: 'Med spa answering service',
     description:
-      'AI phone answering for med spas that captures consultation calls, routes high-value inquiries after hours, supports reminder workflows, and handles Botox, filler, and laser booking questions with consultation-first guardrails.',
+      'AI receptionist and answering service for med spas that captures consultation calls, routes high-value inquiries after hours, supports reminder workflows, and handles Botox, filler, and laser booking questions with consultation-first guardrails.',
   },
   'beauty-clinic': {
-    name: 'AI Phone Answering Service for Beauty and Aesthetic Clinics',
+    name: 'AI receptionist and answering service for Beauty and Aesthetic Clinics',
     serviceType: 'Beauty clinic answering service',
     description:
       'AI call answering for beauty and aesthetic clinics with consultation-first intake, premium call scripts, treatment continuity context, provider preference capture, approved pre-care and post-care guidance, and call outcome summaries.',

@@ -1428,7 +1428,7 @@ export function UserBillingLive({
                           </div>
                         </div>
                         <ul className="plan-includes-list">
-                          <li>AI phone answering</li>
+                          <li>AI receptionist and answering service</li>
                           <li>Booking request capture</li>
                           <li>Missed-call follow-up</li>
                           <li>Call summaries</li>

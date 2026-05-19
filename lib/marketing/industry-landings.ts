@@ -29,7 +29,7 @@ const LANDING_META: Record<MarketingIndustryUrlSegment, { title: string; descrip
       'RingBooker is an AI receptionist and answering service for nail salons — English and Vietnamese calls, walk-in availability, pricing questions, and after-hours bookings on your current number.',
   },
   'hair-salon': {
-    title: 'AI Receptionist & Phone Answering for Hair Salons | RingBooker',
+    title: 'AI Receptionist and Answering Service for Hair Salons | RingBooker',
     description:
       'RingBooker is an AI receptionist and answering service for hair salons — preferred stylist requests, color inquiries, and reschedule calls. 77% of clients prefer calling to reschedule. Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel.',
   },
@@ -56,7 +56,7 @@ export function marketingIndustryLandingMetadata(segment: string): Metadata {
   if (!m) {
     return buildMetadata({
       title: 'Industry solutions | RingBooker',
-      description: 'AI phone answering and call recovery for beauty businesses — after-hours, overflow, and missed-call coverage on your current number.',
+      description: 'AI receptionist and answering service and call recovery for beauty businesses — after-hours, overflow, and missed-call coverage on your current number.',
       path: '/industries',
     });
   }

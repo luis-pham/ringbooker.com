@@ -12,7 +12,7 @@ const HOW_IT_WORKS_FAQS = [
   },
   {
     q: 'Does RingBooker replace my booking software?',
-    a: 'No. RingBooker is a phone answering and missed booking protection layer. It works alongside your existing booking tools and call workflow instead of replacing your booking platform.',
+    a: 'No. RingBooker is an AI receptionist and answering service — a missed booking protection layer. It works alongside your existing booking tools and call workflow instead of replacing your booking platform.',
   },
   {
     q: 'What kinds of calls can RingBooker handle?',

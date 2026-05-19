@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: 'AI Phone Answering for Beauty Businesses | RingBooker',
+    default: 'AI Receptionist and Answering Service for Beauty Businesses | RingBooker',
     template: '%s | RingBooker',
   },
   description: siteConfig.description,
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   applicationName: siteConfig.name,
   category: 'business software',
   openGraph: {
-    title: 'AI Phone Answering for Beauty Businesses | RingBooker',
+    title: 'AI Receptionist and Answering Service for Beauty Businesses | RingBooker',
     description: siteConfig.description,
     url: siteConfig.url,
     siteName: siteConfig.name,
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AI Phone Answering for Beauty Businesses | RingBooker',
+    title: 'AI Receptionist and Answering Service for Beauty Businesses | RingBooker',
     description: siteConfig.description,
     images: [defaultSiteOgImage],
   },
@@ -55,10 +55,10 @@ const organizationSchema = {
     height: 512,
   },
   description: siteConfig.description,
-  foundingDate: '2024',
+  foundingDate: '2026',
   areaServed: 'US',
   knowsAbout: [
-    'AI phone answering for salons',
+    'AI receptionist and answering service for salons',
     'Missed call recovery for beauty businesses',
     'After-hours call answering',
     'Appointment booking automation',
@@ -105,7 +105,7 @@ const softwareSchema = {
   },
   provider: { '@id': `${siteConfig.url}/#organization` },
   featureList: [
-    'AI phone answering on existing business number',
+    'AI receptionist and answering service on existing business number',
     '24/7 after-hours call coverage',
     'Bilingual English and Vietnamese support',
     'Booking intent capture and SMS confirmation',

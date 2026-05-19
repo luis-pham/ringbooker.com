@@ -8,10 +8,10 @@ export const siteConfig = {
   name: 'RingBooker',
   url: 'https://ringbooker.com',
   description:
-    'RingBooker is an AI phone answering service for salons, nail shops, spas, and med spas. It answers after-hours and overflow calls on your current number, recovers missed bookings, handles reschedules, and sends SMS follow-ups.',
+    'RingBooker is an AI receptionist and answering service for salons, nail shops, spas, and med spas. It answers after-hours and overflow calls on your current number, recovers missed bookings, handles reschedules, and sends SMS follow-ups.',
   keywords: [
     'AI phone agent for salons',
-    'AI phone answering service for salons',
+    'AI receptionist and answering service for salons',
     'after hours call answering for salons',
     'missed call recovery for salons',
     'nail salon answering service',
@@ -49,7 +49,7 @@ export function siteOgImageEntry(urlOrPath: string) {
     url,
     width: 1200,
     height: 630,
-    alt: `${siteConfig.name} — AI phone answering for salons & spas`,
+    alt: `${siteConfig.name} — AI receptionist and answering service for salons & spas`,
   };
 }
 
@@ -82,7 +82,7 @@ export function finalizeDocumentTitle(raw: string): string {
   const brand = siteConfig.name;
   let t = raw.replace(/\s+/g, ' ').trim();
   if (t.toLowerCase() === brand.toLowerCase()) {
-    return `${brand} | AI phone answering for beauty businesses`;
+    return `${brand} | AI receptionist and answering service for beauty businesses`;
   }
   if (new RegExp(`^${brand}\\s*\\|`, 'i').test(t)) {
     return normalizeSeoTitle(t);

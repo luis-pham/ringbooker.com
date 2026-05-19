@@ -46,7 +46,7 @@ const serviceJsonLd = {
   },
   areaServed: 'United States',
   description:
-    'AI phone answering for nail salons, hair salons, spas, and med spas that captures after-hours booking intent on your current number — voicemail is where revenue leaks.',
+    'AI receptionist and answering service for nail salons, hair salons, spas, and med spas that captures after-hours booking intent on your current number — voicemail is where revenue leaks.',
 };
 
 const sections: SeoSection[] = [
