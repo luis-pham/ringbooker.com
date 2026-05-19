@@ -657,6 +657,14 @@ test('professional plan user can save professional-tier automation fields', asyn
       ai_welcome_message: 'Welcome to RingBooker Demo Salon. I can help with bookings and pricing.',
       send_reminder_sms: false,
       send_review_request_sms: false,
+      send_call_summary_sms: false,
+      owner_call_summary_sms_timing: 'always',
+      send_callback_request_sms: false,
+      owner_callback_request_sms_timing: 'business_hours',
+      send_daily_digest_sms: true,
+      owner_daily_digest_time: '18:00',
+      sms_quiet_hours_start: '08:00',
+      sms_quiet_hours_end: '21:00',
     }),
   });
   assert.equal(response.status, 200);
@@ -667,6 +675,14 @@ test('professional plan user can save professional-tier automation fields', asyn
       ai_welcome_message: string;
       send_reminder_sms: boolean;
       send_review_request_sms: boolean;
+      send_call_summary_sms: boolean;
+      owner_call_summary_sms_timing: string;
+      send_callback_request_sms: boolean;
+      owner_callback_request_sms_timing: string;
+      send_daily_digest_sms: boolean;
+      owner_daily_digest_time: string;
+      sms_quiet_hours_start: string;
+      sms_quiet_hours_end: string;
     };
     capabilities: {
       edit_ai_custom_instructions: boolean;
@@ -676,6 +692,14 @@ test('professional plan user can save professional-tier automation fields', asyn
   assert.equal(body.shop.ai_voice, 'Puck');
   assert.equal(body.shop.send_reminder_sms, false);
   assert.equal(body.shop.send_review_request_sms, false);
+  assert.equal(body.shop.send_call_summary_sms, false);
+  assert.equal(body.shop.owner_call_summary_sms_timing, 'always');
+  assert.equal(body.shop.send_callback_request_sms, false);
+  assert.equal(body.shop.owner_callback_request_sms_timing, 'business_hours');
+  assert.equal(body.shop.send_daily_digest_sms, true);
+  assert.equal(body.shop.owner_daily_digest_time, '18:00');
+  assert.equal(body.shop.sms_quiet_hours_start, '08:00');
+  assert.equal(body.shop.sms_quiet_hours_end, '21:00');
   assert.equal(body.capabilities.edit_ai_custom_instructions, false);
 });
 

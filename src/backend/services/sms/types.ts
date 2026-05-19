@@ -9,7 +9,10 @@ export type SmsCategory =
   | 'cancellation_alert'
   | 'user_alert'
   | 'review_request'
-  | 'booking_request_alert';
+  | 'booking_request_alert'
+  | 'call_summary'
+  | 'callback_request_alert'
+  | 'daily_digest';
 
 export interface SmsSendResult {
   providerMessageId?: string;
@@ -41,4 +44,3 @@ export const SMS_MISSED_CALL = (shop: Shop) =>
   `${shop.name}: We missed your call. Reply YES and we will call you back, ` +
   `or visit ${shop.booking_url ?? 'our booking page'} to book. ` +
   'Reply STOP to opt out of automated texts.';
-

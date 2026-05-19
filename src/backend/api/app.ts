@@ -201,6 +201,7 @@ const jobTypeSchema = z.enum([
   'callback_outbound_call',
   'review_request_sms',
   'post_call_summary',
+  'callback_request_owner_alert',
   'lifecycle_email',
   'trial_reminder_email',
   'trial_expiry_check',
@@ -640,6 +641,14 @@ const userSettingsUpdateSchema = userSettingsBaseSchema.extend({
   send_reminder_sms: z.boolean().optional(),
   send_review_request_sms: z.boolean().optional(),
   send_missed_call_followup_sms: z.boolean().optional(),
+  send_call_summary_sms: z.boolean().optional(),
+  owner_call_summary_sms_timing: z.enum(['business_hours', 'always']).optional(),
+  send_callback_request_sms: z.boolean().optional(),
+  owner_callback_request_sms_timing: z.enum(['business_hours', 'always']).optional(),
+  send_daily_digest_sms: z.boolean().optional(),
+  owner_daily_digest_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  sms_quiet_hours_start: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  sms_quiet_hours_end: z.string().regex(/^\d{2}:\d{2}$/).optional(),
 });
 
 const suggestionIdListSchema = z.object({
@@ -672,6 +681,14 @@ const adminShopDynamicConfigSchema = z.object({
   send_reminder_sms: z.boolean().optional(),
   send_review_request_sms: z.boolean().optional(),
   send_missed_call_followup_sms: z.boolean().optional(),
+  send_call_summary_sms: z.boolean().optional(),
+  owner_call_summary_sms_timing: z.enum(['business_hours', 'always']).optional(),
+  send_callback_request_sms: z.boolean().optional(),
+  owner_callback_request_sms_timing: z.enum(['business_hours', 'always']).optional(),
+  send_daily_digest_sms: z.boolean().optional(),
+  owner_daily_digest_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  sms_quiet_hours_start: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  sms_quiet_hours_end: z.string().regex(/^\d{2}:\d{2}$/).optional(),
 });
 
 const adminCreateShopSchema = z.object({
@@ -1302,6 +1319,14 @@ const USER_SETTING_FIELD_CAPABILITIES: Record<string, ShopSettingCapability> = {
   allow_transfers: 'edit_transfer_settings',
   allow_callbacks: 'edit_callback_settings',
   send_missed_call_followup_sms: 'edit_missed_call_followup_sms',
+  send_call_summary_sms: 'edit_callback_settings',
+  owner_call_summary_sms_timing: 'edit_callback_settings',
+  send_callback_request_sms: 'edit_callback_settings',
+  owner_callback_request_sms_timing: 'edit_callback_settings',
+  send_daily_digest_sms: 'edit_callback_settings',
+  owner_daily_digest_time: 'edit_callback_settings',
+  sms_quiet_hours_start: 'edit_callback_settings',
+  sms_quiet_hours_end: 'edit_callback_settings',
   ai_voice: 'edit_ai_voice',
   ai_welcome_message: 'edit_ai_greeting',
   send_reminder_sms: 'edit_reminder_sms',
@@ -1356,6 +1381,14 @@ function splitUserSettingsPatchByPlan(
       | 'send_reminder_sms'
       | 'send_review_request_sms'
       | 'send_missed_call_followup_sms'
+      | 'send_call_summary_sms'
+      | 'owner_call_summary_sms_timing'
+      | 'send_callback_request_sms'
+      | 'owner_callback_request_sms_timing'
+      | 'send_daily_digest_sms'
+      | 'owner_daily_digest_time'
+      | 'sms_quiet_hours_start'
+      | 'sms_quiet_hours_end'
     >
   >;
   disallowedFields: string[];
@@ -1385,7 +1418,15 @@ function splitUserSettingsPatchByPlan(
       key === 'allow_callbacks' ||
       key === 'send_reminder_sms' ||
       key === 'send_review_request_sms' ||
-      key === 'send_missed_call_followup_sms'
+      key === 'send_missed_call_followup_sms' ||
+      key === 'send_call_summary_sms' ||
+      key === 'owner_call_summary_sms_timing' ||
+      key === 'send_callback_request_sms' ||
+      key === 'owner_callback_request_sms_timing' ||
+      key === 'send_daily_digest_sms' ||
+      key === 'owner_daily_digest_time' ||
+      key === 'sms_quiet_hours_start' ||
+      key === 'sms_quiet_hours_end'
     ) {
       dynamicPatch[key] = value;
       continue;
@@ -1439,6 +1480,14 @@ function splitUserSettingsPatchByPlan(
         | 'send_reminder_sms'
         | 'send_review_request_sms'
         | 'send_missed_call_followup_sms'
+        | 'send_call_summary_sms'
+        | 'owner_call_summary_sms_timing'
+        | 'send_callback_request_sms'
+        | 'owner_callback_request_sms_timing'
+        | 'send_daily_digest_sms'
+        | 'owner_daily_digest_time'
+        | 'sms_quiet_hours_start'
+        | 'sms_quiet_hours_end'
       >]?: Shop[K];
     },
     disallowedFields,

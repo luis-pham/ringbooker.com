@@ -470,6 +470,14 @@ export interface ShopsRepository {
         | 'send_reminder_sms'
         | 'send_review_request_sms'
         | 'send_missed_call_followup_sms'
+        | 'send_call_summary_sms'
+        | 'owner_call_summary_sms_timing'
+        | 'send_callback_request_sms'
+        | 'owner_callback_request_sms_timing'
+        | 'send_daily_digest_sms'
+        | 'owner_daily_digest_time'
+        | 'sms_quiet_hours_start'
+        | 'sms_quiet_hours_end'
       >
     >,
   ): Promise<Shop | null>;

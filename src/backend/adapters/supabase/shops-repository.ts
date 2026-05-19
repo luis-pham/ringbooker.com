@@ -73,6 +73,14 @@ type ShopsRow = {
   send_reminder_sms: boolean | null;
   send_review_request_sms: boolean | null;
   send_missed_call_followup_sms: boolean | null;
+  send_call_summary_sms: boolean | null;
+  owner_call_summary_sms_timing: string | null;
+  send_callback_request_sms: boolean | null;
+  owner_callback_request_sms_timing: string | null;
+  send_daily_digest_sms: boolean | null;
+  owner_daily_digest_time: string | null;
+  sms_quiet_hours_start: string | null;
+  sms_quiet_hours_end: string | null;
   sms_owner_opted_in: boolean | null;
   plan: string | null;
   active: boolean | null;
@@ -135,6 +143,14 @@ const SHOP_SELECT_COLUMNS = [
   'send_reminder_sms',
   'send_review_request_sms',
   'send_missed_call_followup_sms',
+  'send_call_summary_sms',
+  'owner_call_summary_sms_timing',
+  'send_callback_request_sms',
+  'owner_callback_request_sms_timing',
+  'send_daily_digest_sms',
+  'owner_daily_digest_time',
+  'sms_quiet_hours_start',
+  'sms_quiet_hours_end',
   'plan',
   'active',
   'google_cal_id',
@@ -441,6 +457,14 @@ function toShop(row: ShopsRow): Shop {
     send_reminder_sms: row.send_reminder_sms ?? false,
     send_review_request_sms: row.send_review_request_sms ?? false,
     send_missed_call_followup_sms: row.send_missed_call_followup_sms ?? true,
+    send_call_summary_sms: row.send_call_summary_sms ?? true,
+    owner_call_summary_sms_timing: row.owner_call_summary_sms_timing === 'always' ? 'always' : 'business_hours',
+    send_callback_request_sms: row.send_callback_request_sms ?? true,
+    owner_callback_request_sms_timing: row.owner_callback_request_sms_timing === 'business_hours' ? 'business_hours' : 'always',
+    send_daily_digest_sms: row.send_daily_digest_sms ?? false,
+    owner_daily_digest_time: row.owner_daily_digest_time ?? '18:00',
+    sms_quiet_hours_start: row.sms_quiet_hours_start ?? '08:00',
+    sms_quiet_hours_end: row.sms_quiet_hours_end ?? '21:00',
     plan: normalizePlan(row.plan),
     active: row.active ?? false,
     google_cal_id: row.google_cal_id,
@@ -1235,6 +1259,14 @@ export class SupabaseShopsRepository implements ShopsRepository {
         | 'send_reminder_sms'
         | 'send_review_request_sms'
         | 'send_missed_call_followup_sms'
+        | 'send_call_summary_sms'
+        | 'owner_call_summary_sms_timing'
+        | 'send_callback_request_sms'
+        | 'owner_callback_request_sms_timing'
+        | 'send_daily_digest_sms'
+        | 'owner_daily_digest_time'
+        | 'sms_quiet_hours_start'
+        | 'sms_quiet_hours_end'
       >
     >,
   ): Promise<Shop | null> {
@@ -1251,6 +1283,18 @@ export class SupabaseShopsRepository implements ShopsRepository {
     if (patch.send_missed_call_followup_sms !== undefined) {
       payload.send_missed_call_followup_sms = patch.send_missed_call_followup_sms;
     }
+    if (patch.send_call_summary_sms !== undefined) payload.send_call_summary_sms = patch.send_call_summary_sms;
+    if (patch.owner_call_summary_sms_timing !== undefined) {
+      payload.owner_call_summary_sms_timing = patch.owner_call_summary_sms_timing;
+    }
+    if (patch.send_callback_request_sms !== undefined) payload.send_callback_request_sms = patch.send_callback_request_sms;
+    if (patch.owner_callback_request_sms_timing !== undefined) {
+      payload.owner_callback_request_sms_timing = patch.owner_callback_request_sms_timing;
+    }
+    if (patch.send_daily_digest_sms !== undefined) payload.send_daily_digest_sms = patch.send_daily_digest_sms;
+    if (patch.owner_daily_digest_time !== undefined) payload.owner_daily_digest_time = patch.owner_daily_digest_time;
+    if (patch.sms_quiet_hours_start !== undefined) payload.sms_quiet_hours_start = patch.sms_quiet_hours_start;
+    if (patch.sms_quiet_hours_end !== undefined) payload.sms_quiet_hours_end = patch.sms_quiet_hours_end;
 
     const { data, error } = await this.supabase
       .from('shops')

@@ -59,6 +59,7 @@ export type JobType =
   | 'post_call_summary'
   | 'handoff_failed_owner_sms'
   | 'new_booking_request_owner_alert'
+  | 'callback_request_owner_alert'
   | 'lifecycle_email'
   | 'trial_reminder_email'
   | 'trial_expiry_check';
@@ -288,6 +289,14 @@ export interface Shop {
   send_reminder_sms: boolean;
   send_review_request_sms: boolean;
   send_missed_call_followup_sms: boolean;
+  send_call_summary_sms?: boolean;
+  owner_call_summary_sms_timing?: 'business_hours' | 'always';
+  send_callback_request_sms?: boolean;
+  owner_callback_request_sms_timing?: 'business_hours' | 'always';
+  send_daily_digest_sms?: boolean;
+  owner_daily_digest_time?: string | null;
+  sms_quiet_hours_start?: string | null;
+  sms_quiet_hours_end?: string | null;
   plan: ShopPlan;
   active: boolean;
   google_cal_id?: string | null;

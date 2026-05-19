@@ -4,18 +4,35 @@ import type { SmsCategory, SmsService } from './types';
 interface SendSmsParams {
   to: string;
   body: string;
-  shop: { id: string; country_code?: string | null; timezone: string };
+  shop: {
+    id: string;
+    country_code?: string | null;
+    timezone: string;
+    sms_quiet_hours_start?: string | null;
+    sms_quiet_hours_end?: string | null;
+  };
   category: SmsCategory;
   bookingId?: string;
   idempotencyKey: string;
 }
 
-function getCurrentHourInTimezone(timezone: string): number {
+function getCurrentMinutesInTimezone(timezone: string): number {
   try {
-    return new Date(new Date().toLocaleString('en-US', { timeZone: timezone })).getHours();
+    const current = new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
+    return current.getHours() * 60 + current.getMinutes();
   } catch {
-    return new Date().getHours();
+    const current = new Date();
+    return current.getHours() * 60 + current.getMinutes();
   }
+}
+
+function parseQuietHour(value: string | null | undefined, fallbackHour: number): number {
+  const match = /^(\d{2}):(\d{2})$/.exec(value ?? '');
+  if (!match) return fallbackHour * 60;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours > 23 || minutes > 59) return fallbackHour * 60;
+  return hours * 60 + minutes;
 }
 
 /**
@@ -42,8 +59,10 @@ export async function sendSms(
     return { sent: false, reason: 'international_recipient' };
   }
 
-  const hour = getCurrentHourInTimezone(params.shop.timezone);
-  if (hour < config.sms.quietHours.start || hour >= config.sms.quietHours.end) {
+  const currentMinutes = getCurrentMinutesInTimezone(params.shop.timezone);
+  const quietStart = parseQuietHour(params.shop.sms_quiet_hours_start, config.sms.quietHours.start);
+  const quietEnd = parseQuietHour(params.shop.sms_quiet_hours_end, config.sms.quietHours.end);
+  if (currentMinutes < quietStart || currentMinutes >= quietEnd) {
     return { sent: false, reason: 'quiet_hours' };
   }
 

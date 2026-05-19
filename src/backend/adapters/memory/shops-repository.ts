@@ -77,6 +77,14 @@ const defaultShop: Shop = {
   send_reminder_sms: true,
   send_review_request_sms: true,
   send_missed_call_followup_sms: true,
+  send_call_summary_sms: true,
+  owner_call_summary_sms_timing: 'business_hours',
+  send_callback_request_sms: true,
+  owner_callback_request_sms_timing: 'always',
+  send_daily_digest_sms: false,
+  owner_daily_digest_time: '18:00',
+  sms_quiet_hours_start: '08:00',
+  sms_quiet_hours_end: '21:00',
   plan: 'professional',
   active: true,
 };
@@ -393,6 +401,14 @@ export class InMemoryShopsRepository implements ShopsRepository {
         | 'send_reminder_sms'
         | 'send_review_request_sms'
         | 'send_missed_call_followup_sms'
+        | 'send_call_summary_sms'
+        | 'owner_call_summary_sms_timing'
+        | 'send_callback_request_sms'
+        | 'owner_callback_request_sms_timing'
+        | 'send_daily_digest_sms'
+        | 'owner_daily_digest_time'
+        | 'sms_quiet_hours_start'
+        | 'sms_quiet_hours_end'
       >
     >,
   ): Promise<Shop | null> {

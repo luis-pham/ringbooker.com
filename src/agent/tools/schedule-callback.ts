@@ -40,6 +40,18 @@ export async function scheduleCallbackTool(
       runAt: new Date(),
       idempotencyKey,
     });
+    await ctx.jobsRepository.enqueue({
+      shopId: ctx.shop.id,
+      type: 'callback_request_owner_alert',
+      payload: {
+        callbackId: callback.id,
+        callerPhone: ctx.callerPhone,
+        callerName: parsed.data.customerName,
+        reason: parsed.data.reason,
+      },
+      runAt: new Date(),
+      idempotencyKey: `callback-owner-alert:${ctx.requestId}:${callback.id}`,
+    });
     return {
       success: true,
       callbackJobId: idempotencyKey,

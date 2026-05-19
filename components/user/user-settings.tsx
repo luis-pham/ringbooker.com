@@ -155,6 +155,14 @@ const userSettingsSpecificStyles = String.raw`
 .switch.on{background:var(--purple)}
 .switch.on::after{transform:translateX(23px)}
 .switch:disabled{opacity:.55;cursor:not-allowed}
+.settings-sms-grid{display:grid;gap:16px}
+.settings-sms-panel{
+  border:1px solid var(--border);border-radius:14px;background:#fff;padding:16px;display:grid;gap:12px;
+}
+.settings-sms-panel > h4{
+  margin:0;color:#374151;font-size:12px;font-weight:700;letter-spacing:.08em;
+}
+.settings-sms-panel .field{margin:0}
 .hint-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .hint-row .option-title{flex:1;min-width:0}
 .hint-copy{font-size:12px;color:var(--text-gray);line-height:1.6}

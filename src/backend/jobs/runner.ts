@@ -426,12 +426,36 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
     attempt: z.number().int().nonnegative().optional(),
   });
 
-  function nextSendableWindowUtc(timezone: string, countryCode: string): Date {
-    const quietEnd = getCountryConfig(countryCode).sms.quietHours.end;
-    const tzNow = new Date(new Date().toLocaleString('en-US', { timeZone: timezone }));
+  function parseTimeMinutes(value: string | null | undefined, fallback: string): number {
+    const match = /^(\d{2}):(\d{2})$/.exec(value ?? fallback);
+    if (!match) return parseTimeMinutes(fallback, '08:00');
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours > 23 || minutes > 59) {
+      return parseTimeMinutes(fallback, '08:00');
+    }
+    return hours * 60 + minutes;
+  }
+
+  function nextSendableWindowUtc(shop: Shop): Date {
+    const quietEndMinutes = parseTimeMinutes(shop.sms_quiet_hours_start, '08:00');
+    const tzNow = new Date(new Date().toLocaleString('en-US', { timeZone: shop.timezone }));
     const currentMinutes = tzNow.getHours() * 60 + tzNow.getMinutes();
-    const minutesUntilEnd = quietEnd * 60 - currentMinutes;
+    const minutesUntilEnd = quietEndMinutes - currentMinutes;
     return new Date(Date.now() + Math.max(minutesUntilEnd, 1) * 60 * 1000);
+  }
+
+  function isWithinBusinessHours(shop: Shop): boolean {
+    const day = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: shop.timezone }).format(new Date()).toLowerCase();
+    const entry = shop.hours?.[day];
+    if (!entry || 'closed' in entry) return false;
+    const tzNow = new Date(new Date().toLocaleString('en-US', { timeZone: shop.timezone }));
+    const currentMinutes = tzNow.getHours() * 60 + tzNow.getMinutes();
+    return currentMinutes >= parseTimeMinutes(entry.open, '09:00') && currentMinutes < parseTimeMinutes(entry.close, '17:00');
+  }
+
+  function ownerSmsTimingAllowsNow(shop: Shop, timing: 'business_hours' | 'always' | undefined): boolean {
+    return timing === 'business_hours' ? isWithinBusinessHours(shop) : true;
   }
   const realtimeDispatchPayloadSchema = z.object({
     requestId: z.string().min(1),
@@ -669,7 +693,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       });
       if (!sms.sent) {
         if (sms.reason === 'quiet_hours' && (payload.data.attempt ?? 0) < 1) {
-          const runAt = nextSendableWindowUtc(shop.timezone, shop.country_code ?? 'US');
+          const runAt = nextSendableWindowUtc(shop);
           await runtime.jobsRepository.enqueue({
             shopId: shop.id,
             type: 'appointment_reminder_24h',
@@ -773,7 +797,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       });
       if (!sms.sent) {
         if (sms.reason === 'quiet_hours' && (payload.data.attempt ?? 0) < 1) {
-          const runAt = nextSendableWindowUtc(shop.timezone, shop.country_code ?? 'US');
+          const runAt = nextSendableWindowUtc(shop);
           await runtime.jobsRepository.enqueue({
             shopId: shop.id,
             type: 'appointment_reminder_2h',
@@ -1105,6 +1129,53 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         );
       }
     },
+    callback_request_owner_alert: async (params) => {
+      const payload = z.object({
+        callbackId: z.string().min(1).optional(),
+        callerPhone: z.string().min(1).optional(),
+        callerName: z.string().min(1).optional(),
+        reason: z.string().min(1).optional(),
+      }).safeParse(params.payload);
+      if (!payload.success) {
+        logger.warn({ jobId: params.jobId, shopId: params.shopId }, 'callback_request_owner_alert_invalid_payload');
+        return;
+      }
+
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (!shop || !shop.user_phone || !shop.send_callback_request_sms) return;
+      if (!ownerSmsTimingAllowsNow(shop, shop.owner_callback_request_sms_timing)) return;
+
+      const body = [
+        `[${shop.name}] CALLBACK REQUEST`,
+        payload.data.callerName ? `From: ${payload.data.callerName}` : null,
+        payload.data.callerPhone ? `Phone: ${payload.data.callerPhone}` : null,
+        payload.data.reason ? `Reason: ${payload.data.reason}` : null,
+        'Reply STOP to opt out.',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      const idempotencyKey = `job:${params.jobId}:callback-owner-alert`;
+      const sms = await sendGuardedSms({
+        smsService: runtime.smsService,
+        outboundMessagesRepository: runtime.outboundMessagesRepository,
+        shop,
+        to: shop.user_phone,
+        body,
+        category: 'callback_request_alert',
+        idempotencyKey,
+        audience: 'owner',
+      });
+      if (!sms.sent) return;
+      await runtime.outboundMessagesRepository.create({
+        shopId: shop.id,
+        customerPhone: shop.user_phone,
+        category: 'callback_request_alert',
+        body,
+        idempotencyKey,
+        status: 'sent',
+        providerMessageId: sms.sms.providerMessageId,
+      });
+    },
     callback_outbound_call: async (params) => {
       const payload = callbackPayloadSchema.safeParse(params.payload);
       if (!payload.success) {
@@ -1239,6 +1310,11 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         await runtime.bookingsRepository.markReviewRequestSent(booking.id);
         return;
       }
+      if (!shop.website_url?.trim()) {
+        logger.info({ jobId: params.jobId, shopId: shop.id, bookingId: booking.id }, 'review_request_sms_skipped_missing_website_url');
+        await runtime.bookingsRepository.markReviewRequestSent(booking.id);
+        return;
+      }
 
       if (runtime.customersRepository) {
         const optedOut = await runtime.customersRepository.isSmsOptedOut(shop.id, booking.customerPhone);
@@ -1277,7 +1353,7 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
       });
       if (!sms.sent) {
         if (sms.reason === 'quiet_hours' && (payload.data.attempt ?? 0) < 1) {
-          const runAt = nextSendableWindowUtc(shop.timezone, shop.country_code ?? 'US');
+          const runAt = nextSendableWindowUtc(shop);
           await runtime.jobsRepository.enqueue({
             shopId: shop.id,
             type: 'review_request_sms',
@@ -1370,6 +1446,46 @@ export function createJobHandlers(runtime: ReturnType<typeof getBackendRuntime>)
         });
       } catch (summaryErr) {
         console.warn('[post_call_summary] Structured extraction failed:', summaryErr);
+      }
+
+      const shop = await runtime.shopsRepository.findById(params.shopId);
+      if (
+        shop?.send_call_summary_sms &&
+        shop.user_phone &&
+        ownerSmsTimingAllowsNow(shop, shop.owner_call_summary_sms_timing)
+      ) {
+        const body = [
+          `[${shop.name}] CALL SUMMARY`,
+          `Status: ${status}`,
+          `Outcome: ${call.outcome ?? 'unknown'}`,
+          firstCaller ? `Caller: ${firstCaller.slice(0, 160)}` : null,
+          payload.data.error ? `Error: ${payload.data.error.slice(0, 120)}` : null,
+          'Reply STOP to opt out.',
+        ]
+          .filter(Boolean)
+          .join('\n');
+        const idempotencyKey = `job:${params.jobId}:call-summary-owner`;
+        const sms = await sendGuardedSms({
+          smsService: runtime.smsService,
+          outboundMessagesRepository: runtime.outboundMessagesRepository,
+          shop,
+          to: shop.user_phone,
+          body,
+          category: 'call_summary',
+          idempotencyKey,
+          audience: 'owner',
+        });
+        if (sms.sent) {
+          await runtime.outboundMessagesRepository.create({
+            shopId: shop.id,
+            customerPhone: shop.user_phone,
+            category: 'call_summary',
+            body,
+            idempotencyKey,
+            status: 'sent',
+            providerMessageId: sms.sms.providerMessageId,
+          });
+        }
       }
     },
     lifecycle_email: async (params) => {

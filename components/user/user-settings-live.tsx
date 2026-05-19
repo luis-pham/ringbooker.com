@@ -150,6 +150,14 @@ type ShopSettings = {
   send_reminder_sms: boolean;
   send_review_request_sms: boolean;
   send_missed_call_followup_sms: boolean;
+  send_call_summary_sms?: boolean;
+  owner_call_summary_sms_timing?: 'business_hours' | 'always' | null;
+  send_callback_request_sms?: boolean;
+  owner_callback_request_sms_timing?: 'business_hours' | 'always' | null;
+  send_daily_digest_sms?: boolean;
+  owner_daily_digest_time?: string | null;
+  sms_quiet_hours_start?: string | null;
+  sms_quiet_hours_end?: string | null;
   plan: ShopPlan;
   active: boolean;
 };
@@ -249,6 +257,14 @@ type SettingsState = {
   send_reminder_sms: boolean;
   send_review_request_sms: boolean;
   send_missed_call_followup_sms: boolean;
+  send_call_summary_sms: boolean;
+  owner_call_summary_sms_timing: 'business_hours' | 'always';
+  send_callback_request_sms: boolean;
+  owner_callback_request_sms_timing: 'business_hours' | 'always';
+  send_daily_digest_sms: boolean;
+  owner_daily_digest_time: string;
+  sms_quiet_hours_start: string;
+  sms_quiet_hours_end: string;
 };
 
 type SettingsTabId =
@@ -478,13 +494,13 @@ const SETTINGS_TAB_META: Record<SettingsTabId, { label: string; description: str
   'services-hours': { label: 'Services', description: 'Service groups, prices, duration, and request rules.' },
   staff: { label: 'Staffs', description: 'Technicians, specialists, and provider preferences.' },
   faq: { label: 'Policies & FAQ', description: 'Policies, promotions, and approved answers.' },
-  'ai-call-behavior': { label: 'AI behavior & Call handling', description: 'Voice, greeting, instructions, and call handling.' },
+  'ai-call-behavior': { label: 'AI behavior & Calling handling', description: 'Voice, call rules, and SMS notifications.' },
   messaging: { label: 'Messaging', description: 'Reminders, reviews, and follow-up SMS.' },
   integrations: { label: 'Integrations', description: 'Square, Vagaro, or booking page links.' },
 };
 
 const SETTINGS_PORTAL_TAB_ORDER: Record<UserSettingsPortal, SettingsTabId[]> = {
-  'ai-settings': ['ai-call-behavior', 'messaging'],
+  'ai-settings': ['ai-call-behavior'],
   knowledge: ['business', 'hours', 'services-hours', 'staff', 'faq', 'ai-call-behavior'],
   integrations: ['integrations'],
 };
@@ -492,8 +508,8 @@ const SETTINGS_PORTAL_TAB_ORDER: Record<UserSettingsPortal, SettingsTabId[]> = {
 function tabCopyForPortal(portal: UserSettingsPortal, id: SettingsTabId): { label: string; description: string } {
   if (portal === 'ai-settings' && id === 'ai-call-behavior') {
     return {
-      label: 'AI voice & tone',
-      description: 'Greeting, voice, handling rules, and extra instructions for callers.',
+      label: 'AI behavior & Calling handling',
+      description: 'Voice, call handling, and SMS notification rules.',
     };
   }
   return SETTINGS_TAB_META[id];
@@ -624,6 +640,14 @@ function buildInitialState(shop: ShopSettings): SettingsState {
     send_reminder_sms: shop.send_reminder_sms,
     send_review_request_sms: shop.send_review_request_sms,
     send_missed_call_followup_sms: shop.send_missed_call_followup_sms,
+    send_call_summary_sms: shop.send_call_summary_sms ?? true,
+    owner_call_summary_sms_timing: shop.owner_call_summary_sms_timing ?? 'business_hours',
+    send_callback_request_sms: shop.send_callback_request_sms ?? true,
+    owner_callback_request_sms_timing: shop.owner_callback_request_sms_timing ?? 'always',
+    send_daily_digest_sms: shop.send_daily_digest_sms ?? false,
+    owner_daily_digest_time: shop.owner_daily_digest_time ?? '18:00',
+    sms_quiet_hours_start: shop.sms_quiet_hours_start ?? '08:00',
+    sms_quiet_hours_end: shop.sms_quiet_hours_end ?? '21:00',
   };
 }
 
@@ -658,6 +682,14 @@ const DEFAULT_SETTINGS_SHOP: ShopSettings = {
   send_reminder_sms: false,
   send_review_request_sms: false,
   send_missed_call_followup_sms: true,
+  send_call_summary_sms: true,
+  owner_call_summary_sms_timing: 'business_hours',
+  send_callback_request_sms: true,
+  owner_callback_request_sms_timing: 'always',
+  send_daily_digest_sms: false,
+  owner_daily_digest_time: '18:00',
+  sms_quiet_hours_start: '08:00',
+  sms_quiet_hours_end: '21:00',
   plan: 'starter',
   active: false,
 };
@@ -771,7 +803,7 @@ export function UserSettingsLive({
   const [bookingLinkErrors, setBookingLinkErrors] = useState<Partial<Record<BookingLinkProviderId, string>>>({});
   const [editingBookingLinkProvider, setEditingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
   const [savingBookingLinkProvider, setSavingBookingLinkProvider] = useState<BookingLinkProviderId | null>(null);
-  const [behaviorSubTab, setBehaviorSubTab] = useState<'handling' | 'voice'>('voice');
+  const [behaviorSubTab, setBehaviorSubTab] = useState<'call' | 'sms' | 'voice'>('voice');
   const [messagingSubTab, setMessagingSubTab] = useState<'automations' | 'notes'>('automations');
   const [editingLegacyServiceIndex, setEditingLegacyServiceIndex] = useState<number | null>(null);
   const [editingCatalogServiceId, setEditingCatalogServiceId] = useState<string | null>(null);
@@ -3233,19 +3265,22 @@ export function UserSettingsLive({
             <section className="card">
               <div className="panel-head knowledge-tab-panel-head" style={{ marginBottom: 12 }}>
                 <div>
-                  <h3>AI behavior & Call handling</h3>
-                  <p className="sub">Control how your AI receptionist speaks, greets callers, follows instructions, and handles edge cases.</p>
+                  <h3>AI behavior & Calling handling</h3>
+                  <p className="sub">Control how your AI receptionist speaks, handles calls, and sends SMS notifications.</p>
                 </div>
               </div>
               <div className="business-subtabs" role="tablist" aria-label="AI call behavior sections">
                 <button type="button" role="tab" aria-selected={behaviorSubTab === 'voice'} className={`business-subtab ${behaviorSubTab === 'voice' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('voice')}>
-                  AI tone and voice
+                  Voice
                 </button>
-                <button type="button" role="tab" aria-selected={behaviorSubTab === 'handling'} className={`business-subtab ${behaviorSubTab === 'handling' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('handling')}>
-                  Call handling
+                <button type="button" role="tab" aria-selected={behaviorSubTab === 'call'} className={`business-subtab ${behaviorSubTab === 'call' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('call')}>
+                  Call
+                </button>
+                <button type="button" role="tab" aria-selected={behaviorSubTab === 'sms'} className={`business-subtab ${behaviorSubTab === 'sms' ? 'active' : ''}`} onClick={() => setBehaviorSubTab('sms')}>
+                  SMS
                 </button>
               </div>
-              {behaviorSubTab === 'handling' ? (
+              {behaviorSubTab === 'call' ? (
               <form
                 className="card-section-form"
                 onSubmit={(event) => {
@@ -3514,6 +3549,123 @@ export function UserSettingsLive({
                 <div className="settings-save-footer settings-tab-content-frame">
                   <button type="submit" className="btn user-save" disabled={savingSection !== null}>
                     {savingSection === 'ai-voice' ? 'Saving...' : effectiveShop.plan === 'professional' ? 'Save AI voice & language' : 'Save AI voice & greeting'}
+                  </button>
+                </div>
+              </form>
+              ) : null}
+
+              {behaviorSubTab === 'sms' ? (
+              <form
+                className="card-section-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void commitSettingsPatch('sms-notifications', {
+                    send_reminder_sms: currentForm.send_reminder_sms,
+                    send_review_request_sms: currentForm.send_review_request_sms,
+                    send_missed_call_followup_sms: currentForm.send_missed_call_followup_sms,
+                    send_call_summary_sms: currentForm.send_call_summary_sms,
+                    owner_call_summary_sms_timing: currentForm.owner_call_summary_sms_timing,
+                    send_callback_request_sms: currentForm.send_callback_request_sms,
+                    owner_callback_request_sms_timing: currentForm.owner_callback_request_sms_timing,
+                    send_daily_digest_sms: currentForm.send_daily_digest_sms,
+                    owner_daily_digest_time: currentForm.owner_daily_digest_time,
+                    sms_quiet_hours_start: currentForm.sms_quiet_hours_start,
+                    sms_quiet_hours_end: currentForm.sms_quiet_hours_end,
+                  });
+                }}
+              >
+                <div className="card-section settings-tab-content-frame">
+                  <div className="settings-sms-grid">
+                    <section className="settings-sms-panel">
+                      <h4>CUSTOMER NOTIFICATIONS</h4>
+                      <div className="switch-list">
+                        <div className="switch-row">
+                          <div className="switch-copy"><h4>Booking confirmations</h4><p>Sent immediately when AI books an appointment.</p></div>
+                          <div className="switch-stack"><button type="button" className="switch on locked" disabled><span className="sr-only">Booking confirmations are always on</span></button></div>
+                        </div>
+                        <div className={`switch-row ${isLocked('edit_reminder_sms') ? 'locked' : ''}`}>
+                          <div className="switch-copy">
+                            <div className="switch-title-row"><h4>Appointment reminders</h4>{renderLockCopy('edit_reminder_sms')}</div>
+                            <p>24 hours before and 2 hours before, based on confirmed appointment time.</p>
+                            <p>Respects quiet hours; blocked reminders are sent next morning.</p>
+                          </div>
+                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_reminder_sms ? 'on' : ''}`} disabled={isLocked('edit_reminder_sms')} onClick={() => patchState('send_reminder_sms', !currentForm.send_reminder_sms)}><span className="sr-only">Toggle appointment reminders</span></button></div>
+                        </div>
+                        <div className="switch-row">
+                          <div className="switch-copy"><h4>Missed call follow-up</h4><p>Sent when caller hangs up without reaching anyone.</p></div>
+                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_missed_call_followup_sms ? 'on' : ''}`} onClick={() => patchState('send_missed_call_followup_sms', !currentForm.send_missed_call_followup_sms)}><span className="sr-only">Toggle missed call follow-up</span></button></div>
+                        </div>
+                        <div className={`switch-row ${isLocked('edit_review_request_sms') ? 'locked' : ''}`}>
+                          <div className="switch-copy">
+                            <div className="switch-title-row"><h4>Review requests</h4>{renderLockCopy('edit_review_request_sms')}</div>
+                            <p>Sent 4 hours after appointment. Only sends when business website is set.</p>
+                          </div>
+                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_review_request_sms ? 'on' : ''}`} disabled={isLocked('edit_review_request_sms')} onClick={() => patchState('send_review_request_sms', !currentForm.send_review_request_sms)}><span className="sr-only">Toggle review requests</span></button></div>
+                        </div>
+                        <div className="switch-row locked">
+                          <div className="switch-copy"><h4>Booking link</h4><p>Sent by AI during a call when caller needs a link. AI-initiated and cannot be disabled.</p></div>
+                          <div className="switch-stack"><button type="button" className="switch locked" disabled><span className="sr-only">Booking link SMS is AI initiated</span></button></div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="settings-sms-panel">
+                      <h4>OWNER NOTIFICATIONS</h4>
+                      <div className="switch-list">
+                        <div className="switch-row">
+                          <div className="switch-copy"><h4>Call summaries</h4><p>After each AI-handled call.</p></div>
+                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_call_summary_sms ? 'on' : ''}`} onClick={() => patchState('send_call_summary_sms', !currentForm.send_call_summary_sms)}><span className="sr-only">Toggle call summaries</span></button></div>
+                        </div>
+                        <div className="field">
+                          <label>Send during</label>
+                          <select value={currentForm.owner_call_summary_sms_timing} onChange={(event) => patchState('owner_call_summary_sms_timing', event.target.value as 'business_hours' | 'always')}>
+                            <option value="business_hours">Business hours only</option>
+                            <option value="always">Always</option>
+                          </select>
+                        </div>
+                        <div className="switch-row">
+                          <div className="switch-copy"><h4>Callback requests</h4><p>When caller leaves callback info.</p></div>
+                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_callback_request_sms ? 'on' : ''}`} onClick={() => patchState('send_callback_request_sms', !currentForm.send_callback_request_sms)}><span className="sr-only">Toggle callback requests</span></button></div>
+                        </div>
+                        <div className="field">
+                          <label>Send</label>
+                          <select value={currentForm.owner_callback_request_sms_timing} onChange={(event) => patchState('owner_callback_request_sms_timing', event.target.value as 'business_hours' | 'always')}>
+                            <option value="always">Always</option>
+                            <option value="business_hours">Business hours only</option>
+                          </select>
+                        </div>
+                        <div className="switch-row">
+                          <div className="switch-copy"><h4>End of day digest</h4><p>Summary of all calls and bookings.</p></div>
+                          <div className="switch-stack"><button type="button" className={`switch ${currentForm.send_daily_digest_sms ? 'on' : ''}`} onClick={() => patchState('send_daily_digest_sms', !currentForm.send_daily_digest_sms)}><span className="sr-only">Toggle end of day digest</span></button></div>
+                        </div>
+                        <div className="field">
+                          <label>Send at</label>
+                          <input type="time" value={currentForm.owner_daily_digest_time} onChange={(event) => patchState('owner_daily_digest_time', event.target.value)} />
+                        </div>
+                        <div className="note">Handoff alerts are always on and cannot be disabled.</div>
+                      </div>
+                    </section>
+
+                    <section className="settings-sms-panel">
+                      <h4>QUIET HOURS</h4>
+                      <p className="sub">No SMS sent outside this window in shop local time.</p>
+                      <div className="form-grid">
+                        <div className="field">
+                          <label>Start</label>
+                          <input type="time" value={currentForm.sms_quiet_hours_start} onChange={(event) => patchState('sms_quiet_hours_start', event.target.value)} />
+                        </div>
+                        <div className="field">
+                          <label>End</label>
+                          <input type="time" value={currentForm.sms_quiet_hours_end} onChange={(event) => patchState('sms_quiet_hours_end', event.target.value)} />
+                        </div>
+                      </div>
+                      <p className="sub">Applies to customer and owner notifications above.</p>
+                    </section>
+                  </div>
+                </div>
+                <div className="settings-save-footer settings-tab-content-frame">
+                  <button type="submit" className="btn user-save" disabled={savingSection !== null}>
+                    {savingSection === 'sms-notifications' ? 'Saving...' : 'Save SMS settings'}
                   </button>
                 </div>
               </form>
