@@ -61,7 +61,10 @@ export const RUNTIME_CONFIG_TEMPLATE = [
 ].join('\n');
 
 export function compactPromptLine(input: string, maxChars = MAX_LINE_CHARS): string {
-  const normalized = input.replace(/\s+/g, ' ').trim();
+  const normalized = input
+    .replace(/\s+/g, ' ')
+    .replace(/[-]{3,}/g, '--')
+    .trim();
   if (normalized.length <= maxChars) return normalized;
   return `${normalized.slice(0, maxChars)}...`;
 }
@@ -123,10 +126,10 @@ export function renderRuntimeBusinessConfig(config: RuntimeBusinessConfig): stri
 
   return [
     'RUNTIME BUSINESS CONFIG',
-    `BUSINESS NAME: ${config.businessName}`,
-    config.businessType ? `BUSINESS TYPE: ${config.businessType}` : null,
-    config.location ? `LOCATION: ${config.location}` : null,
-    config.timezone ? `TIMEZONE: ${config.timezone}` : null,
+    `BUSINESS NAME: ${compactPromptLine(config.businessName, 120)}`,
+    config.businessType ? `BUSINESS TYPE: ${compactPromptLine(config.businessType, 80)}` : null,
+    config.location ? `LOCATION: ${compactPromptLine(config.location, 200)}` : null,
+    config.timezone ? `TIMEZONE: ${compactPromptLine(config.timezone, 80)}` : null,
     config.hours ? `HOURS: ${compactPromptLine(config.hours, 700)}` : null,
     config.providers?.length ? `PROVIDERS / STAFF: ${config.providers.slice(0, 12).join(', ')}` : null,
     services.length ? ['SERVICES / PRICING:', ...services].join('\n') : 'SERVICES / PRICING: Not configured. Use consultation or callback framing.',

@@ -14,7 +14,10 @@ type PromptMode = 'inbound' | 'outbound_reminder' | 'callback';
 const MAX_LINE_CHARS = 260;
 
 function compactLine(input: string, maxChars = MAX_LINE_CHARS): string {
-  const normalized = input.replace(/\s+/g, ' ').trim();
+  const normalized = input
+    .replace(/\s+/g, ' ')
+    .replace(/[-]{3,}/g, '--')
+    .trim();
   if (normalized.length <= maxChars) return normalized;
   return `${normalized.slice(0, maxChars)}…`;
 }
@@ -56,11 +59,11 @@ function buildCustomerSection(customer: Customer | null): string {
 
   return [
     'RETURNING CUSTOMER:',
-    `- Name: ${customer.full_name ?? 'unknown'}`,
+    `- Name: ${compactLine(customer.full_name ?? 'unknown', 80)}`,
     `- Visits: ${customer.visit_count}`,
-    `- Last service: ${customer.last_service ?? 'unknown'}`,
-    `- Preferred tech: ${customer.preferred_tech ?? 'none'}`,
-    customer.notes ? `- Notes: ${customer.notes}` : null,
+    `- Last service: ${compactLine(customer.last_service ?? 'unknown', 120)}`,
+    `- Preferred tech: ${compactLine(customer.preferred_tech ?? 'none', 80)}`,
+    customer.notes ? `- Notes: ${compactLine(customer.notes, 240)}` : null,
     'Use this naturally if helpful, but do not sound creepy or overfamiliar.',
   ]
     .filter(Boolean)
@@ -150,9 +153,9 @@ function buildProductionBusinessConfig(shop: Shop, customer: Customer | null, ro
     ? `${shop.vertical.replace(/_/g, ' ')}${shop.vertical_detail ? ` (${shop.vertical_detail.replace(/_/g, ' ')})` : ''}`
     : 'service business';
   return {
-    businessName: shop.name,
+    businessName: compactLine(shop.name, 120),
     businessType,
-    location: shop.address ?? null,
+    location: shop.address ? compactLine(shop.address, 200) : null,
     timezone: shop.timezone,
     hours: renderHours(shop),
     services: buildRuntimeServices(shop),
