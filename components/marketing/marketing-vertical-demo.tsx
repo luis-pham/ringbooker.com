@@ -467,7 +467,7 @@ const styles: string[] = [
   }
 
   /* fields */
-  .vd-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+  .vd-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
   .vd-field-compact{margin:0}
   .vd-field label{font-size:13px;font-weight:700;color:#374151}
   .vd-field input,.vd-field textarea{width:100%;border:1px solid #E5E7EB;border-radius:13px;padding:11px 13px;font-size:14px;color:#111827;background:#fff;outline:none;transition:border-color .15s;-webkit-appearance:none}
@@ -476,7 +476,7 @@ const styles: string[] = [
   .vd-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
   /* advanced toggle */
-  .vd-adv-toggle{display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:#6B7280;padding:10px 0;margin-bottom:4px}
+  .vd-adv-toggle{display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:#6B7280;padding:10px 0;margin-bottom:14px}
   .vd-adv-toggle:hover{color:var(--va)}
   .vd-adv-chevron{font-size:10px;transition:transform .2s;display:inline-block}
   .vd-adv-chevron.open{transform:rotate(180deg)}
@@ -675,7 +675,7 @@ const siteReadStyles: string = String.raw`
   .vd-load-escape:hover{color:#6B7280}
 
   /* ─── found card ────────────────────────────────────────── */
-  .vd-found-card{border:1px solid color-mix(in srgb,var(--va) 25%,#E5E7EB);border-radius:18px;background:color-mix(in srgb,var(--va) 4%,#fff);padding:16px;margin-bottom:16px}
+  .vd-found-card{border:1px solid color-mix(in srgb,var(--va) 25%,#E5E7EB);border-radius:18px;background:color-mix(in srgb,var(--va) 4%,#fff);padding:16px;margin-bottom:14px}
   .vd-found-head{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--va);margin-bottom:12px}
   .vd-found-row{display:flex;gap:8px;align-items:baseline;margin-bottom:8px;font-size:13px}
   .vd-found-row:last-child{margin-bottom:0}
@@ -701,7 +701,7 @@ const siteReadStyles: string = String.raw`
   .vd-pd-label{font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#64748B;margin-bottom:8px}
   .vd-pd-sms-card{border-radius:16px;background:#F1F5F9;padding:14px 16px;margin-bottom:14px}
   .vd-pd-sms-text{font-size:14px;line-height:1.55;color:#334155}
-  .vd-pd-cap{background:#F8FAFC;border-radius:16px;padding:14px 16px;margin-bottom:16px}
+  .vd-pd-cap{background:#F8FAFC;border-radius:16px;padding:14px 16px;margin-bottom:14px}
   .vd-pd-cap-row{
     display:grid;grid-template-columns:22px minmax(4.75rem,auto) minmax(0,1fr);
     column-gap:16px;align-items:center;font-size:13px;padding:9px 0;border-bottom:1px solid #E2E8F0;
@@ -725,7 +725,7 @@ const verticalDemoMobileStyles = String.raw`
   .vd-m-card-title{margin:0 0 6px;font-size:15px;font-weight:900;color:#111827;letter-spacing:-.02em}
   .vd-m-card-sub{margin:0 0 12px;font-size:13px;color:#64748B;line-height:1.5}
   .vd-m-url-row{display:flex;flex-direction:column;gap:10px}
-  .vd-m-url-row .vd-url-btn{align-self:flex-start}
+  .vd-m-url-row .vd-url-btn{width:100%;padding:14px 16px;font-size:15px;text-align:center}
   .vd-m-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#9CA3AF;font-size:12px;font-weight:700}
   .vd-m-divider::before,.vd-m-divider::after{content:'';flex:1;height:1px;background:#E5E7EB}
   .vd-m-acc{border:0;background:none;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#6B7280;padding:10px 0;width:100%;text-align:left}
@@ -2117,7 +2117,6 @@ export function MarketingVerticalDemoTemplate({
                       <p className="vd-m-found-info">You&apos;ll review everything during onboarding before going live.</p>
                       {turnstileSiteKey ? (
                         <div style={{ marginBottom: 14 }}>
-                          <div className="vd-captcha-label">Human verification</div>
                           <div className="vd-captcha">
                             <div className="vd-captcha-inner" ref={turnstileRef} />
                           </div>
@@ -2206,7 +2205,6 @@ export function MarketingVerticalDemoTemplate({
                       </div>
                       {turnstileSiteKey ? (
                         <div style={{ marginBottom: 14 }}>
-                          <div className="vd-captcha-label">Human verification</div>
                           <div className="vd-captcha">
                             <div className="vd-captcha-inner" ref={turnstileRef} />
                           </div>
@@ -2262,7 +2260,7 @@ export function MarketingVerticalDemoTemplate({
                       </div>
                       <div className="vd-m-divider">or use sample data below</div>
                       <div className="vd-field" style={{ marginBottom: 12 }}>
-                        <label htmlFor="vd-m-biz">Business name for this demo</label>
+                        <label htmlFor="vd-m-biz">Business name</label>
                         <input id="vd-m-biz" value={business.businessName} onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))} />
                       </div>
                       <button type="button" className="vd-m-acc" onClick={() => setShowAdvanced((v) => !v)}>
@@ -2321,7 +2319,6 @@ export function MarketingVerticalDemoTemplate({
                       ) : null}
                       {turnstileSiteKey ? (
                         <div style={{ marginBottom: 14 }}>
-                          <div className="vd-captcha-label">Human verification</div>
                           <div className="vd-captcha">
                             <div className="vd-captcha-inner" ref={turnstileRef} />
                           </div>
@@ -2438,7 +2435,6 @@ export function MarketingVerticalDemoTemplate({
                     {/* Captcha */}
                     {turnstileSiteKey ? (
                       <div style={{ marginBottom: 14 }}>
-                        <div className="vd-captcha-label">Human verification</div>
                         <div className="vd-captcha">
                           <div className="vd-captcha-inner" ref={turnstileRef} />
                         </div>
@@ -2481,7 +2477,7 @@ export function MarketingVerticalDemoTemplate({
                   <div className="vd-url-divider">or use sample data below</div>
 
                   <div className="vd-field" style={{ marginBottom: 14 }}>
-                    <label htmlFor="vd-biz">Business name for this demo</label>
+                    <label htmlFor="vd-biz">Business name</label>
                     <input id="vd-biz" value={business.businessName} onChange={(e) => setBusiness((c) => ({ ...c, businessName: e.target.value }))} />
                   </div>
 
@@ -2544,7 +2540,6 @@ export function MarketingVerticalDemoTemplate({
                   {/* Captcha */}
                   {turnstileSiteKey ? (
                     <div style={{ marginBottom: 14 }}>
-                      <div className="vd-captcha-label">Human verification</div>
                       <div className="vd-captcha">
                         <div className="vd-captcha-inner" ref={turnstileRef} />
                       </div>
