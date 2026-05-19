@@ -25,6 +25,11 @@ export type OpenAiRealtimeSipSidebandParams =
       onEnded?: () => void;
       /** Called for each completed transcript segment (AI speech or caller speech). Fire-and-forget. */
       onTranscript?: (speaker: 'caller' | 'assistant', text: string) => void;
+      /**
+       * Called when the AI invokes the `end_call` tool and the goodbye audio buffer has stopped.
+       * Caller is responsible for issuing the hangup (Telnyx) so the call terminates cleanly.
+       */
+      onEndCall?: () => void;
     }
   | {
       variant: 'shop';
@@ -37,6 +42,30 @@ export type OpenAiRealtimeSipSidebandParams =
       acceptedAtMs?: number;
       /** Called for each completed transcript segment (AI speech or caller speech). Fire-and-forget. */
       onTranscript?: (speaker: 'caller' | 'assistant', text: string) => void;
+      /** Called when the WS successfully opens (useful for reconnect attempt tracking). */
+      onConnected?: () => void;
+      /**
+       * Called when the WS closes with an unexpected code (not 1000/1001) after at least one
+       * successful open — signals that the AI session dropped mid-call rather than ended cleanly.
+       */
+      onWsDropped?: (closeCode: number) => void;
+      /**
+       * If set, inject a wrap-up system message into the AI session at this offset from WS open.
+       * Uses `conversation.item.create` + `response.create` so it doesn't replace the full prompt.
+       */
+      softLimitMs?: number;
+      softLimitInstruction?: string;
+      /**
+       * If set, call `onHardLimit` at this offset from WS open.
+       * Caller is responsible for playing a goodbye message and hanging up.
+       */
+      hardLimitMs?: number;
+      onHardLimit?: () => void;
+      /**
+       * Called when the AI invokes the `end_call` tool and the goodbye audio buffer has stopped.
+       * Caller is responsible for issuing the hangup command (after this fires, audio is done).
+       */
+      onEndCall?: () => void;
     };
 
 /**
@@ -49,10 +78,17 @@ export type OpenAiRealtimeSipSidebandParams =
  * sideband `response.create` greeting; after that greeting finishes we must send `session.update` (same as
  * browser direct demo) or user speech never triggers assistant turns.
  */
-export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSidebandParams): void {
-  const greetingDelayMs = getEnv().OPENAI_SIP_SIDEBAND_GREETING_DELAY_MS ?? 100;
+const SOFT_LIMIT_WRAP_UP_INSTRUCTION =
+  "You must now wrap up the call politely. Say something like: 'Is there anything else I can help you with before we finish?'";
+
+export function startOpenAiRealtimeSipSideband(
+  params: OpenAiRealtimeSipSidebandParams,
+  /** @internal test-only: override URL / timing so tests can point at a local server without real env */
+  _options?: { wsUrlOverride?: string; greetingDelayMs?: number },
+): void {
+  const greetingDelayMs = _options?.greetingDelayMs ?? getEnv().OPENAI_SIP_SIDEBAND_GREETING_DELAY_MS ?? 100;
   const timeoutMs = params.variant === 'shop' ? 25 * 60_000 : 45_000;
-  const url = `wss://api.openai.com/v1/realtime?call_id=${encodeURIComponent(params.callId)}`;
+  const url = _options?.wsUrlOverride ?? `wss://api.openai.com/v1/realtime?call_id=${encodeURIComponent(params.callId)}`;
   const ws = new WebSocket(url, {
     headers: {
       Authorization: `Bearer ${params.apiKey}`,
@@ -67,10 +103,24 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     }
   }, timeoutMs);
 
+  let wsOpened = false;
+  let softLimitTimer: ReturnType<typeof setTimeout> | null = null;
+  let hardLimitTimer: ReturnType<typeof setTimeout> | null = null;
   let initialResponseSent = false;
   let vadResumeAfterWelcomeSent = false;
   let sawUserSpeechBeforeInitial = false;
   let initialTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Set when AI calls end_call; next output_audio_buffer.stopped triggers onEndCall. */
+  let pendingHangupAfterAudio = false;
+  /** Fallback: fire onEndCall after this many ms if output_audio_buffer.stopped never arrives. */
+  let pendingHangupFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function fireOnEndCall(): void {
+    if (pendingHangupFallbackTimer) { clearTimeout(pendingHangupFallbackTimer); pendingHangupFallbackTimer = null; }
+    pendingHangupAfterAudio = false;
+    params.onEndCall?.();
+  }
 
   const needsDemoVadResumeAfterWelcome =
     params.variant === 'demo' && params.enableToolLoop;
@@ -154,10 +204,48 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
   }
 
   ws.on('open', () => {
+    wsOpened = true;
     logger.info(
       { callId: params.callId, variant: params.variant },
       params.variant === 'shop' ? 'openai_sip_sideband_connected' : 'openai_sip_sideband_ws_open',
     );
+
+    if (params.variant === 'shop') {
+      params.onConnected?.();
+
+      if (params.softLimitMs) {
+        softLimitTimer = setTimeout(() => {
+          softLimitTimer = null;
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const instruction = params.softLimitInstruction?.trim() || SOFT_LIMIT_WRAP_UP_INSTRUCTION;
+          try {
+            ws.send(
+              JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'message',
+                  role: 'system',
+                  content: [{ type: 'input_text', text: instruction }],
+                },
+              }),
+            );
+            ws.send(JSON.stringify({ type: 'response.create' }));
+            logger.info({ callId: params.callId }, 'openai_sip_shop_soft_limit_instruction_injected');
+          } catch (err) {
+            logger.warn({ err, callId: params.callId }, 'openai_sip_shop_soft_limit_inject_failed');
+          }
+        }, params.softLimitMs);
+      }
+
+      if (params.hardLimitMs) {
+        hardLimitTimer = setTimeout(() => {
+          hardLimitTimer = null;
+          logger.warn({ callId: params.callId }, 'openai_sip_shop_hard_limit_reached');
+          params.onHardLimit?.();
+        }, params.hardLimitMs);
+      }
+    }
+
     if (params.variant === 'demo') {
       if (!params.enableToolLoop) {
         try {
@@ -203,6 +291,11 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
       maybeResumeDemoVadAfterWelcome(evt.type ?? 'unknown');
     }
 
+    // Fire onEndCall once the goodbye audio finishes playing.
+    if (pendingHangupAfterAudio && evt.type === 'output_audio_buffer.stopped') {
+      fireOnEndCall();
+    }
+
     // Capture completed transcript segments.
     {
       const transcript = typeof evt.transcript === 'string' ? evt.transcript.trim() : '';
@@ -224,9 +317,34 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
 
     if (params.variant === 'demo') {
       if (!params.enableToolLoop) return;
-      if (evt.name !== 'demo_noop') return;
       const callIdTool = typeof evt.call_id === 'string' ? evt.call_id : undefined;
       if (!callIdTool) return;
+
+      // end_call: acknowledge, arm the hangup trigger, skip response.create.
+      if (evt.name === 'end_call') {
+        try {
+          ws.send(
+            JSON.stringify({
+              type: 'conversation.item.create',
+              item: {
+                type: 'function_call_output',
+                call_id: callIdTool,
+                output: compactToolOutput(JSON.stringify({ ok: true })),
+              },
+            }),
+          );
+          logger.info({ callId: params.callId }, 'openai_sip_demo_end_call_tool_acknowledged');
+        } catch (err) {
+          logger.warn({ err, callId: params.callId }, 'openai_sip_demo_end_call_ack_failed');
+        }
+        if (params.onEndCall) {
+          pendingHangupAfterAudio = true;
+          pendingHangupFallbackTimer = setTimeout(fireOnEndCall, 5_000);
+        }
+        return;
+      }
+
+      if (evt.name !== 'demo_noop') return;
 
       const payload = {
         type: 'conversation.item.create',
@@ -249,6 +367,33 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     if (!toolName || !getSipShopToolNameSet().has(toolName)) return;
     const callIdTool = typeof evt.call_id === 'string' ? evt.call_id : undefined;
     if (!callIdTool) return;
+
+    // end_call: acknowledge immediately, skip response.create (AI already said goodbye),
+    // then wait for output_audio_buffer.stopped before triggering the actual hangup.
+    if (toolName === 'end_call') {
+      try {
+        ws.send(
+          JSON.stringify({
+            type: 'conversation.item.create',
+            item: {
+              type: 'function_call_output',
+              call_id: callIdTool,
+              output: compactToolOutput(JSON.stringify({ ok: true })),
+            },
+          }),
+        );
+        logger.info({ callId: params.callId }, 'openai_sip_end_call_tool_acknowledged');
+      } catch (err) {
+        logger.warn({ err, callId: params.callId }, 'openai_sip_end_call_ack_failed');
+      }
+      if (params.variant === 'shop' && params.onEndCall) {
+        pendingHangupAfterAudio = true;
+        // Fallback: if output_audio_buffer.stopped never arrives (e.g., SIP path doesn't emit it),
+        // fire onEndCall after 5 s so the call isn't left open indefinitely.
+        pendingHangupFallbackTimer = setTimeout(fireOnEndCall, 5_000);
+      }
+      return;
+    }
 
     const argsJson = typeof evt.arguments === 'string' ? evt.arguments : '{}';
     void (async () => {
@@ -280,10 +425,18 @@ export function startOpenAiRealtimeSipSideband(params: OpenAiRealtimeSipSideband
     logger.warn({ err, callId: params.callId }, 'openai_sip_sideband_ws_error');
   });
 
-  ws.on('close', () => {
+  ws.on('close', (closeCode: number) => {
+    if (softLimitTimer) { clearTimeout(softLimitTimer); softLimitTimer = null; }
+    if (hardLimitTimer) { clearTimeout(hardLimitTimer); hardLimitTimer = null; }
+    if (pendingHangupFallbackTimer) { clearTimeout(pendingHangupFallbackTimer); pendingHangupFallbackTimer = null; }
+    pendingHangupAfterAudio = false;
     cancelInitialTimer();
     clearTimeout(t);
-    logger.info({ callId: params.callId }, 'openai_sip_sideband_ws_close');
-    if (params.variant === 'demo') params.onEnded?.();
+    logger.info({ callId: params.callId, closeCode }, 'openai_sip_sideband_ws_close');
+    if (params.variant === 'demo') {
+      params.onEnded?.();
+    } else if (params.variant === 'shop' && wsOpened && closeCode !== 1000 && closeCode !== 1001) {
+      params.onWsDropped?.(closeCode);
+    }
   });
 }

@@ -461,6 +461,7 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
       let initialGreetingRequested = false;
       let realtimeSessionReady = false;
       let vadResumeAfterWelcomeSent = false;
+      let pendingDemoEndCall = false;
       const maybeResumeVadAfterWelcome = (fromEvent: string) => {
         const td = sessionBody.turnDetectionAfterWelcome;
         if (!td || typeof td !== 'object' || Array.isArray(td) || vadResumeAfterWelcomeSent || dc.readyState !== 'open' || td.create_response !== true) return;
@@ -489,10 +490,42 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
             error?: { message?: string; code?: string; type?: string };
             type?: string;
             transcript?: string;
+            name?: string;
+            call_id?: string;
           };
           const evType = data.type;
           if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) logDemoRealtime('oai_event', { type: evType });
-          if (data.type === 'session.created' || data.type === 'session.updated') { realtimeSessionReady = true; requestInitialGreeting(); }
+          if (data.type === 'session.created' || data.type === 'session.updated') {
+            realtimeSessionReady = true;
+            if (data.type === 'session.created') {
+              // Register end_call tool so the AI can close the demo when done.
+              try {
+                dc.send(JSON.stringify({
+                  type: 'session.update',
+                  session: {
+                    tools: [{
+                      type: 'function',
+                      name: 'end_call',
+                      description: "End the demo call after the caller's request is fully complete — booking confirmed, link sent, question answered, or callback scheduled. Say a warm goodbye before calling this.",
+                      parameters: {
+                        type: 'object',
+                        additionalProperties: false,
+                        properties: {
+                          reason: {
+                            type: 'string',
+                            enum: ['booking_completed', 'link_sent', 'question_answered', 'callback_scheduled', 'other'],
+                          },
+                        },
+                        required: ['reason'],
+                      },
+                    }],
+                    tool_choice: 'auto',
+                  },
+                }));
+              } catch { /* non-fatal */ }
+            }
+            requestInitialGreeting();
+          }
           if ((data.type === 'response.output_audio_transcript.done' || data.type === 'response.audio_transcript.done') && typeof data.transcript === 'string') {
             const text = data.transcript.trim();
             if (text) transcriptTurnsRef.current.push({ role: 'assistant', text: text.slice(0, 1000) });
@@ -507,6 +540,28 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
             maybeResumeVadAfterWelcome(data.type ?? 'unknown');
           }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
+          // end_call tool: acknowledge then wait for audio to finish before closing UI.
+          if (data.type === 'response.function_call_arguments.done' && data.name === 'end_call') {
+            const callIdTool = typeof data.call_id === 'string' ? data.call_id : undefined;
+            if (callIdTool && dc.readyState === 'open') {
+              try {
+                dc.send(JSON.stringify({
+                  type: 'conversation.item.create',
+                  item: { type: 'function_call_output', call_id: callIdTool, output: JSON.stringify({ ok: true }) },
+                }));
+              } catch { /* non-fatal */ }
+            }
+            pendingDemoEndCall = true;
+            setStatusText('Call ending…');
+          }
+          // Audio buffer done — if end_call was requested, close the demo session.
+          if (pendingDemoEndCall && data.type === 'output_audio_buffer.stopped') {
+            pendingDemoEndCall = false;
+            directPeerFailureMutedRef.current = true; // prevent closed-connection from showing error
+            setStage('completed');
+            setStatusText('Demo ended. Thanks for trying RingBooker!');
+            cleanupDirectRealtime({ endReason: 'completed' });
+          }
         } catch { /* ignore non-JSON */ }
       });
       const offer = await pc.createOffer();

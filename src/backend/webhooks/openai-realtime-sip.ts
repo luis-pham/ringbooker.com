@@ -62,9 +62,32 @@ import {
 } from '@/src/backend/webhooks/openai-sip-did';
 import { startOpenAiRealtimeSipSideband } from '@/src/backend/webhooks/openai-realtime-sip-sideband';
 import { decodeCallControlClientState } from '@/src/backend/webhooks/telnyx-call-control';
+import { callControlSpeak } from '@/src/backend/services/calls/call-control-client';
+import { isWithinBusinessHours } from '@/src/backend/services/calls/business-hours';
+import { evaluateOwnerHandoffDestination } from '@/src/backend/services/calls/destination-policy';
 
 /** 5-minute hard cap on Path-B (OpenAI SIP direct) demo calls. */
 const DEMO_SIP_MAX_DURATION_MS = 300_000;
+
+/** Fallback reconnect: wait this long before attempting to re-open the sideband WS. */
+const WS_FALLBACK_HOLD_MS = 1_500;
+/** Fallback reconnect: if the new sideband WS doesn't open within this window, declare failure. */
+const WS_RECONNECT_TIMEOUT_MS = 3_000;
+/** After playing the goodbye message, wait this long before issuing hangup. */
+const HARD_LIMIT_HANGUP_DELAY_MS = 5_000;
+/** After end_call tool fires and audio finishes, wait this long before issuing hangup. */
+const END_CALL_TOOL_HANGUP_DELAY_MS = 500;
+/** After playing the transfer announcement, wait this long before dialling the owner. */
+const FALLBACK_TRANSFER_ANNOUNCE_DELAY_MS = 2_000;
+
+const PROD_CALL_HARD_LIMIT_MESSAGE =
+  "I need to end our call now. Please call back if you need further assistance. Goodbye.";
+const PROD_CALL_SOFT_LIMIT_INSTRUCTION =
+  "You must now wrap up the call politely. Say something like: 'Is there anything else I can help you with before we finish?'";
+const FALLBACK_HOLD_MESSAGE = 'Please hold for just a moment.';
+const FALLBACK_TRANSFER_MESSAGE = "Let me connect you with someone who can help.";
+const FALLBACK_ISSUE_MESSAGE =
+  "We're experiencing a technical issue. We'll follow up with you shortly.";
 
 type DemoCallTimer = { timer: ReturnType<typeof setTimeout>; telnyxCallControlId: string };
 const demoCallTimers = new Map<string, DemoCallTimer>();
@@ -434,6 +457,8 @@ export async function handleOpenAiRealtimeSipWebhook(
     return c.json({ ok: true });
   }
 
+  let shopCallLimits: { softWarningAfterSeconds: number; maxCallDurationSeconds: number } | null = null;
+
   if (
     route.kind === 'shop' &&
     deps.shopsRepository &&
@@ -485,6 +510,7 @@ export async function handleOpenAiRealtimeSipWebhook(
         });
         return c.json({ ok: true, blocked: true, reason: 'usage_limit_reached' });
       }
+      shopCallLimits = usage.limits;
       const callControlAlreadyOwnsSlot = Boolean(ccDecoded?.shopId === route.shop.id && ccDecoded.telnyxCallControlId);
       if (deps.shopActiveCallSessionsRepository && !callControlAlreadyOwnsSlot) {
         const now = new Date();
@@ -720,7 +746,9 @@ export async function handleOpenAiRealtimeSipWebhook(
 
       const telnyxCcId = extractSipHeader(data.sip_headers, 'X-Telnyx-Call-Control-Id') ?? null;
       if (telnyxCcId && env.TELNYX_API_KEY) {
-        const clearDemoTimer = startDemoCallMaxDurationTimer(callId, telnyxCcId, env.TELNYX_API_KEY, fetchImpl);
+        const demoTelnyxKey = env.TELNYX_API_KEY;
+        const clearDemoTimer = startDemoCallMaxDurationTimer(callId, telnyxCcId, demoTelnyxKey, fetchImpl);
+        let demoHangupInitiated = false;
         // clearDemoTimer is passed to sideband so WS close (call ended) cancels it immediately.
         if (env.OPENAI_SIP_SIDEBAND_ENABLED) {
           const acceptedAtMs = Date.now();
@@ -735,6 +763,14 @@ export async function handleOpenAiRealtimeSipWebhook(
             onEnded: () => {
               clearDemoTimer();
               persistDemoTranscript();
+            },
+            onEndCall: () => {
+              if (demoHangupInitiated) return;
+              demoHangupInitiated = true;
+              logger.info({ callId }, 'openai_sip_demo_end_call_tool_hangup');
+              void callControlHangup(telnyxCcId, {}, { apiKey: demoTelnyxKey, fetchImpl }).catch((err: unknown) => {
+                logger.warn({ err, callId }, 'openai_sip_demo_end_call_hangup_failed');
+              });
             },
           });
         }
@@ -754,6 +790,7 @@ export async function handleOpenAiRealtimeSipWebhook(
             initialResponseInstructions: demoInitialResponseInstructions,
             onTranscript: demoOnTranscript,
             onEnded: persistDemoTranscript,
+            // No onEndCall when there's no Telnyx CC ID — can't programmatically hang up.
           });
         }
       }
@@ -784,35 +821,206 @@ export async function handleOpenAiRealtimeSipWebhook(
           rbCallId: shopRoomContext.rbCallId,
           openAiLegCallControlId: shopRoomContext.openAiLegCallControlId,
         });
-        startOpenAiRealtimeSipSideband({
-          variant: 'shop',
-          callId,
-          apiKey: apiKey!,
-          acceptedAtMs,
-          initialResponseInstructions:
-            route.shop.ai_welcome_message?.trim() || 'Thanks for calling. How can I help you today?',
-          executeBusinessTool: (name, argsJson) => {
-            let parsed: unknown = {};
-            try {
-              parsed = argsJson.trim() ? JSON.parse(argsJson) : {};
-            } catch {
-              parsed = {};
-            }
-            return executeSipShopToolCall(toolCtx, name, parsed);
-          },
-          onTranscript: deps.callLogsRepository && shopRoomContext
-            ? (speaker, text) => {
-                void deps.callLogsRepository!.appendTranscriptByRequestId({
-                  shopId: route.shop.id,
-                  requestId: shopRoomContext.requestId,
-                  speaker,
-                  text,
-                  occurredAt: new Date(),
-                }).catch((err: unknown) => {
-                  logger.warn({ err, callId, shopId: route.shop.id }, 'openai_sip_transcript_append_failed');
-                });
+        const shop = route.shop;
+        const sidebandCtx = shopRoomContext;
+        const parentCcId = sidebandCtx.parentTelnyxCallControlId;
+        const callerPhone = normalizedFrom ?? '';
+        const telnyxKey = env.TELNYX_API_KEY ?? '';
+
+        const softLimitMs = (shopCallLimits?.softWarningAfterSeconds ?? 480) * 1000;
+        const hardLimitMs = (shopCallLimits?.maxCallDurationSeconds ?? 600) * 1000;
+
+        /** One-shot guard: prevent double-trigger if WS emits close multiple times. */
+        let fallbackTriggered = false;
+        /** One-shot guard: prevents double-hangup when caller hangs up during the end_call delay. */
+        let hangupInitiated = false;
+
+        function buildShopSidebandCore() {
+          return {
+            variant: 'shop' as const,
+            callId,
+            apiKey: apiKey!,
+            acceptedAtMs,
+            initialResponseInstructions:
+              shop.ai_welcome_message?.trim() || 'Thanks for calling. How can I help you today?',
+            executeBusinessTool: (name: string, argsJson: string) => {
+              let parsed: unknown = {};
+              try {
+                parsed = argsJson.trim() ? JSON.parse(argsJson) : {};
+              } catch {
+                parsed = {};
               }
-            : undefined,
+              return executeSipShopToolCall(toolCtx, name, parsed);
+            },
+            onTranscript: deps.callLogsRepository
+              ? (speaker: 'caller' | 'assistant', text: string) => {
+                  void deps.callLogsRepository!.appendTranscriptByRequestId({
+                    shopId: shop.id,
+                    requestId: sidebandCtx.requestId,
+                    speaker,
+                    text,
+                    occurredAt: new Date(),
+                  }).catch((err: unknown) => {
+                    logger.warn({ err, callId, shopId: shop.id }, 'openai_sip_transcript_append_failed');
+                  });
+                }
+              : undefined,
+            softLimitMs,
+            softLimitInstruction: PROD_CALL_SOFT_LIMIT_INSTRUCTION,
+            hardLimitMs,
+            onEndCall: () => {
+              if (hangupInitiated) return;
+              hangupInitiated = true;
+              logger.info({ callId, shopId: shop.id }, 'openai_sip_end_call_tool_hangup');
+              setTimeout(() => {
+                if (parentCcId && telnyxKey) {
+                  void callControlHangup(parentCcId, {}, { apiKey: telnyxKey, fetchImpl }).catch((err: unknown) => {
+                    logger.warn({ err, callId, shopId: shop.id }, 'openai_sip_end_call_hangup_failed');
+                  });
+                }
+              }, END_CALL_TOOL_HANGUP_DELAY_MS);
+            },
+          };
+        }
+
+        async function doFinalFallback() {
+          const withinHours = isWithinBusinessHours(shop);
+          const canTransfer = withinHours && shop.allow_transfers && !!parentCcId && !!telnyxKey;
+
+          if (canTransfer) {
+            await callControlSpeak(parentCcId!, {
+              payload: FALLBACK_TRANSFER_MESSAGE,
+              voice: 'Polly.Joanna',
+              language: 'en-US',
+              payload_type: 'text',
+            }, { apiKey: telnyxKey, fetchImpl }).catch(() => {});
+
+            await new Promise((resolve) => setTimeout(resolve, FALLBACK_TRANSFER_ANNOUNCE_DELAY_MS));
+
+            const destination = evaluateOwnerHandoffDestination({ shop, ownerPhone: shop.user_phone });
+            if (destination.ok && deps.telephonyService) {
+              await deps.telephonyService.requestHumanHandoffViaCallControl({
+                shopId: shop.id,
+                parentCallControlId: parentCcId!,
+                openAiLegCallControlId: sidebandCtx.openAiLegCallControlId ?? undefined,
+                ownerPhone: destination.e164,
+                inboundDid: shop.phone_number,
+                rbCallId: sidebandCtx.rbCallId,
+                reason: 'ai_service_interruption',
+                urgency: 'high',
+                summary: 'AI service was interrupted mid-call. Customer needs assistance.',
+                callerPhone,
+                idempotencyKey: `fallback_handoff:${callId}`,
+              }).catch(() => {
+                void callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl });
+              });
+            } else {
+              void callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl });
+            }
+          } else {
+            if (parentCcId && telnyxKey) {
+              await callControlSpeak(parentCcId, {
+                payload: FALLBACK_ISSUE_MESSAGE,
+                voice: 'Polly.Joanna',
+                language: 'en-US',
+                payload_type: 'text',
+              }, { apiKey: telnyxKey, fetchImpl }).catch(() => {});
+            }
+            if (deps.jobsRepository) {
+              void deps.jobsRepository.enqueue({
+                shopId: shop.id,
+                type: 'technical_failure_callback',
+                payload: { shopId: shop.id, callerPhone, callId },
+                runAt: new Date(),
+                idempotencyKey: `tech_failure_callback:${callId}`,
+              }).catch(() => {});
+            }
+            if (parentCcId && telnyxKey) {
+              await new Promise((resolve) => setTimeout(resolve, HARD_LIMIT_HANGUP_DELAY_MS));
+              void callControlHangup(parentCcId, {}, { apiKey: telnyxKey, fetchImpl }).catch(() => {});
+            }
+          }
+        }
+
+        async function handleWsDrop(closeCode: number) {
+          if (fallbackTriggered) return;
+          fallbackTriggered = true;
+
+          logger.error(
+            { callId, shopId: shop.id, callerPhone, wsCloseCode: closeCode, reconnectAttempted: true },
+            'openai_sip_shop_ws_unexpected_drop',
+          );
+
+          if (deps.jobsRepository) {
+            void deps.jobsRepository.enqueue({
+              shopId: shop.id,
+              type: 'ai_failure_owner_alert',
+              payload: { shopId: shop.id, callerPhone, callId, wsCloseCode: closeCode },
+              runAt: new Date(),
+              idempotencyKey: `ai_failure_alert:${callId}`,
+            }).catch(() => {});
+          }
+
+          if (parentCcId && telnyxKey) {
+            await callControlSpeak(parentCcId, {
+              payload: FALLBACK_HOLD_MESSAGE,
+              voice: 'Polly.Joanna',
+              language: 'en-US',
+              payload_type: 'text',
+            }, { apiKey: telnyxKey, fetchImpl }).catch(() => {});
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, WS_FALLBACK_HOLD_MS));
+
+          let reconnected = false;
+          startOpenAiRealtimeSipSideband({
+            ...buildShopSidebandCore(),
+            onConnected: () => { reconnected = true; },
+            onWsDropped: undefined,
+          });
+
+          await new Promise((resolve) => setTimeout(resolve, WS_RECONNECT_TIMEOUT_MS));
+
+          if (reconnected) {
+            logger.info({ callId, shopId: shop.id }, 'openai_sip_ws_reconnect_succeeded');
+            fallbackTriggered = false;
+            return;
+          }
+
+          logger.warn({ callId, shopId: shop.id }, 'openai_sip_ws_reconnect_failed_doing_final_fallback');
+          await doFinalFallback();
+        }
+
+        startOpenAiRealtimeSipSideband({
+          ...buildShopSidebandCore(),
+          onConnected: () => { fallbackTriggered = false; },
+          onWsDropped: (closeCode) => { void handleWsDrop(closeCode); },
+          onHardLimit: () => {
+            hangupInitiated = true; // prevent stale onEndCall from double-hanging
+            logger.warn({ callId, shopId: shop.id, hardLimitMs }, 'openai_sip_shop_hard_limit_hit');
+            if (deps.jobsRepository) {
+              void deps.jobsRepository.enqueue({
+                shopId: shop.id,
+                type: 'max_duration_alert',
+                payload: { shopId: shop.id, callId, reason: 'max_duration_exceeded' },
+                runAt: new Date(),
+                idempotencyKey: `max_duration_alert:${callId}`,
+              }).catch(() => {});
+            }
+            if (parentCcId && telnyxKey) {
+              void callControlSpeak(parentCcId, {
+                payload: PROD_CALL_HARD_LIMIT_MESSAGE,
+                voice: 'Polly.Joanna',
+                language: 'en-US',
+                payload_type: 'text',
+              }, { apiKey: telnyxKey, fetchImpl })
+                .then(() => new Promise((resolve) => setTimeout(resolve, HARD_LIMIT_HANGUP_DELAY_MS)))
+                .then(() => callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl }))
+                .catch(() => { void callControlHangup(parentCcId!, {}, { apiKey: telnyxKey, fetchImpl }); });
+            } else {
+              void callControlHangup(shopRoomContext.openAiLegCallControlId ?? callId, {}, { apiKey: telnyxKey, fetchImpl });
+            }
+          },
         });
       }
     }

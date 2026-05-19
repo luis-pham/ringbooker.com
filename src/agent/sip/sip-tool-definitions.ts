@@ -27,6 +27,25 @@ export type OpenAiSipFunctionTool = {
   parameters: Record<string, unknown>;
 };
 
+export const END_CALL_TOOL: OpenAiSipFunctionTool = {
+  type: 'function',
+  name: 'end_call',
+  description:
+    'End the phone call after the caller\'s request is fully complete. Call this after: booking confirmed, booking link sent and acknowledged, question fully answered, callback scheduled, or handoff initiated. Always say a warm goodbye BEFORE calling this tool. Do NOT call end_call if a human handoff is actively connecting — the owner will close the call.',
+  parameters: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      reason: {
+        type: 'string',
+        enum: ['booking_completed', 'link_sent', 'question_answered', 'callback_scheduled', 'handoff_initiated', 'other'],
+        description: 'Why the call is ending.',
+      },
+    },
+    required: ['reason'],
+  },
+};
+
 /** Owner handoff for OpenAI SIP direct — Telnyx Call Control only (see `request-human-handoff.ts`). */
 export const REQUEST_HUMAN_HANDOFF_TOOL: OpenAiSipFunctionTool = {
   type: 'function',
@@ -94,11 +113,11 @@ export function getSipShopToolsForOpenAiAccept(): OpenAiSipFunctionTool[] {
 
   const vt = getResolvedVoiceTransport();
   if (vt === 'openai_sip_direct') {
-    return [...core, REQUEST_HUMAN_HANDOFF_TOOL];
+    return [...core, REQUEST_HUMAN_HANDOFF_TOOL, END_CALL_TOOL];
   }
 
   const transfer = toolFromShared('transfer_to_user');
-  return transfer ? [...core, transfer] : core;
+  return transfer ? [...core, transfer, END_CALL_TOOL] : [...core, END_CALL_TOOL];
 }
 
 export function getSipShopToolNameSet(): Set<string> {

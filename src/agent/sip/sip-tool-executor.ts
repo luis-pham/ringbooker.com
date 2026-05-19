@@ -1,4 +1,5 @@
 import { checkAvailabilityTool } from '@/src/agent/tools/check-availability';
+import { endCallTool } from '@/src/agent/tools/end-call';
 import { cancelBookingTool } from '@/src/agent/tools/cancel-booking';
 import { createBookingTool } from '@/src/agent/tools/create-booking';
 import { getShopInfoTool } from '@/src/agent/tools/get-shop-info';
@@ -110,6 +111,9 @@ export async function executeSipShopToolCall(
         break;
       case 'record_sms_consent':
         result = await recordSmsConsentTool(ctx, toolInput);
+        break;
+      case 'end_call':
+        result = await endCallTool(ctx, toolInput);
         break;
       case 'request_human_handoff':
         result = await requestHumanHandoffTool(ctx, toolInput);

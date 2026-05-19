@@ -142,6 +142,23 @@ export function buildOpenAiSipAcceptBody(params: {
           additionalProperties: false,
         },
       },
+      {
+        type: 'function' as const,
+        name: 'end_call',
+        description:
+          "End the demo call after the caller's request is fully complete — booking confirmed, link sent, question answered. Say a warm goodbye before calling this.",
+        parameters: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            reason: {
+              type: 'string',
+              enum: ['booking_completed', 'link_sent', 'question_answered', 'callback_scheduled', 'other'],
+            },
+          },
+          required: ['reason'],
+        },
+      },
     ];
   } else if (params.shopBusinessTools?.length) {
     tools = params.shopBusinessTools;
