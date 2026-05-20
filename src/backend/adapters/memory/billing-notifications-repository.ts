@@ -46,4 +46,12 @@ export class InMemoryBillingNotificationsRepository implements BillingNotificati
     this.records.set(key, record);
     return record;
   }
+
+  async listRecentEmailSent(params?: { limit?: number }): Promise<BillingNotification[]> {
+    const limit = params?.limit ?? 20;
+    return [...this.records.values()]
+      .filter((row) => row.channel === 'email')
+      .sort((a, b) => b.sentAt.localeCompare(a.sentAt))
+      .slice(0, limit);
+  }
 }

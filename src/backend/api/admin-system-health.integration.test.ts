@@ -83,5 +83,10 @@ test('admin system health metrics endpoint requires admin session and returns ag
   assert.equal(body.webhooks?.processed, 1);
   assert.equal(body.webhooks?.invalidSignature, 1);
   assert.equal(body.jobs?.queued, 1);
+  const withEmail = body as { email?: { emailProvider: string; lifecycleEmailJobs: { pending: number; failed: number } } };
+  assert.equal(withEmail.email?.emailProvider, 'noop');
+  assert.equal(typeof withEmail.email?.lifecycleEmailJobs.pending, 'number');
+  assert.equal(typeof withEmail.email?.lifecycleEmailJobs.failed, 'number');
+  assert.ok(Array.isArray((body as { email?: { recentBillingEmailNotifications: unknown[] } }).email?.recentBillingEmailNotifications));
 });
 

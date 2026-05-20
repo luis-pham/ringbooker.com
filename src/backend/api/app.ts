@@ -120,7 +120,6 @@ import type { EmailService } from '@/src/backend/services/email/types';
 import {
   buildDemoRequestCustomerEmailPayload,
   buildPasswordResetEmailPayload,
-  buildWelcomeSignupEmailPayload,
 } from '@/src/backend/services/email/base-email-builders';
 import { renderBaseEmailHtml } from '@/src/backend/services/email/base-email-mjml';
 import {
@@ -130,6 +129,10 @@ import {
   emailReplyTo,
   emailSupportAddress,
 } from '@/src/backend/services/email/config';
+import { collectEmailLifecycleDiagnostics } from '@/src/backend/services/email/diagnostics';
+import { emailRecipientDomain } from '@/src/backend/services/email/recipient-domain';
+import { sendSignupWelcomeEmail } from '@/src/backend/services/email/signup-welcome';
+import { resolveEmailProviderMode } from '@/src/backend/services/email/startup';
 import { getEnv } from '@/src/backend/config/env';
 import { logger } from '@/src/backend/observability/logger';
 import { buildDialCode, findCarrier, getForwardingCode, type ForwardingType } from '@/lib/call-forwarding/carrier-data';
@@ -1857,49 +1860,6 @@ function createOAuthFallbackPasswordHash(): string {
   return hashPassword(`${randomUUID()}${randomBytes(24).toString('hex')}`);
 }
 
-async function sendSignupWelcomeEmail(params: {
-  emailService?: EmailService;
-  email: string;
-  shopName: string;
-  shopId: string;
-  trialEndsAt?: string;
-  shopTimezone?: string | null;
-  appBaseUrl: string;
-  idempotencyKey: string;
-}): Promise<void> {
-  if (!params.emailService) return;
-  try {
-    const { input, text } = buildWelcomeSignupEmailPayload({
-      email: params.email,
-      shopName: params.shopName,
-      trialEndsAt: params.trialEndsAt,
-      shopTimezone: params.shopTimezone,
-      appBaseUrl: params.appBaseUrl,
-    });
-    const html = await renderBaseEmailHtml(input);
-    await params.emailService.sendEmail({
-      to: params.email,
-      subject: input.title,
-      text,
-      html,
-      category: 'welcome_signup',
-      idempotencyKey: params.idempotencyKey,
-      shopId: params.shopId,
-      from: emailFounderFrom(),
-      replyTo: emailReplyTo(),
-    });
-  } catch (error) {
-    logger.error(
-      {
-        err: error,
-        shopId: params.shopId,
-        email: params.email,
-      },
-      'signup_welcome_email_failed',
-    );
-  }
-}
-
 export function buildGoLivePaymentRequiredMessage(params?: { paddleTrialConfigVerified?: boolean }): string {
   const verified = params?.paddleTrialConfigVerified ?? process.env.PADDLE_TRIAL_CONFIG_VERIFIED === 'true';
   return verified
@@ -2849,6 +2809,7 @@ export function createBackendApp(deps: {
       agentTransportMode: deps.runtimeInfo?.agentTransportMode ?? 'mock',
       agentVoiceProviderMode: deps.runtimeInfo?.agentVoiceProviderMode ?? 'none',
       agentVoiceModel: process.env.AGENT_VOICE_MODEL ?? process.env.AGENT_GEMINI_MODEL ?? null,
+      emailProvider: resolveEmailProviderMode(),
     });
   });
 
@@ -4407,11 +4368,24 @@ export function createBackendApp(deps: {
       },
     });
 
+    logger.info(
+      {
+        event: 'signup_completed',
+        shopId: createdShop.id,
+        authUserId: authUser.id,
+        signupMethod: 'email_password',
+        recipientDomain: emailRecipientDomain(authUser.email),
+      },
+      'signup_completed',
+    );
+
     await sendSignupWelcomeEmail({
       emailService: deps.emailService,
       email: authUser.email,
       shopName: createdShop.name,
       shopId: createdShop.id,
+      authUserId: authUser.id,
+      signupMethod: 'email_password',
       trialEndsAt: trial.subscription.trialEndsAt ?? undefined,
       shopTimezone: createdShop.timezone,
       appBaseUrl: getAppBaseUrl(c.req),
@@ -4657,12 +4631,24 @@ export function createBackendApp(deps: {
     });
 
     if (createdViaGoogleSignup && shop) {
+      logger.info(
+        {
+          event: 'signup_completed',
+          shopId: shop.id,
+          authUserId: authUser.id,
+          signupMethod: 'google',
+          recipientDomain: emailRecipientDomain(authUser.email),
+        },
+        'signup_completed',
+      );
       const trial = await deps.billingSubscriptionsRepository.findCurrentByShopId(shop.id);
       await sendSignupWelcomeEmail({
         emailService: deps.emailService,
         email: authUser.email,
         shopName: shop.name,
         shopId: shop.id,
+        authUserId: authUser.id,
+        signupMethod: 'google',
         trialEndsAt: trial?.trialEndsAt ?? undefined,
         shopTimezone: shop.timezone,
         appBaseUrl,
@@ -8980,6 +8966,10 @@ export function createBackendApp(deps: {
 
     const snapshot = getMetricsSnapshot();
     const jobStatus = await deps.jobsRepository.getStatusCounts();
+    const emailDiagnostics = await collectEmailLifecycleDiagnostics({
+      jobsRepository: deps.jobsRepository,
+      billingNotificationsRepository: deps.billingNotificationsRepository,
+    });
     const responseLatency = durationMetricAggregate(snapshot, 'realtime_response_latency_ms');
     const queueLatency = durationMetricAggregate(snapshot, 'realtime_audio_queue_latency_ms');
     const jitter = durationMetricAggregate(snapshot, 'realtime_audio_jitter_ms');
@@ -9023,6 +9013,7 @@ export function createBackendApp(deps: {
           counterMetricTotal(snapshot, 'api_requests_total', { status: '503' }) +
           counterMetricTotal(snapshot, 'api_requests_total', { status: '504' }),
       },
+      email: emailDiagnostics,
     });
   });
 

@@ -83,4 +83,16 @@ export class SupabaseBillingNotificationsRepository implements BillingNotificati
     if (error) throw new Error(`billing_notifications_mark_sent_failed:${error.message}`);
     return toBillingNotification(data);
   }
+
+  async listRecentEmailSent(params?: { limit?: number }): Promise<BillingNotification[]> {
+    const limit = params?.limit ?? 20;
+    const { data, error } = await this.supabase
+      .from('billing_notifications')
+      .select('*')
+      .eq('channel', 'email')
+      .order('sent_at', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(`billing_notifications_list_recent_failed:${error.message}`);
+    return (data ?? []).map((row) => toBillingNotification(row as BillingNotificationRow));
+  }
 }

@@ -27,6 +27,9 @@ This backend is intentionally split by contracts first so we can replace infrast
 - Add integration tests for webhook signature + dedupe behavior.
 - Connect `jobs/runner.ts` handlers to real booking/sms/callback domain flows.
 - Run worker process via `npm run worker` (entry: `src/backend/jobs/worker-entry.ts`).
+- Schedule lifecycle emails via `npm run cron:trial-lifecycle` (hourly in production) or `POST /api/backend/jobs/trial-lifecycle`.
+- Without a long-running worker, call `POST /api/backend/jobs/tick` on an interval (requires `x-backend-key` when `BACKEND_INTERNAL_API_KEY` is set).
+- Admin email diagnostics: `GET /api/backend/admin/system-health/metrics` includes `email` (provider, pending/failed `lifecycle_email` jobs, recent `billing_notifications`).
 
 ## Internal Test Endpoints
 

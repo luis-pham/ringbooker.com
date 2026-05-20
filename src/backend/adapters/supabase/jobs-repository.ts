@@ -190,6 +190,19 @@ export class SupabaseJobsRepository implements JobsRepository {
     return result;
   }
 
+  async countByTypeAndStatuses(params: { type: JobType; statuses: JobStatus[] }): Promise<number> {
+    if (params.statuses.length === 0) return 0;
+    const { count, error } = await this.supabase
+      .from('jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('type', params.type)
+      .in('status', params.statuses);
+    if (error) {
+      throw new Error(`jobs_count_by_type_status_failed:${error.message}`);
+    }
+    return count ?? 0;
+  }
+
   static createWorkerId(prefix = 'jobs-worker'): string {
     return `${prefix}-${randomUUID().slice(0, 8)}`;
   }

@@ -119,4 +119,9 @@ export class InMemoryJobsRepository implements JobsRepository {
     }
     return counts;
   }
+
+  async countByTypeAndStatuses(params: { type: JobType; statuses: JobStatus[] }): Promise<number> {
+    const statusSet = new Set(params.statuses);
+    return this.jobs.filter((job) => job.type === params.type && statusSet.has(job.status)).length;
+  }
 }

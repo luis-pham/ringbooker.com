@@ -70,6 +70,7 @@ import { LiveKitNativeOpenAIRuntime } from '@/src/agent/realtime/livekit-native-
 import { MockRealtimeAgentRuntime } from '@/src/agent/realtime/mock-runtime';
 import { getEnv } from '@/src/backend/config/env';
 import { createSupabaseServiceClient } from '@/src/backend/db/supabase-client';
+import { logEmailRuntimeStartup, resolveEmailProviderMode } from '@/src/backend/services/email/startup';
 
 type BackendRuntime = ReturnType<typeof createBackendRuntime>;
 type BackendRepositoryMode = 'memory' | 'supabase';
@@ -78,8 +79,6 @@ type BillingProviderMode = 'paddle' | 'manual';
 type AgentRuntimeMode = 'mock' | 'livekit_realtime';
 type AgentTransportMode = 'mock' | 'livekit';
 type AgentVoiceProviderMode = 'none' | 'gemini_live' | 'openai_realtime';
-type BackendEmailProvider = 'noop' | 'resend';
-
 function getRepositoryMode(): BackendRepositoryMode {
   return process.env.BACKEND_REPOSITORY_MODE === 'supabase' ? 'supabase' : 'memory';
 }
@@ -121,10 +120,6 @@ function getAgentRuntimeMode(): AgentRuntimeMode {
   return transport === 'livekit' && voiceProvider !== 'none' ? 'livekit_realtime' : 'mock';
 }
 
-function getEmailProvider(): BackendEmailProvider {
-  return process.env.EMAIL_PROVIDER === 'resend' ? 'resend' : 'noop';
-}
-
 function enforceProductionRuntimeProfile(params: {
   mode: BackendRepositoryMode;
   commProvider: BackendCommProvider;
@@ -153,7 +148,8 @@ export function createBackendRuntime() {
   const agentTransportMode = getAgentTransportMode();
   const agentVoiceProviderMode = getAgentVoiceProviderMode();
   const agentRuntimeMode = getAgentRuntimeMode();
-  const emailProvider = getEmailProvider();
+  const emailProvider = resolveEmailProviderMode();
+  logEmailRuntimeStartup(emailProvider);
   enforceProductionRuntimeProfile({
     mode,
     commProvider,

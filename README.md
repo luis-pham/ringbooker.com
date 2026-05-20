@@ -168,18 +168,32 @@ Thư mục migration: `src/backend/db/migrations`.
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY=...`
 - `PUBLIC_DEMO_SHOP_ID=...`
 
-#### Email (nếu dùng gửi mail thật)
-- `EMAIL_PROVIDER=resend`
+#### Email (bắt buộc production)
+- `EMAIL_PROVIDER=resend` (default `noop` — không gửi mail; production sẽ **fail fast** nếu vẫn là `noop`)
 - `RESEND_API_KEY=...`
-- `EMAIL_FROM_ADDRESS=...`
+- `EMAIL_FROM_ADDRESS=...` (ví dụ `notifications@send.ringbooker.com`)
+- `EMAIL_FOUNDER_FROM=...` (welcome/onboarding — verify domain trên Resend)
+- Startup log: `email_runtime_configured` (provider + from domains, không log API key)
 
 #### Cache/rate limit cross-instance (khuyến nghị mạnh)
 - `REDIS_URL=...`
 
 ### C. Process bắt buộc khi chạy thật
 - `next start` (app/API)
-- `npm run worker` (job worker)
+- `npm run worker` (job worker) — **bắt buộc** để xử lý `lifecycle_email`, trial reminders, SMS jobs, v.v.
+- `npm run cron:trial-lifecycle` — schedule hourly (cron) để enqueue onboarding/trial lifecycle emails
+- Nếu **không** chạy long-running worker: gọi `POST /api/backend/jobs/tick` mỗi vài phút (cần `BACKEND_INTERNAL_API_KEY`)
 - `npm run agent:worker` được spawn qua dispatch command (nếu dùng tách process realtime)
+
+Ví dụ crontab:
+
+```cron
+# Enqueue trial/onboarding lifecycle jobs (hourly)
+0 * * * * cd /path/to/ringbooker.com && APP_BASE_URL=https://ringbooker.com BACKEND_INTERNAL_API_KEY=... npm run cron:trial-lifecycle
+
+# Process job queue when not using `npm run worker` (every 5 minutes)
+*/5 * * * * curl -sf -X POST -H "x-backend-key: $BACKEND_INTERNAL_API_KEY" https://ringbooker.com/api/backend/jobs/tick
+```
 
 ### D. Webhook production
 - Public endpoint hoạt động:

@@ -746,6 +746,7 @@ export interface BillingNotificationsRepository {
     channel: BillingNotificationChannel;
     metadata?: Record<string, unknown> | null;
   }): Promise<BillingNotification>;
+  listRecentEmailSent(params?: { limit?: number }): Promise<BillingNotification[]>;
 }
 
 export interface JobsRepository {
@@ -771,6 +772,7 @@ export interface JobsRepository {
   fail(jobId: string, params: { retryable: boolean; reason: string; nextRunAt?: Date }): Promise<void>;
   updateStatus(jobId: string, status: JobStatus): Promise<void>;
   getStatusCounts(): Promise<Partial<Record<JobStatus, number>>>;
+  countByTypeAndStatuses(params: { type: JobType; statuses: JobStatus[] }): Promise<number>;
 }
 
 export interface BookingRecord {

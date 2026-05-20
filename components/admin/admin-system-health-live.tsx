@@ -24,6 +24,7 @@ type RuntimeResponse = {
   agentTransportMode?: string;
   agentVoiceProviderMode?: string;
   agentVoiceModel?: string | null;
+  emailProvider?: 'noop' | 'resend';
 };
 type DurationMetricSummary = {
   count: number;
@@ -64,6 +65,22 @@ type SystemHealthMetricsResponse = {
     status403: number;
     status429: number;
     status5xx: number;
+  };
+  email?: {
+    emailProvider: 'noop' | 'resend';
+    emailFromDomain: string;
+    emailFounderFromDomain: string;
+    lifecycleEmailJobs: {
+      pending: number;
+      failed: number;
+    };
+    recentBillingEmailNotifications: Array<{
+      shopId: string;
+      type: string;
+      sentAt: string;
+      skipped?: boolean;
+      skipReason?: string;
+    }>;
   };
 };
 
@@ -210,6 +227,47 @@ export function AdminSystemHealthLive() {
                 {criticalApiSpikes > 0 ? 'Investigate spikes now.' : 'No critical spikes in current in-memory counters.'}
               </p>
             </div>
+          </section>
+
+          <section className="card" style={{ marginTop: 18 }}>
+            <div className="panel-head">
+              <div>
+                <h3>Email lifecycle</h3>
+                <p className="sub">Provider, lifecycle job backlog, and recent billing notification sends.</p>
+              </div>
+            </div>
+            {!metrics?.email ? (
+              <p className="sub" style={{ margin: 0 }}>
+                No email diagnostics returned.
+              </p>
+            ) : (
+              <>
+                <p className="sub" style={{ margin: '0 0 12px' }}>
+                  Provider: <strong>{metrics.email.emailProvider}</strong> · from{' '}
+                  <code>{metrics.email.emailFromDomain}</code> · founder{' '}
+                  <code>{metrics.email.emailFounderFromDomain}</code>
+                  {runtime?.emailProvider ? ` · runtime ${runtime.emailProvider}` : ''}
+                </p>
+                <p className="sub" style={{ margin: '0 0 12px' }}>
+                  Lifecycle email jobs — pending: {metrics.email.lifecycleEmailJobs.pending} · failed:{' '}
+                  {metrics.email.lifecycleEmailJobs.failed}
+                </p>
+                {metrics.email.recentBillingEmailNotifications.length === 0 ? (
+                  <p className="sub" style={{ margin: 0 }}>
+                    No recent billing email notifications recorded.
+                  </p>
+                ) : (
+                  <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    {metrics.email.recentBillingEmailNotifications.map((row) => (
+                      <li key={`${row.shopId}-${row.type}-${row.sentAt}`} style={{ marginBottom: 8 }}>
+                        <code>{row.type}</code> · shop {row.shopId.slice(0, 8)}… · {row.sentAt}
+                        {row.skipped ? ` · skipped (${row.skipReason ?? 'unknown'})` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
           </section>
 
           <section className="card" style={{ marginTop: 18 }}>
