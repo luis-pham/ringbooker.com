@@ -16,7 +16,7 @@ import { buildProductionLanguageRuntimeFields } from '@/src/backend/prompts/prod
 const MAX_PROMPT_CHARS = 18000;
 
 const COMPOSITION_NOTE =
-  'COMPOSITION NOTE: Follow the core and guardrail layers first, then the vertical tone, then the call-type workflow, then the runtime business data. If layers conflict, safety and runtime business facts win.';
+  'COMPOSITION NOTE: Core and guardrails first, then vertical, call-type, runtime. Safety and runtime facts win conflicts.';
 
 const COMPACTED_MARKER = '\n\n[Prompt compacted to fit latency/context budget]';
 
