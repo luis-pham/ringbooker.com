@@ -1345,6 +1345,7 @@ export function MarketingVerticalDemoTemplate({
       demoVertical: config.slug,
       demoMode: 'quick',
       demoSource: 'vertical_demo_page',
+      importedSiteUrl: sitePhase === 'ready' ? siteUrl.trim() || undefined : undefined,
     };
   }
 

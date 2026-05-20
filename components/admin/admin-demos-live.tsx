@@ -51,6 +51,7 @@ type WebDemoRow = {
   deviceType: string | null;
   userAgent: string | null;
   transcriptAvailable: boolean;
+  importedSiteUrl?: string | null;
 };
 
 type ChartDay = { day: string; count: number; demoSeconds: number };
@@ -827,6 +828,7 @@ export function AdminDemosLive() {
                             <th>Status</th>
                             <th>Session ID</th>
                             <th>Device</th>
+                            <th>Site</th>
                             <th>Transcript</th>
                           </tr>
                         </thead>
@@ -850,6 +852,13 @@ export function AdminDemosLive() {
                               </td>
                               <td style={{ fontSize: 12 }}>
                                 {[row.deviceType, row.browser].filter(Boolean).join(' · ') || '—'}
+                              </td>
+                              <td style={{ fontSize: 12, maxWidth: 160 }}>
+                                {row.importedSiteUrl ? (
+                                  <a href={row.importedSiteUrl} target="_blank" rel="noopener noreferrer" title={row.importedSiteUrl} style={{ color: 'inherit' }}>
+                                    {(() => { try { return new URL(row.importedSiteUrl).hostname; } catch { return row.importedSiteUrl; } })()}
+                                  </a>
+                                ) : '—'}
                               </td>
                               <td>
                                 <button

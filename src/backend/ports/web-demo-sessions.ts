@@ -14,6 +14,7 @@ export interface WebDemoSessionAdminRecord {
   requestId: string | null;
   verticalSlug: string | null;
   businessName: string | null;
+  importedSiteUrl: string | null;
   demoSource: string;
   status: WebDemoSessionStatus;
   ipAddress: string | null;
@@ -47,6 +48,7 @@ export interface WebDemoSessionsRepository {
     browser: string | null;
     deviceType: string | null;
     demoSource?: WebDemoSessionDemoSource;
+    importedSiteUrl?: string | null;
   }): Promise<void>;
 
   insertRateLimited(params: {

@@ -54,6 +54,7 @@ export class InMemoryWebDemoSessionsRepository implements WebDemoSessionsReposit
     browser: string | null;
     deviceType: string | null;
     demoSource?: WebDemoSessionDemoSource;
+    importedSiteUrl?: string | null;
   }): Promise<void> {
     const t = nowIso();
     const id = createId();
@@ -63,6 +64,7 @@ export class InMemoryWebDemoSessionsRepository implements WebDemoSessionsReposit
       requestId: params.requestId,
       verticalSlug: params.verticalSlug,
       businessName: params.businessName,
+      importedSiteUrl: params.importedSiteUrl ?? null,
       demoSource: params.demoSource ?? 'direct_openai_realtime',
       status: 'started',
       ipAddress: params.ipAddress,
@@ -105,6 +107,7 @@ export class InMemoryWebDemoSessionsRepository implements WebDemoSessionsReposit
       requestId: null,
       verticalSlug: params.verticalSlug,
       businessName: params.businessName,
+      importedSiteUrl: null,
       demoSource: 'direct_openai_realtime',
       status: 'rate_limited',
       ipAddress: params.ipAddress,

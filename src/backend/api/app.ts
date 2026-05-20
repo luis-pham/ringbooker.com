@@ -304,7 +304,9 @@ const publicDemoRequestSchema = z.object({
 });
 
 /** Same fields as `publicDemoRequestSchema` except visitor phone (web demo uses browser audio only). */
-const publicDemoWebSessionSchema = publicDemoRequestSchema.omit({ phoneNumber: true });
+const publicDemoWebSessionSchema = publicDemoRequestSchema.omit({ phoneNumber: true }).extend({
+  importedSiteUrl: z.string().url().max(500).optional(),
+});
 
 /** E.164 placeholder stored on demo sessions for web-only demos — outbound dial to visitor is never performed. */
 const PUBLIC_DEMO_WEB_SESSION_CALLBACK_PHONE_E164 = '+15555550100';
@@ -3304,6 +3306,7 @@ export function createBackendApp(deps: {
             userAgent: c.req.header('user-agent') ?? null,
             browser: uaHints.browser,
             deviceType: uaHints.deviceType,
+            importedSiteUrl: parsed.data.importedSiteUrl ?? null,
           });
         } catch (error) {
           logger.warn({ err: error, requestId }, 'web_demo_session_started_persist_failed');
@@ -10067,6 +10070,7 @@ export function createBackendApp(deps: {
       deviceType: string | null;
       userAgent: string | null;
       transcriptAvailable: boolean;
+      importedSiteUrl: string | null;
     };
 
     const unified: UnifiedWebDemoRow[] = [];
@@ -10108,6 +10112,7 @@ export function createBackendApp(deps: {
         deviceType: null,
         userAgent: null,
         transcriptAvailable: meta?.hasTranscriptText ?? false,
+        importedSiteUrl: null,
       });
     }
 
@@ -10129,6 +10134,7 @@ export function createBackendApp(deps: {
         deviceType: row.deviceType,
         userAgent: row.userAgent,
         transcriptAvailable,
+        importedSiteUrl: row.importedSiteUrl ?? null,
       });
     }
 
@@ -10155,6 +10161,7 @@ export function createBackendApp(deps: {
         deviceType: r.deviceType,
         userAgent: r.userAgent,
         transcriptAvailable: r.transcriptAvailable,
+        importedSiteUrl: r.importedSiteUrl,
       })),
       pagination: { page, pageSize, total },
       filter: {

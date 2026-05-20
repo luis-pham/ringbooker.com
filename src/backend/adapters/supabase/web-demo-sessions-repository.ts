@@ -17,6 +17,7 @@ type DbRow = {
   request_id: string | null;
   vertical_slug: string | null;
   business_name: string | null;
+  imported_site_url: string | null;
   ip_address: string | null;
   country: string | null;
   region: string | null;
@@ -45,6 +46,7 @@ function mapRow(row: DbRow): WebDemoSessionAdminRecord {
     requestId: row.request_id,
     verticalSlug: row.vertical_slug,
     businessName: row.business_name,
+    importedSiteUrl: row.imported_site_url,
     demoSource: row.demo_source,
     status: row.status,
     ipAddress: row.ip_address,
@@ -81,6 +83,7 @@ export class SupabaseWebDemoSessionsRepository implements WebDemoSessionsReposit
     browser: string | null;
     deviceType: string | null;
     demoSource?: WebDemoSessionDemoSource;
+    importedSiteUrl?: string | null;
   }): Promise<void> {
     const now = new Date().toISOString();
     const { error } = await this.supabase.from('web_demo_sessions').insert({
@@ -88,6 +91,7 @@ export class SupabaseWebDemoSessionsRepository implements WebDemoSessionsReposit
       request_id: params.requestId,
       vertical_slug: params.verticalSlug,
       business_name: params.businessName,
+      imported_site_url: params.importedSiteUrl ?? null,
       ip_address: params.ipAddress,
       country: params.country,
       user_agent: params.userAgent,
