@@ -58,6 +58,7 @@ export class TelnyxPhoneProvisioningService implements PhoneProvisioningService 
 
   async searchAvailableNumbers(params: {
     countryCode: string;
+    npa?: string;
     locality?: string;
     administrativeArea?: string;
     limit?: number;
@@ -66,6 +67,7 @@ export class TelnyxPhoneProvisioningService implements PhoneProvisioningService 
     const query = toQueryString({
       'filter[country_code]': params.countryCode.toUpperCase(),
       'filter[features]': 'sms,voice',
+      'filter[npa]': params.npa,
       'filter[locality]': params.locality,
       'filter[administrative_area]': params.administrativeArea,
       'filter[limit]': limit,

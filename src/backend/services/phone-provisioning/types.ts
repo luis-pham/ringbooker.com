@@ -9,6 +9,8 @@ export type AvailablePhoneNumber = {
 export interface PhoneProvisioningService {
   searchAvailableNumbers(params: {
     countryCode: string;
+    /** US area code (NPA), e.g. "415". Passed as filter[npa] to Telnyx. */
+    npa?: string;
     locality?: string;
     administrativeArea?: string;
     limit?: number;

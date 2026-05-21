@@ -116,6 +116,7 @@ import {
 } from '@/src/backend/services/user/user-portal-notifications';
 import type { TelephonyService } from '@/src/backend/services/telephony/types';
 import type { PhoneProvisioningService } from '@/src/backend/services/phone-provisioning/types';
+import { provisionShopNumber } from '@/src/backend/services/phone-provisioning/provision-shop-number';
 import type { EmailService } from '@/src/backend/services/email/types';
 import {
   buildDemoRequestCustomerEmailPayload,
@@ -840,6 +841,37 @@ function telnyxCountryCodeFromForwardingCountry(value: string | null | undefined
 
 function normalizeForwardingNumberForCode(value: string | null | undefined): string {
   return (value ?? '').trim().replace(/[\s().-]/g, '');
+}
+
+/**
+ * Best-effort parse of a free-form US address string into city, state abbreviation, and zip.
+ * Handles common formats: "123 Main St, Los Angeles, CA 90001" or "Austin, TX 78701".
+ * Returns empty strings when a component cannot be determined.
+ */
+function parseShopAddressComponents(address: string): { city: string; state: string; zip: string } {
+  const empty = { city: '', state: '', zip: '' };
+  if (!address.trim()) return empty;
+
+  // Extract 5-digit zip (optionally followed by -4 extension)
+  const zipMatch = address.match(/\b(\d{5})(?:-\d{4})?\b/);
+  const zip = zipMatch?.[1] ?? '';
+
+  // Extract two-letter US state abbreviation preceded by comma or space
+  const stateMatch = address.match(/[,\s]+([A-Z]{2})[\s,]*(?:\d{5})?/i);
+  const state = stateMatch?.[1]?.toUpperCase() ?? '';
+
+  // City: last comma-separated segment before the state+zip portion
+  const parts = address.split(',').map((p) => p.trim());
+  let city = '';
+  if (parts.length >= 2) {
+    // The city is typically the second-to-last or last segment before state+zip
+    // e.g. ["123 Main St", "Los Angeles", "CA 90001"]
+    const candidatePart = parts[parts.length - 2] ?? parts[parts.length - 1] ?? '';
+    // Strip any trailing state/zip from the candidate
+    city = candidatePart.replace(/\s+[A-Z]{2}\s*\d{5}.*$/i, '').replace(/\d{5}.*$/, '').trim();
+  }
+
+  return { city, state, zip };
 }
 
 function billingStatusForGoLive(subscription: BillingSubscription | null): 'none' | 'trial' | 'active' | 'cancelled' | 'past_due' {
@@ -8290,20 +8322,91 @@ export function createBackendApp(deps: {
       details: { shopId: shop.id },
     });
 
-    const countryCode = telnyxCountryCodeFromForwardingCountry(shop.forwarding_country);
-    let candidates;
-    try {
-      candidates = await deps.phoneProvisioningService.searchAvailableNumbers({
-        countryCode,
-        limit: 12,
-      });
-    } catch (error) {
+    // Extract address components for US area-code selection.
+    // shop.address is a free-form string; we parse it best-effort.
+    const { city: shopCity, state: shopState, zip: shopZip } = parseShopAddressComponents(shop.address ?? '');
+
+    const flowRequestId = randomUUID();
+    const provisionResult = await provisionShopNumber({
+      shopId: shop.id,
+      city: shopCity,
+      state: shopState,
+      zip: shopZip,
+      country: (shop.forwarding_country ?? 'us').toUpperCase(),
+      requestIdPrefix: flowRequestId,
+      service: deps.phoneProvisioningService,
+    }).catch((err: unknown) => ({
+      ok: false as const,
+      code: 'all_candidates_failed' as const,
+      message: err instanceof Error ? err.message : 'unknown',
+    }));
+
+    if (!provisionResult.ok) {
+      const isNoNumbers = provisionResult.code === 'no_candidates';
       await deps.shopsRepository.updateUserSettings(shop.id, {
         forwarding_number_status: 'failed',
         forwarding_number_provisioning_started_at: null,
         forwarding_number_provisioned_at: null,
-        forwarding_number_last_error: error instanceof Error ? error.message.slice(0, 500) : 'forwarding_number_search_failed',
+        forwarding_number_last_error: provisionResult.message.slice(0, 500),
       });
+      securityAudit({
+        action: 'forwarding_number_failed',
+        actorType: 'user',
+        actorId: sessionResult.email,
+        ip,
+        path: c.req.path,
+        details: { shopId: shop.id, phase: isNoNumbers ? 'search' : 'provision', message: provisionResult.message },
+      });
+      await enqueueLifecycleEmail({
+        shopId: shop.id,
+        kind: 'forwarding_number_failed_user',
+        subscriptionId,
+        idempotencySuffix: `forwarding_number_failed_user:${provisionResult.code}`,
+      });
+      await enqueueLifecycleEmail({
+        shopId: shop.id,
+        kind: 'forwarding_number_failed_internal',
+        subscriptionId,
+        title: isNoNumbers ? 'No Telnyx forwarding numbers available' : 'Telnyx forwarding number provisioning failed',
+        summary: provisionResult.message,
+        fields: { shop_id: shop.id, code: provisionResult.code },
+        idempotencySuffix: `forwarding_number_failed_internal:${provisionResult.code}:${Date.now()}`,
+      });
+      return c.json({ ok: false, error: `forwarding_number_${provisionResult.code}` }, isNoNumbers ? 503 : 502);
+    }
+
+    const order = provisionResult;
+    let saved: Shop | null = null;
+    try {
+      saved = await deps.shopsRepository.updateUserSettings(shop.id, {
+        telnyx_number: order.phoneNumber,
+        forwarding_number_status: 'provisioned',
+        forwarding_number_provisioning_started_at: null,
+        forwarding_number_provisioned_at: new Date().toISOString(),
+        forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
+        forwarding_number_last_error: null,
+      });
+    } catch (persistError) {
+      if (deps.phoneProvisioningService.releaseNumber) {
+        await deps.phoneProvisioningService
+          .releaseNumber({
+            phoneNumber: order.phoneNumber,
+            providerNumberId: order.providerNumberId,
+            orderId: order.orderId,
+            reason: 'shop_persist_failed',
+          })
+          .catch((releaseError) => {
+            logger.warn(
+              {
+                shopId: shop.id,
+                providerNumberId: order.providerNumberId ?? null,
+                orderId: order.orderId ?? null,
+                err: releaseError,
+              },
+              'forwarding_number_compensation_release_failed',
+            );
+          });
+      }
       securityAudit({
         action: 'forwarding_number_failed',
         actorType: 'user',
@@ -8312,240 +8415,104 @@ export function createBackendApp(deps: {
         path: c.req.path,
         details: {
           shopId: shop.id,
-          phase: 'search',
-          message: error instanceof Error ? error.message : 'unknown',
+          phase: 'persist',
+          providerNumberId: order.providerNumberId ?? null,
+          providerOrderId: order.orderId ?? null,
+          message: persistError instanceof Error ? persistError.message : 'unknown',
         },
       });
+      await deps.shopsRepository.updateUserSettings(shop.id, {
+        forwarding_number_status: 'failed',
+        forwarding_number_provisioning_started_at: null,
+        forwarding_number_provisioned_at: null,
+        forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
+        forwarding_number_last_error: persistError instanceof Error ? persistError.message.slice(0, 500) : 'shop_persist_failed',
+      }).catch(() => undefined);
       await enqueueLifecycleEmail({
         shopId: shop.id,
         kind: 'forwarding_number_failed_user',
         subscriptionId,
-        idempotencySuffix: 'forwarding_number_failed_user:search',
+        idempotencySuffix: 'forwarding_number_failed_user:persist',
       });
       await enqueueLifecycleEmail({
         shopId: shop.id,
         kind: 'forwarding_number_failed_internal',
         subscriptionId,
-        title: 'Telnyx forwarding number search failed',
-        summary: 'Forwarding number search failed during user go-live setup.',
-        fields: { shop_id: shop.id, phase: 'search' },
-        idempotencySuffix: `forwarding_number_failed_internal:search:${Date.now()}`,
+        title: 'Telnyx forwarding number persist failed',
+        summary: 'A forwarding number was provisioned but could not be persisted to the shop record.',
+        fields: {
+          shop_id: shop.id,
+          phase: 'persist',
+          provider_number_id: order.providerNumberId ?? null,
+          provider_order_id: order.orderId ?? null,
+        },
+        idempotencySuffix: `forwarding_number_failed_internal:persist:${order.orderId ?? order.providerNumberId ?? flowRequestId}`,
       });
-      return c.json({ ok: false, error: 'forwarding_number_search_failed' }, 502);
+      return c.json({ ok: false, error: 'forwarding_number_persist_failed' }, 502);
     }
-
-    if (!candidates.length) {
-      await deps.shopsRepository.updateUserSettings(shop.id, {
-        forwarding_number_status: 'failed',
-        forwarding_number_provisioning_started_at: null,
-        forwarding_number_provisioned_at: null,
-        forwarding_number_last_error: 'no_numbers_available',
-      });
+    if (!saved) {
+      if (deps.phoneProvisioningService.releaseNumber) {
+        await deps.phoneProvisioningService
+          .releaseNumber({
+            phoneNumber: order.phoneNumber,
+            providerNumberId: order.providerNumberId,
+            orderId: order.orderId,
+            reason: 'shop_persist_failed',
+          })
+          .catch((releaseError) => {
+            logger.warn(
+              {
+                shopId: shop.id,
+                providerNumberId: order.providerNumberId ?? null,
+                orderId: order.orderId ?? null,
+                err: releaseError,
+              },
+              'forwarding_number_compensation_release_failed',
+            );
+          });
+      }
       securityAudit({
         action: 'forwarding_number_failed',
         actorType: 'user',
         actorId: sessionResult.email,
         ip,
         path: c.req.path,
-        details: { shopId: shop.id, phase: 'search', message: 'no_numbers_available' },
+        details: { shopId: shop.id, phase: 'persist', message: 'shop_not_found' },
       });
-      await enqueueLifecycleEmail({
-        shopId: shop.id,
-        kind: 'forwarding_number_failed_user',
-        subscriptionId,
-        idempotencySuffix: 'forwarding_number_failed_user:no_numbers_available',
-      });
-      await enqueueLifecycleEmail({
-        shopId: shop.id,
-        kind: 'forwarding_number_failed_internal',
-        subscriptionId,
-        title: 'No Telnyx forwarding numbers available',
-        summary: 'No forwarding number candidates were available for a shop.',
-        fields: { shop_id: shop.id, country_code: countryCode },
-        idempotencySuffix: `forwarding_number_failed_internal:no_numbers_available:${Date.now()}`,
-      });
-      return c.json({ ok: false, error: 'forwarding_number_search_empty' }, 503);
+      return c.json({ ok: false, error: 'shop_not_found' }, 404);
     }
-
-    const flowRequestId = randomUUID();
-    let lastErrorMessage = 'unknown';
-    for (const candidate of candidates.slice(0, 8)) {
-      try {
-        const order = await deps.phoneProvisioningService.provisionNumber({
-          phoneNumber: candidate.phoneNumber,
-          requestId: `${flowRequestId}:${candidate.phoneNumber}`,
-        });
-        let saved: Shop | null = null;
-        try {
-          saved = await deps.shopsRepository.updateUserSettings(shop.id, {
-            telnyx_number: order.phoneNumber,
-            forwarding_number_status: 'provisioned',
-            forwarding_number_provisioning_started_at: null,
-            forwarding_number_provisioned_at: new Date().toISOString(),
-            forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
-            forwarding_number_last_error: null,
-          });
-        } catch (persistError) {
-          if (deps.phoneProvisioningService.releaseNumber) {
-            await deps.phoneProvisioningService
-              .releaseNumber({
-                phoneNumber: order.phoneNumber,
-                providerNumberId: order.providerNumberId,
-                orderId: order.orderId,
-                reason: 'shop_persist_failed',
-              })
-              .catch((releaseError) => {
-                logger.warn(
-                  {
-                    shopId: shop.id,
-                    providerNumberId: order.providerNumberId ?? null,
-                    orderId: order.orderId ?? null,
-                    err: releaseError,
-                  },
-                  'forwarding_number_compensation_release_failed',
-                );
-              });
-          }
-          securityAudit({
-            action: 'forwarding_number_failed',
-            actorType: 'user',
-            actorId: sessionResult.email,
-            ip,
-            path: c.req.path,
-            details: {
-              shopId: shop.id,
-              phase: 'persist',
-              providerNumberId: order.providerNumberId ?? null,
-              providerOrderId: order.orderId ?? null,
-              message: persistError instanceof Error ? persistError.message : 'unknown',
-            },
-          });
-          await deps.shopsRepository.updateUserSettings(shop.id, {
-            forwarding_number_status: 'failed',
-            forwarding_number_provisioning_started_at: null,
-            forwarding_number_provisioned_at: null,
-            forwarding_number_provider_order_id: order.orderId ?? order.providerNumberId ?? null,
-            forwarding_number_last_error: persistError instanceof Error ? persistError.message.slice(0, 500) : 'shop_persist_failed',
-          }).catch(() => undefined);
-          await enqueueLifecycleEmail({
-            shopId: shop.id,
-            kind: 'forwarding_number_failed_user',
-            subscriptionId,
-            idempotencySuffix: 'forwarding_number_failed_user:persist',
-          });
-          await enqueueLifecycleEmail({
-            shopId: shop.id,
-            kind: 'forwarding_number_failed_internal',
-            subscriptionId,
-            title: 'Telnyx forwarding number persist failed',
-            summary: 'A forwarding number was provisioned but could not be persisted to the shop record.',
-            fields: {
-              shop_id: shop.id,
-              phase: 'persist',
-              provider_number_id: order.providerNumberId ?? null,
-              provider_order_id: order.orderId ?? null,
-            },
-            idempotencySuffix: `forwarding_number_failed_internal:persist:${order.orderId ?? order.providerNumberId ?? flowRequestId}`,
-          });
-          return c.json({ ok: false, error: 'forwarding_number_persist_failed' }, 502);
-        }
-        if (!saved) {
-          if (deps.phoneProvisioningService.releaseNumber) {
-            await deps.phoneProvisioningService
-              .releaseNumber({
-                phoneNumber: order.phoneNumber,
-                providerNumberId: order.providerNumberId,
-                orderId: order.orderId,
-                reason: 'shop_persist_failed',
-              })
-              .catch((releaseError) => {
-                logger.warn(
-                  {
-                    shopId: shop.id,
-                    providerNumberId: order.providerNumberId ?? null,
-                    orderId: order.orderId ?? null,
-                    err: releaseError,
-                  },
-                  'forwarding_number_compensation_release_failed',
-                );
-              });
-          }
-          securityAudit({
-            action: 'forwarding_number_failed',
-            actorType: 'user',
-            actorId: sessionResult.email,
-            ip,
-            path: c.req.path,
-            details: { shopId: shop.id, phase: 'persist', message: 'shop_not_found' },
-          });
-          return c.json({ ok: false, error: 'shop_not_found' }, 404);
-        }
-        securityAudit({
-          action: 'forwarding_number_provisioned',
-          actorType: 'user',
-          actorId: sessionResult.email,
-          ip,
-          path: c.req.path,
-          details: {
-            shopId: shop.id,
-            forwardingNumberLast4: order.phoneNumber.slice(-4),
-            providerNumberId: order.providerNumberId ?? null,
-          },
-        });
-        await deps.shopAccessStatesRepository.upsert({
-          shopId: shop.id,
-          forwardingClaimedAt: null,
-          forwardingVerifiedAt: null,
-          forwardingVerifiedSource: null,
-        });
-        await enqueueLifecycleEmail({
-          shopId: shop.id,
-          kind: 'forwarding_number_ready',
-          subscriptionId,
-          forwardingNumber: order.phoneNumber,
-        });
-        return c.json({
-          ok: true,
-          forwardingNumber: order.phoneNumber,
-          status: 'provisioned',
-          nextStep: 'show_forwarding_instructions',
-        });
-      } catch (error) {
-        lastErrorMessage = error instanceof Error ? error.message : 'unknown';
-      }
-    }
-
-    await deps.shopsRepository.updateUserSettings(shop.id, {
-      forwarding_number_status: 'failed',
-      forwarding_number_provisioning_started_at: null,
-      forwarding_number_provisioned_at: null,
-      forwarding_number_last_error: lastErrorMessage.slice(0, 500),
-    });
-
     securityAudit({
-      action: 'forwarding_number_failed',
+      action: 'forwarding_number_provisioned',
       actorType: 'user',
       actorId: sessionResult.email,
       ip,
       path: c.req.path,
-      details: { shopId: shop.id, phase: 'provision', message: lastErrorMessage },
+      details: {
+        shopId: shop.id,
+        forwardingNumberLast4: order.phoneNumber.slice(-4),
+        providerNumberId: order.providerNumberId ?? null,
+        areaCode: order.areaCode ?? null,
+        strategy: order.strategy,
+      },
+    });
+    await deps.shopAccessStatesRepository.upsert({
+      shopId: shop.id,
+      forwardingClaimedAt: null,
+      forwardingVerifiedAt: null,
+      forwardingVerifiedSource: null,
     });
     await enqueueLifecycleEmail({
       shopId: shop.id,
-      kind: 'forwarding_number_failed_user',
+      kind: 'forwarding_number_ready',
       subscriptionId,
-      idempotencySuffix: 'forwarding_number_failed_user:provision',
+      forwardingNumber: order.phoneNumber,
     });
-    await enqueueLifecycleEmail({
-      shopId: shop.id,
-      kind: 'forwarding_number_failed_internal',
-      subscriptionId,
-      title: 'Telnyx forwarding number provisioning failed',
-      summary: 'All forwarding number provisioning candidates failed.',
-      fields: { shop_id: shop.id, phase: 'provision' },
-      idempotencySuffix: `forwarding_number_failed_internal:provision:${Date.now()}`,
+    return c.json({
+      ok: true,
+      forwardingNumber: order.phoneNumber,
+      status: 'provisioned',
+      nextStep: 'show_forwarding_instructions',
     });
-    return c.json({ ok: false, error: 'forwarding_number_provision_failed' }, 502);
   };
 
   app.post(path('/user/go-live/provision-number'), provisionForwardingNumberHandler);
