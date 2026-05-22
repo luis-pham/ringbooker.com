@@ -517,11 +517,20 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
   display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:4px 0 0;
 }
 .metrics-lang-tag{
-  display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;
-  font-size:12px;font-weight:500;line-height:1.2;color:#475569;
+  display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;
+  font-size:12px;font-weight:600;line-height:1.2;letter-spacing:.04em;color:#475569;
   background:var(--purple-ultra);border:1px solid rgba(196,181,253,.45);
 }
+.metrics-cell--langs .metrics-label-row{
+  display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;gap:6px 10px;margin-bottom:6px;
+}
+.metrics-cell--langs .metrics-label-row .metrics-label{margin-bottom:0}
+.metrics-sublabel--beside{
+  display:inline;margin:0;font-size:13px;font-weight:400;color:var(--text-desc);line-height:1.35;white-space:nowrap;
+}
 @media(max-width:767px){
+  .metrics-sublabel--beside{display:none}
+  .metrics-cell--langs .metrics-label-row{display:contents}
   .industries .metrics-grid{
     display:flex;flex-direction:column;gap:0;width:100%;max-width:none;margin-top:40px;
     border:1px solid var(--border);border-radius:20px;background:#fff;overflow:hidden;
@@ -1383,7 +1392,7 @@ export function MarketingHomeTemplate() {
                 every day.
               </h2>
             <p className="sec-sub reveal">
-                Most missed opportunities happen at predictable moments. Each one costs real revenue that you never see.
+                Most missed opportunities happen at predictable moments. For a busy salon, that can add up to $1,640–$2,460 in lost revenue every month.
             </p>
             </div>
             <div className="leak-body">
@@ -1429,9 +1438,9 @@ export function MarketingHomeTemplate() {
                 </p>
                 <p className="leak-revenue-note">Illustrative ranges for a busy salon — not a guarantee.</p>
                 {[
-                  { label: 'After-hours missed calls', range: '$480 – $720', width: '78%', barColor: '#F9E4E1' },
-                  { label: 'Peak-hour overflow', range: '$200 – $360', width: '42%', barColor: '#E1ECE6' },
-                  { label: 'In-service missed calls', range: '$320 – $540', width: '62%', barColor: '#F2EEE6' },
+                  { label: 'After-hours missed calls', range: '$720 – $1,080', width: '100%', barColor: '#F9E4E1' },
+                  { label: 'Peak-hour overflow', range: '$360 – $540', width: '50%', barColor: '#E1ECE6' },
+                  { label: 'In-service missed calls', range: '$560 – $840', width: '78%', barColor: '#F2EEE6' },
                 ].map(({ label, range, width, barColor }) => (
                   <div className="leak-revenue-row" key={label}>
                     <span className="leak-revenue-label">{label}</span>
@@ -1442,9 +1451,9 @@ export function MarketingHomeTemplate() {
                   </div>
                 ))}
                 <div className="leak-revenue-foot">
-                  <p>Average monthly lost revenue estimate</p>
+                  <p>Total range</p>
                   <p className="leak-revenue-total">
-                    $1,000 – <strong>$1,620</strong>
+                    $1,640 – <strong>$2,460</strong>
                   </p>
                 </div>
               </aside>
@@ -1651,11 +1660,22 @@ export function MarketingHomeTemplate() {
               </article>
               <article className="metrics-cell metrics-cell--langs">
                 <div className="metrics-value">5</div>
-                <div className="metrics-label">Languages supported</div>
+                <div className="metrics-label-row">
+                  <div className="metrics-label">Languages supported</div>
+                  <p className="metrics-sublabel metrics-sublabel--beside">Multilingual caller support</p>
+                </div>
                 <div className="metrics-lang-tags" aria-label="Supported languages">
-                  {(['English', 'Spanish', 'Korean', 'Chinese', 'Vietnamese'] as const).map((lang) => (
-                    <span key={lang} className="metrics-lang-tag">
-                      {lang}
+                  {(
+                    [
+                      { code: 'EN', name: 'English' },
+                      { code: 'ES', name: 'Spanish' },
+                      { code: 'KO', name: 'Korean' },
+                      { code: 'ZH', name: 'Chinese' },
+                      { code: 'VI', name: 'Vietnamese' },
+                    ] as const
+                  ).map((lang) => (
+                    <span key={lang.code} className="metrics-lang-tag" title={lang.name}>
+                      {lang.code}
                     </span>
                   ))}
                 </div>
