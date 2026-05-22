@@ -1160,8 +1160,8 @@ export function MarketingContentHub({
           </header>
         )}
 
-        {sections.map((section) => (
-          <section className="section" key={section.heading}>
+        {sections.map((section, i) => (
+          <section className="section" key={i}>
             <div className="section-inner hub-prose-section">
               <h2>{section.heading}</h2>
               {section.content.map((paragraph) => (
