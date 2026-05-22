@@ -392,7 +392,7 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 .coverage-inner{max-width:1100px;margin:0 auto}
 .coverage-intro{margin-bottom:40px}
 .coverage-intro .coverage-kicker,.coverage-intro .coverage-title,.coverage-intro .coverage-lead{text-align:left;margin-left:0;margin-right:0}
-.coverage-kicker{font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);color:var(--purple-dark);margin-bottom:14px;opacity:.95}
+.coverage-kicker{font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin-bottom:14px;opacity:.95}
 .coverage-title{
 	font-size:var(--mk-section-h2);font-weight:500;line-height:1.12;
 	letter-spacing:var(--mk-section-h2-track);color:var(--text-dark);max-width:38ch;margin-bottom:12px;text-wrap:normal;
