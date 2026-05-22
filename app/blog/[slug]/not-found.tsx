@@ -9,8 +9,8 @@ export default function BlogNotFoundPage() {
       <MarketingHeader />
       <main className="min-h-[70vh] bg-white px-6 pb-16 pt-36 md:px-12">
         <div className="mx-auto max-w-3xl rounded-3xl border border-gray-200 bg-gray-50 p-10 text-center">
-          <div className="mb-3 text-xs font-bold uppercase tracking-widest text-brand-purple">404</div>
-          <h1 className="mb-3 text-3xl font-extrabold tracking-tight text-gray-900">Article not found</h1>
+          <div className="mb-3 text-xs font-medium uppercase tracking-widest text-brand-purple">404</div>
+          <h1 className="mb-3 text-3xl font-semibold tracking-tight text-gray-900">Article not found</h1>
           <p className="mx-auto mb-8 max-w-xl text-gray-500">
             The blog article you requested does not exist or is no longer published.
           </p>

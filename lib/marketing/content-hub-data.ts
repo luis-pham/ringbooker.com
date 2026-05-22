@@ -1,5 +1,7 @@
 import { createElement, Fragment, type ReactNode } from 'react';
 
+import { mkSectionTitle } from '@/lib/marketing/section-title';
+
 import type {
   ContentHubBlock,
   ContentHubFaq,
@@ -15,12 +17,12 @@ export type ContentHubPageConfig = {
   /** Match static HTML hero `<h1>` (line breaks + optional `<mark>`). */
   title: ReactNode;
   intro: string;
-  /** Optional: marketing-home-style hero (blobs, `hero-h` / `.hl`). */
+  /** Optional: marketing-home-style hero (blobs, `hero-h`). */
   heroLayout?: 'hub' | 'landing';
   pills?: string[];
   sections: ContentHubSection[];
   hubBlocks?: ContentHubBlock[];
-  industryHeading?: string;
+  industryHeading?: ReactNode;
   industrySub?: string;
   industryEyebrow?: string;
   industryCards?: ContentHubIndustryCard[];
@@ -44,6 +46,11 @@ export type ContentHubPageConfig = {
   heroEntityDefinition?: string;
 };
 
+/** Hero title accent — page variant color via `.hub-hero-accent` in html-hub-scoped-css (no pill). */
+function hubHeroAccent(text: string) {
+  return createElement('span', { className: 'hub-hero-accent' }, text);
+}
+
 /** Same copy as FAQ “What is missed booking protection?” — also surfaced as visible body text for entity / AI citation. */
 const MISSED_BOOKING_PROTECTION_DEFINITION =
   'Missed booking protection is the practice of recapturing booking opportunities that would otherwise be lost when a beauty business cannot answer the phone — due to after-hours calls, peak-hour overflow, or staff being with clients.';
@@ -56,7 +63,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     Fragment,
     null,
     'Recover Revenue Lost to ',
-    createElement('span', { className: 'hl' }, 'Missed Calls'),
+    hubHeroAccent('Missed Calls'),
   ),
   intro:
     "When calls go unanswered after hours or during peak service hours, beauty businesses do not just miss calls — they lose booking revenue. Beauty businesses lose an average of $26,000–$45,000 per year to missed calls and voicemail dead ends. RingBooker's AI receptionist captures that intent before it disappears into voicemail or a competitor call.",
@@ -71,7 +78,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     {
       kind: 'card_grid',
       html: { eyebrow: 'The Core Problem', cardGridStyle: 'leak', leakGridColumns: 4 },
-      heading: 'What “missed booking protection” actually means',
+      heading: mkSectionTitle('What', 'missed booking protection', 'actually means'),
       sub: `${MISSED_BOOKING_PROTECTION_DEFINITION} It is not just about answering calls. It is about protecting revenue that disappears when a caller hangs up or reaches voicemail.`,
       cards: [
         {
@@ -99,7 +106,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     {
       kind: 'scenario_grid',
       html: { eyebrow: 'The 5 Loss Scenarios' },
-      heading: 'Where beauty businesses lose bookings by phone',
+      heading: mkSectionTitle('Where beauty businesses', 'lose bookings', 'by phone'),
       sub: 'Five situations where booking loss happens most often — and where missed booking protection makes the biggest difference.',
       items: [
         {
@@ -142,7 +149,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     {
       kind: 'intent_stats',
       html: { eyebrow: 'What Callers Want' },
-      heading: 'Common caller intents that get lost',
+      heading: mkSectionTitle('Common caller intents', 'that get lost'),
       sub: 'It is not only new bookings at risk. Every intent below is a relationship — and revenue — lost when no one picks up. The stats row cites third-party research on caller and salon behavior.',
       intents: [
         { emoji: '📅', label: 'New appointment booking' },
@@ -176,7 +183,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
         eyebrowTone: 'dark',
         compareStripGridCols4: true,
       },
-      heading: 'Why missed-call handling alone is not enough',
+      heading: mkSectionTitle('Why missed-call handling alone', 'is not enough'),
       sub: 'Voicemail, text-back tools, and generic answering services each address part of the problem. None fully solve missed booking protection.',
       cards: [
         {
@@ -205,7 +212,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     {
       kind: 'feature_scenarios',
       html: { eyebrow: 'The RingBooker Approach', scenarioGrid2x2: true },
-      heading: 'How RingBooker fits into missed booking protection',
+      heading: mkSectionTitle('How RingBooker fits into', 'missed booking protection'),
       sub: 'RingBooker sits alongside your operations — not replacing them. It handles calls your team cannot reach so intent is not lost.',
       items: [
         {
@@ -234,7 +241,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
     },
   ],
   industryEyebrow: 'Explore by Industry',
-  industryHeading: 'Missed booking protection by business type',
+  industryHeading: mkSectionTitle('Missed booking protection', 'by business type'),
   industrySub:
     'Each beauty vertical has its own call patterns, peak times, and booking loss scenarios. See how missed booking protection applies to your specific business.',
   industryCards: [
@@ -300,7 +307,7 @@ export const missedBookingProtectionHub: ContentHubPageConfig = {
   cta: {
     title: 'Ready to recover bookings you are losing today?',
     subtitle: 'See how RingBooker handles after-hours, overflow, and missed-call follow-up for your beauty business.',
-    primary: { href: '/demo', label: 'Try a live demo call' },
+    primary: { href: '/demo', label: 'Try a Live Demo Call' },
     secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };
@@ -323,7 +330,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     Fragment,
     null,
     'Add an AI Receptionist on Your ',
-    createElement('span', { className: 'hl' }, 'Current Number'),
+    hubHeroAccent('Current Number'),
   ),
   intro:
     'Changing your number creates NAP inconsistency across 46+ online citations — Google Business Profile, Yelp, Apple Maps, and every directory clients use to find you. RingBooker uses conditional call forwarding: your current number stays public and unchanged. Coverage activates only when your team cannot answer — after hours, during peak overflow, or when the desk is occupied.',
@@ -338,7 +345,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     {
       kind: 'flow',
       html: { eyebrow: 'How It Works', eyebrowTone: 'purple' },
-      heading: 'Your number stays. The coverage expands.',
+      heading: mkSectionTitle('Your number stays.', 'The coverage expands.'),
       sub: 'Call forwarding means RingBooker activates only when your current setup cannot answer — after hours, during overflow, or when staff are with a client. Your public number never changes, and setup starts from a guided customer interface.',
       steps: [
         { icon: '📱', label: 'Client calls', line: 'Your existing number', badge: 'No change', badgeStyle: 'green' },
@@ -356,7 +363,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     {
       kind: 'card_grid',
       html: { eyebrow: 'Why It Matters', cardGridStyle: 'leak', leakGridColumns: 4 },
-      heading: 'Why beauty businesses do not want a new number',
+      heading: mkSectionTitle('Why beauty businesses', 'do not want a new number'),
       sub: 'A phone number is tied to years of client relationships, signage, listings, and trust. Changing it creates friction — not value.',
       cards: [
         {
@@ -387,7 +394,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     {
       kind: 'scenario_grid',
       html: { eyebrow: 'Common Questions' },
-      heading: 'Real concerns owners have about numbers',
+      heading: mkSectionTitle('Real concerns owners have', 'about numbers'),
       sub: 'Common objections from salon and spa owners — and how keeping your current number addresses each one.',
       items: [
         {
@@ -425,7 +432,7 @@ export const currentNumberHub: ContentHubPageConfig = {
     {
       kind: 'feature_scenarios',
       html: { featureLayout: 'use_cases', eyebrow: 'No-Reset Adoption' },
-      heading: 'How RingBooker fits through call forwarding',
+      heading: mkSectionTitle('How RingBooker fits', 'through call forwarding'),
       sub: 'Most tools ask you to migrate or replace. RingBooker integrates where your current coverage stops.',
       items: [
         {
@@ -466,7 +473,7 @@ export const currentNumberHub: ContentHubPageConfig = {
   ],
   /** Single industry section (linked cards) — avoids duplicating the same five verticals as a separate “By Business Type” grid above. */
   industryEyebrow: 'By business type',
-  industryHeading: 'Same number — different call pressures by vertical',
+  industryHeading: mkSectionTitle('Same number — different call pressures', 'by vertical'),
   industrySub: 'Why continuity matters varies by vertical — explore how setup and call patterns differ.',
   industryCards: [
     { emoji: '💅', title: 'Nail salon', body: 'High weekend call volume; overflow is common.', href: '/industries/nail-salon' },
@@ -500,7 +507,7 @@ export const currentNumberHub: ContentHubPageConfig = {
   cta: {
     title: 'Keep your number. Add coverage.',
     subtitle: 'Walk through forwarding options and a rollout plan that fits your desk.',
-    primary: { href: '/demo', label: 'Try a live demo call' },
+    primary: { href: '/demo', label: 'Try a Live Demo Call' },
     secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };
@@ -513,7 +520,7 @@ export const worksWithHub: ContentHubPageConfig = {
     Fragment,
     null,
     'AI Receptionist That Works With Your ',
-    createElement('span', { className: 'hl' }, 'Booking Tools'),
+    hubHeroAccent('Booking Tools'),
   ),
   intro:
     'RingBooker is the phone layer that sits alongside the booking tools your team already uses. Square Appointments, Mindbody, and Acuity Scheduling connect directly today, while Vagaro, Booksy, and other tools can start with booking-link SMS, summaries, and handoff. The goal is simple: no forced migration and no workflow reset just to protect missed calls. 77% of salon clients still prefer calling to reschedule — even when their booking platform has a self-service option. RingBooker covers those calls without changing the platform your team already runs. (Zenoti 2025)',
@@ -528,7 +535,7 @@ export const worksWithHub: ContentHubPageConfig = {
     {
       kind: 'card_grid',
       html: { eyebrow: 'Clarity First', cardGridStyle: 'leak', leakGridColumns: 4 },
-      heading: 'Four layers of compatibility',
+      heading: mkSectionTitle('Four layers of', 'compatibility'),
       sub: 'RingBooker is designed to fit how beauty businesses already operate — phone, booking tools, front desk, and rollout pace.',
       cards: [
         {
@@ -556,7 +563,7 @@ export const worksWithHub: ContentHubPageConfig = {
     {
       kind: 'tool_strip',
       html: { eyebrow: 'Booking Tool Compatibility' },
-      heading: 'Tools beauty businesses already use',
+      heading: mkSectionTitle('Tools beauty businesses', 'already use'),
       sub: 'Square Appointments, Mindbody, and Acuity Scheduling connect directly today. Other booking tools can still work with RingBooker through booking-link SMS, call capture, summaries, and handoff.',
       tools: [
         {
@@ -633,7 +640,7 @@ export const worksWithHub: ContentHubPageConfig = {
         stepsCentered4: true,
         stepTrackHideNumbers: true,
       },
-      heading: 'How businesses usually start',
+      heading: mkSectionTitle('How businesses', 'usually start'),
       sub: 'Most teams adopt in stages — starting where booking loss is clearest.',
       steps: [
         {
@@ -657,7 +664,7 @@ export const worksWithHub: ContentHubPageConfig = {
     {
       kind: 'scenario_grid',
       html: { eyebrow: 'Common Questions' },
-      heading: 'Common compatibility concerns',
+      heading: mkSectionTitle('Common compatibility', 'concerns'),
       sub: 'Typical questions from owners and managers — and how RingBooker fits alongside the tools you already use.',
       items: [
         {
@@ -733,7 +740,7 @@ export const worksWithHub: ContentHubPageConfig = {
   cta: {
     title: 'See RingBooker alongside your stack',
     subtitle: 'No rip-and-replace — start with the phone layer and expand when you are ready.',
-    primary: { href: '/demo', label: 'Try a live demo call' },
+    primary: { href: '/demo', label: 'Try a Live Demo Call' },
     secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };
@@ -746,8 +753,7 @@ export const compareHub: ContentHubPageConfig = {
     Fragment,
     null,
     'Compare RingBooker With ',
-    /** No `span.hl` pill — purple accent only (see `.hub-compare-index h1 .hub-compare-hero-accent` in html-hub-scoped-css). */
-    createElement('strong', { className: 'hub-compare-hero-accent' }, 'Voicemail, Hiring, and Generic AI'),
+    hubHeroAccent('Voicemail, Hiring, and Generic AI'),
   ),
   intro:
     "The average beauty business loses $126,000 annually to missed calls. This page compares every phone coverage option — voicemail, text-back, answering services, extra staff, and generic AI — against RingBooker's beauty-specific answering for after-hours calls, peak-hour overflow, and missed booking protection, across the criteria that actually matter for salons, spas, and med spas.",
@@ -768,7 +774,7 @@ export const compareHub: ContentHubPageConfig = {
         leakGridColumns: 3,
         hubGridCols3: true,
       },
-      heading: 'Voicemail, answering services, hiring, or AI?',
+      heading: mkSectionTitle('Voicemail, answering services,', 'hiring, or AI?'),
       sub: 'Most salons are not choosing between “AI or nothing.” They are choosing between voicemail, text-back, services, headcount, generic AI — or a beauty-specific layer.',
       cards: [
         {
@@ -806,7 +812,7 @@ export const compareHub: ContentHubPageConfig = {
     {
       kind: 'compare_table_matrix',
       html: { eyebrow: 'Side by Side' },
-      heading: 'Quick Comparison — What Matters for Beauty Businesses',
+      heading: mkSectionTitle('Quick Comparison —', 'What Matters for Beauty Businesses'),
       sub:
         "The right comparison isn't just about features. It's about which option fits the actual way beauty businesses receive and lose bookings.",
       headers: [
@@ -927,7 +933,7 @@ export const compareHub: ContentHubPageConfig = {
     {
       kind: 'alt_link_grid',
       html: { eyebrow: 'Deep Comparisons', hubGridCols3: true },
-      heading: 'Compare RingBooker by Alternative',
+      heading: mkSectionTitle('Compare RingBooker', 'by Alternative'),
       sub: 'Each comparison goes deeper into the specific trade-offs, use cases, and who each option is actually right for.',
       links: [
         {
@@ -975,7 +981,7 @@ export const compareHub: ContentHubPageConfig = {
     {
       kind: 'situation_grid',
       html: { section: 'purple-soft', eyebrow: 'Decision Guide', hubGridCols3: true },
-      heading: 'Compare by Your Current Situation',
+      heading: mkSectionTitle('Compare by Your', 'Current Situation'),
       sub: 'The right next step depends on where booking loss hurts most.',
       items: [
         {
@@ -1012,14 +1018,14 @@ export const compareHub: ContentHubPageConfig = {
           prefix: 'If your biggest issue is…',
           title: 'Wanting a low-risk starting point',
           body: 'Start after-hours only; keep daytime workflow; expand when you are ready.',
-          cta: { href: '/demo', label: 'Try a live demo call' },
+          cta: { href: '/demo', label: 'Try a Live Demo' },
         },
       ],
     },
     {
       kind: 'compare_strip',
       html: { eyebrow: 'Industry Context', eyebrowTone: 'dark' },
-      heading: 'Why beauty businesses need a different comparison lens',
+      heading: mkSectionTitle('Why beauty businesses need', 'a different comparison lens'),
       sub: 'Salons and spas are not generic local businesses. The right comparison has to be operational — not just feature-based.',
       cards: [
         {
@@ -1071,7 +1077,7 @@ export const compareHub: ContentHubPageConfig = {
   cta: {
     title: 'Still deciding?',
     subtitle: 'Run a live call on the demo, then compare notes with our comparison pages above.',
-    primary: { href: '/demo', label: 'Try a live demo call' },
+    primary: { href: '/demo', label: 'Try a Live Demo Call' },
     secondary: { href: '/user/signup?plan=starter', label: 'Start 14-Day Free Trial' },
   },
 };
@@ -1085,7 +1091,7 @@ export const trustHub: ContentHubPageConfig = {
     null,
     'A Reliable AI Receptionist Built Around ',
     createElement('br'),
-    createElement('span', { className: 'hl' }, 'trust for beauty businesses'),
+    hubHeroAccent('trust for beauty businesses'),
   ),
   intro:
     "Trust isn't a feature — it's a requirement. 55% of salon clients and 71% of med spa clients are comfortable with AI phone handling when it's accurate and honest. Here's exactly what RingBooker does, what it doesn't, and how to start with confidence.",
@@ -1105,7 +1111,7 @@ export const trustHub: ContentHubPageConfig = {
         cardGridStyle: 'leak',
         leakGridColumns: 4,
       },
-      heading: 'Trust in the context of AI call handling',
+      heading: mkSectionTitle('Trust in the context of', 'AI call handling'),
       sub: 'For beauty businesses, trust means four specific things — none of them are AI hype.',
       cards: [
         {
@@ -1140,7 +1146,7 @@ export const trustHub: ContentHubPageConfig = {
         featureLayout: 'principles',
         eyebrow: 'How It Works in Practice',
       },
-      heading: 'Reliability principles behind RingBooker',
+      heading: mkSectionTitle('Reliability principles', 'behind RingBooker'),
       sub: 'Design choices — not slogans — that define behavior on every call.',
       items: [
         {
@@ -1173,7 +1179,7 @@ export const trustHub: ContentHubPageConfig = {
     {
       kind: 'split_expectations',
       html: { eyebrow: 'Honest Expectations' },
-      heading: 'Transparency and realistic expectations',
+      heading: mkSectionTitle('Transparency and', 'realistic expectations'),
       sub: 'A clear picture of what RingBooker is built for — and what your team still owns.',
       left: {
         title: '✓ What RingBooker is designed for',
@@ -1199,7 +1205,7 @@ export const trustHub: ContentHubPageConfig = {
     {
       kind: 'scenario_grid',
       html: { eyebrow: 'Common Concerns' },
-      heading: 'Risk concerns business owners have',
+      heading: mkSectionTitle('Risk concerns', 'business owners have'),
       sub: 'Common trust questions before teams start.',
       items: [
         {
@@ -1243,7 +1249,7 @@ export const trustHub: ContentHubPageConfig = {
         eyebrow: 'Phased Adoption',
         eyebrowTone: 'green',
       },
-      heading: 'What a low-risk rollout looks like',
+      heading: mkSectionTitle('What a low-risk rollout', 'looks like'),
       sub: 'You do not have to do everything at once.',
       steps: [
         {

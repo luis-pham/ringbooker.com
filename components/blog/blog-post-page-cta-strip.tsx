@@ -5,7 +5,7 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 
 /** Same scale as the former “Ready to stop missing bookings?” line on blog detail. */
 const ctaHeadlineClass =
-  'relative z-10 mx-auto max-w-3xl px-1 font-sans text-[clamp(24px,3vw,36px)] font-extrabold leading-[1.2] tracking-tight text-white';
+  'relative z-10 mx-auto max-w-3xl px-1 font-sans text-[clamp(24px,3vw,36px)] font-semibold leading-[1.2] tracking-tight text-white';
 
 const ctaSubLineClass =
   'relative z-10 mx-auto mb-7 max-w-2xl font-sans text-[15px] leading-relaxed text-white/75 md:text-[16px]';

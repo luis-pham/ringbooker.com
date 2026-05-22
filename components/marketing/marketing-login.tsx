@@ -44,7 +44,7 @@ const styles: string[] = [
       display:flex;
       align-items:center;
       gap:11px;
-      font-weight:800;
+      font-weight:600;
       font-size:20px;
       color:var(--text-dark);
     }
@@ -102,7 +102,7 @@ const styles: string[] = [
       background:#F5F3FF;
       color:var(--purple-dark);
       font-size:11px;
-      font-weight:800;
+      font-weight:600;
       margin-bottom:14px;
     }
     .login-head h1{
@@ -126,7 +126,7 @@ const styles: string[] = [
     }
     .field label{
       font-size:14px;
-      font-weight:700;
+      font-weight:500;
       color:var(--text-dark);
     }
     .field input{
@@ -165,7 +165,7 @@ const styles: string[] = [
     .link{
       font-size:14px;
       color:var(--purple-dark);
-      font-weight:700;
+      font-weight:500;
     }
     .btn{
       width:100%;
@@ -174,7 +174,7 @@ const styles: string[] = [
       padding:15px 20px;
       font:inherit;
       font-size:15px;
-      font-weight:800;
+      font-weight:600;
       cursor:pointer;
       transition:transform .15s, background .2s, border-color .2s;
     }
@@ -199,7 +199,7 @@ const styles: string[] = [
       gap:12px;
       color:var(--text-light);
       font-size:14px;
-      font-weight:700;
+      font-weight:500;
       text-transform:uppercase;
       letter-spacing:.08em;
       margin:2px 0;
@@ -248,7 +248,7 @@ const styles: string[] = [
       display:flex;
       align-items:center;
       gap:10px;
-      font-weight:800;
+      font-weight:600;
       font-size:17px;
       margin-bottom:14px;
     }
@@ -261,7 +261,7 @@ const styles: string[] = [
     }
     .footer-col h4{
       font-size:11.5px;
-      font-weight:700;
+      font-weight:500;
       color:var(--text-dark);
       text-transform:uppercase;
       letter-spacing:.07em;

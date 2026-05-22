@@ -134,14 +134,14 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
                 <Link
                   key={entry.categoryId}
                   href={`/blog?category=${encodeURIComponent(entry.category.slug)}`}
-                  className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700"
+                  className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700"
                 >
                   {entry.category.name}
                 </Link>
               ) : (
                 <span
                   key={entry.categoryId}
-                  className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700"
+                  className="rounded-full bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700"
                 >
                   {entry.category.name}
                 </span>
@@ -149,18 +149,18 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
             )}
           </div>
 
-          <h1 className="mb-4 font-serif text-[clamp(28px,4vw,44px)] font-bold leading-[1.18] tracking-tight text-gray-900">
+          <h1 className="mb-4 font-serif text-[clamp(28px,4vw,44px)] font-medium leading-[1.18] tracking-tight text-gray-900">
             {post.title}
           </h1>
           <p className="mb-7 text-[17px] leading-[1.72] text-gray-500">{post.excerpt}</p>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-y border-gray-200 py-4">
             <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple to-pink-500 text-sm font-bold text-white">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple to-pink-500 text-sm font-medium text-white">
                 {post.author.initials}
               </span>
               <span>
-                <span className="block text-sm font-bold text-gray-900">{post.author.name}</span>
+                <span className="block text-sm font-medium text-gray-900">{post.author.name}</span>
                 <span className="block text-[12.5px] text-gray-400">
                   Published {formatDate(post.publishedAt)} · Updated {formatDate(post.updatedAt)}
                 </span>
@@ -201,7 +201,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
             <div className="relative z-10 flex flex-wrap justify-center gap-8 md:gap-10">
               {stats.map((item) => (
                 <div key={`${item.num}-${item.label}`} className="text-center">
-                  <div className="text-[52px] font-extrabold leading-none tracking-[-0.04em] text-white">{item.num}</div>
+                  <div className="text-[52px] font-semibold leading-none tracking-[-0.04em] text-white">{item.num}</div>
                   <div className="mt-1.5 text-xs text-white/60">{item.label}</div>
                 </div>
               ))}
@@ -213,7 +213,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
       <div className="mx-auto flex max-w-6xl flex-col gap-12 px-4 pb-20 pt-10 md:px-6 md:pt-12 lg:grid lg:grid-cols-[1fr_380px] lg:grid-rows-[auto_auto_auto] lg:items-start lg:gap-14">
         <article className="article-body min-w-0 w-full max-w-full font-serif text-[17.5px] leading-[1.82] text-gray-700 lg:col-start-1 lg:row-start-1 lg:justify-self-stretch lg:self-start">
           <div
-            className="rb-blog-md prose prose-lg prose-gray max-w-none font-serif text-gray-700 prose-headings:font-sans prose-headings:font-extrabold prose-headings:tracking-tight prose-headings:text-gray-900 prose-h1:text-[clamp(26px,3vw,34px)] prose-h1:leading-tight prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-[clamp(22px,2.5vw,28px)] prose-h2:leading-snug prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h4:mt-6 prose-h4:mb-2 prose-p:mb-5 prose-ul:my-4 prose-ol:my-4 prose-li:my-1 prose-blockquote:border-l-4 prose-blockquote:border-brand-purple prose-blockquote:bg-violet-50/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-a:font-normal prose-a:text-brand-purple prose-a:no-underline prose-a:transition-colors hover:prose-a:text-violet-800 prose-strong:text-gray-900 prose-code:rounded-md prose-code:bg-violet-100/90 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.9em] prose-code:font-normal prose-code:text-violet-900 prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:shadow-lg prose-th:border prose-th:border-gray-200 prose-th:bg-gray-50 prose-td:border prose-td:border-gray-200 prose-img:rounded-xl prose-hr:border-gray-200"
+            className="rb-blog-md prose prose-lg prose-gray max-w-none font-serif text-gray-700 prose-headings:font-sans prose-headings:font-semibold prose-headings:tracking-tight prose-headings:text-gray-900 prose-h1:text-[clamp(26px,3vw,34px)] prose-h1:leading-tight prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-[clamp(22px,2.5vw,28px)] prose-h2:leading-snug prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h4:mt-6 prose-h4:mb-2 prose-p:mb-5 prose-ul:my-4 prose-ol:my-4 prose-li:my-1 prose-blockquote:border-l-4 prose-blockquote:border-brand-purple prose-blockquote:bg-violet-50/50 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:not-italic prose-a:font-normal prose-a:text-brand-purple prose-a:no-underline prose-a:transition-colors hover:prose-a:text-violet-800 prose-strong:text-gray-900 prose-code:rounded-md prose-code:bg-violet-100/90 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-[0.9em] prose-code:font-normal prose-code:text-violet-900 prose-pre:rounded-xl prose-pre:bg-slate-900 prose-pre:text-slate-100 prose-pre:shadow-lg prose-th:border prose-th:border-gray-200 prose-th:bg-gray-50 prose-td:border prose-td:border-gray-200 prose-img:rounded-xl prose-hr:border-gray-200"
             dangerouslySetInnerHTML={{ __html: safeArticleHtml }}
           />
         </article>
@@ -225,13 +225,13 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
           </div>
 
           <div className="mb-5 rounded-3xl bg-gradient-to-br from-violet-900 to-violet-600 p-5 font-sans text-white">
-            <h4 className="mb-2 text-[15px] font-bold">Stop missing bookings</h4>
+            <h4 className="mb-2 text-[15px] font-medium">Stop missing bookings</h4>
             <p className="mb-4 text-[12.5px] leading-6 text-white/75">
               RingBooker answers every call 24/7 and books the appointment before they hang up.
             </p>
             <Link
               href="/demo"
-              className="flex items-center justify-center gap-2 rounded-[10px] bg-white px-3 py-3.5 text-center text-sm font-extrabold text-violet-800 shadow-md transition hover:opacity-95"
+              className="flex items-center justify-center gap-2 rounded-[10px] bg-white px-3 py-3.5 text-center text-sm font-semibold text-violet-800 shadow-md transition hover:opacity-95"
               data-demo-picker
             >
               <DemoCtaPhoneIcon width={18} height={18} />
@@ -273,7 +273,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
 
       {relatedPosts.length > 0 ? (
         <section className="mx-auto max-w-6xl px-4 pb-20 pt-4 md:px-6">
-          <h2 className="mb-6 font-sans text-[22px] font-extrabold tracking-tight text-gray-900">Keep Reading</h2>
+          <h2 className="mb-6 font-sans text-[22px] font-semibold tracking-tight text-gray-900">Keep Reading</h2>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
             {relatedPosts.map((related) => (
               <Link
@@ -284,7 +284,7 @@ export async function BlogPostView({ pathPrefix, slug }: BlogPostViewProps) {
                 <div className="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-brand-purple">
                   {related.categories[0]?.category.name ?? 'Article'}
                 </div>
-                <h3 className="mb-2 text-[14.5px] font-bold leading-6 text-gray-900">{related.title}</h3>
+                <h3 className="mb-2 text-[14.5px] font-medium leading-6 text-gray-900">{related.title}</h3>
                 <div className="text-xs text-gray-400">
                   {formatDate(related.publishedAt ?? related.createdAt)} · {related.readTimeMin} min read
                 </div>

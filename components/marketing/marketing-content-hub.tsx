@@ -10,7 +10,7 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 import { siteConfig } from '@/lib/site';
 
 export type ContentHubSection = {
-  heading: string;
+  heading: ReactNode;
   content: string[];
 };
 
@@ -79,7 +79,7 @@ export type HubBlockHtmlMeta = {
 type ContentHubBlockCore =
   | {
       kind: 'card_grid';
-      heading: string;
+      heading: ReactNode;
       /** Plain definition under the heading (visible, not accordion) — e.g. for entity / AI citation. */
       definition?: string;
       sub?: string;
@@ -87,7 +87,7 @@ type ContentHubBlockCore =
     }
   | {
       kind: 'scenario_grid';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       items: {
         icon: string;
@@ -100,33 +100,33 @@ type ContentHubBlockCore =
     }
   | {
       kind: 'intent_stats';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       intents: { emoji: string; label: string }[];
       stats: { value: string; label: string }[];
     }
   | {
       kind: 'compare_strip';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       cards: { icon: string; title: string; body: string }[];
       footerLink?: { href: string; label: string };
     }
   | {
       kind: 'alt_link_grid';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       links: { href: string; title: string; body: string }[];
     }
   | {
       kind: 'feature_scenarios';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       items: { icon: string; title: string; body: string; link?: { href: string; label: string } }[];
     }
   | {
       kind: 'flow';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       steps: {
         icon?: string;
@@ -140,19 +140,19 @@ type ContentHubBlockCore =
     }
   | {
       kind: 'objections';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       items: { q: string; a: string }[];
     }
   | {
       kind: 'pillar_cards';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       cards: { icon: string; title: string; body: string }[];
     }
   | {
       kind: 'tool_strip';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       /** `logoSrc` = real asset under `/public` (same as industry vertical heroes). `logo` = emoji fallback. */
       tools: {
@@ -167,13 +167,13 @@ type ContentHubBlockCore =
     }
   | {
       kind: 'step_track';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       steps: { title: string; body: string }[];
     }
   | {
       kind: 'compare_table_matrix';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       /** First column = criterion; remaining = one header each (last column is RingBooker). */
       headers: string[];
@@ -183,14 +183,14 @@ type ContentHubBlockCore =
     }
   | {
       kind: 'split_expectations';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       left: { title: string; items: string[] };
       right: { title: string; items: string[] };
     }
   | {
       kind: 'situation_grid';
-      heading: string;
+      heading: ReactNode;
       sub?: string;
       items: { prefix: string; title: string; body: string; cta: { href: string; label: string } }[];
     };
@@ -210,7 +210,7 @@ export type MarketingContentHubProps = {
   sections: ContentHubSection[];
   /** Visual blocks (cards, grids, flows) — rendered after text sections, before industry cards. */
   hubBlocks?: ContentHubBlock[];
-  industryHeading?: string;
+  industryHeading?: ReactNode;
   industrySub?: string;
   industryCards?: ContentHubIndustryCard[];
   resourceHeading?: string;
@@ -236,7 +236,7 @@ export type MarketingContentHubProps = {
   faqSectionClass?: string;
   industryEyebrow?: string;
   resourceEyebrow?: string;
-  /** `landing` = same hero shell as marketing home (blobs, `hero-h` + `.hl`, `hero-btns`). */
+  /** `landing` = same hero shell as marketing home (blobs, `hero-h`, `hero-btns`). */
   heroLayout?: 'hub' | 'landing';
   /** Extra classes on `<main>` (e.g. `hub-compare-index` for /compare grid locks). */
   mainExtraClassName?: string;
@@ -253,16 +253,7 @@ export type MarketingContentHubProps = {
 
 /** Default primary/secondary CTAs — class names match static hub HTML (`btn`, `btn-purple`, `btn-lg`). */
 export function ContentHubHeroActionsDefault() {
-  return (
-    <>
-      <Link href="/demo" className="btn btn-purple btn-lg">
-        Try a live demo
-      </Link>
-      <Link href="/user/signup?plan=starter" className="btn btn-outline btn-lg">
-        Start 14-Day Free Trial
-      </Link>
-    </>
-  );
+  return <ContentHubHeroActionsHomeStyle />;
 }
 
 /** Same CTA targets as default; classes match marketing home hero (`btn-hero-live`, `btn-outline`). */
@@ -271,7 +262,7 @@ export function ContentHubHeroActionsHomeStyle() {
     <>
       <Link href="/demo" className="btn-hero-live" data-demo-picker>
         <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
-        Try a live demo
+        Try a Live Demo Call
         <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
         </svg>
@@ -280,6 +271,47 @@ export function ContentHubHeroActionsHomeStyle() {
         Start 14-Day Free Trial
       </Link>
     </>
+  );
+}
+
+const BOTTOM_DEMO_CTA_LABEL = 'Try a Live Demo Call';
+const BOTTOM_TRIAL_CTA_LABEL = 'Start 14-Day Free Trial';
+
+type HubBottomCtaLink = { href: string; label: string };
+
+function resolveHubBottomCtas(cta: {
+  primary: HubBottomCtaLink;
+  secondary?: HubBottomCtaLink;
+}): { demo: HubBottomCtaLink; trial?: HubBottomCtaLink } {
+  const entries = [cta.primary, cta.secondary].filter((entry): entry is HubBottomCtaLink => Boolean(entry));
+  const demo = entries.find((entry) => entry.href.startsWith('/demo')) ?? cta.primary;
+  const trial = entries.find((entry) => entry.href.includes('signup') || /trial/i.test(entry.label));
+  return { demo, trial };
+}
+
+function HubBottomCtaDemoButton({ href, label }: { href: string; label: string }) {
+  const demoLabel = label.replace(/\s*→\s*$/, '').trim() || BOTTOM_DEMO_CTA_LABEL;
+  return (
+    <Link
+      href={href}
+      className="btn-hero-live"
+      {...(href.startsWith('/demo') ? { 'data-demo-picker': true } : {})}
+    >
+      <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
+      {demoLabel}
+      <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+      </svg>
+    </Link>
+  );
+}
+
+function HubBottomCtaTrialButton({ href, label }: { href: string; label: string }) {
+  const trialLabel = label || BOTTOM_TRIAL_CTA_LABEL;
+  return (
+    <Link href={href} className="btn-outline btn-hero-trial">
+      {trialLabel}
+    </Link>
   );
 }
 
@@ -1085,7 +1117,7 @@ export function MarketingContentHub({
             <div className="hero-landing-shell">
               {breadcrumbLabel ? <HubBreadcrumb label={breadcrumbLabel} /> : null}
               <div className="hero-inner">
-                <div className="pill-badge">{badge}</div>
+                <p className="hero-eyebrow">{badge}</p>
                 <h1 className="hero-h">{title}</h1>
                 <p className="hero-sub">{intro}</p>
                 {heroEntityDefinition ? (
@@ -1108,7 +1140,7 @@ export function MarketingContentHub({
           <header className="hero">
             <div className="hero-inner">
               {breadcrumbLabel ? <HubBreadcrumb label={breadcrumbLabel} /> : null}
-              <div className="pill-badge">{badge}</div>
+              <p className="hero-eyebrow">{badge}</p>
               <h1>{title}</h1>
               <p className="hero-sub">{intro}</p>
               {heroEntityDefinition ? (
@@ -1181,7 +1213,7 @@ export function MarketingContentHub({
         ) : null}
 
         {faqs.length > 0 ? (
-          <section className={`section ${faqSectionClass}`.trim()}>
+          <section className={`section hub-faq-section ${faqSectionClass}`.trim()}>
             <div className="section-inner section-inner--narrow">
               {faqEyebrow !== null ? (
                 <div className="section-label">
@@ -1204,33 +1236,17 @@ export function MarketingContentHub({
                     <p>{cta.subtitle}</p>
                   </div>
                   <div className="hub-cta-actions">
-                    <Link
-                      href={cta.primary.href}
-                      className="hub-cta-btn-white"
-                      {...(cta.primary.href.startsWith('/demo') ? { 'data-demo-picker': true } : {})}
-                    >
-                      {cta.primary.href.startsWith('/demo') ? (
+                    {(() => {
+                      const { demo, trial } = resolveHubBottomCtas(cta);
+                      return (
                         <>
-                          <DemoCtaPhoneIcon width={16} height={16} />
-                          {cta.primary.label.replace(/\s*→\s*$/, '').trim()}
-                          <svg className="hub-cta-btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                            <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
-                          </svg>
+                          <HubBottomCtaDemoButton href={demo.href} label={demo.label} />
+                          {trial ? (
+                            <HubBottomCtaTrialButton href={trial.href} label={trial.label} />
+                          ) : null}
                         </>
-                      ) : (
-                        <>
-                          <svg className="hub-cta-btn-white-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                            <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
-                          </svg>
-                          {cta.primary.label}
-                        </>
-                      )}
-                    </Link>
-                    {cta.secondary ? (
-                      <Link href={cta.secondary.href} className="hub-cta-btn-ghost">
-                        {cta.secondary.label}
-                      </Link>
-                    ) : null}
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1241,14 +1257,17 @@ export function MarketingContentHub({
                 <h2>{cta.title}</h2>
                 <p>{cta.subtitle}</p>
                 <div className="cta-group">
-                  <Link href={cta.primary.href} className="btn btn-purple btn-lg">
-                    {cta.primary.label}
-                  </Link>
-                  {cta.secondary ? (
-                    <Link href={cta.secondary.href} className="btn btn-outline-light btn-lg">
-                      {cta.secondary.label}
-                    </Link>
-                  ) : null}
+                  {(() => {
+                    const { demo, trial } = resolveHubBottomCtas(cta);
+                    return (
+                      <>
+                        <HubBottomCtaDemoButton href={demo.href} label={demo.label} />
+                        {trial ? (
+                          <HubBottomCtaTrialButton href={trial.href} label={trial.label} />
+                        ) : null}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

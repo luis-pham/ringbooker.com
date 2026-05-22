@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { mkSectionTitle } from '@/lib/marketing/section-title';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -64,7 +65,7 @@ const styles: string[] = [
   --r-pill:var(--mk-radius-pill,999px);
   --r-lg:var(--mk-radius-card,22px);
   --r-md:var(--mk-radius-input,16px);
-  --shadow:0 16px 48px rgba(17,24,39,.07);
+  --shadow:var(--mk-card-shadow,0 1px 2px rgba(17,24,39,.04));
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -74,53 +75,49 @@ a{text-decoration:none;color:inherit}
 /* Desktop: same top padding as marketing-demo hero under fixed nav */
 .hiw-hero{padding:112px 48px 72px;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%);overflow:hidden}
 .hiw-container{width:100%;max-width:var(--mk-container-tight,1100px);margin:0 auto}
-.hiw-badge-wrap{display:flex;justify-content:center;margin-bottom:22px}
 .hiw-hero-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);gap:42px;align-items:center}
-.hiw-badge{display:flex;width:fit-content;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(139,92,246,.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:700;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:var(--purple-dark);margin:0;backdrop-filter:blur(8px)}
 .hiw-dot{width:7px;height:7px;background:var(--purple);border-radius:50%;animation:hiwPulse 2s infinite}
 @keyframes hiwPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
-.hiw-hero h1{font-size:var(--mk-hero-title);font-weight:800;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:18px}
+.hiw-hero h1{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-hero-title-lh);letter-spacing:var(--mk-hero-title-track);margin-bottom:18px}
 .hiw-hero p{font-size:var(--mk-hero-lead);color:var(--mk-text-desc,#64748B);max-width:650px;margin-bottom:26px;line-height:var(--mk-hero-lead-lh);font-weight:400}
 .hiw-actions{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:12px;width:100%}
-.hiw-btn-dark{padding:15px 32px;border-radius:var(--r-pill);font-size:var(--mk-btn-lg);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s,filter .2s,box-shadow .2s;box-sizing:border-box;text-decoration:none;cursor:pointer;font-family:inherit;background:linear-gradient(135deg,#5B21B6 0%,#7C3AED 48%,#8B5CF6 100%);color:#fff;border:none;box-shadow:0 8px 28px rgba(91,33,182,.22),0 2px 8px rgba(91,33,182,.12)}
-.hiw-btn-dark:hover{filter:brightness(1.04);transform:translateY(-1px);box-shadow:0 12px 36px rgba(91,33,182,.28),0 4px 12px rgba(91,33,182,.14)}
+.hiw-btn-dark{padding:15px 32px;border-radius:var(--r-pill);font-size:var(--mk-btn-lg);font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s,background .2s,box-shadow .2s;box-sizing:border-box;text-decoration:none;cursor:pointer;font-family:inherit;color:#fff;border:none}
 .hiw-btn-dark svg{width:16px;height:16px;flex-shrink:0}
 .hiw-btn-dark .demo-cta-phone{width:18px;height:18px}
 .hiw-btn-dark .hiw-btn-dark-arrow{color:#fff;flex-shrink:0}
-.hiw-btn-outline{padding:11px 20px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,background .2s,border-color .2s,color .2s;box-sizing:border-box;text-decoration:none;cursor:pointer;font-family:inherit;background:rgba(255,255,255,.56);color:#5b21b6;border:1px solid rgba(196,181,253,.55)}
-.hiw-btn-outline:hover{background:#fff;border-color:rgba(196,181,253,.75);color:#5b21b6;transform:translateY(-1px)}
-.hiw-summary{background:#fff;border:1px solid rgba(196,181,253,.35);border-radius:28px;padding:26px;box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04));position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
-.hiw-summary:hover{transform:translateY(-2px);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));border-color:rgba(139,92,246,.28)}
+.hiw-btn-outline{display:inline-flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;text-decoration:none;cursor:pointer;font-family:inherit}
+.hiw-summary{background:#fff;border:1px solid rgba(196,181,253,.35);border-radius:28px;padding:26px;box-shadow:var(--mk-card-shadow,var(--shadow));position:relative;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.hiw-summary:hover{transform:translateY(-1px);box-shadow:var(--mk-card-shadow-hover,var(--shadow));border-color:rgba(139,92,246,.28)}
 .hiw-summary::before{content:"";position:absolute;top:-70px;right:-70px;width:190px;height:190px;border-radius:50%;background:rgba(139,92,246,.08)}
 .hiw-summary-label{font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;color:#5B21B6;margin-bottom:12px;position:relative}
-.hiw-summary h2{font-size:var(--mk-article-h2);font-weight:700;line-height:var(--mk-article-h2-lh);letter-spacing:var(--mk-article-h2-track);margin-bottom:14px;position:relative}
+.hiw-summary h2{font-size:var(--mk-article-h2);font-weight:500;line-height:var(--mk-article-h2-lh);letter-spacing:var(--mk-article-h2-track);margin-bottom:14px;position:relative}
 .hiw-summary-list{display:grid;gap:11px;position:relative}
 .hiw-summary-item{display:flex;gap:10px;align-items:flex-start;font-size:var(--mk-body);color:#374151;line-height:1.55}
 .hiw-summary-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;background:transparent;border:none;box-shadow:none}
 .hiw-section{padding:86px 48px}
 .hiw-section.gray{background:var(--bg-gray)}
-.hiw-label{font-size:var(--mk-eyebrow);font-weight:600;color:#5B21B6;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px;text-align:center}
-.hiw-title{font-size:var(--mk-section-h2);font-weight:700;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);text-align:center;margin:0 auto 14px;max-width:22ch;text-wrap:balance}
-.hiw-sub{font-size:var(--mk-section-lead);color:var(--mk-text-desc,#64748B);text-align:center;margin:0 auto 42px;line-height:var(--mk-section-lead-lh);max-width:760px;font-weight:400}
+.hiw-label{font-size:var(--mk-eyebrow);font-weight:600;color:#5B21B6;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
+.hiw-title{font-size:var(--mk-section-h2);font-weight:500;line-height:var(--mk-section-h2-lh);letter-spacing:var(--mk-section-h2-track);margin:0 0 14px;text-wrap:balance}
+.hiw-sub{font-size:var(--mk-section-lead);color:var(--mk-text-desc,#64748B);margin:0 0 42px;line-height:var(--mk-section-lead-lh);max-width:760px;font-weight:400}
 .hiw-grid-2,.hiw-grid-3{display:grid;gap:18px}
 .hiw-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .hiw-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .hiw-card{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);padding:24px;box-shadow:var(--shadow);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
-.hiw-card:hover{transform:translateY(-2px);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));border-color:rgba(196,181,253,.55)}
+.hiw-card:hover{transform:translateY(-1px);box-shadow:var(--mk-card-shadow-hover,var(--shadow));border-color:var(--mk-card-border-hover,rgba(167,139,250,.42))}
 .hiw-card.recommended{border-color:#c4b5fd;background:linear-gradient(180deg,#fbfaff 0%,#fff 82%);box-shadow:0 0 0 4px rgba(139,92,246,.06),var(--shadow)}
-.hiw-card.recommended:hover{border-color:#a78bfa;box-shadow:0 20px 48px -8px rgba(124,58,237,.2),0 0 0 4px rgba(139,92,246,.08)}
+.hiw-card.recommended:hover{border-color:#a78bfa;box-shadow:0 0 0 4px rgba(139,92,246,.08),var(--mk-card-shadow-hover,var(--shadow))}
 /* Setup paths — match shared marketing panels (hiw-summary): softer border + mk shadow tokens */
-.hiw-setup-grid .hiw-card{border:1px solid var(--mk-border-soft,var(--border));box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04))}
-.hiw-setup-grid .hiw-card:hover{border-color:var(--mk-border-strong,#d6dde6);box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05))}
-.hiw-setup-grid .hiw-card.recommended{border:1px solid rgba(196,181,253,.35);background:linear-gradient(180deg,#fbfaff 0%,#fff 82%);box-shadow:var(--mk-shadow-soft,0 20px 40px -8px rgba(17,24,39,.06),0 8px 16px -6px rgba(17,24,39,.04))}
-.hiw-setup-grid .hiw-card.recommended:hover{border-color:var(--mk-border-brand,rgba(139,92,246,.28));box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05))}
+.hiw-setup-grid .hiw-card{border:1px solid var(--mk-border-soft,var(--border));box-shadow:var(--mk-card-shadow,var(--shadow))}
+.hiw-setup-grid .hiw-card:hover{border-color:var(--mk-card-border-hover,rgba(167,139,250,.42));box-shadow:var(--mk-card-shadow-hover,var(--shadow))}
+.hiw-setup-grid .hiw-card.recommended{border:1px solid rgba(196,181,253,.35);background:linear-gradient(180deg,#fbfaff 0%,#fff 82%);box-shadow:var(--mk-card-shadow,var(--shadow))}
+.hiw-setup-grid .hiw-card.recommended:hover{border-color:var(--mk-border-brand,rgba(139,92,246,.28));box-shadow:var(--mk-card-shadow-hover,var(--shadow))}
 .hiw-card-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px}
-.hiw-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:700}
+.hiw-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#ecfdf5;color:#047857;font-size:12px;font-weight:500}
 .hiw-pill.optional{background:#f8fafc;color:#475569;border:1px solid #e2e8f0}
 .hiw-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:21px;background:transparent;border:none;box-shadow:none}
 .hiw-card h3{
   font-size:var(--mk-card-title,16px);
-  font-weight:700;
+  font-weight:500;
   line-height:1.38;
   letter-spacing:-.2px;
   margin-bottom:9px;
@@ -128,7 +125,7 @@ a{text-decoration:none;color:inherit}
 .hiw-card p{font-size:var(--mk-body-md);color:var(--mk-text-desc,#64748B);line-height:1.72}
 .hiw-list{list-style:none;display:grid;gap:10px;margin-top:16px}
 .hiw-list li{display:flex;gap:10px;font-size:var(--mk-body);color:#374151;line-height:1.55}
-.hiw-list li::before{content:"✓";width:20px;height:20px;color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;background:transparent;border:none;box-shadow:none}
+.hiw-list li::before{content:"✓";width:20px;height:20px;color:var(--purple-dark);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0;margin-top:1px;background:transparent;border:none;box-shadow:none}
 /* 3-step flow — full container width on desktop (matches setup / handle grids) */
 .hiw-grid-3.hiw-flow{
   gap:24px;
@@ -149,19 +146,20 @@ a{text-decoration:none;color:inherit}
   background:#fff;
   border:1px solid var(--border);
   border-radius:var(--r-lg);
+  box-shadow:var(--mk-card-shadow,var(--shadow));
   transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
 }
 /* Hover only on devices with real hover (no lift/shadow while scrolling cards on touch phones) */
 @media (hover: hover) and (pointer: fine){
   .hiw-grid-3.hiw-flow .hiw-step:hover{
     border-color:rgba(167,139,250,.45);
-    box-shadow:var(--mk-shadow-hover,0 22px 44px -8px rgba(17,24,39,.09),0 10px 20px -6px rgba(17,24,39,.05));
-    transform:translateY(-2px);
+    box-shadow:var(--mk-card-shadow-hover,var(--shadow));
+    transform:translateY(-1px);
   }
 }
 .hiw-grid-3.hiw-flow .hiw-step h3{
   font-size:15px;
-  font-weight:700;
+  font-weight:500;
   line-height:1.35;
   letter-spacing:-.2px;
   margin:0 0 8px;
@@ -176,26 +174,26 @@ a{text-decoration:none;color:inherit}
   text-align:left;
 }
 .hiw-steps-mobile-nav{display:none}
-.hiw-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:700;white-space:nowrap;transition:all .2s ease}
+.hiw-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:500;white-space:nowrap;transition:all .2s ease}
 .hiw-steps-mobile-nav a.is-active{background:var(--purple);border-color:var(--purple);color:#fff}
 .hiw-step:target{border-color:#c4b5fd;box-shadow:0 0 0 3px rgba(139,92,246,.12)}
 .hiw-handle-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.hiw-handle{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;text-align:center;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
-.hiw-handle:hover{transform:translateY(-2px);box-shadow:0 20px 40px -8px rgba(17,24,39,.1),0 8px 16px -6px rgba(17,24,39,.06);border-color:#d1d5db}
+.hiw-handle{background:#fff;border:1px solid var(--border);border-radius:22px;padding:22px 20px;text-align:center;box-shadow:var(--mk-card-shadow,var(--shadow));transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
+.hiw-handle:hover{transform:translateY(-1px);box-shadow:var(--mk-card-shadow-hover,var(--shadow));border-color:var(--mk-card-border-hover,rgba(167,139,250,.42))}
 .hiw-handle-icon{width:48px;height:48px;margin:0 auto 14px;background:transparent;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:none;border:none}
 .hiw-handle-icon.green{background:transparent}
 .hiw-handle-icon.amber{background:transparent}
 .hiw-handle-icon.pink{background:transparent}
 .hiw-handle-icon.blue{background:transparent}
 .hiw-handle-icon.slate{background:transparent}
-.hiw-handle strong{display:block;font-size:16px;font-weight:700;letter-spacing:-.25px;margin-bottom:7px}
+.hiw-handle strong{display:block;font-size:16px;font-weight:500;letter-spacing:-.25px;margin-bottom:7px}
 .hiw-handle p{font-size:14px;color:var(--text-gray);line-height:1.65}
 .hiw-no-replace{background:#111827;color:#fff;border-radius:32px;padding:36px;display:grid;grid-template-columns:1fr 1.05fr;gap:30px;align-items:start;box-shadow:0 24px 70px rgba(17,24,39,.22)}
 .hiw-label.hiw-label-trust{margin-bottom:20px}
 .hiw-label.hiw-label-experience{margin-bottom:20px}
 .hiw-no-replace h2{
   font-size:var(--mk-section-h2);
-  font-weight:700;
+  font-weight:500;
   line-height:var(--mk-section-h2-lh);
   letter-spacing:var(--mk-section-h2-track);
   margin-bottom:12px;
@@ -213,7 +211,7 @@ a{text-decoration:none;color:inherit}
   display:block;
   margin-bottom:4px;
   font-size:var(--mk-body-md);
-  font-weight:700;
+  font-weight:500;
   line-height:1.45;
   color:#fff;
 }
@@ -230,21 +228,21 @@ a{text-decoration:none;color:inherit}
 .hiw-experience{display:grid;grid-template-columns:.9fr 1.1fr;gap:20px;align-items:stretch}
 .hiw-call-card{background:linear-gradient(160deg,#1a0533 0%,#2d1b69 44%,#1a0d3a 100%);border-radius:30px;padding:26px;color:#fff;box-shadow:0 24px 70px rgba(45,27,105,.22);overflow:hidden;position:relative}
 .hiw-call-card::after{content:"";position:absolute;right:-50px;top:-50px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.06)}
-.hiw-live{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;background:rgba(16,185,129,.16);color:#86efac;border:1px solid rgba(16,185,129,.25);font-size:12px;font-weight:700;margin-bottom:24px;position:relative}
-.hiw-call-card h3{font-size:24px;font-weight:700;line-height:1.18;letter-spacing:-.7px;margin-bottom:10px;position:relative}
+.hiw-live{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;background:rgba(16,185,129,.16);color:#86efac;border:1px solid rgba(16,185,129,.25);font-size:12px;font-weight:500;margin-bottom:24px;position:relative}
+.hiw-call-card h3{font-size:24px;font-weight:500;line-height:1.18;letter-spacing:-.7px;margin-bottom:10px;position:relative}
 .hiw-call-card p{font-size:var(--mk-section-lead);color:rgba(255,255,255,.74);line-height:var(--mk-section-lead-lh);font-weight:400;position:relative}
 .hiw-call-steps{display:grid;gap:12px}
 .hiw-call-step{display:flex;gap:13px;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 10px 30px rgba(17,24,39,.04);transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
 .hiw-call-step:hover{transform:translateY(-2px);box-shadow:0 18px 36px -10px rgba(17,24,39,.12);border-color:#d1d5db}
 .hiw-call-step span{width:30px;height:30px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:transparent;border:none;box-shadow:none}
-.hiw-call-step strong{display:block;margin-bottom:3px;font-size:var(--mk-body-md);font-weight:700;line-height:1.45}
+.hiw-call-step strong{display:block;margin-bottom:3px;font-size:var(--mk-body-md);font-weight:500;line-height:1.45}
 .hiw-call-step p{margin:0;color:var(--text-gray)}
 .hiw-trust-caller-stack .hiw-caller-after-trust{padding-top:86px;margin-top:0}
 .hiw-faq-cta-lower .hiw-cta-box{margin-top:48px}
 .hiw-cta-box{max-width:1100px;margin:0 auto;background:linear-gradient(135deg,#7C3AED 0%,#A855F7 100%);color:#fff;border-radius:32px;padding:42px;display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;box-shadow:0 20px 56px rgba(124,58,237,.2),0 8px 24px rgba(17,24,39,.08)}
-.hiw-cta-box h2{font-size:clamp(28px,3.6vw,42px);font-weight:700;line-height:1.12;letter-spacing:-1.2px;margin-bottom:10px}
+.hiw-cta-box h2{font-size:clamp(28px,3.6vw,42px);font-weight:500;line-height:1.12;letter-spacing:-1.2px;margin-bottom:10px}
 .hiw-cta-box p{color:rgba(255,255,255,.82);font-size:16px;line-height:1.7;max-width:650px}
-.hiw-cta-box .hiw-actions{display:flex;flex-direction:column;gap:10px;flex-wrap:nowrap;min-width:210px}
+.hiw-cta-box .hiw-actions{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:center;gap:20px 28px;min-width:0}
 .hiw-cta-box .hiw-cta-btn-white{
   background:#fff;
   color:#5b21b6;
@@ -408,9 +406,7 @@ export function MarketingHowItWorksTemplate() {
                 <span style={{ margin: '0 6px' }}>›</span>
                 <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>How It Works</span>
               </nav>
-              <div className="hiw-badge-wrap">
-                <div className="hiw-badge">How RingBooker works</div>
-              </div>
+              <p className="hero-eyebrow">How RingBooker works</p>
             </div>
             <div className="hiw-container hiw-hero-grid">
               <div>
@@ -450,7 +446,7 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section">
             <div className="hiw-container">
               <div className="hiw-label">Setup paths</div>
-              <h2 className="hiw-title">Choose how RingBooker starts.</h2>
+              <h2 className="hiw-title">{mkSectionTitle('Choose how RingBooker', 'starts.')}</h2>
               <p className="hiw-sub">Current number is the primary path. A new dedicated line is optional for businesses that want a separate number for campaigns, overflow, or testing.</p>
               <div className="hiw-grid-2 hiw-setup-grid">
                 <article className="hiw-card recommended">
@@ -486,7 +482,9 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section gray">
             <div className="hiw-container">
               <div className="hiw-label">3-step flow</div>
-              <h2 className="hiw-title">A phone-first workflow your team can understand quickly.</h2>
+              <h2 className="hiw-title">
+                {mkSectionTitle('A phone-first workflow', 'your team can', 'understand quickly.')}
+              </h2>
               <p className="hiw-sub">RingBooker sits between the caller and your team: it captures intent and summaries so you recover bookings faster — without migrating calendars or changing the number clients already dial.</p>
               <div className="hiw-steps-mobile-nav" role="tablist" aria-label="How it works steps">
                 <a href="#hiw-step-1" className="is-active">Step 1</a>
@@ -519,7 +517,7 @@ export function MarketingHowItWorksTemplate() {
           <section className="hiw-section">
             <div className="hiw-container">
               <div className="hiw-label">What it handles</div>
-              <h2 className="hiw-title">Built for the calls that usually leak bookings.</h2>
+              <h2 className="hiw-title">{mkSectionTitle('Built for the calls', 'that usually', 'leak bookings.')}</h2>
               <p className="hiw-sub">RingBooker targets the phone moments that cost salons and clinics revenue: busy service windows, after-hours buying intent, peak overflow, reschedules, cancellations, and callers who hang up instead of leaving voicemail.</p>
               <div className="hiw-handle-grid">
                 <div className="hiw-handle"><div className="hiw-handle-icon amber">🌙</div><strong>After-hours calls</strong><p>Answer when the front desk is closed and capture booking intent before the caller tries another business.</p></div>
@@ -537,7 +535,7 @@ export function MarketingHowItWorksTemplate() {
               <div className="hiw-label hiw-label-trust">Trust boundary</div>
               <div className="hiw-no-replace">
                 <div>
-                  <h2>What RingBooker does not replace.</h2>
+                  <h2 className="hiw-title">{mkSectionTitle('What RingBooker does', 'not replace.')}</h2>
                   <p>This page is intentionally clear because phone routing and booking workflows are sensitive. RingBooker is a recovery layer, not a forced migration.</p>
                 </div>
                 <div className="hiw-trust-list">

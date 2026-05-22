@@ -96,12 +96,12 @@ function ProviderCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-bold text-slate-900">{provider.name}</div>
+          <div className="text-sm font-medium text-slate-900">{provider.name}</div>
         </div>
         {provider.logo.src && (provider.logo.usageStatus === 'approved_official' || provider.logo.usageStatus === 'likely_ok') ? (
           <img src={provider.logo.src} alt={provider.logo.alt} className="h-8 w-16 shrink-0 object-contain" />
         ) : (
-          <span className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-500" aria-hidden>
+          <span className="inline-flex h-8 min-w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-medium text-slate-500" aria-hidden>
             {providerInitials(provider.name)}
           </span>
         )}
@@ -134,7 +134,7 @@ function SetupGuidePanel({
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3 pb-2">
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-500">Setup guide</p>
-          <h3 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">How to forward {provider.name} calls to RingBooker</h3>
+          <h3 className="mt-2 text-2xl font-medium tracking-tight text-slate-900">How to forward {provider.name} calls to RingBooker</h3>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">{provider.country}</span>
             <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-700">{provider.marketGroup === 'business_voip' ? 'Business phone & VoIP' : 'Country provider'}</span>
@@ -148,7 +148,7 @@ function SetupGuidePanel({
 
       <div className="space-y-8">
         <div>
-          <h4 className="text-lg font-bold text-slate-900">Before you start</h4>
+          <h4 className="text-lg font-medium text-slate-900">Before you start</h4>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7 text-slate-600">
             {provider.beforeYouStart.map((item) => (
               <li key={item}>{item}</li>
@@ -157,7 +157,7 @@ function SetupGuidePanel({
         </div>
 
         <div>
-          <h4 className="text-lg font-bold text-slate-900">Setup options</h4>
+          <h4 className="text-lg font-medium text-slate-900">Setup options</h4>
           <div className="mt-3 space-y-3">
             {[
               { id: 'all-calls' as const, match: 'all_calls', fallbackTitle: 'Forward all calls' },
@@ -178,7 +178,7 @@ function SetupGuidePanel({
                     onClick={() => setOpen((prev) => ({ ...prev, [option.id]: !prev[option.id] }))}
                     aria-expanded={opened}
                   >
-                    <span className="text-sm font-bold text-slate-900">{data.label || option.fallbackTitle}</span>
+                    <span className="text-sm font-medium text-slate-900">{data.label || option.fallbackTitle}</span>
                     <span className="text-slate-500" aria-hidden>{opened ? '−' : '+'}</span>
                   </button>
                   {opened ? (
@@ -211,7 +211,7 @@ function SetupGuidePanel({
         </div>
 
         <div>
-          <h4 className="text-lg font-bold text-slate-900">Test your setup</h4>
+          <h4 className="text-lg font-medium text-slate-900">Test your setup</h4>
           <ol className="mt-3 list-decimal space-y-1 pl-5 text-[15px] leading-7 text-slate-600">
             {provider.setupInstructions.testingSteps.map((step) => (
               <li key={step}>{step}</li>
@@ -221,7 +221,7 @@ function SetupGuidePanel({
 
         <div className="space-y-6">
           <div>
-            <h4 className="text-lg font-bold text-slate-900">Turn forwarding off</h4>
+            <h4 className="text-lg font-medium text-slate-900">Turn forwarding off</h4>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-[15px] leading-7 text-slate-600">
               {provider.turnOffSteps.map((step) => (
                 <li key={step}>{step}</li>
@@ -229,7 +229,7 @@ function SetupGuidePanel({
             </ol>
           </div>
           <div>
-            <h4 className="text-lg font-bold text-slate-900">Troubleshooting</h4>
+            <h4 className="text-lg font-medium text-slate-900">Troubleshooting</h4>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-[15px] leading-7 text-slate-600">
               {provider.setupInstructions.troubleshooting.map((issue) => (
                 <li key={issue}>{issue}</li>
@@ -239,12 +239,12 @@ function SetupGuidePanel({
         </div>
 
         <div className="rounded-2xl bg-slate-50 p-4">
-          <h4 className="text-base font-bold text-slate-900">Need help testing your forwarding setup?</h4>
+          <h4 className="text-base font-medium text-slate-900">Need help testing your forwarding setup?</h4>
           <p className="mt-1 text-sm leading-6 text-slate-600">RingBooker can help your team validate routing before go-live.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
               href="/contact"
-              className="inline-flex min-h-10 items-center rounded-full bg-gradient-to-br from-violet-700 via-violet-600 to-violet-600 px-4 py-2 text-sm font-bold text-white shadow-[0_6px_22px_rgba(91,33,182,0.2)] transition hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+              className="inline-flex min-h-10 items-center rounded-full bg-gradient-to-br from-violet-700 via-violet-600 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-[0_6px_22px_rgba(91,33,182,0.2)] transition hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
               onClick={() => track('call_forwarding_setup_cta_clicked', { provider: provider.id })}
             >
               Get guided setup
@@ -254,7 +254,7 @@ function SetupGuidePanel({
               className="inline-flex min-h-10 items-center rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-800 hover:border-violet-500 hover:text-violet-700"
               onClick={() => track('call_forwarding_demo_clicked', { source: isMobile ? 'mobile_guide' : 'guide' })}
             >
-              Try a live demo
+              Try a Live Demo
             </Link>
           </div>
         </div>
@@ -300,7 +300,7 @@ export function CurrentNumberCallForwardingTool() {
         <p className="inline-flex rounded-full border border-violet-200/70 bg-white/85 px-3 py-1 text-[13px] font-semibold uppercase tracking-[0.12em] text-violet-700/90">
           Current Number Setup
         </p>
-        <h1 className="mx-auto mt-4 max-w-4xl text-[clamp(34px,5vw,56px)] font-extrabold leading-[1.08] tracking-[-0.03em] text-slate-900">Call Forwarding Setup Guides</h1>
+        <h1 className="mx-auto mt-4 max-w-4xl text-[clamp(34px,5vw,56px)] font-semibold leading-[1.08] tracking-[-0.03em] text-slate-900">Call Forwarding Setup Guides</h1>
         <p className="mx-auto mt-4 max-w-3xl text-[17px] leading-[1.72] text-[#64748B]">
           <Link href="/current-number/can-i-keep-my-current-salon-phone-number-with-an-ai-receptionist" className={cfBodyLink}>
             Keep your current number
@@ -355,7 +355,7 @@ export function CurrentNumberCallForwardingTool() {
                 if (items.length === 0) return null;
                 return (
                   <section key={group.code}>
-                    <h3 className="text-xl font-bold tracking-tight text-slate-900">{group.label}</h3>
+                    <h3 className="text-xl font-medium tracking-tight text-slate-900">{group.label}</h3>
                     <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                       {items.map((provider) => (
                         <ProviderCard
@@ -377,7 +377,7 @@ export function CurrentNumberCallForwardingTool() {
 
           {voipVisible ? (
             <section className="mt-10">
-              <h3 className="mb-3 text-xl font-bold tracking-tight text-slate-900">Business phone &amp; VoIP systems</h3>
+              <h3 className="mb-3 text-xl font-medium tracking-tight text-slate-900">Business phone &amp; VoIP systems</h3>
               <p className="text-sm text-slate-600">
                 Already using a virtual number or cloud phone system? Choose your provider to see how to route calls to RingBooker.
               </p>
@@ -401,7 +401,7 @@ export function CurrentNumberCallForwardingTool() {
 
           {otherVisible ? (
             <section className="mt-10">
-              <h3 className="text-xl font-bold tracking-tight text-slate-900">Choose another country</h3>
+              <h3 className="text-xl font-medium tracking-tight text-slate-900">Choose another country</h3>
               <div className="mt-3 flex flex-wrap gap-2">
                 {CALL_FORWARDING_OTHER_COUNTRIES.map((country) => (
                   <button
@@ -447,7 +447,7 @@ export function CurrentNumberCallForwardingTool() {
       </section>
 
       <section className="mx-auto mt-20 max-w-6xl px-6" id="related-guides" aria-labelledby="related-guides-heading">
-        <h2 id="related-guides-heading" className="text-center text-2xl font-bold tracking-tight text-slate-900 md:text-[clamp(24px,2.5vw,32px)]">
+        <h2 id="related-guides-heading" className="text-center text-2xl font-medium tracking-tight text-slate-900 md:text-[clamp(24px,2.5vw,32px)]">
           Related guides
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-[15px] leading-relaxed text-slate-600">
@@ -460,7 +460,7 @@ export function CurrentNumberCallForwardingTool() {
                 href={g.href}
                 className="group block h-full rounded-2xl border border-slate-200/90 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-[0_12px_28px_-8px_rgba(17,24,39,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
               >
-                <span className="text-base font-bold text-slate-900">{g.title}</span>
+                <span className="text-base font-medium text-slate-900">{g.title}</span>
                 <span className="mt-2 block text-sm leading-relaxed text-slate-600">{g.blurb}</span>
                 <span className="mt-3 inline-block text-sm font-semibold text-slate-500 transition group-hover:text-violet-700">Read guide →</span>
               </Link>
@@ -471,7 +471,7 @@ export function CurrentNumberCallForwardingTool() {
 
       <section className="mx-auto mt-16 max-w-6xl px-6 md:hidden">
         <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-[0_20px_40px_-8px_rgba(17,24,39,0.06),0_8px_16px_-6px_rgba(17,24,39,0.04)]">
-          <h2 className="mb-4 mx-auto max-w-[22ch] text-3xl font-bold tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Cover missed calls without changing your number</h2>
+          <h2 className="mb-4 mx-auto max-w-[22ch] text-3xl font-medium tracking-tight text-slate-900 md:text-[clamp(28px,3.35vw,42px)]">Cover missed calls without changing your number</h2>
           <p className="text-[15px] leading-[1.68] text-[#64748B]">
             RingBooker helps appointment-based businesses answer after-hours, busy, and unanswered calls while keeping their current public number.
           </p>
@@ -479,9 +479,9 @@ export function CurrentNumberCallForwardingTool() {
             Explore <Link href="/current-number" className={cfBodyLink}>current number guide</Link>, <Link href="/how-it-works" className={cfBodyLink}>how it works</Link>, <Link href="/works-with" className={cfBodyLink}>works with</Link>, <Link href="/trust" className={cfBodyLink}>trust</Link>, and pages for <Link href="/industries/nail-salon" className={cfBodyLink}>nail salons</Link>, <Link href="/industries/hair-salon" className={cfBodyLink}>hair salons</Link>, <Link href="/industries/med-spa" className={cfBodyLink}>med spas</Link>, and <Link href="/industries/spa" className={cfBodyLink}>day spas</Link>.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Link href="/demo" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-br from-violet-700 via-violet-600 to-violet-600 px-6 py-3 text-sm font-bold text-white shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)] transition hover:-translate-y-0.5 hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600" onClick={() => track('call_forwarding_demo_clicked', { source: 'final_cta' })}>
+            <Link href="/demo" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-br from-violet-700 via-violet-600 to-violet-600 px-6 py-3 text-sm font-medium text-white shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)] transition hover:-translate-y-0.5 hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600" onClick={() => track('call_forwarding_demo_clicked', { source: 'final_cta' })}>
               <DemoCtaPhoneIcon width={16} height={16} />
-              Try a live demo
+              Try a Live Demo
             </Link>
             <Link href="/current-number" className="inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition hover:-translate-y-0.5 hover:border-violet-200 hover:text-violet-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">
               View current number guide
@@ -501,7 +501,7 @@ export function CurrentNumberCallForwardingTool() {
           </button>
           <Link
             href="/demo"
-            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-gradient-to-br from-violet-700 via-violet-600 to-violet-600 px-4 text-sm font-bold text-white shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)] transition hover:-translate-y-0.5 hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-gradient-to-br from-violet-700 via-violet-600 to-violet-600 px-4 text-sm font-medium text-white shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)] transition hover:-translate-y-0.5 hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
             onClick={() => track('call_forwarding_demo_clicked', { source: 'sticky_mobile' })}
           >
             Try demo

@@ -223,7 +223,7 @@ export function CallPreviewPlayer({
         {playerState === 'idle'
           ? '▶ Tap to hear a sample AI call'
           : playerState === 'done'
-            ? 'Replay or try a live demo call →'
+            ? 'Replay or Try a Live Demo →'
             : playerState === 'paused'
               ? 'Paused — tap to resume'
               : 'Simulated AI voice demo'}
@@ -241,12 +241,12 @@ export function CallPreviewPlayer({
         .cp-glow{position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--cp-accent-soft) 0%,transparent 70%);top:30%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
         .cp-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1;padding:14px 14px 18px}
         .cp-statusbar{display:flex;justify-content:space-between;width:100%;margin-bottom:12px}
-        .cp-statusbar span{font-size:13px;font-weight:700;color:#fff}
+        .cp-statusbar span{font-size:13px;font-weight:500;color:#fff}
         .cp-statusbar .cp-status-icons{font-size:9px;color:rgba(255,255,255,.6)}
-        .cp-live-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:999px;padding:3px 10px;font-size:9px;font-weight:800;color:#10B981;margin-bottom:8px;letter-spacing:.06em}
+        .cp-live-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:999px;padding:3px 10px;font-size:9px;font-weight:600;color:#10B981;margin-bottom:8px;letter-spacing:.06em}
         .cp-live-pill span{width:5px;height:5px;border-radius:50%;background:#10B981;animation:cpPulse 1.4s ease-in-out infinite}
         .cp-eyebrow{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
-        .cp-business-name{font-size:15px;font-weight:700;color:#fff;margin-bottom:16px;text-align:center;line-height:1.2}
+        .cp-business-name{font-size:15px;font-weight:500;color:#fff;margin-bottom:16px;text-align:center;line-height:1.2}
         .cp-avatar-wrap{position:relative;margin-bottom:14px;width:62px;height:62px}
         .cp-ring{position:absolute;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);animation:cpRing 2.2s ease-out infinite}
         .cp-ring-one{width:76px;height:76px;border:1px solid var(--cp-accent-soft)}
@@ -258,7 +258,7 @@ export function CallPreviewPlayer({
         .cp-avatar-icon{width:26px;height:26px;fill:#fff}
         .cp-avatar-person{fill:rgba(255,255,255,.9)}
         .cp-speaker-wrap{min-height:26px;margin-bottom:8px;display:flex;align-items:center;justify-content:center}
-        .cp-speaker{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 11px;font-size:10px;font-weight:800;letter-spacing:.04em;transition:all .3s}
+        .cp-speaker{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 11px;font-size:10px;font-weight:600;letter-spacing:.04em;transition:all .3s}
         .cp-speaker-ai{background:var(--cp-accent-tint);border:1px solid var(--cp-accent-soft);color:var(--cp-accent)}
         .cp-speaker-caller{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff}
         .cp-speaker-listening,.cp-speaker-done,.cp-speaker-paused{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.4)}
@@ -270,7 +270,7 @@ export function CallPreviewPlayer({
         .cp-dialog{border-radius:14px;padding:9px 11px;font-size:11.5px;color:#fff;line-height:1.45;text-align:center;margin-bottom:10px;max-width:100%;width:100%;box-sizing:border-box;transition:all .3s}
         .cp-dialog-ai{background:var(--cp-accent-tint);border:1px solid var(--cp-accent-pale);border-bottom-right-radius:4px}
         .cp-dialog-caller{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);border-bottom-left-radius:4px}
-        .cp-done{display:flex;align-items:center;gap:6px;font-size:11px;color:#10B981;font-weight:700;margin-bottom:10px}
+        .cp-done{display:flex;align-items:center;gap:6px;font-size:11px;color:#10B981;font-weight:500;margin-bottom:10px}
         .cp-done span{width:16px;height:16px;border-radius:50%;background:rgba(16,185,129,.2);display:flex;align-items:center;justify-content:center;font-size:9px}
         .cp-controls{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:auto;padding-top:6px}
         .cp-control{border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s}

@@ -16,7 +16,7 @@ const thankYouStyles = [
 .thank-you-card{background:#fff;border:0.5px solid #e5e7eb;border-radius:12px;padding:20px;transition:box-shadow .2s ease}
 .thank-you-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.08)}
 .thank-you-card-icon{font-size:22px;line-height:1;margin-bottom:12px}
-.thank-you-card-title{font-size:15px;font-weight:700;margin:0 0 8px;color:#111827}
+.thank-you-card-title{font-size:15px;font-weight:500;margin:0 0 8px;color:#111827}
 .thank-you-card-desc{font-size:14px;color:#64748b;line-height:1.5;margin:0 0 14px}
 .thank-you-card-link{font-size:14px;font-weight:600;color:#7c3aed;text-decoration:none}
 .thank-you-card-link:hover{text-decoration:underline}
@@ -60,7 +60,7 @@ export default function ThankYouPage() {
                 <div className="thank-you-card-icon" aria-hidden>
                   📞
                 </div>
-                <h2 className="thank-you-card-title">Try a live demo</h2>
+                <h2 className="thank-you-card-title">Try a Live Demo</h2>
                 <p className="thank-you-card-desc">Hear how RingBooker sounds answering your calls</p>
                 <Link href="/demo" className="thank-you-card-link">
                   Call the demo →

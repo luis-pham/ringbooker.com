@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Script from 'next/script';
+import type { ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
@@ -7,8 +8,21 @@ import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/compo
 import { CallPreviewPlayer, type CallLine } from '@/components/marketing/call-preview-player';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
+import { mkSectionTitle } from '@/lib/marketing/section-title';
 
 export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic';
+
+/** Shared marketing card border + light shadow (see --mk-card-* in marketing-typography.css). */
+const VERTICAL_CARD_SURFACE =
+  'border border-[var(--mk-border-soft,#e8ecf1)] shadow-[var(--mk-card-shadow)] transition duration-200 hover:-translate-y-0.5 hover:border-violet-200/70 hover:shadow-[var(--mk-card-shadow-hover)]';
+
+const MK_SECTION_H2 =
+  'text-[clamp(28px,3.35vw,42px)] font-medium leading-[1.14] tracking-[-1.1px] text-slate-900';
+const MK_SECTION_LEAD = 'text-[16px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]';
+/** Plain hero label — typography via .hero-eyebrow in marketing-shared-scoped-css */
+const VERTICAL_HERO_EYEBROW = 'hero-eyebrow';
+/** Section kicker — uppercase via .mk-section-eyebrow in marketing-shared-scoped-css */
+const VERTICAL_SEC_EYEBROW = 'mk-section-eyebrow';
 
 const SERVICE_BY_VERTICAL: Record<
   MarketingVerticalKey,
@@ -46,28 +60,68 @@ const SERVICE_BY_VERTICAL: Record<
   },
 };
 
-const TRIAL_CTA_SECONDARY =
-  'inline-flex w-full sm:w-auto items-center justify-center rounded-full border bg-white/55 px-5 py-[11px] text-[13px] font-semibold transition hover:-translate-y-px hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2';
+const HERO_LIVE_ARROW = (
+  <svg className="btn-hero-live-arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
+  </svg>
+);
 
-const DEMO_CTA_BASE =
-  'inline-flex w-full sm:w-auto items-center justify-center gap-2.5 rounded-full px-8 py-[15px] text-[16px] font-bold text-white transition hover:-translate-y-px hover:brightness-[1.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600';
-
-/** Hero: stacked on mobile, horizontal on sm+ (mirrors homepage hero-btns). */
-const VERTICAL_HERO_CTA_STACK = 'mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center';
-const VERTICAL_FINAL_CTA_STACK = 'relative mt-8 flex w-full max-w-md flex-col gap-3 mx-auto';
+function VerticalHeroCtaActions({
+  demoHref,
+  trialHref = '/user/signup?plan=starter',
+  demoLabel = 'Try a Live Demo Call',
+  trialLabel = 'Start 14-Day Free Trial',
+  children,
+}: {
+  demoHref: string;
+  trialHref?: string;
+  demoLabel?: string;
+  trialLabel?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="hero-btns mt-6">
+      <a href={demoHref} className="btn-hero-live" data-demo-picker>
+        <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
+        {demoLabel}
+        {HERO_LIVE_ARROW}
+      </a>
+      <Link href={trialHref} className="btn-outline btn-hero-trial">
+        {trialLabel}
+      </Link>
+      {children}
+    </div>
+  );
+}
+function VerticalFinalCtaActions({
+  demoHref,
+  trialHref = '/user/signup?plan=starter',
+  demoLabel = 'Try a Live Demo Call',
+  trialLabel = 'Start 14-Day Free Trial',
+}: {
+  demoHref: string;
+  trialHref?: string;
+  demoLabel?: string;
+  trialLabel?: string;
+}) {
+  return (
+    <div className="hero-btns vertical-final-cta-btns mt-8">
+      <a href={demoHref} className="btn-hero-live" data-demo-picker>
+        <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
+        {demoLabel}
+        {HERO_LIVE_ARROW}
+      </a>
+      <Link href={trialHref} className="btn-outline btn-hero-trial">
+        {trialLabel}
+      </Link>
+    </div>
+  );
+}
 
 export type IndustryLandingTheme = {
-  /** Page background wash behind hero + sections */
   pageShellBg: string;
-  /** Bottom “Try demo” banner gradient */
   finalCtaGradient: string;
-  /** Text color on white primary button inside final CTA */
-  finalCtaPrimaryBtnText: string;
-  /** Hero primary demo button */
-  demoCtaClass: string;
-  /** Hero secondary trial link */
-  trialCtaClass: string;
-  /** FAQ “+” and VsTable “With RingBooker” column accent */
+  heroEyebrowClass: string;
   accentClass: string;
 };
 
@@ -76,45 +130,35 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#5b21b6_0%,#7c3aed_50%,#a78bfa_100%)]',
-    finalCtaPrimaryBtnText: 'text-violet-900',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-violet-800 via-violet-600 to-violet-500 shadow-[0_8px_28px_rgba(91,33,182,0.22),0_2px_8px_rgba(91,33,182,0.12)]`,
-    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-violet-400/55 text-violet-900 hover:border-violet-500 hover:text-violet-950 focus-visible:outline-violet-600`,
+    heroEyebrowClass: `${VERTICAL_HERO_EYEBROW} text-violet-700`,
     accentClass: 'text-violet-600',
   },
   'hair-salon': {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ffedd5_0%,#fffbeb_42%,#ffffff_68%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#9a3412_0%,#d97706_48%,#f59e0b_100%)]',
-    finalCtaPrimaryBtnText: 'text-amber-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-amber-800 via-amber-600 to-amber-500 shadow-[0_8px_28px_rgba(180,83,9,0.20),0_2px_8px_rgba(180,83,9,0.11)]`,
-    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-amber-400/55 text-amber-950 hover:border-amber-500 hover:text-amber-950 focus-visible:outline-amber-600`,
+    heroEyebrowClass: `${VERTICAL_HERO_EYEBROW} text-amber-700`,
     accentClass: 'text-amber-600',
   },
   spa: {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ccfbf1_0%,#f0fdfa_44%,#ffffff_70%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#115e59_0%,#0d9488_50%,#14b8a6_100%)]',
-    finalCtaPrimaryBtnText: 'text-teal-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-teal-800 via-teal-600 to-emerald-500 shadow-[0_8px_28px_rgba(13,148,136,0.20),0_2px_8px_rgba(13,148,136,0.11)]`,
-    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-teal-400/55 text-teal-950 hover:border-teal-500 hover:text-teal-950 focus-visible:outline-teal-600`,
+    heroEyebrowClass: `${VERTICAL_HERO_EYEBROW} text-teal-700`,
     accentClass: 'text-teal-600',
   },
   'med-spa': {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#e0e7ff_0%,#eef2ff_46%,#ffffff_72%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#312e81_0%,#4f46e5_52%,#818cf8_100%)]',
-    finalCtaPrimaryBtnText: 'text-indigo-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-indigo-900 via-indigo-600 to-indigo-500 shadow-[0_8px_28px_rgba(67,56,202,0.22),0_2px_8px_rgba(67,56,202,0.12)]`,
-    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-indigo-400/55 text-indigo-950 hover:border-indigo-500 hover:text-indigo-950 focus-visible:outline-indigo-600`,
+    heroEyebrowClass: `${VERTICAL_HERO_EYEBROW} text-indigo-700`,
     accentClass: 'text-indigo-600',
   },
   'beauty-clinic': {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#fae8ff_0%,#fdf4ff_46%,#ffffff_72%)]',
     finalCtaGradient: 'bg-[linear-gradient(125deg,#86198f_0%,#c026d3_50%,#e879f9_100%)]',
-    finalCtaPrimaryBtnText: 'text-fuchsia-950',
-    demoCtaClass: `${DEMO_CTA_BASE} bg-gradient-to-br from-fuchsia-900 via-fuchsia-600 to-pink-500 shadow-[0_8px_28px_rgba(192,38,211,0.20),0_2px_8px_rgba(192,38,211,0.11)]`,
-    trialCtaClass: `${TRIAL_CTA_SECONDARY} border-fuchsia-400/55 text-fuchsia-950 hover:border-fuchsia-500 hover:text-fuchsia-950 focus-visible:outline-fuchsia-600`,
+    heroEyebrowClass: `${VERTICAL_HERO_EYEBROW} text-fuchsia-700`,
     accentClass: 'text-fuchsia-600',
   },
 };
@@ -279,16 +323,18 @@ function HowItWorks({
   steps: HowItWorksStep[];
   accentBg: string;
   eyebrowClass?: string;
-  heading?: string;
+  heading?: ReactNode;
   eyebrow?: string;
   subtitle?: string;
   stepLabel?: string;
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16" data-vertical-step-track>
-      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{eyebrow}</div>
-      <h2 className="mb-4 text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
-      <p className="mx-auto max-w-xl text-center text-[15px] text-slate-500">{subtitle}</p>
+      <div className="mk-section-head">
+        <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{eyebrow}</div>
+        <h2 className={`mb-4 ${MK_SECTION_H2}`}>{heading}</h2>
+        <p className={`max-w-xl ${MK_SECTION_LEAD}`}>{subtitle}</p>
+      </div>
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1 md:hidden justify-center" data-vertical-step-nav>
         {steps.map((s) => (
           <a
@@ -296,7 +342,7 @@ function HowItWorks({
             href={`#vertical-step-${s.n}`}
             data-vertical-step-btn
             data-active={s.n === '1' ? 'true' : 'false'}
-            className="inline-flex min-w-[84px] items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition data-[active=true]:border-slate-900 data-[active=true]:bg-slate-900 data-[active=true]:text-white"
+            className="inline-flex min-w-[84px] items-center justify-center rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition data-[active=true]:border-slate-900 data-[active=true]:bg-slate-900 data-[active=true]:text-white"
           >
             {stepLabel} {s.n}
           </a>
@@ -308,10 +354,10 @@ function HowItWorks({
             key={s.n}
             id={`vertical-step-${s.n}`}
             data-vertical-step-card
-            className="relative w-[84%] shrink-0 snap-center rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg max-md:cursor-pointer md:w-auto md:shrink md:snap-none"
+            className={`relative w-[84%] shrink-0 snap-center rounded-3xl bg-white p-6 text-center max-md:cursor-pointer md:w-auto md:shrink md:snap-none ${VERTICAL_CARD_SURFACE}`}
           >
-            <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-bold text-white`}>{s.n}</div>
-            <p className="text-[15px] font-bold text-slate-900">{s.title}</p>
+            <div className={`mb-4 mx-auto flex h-9 w-9 items-center justify-center rounded-full ${accentBg} text-sm font-medium text-white`}>{s.n}</div>
+            <p className="text-[15px] font-medium text-slate-900">{s.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-500">{s.body}</p>
           </div>
         ))}
@@ -328,10 +374,10 @@ function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
         {stats.map((s) => (
           <article
             key={s.label}
-            className="rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            className={`rounded-3xl bg-white p-6 text-center ${VERTICAL_CARD_SURFACE}`}
           >
-            <p className={`text-5xl font-bold tracking-tight ${accent}`}>{s.value}</p>
-            <p className="mt-2 text-base font-bold text-slate-900">{s.label}</p>
+            <p className={`text-5xl font-medium tracking-tight ${accent}`}>{s.value}</p>
+            <p className="mt-2 text-base font-medium text-slate-900">{s.label}</p>
             <p className="mt-1 text-[13.5px] leading-6 text-slate-500">{s.sub}</p>
           </article>
         ))}
@@ -348,22 +394,24 @@ function PainPoints({
   eyebrow = 'Why Calls Get Missed',
 }: {
   points: PainPoint[];
-  heading: string;
+  heading: ReactNode;
   eyebrowClass?: string;
   eyebrow?: string;
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{eyebrow}</div>
-      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
+      <div className="mk-section-head">
+        <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{eyebrow}</div>
+        <h2 className={MK_SECTION_H2}>{heading}</h2>
+      </div>
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         {points.map((p) => (
           <article
             key={p.title}
-            className="rounded-3xl border border-slate-200 bg-slate-50 p-6 transition duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-lg"
+            className={`rounded-3xl bg-slate-50 p-6 hover:bg-white ${VERTICAL_CARD_SURFACE}`}
           >
             {p.icon && <div className="mb-3 text-2xl">{p.icon}</div>}
-            <p className="text-[15px] font-bold text-slate-900">{p.title}</p>
+            <p className="text-[15px] font-medium text-slate-900">{p.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-600">{p.body}</p>
           </article>
         ))}
@@ -383,21 +431,23 @@ function FeatureGrid({
   features: FeatureItem[];
   accent: string;
   eyebrowClass?: string;
-  heading?: string;
+  heading?: ReactNode;
   eyebrow?: string;
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{eyebrow}</div>
-      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
+      <div className="mk-section-head">
+        <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{eyebrow}</div>
+        <h2 className={MK_SECTION_H2}>{heading}</h2>
+      </div>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((f) => (
           <article
             key={f.title}
-            className="flex flex-col items-center rounded-3xl border border-slate-200 bg-white p-6 text-center transition duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            className={`flex flex-col items-center rounded-3xl bg-white p-6 text-center ${VERTICAL_CARD_SURFACE}`}
           >
             <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${accent}`}>{f.icon}</div>
-            <p className="text-[15px] font-bold text-slate-900">{f.title}</p>
+            <p className="text-[15px] font-medium text-slate-900">{f.title}</p>
             <p className="mt-1.5 text-[13px] leading-6 text-slate-500">{f.body}</p>
           </article>
         ))}
@@ -416,16 +466,18 @@ function VsTable({
   rows: Array<{ scenario: string; without: string; with: string }>;
   accentClass: string;
   eyebrowClass?: string;
-  heading?: string;
+  heading?: ReactNode;
   labels?: { eyebrow: string; scenario: string; without: string; with: string };
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className={`mb-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{labels.eyebrow}</div>
-      <h2 className="text-center text-3xl font-bold tracking-tight text-slate-900 md:text-4xl max-w-[22ch] mx-auto">{heading}</h2>
-      <div className="mt-6 overflow-x-auto overscroll-x-contain rounded-3xl border border-slate-200 bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin]">
+      <div className="mk-section-head">
+        <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{labels.eyebrow}</div>
+        <h2 className={MK_SECTION_H2}>{heading}</h2>
+      </div>
+      <div className={`mt-6 overflow-x-auto overscroll-x-contain rounded-3xl bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] ${VERTICAL_CARD_SURFACE}`}>
         <div className="min-w-[600px]">
-          <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-bold uppercase tracking-wider text-slate-400">
+          <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-medium uppercase tracking-wider text-slate-400">
             <span>{labels.scenario}</span>
             <span>{labels.without}</span>
             <span className={accentClass}>{labels.with}</span>
@@ -462,14 +514,12 @@ function FinalCta({
   subtitle,
   demoPath,
   shellGradientClass,
-  primaryBtnTextClass,
 }: {
   label: string;
   title: string;
   subtitle: string;
   demoPath: string;
   shellGradientClass: string;
-  primaryBtnTextClass: string;
 }) {
   return (
     <section className="mx-auto mt-[88px] max-w-6xl px-6 pb-12 md:pb-16">
@@ -478,21 +528,7 @@ function FinalCta({
         <p className="relative text-[12px] font-semibold uppercase tracking-[0.08em] text-white/70">{label}</p>
         <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-bold leading-[1.1] tracking-tight">{title}</h2>
         <p className="relative mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-white/75">{subtitle}</p>
-        <div className={VERTICAL_FINAL_CTA_STACK}>
-          <a
-            href={demoPath}
-            className={`flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3.5 text-[14px] font-bold shadow-[var(--mk-shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${primaryBtnTextClass}`}
-          >
-            <DemoCtaPhoneIcon width={18} height={18} />
-            Try a Live Demo Call
-          </a>
-          <Link
-            href="/pricing"
-            className="flex w-full items-center justify-center rounded-full border border-white/35 bg-white/10 px-6 py-3.5 text-[14px] font-bold text-white transition hover:bg-white/20"
-          >
-            Start 14-Day Free Trial
-          </Link>
-        </div>
+        <VerticalFinalCtaActions demoHref={demoPath} />
       </div>
     </section>
   );
@@ -506,30 +542,23 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-violet-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-violet-700">
+          <p className={theme.heroEyebrowClass}>
             AI receptionist &amp; call recovery for nail salons
-          </div>
-          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+          </p>
+          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
             Nail Salon Calls Get Missed Most During Busy Service Hours
           </h1>
-          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for nail salons — after hours, peak-hour overflow, and weekend rushes. Works
             on your current number, supports English and Vietnamese call flows, and captures booking intent before missed
             calls become lost revenue. 37% of nail salon calls are missed, 82% during business hours, and 80% of callers
             never leave voicemail.
           </p>
-          <div className={VERTICAL_HERO_CTA_STACK}>
-            <a href="/demo/nail-salon" className={theme.demoCtaClass}>
-              <DemoCtaPhoneIcon width={18} height={18} />
-              Try a Live Demo Call
-            </a>
-            <Link href="/pricing" className={theme.trialCtaClass}>
-              Start 14-Day Free Trial
-            </Link>
+          <VerticalHeroCtaActions demoHref="/demo/nail-salon">
             <Link href="/industries/nail-salon/vi" className="inline-flex items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-500 transition hover:border-violet-200 hover:text-violet-700">
               🇻🇳 Tiếng Việt
             </Link>
-          </div>
+          </VerticalHeroCtaActions>
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['nail-salon']} />
@@ -560,7 +589,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Pain Points */}
       <PainPoints
-        heading="Why nail salons lose calls — and clients"
+        heading={mkSectionTitle('Why nail salons', 'lose calls', '— and clients')}
         eyebrowClass={theme.accentClass}
         points={[
           {
@@ -590,7 +619,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-violet-50 text-violet-600"
         eyebrowClass={theme.accentClass}
-        heading="What RingBooker handles for nail salon calls"
+        heading={mkSectionTitle('What RingBooker handles', 'for nail salon calls')}
         features={[
           { icon: '📞', title: 'Works on your current number', body: 'No new phone number needed — just forward overflow or after-hours calls.' },
           { icon: '🇻🇳', title: 'English + Vietnamese callers', body: 'Salon-specific scripts plus language preferences noted during setup, with summaries your team can use for follow-up.' },
@@ -605,7 +634,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-violet-600"
         eyebrowClass={theme.accentClass}
-        heading="How RingBooker works on your current salon number"
+        heading={mkSectionTitle('How RingBooker works', 'on your current salon number')}
         steps={[
           { n: '1', title: 'Forward calls to RingBooker', body: 'Set up call forwarding on your current salon number — for overflow, after-hours, or full-time. Setup time depends on your phone provider.' },
           { n: '2', title: 'RingBooker answers with your business info', body: 'Your services, pricing, hours, and staff are loaded in. The AI handles real callers immediately.' },
@@ -617,7 +646,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         eyebrowClass={theme.accentClass}
-        heading="How missed nail salon calls get recovered"
+        heading={mkSectionTitle('How missed nail salon calls', 'get recovered')}
         rows={[
           { scenario: 'After-hours pricing call', without: 'Voicemail — caller hangs up', with: 'Answered, price given, booking captured' },
           { scenario: 'Weekend overflow', without: 'Call drops, client calls next salon', with: 'Overflow intent captured instead of disappearing' },
@@ -715,23 +744,24 @@ export async function MarketingNailSalonVietnameseTemplate() {
 
         <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
           <div>
-            <div className="inline-flex rounded-full border border-violet-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-violet-700">
+            <p className={theme.heroEyebrowClass}>
               Dành cho tiệm nail người Việt tại Mỹ
-            </div>
-            <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+            </p>
+            <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
               Tiệm Nail Của Bạn Đang Bỏ Lỡ Bao Nhiêu Cuộc Gọi Mỗi Ngày?
             </h1>
-            <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+            <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
               RingBooker là lễ tân AI cho tiệm nail — tự động nghe máy bằng tiếng Việt và tiếng Anh khi bạn đang làm dịch vụ cho khách. 37% cuộc gọi tiệm nail bị bỏ lỡ trong giờ làm việc (Zenoti 2025). RingBooker giúp bắt kịp những cuộc gọi đó trên số điện thoại hiện tại của tiệm — không cần đổi số, không cần thay đổi quy trình.
             </p>
-            <p className="mt-3 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+            <p className="mt-3 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
               Hoạt động cùng Square Appointments và các phần mềm quản lý tiệm nail khác — không cần thay đổi quy trình hiện tại.
             </p>
-            <div className={VERTICAL_HERO_CTA_STACK}>
-              <Link href="/pricing" className={theme.demoCtaClass}>
+            <div className="hero-btns mt-6">
+              <Link href="/user/signup?plan=starter" className="btn-hero-live">
                 Thử miễn phí →
+                {HERO_LIVE_ARROW}
               </Link>
-              <a href="/demo/nail-salon" className={theme.trialCtaClass}>
+              <a href="/demo/nail-salon" className="btn-outline btn-hero-trial">
                 Xem demo trực tiếp
               </a>
               <Link href="/industries/nail-salon" className="inline-flex items-center gap-1.5 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-500 transition hover:border-violet-200 hover:text-violet-700">
@@ -883,23 +913,19 @@ export async function MarketingNailSalonVietnameseTemplate() {
           <div className={`relative overflow-hidden rounded-3xl px-8 py-14 text-center text-white md:px-14 ${theme.finalCtaGradient}`}>
             <div className="pointer-events-none absolute -right-8 -top-10 h-72 w-72 rounded-full bg-white/10" />
             <p className="relative text-[12px] font-semibold uppercase tracking-[0.08em] text-white/70">Dành cho tiệm nail người Việt tại Mỹ</p>
-            <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-bold leading-[1.1] tracking-tight">Thử miễn phí 14 ngày</h2>
+            <h2 className="relative mt-3 text-[clamp(28px,5vw,48px)] font-medium leading-[1.1] tracking-tight">Thử miễn phí 14 ngày</h2>
             <p className="relative mx-auto mt-4 max-w-2xl text-[15px] leading-7 text-white/75">
               Không cần đổi số. Không cần thay đổi phần mềm đặt lịch. Setup 15 phút.
             </p>
-            <div className={VERTICAL_FINAL_CTA_STACK}>
-              <Link
-                href="/pricing"
-                className={`inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 text-[14px] font-bold shadow-[var(--mk-shadow-soft)] transition hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 ${theme.finalCtaPrimaryBtnText}`}
-              >
+            <div className="hero-btns vertical-final-cta-btns mt-8">
+              <a href="/demo/nail-salon" className="btn-hero-live" data-demo-picker>
+                <DemoCtaPhoneIcon className="btn-hero-live-phone" width={18} height={18} />
+                Xem demo trực tiếp
+                {HERO_LIVE_ARROW}
+              </a>
+              <Link href="/pricing" className="btn-outline btn-hero-trial">
                 Thử miễn phí →
               </Link>
-              <a
-                href="/demo/nail-salon"
-                className="inline-flex items-center justify-center rounded-full border border-white/35 bg-white/10 px-7 py-3.5 text-[14px] font-semibold text-white transition hover:bg-white/20"
-              >
-                Xem demo trực tiếp
-              </a>
             </div>
           </div>
         </section>
@@ -924,27 +950,19 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-amber-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-amber-700">
+          <p className={theme.heroEyebrowClass}>
             AI receptionist for hair salons
-          </div>
-          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+          </p>
+          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
             Recover Hair Salon Revenue Lost During Services and Peak Hours
           </h1>
-          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for hair salons — covering preferred stylist requests, color slot inquiries,
             and reschedule calls on your current number. 37% of hair salon calls are missed; 77% of clients prefer calling to
             reschedule — Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel.
             Revenue-bearing calls don&apos;t have to disappear into voicemail.
           </p>
-          <div className={VERTICAL_HERO_CTA_STACK}>
-            <a href="/demo/hair-salon" className={theme.demoCtaClass}>
-              <DemoCtaPhoneIcon width={18} height={18} />
-              Try a Live Demo Call
-            </a>
-            <Link href="/pricing" className={theme.trialCtaClass}>
-              Start 14-Day Free Trial
-            </Link>
-          </div>
+          <VerticalHeroCtaActions demoHref="/demo/hair-salon" />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} />
@@ -975,7 +993,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Pain Points */}
       <PainPoints
-        heading="The hair salon phone problem"
+        heading={mkSectionTitle('The hair salon', 'phone problem')}
         eyebrowClass={theme.accentClass}
         points={[
           {
@@ -1005,6 +1023,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-amber-50 text-amber-600"
         eyebrowClass={theme.accentClass}
+        heading={mkSectionTitle('What RingBooker handles', 'for hair salon calls')}
         features={[
           { icon: '👩‍🎨', title: 'Stylist preference capture', body: 'Asks for preferred stylist and flags alternatives based on your rules when needed.' },
           { icon: '🎨', title: 'Color appointment context', body: 'Captures service type and timing needs for balayage, keratin, extensions, and other longer services.' },
@@ -1019,6 +1038,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-amber-600"
         eyebrowClass={theme.accentClass}
+        heading={mkSectionTitle('How RingBooker works', 'on your current salon number')}
         steps={[
           { n: '1', title: 'Connect your salon number', body: 'Forward overflow or after-hours calls. Your existing number stays the same for all clients.' },
           { n: '2', title: 'Load your services and stylists', body: 'Add your team, service list, and booking rules. RingBooker handles calls with that context immediately.' },
@@ -1030,6 +1050,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         eyebrowClass={theme.accentClass}
+        heading={mkSectionTitle('How missed hair salon calls', 'get recovered')}
         rows={[
           { scenario: 'Caller wants their usual stylist', without: 'Voicemail — caller books elsewhere', with: 'Stylist preference captured and routed with context' },
           { scenario: 'Balayage slot inquiry', without: 'Phone rings, no answer', with: 'Duration and service details captured clearly' },
@@ -1049,26 +1070,18 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-teal-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-teal-700">
+          <p className={theme.heroEyebrowClass}>
             AI receptionist for day spas
-          </div>
-          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+          </p>
+          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
             After-Hours Spa Calls Should Not Turn Into Lost Revenue
           </h1>
-          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for day spas — capturing couples massage inquiries, package questions, and
             after-hours calls on your current number. 52% of spa callers hang up after 3 minutes on hold. Your therapists
             stay in treatment rooms. Booking revenue stops disappearing.
           </p>
-          <div className={VERTICAL_HERO_CTA_STACK}>
-            <a href="/demo/day-spa" className={theme.demoCtaClass}>
-              <DemoCtaPhoneIcon width={18} height={18} />
-              Try a Live Demo Call
-            </a>
-            <Link href="/pricing" className={theme.trialCtaClass}>
-              Start 14-Day Free Trial
-            </Link>
-          </div>
+          <VerticalHeroCtaActions demoHref="/demo/day-spa" />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['spa']} />
@@ -1099,7 +1112,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Pain Points */}
       <PainPoints
-        heading="Why spas miss bookings when it matters most"
+        heading={mkSectionTitle('Why spas miss bookings', 'when it matters most')}
         eyebrowClass={theme.accentClass}
         points={[
           {
@@ -1129,6 +1142,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-teal-50 text-teal-600"
         eyebrowClass={theme.accentClass}
+        heading={mkSectionTitle('What RingBooker handles', 'for spa calls')}
         features={[
           {
             icon: '🧖',
@@ -1152,6 +1166,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-teal-600"
         eyebrowClass={theme.accentClass}
+        heading={mkSectionTitle('How RingBooker works', 'on your current spa number')}
         steps={[
           { n: '1', title: 'Set your services and availability windows', body: 'Load your treatment menu, room types, and hours. RingBooker learns your spa\'s context.' },
           { n: '2', title: 'Forward calls during busy or off hours', body: 'Route overflow while sessions are running, or go full-time for always-on coverage.' },
@@ -1163,6 +1178,7 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         eyebrowClass={theme.accentClass}
+        heading={mkSectionTitle('How missed spa calls', 'get recovered')}
         rows={[
           { scenario: 'Couples massage inquiry Saturday', without: 'Voicemail — couple books elsewhere', with: 'Guest count and preferred time captured' },
           { scenario: 'After-hours package question', without: 'No answer, caller doesn\'t call back', with: 'Question answered, booking intent captured' },
@@ -1192,27 +1208,19 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-indigo-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-indigo-700">
+          <p className={theme.heroEyebrowClass}>
             AI receptionist for med spas
-          </div>
-          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+          </p>
+          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
             Med Spa Consultation Calls Should Not Go to Voicemail
           </h1>
-          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for med spas — covering after-hours Botox, filler, and consultation calls and
             front-desk overflow during treatment hours. 3 missed consultation calls per day costs $130,000+ in annual
             revenue (Lani AI, 2026). Capture that demand on your current number before it cools off or moves to a
             competitor.
           </p>
-          <div className={VERTICAL_HERO_CTA_STACK}>
-            <a href="/demo/med-spa" className={theme.demoCtaClass}>
-              <DemoCtaPhoneIcon width={18} height={18} />
-              Try a Live Demo Call
-            </a>
-            <Link href="/pricing" className={theme.trialCtaClass}>
-              Start 14-Day Free Trial
-            </Link>
-          </div>
+          <VerticalHeroCtaActions demoHref="/demo/med-spa" />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} />
@@ -1243,7 +1251,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Pain Points */}
       <PainPoints
-        heading="Why med spas lose high-value leads on the phone"
+        heading={mkSectionTitle('Why med spas lose', 'high-value leads', 'on the phone')}
         eyebrowClass={theme.accentClass}
         points={[
           {
@@ -1273,7 +1281,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-indigo-50 text-indigo-600"
         eyebrowClass={theme.accentClass}
-        heading="What RingBooker handles for med spa calls"
+        heading={mkSectionTitle('What RingBooker handles', 'for med spa calls')}
         features={[
           {
             icon: '💉',
@@ -1292,7 +1300,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-indigo-600"
         eyebrowClass={theme.accentClass}
-        heading="How RingBooker handles consultation calls on your current number"
+        heading={mkSectionTitle('How RingBooker handles', 'consultation calls', 'on your current number')}
         steps={[
           { n: '1', title: 'Configure your services and providers', body: 'Add your treatment list, providers, and consultation flow. RingBooker handles calls with that context.' },
           { n: '2', title: 'Forward overflow and after-hours calls', body: 'During treatments, busy windows, or full-time — calls get a professional response instead of a dead end.' },
@@ -1304,7 +1312,7 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         eyebrowClass={theme.accentClass}
-        heading="How med spa consultation calls get recovered"
+        heading={mkSectionTitle('How med spa consultation calls', 'get recovered')}
         rows={[
           { scenario: 'After-hours Botox inquiry', without: 'Voicemail — lead cools', with: 'Consultation intent captured for follow-up or booking' },
           { scenario: 'Front desk busy during treatments', without: 'Phone rings out, caller hangs up', with: 'Answered and routed with consult context' },
@@ -1339,26 +1347,18 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       {/* Hero */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
         <div>
-          <div className="inline-flex rounded-full border border-fuchsia-200 bg-white/90 px-3.5 py-1.5 text-[12px] font-bold uppercase tracking-[0.08em] text-fuchsia-700">
+          <p className={theme.heroEyebrowClass}>
             AI receptionist for beauty clinics, wax studios &amp; lash studios
-          </div>
-          <h1 className="mt-4 text-[clamp(34px,5vw,58px)] font-extrabold leading-[1.06] tracking-[-0.03em] text-slate-900">
+          </p>
+          <h1 className="mt-4 text-[clamp(36px,5.2vw,58px)] font-semibold leading-[1.12] tracking-[-2px] text-slate-900">
             Beauty Clinic Calls Need More Than Voicemail
           </h1>
-          <p className="mt-4 max-w-2xl text-[17px] leading-[1.75] text-slate-600">
+          <p className="mt-4 max-w-2xl text-[17px] leading-[1.72] text-[color:var(--mk-text-muted,#64748b)]">
             RingBooker is the AI receptionist for beauty clinics, aesthetic clinics, wax studios, and lash studios —
             covering consultation calls, after-hours inquiries, and missed-call follow-up on your current number. 46% of
             beauty bookings happen outside operating hours. Consultation intent shouldn&apos;t disappear because no one answered.
           </p>
-          <div className={VERTICAL_HERO_CTA_STACK}>
-            <a href="/demo/beauty-clinic" className={theme.demoCtaClass}>
-              <DemoCtaPhoneIcon width={18} height={18} />
-              Try a Live Demo Call
-            </a>
-            <Link href="/pricing" className={theme.trialCtaClass}>
-              Start 14-Day Free Trial
-            </Link>
-          </div>
+          <VerticalHeroCtaActions demoHref="/demo/beauty-clinic" />
         </div>
         <div className="hidden lg:block lg:pt-8">
           <CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} />
@@ -1389,7 +1389,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Pain Points */}
       <PainPoints
-        heading="Why beauty clinics need a smarter phone layer"
+        heading={mkSectionTitle('Why beauty clinics need', 'a smarter phone layer')}
         eyebrowClass={theme.accentClass}
         points={[
           {
@@ -1419,7 +1419,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <FeatureGrid
         accent="bg-fuchsia-50 text-fuchsia-600"
         eyebrowClass={theme.accentClass}
-        heading="What RingBooker handles for beauty clinic calls"
+        heading={mkSectionTitle('What RingBooker handles', 'for beauty clinic calls')}
         features={[
           { icon: '✨', title: 'Premium, clinic-appropriate tone', body: 'Scripts are built for beauty clinic standards — professional, warm, and never salesy.' },
           { icon: '🔁', title: 'Treatment continuity context', body: 'Captures returning patient calls, provider preference, and session context for follow-up or booking.' },
@@ -1439,7 +1439,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <HowItWorks
         accentBg="bg-fuchsia-600"
         eyebrowClass={theme.accentClass}
-        heading="How RingBooker works on your current clinic number"
+        heading={mkSectionTitle('How RingBooker works', 'on your current clinic number')}
         steps={[
           { n: '1', title: 'Configure clinic services and providers', body: 'Load your treatment list, providers, and consultation flow. RingBooker reflects your clinic\'s standards.' },
           { n: '2', title: 'Forward calls during treatments or after hours', body: 'Cover overflow during busy clinic hours or go full-time. Clients experience a seamless, professional response.' },
@@ -1451,7 +1451,7 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
       <VsTable
         accentClass={theme.accentClass}
         eyebrowClass={theme.accentClass}
-        heading="How missed beauty clinic calls get handled"
+        heading={mkSectionTitle('How missed beauty clinic calls', 'get handled')}
         rows={[
           { scenario: 'Returning patient books next laser session', without: 'Front desk unavailable — patient calls elsewhere', with: 'Provider preference and session context captured' },
           { scenario: 'After-hours pre-care question', without: 'No answer — patient anxious before treatment', with: 'Approved instructions shared or routed to your team' },
@@ -1682,25 +1682,28 @@ const FAQ_BY_VERTICAL: Record<MarketingVerticalKey, Array<{ q: string; a: string
 
 // ─── PAGE ASSEMBLY ─────────────────────────────────────────────────────────────
 
-const VERTICAL_HUB_COPY: Record<MarketingVerticalKey, { heading: string; sub: string }> = {
+const VERTICAL_HUB_HEADING: Record<MarketingVerticalKey, ReactNode> = {
+  'nail-salon': mkSectionTitle('Nail salon guides', 'and playbooks'),
+  'hair-salon': mkSectionTitle('Hair salon guides', 'and playbooks'),
+  spa: mkSectionTitle('Spa and day spa', 'guides'),
+  'med-spa': mkSectionTitle('Med spa call-handling', 'guides'),
+  'beauty-clinic': mkSectionTitle('Beauty clinic workflow', 'guides'),
+};
+
+const VERTICAL_HUB_COPY: Record<MarketingVerticalKey, { sub: string }> = {
   'nail-salon': {
-    heading: 'Nail salon guides and playbooks',
     sub: 'Explore in-depth guides for missed calls, overflow windows, language-aware handling, and revenue recovery workflows built specifically for nail salons.',
   },
   'hair-salon': {
-    heading: 'Hair salon guides and playbooks',
     sub: 'Explore practical guides for stylist-schedule calls, peak-hour overflow, color-service questions, and booking recovery workflows for hair salons.',
   },
   spa: {
-    heading: 'Spa and day spa guides',
     sub: 'Explore treatment-aware phone coverage guides for couples bookings, package questions, after-hours demand, and missed-call recovery at spas.',
   },
   'med-spa': {
-    heading: 'Med spa call-handling guides',
     sub: 'Explore consultation-first call handling, after-hours inquiry capture, overflow workflows, and trust-focused rollout guides for med spas.',
   },
   'beauty-clinic': {
-    heading: 'Beauty clinic call workflow guides',
     sub: 'Explore call workflow guides for beauty clinics, wax studios, and lash studios — covering consultation calls, missed call solutions, after-hours demand, and provider continuity.',
   },
 };
@@ -1714,16 +1717,19 @@ function VerticalHubArticles({
   vertical: MarketingVerticalKey;
   links: Array<{ href: string; label: string }>;
   eyebrowClass?: string;
-  copyOverride?: { eyebrow: string; heading: string; sub: string };
+  copyOverride?: { eyebrow: string; heading: ReactNode; sub: string };
 }) {
   if (links.length === 0) return null;
   const copy = copyOverride ?? { eyebrow: 'In this hub', ...VERTICAL_HUB_COPY[vertical] };
+  const sectionHeading = copyOverride?.heading ?? VERTICAL_HUB_HEADING[vertical];
   return (
     <section className="mt-[88px] rounded-3xl bg-slate-50 px-5 py-12 sm:px-8 md:pb-16" aria-label="In this hub">
       <div className="mx-auto max-w-5xl">
-        <p className={`mb-3 text-[12px] font-semibold uppercase tracking-[0.08em] ${eyebrowClass}`}>{copy.eyebrow}</p>
-        <h2 className="mb-4 text-[clamp(24px,3.2vw,34px)] font-bold tracking-tight text-slate-900">{copy.heading}</h2>
-        <p className="max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
+        <div className="mk-section-head">
+          <p className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{copy.eyebrow}</p>
+          <h2 className={`mb-4 ${MK_SECTION_H2}`}>{sectionHeading}</h2>
+          <p className="max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
+        </div>
         <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
           {links.map((link) => (
             <Link
@@ -1853,7 +1859,7 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
     <>
       <MarketingChromeStyles />
       <MarketingHeader active="industry" />
-      <main className={`${theme.pageShellBg} pb-16 pt-28`}>
+      <main className={`vertical-landing-page vertical-landing-page--${vertical} ${theme.pageShellBg} pb-16 pt-28`}>
         <div className="mx-auto mb-4 max-w-6xl px-4 sm:px-6">
           <nav aria-label="Breadcrumb" className="text-[14px] leading-[1.35] text-[color:var(--mk-text-soft,#94a3b8)]">
             <Link href="/" className="font-normal text-[color:var(--mk-text-soft,#94a3b8)] no-underline hover:text-violet-600">Home</Link>
@@ -1869,7 +1875,6 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
         <FinalCta
           demoPath={DEMO_PATH[vertical]}
           label={ctaMap[vertical].label}
-          primaryBtnTextClass={theme.finalCtaPrimaryBtnText}
           shellGradientClass={theme.finalCtaGradient}
           subtitle={ctaMap[vertical].subtitle}
           title={ctaMap[vertical].title}

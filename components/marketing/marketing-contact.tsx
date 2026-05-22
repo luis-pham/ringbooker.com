@@ -47,7 +47,7 @@ a{text-decoration:none;color:inherit}
 .contact-breadcrumb-sep{margin:0 6px}
 .contact-value-h1{
   font-size:var(--mk-hero-title);
-  font-weight:800;
+  font-weight:600;
   line-height:var(--mk-hero-title-lh);
   letter-spacing:var(--mk-hero-title-track);
   color:var(--text-dark);
@@ -66,7 +66,7 @@ a{text-decoration:none;color:inherit}
 .contact-value-check-item{display:flex;gap:12px;align-items:flex-start}
 .contact-value-check-icon{
   flex-shrink:0;width:24px;height:24px;border-radius:999px;background:#7c3aed;color:#fff;
-  font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;margin-top:3px;
+  font-size:11px;font-weight:500;display:flex;align-items:center;justify-content:center;line-height:1;margin-top:3px;
 }
 .contact-value-check-item strong{
   display:block;

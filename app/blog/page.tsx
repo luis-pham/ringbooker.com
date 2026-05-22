@@ -137,7 +137,7 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
       href={postPublicPath(post.pathPrefix, post.slug)}
       className="mb-14 block overflow-hidden rounded-[var(--mk-radius-panel)] border border-[color:var(--mk-border-soft)] bg-white px-7 py-8 transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--mk-shadow-hover)] sm:px-11 sm:py-10"
     >
-      <span className="mb-5 inline-flex w-fit items-center rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-bold text-brand-purple">
+      <span className="mb-5 inline-flex w-fit items-center rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-brand-purple">
         🔥 Featured · {category?.name ?? 'Insights'}
       </span>
       {stats.length > 0 ? (
@@ -149,7 +149,7 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
             const label = typeof stat.label === 'string' ? stat.label : 'Metric';
             return (
               <div className="text-center" key={`${num}-${label}-${index}`}>
-                <div className="text-2xl font-extrabold leading-none text-gray-900 sm:text-3xl">{num}</div>
+                <div className="text-2xl font-semibold leading-none text-gray-900 sm:text-3xl">{num}</div>
                 <div className="mt-1 text-[11px] font-normal text-gray-400">{label}</div>
               </div>
             );
@@ -157,7 +157,7 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
         </div>
       ) : null}
       <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-gray-400">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-purple">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-brand-purple">
           {category?.name ?? 'Article'}
         </span>
         <span className="h-1 w-1 rounded-full bg-gray-300" />
@@ -165,18 +165,18 @@ function FeaturedPost({ post }: { post: PostWithRelations }) {
         <span className="h-1 w-1 rounded-full bg-gray-300" />
         <span>{post.readTimeMin} min read</span>
       </div>
-      <h2 className="mb-3 text-2xl font-extrabold leading-tight tracking-tight text-gray-900 md:text-3xl">{post.title}</h2>
+      <h2 className="mb-3 text-2xl font-semibold leading-tight tracking-tight text-gray-900 md:text-3xl">{post.title}</h2>
       <p className="mb-6 text-sm leading-7 text-gray-500 sm:text-[15px]">{post.excerpt}</p>
       <div className="mb-7 flex items-center gap-2.5">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple to-pink-500 text-xs font-bold text-white">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple to-pink-500 text-xs font-medium text-white">
           {post.author.initials}
         </span>
         <div>
-          <div className="text-sm font-bold text-gray-900">{post.author.name}</div>
+          <div className="text-sm font-medium text-gray-900">{post.author.name}</div>
           <div className="text-xs text-gray-400">{post.author.role}</div>
         </div>
       </div>
-      <span className="inline-flex w-fit items-center gap-2 rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white transition hover:scale-[1.03] hover:bg-gray-800">
+      <span className="inline-flex w-fit items-center gap-2 rounded-full bg-gray-900 px-6 py-3 text-sm font-medium text-white transition hover:scale-[1.03] hover:bg-gray-800">
         Read Article
         <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white">
           <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
@@ -330,7 +330,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
               </svg>
               RingBooker Growth Resources
             </span>
-            <h1 className="mb-4 text-[clamp(38px,5vw,58px)] font-extrabold leading-[1.1] tracking-[-0.04em] text-[color:var(--mk-text-strong)]">
+            <h1 className="mb-4 text-[clamp(38px,5vw,58px)] font-semibold leading-[1.1] tracking-[-0.04em] text-[color:var(--mk-text-strong)]">
               Grow Your Salon with
               <br />
               AI-Powered Insights
@@ -348,7 +348,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           {featuredPost ? <FeaturedPost post={featuredPost} /> : null}
 
           <div className="mb-7 flex flex-col items-start gap-2 sm:flex-row sm:items-baseline sm:justify-between">
-            <h2 className="text-[22px] font-extrabold tracking-tight text-gray-900">Latest Articles</h2>
+            <h2 className="text-[22px] font-semibold tracking-tight text-gray-900">Latest Articles</h2>
             <div className="text-sm text-gray-500">
               {total} result{total === 1 ? '' : 's'}
             </div>
@@ -389,7 +389,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         <section className="px-6 pb-14 md:px-12">
           <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[var(--mk-radius-panel)] bg-gradient-to-r from-violet-700 via-brand-purple to-violet-400 px-6 py-14 text-center shadow-[var(--mk-shadow-soft)] md:px-12">
             <span className="pointer-events-none absolute -right-16 -top-20 h-[300px] w-[300px] rounded-full bg-white/5" />
-            <h2 className="mb-2 text-[clamp(26px,3vw,38px)] font-extrabold tracking-tight text-white">
+            <h2 className="mb-2 text-[clamp(26px,3vw,38px)] font-semibold tracking-tight text-white">
               Ready to stop missing bookings?
             </h2>
             <p className="mb-7 text-[15px] text-white/75">
@@ -398,7 +398,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
             <div className="flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href="/demo"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-extrabold text-violet-800 shadow-md shadow-black/15 transition hover:scale-[1.04]"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-violet-800 shadow-md shadow-black/15 transition hover:scale-[1.04]"
                 data-demo-picker
               >
                 <DemoCtaPhoneIcon width={18} height={18} />

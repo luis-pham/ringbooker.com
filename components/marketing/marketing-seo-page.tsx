@@ -162,7 +162,7 @@ export function MarketingSeoPage({
 .seo-intro{font-size:var(--mk-article-intro);line-height:var(--mk-article-intro-lh);color:var(--mk-text-body,#334155);margin:0 0 22px}
 .seo-section{padding-top:18px}
 .seo-section h2{font-size:var(--mk-article-h2);line-height:var(--mk-article-h2-lh);letter-spacing:var(--mk-article-h2-track);color:var(--mk-text-strong,#111827);margin:0 0 14px}
-.seo-h3{font-size:clamp(17px,2.1vw,20px);line-height:1.35;font-weight:700;color:var(--mk-text-body,#334155);margin:16px 0 8px}
+.seo-h3{font-size:clamp(17px,2.1vw,20px);line-height:1.35;font-weight:500;color:var(--mk-text-body,#334155);margin:16px 0 8px}
 .seo-p,.seo-section li{font-size:var(--mk-article-body);line-height:var(--mk-article-body-lh);color:var(--mk-text-body,#334155)}
 .seo-p a,.seo-section li a,.seo-table td a{color:var(--mk-brand-purple-deep,#5b21b6);font-weight:inherit;text-decoration:none}
 .seo-p a:hover,.seo-section li a:hover,.seo-table td a:hover{color:#4c1d95;text-decoration:none}
@@ -172,7 +172,7 @@ export function MarketingSeoPage({
 .seo-table-wrap{margin:12px 0 18px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .seo-table{width:100%;border-collapse:collapse;font-size:var(--mk-article-body);line-height:1.5}
 .seo-table th,.seo-table td{border:1px solid var(--mk-border-soft,#e8ecf1);padding:10px 12px;text-align:left;vertical-align:top;color:var(--mk-text-body,#334155)}
-.seo-table th{background:var(--mk-bg-soft,#f8fafc);font-weight:700;color:var(--mk-text-strong,#111827)}
+.seo-table th{background:var(--mk-bg-soft,#f8fafc);font-weight:500;color:var(--mk-text-strong,#111827)}
 .seo-internal-links{font-size:var(--mk-btn);line-height:1.68;color:var(--mk-text-body,#334155)}
 .seo-internal-links p{margin:0}
 .seo-internal-links a{color:var(--mk-brand-purple-deep,#5b21b6);font-weight:inherit;text-decoration:none}

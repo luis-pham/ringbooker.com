@@ -28,11 +28,11 @@ export function PostCard({ post }: { post: PostWithRelations }) {
           <span className="h-1 w-1 rounded-full bg-[color:var(--mk-border-strong)]" />
           <span>{formatDate(post.publishedAt ?? post.createdAt)}</span>
         </div>
-        <h3 className="mb-2 line-clamp-2 text-[17px] font-bold leading-tight text-[color:var(--mk-text-strong)]">{post.title}</h3>
+        <h3 className="mb-2 line-clamp-2 text-[17px] font-medium leading-tight text-[color:var(--mk-text-strong)]">{post.title}</h3>
         <p className="mb-4 line-clamp-2 text-[13px] leading-6 text-[color:var(--mk-text-muted)]">{post.excerpt}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple to-pink-500 text-[10px] font-bold text-white">
+            <span className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-gradient-to-br from-brand-purple to-pink-500 text-[10px] font-medium text-white">
               {post.author.initials}
             </span>
             <span className="text-xs font-semibold text-[color:var(--mk-text-muted)]">{post.readTimeMin} min read</span>

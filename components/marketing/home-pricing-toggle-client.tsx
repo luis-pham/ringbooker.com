@@ -12,6 +12,8 @@ function applyPricingMode(mode: 'monthly' | 'annual') {
   const monthly = mode === 'monthly';
   monthlyToggle.classList.toggle('on', monthly);
   annualToggle.classList.toggle('on', !monthly);
+  const saveBadge = document.getElementById('home-pt-save-badge');
+  if (saveBadge) saveBadge.classList.toggle('is-visible', !monthly);
   starterPrice.innerHTML = monthly ? '$79<span>/ month</span>' : '$63<span>/ month</span>';
   proPrice.innerHTML = monthly ? '$149<span>/ month</span>' : '$119<span>/ month</span>';
 }
