@@ -6,6 +6,7 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { CallPreviewPlayer, type CallLine } from '@/components/marketing/call-preview-player';
+import { VerticalHeroGrid } from '@/components/marketing/vertical-hero-grid';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { mkSectionTitle } from '@/lib/marketing/section-title';
@@ -539,8 +540,9 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+      <VerticalHeroGrid
+        copy={
+          <>
           <p className={theme.heroEyebrowClass}>
             AI receptionist &amp; call recovery for nail salons
           </p>
@@ -558,11 +560,10 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
               🇻🇳 Tiếng Việt
             </Link>
           </VerticalHeroCtaActions>
-        </div>
-        <div className="hidden lg:block lg:pt-8">
-          <CallPreviewPlayer {...CALL_PREVIEWS['nail-salon']} />
-        </div>
-      </section>
+          </>
+        }
+        phone={<CallPreviewPlayer {...CALL_PREVIEWS['nail-salon']} variant="vertical" />}
+      />
 
       {/* Stats */}
       <StatStrip
@@ -741,8 +742,9 @@ export async function MarketingNailSalonVietnameseTemplate() {
           </nav>
         </div>
 
-        <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-          <div>
+        <VerticalHeroGrid
+          copy={
+            <>
             <p className={theme.heroEyebrowClass}>
               Dành cho tiệm nail người Việt tại Mỹ
             </p>
@@ -767,11 +769,10 @@ export async function MarketingNailSalonVietnameseTemplate() {
                 🇺🇸 English
               </Link>
             </div>
-          </div>
-          <div className="hidden lg:block lg:pt-8">
-            <CallPreviewPlayer {...VI_NAIL_CALL_PREVIEW} />
-          </div>
-        </section>
+            </>
+          }
+          phone={<CallPreviewPlayer {...VI_NAIL_CALL_PREVIEW} variant="vertical" />}
+        />
 
         <StatStrip
           accent="text-violet-600"
@@ -947,8 +948,9 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+      <VerticalHeroGrid
+        copy={
+          <>
           <p className={theme.heroEyebrowClass}>
             AI receptionist for hair salons
           </p>
@@ -962,11 +964,10 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
             Revenue-bearing calls don&apos;t have to disappear into voicemail.
           </p>
           <VerticalHeroCtaActions demoHref="/demo/hair-salon" />
-        </div>
-        <div className="hidden lg:block lg:pt-8">
-          <CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} />
-        </div>
-      </section>
+          </>
+        }
+        phone={<CallPreviewPlayer {...CALL_PREVIEWS['hair-salon']} variant="vertical" />}
+      />
 
       {/* Stats */}
       <StatStrip
@@ -1067,8 +1068,9 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+      <VerticalHeroGrid
+        copy={
+          <>
           <p className={theme.heroEyebrowClass}>
             AI receptionist for day spas
           </p>
@@ -1081,11 +1083,10 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
             stay in treatment rooms. Booking revenue stops disappearing.
           </p>
           <VerticalHeroCtaActions demoHref="/demo/day-spa" />
-        </div>
-        <div className="hidden lg:block lg:pt-8">
-          <CallPreviewPlayer {...CALL_PREVIEWS['spa']} />
-        </div>
-      </section>
+          </>
+        }
+        phone={<CallPreviewPlayer {...CALL_PREVIEWS['spa']} variant="vertical" />}
+      />
 
       {/* Stats */}
       <StatStrip
@@ -1205,8 +1206,9 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+      <VerticalHeroGrid
+        copy={
+          <>
           <p className={theme.heroEyebrowClass}>
             AI receptionist for med spas
           </p>
@@ -1220,11 +1222,10 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
             competitor.
           </p>
           <VerticalHeroCtaActions demoHref="/demo/med-spa" />
-        </div>
-        <div className="hidden lg:block lg:pt-8">
-          <CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} />
-        </div>
-      </section>
+          </>
+        }
+        phone={<CallPreviewPlayer {...CALL_PREVIEWS['med-spa']} variant="vertical" />}
+      />
 
       {/* Stats */}
       <StatStrip
@@ -1344,8 +1345,9 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
   return (
     <>
       {/* Hero */}
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 lg:grid-cols-[1fr_380px]">
-        <div>
+      <VerticalHeroGrid
+        copy={
+          <>
           <p className={theme.heroEyebrowClass}>
             AI receptionist for beauty clinics, wax studios &amp; lash studios
           </p>
@@ -1358,11 +1360,10 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
             beauty bookings happen outside operating hours. Consultation intent shouldn&apos;t disappear because no one answered.
           </p>
           <VerticalHeroCtaActions demoHref="/demo/beauty-clinic" />
-        </div>
-        <div className="hidden lg:block lg:pt-8">
-          <CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} />
-        </div>
-      </section>
+          </>
+        }
+        phone={<CallPreviewPlayer {...CALL_PREVIEWS['beauty-clinic']} variant="vertical" />}
+      />
 
       {/* Stats */}
       <StatStrip

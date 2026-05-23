@@ -81,8 +81,8 @@ html{scroll-behavior:smooth}
 body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);background:var(--bg);overflow-x:hidden;font-size:var(--mk-font-body);line-height:var(--mk-leading-body)}
 a{text-decoration:none;color:inherit}
 .pricing-page{background:#fff}
-/* Plans header — nav clearance + breadcrumb, then centered intro stack */
-.pricing-hero-plans{padding:calc(80px + env(safe-area-inset-top,0px)) 48px 72px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.08) 28%,rgba(255,255,255,0.42) 46%,rgba(255,255,255,0.82) 62%,rgba(255,255,255,0.98) 76%,#ffffff 88%,#ffffff 100%),radial-gradient(ellipse 96% 78% at 50% -22%,#EDE9FE 0%,#EDE9FE 14%,#F5F0FF 34%,#FDF4FF 52%,rgba(253,244,255,0.65) 72%,rgba(255,255,255,0.99) 94%,#ffffff 100%)}
+/* Plans header — nav clearance + breadcrumb (112px matches hiw/contact/vertical pt-28) */
+.pricing-hero-plans{padding:calc(112px + env(safe-area-inset-top,0px)) 48px 72px;background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,0.08) 28%,rgba(255,255,255,0.42) 46%,rgba(255,255,255,0.82) 62%,rgba(255,255,255,0.98) 76%,#ffffff 88%,#ffffff 100%),radial-gradient(ellipse 96% 78% at 50% -22%,#EDE9FE 0%,#EDE9FE 14%,#F5F0FF 34%,#FDF4FF 52%,rgba(253,244,255,0.65) 72%,rgba(255,255,255,0.99) 94%,#ffffff 100%)}
 .pricing-plans-inner{margin-top:0;padding-top:0}
 .container{max-width:var(--mk-container-tight,1100px);margin:0 auto}
 .hero-copy{max-width:var(--mk-container-tight,1100px);margin:0 auto 28px;text-align:left}
@@ -201,7 +201,7 @@ a{text-decoration:none;color:inherit}
   .pricing-hero-plans,.section{padding-left:22px;padding-right:22px}
   .plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.cta-box{grid-template-columns:1fr}
   /* Clear fixed .mk-nav (68px + 1px border) + breathing room */
-  .pricing-hero-plans{padding-top:calc(69px + 24px + env(safe-area-inset-top,0px));padding-bottom:64px}
+  .pricing-hero-plans{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:64px}
   .hero-copy{margin-bottom:22px}
   .pricing-plans-inner .sec-sub{margin-bottom:24px}
   .pricing-plans-inner .pt-toggle{margin-bottom:28px}

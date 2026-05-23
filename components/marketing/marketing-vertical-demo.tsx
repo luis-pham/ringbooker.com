@@ -592,7 +592,6 @@ const styles: string[] = [
   .vd-phone-ios-btn--accept:disabled .vd-phone-ios-btn-face{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
   .vd-phone-ios-btn--accept:disabled{cursor:not-allowed}
   .vd-phone-ios-btn-face svg{width:16px;height:16px;display:block}
-  /* End call: same ring as Start; chained selector beats base green */
   .vd-phone-ios-btn-face.vd-phone-ios-btn-face--end{
     background:#EF4444;
     box-shadow:0 12px 28px rgba(239,68,68,.45);

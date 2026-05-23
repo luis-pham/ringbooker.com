@@ -3,6 +3,8 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
+import { IPHONE_CALL_MOCKUP_CSS } from '@/components/marketing/iphone-call-mockup-css';
+import { IphoneStatusBar } from '@/components/marketing/iphone-status-bar';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -325,8 +327,10 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 
 /* ─── PHONE FRAME ─── */
 .phone-wrap{position:relative;z-index:3}
-.phone-frame{width:268px;height:500px;background:#0d0d0d;border-radius:44px;padding:11px;box-shadow:0 44px 84px rgba(0,0,0,.26),0 0 0 1px rgba(255,255,255,.06) inset}
-.phone-screen{background:#f3f4f6;border:1.5px solid #d1d5db;border-radius:35px;width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;position:relative;box-sizing:border-box}
+.phone-frame{width:268px;height:500px}
+.phone-frame:not(.iph-shell){background:#0d0d0d;border-radius:44px;padding:11px;box-shadow:0 44px 84px rgba(0,0,0,.26),0 0 0 1px rgba(255,255,255,.06) inset}
+.phone-screen{width:100%;height:100%;overflow:hidden;display:flex;flex-direction:column;position:relative;box-sizing:border-box}
+.phone-screen:not(.iph-shell){background:#f3f4f6;border:1.5px solid #d1d5db;border-radius:35px}
 
 /* status bar */
 .p-status-bar{padding:14px 20px 8px;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
@@ -338,7 +342,8 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 .vc-glow{position:absolute;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.08) 0%,transparent 68%);top:50%;left:50%;transform:translate(-50%,-60%);animation:glow-pulse 3s ease-in-out infinite}
 @keyframes glow-pulse{0%,100%{opacity:.7;transform:translate(-50%,-60%) scale(1)}50%{opacity:1;transform:translate(-50%,-60%) scale(1.15)}}
 
-.vc-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1;padding:10px 20px 20px}
+.vc-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1;padding:8px 20px 12px}
+.iph-shell .vc-content{padding-top:28px}
 .vc-mini-status{display:flex;justify-content:space-between;width:100%;margin-bottom:16px}
 .vc-mini-time{font-size:14px;font-weight:500;color:#111827}
 .vc-mini-icons{font-size:10px;color:#64748b}
@@ -348,6 +353,7 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 
 /* waveform */
 .vc-wave{display:flex;align-items:center;justify-content:center;gap:2.5px;height:28px;margin-bottom:12px}
+.iph-shell .vc-wave span{width:3px;background:#34c759;border-radius:2px;animation:vc-wv .8s ease-in-out infinite}
 .vc-wave span{width:3px;background:#10B981;border-radius:2px;animation:vc-wv .8s ease-in-out infinite}
 .vc-wave span:nth-child(1){height:8px}.vc-wave span:nth-child(2){height:18px;animation-delay:.07s}.vc-wave span:nth-child(3){height:24px;animation-delay:.14s}.vc-wave span:nth-child(4){height:14px;animation-delay:.21s}.vc-wave span:nth-child(5){height:20px;animation-delay:.28s}.vc-wave span:nth-child(6){height:10px;animation-delay:.35s}.vc-wave span:nth-child(7){height:16px;animation-delay:.42s}.vc-wave span:nth-child(8){height:24px;animation-delay:.49s}.vc-wave span:nth-child(9){height:12px;animation-delay:.56s}
 @keyframes vc-wv{0%,100%{transform:scaleY(.45);opacity:.5}50%{transform:scaleY(1);opacity:1}}
@@ -415,8 +421,8 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 	color:var(--text-dark);margin-bottom:14px;max-width:22ch;
 }
 .coverage-copy p{font-size:15px;color:var(--text-desc);line-height:1.65;margin-bottom:16px;font-weight:400;max-width:38ch}
-.coverage-link{font-size:15px;font-weight:500;color:var(--text-dark);text-decoration:none;transition:color .18s ease}
-.coverage-link:hover{color:var(--cov-accent)}
+.coverage-link{font-size:15px;font-weight:500;color:var(--purple-dark);text-decoration:none;transition:color .18s ease}
+.coverage-link:hover{color:var(--purple)}
 .coverage-visual{
 	position:relative;width:100%;min-width:0;min-height:300px;
 	display:flex;align-items:center;justify-content:center;
@@ -988,8 +994,9 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .hero-stat:nth-last-child(-n+2){border-bottom:none}
   .hero-stat{text-align:center}
   .hero-visual{height:440px;padding-top:16px;margin-top:8px}
-  .phone-frame{width:228px;height:426px;border-radius:40px;padding:10px}
-  .phone-screen{border-radius:32px}
+  .phone-frame{width:228px;height:426px}
+  .phone-frame:not(.iph-shell){border-radius:40px;padding:10px}
+  .phone-screen:not(.iph-shell){border-radius:32px}
   .deep-s2-outer{padding:36px 22px 40px;gap:32px}
   .deep-s2-outer .d-text h2{font-size:clamp(19px,4.8vw,24px);line-height:1.2;margin-bottom:14px}
   .deep-s2-outer .d-text p{font-size:15px;line-height:1.72}
@@ -1003,8 +1010,9 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 @media(max-width:640px){
   .hero{min-height:auto;padding-top:96px;padding-bottom:36px}
   .hero-visual{height:400px;padding-top:12px;margin-top:34px}
-  .phone-frame{width:214px;height:400px;border-radius:38px;padding:9px;box-shadow:0 26px 48px rgba(0,0,0,.2)}
-  .phone-screen{border-radius:30px}
+  .phone-frame{width:214px;height:400px}
+  .phone-frame:not(.iph-shell){border-radius:38px;padding:9px;box-shadow:0 26px 48px rgba(0,0,0,.2)}
+  .phone-screen:not(.iph-shell){border-radius:30px}
   .pricing .plan{box-shadow:0 1px 2px rgba(17,24,39,.04)}
   .pricing .plan:hover{transform:none;box-shadow:0 1px 2px rgba(17,24,39,.04)}
   .pricing .plan.star,.pricing .plan.star:hover{box-shadow:0 0 0 1px rgba(139,92,246,.08)}
@@ -1060,6 +1068,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   }
 }
 `,
+  IPHONE_CALL_MOCKUP_CSS,
 ];
 
 const scripts: string[] = [
@@ -1307,24 +1316,18 @@ export function MarketingHomeTemplate() {
 	              </div>
             <div className="hero-visual">
               <div className="phone-wrap">
-                <div className="phone-frame">
-                  <div className="phone-screen">
-                    <div className="vc-bg" />
-                    <div className="vc-glow" />
+                <div className="phone-frame iph-shell">
+                  <div className="phone-screen iph-shell">
+                    <div className="iph-bg" aria-hidden />
+                    <div className="vc-glow" aria-hidden />
+                    <IphoneStatusBar />
                     <div className="vc-content">
-                      {/* Status bar */}
-                      <div className="vc-mini-status">
-                        <span className="vc-mini-time">9:41</span>
-                        <span className="vc-mini-icons">▲⬛</span>
-                      </div>
                       <div className="vc-label">Incoming Call</div>
                       <div className="vc-name">Luxe Hair Studio</div>
                       <div className="vc-timer" id="vc-timer">00:24</div>
-                      {/* Waveform */}
                       <div className="vc-wave">
                         <span /><span /><span /><span /><span /><span /><span /><span /><span />
                       </div>
-                      {/* Controls */}
                       <div className="vc-controls">
                         <div className="vc-ctrl vc-ctrl-mute">
                           <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" /></svg>
@@ -1337,6 +1340,7 @@ export function MarketingHomeTemplate() {
                         </div>
                       </div>
                     </div>
+                    <div className="iph-home-bar" aria-hidden />
                   </div>
                 </div>
               </div>
@@ -1418,9 +1422,9 @@ export function MarketingHomeTemplate() {
                 </p>
                 <p className="leak-revenue-note">Illustrative ranges for a busy 2–4 chair salon — not a guarantee.</p>
                 {[
+                  { label: 'In-service missed calls', range: '$560 – $840', width: '78%', barColor: '#C4B5FD' },
                   { label: 'After-hours missed calls', range: '$720 – $1,080', width: '100%', barColor: '#F9E4E1' },
                   { label: 'Peak-hour overflow', range: '$360 – $540', width: '50%', barColor: '#E1ECE6' },
-                  { label: 'In-service missed calls', range: '$560 – $840', width: '78%', barColor: '#C4B5FD' },
                 ].map(({ label, range, width, barColor }) => (
                   <div className="leak-revenue-row" key={label}>
                     <span className="leak-revenue-label">{label}</span>

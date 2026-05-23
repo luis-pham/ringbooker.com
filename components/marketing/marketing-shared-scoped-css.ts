@@ -105,6 +105,41 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   color:var(--mk-brand-purple-dark,#7c3aed);
 }
 
+/* Vertical landing hero phone — aspect-ratio keeps portrait regardless of JS */
+.vertical-hero-visual{
+  position:relative;
+  align-self:start;
+  min-width:0;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.vertical-hero-visual .cp{
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.vertical-hero-visual .cp-caption{display:none}
+.vertical-hero-visual .cp-frame{
+  flex:none;
+  width:100%;
+  max-width:260px;
+  height:480px;
+  margin:0 auto;
+  display:flex;
+  flex-direction:column;
+}
+.vertical-hero-visual .cp-frame.iph-shell{
+  min-height:0;
+}
+.vertical-hero-visual .cp-screen.iph-shell{
+  flex:1;
+  min-height:0;
+  height:100%;
+}
+
 /* ── Hero CTAs (marketing-home .hero-btns) — vertical landings ── */
 .hero-btns{
   display:flex;

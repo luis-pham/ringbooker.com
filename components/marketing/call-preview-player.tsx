@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { IPHONE_CALL_MOCKUP_CSS } from '@/components/marketing/iphone-call-mockup-css';
+import { IphoneStatusBar } from '@/components/marketing/iphone-status-bar';
+
 export type CallLine = { role: 'ai' | 'caller'; text: string };
 type PlayerState = 'idle' | 'playing' | 'paused' | 'done';
 type SpeakerState = 'ai-speaking' | 'caller-speaking' | 'listening';
@@ -18,10 +21,13 @@ export function CallPreviewPlayer({
   lines,
   businessName,
   accent,
+  variant = 'default',
 }: {
   lines: CallLine[];
   businessName: string;
   accent: string;
+  /** Mic icon sits slightly lower (vertical landing heroes). */
+  variant?: 'default' | 'vertical';
 }) {
   const [playerState, setPlayerState] = useState<PlayerState>('idle');
   const [currentLine, setCurrentLine] = useState(-1);
@@ -111,16 +117,13 @@ export function CallPreviewPlayer({
     playerState === 'paused' ? 'paused' : 'idle';
 
   return (
-    <div className={`cp ${accentClass}`}>
-      <div className="cp-frame">
-        <div className="cp-screen">
-          <div className="cp-bg" />
+    <div className={`cp ${accentClass}${variant === 'vertical' ? ' cp-vertical' : ''}`}>
+      <div className="cp-frame iph-shell">
+        <div className="cp-screen iph-shell">
+          <div className="iph-bg" aria-hidden />
           {isActive ? <div className="cp-glow" /> : null}
+          <IphoneStatusBar />
           <div className="cp-content">
-            <div className="cp-statusbar">
-              <span>9:41</span>
-              <span className="cp-status-icons">● ▲ ■</span>
-            </div>
 
             {isActive ? (
               <div className="cp-live-pill">
@@ -216,6 +219,7 @@ export function CallPreviewPlayer({
               ) : null}
             </div>
           </div>
+          <div className="iph-home-bar" aria-hidden />
         </div>
       </div>
 
@@ -230,23 +234,19 @@ export function CallPreviewPlayer({
       </p>
 
       <style>{`
+        ${IPHONE_CALL_MOCKUP_CSS}
         .cp{user-select:none;--cp-accent:#7C3AED;--cp-accent-soft:rgba(124,58,237,.33);--cp-accent-pale:rgba(124,58,237,.2);--cp-accent-tint:rgba(124,58,237,.13)}
         .cp-accent-hair{--cp-accent:#B45309;--cp-accent-soft:rgba(180,83,9,.33);--cp-accent-pale:rgba(180,83,9,.2);--cp-accent-tint:rgba(180,83,9,.13)}
         .cp-accent-spa{--cp-accent:#0D9488;--cp-accent-soft:rgba(13,148,136,.33);--cp-accent-pale:rgba(13,148,136,.2);--cp-accent-tint:rgba(13,148,136,.13)}
         .cp-accent-med{--cp-accent:#4F46E5;--cp-accent-soft:rgba(79,70,229,.33);--cp-accent-pale:rgba(79,70,229,.2);--cp-accent-tint:rgba(79,70,229,.13)}
         .cp-accent-clinic{--cp-accent:#A21CAF;--cp-accent-soft:rgba(162,28,175,.33);--cp-accent-pale:rgba(162,28,175,.2);--cp-accent-tint:rgba(162,28,175,.13)}
-        .cp-frame{background:#0d0d0d;border-radius:36px;padding:10px;box-shadow:0 32px 72px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.06) inset;max-width:248px;margin:0 auto}
-        .cp-screen{background:#1a1a2e;border-radius:28px;overflow:hidden;min-height:400px;display:flex;flex-direction:column;position:relative}
-        .cp-bg{position:absolute;inset:0;background:linear-gradient(165deg,#1a0533 0%,#2d1b69 45%,#1a0d3a 100%)}
-        .cp-glow{position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--cp-accent-soft) 0%,transparent 70%);top:30%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
-        .cp-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1;padding:14px 14px 18px}
-        .cp-statusbar{display:flex;justify-content:space-between;width:100%;margin-bottom:12px}
-        .cp-statusbar span{font-size:13px;font-weight:500;color:#fff}
-        .cp-statusbar .cp-status-icons{font-size:9px;color:rgba(255,255,255,.6)}
+        .cp-frame{max-width:272px;margin:0 auto}
+        .cp-glow{position:absolute;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,var(--cp-accent-soft) 0%,transparent 70%);top:30%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:1}
+        .cp-content{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;flex:1;padding:24px 16px 10px;min-height:0}
         .cp-live-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:999px;padding:3px 10px;font-size:9px;font-weight:600;color:#10B981;margin-bottom:8px;letter-spacing:.06em}
         .cp-live-pill span{width:5px;height:5px;border-radius:50%;background:#10B981;animation:cpPulse 1.4s ease-in-out infinite}
-        .cp-eyebrow{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}
-        .cp-business-name{font-size:15px;font-weight:500;color:#fff;margin-bottom:16px;text-align:center;line-height:1.2}
+        .cp-eyebrow{margin-bottom:4px}
+        .cp-business-name{margin-bottom:14px}
         .cp-avatar-wrap{position:relative;margin-bottom:14px;width:62px;height:62px}
         .cp-ring{position:absolute;border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);animation:cpRing 2.2s ease-out infinite}
         .cp-ring-one{width:76px;height:76px;border:1px solid var(--cp-accent-soft)}
@@ -275,11 +275,23 @@ export function CallPreviewPlayer({
         .cp-controls{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:auto;padding-top:6px}
         .cp-control{border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s}
         .cp-control:hover{transform:scale(1.08)}
-        .cp-control-main{width:46px;height:46px;background:var(--cp-accent);box-shadow:0 6px 20px var(--cp-accent-soft)}
+        .cp-control-main{width:58px;height:58px;background:#34c759;box-shadow:0 6px 22px rgba(52,199,89,.4)}
         .cp-control-soft{width:36px;height:36px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.16)}
-        .cp-control-end{width:46px;height:46px;background:#EF4444;box-shadow:0 4px 16px rgba(239,68,68,.45)}
+        .cp-control-end{width:58px;height:58px}
         .cp-icon-play{width:18px;height:18px;fill:#fff;margin-left:2px}.cp-icon-small{width:14px;height:14px;fill:rgba(255,255,255,.85)}.cp-icon-end{width:18px;height:18px;fill:#fff}
         .cp-caption{text-align:center;font-size:11.5px;color:#9CA3AF;margin-top:10px;line-height:1.5}
+        .cp-vertical .iph-shell.cp-screen{min-height:0;height:100%;max-height:100%}
+        .cp-vertical .cp-content{padding:14px 14px 6px}
+        .cp-vertical .cp-business-name{margin-bottom:8px;font-size:clamp(18px,3.8vw,24px)}
+        .cp-vertical .cp-avatar-wrap{width:54px;height:54px;margin-bottom:8px}
+        .cp-vertical .cp-avatar{width:54px;height:54px}
+        .cp-vertical .cp-speaker-wrap{min-height:0;margin-bottom:4px}
+        .cp-vertical .cp-wave-wrap{height:20px;min-height:20px;margin-bottom:6px}
+        .cp-vertical .cp-controls{padding-top:2px}
+        .cp-vertical .cp-control-main{width:52px;height:52px}
+        .cp-vertical .iph-status{padding:12px 18px 4px;min-height:42px}
+        .cp-vertical .iph-home-bar{margin:4px auto 8px}
+        .cp-vertical .cp-avatar-icon:not(.cp-avatar-person){transform:translateY(6px)}
         @keyframes cpWave{0%,100%{transform:scaleY(.3);opacity:.35}50%{transform:scaleY(1);opacity:1}}
         @keyframes cpWaveSlow{0%,100%{transform:scaleY(.5);opacity:.2}50%{transform:scaleY(1);opacity:.45}}
         @keyframes cpPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.3)}}
