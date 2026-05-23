@@ -2644,23 +2644,6 @@ export function MarketingVerticalDemoTemplate({
 
                   {stage === 'completed' ? (
                     <>
-                      <div className="vd-post-steps">
-                        <div className="vd-post-step">
-                          <div className="vd-post-step-dot">✓</div>
-                          <div className="vd-post-step-label">Demo call</div>
-                        </div>
-                        <div className="vd-post-step-bar" />
-                        <div className="vd-post-step">
-                          <div className="vd-post-step-dot">2</div>
-                          <div className="vd-post-step-label">Start trial</div>
-                        </div>
-                        <div className="vd-post-step-bar" />
-                        <div className="vd-post-step">
-                          <div className="vd-post-step-dot">3</div>
-                          <div className="vd-post-step-label">Go live</div>
-                        </div>
-                      </div>
-
                       {/* Block 1 — Sample SMS to client */}
                       <div className="vd-pd-sms-card">
                         <div className="vd-pd-label">Sample SMS to client</div>
@@ -2712,6 +2695,23 @@ export function MarketingVerticalDemoTemplate({
                       {/* Block 3 — CTA */}
                       <div className="vd-complete-cta">
                         <Link href="/pricing" className="vd-btn-primary">Start 14-Day Free Trial →</Link>
+                      </div>
+
+                      <div className="vd-post-steps">
+                        <div className="vd-post-step">
+                          <div className="vd-post-step-dot">✓</div>
+                          <div className="vd-post-step-label">Demo call</div>
+                        </div>
+                        <div className="vd-post-step-bar" />
+                        <div className="vd-post-step">
+                          <div className="vd-post-step-dot">2</div>
+                          <div className="vd-post-step-label">Start trial</div>
+                        </div>
+                        <div className="vd-post-step-bar" />
+                        <div className="vd-post-step">
+                          <div className="vd-post-step-dot">3</div>
+                          <div className="vd-post-step-label">Go live</div>
+                        </div>
                       </div>
 
                       {/* Block 4 — trust signals */}
