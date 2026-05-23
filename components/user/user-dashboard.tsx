@@ -371,6 +371,7 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .overview-banner.post-live{background:#f0fdf4;border-color:#bbf7d0}
 .banner-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .banner-dot.amber{background:#f59e0b}
+.overview-banner.pre-live .banner-dot.amber{display:none}
 .banner-dot.green{background:#16a34a;box-shadow:0 0 0 3px #dcfce7}
 .banner-dot.pulse{animation:overviewBannerPulse 2s infinite}
 @keyframes overviewBannerPulse{
@@ -384,6 +385,8 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .banner-text{flex:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
 .banner-title{font-size:13px;font-weight:500;color:#111}
 .banner-sub{font-size:12px;color:#6b7280}
+.banner-action-needed{display:inline-flex;align-items:center;gap:8px;border-radius:999px;background:#FFF3E0;color:#B45309;font-size:12px;font-weight:700;line-height:1;padding:7px 12px;white-space:nowrap;flex-shrink:0}
+.banner-action-needed-dot{width:8px;height:8px;border-radius:999px;background:#F59E0B;flex-shrink:0}
 .overview-banner.post-live .banner-title{color:#15803d}
 .overview-banner.post-live .banner-sub{color:#16a34a;opacity:.8}
 .banner-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap}
@@ -461,17 +464,35 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .usage-captured-warn--over{color:#b91c1c}
 .usage-captured-warn--near{color:#92400e}
 .checklist-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px}
+.overview-go-live-checklist{max-width:600px;width:100%}
 .checklist-card .card-title{font-size:14px;font-weight:600;color:#111;margin-bottom:3px}
 .checklist-card .card-sub{font-size:12px;color:#6b7280;margin-bottom:16px}
-.cl-item{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid #f9fafb;cursor:pointer;transition:opacity .1s;text-decoration:none;color:inherit}
-.cl-item:last-child{border:none;padding-bottom:0}
-.cl-item:hover{opacity:.8}
-.cl-circle{width:20px;height:20px;border-radius:50%;border:1.5px solid #d1d5db;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.cl-circle.done{border-color:#16a34a;background:#f0fdf4;color:#16a34a}
+.overview-go-live-checklist .card-title{margin-bottom:8px}
+.overview-go-live-checklist .card-sub{margin-bottom:12px}
+.cl-progress{display:grid;gap:7px;margin-bottom:12px}
+.cl-progress-label{font-size:12px;font-weight:600;line-height:1;color:#5C3AC7}
+.cl-progress-track{height:6px;border-radius:999px;background:#EDE9F8;overflow:hidden}
+.cl-progress-fill{height:100%;border-radius:999px;background:#5C3AC7;transition:width .2s ease}
+.cl-item{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px;border-bottom:1px solid #f9fafb;border-radius:8px;cursor:pointer;transition:background .15s ease,opacity .1s;text-decoration:none;color:inherit}
+.cl-item:last-child{border:none}
+.cl-item:hover{background:#fafafa}
+.cl-item--active{background:#F5F2FF}
+.cl-item--active:hover{background:#F5F2FF}
+.cl-item--locked{cursor:default;opacity:.58;pointer-events:none}
+.cl-circle{width:28px;height:28px;border-radius:50%;border:1.5px solid #D0CBF0;background:#fff;color:#8b86a3;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:12px;font-weight:700;line-height:1}
+.cl-circle.active{border-color:#5C3AC7;background:#5C3AC7;color:#fff;box-shadow:0 0 0 4px #EDE9F8}
+.cl-circle.done{border-color:#10B981;background:#10B981;color:#fff}
+.cl-circle.locked{border-color:#D0CBF0;background:#fff;color:#8b86a3;box-shadow:none}
 .cl-body{flex:1;min-width:0}
-.cl-name{font-size:13px;font-weight:500;color:#111;margin-bottom:1px}
+.cl-name-row{display:flex;align-items:center;gap:8px;justify-content:space-between;min-width:0}
+.cl-name{font-size:13px;font-weight:500;color:#111;margin-bottom:1px;min-width:0}
+.cl-item--active .cl-name{color:#3D2494;font-weight:600}
+.cl-item--locked .cl-name,.cl-item--locked .cl-desc{color:#9ca3af}
 .cl-desc{font-size:12px;color:#6b7280}
 .cl-arrow{color:#d1d5db;font-size:16px;flex-shrink:0;line-height:1.2}
+.cl-action-badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;background:#FFF3E0;color:#B45309;font-size:11px;font-weight:600;line-height:1;padding:5px 8px;white-space:nowrap;flex-shrink:0}
+.cl-action-badge-dot{width:6px;height:6px;border-radius:999px;background:#F59E0B;animation:clAmberPulse 1.4s ease-in-out infinite;box-shadow:0 0 0 0 rgba(245,158,11,.42)}
+@keyframes clAmberPulse{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(245,158,11,.42)}70%{transform:scale(.82);box-shadow:0 0 0 5px rgba(245,158,11,0)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(245,158,11,0)}}
 .shortcuts-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px}
 .shortcuts-card .card-title{font-size:14px;font-weight:600;color:#111;margin-bottom:12px}
 .sc-item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #f3f4f6;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;text-decoration:none;color:inherit}
@@ -500,6 +521,11 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .overview-rail-mount .overview-rail-tip{background:#f5f3ff;border-radius:8px;padding:10px 12px;font-size:12px;color:#6b21a8;line-height:1.5;margin-top:0}
 @media (max-width:768px){
   .overview-grid{grid-template-columns:1fr}
+  .overview-go-live-checklist{max-width:none}
+  .cl-item{min-height:60px;padding:11px 10px}
+  .cl-circle{width:26px;height:26px;font-size:11px}
+  .cl-progress-label{font-size:11px}
+  .cl-name-row{align-items:flex-start;flex-direction:column;gap:5px}
 }
 .overview-rail-card.soft h3{margin:0 0 6px}
 .overview-rail-checklist{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
@@ -973,6 +999,33 @@ html[data-user-theme="dark"] .overview-left > .checklist-card .cl-circle.done{
   background:rgba(35,134,54,.2);
   color:#3fb950;
 }
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-item--active{
+  background:#F5F2FF;
+}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-item--active .cl-name{
+  color:#3D2494;
+}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-circle{
+  border-color:#D0CBF0;
+  background:#fff;
+  color:#8b86a3;
+}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-circle.active{
+  border-color:#5C3AC7;
+  background:#5C3AC7;
+  color:#fff;
+  box-shadow:0 0 0 4px #EDE9F8;
+}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-circle.done{
+  border-color:#10B981;
+  background:#10B981;
+  color:#fff;
+}
+html[data-user-theme="dark"] .overview-left > .overview-go-live-checklist .cl-circle.locked{
+  border-color:#D0CBF0;
+  background:#fff;
+  color:#8b86a3;
+}
 html[data-user-theme="dark"] .overview-system-status-card.checklist-card,
 html[data-user-theme="dark"] .overview-quick-access-card.shortcuts-card{
   background:var(--surface-card);
@@ -1089,6 +1142,17 @@ html[data-user-theme="dark"] .nav-attention-dot{background:#f87171;box-shadow:0 
     flex-direction:column;
     align-items:stretch;
     gap:12px;
+  }
+  .user-app-shell .overview-banner.pre-live .banner-dot.amber{display:none}
+  .user-app-shell .overview-banner.pre-live .banner-action-needed{
+    align-self:flex-start;
+    font-size:13px;
+    padding:10px 16px;
+  }
+  .user-app-shell .overview-banner.pre-live .banner-text{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:8px;
   }
   .user-app-shell .overview-banner .banner-text{width:100%}
   .user-app-shell .overview-banner .banner-actions.portal-card-actions{width:100%}

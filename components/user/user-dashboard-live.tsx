@@ -155,6 +155,15 @@ function IconCheckSmall() {
   );
 }
 
+function IconLockSmall() {
+  return (
+    <svg viewBox="0 0 24 24" width={13} height={13} aria-hidden fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x={5} y={10} width={14} height={10} rx={2} />
+      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
 function IconQuickKnowledge() {
   return (
     <svg viewBox="0 0 24 24" width={18} height={18} aria-hidden fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -246,7 +255,8 @@ type OverviewShortcutRow = {
   href: string;
 };
 
-type ActivationChecklistRow = { id: string; name: string; desc: string | null; done: boolean; href: string };
+type ActivationChecklistRow = { id: string; name: string; desc: string | null; done: boolean; href: string; locked?: boolean };
+type RenderedActivationChecklistRow = ActivationChecklistRow & { stepNumber: number; active: boolean };
 
 function buildActivationChecklist(
   goLive: NonNullable<UserDashboardResponse['goLive']>,
@@ -281,9 +291,12 @@ function buildActivationChecklist(
     {
       id: 'live_answering',
       name: 'Switch it on',
-      desc: goLive.forwardingSetupVerified ? 'RingBooker starts answering missed calls immediately' : 'Locked until call forwarding is verified',
+      desc: hasBilling && goLive.forwardingSetupVerified
+        ? 'RingBooker starts answering missed calls immediately'
+        : 'Locked until billing and call forwarding are verified',
       done: goLive.liveCallsEnabled,
       href: '/user/go-live#go-live-forwarding',
+      locked: !hasBilling || !goLive.forwardingSetupVerified,
     },
   ];
 }
@@ -584,7 +597,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     if (!data?.ok) return 'Track calls, bookings, and reminders.';
     if (data.onboardingRequired) return "Complete setup — then we'll walk you through go-live.";
     if (data.goLive?.commercialApprovalRequired) return 'Custom plan: we enable live answering after approval.';
-    if (!liveAnsweringOn) return 'Next: finish go-live so RingBooker can answer your business line.';
+    if (!liveAnsweringOn) return 'Finish setup to start answering calls';
     return 'Track calls, bookings, and reminders.';
   }, [data?.ok, data?.onboardingRequired, data?.goLive?.commercialApprovalRequired, liveAnsweringOn]);
 
@@ -625,6 +638,19 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
     if (!data?.goLive) return [];
     return buildActivationChecklist(data.goLive, data.overviewRail);
   }, [data, data?.overviewRail]);
+  const renderedChecklist = useMemo<RenderedActivationChecklistRow[]>(() => {
+    const activeItem = activationChecklist.find((item) => !item.done && !item.locked) ?? null;
+    const activeId = activeItem?.id ?? activationChecklist[activationChecklist.length - 1]?.id ?? null;
+    return activationChecklist.map((item, index) => ({
+      ...item,
+      stepNumber: index + 1,
+      locked: Boolean(item.locked),
+      active: item.id === activeId,
+    }));
+  }, [activationChecklist]);
+
+  const checklistDoneCount = renderedChecklist.filter((item) => item.done).length;
+  const checklistProgress = renderedChecklist.length > 0 ? (checklistDoneCount / renderedChecklist.length) * 100 : 0;
 
   const shopTimezone = useMemo(() => getShopTimezone(data?.shop), [data?.shop]);
 
@@ -734,6 +760,10 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                   null
                 ) : !enterpriseApprovalPending ? (
                   <div className="overview-banner pre-live">
+                    <span className="banner-action-needed">
+                      <span className="banner-action-needed-dot" aria-hidden />
+                      Action needed
+                    </span>
                     <div className="banner-dot amber" aria-hidden />
                     <div className="banner-text">
                       <span className="banner-title">
@@ -819,18 +849,38 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                   ) : (
                     <div className={gridClass}>
                       <div className="overview-left">
-                        <div className="checklist-card">
+                        <div className="checklist-card overview-go-live-checklist">
                           <div className="card-title">Go-live checklist</div>
+                          <div className="cl-progress" aria-label={`${checklistDoneCount} of 4 done`}>
+                            <div className="cl-progress-label">{checklistDoneCount} of 4 done</div>
+                            <div className="cl-progress-track" aria-hidden>
+                              <div className="cl-progress-fill" style={{ width: `${checklistProgress}%` }} />
+                            </div>
+                          </div>
                           <div className="card-sub">
                             Complete these steps to activate live answering on your business number.
                           </div>
-                          {activationChecklist.map((item) => (
-                            <a key={item.id} className="cl-item" href={item.href}>
-                              <div className={`cl-circle ${item.done ? 'done' : ''}`}>
-                                {item.done ? <IconCheckSmall /> : null}
+                          {renderedChecklist.map((item) => (
+                            <a
+                              key={item.id}
+                              className={`cl-item${item.done ? ' cl-item--done' : ''}${item.active ? ' cl-item--active' : ''}${item.locked ? ' cl-item--locked' : ''}`}
+                              href={item.href}
+                              aria-disabled={item.locked ? true : undefined}
+                              tabIndex={item.locked ? -1 : undefined}
+                            >
+                              <div className={`cl-circle ${item.done ? 'done' : ''}${item.active ? ' active' : ''}${item.locked ? ' locked' : ''}`}>
+                                {item.done ? <IconCheckSmall /> : item.locked ? <IconLockSmall /> : item.stepNumber}
                               </div>
                               <div className="cl-body">
-                                <div className="cl-name">{item.name}</div>
+                                <div className="cl-name-row">
+                                  <div className="cl-name">{item.name}</div>
+                                  {item.id === 'forwarding_test' && !item.done ? (
+                                    <span className="cl-action-badge">
+                                      <span className="cl-action-badge-dot" aria-hidden />
+                                      Action needed
+                                    </span>
+                                  ) : null}
+                                </div>
                                 {item.desc ? <div className="cl-desc">{item.desc}</div> : null}
                               </div>
                               <div className="cl-arrow" aria-hidden>
