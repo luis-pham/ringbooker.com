@@ -157,7 +157,7 @@ const userSettingsSpecificStyles = String.raw`
 .switch:disabled{opacity:.55;cursor:not-allowed}
 .settings-sms-grid{display:grid;gap:16px}
 .settings-sms-panel{
-  border:1px solid var(--border);border-radius:14px;background:#fff;padding:16px;display:grid;gap:12px;
+  border:0;border-radius:0;background:#fff;padding:20px 0 0;display:grid;gap:12px;
 }
 .settings-sms-panel > h4{
   margin:0;color:#374151;font-size:12px;font-weight:700;letter-spacing:.08em;
@@ -1605,8 +1605,8 @@ html[data-user-theme="dark"] .plan-chip{
     gap:8px;
     flex-wrap:unset;
   }
-  .business-subtabs:not(.calls-filter-tabs):has(> :nth-child(3):last-child) > .business-subtab:nth-child(3){
-    grid-column:1 / -1;
+  .business-subtabs:not(.calls-filter-tabs):has(> :nth-child(3):last-child){
+    grid-template-columns:repeat(3,minmax(0,1fr));
   }
   .business-subtabs:not(.calls-filter-tabs) > .business-subtab{
     display:flex;
