@@ -199,7 +199,7 @@ body{font-family:'Mona Sans Variable',sans-serif;color:var(--text-dark);backgrou
 }
 .hero-copy{text-align:left;min-width:0}
 .hero-eyebrow{
-  font-size:var(--mk-eyebrow);font-weight:600;color:var(--purple-dark);
+  font-size:var(--mk-eyebrow);font-weight:600;color:var(--mk-text-strong,#111827);
   letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;
   margin-bottom:16px;line-height:1.4;
 }

@@ -7,13 +7,21 @@ export const MARKETING_SHARED_SCOPED_CSS = `
 .hero-eyebrow,
 .mk-marketing .hero-eyebrow,
 .pricing-page .hero-eyebrow,
-.hiw-page .hero-eyebrow{
+.hiw-page .hero-eyebrow,
+.html-hub-page .hero-eyebrow,
+.legal-shell .hero-eyebrow,
+.seo-shell .hero-eyebrow,
+.demo-hub .hero-eyebrow,
+.demo-hub-eyebrow,
+.vd-page-header .hero-eyebrow,
+.vd-page-header .vd-hero-eyebrow{
   font-size:var(--mk-eyebrow);
   font-weight:600;
   letter-spacing:var(--mk-eyebrow-ls);
   text-transform:uppercase;
   line-height:1.4;
   margin-bottom:16px;
+  color:var(--mk-text-strong,#111827);
   border:none;
   background:none;
   padding:0;
@@ -21,8 +29,6 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   backdrop-filter:none;
   box-shadow:none;
 }
-.pricing-page .hero-eyebrow{color:var(--mk-brand-purple-dark,#7c3aed)}
-.hiw-page .hero-eyebrow{color:var(--mk-brand-purple-dark,#7c3aed)}
 
 /* Section eyebrows — vertical landings (hero uses .hero-eyebrow above) */
 .mk-section-eyebrow{

@@ -81,7 +81,7 @@ export function MarketingSeoPage({
       <main className="seo-shell">
         <article className={`seo-article${shellVariant === 'plain' ? ' seo-article--plain' : ''}`}>
           {breadcrumb ? <div className="seo-breadcrumb">{breadcrumb}</div> : null}
-          {badge ? <div className="seo-badge">{badge}</div> : null}
+          {badge ? <p className="hero-eyebrow">{badge}</p> : null}
           <h1>{title}</h1>
           <p className="seo-intro">{intro}</p>
 
@@ -157,7 +157,7 @@ export function MarketingSeoPage({
 .seo-breadcrumb{margin:0 0 10px;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8)}
 .seo-breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
 .seo-breadcrumb a:hover{color:var(--mk-brand-purple-deep,#5b21b6)}
-.seo-badge{display:inline-flex;padding:6px 12px;border-radius:var(--mk-radius-pill,999px);border:1px solid var(--mk-border-brand,rgba(124,58,237,.26));background:rgba(255,255,255,0.88);color:var(--mk-brand-purple-deep,#6d28d9);font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
+.seo-article .hero-eyebrow{margin-bottom:12px}
 .seo-article h1{font-size:var(--mk-article-h1);line-height:var(--mk-article-h1-lh);letter-spacing:var(--mk-article-h1-track);color:var(--mk-text-strong,#111827);margin:0 0 12px}
 .seo-intro{font-size:var(--mk-article-intro);line-height:var(--mk-article-intro-lh);color:var(--mk-text-body,#334155);margin:0 0 22px}
 .seo-section{padding-top:18px}

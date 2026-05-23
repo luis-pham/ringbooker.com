@@ -21,6 +21,7 @@ type MarketingLegalPageProps = {
 
 export function MarketingLegalPage({
   breadcrumbLabel,
+  badge,
   title,
   subtitle,
   updatedAt,
@@ -40,6 +41,7 @@ export function MarketingLegalPage({
               <span>{breadcrumbLabel}</span>
             </nav>
           ) : null}
+          {badge ? <p className="hero-eyebrow">{badge}</p> : null}
           <h1>{title}</h1>
           <p>{subtitle}</p>
           <div className="legal-updated">Last updated: {updatedAt}</div>
@@ -66,7 +68,7 @@ export function MarketingLegalPage({
 .legal-breadcrumb{margin:0 0 12px;display:flex;align-items:center;gap:6px;font-size:14px;line-height:1.35;color:var(--mk-text-soft,#94a3b8)}
 .legal-breadcrumb a{color:var(--mk-text-soft,#94a3b8);text-decoration:none;font-weight:400}
 .legal-breadcrumb a:hover{color:var(--mk-brand-purple-deep,#5b21b6)}
-.legal-badge{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;border:1px solid rgba(124,58,237,.28);background:rgba(255,255,255,0.88);color:#6d28d9;font-size:var(--mk-eyebrow);font-weight:600;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;margin-bottom:12px}
+.legal-hero .hero-eyebrow{margin-bottom:12px}
 .legal-hero h1{font-size:var(--mk-legal-h1);font-weight:600;line-height:1.06;letter-spacing:var(--mk-legal-h1-track);color:#111827;margin:0 0 10px}
 .legal-hero p{font-size:var(--mk-article-body);color:#4b5563;line-height:1.65;max-width:760px;margin:0 0 14px}
 .legal-updated{display:inline-flex;align-items:center;padding:7px 12px;border-radius:10px;background:#ffffff;border:1px solid #e5e7eb;font-size:var(--mk-meta);font-weight:600;color:#374151}

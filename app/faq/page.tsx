@@ -89,7 +89,7 @@ export default function FaqPage() {
             <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>FAQ</span>
           </>
         }
-        badge={null}
+        badge="FAQ"
         title="Questions Salon Owners Ask Before Replacing Voicemail"
         intro="Quick answers for nail salons, hair salons, day spas, med spas, and aesthetic clinics evaluating AI receptionist and answering service, missed-call recovery, after-hours and peak-hour overflow coverage, and how RingBooker recovers booking revenue without replacing your booking software."
         sections={[

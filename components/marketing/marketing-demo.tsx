@@ -31,7 +31,6 @@ const styles: string[] = [
     .nav-trial-outline{background:transparent;color:#374151;padding:10px 20px;border-radius:var(--r-pill);font-size:14px;font-weight:600;border:1.5px solid var(--border)}
     .hero{padding:84px 48px 28px;text-align:center;background:radial-gradient(ellipse 80% 55% at 50% 0%,#EDE9FE 0%,#FDF4FF 45%,#fff 72%)}
     .hero-inner{max-width:960px;margin:0 auto}
-    .badge{display:inline-flex;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(139,92,246,.28);border-radius:var(--r-pill);padding:7px 18px;font-size:var(--mk-eyebrow);font-weight:500;text-transform:uppercase;color:var(--purple-dark);margin-bottom:22px}
     .hero h1{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-hero-title-lh);margin-bottom:14px}
     .hero p{font-size:var(--mk-hero-lead);color:var(--mk-text-desc,#64748B);max-width:700px;margin:0 auto 22px;line-height:var(--mk-hero-lead-lh)}
     .hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
@@ -137,7 +136,7 @@ export function MarketingDemoTemplate() {
                 <span style={{ margin: '0 6px' }}>›</span>
                 <span style={{ color: 'var(--mk-text-soft,#94a3b8)', fontWeight: 400 }}>Demo</span>
               </nav>
-              <div className="badge">Browser web voice demo</div>
+              <p className="hero-eyebrow">Browser web voice demo</p>
               <h1>Hear RingBooker in your browser.</h1>
               <p>
                 Pick an industry demo, enter your salon or clinic context, allow the microphone, and talk to the AI receptionist live. Optional: call the public demo line to hear a fixed sample profile for that vertical.

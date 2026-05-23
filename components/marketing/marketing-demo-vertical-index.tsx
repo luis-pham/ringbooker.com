@@ -107,7 +107,6 @@ const styles = [
 
     /* HERO */
     .demo-hub-hero{padding:72px 0 28px;text-align:center}
-    .demo-hub-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.9);border:1px solid rgba(139,92,246,.28);border-radius:999px;padding:7px 18px;color:#5B21B6;font-size:var(--mk-eyebrow);font-weight:500;line-height:1.2;letter-spacing:var(--mk-eyebrow-ls);text-transform:uppercase;backdrop-filter:blur(8px)}
     .demo-hub-hero h1{margin:22px auto 0;max-width:820px;font-size:clamp(34px,5.2vw,56px);line-height:1.06;letter-spacing:-.04em;color:var(--demo-hub-text);font-weight:600}
     .demo-hub-lead{margin:16px auto 0;max-width:640px;font-size:17px;line-height:1.72;color:var(--mk-text-desc,#64748B);font-weight:400}
     .demo-hub-trust{margin:40px auto 0;display:flex;justify-content:center;gap:24px;flex-wrap:wrap;max-width:720px}
@@ -186,7 +185,7 @@ const styles = [
     }
     @media (max-width:640px){
       .demo-hub-hero{padding-top:56px;text-align:left}
-      .demo-hub-eyebrow{display:none}
+      .demo-hub-hero .hero-eyebrow{display:none}
       .demo-hub-hero h1{margin-left:0;margin-right:0;max-width:100%;text-align:left}
       .demo-hub-grid{grid-template-columns:1fr}
       .demo-hub-card{min-height:0}
@@ -214,7 +213,7 @@ export function MarketingDemoVerticalIndexTemplate() {
                 <span className="mx-1.5">›</span>
                 <span className="font-normal text-[color:var(--mk-text-soft,#94a3b8)]">Demo</span>
               </nav>
-              <p className="demo-hub-eyebrow">Live demo hub</p>
+              <p className="hero-eyebrow">Live demo hub</p>
               <h1>Hear how RingBooker handles real booking calls.</h1>
               <p className="demo-hub-lead">
                 Pick your industry and open a live web demo with sample studio context—booking, reschedules, pricing, and
