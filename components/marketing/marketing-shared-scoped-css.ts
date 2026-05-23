@@ -144,6 +144,18 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   flex:1;
   min-height:0;
   height:100%;
+  display:flex;
+  flex-direction:column;
+}
+.vertical-hero-visual .iph-shell .vc-content{
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.vertical-hero-visual .iph-shell .vc-controls{
+  z-index:6;
 }
 
 /* ── Hero CTAs (marketing-home .hero-btns) — vertical landings ── */

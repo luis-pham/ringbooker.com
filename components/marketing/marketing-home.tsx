@@ -377,12 +377,8 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 /* call controls */
 .vc-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:auto}
 .vc-ctrl{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:default;border:none;padding:0;font:inherit}
-.vc-ctrl-play.cp-control-main{width:58px;height:58px;cursor:pointer}
-.iph-shell .vc-ctrl-play .cp-icon-play{width:18px;height:18px;fill:#fff;margin-left:2px}
 .vc-ctrl-mute{background:rgba(17,24,39,.08)}
 .vc-ctrl-mute svg{width:18px;height:18px;fill:#64748b}
-.vc-ctrl-end{width:54px;height:54px;background:#EF4444;box-shadow:0 4px 16px rgba(239,68,68,.4)}
-.vc-ctrl-end svg{width:22px;height:22px;fill:#fff}
 .vc-ctrl-spk{background:rgba(17,24,39,.08)}
 .vc-ctrl-spk svg{width:18px;height:18px;fill:#64748b}
 

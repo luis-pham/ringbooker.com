@@ -1,7 +1,9 @@
 'use client';
 
 import { IPHONE_CALL_MOCKUP_CSS } from '@/components/marketing/iphone-call-mockup-css';
-import { PhoneCallAudioMockup } from '@/components/marketing/phone-call-audio-mockup';
+import { PHONE_CALL_AUDIO_MOCKUP_CSS, PhoneCallAudioMockup } from '@/components/marketing/phone-call-audio-mockup';
+
+const CALL_PREVIEW_MOCKUP_CSS = `${IPHONE_CALL_MOCKUP_CSS}\n${PHONE_CALL_AUDIO_MOCKUP_CSS}`;
 
 export type CallLine = { role: 'ai' | 'caller'; text: string };
 
@@ -31,11 +33,7 @@ export function CallPreviewPlayer({
     return (
       <div className={`cp ${accentClass} cp-vertical`}>
         <PhoneCallAudioMockup businessName={businessName} audioSrc={audioSrc} shell="vertical" />
-        <style
-          dangerouslySetInnerHTML={{
-            __html: IPHONE_CALL_MOCKUP_CSS,
-          }}
-        />
+        <style dangerouslySetInnerHTML={{ __html: CALL_PREVIEW_MOCKUP_CSS }} />
       </div>
     );
   }
@@ -43,11 +41,7 @@ export function CallPreviewPlayer({
   return (
     <div className={`cp ${accentClass}`}>
       <PhoneCallAudioMockup businessName={businessName} audioSrc={audioSrc} shell="vertical" />
-      <style
-        dangerouslySetInnerHTML={{
-          __html: IPHONE_CALL_MOCKUP_CSS,
-        }}
-      />
+      <style dangerouslySetInnerHTML={{ __html: CALL_PREVIEW_MOCKUP_CSS }} />
     </div>
   );
 }

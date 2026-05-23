@@ -33,6 +33,7 @@ export const IPHONE_CALL_MOCKUP_CSS = `
 .iph-bg{
   position:absolute;
   inset:0;
+  pointer-events:none;
   background:
     radial-gradient(ellipse 95% 75% at 18% 12%,rgba(56,189,198,.42) 0%,transparent 52%),
     radial-gradient(ellipse 85% 65% at 82% 18%,rgba(37,99,235,.38) 0%,transparent 48%),
@@ -153,6 +154,9 @@ export const IPHONE_CALL_MOCKUP_CSS = `
 .iph-shell .vc-mini-status{display:none}
 .iph-shell .vc-glow,
 .iph-shell .cp-glow{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
   background:radial-gradient(circle,rgba(56,189,198,.22) 0%,transparent 68%);
 }
 .iph-shell .vc-ctrl-mute,

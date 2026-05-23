@@ -1,18 +1,21 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 
 import { IphoneStatusBar } from '@/components/marketing/iphone-status-bar';
+import { marketingDemoAudioUrl } from '@/lib/marketing/demo-audio-cdn';
+
+export { MARKETING_DEMO_AUDIO_CDN, marketingDemoAudioUrl } from '@/lib/marketing/demo-audio-cdn';
 
 export const VERTICAL_DEMO_AUDIO: Record<
   'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic',
   string
 > = {
-  'nail-salon': '/sound/nail_sound_demo.mp3',
-  'hair-salon': '/sound/hair_sound_demo.mp3',
-  spa: '/sound/dayspa_sound_demo.mp3',
-  'med-spa': '/sound/medspa_sound_demo.mp3',
-  'beauty-clinic': '/sound/clinic_sound_demo.mp3',
+  'nail-salon': marketingDemoAudioUrl('nail_sound_demo.mp3'),
+  'hair-salon': marketingDemoAudioUrl('hair_sound_demo.mp3'),
+  spa: marketingDemoAudioUrl('dayspa_sound_demo.mp3'),
+  'med-spa': marketingDemoAudioUrl('medspa_sound_demo.mp3'),
+  'beauty-clinic': marketingDemoAudioUrl('clinic_sound_demo.mp3'),
 };
 
 export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
@@ -81,6 +84,9 @@ export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
   gap:18px;
   margin-top:auto;
   width:100%;
+  position:relative;
+  z-index:6;
+  flex-shrink:0;
 }
 .cp-vertical .iph-shell .vc-controls{
   gap:14px;
@@ -105,12 +111,13 @@ export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
 .iph-shell .vc-ctrl-play.cp-control-main,
 .iph-shell .vc-ctrl-end{
   cursor:pointer;
-}
-.iph-shell .vc-ctrl-play.cp-control-main{
   width:58px;
   height:58px;
+  flex-shrink:0;
+  box-sizing:border-box;
 }
-.cp-vertical .iph-shell .vc-ctrl-play.cp-control-main{
+.cp-vertical .iph-shell .vc-ctrl-play.cp-control-main,
+.cp-vertical .iph-shell .vc-ctrl-end{
   width:52px;
   height:52px;
 }
@@ -160,6 +167,8 @@ function CallScreenBody({
   waveActive,
   isPlaying,
   playbackState,
+  audioSrc,
+  audioRef,
   onCenterClick,
 }: {
   businessName: string;
@@ -167,10 +176,13 @@ function CallScreenBody({
   waveActive: boolean;
   isPlaying: boolean;
   playbackState: PlaybackState;
+  audioSrc: string;
+  audioRef: RefObject<HTMLAudioElement | null>;
   onCenterClick: () => void;
 }) {
   return (
     <>
+      <audio ref={audioRef} src={audioSrc} preload="metadata" className="sr-only" aria-hidden />
       <div className="iph-bg" aria-hidden />
       <div className="vc-glow" aria-hidden />
       <IphoneStatusBar />
@@ -247,9 +259,8 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
   }, []);
 
   useEffect(() => {
-    const audio = new Audio(audioSrc);
-    audio.preload = 'metadata';
-    audioRef.current = audio;
+    const audio = audioRef.current;
+    if (!audio) return;
 
     const onTimeUpdate = () => {
       setTimerLabel(formatMmSs(audio.currentTime));
@@ -266,7 +277,6 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('ended', onEnded);
       audio.pause();
-      audioRef.current = null;
     };
   }, [audioSrc, resetToIdle]);
 
@@ -274,14 +284,16 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     const audio = audioRef.current;
     if (!audio) return;
 
+    setPlaybackState('playing');
+    setTimerLabel(formatMmSs(audio.currentTime));
+
     try {
+      audio.load();
       await audio.play();
-      setPlaybackState('playing');
-      setTimerLabel(formatMmSs(audio.currentTime));
     } catch {
-      /* Autoplay blocked or load error */
+      resetToIdle();
     }
-  }, []);
+  }, [resetToIdle]);
 
   const handlePause = useCallback(() => {
     const audio = audioRef.current;
@@ -305,6 +317,8 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     waveActive,
     isPlaying,
     playbackState,
+    audioSrc,
+    audioRef,
     onCenterClick: handleCenterClick,
   };
 
@@ -316,7 +330,6 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
             <CallScreenBody {...screenProps} />
           </div>
         </div>
-        <style dangerouslySetInnerHTML={{ __html: PHONE_CALL_AUDIO_MOCKUP_CSS }} />
       </>
     );
   }

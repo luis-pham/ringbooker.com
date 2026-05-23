@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
+import { MARKETING_DEMO_AUDIO_CDN } from '@/lib/marketing/demo-audio-cdn';
+
 const USER_SESSION_COOKIE = 'rb_user_session';
 const ADMIN_SESSION_COOKIE = 'rb_admin_session';
 const CONTENT_SECURITY_POLICY = [
@@ -16,6 +18,7 @@ const CONTENT_SECURITY_POLICY = [
   ].join(' '),
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: https:",
+  `media-src 'self' ${MARKETING_DEMO_AUDIO_CDN}`,
   "font-src 'self' https://fonts.gstatic.com",
   [
     "connect-src 'self'",
