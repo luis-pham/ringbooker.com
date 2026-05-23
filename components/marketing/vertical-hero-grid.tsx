@@ -17,7 +17,7 @@ export function VerticalHeroGrid({ copy, copyAfter, phone }: VerticalHeroGridPro
         </div>
         {copyAfter}
       </div>
-      <div className="vertical-hero-visual hidden lg:block">
+      <div className="vertical-hero-visual hidden lg:block" data-vertical-phone-float>
         {phone}
       </div>
     </section>

@@ -1261,6 +1261,137 @@ setPriceSafe('monthly')
   }
 })();
 `,
+  String.raw`
+(() => {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (!('IntersectionObserver' in window)) return
+
+  const THRESHOLD = 0.2
+  const style = document.createElement('style')
+  style.textContent = [
+    '.home-pain-pre{opacity:0;transform:translateY(24px);transition:opacity 600ms ease-out,transform 600ms ease-out}',
+    '.home-pain-in{opacity:1;transform:translateY(0)}',
+    '.home-call-pre{opacity:0;transform:translateY(12px);transition:opacity 400ms ease-out,transform 400ms ease-out}',
+    '.home-call-in{opacity:1;transform:translateY(0)}',
+    '.home-stat-fade-pre{opacity:0;transition:opacity 1200ms ease-out}',
+    '.home-stat-fade-in{opacity:1}',
+  ].join('')
+  document.head.appendChild(style)
+
+  const easeOutExpo = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t))
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
+
+  const observeOnce = (target, onEnter) => {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return
+        observer.unobserve(entry.target)
+        onEnter(entry.target)
+      })
+    }, { threshold: THRESHOLD })
+    observer.observe(target)
+    return observer
+  }
+
+  const animateCounter = (el, delay) => {
+    const target = Number.parseInt(el.getAttribute('data-count') || '0', 10)
+    const suffix = el.getAttribute('data-suffix') || ''
+    const duration = 1200
+    window.setTimeout(() => {
+      const start = performance.now()
+      const tick = (now) => {
+        const t = Math.min(1, (now - start) / duration)
+        const value = Math.round(easeOutExpo(t) * target)
+        el.textContent = String(value) + suffix
+        if (t < 1) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    }, delay)
+  }
+
+  const animateStatFade = (el, delay) => {
+    const display = el.getAttribute('data-display') || el.textContent || ''
+    el.textContent = display
+    el.classList.add('home-stat-fade-pre')
+    window.setTimeout(() => {
+      el.classList.add('home-stat-fade-in')
+    }, delay)
+  }
+
+  const heroStats = document.querySelector('.hero-stats')
+  if (heroStats) {
+    const statNums = Array.from(heroStats.querySelectorAll('.hero-stat-num'))
+    statNums.forEach((el) => {
+      if (el.hasAttribute('data-fade-only')) {
+        el.classList.add('home-stat-fade-pre')
+        return
+      }
+      const suffix = el.getAttribute('data-suffix') || ''
+      el.textContent = '0' + suffix
+    })
+    observeOnce(heroStats, () => {
+      statNums.forEach((el, index) => {
+        const delay = index * 100
+        if (el.hasAttribute('data-fade-only')) {
+          animateStatFade(el, delay)
+          return
+        }
+        animateCounter(el, delay)
+      })
+    })
+  }
+
+  const revenueCard = document.getElementById('home-leak-revenue-card')
+  if (revenueCard) {
+    const bars = Array.from(revenueCard.querySelectorAll('.leak-revenue-bar span[data-width]'))
+    bars.forEach((bar) => {
+      bar.style.width = '0%'
+    })
+    observeOnce(revenueCard, () => {
+      bars.forEach((bar, index) => {
+        const finalWidth = bar.getAttribute('data-width') + '%'
+        const delay = index * 150
+        window.setTimeout(() => {
+          const start = performance.now()
+          const duration = 900
+          const from = 0
+          const to = Number.parseFloat(bar.getAttribute('data-width') || '0')
+          const tick = (now) => {
+            const t = Math.min(1, (now - start) / duration)
+            const value = from + (to - from) * easeOutCubic(t)
+            bar.style.width = value + '%'
+            if (t < 1) requestAnimationFrame(tick)
+            else bar.style.width = finalWidth
+          }
+          requestAnimationFrame(tick)
+        }, delay)
+      })
+    })
+  }
+
+  const leakList = document.getElementById('home-leak-list')
+  if (leakList) {
+    const painItems = Array.from(leakList.querySelectorAll('.leak-item'))
+    painItems.forEach((item) => item.classList.add('home-pain-pre'))
+    observeOnce(leakList, () => {
+      painItems.forEach((item, index) => {
+        window.setTimeout(() => item.classList.add('home-pain-in'), index * 150)
+      })
+    })
+  }
+
+  const callsPanel = document.getElementById('home-tonights-calls-panel')
+  if (callsPanel) {
+    const rows = Array.from(callsPanel.querySelectorAll('.coverage-call-row'))
+    rows.forEach((row) => row.classList.add('home-call-pre'))
+    observeOnce(callsPanel, () => {
+      rows.forEach((row, index) => {
+        window.setTimeout(() => row.classList.add('home-call-in'), index * 300)
+      })
+    })
+  }
+})()
+`,
 ];
 
 export const templateTitle =
@@ -1333,19 +1464,19 @@ export function MarketingHomeTemplate() {
             </div>
             <div className="hero-stats" aria-label="Key product facts">
               <div className="hero-stat">
-                <div className="hero-stat-num">24/7</div>
+                <div className="hero-stat-num" data-count="24" data-suffix="/7">24/7</div>
                 <div className="hero-stat-label">Call coverage</div>
               </div>
               <div className="hero-stat">
-                <div className="hero-stat-num">15 min</div>
+                <div className="hero-stat-num" data-count="15" data-suffix=" min">15 min</div>
                 <div className="hero-stat-label">Setup time</div>
               </div>
               <div className="hero-stat">
-                <div className="hero-stat-num">5</div>
+                <div className="hero-stat-num" data-count="5">5</div>
                 <div className="hero-stat-label">Languages</div>
               </div>
               <div className="hero-stat">
-                <div className="hero-stat-num">&lt;1s</div>
+                <div className="hero-stat-num" data-fade-only="true" data-display="&lt;1s">&lt;1s</div>
                 <div className="hero-stat-label">AI response</div>
               </div>
             </div>
@@ -1366,7 +1497,7 @@ export function MarketingHomeTemplate() {
             </p>
             </div>
             <div className="leak-body">
-              <div className="leak-list">
+              <div className="leak-list" id="home-leak-list">
               {[
                 {
                     num: '01',
@@ -1399,21 +1530,21 @@ export function MarketingHomeTemplate() {
                 </article>
               ))}
               </div>
-              <aside className="leak-card leak-revenue reveal" aria-labelledby="leak-revenue-heading">
+              <aside className="leak-card leak-revenue reveal" id="home-leak-revenue-card" aria-labelledby="leak-revenue-heading">
                 <p id="leak-revenue-heading" className="leak-revenue-kicker">
                   Estimated revenue lost per month
                 </p>
                 <p className="leak-revenue-note">Illustrative ranges for a busy 2–4 chair salon — not a guarantee.</p>
                 {[
-                  { label: 'In-service missed calls', range: '$560 – $840', width: '78%', barColor: '#C4B5FD' },
-                  { label: 'After-hours missed calls', range: '$720 – $1,080', width: '100%', barColor: '#F9E4E1' },
-                  { label: 'Peak-hour overflow', range: '$360 – $540', width: '50%', barColor: '#E1ECE6' },
+                  { label: 'After-hours missed calls', range: '$720 – $1,080', width: '88', barColor: '#E24B4A' },
+                  { label: 'In-service missed calls', range: '$560 – $840', width: '70', barColor: '#E86B6A' },
+                  { label: 'Peak-hour overflow', range: '$360 – $540', width: '44', barColor: '#F0A0A0' },
                 ].map(({ label, range, width, barColor }) => (
                   <div className="leak-revenue-row" key={label}>
                     <span className="leak-revenue-label">{label}</span>
                     <span className="leak-revenue-range">{range}</span>
                     <div className="leak-revenue-bar" aria-hidden="true">
-                      <span style={{ width, background: barColor }} />
+                      <span data-width={width} style={{ width: `${width}%`, background: barColor }} />
                     </div>
                   </div>
                 ))}
@@ -1457,7 +1588,7 @@ export function MarketingHomeTemplate() {
               </div>
               <div className="coverage-visual coverage-visual-peach" aria-hidden="true">
                 <span className="coverage-visual-num">01</span>
-                <div className="coverage-panel">
+                <div className="coverage-panel" id="home-tonights-calls-panel">
                   <p className="coverage-panel-title">Tonight&apos;s calls</p>
                   {[
                     { label: 'Incoming call', time: '9:41 PM' },

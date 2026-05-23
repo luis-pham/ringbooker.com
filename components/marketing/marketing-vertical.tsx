@@ -7,6 +7,7 @@ import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-acco
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { CallPreviewPlayer } from '@/components/marketing/call-preview-player';
 import { VerticalHeroGrid } from '@/components/marketing/vertical-hero-grid';
+import { verticalScrollAnimationsScript } from '@/components/marketing/vertical-scroll-animations-script';
 import { VerticalPainIcon, type VerticalPainIconId } from '@/components/marketing/vertical-pain-icons';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
@@ -68,6 +69,12 @@ const HERO_LIVE_ARROW = (
     <path fill="currentColor" d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" />
   </svg>
 );
+
+function parseStatCounterAttrs(value: string): { 'data-count'?: string; 'data-suffix'?: string } {
+  const match = value.match(/^(\d+)(%)$/);
+  if (!match) return {};
+  return { 'data-count': match[1], 'data-suffix': match[2] };
+}
 
 function VerticalHeroCtaActions({
   demoHref,
@@ -307,7 +314,7 @@ function HowItWorks({
   stepLabel?: string;
 }) {
   return (
-    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16" data-vertical-step-track>
+    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16" data-vertical-how-section data-vertical-step-track>
       <div className="mk-section-head">
         <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{eyebrow}</div>
         <h2 className={`mb-4 ${MK_SECTION_H2}`}>{heading}</h2>
@@ -352,14 +359,16 @@ type StatItem = { eyebrow: string; value: string; desc: string; source: string }
 function StatStrip({ stats, accentClass }: { stats: StatItem[]; accentClass: string }) {
   return (
     <section className="vertical-stat-strip-section mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className="vertical-stat-strip">
+      <div className="vertical-stat-strip" data-vertical-stat-strip>
         {stats.map((s, index) => (
           <div
             key={s.eyebrow}
             className={`vertical-stat-strip__col${index === stats.length - 1 ? ' vertical-stat-strip__col--last' : ''}`}
           >
             <p className={`vertical-stat-strip__eyebrow ${accentClass}`}>{s.eyebrow}</p>
-            <p className="vertical-stat-strip__value">{s.value}</p>
+            <p className="vertical-stat-strip__value" {...parseStatCounterAttrs(s.value)}>
+              {s.value}
+            </p>
             <p className="vertical-stat-strip__desc">{s.desc}</p>
             <p className="vertical-stat-strip__source">{s.source}</p>
           </div>
@@ -387,9 +396,9 @@ function PainPoints({
         <p className={`vertical-pain-section__eyebrow ${eyebrowClass}`}>{eyebrow}</p>
         <h2 className={MK_SECTION_H2}>{heading}</h2>
       </div>
-      <div className="vertical-pain-section__grid">
+      <div className="vertical-pain-section__grid" data-vertical-pain-grid>
         {points.map((p) => (
-          <article key={p.title} className="vertical-pain-card">
+          <article key={p.title} className="vertical-pain-card" data-vertical-pain-card>
             <div className="vertical-pain-card__header">
               <span className="vertical-pain-card__icon">
                 <VerticalPainIcon id={p.icon} />
@@ -424,10 +433,11 @@ function FeatureGrid({
         <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{eyebrow}</div>
         <h2 className={MK_SECTION_H2}>{heading}</h2>
       </div>
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-vertical-feature-grid>
         {features.map((f) => (
           <article
             key={f.title}
+            data-vertical-feature-card
             className={`flex flex-col items-center rounded-3xl bg-white p-6 text-center ${VERTICAL_CARD_SURFACE}`}
           >
             <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-2xl text-xl ${accent}`}>{f.icon}</div>
@@ -459,9 +469,15 @@ function VsTable({
         <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{labels.eyebrow}</div>
         <h2 className={MK_SECTION_H2}>{heading}</h2>
       </div>
-      <div className={`mt-6 overflow-x-auto overscroll-x-contain rounded-3xl bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] ${VERTICAL_CARD_SURFACE}`}>
+      <div
+        className={`mt-6 overflow-x-auto overscroll-x-contain rounded-3xl bg-white [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] ${VERTICAL_CARD_SURFACE}`}
+        data-vertical-vs-table
+      >
         <div className="min-w-[600px]">
-          <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-medium uppercase tracking-wider text-slate-400">
+          <div
+            className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 bg-slate-50 px-5 py-3 text-[12px] font-medium uppercase tracking-wider text-slate-400"
+            data-vertical-vs-header
+          >
             <span>{labels.scenario}</span>
             <span>{labels.without}</span>
             <span className={accentClass}>{labels.with}</span>
@@ -469,6 +485,7 @@ function VsTable({
           {rows.map((row) => (
             <div
               key={row.scenario}
+              data-vertical-vs-row
               className="grid grid-cols-[1fr_1fr_1fr] border-b border-slate-100 px-5 py-4 text-[13.5px] last:border-b-0"
             >
               <span className="font-semibold text-slate-700">{row.scenario}</span>
@@ -922,6 +939,11 @@ export async function MarketingNailSalonVietnameseTemplate() {
         id="vertical-step-carousel"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }}
+      />
+      <Script
+        id="vertical-scroll-animations"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: verticalScrollAnimationsScript }}
       />
     </>
   );
@@ -1720,18 +1742,19 @@ function VerticalHubArticles({
   const copy = copyOverride ?? { eyebrow: 'In this hub', ...VERTICAL_HUB_COPY[vertical] };
   const sectionHeading = copyOverride?.heading ?? VERTICAL_HUB_HEADING[vertical];
   return (
-    <section className="mt-[88px] rounded-3xl bg-slate-50 px-5 py-12 sm:px-8 md:pb-16" aria-label="In this hub">
+    <section className="mt-[88px] rounded-3xl bg-slate-50 px-5 py-12 sm:px-8 md:pb-16" aria-label="In this hub" data-vertical-hub-section>
       <div className="mx-auto max-w-5xl">
         <div className="mk-section-head">
           <p className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{copy.eyebrow}</p>
           <h2 className={`mb-4 ${MK_SECTION_H2}`}>{sectionHeading}</h2>
           <p className="max-w-3xl text-[15px] leading-7 text-slate-600">{copy.sub}</p>
         </div>
-        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2" data-vertical-hub-grid>
           {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
+              data-vertical-hub-card
               className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[14px] font-medium text-slate-800 no-underline transition hover:border-violet-300 hover:text-violet-700"
             >
               <span className="text-violet-600" aria-hidden>
@@ -1885,6 +1908,11 @@ export async function MarketingVerticalTemplate({ vertical }: { vertical: Market
         id="vertical-step-carousel"
         strategy="afterInteractive"
         dangerouslySetInnerHTML={{ __html: verticalStepCarouselScript }}
+      />
+      <Script
+        id="vertical-scroll-animations"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{ __html: verticalScrollAnimationsScript }}
       />
     </>
   );
