@@ -1597,8 +1597,8 @@ export function MarketingHomeTemplate() {
                 </article>
                 <article className="step-card">
                   <div className="step-marker">2</div>
-                  <h3>Set your rules</h3>
-                  <p>Add your hours, services, and booking workflow. Connect your tools and RingBooker follows your flow.</p>
+                  <h3>Import your details</h3>
+                  <p>Paste your URL — RingBooker pulls your hours, services, and pricing. Review, adjust, and connect your tools.</p>
                 </article>
                 <article className="step-card">
                   <div className="step-marker">3</div>

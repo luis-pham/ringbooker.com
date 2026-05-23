@@ -647,9 +647,9 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('How RingBooker works', 'on your current salon number')}
         steps={[
-          { n: '1', title: 'Forward calls to RingBooker', body: 'Set up call forwarding on your current salon number — for overflow, after-hours, or full-time. Setup time depends on your phone provider.' },
-          { n: '2', title: 'RingBooker answers with your business info', body: 'Your services, pricing, hours, and staff are loaded in. The AI handles real callers immediately.' },
-          { n: '3', title: 'Intent captured, SMS sent, you review', body: 'Captured booking intent and call summaries land in your dashboard. Confirmations can go to the client when the flow is configured.' },
+          { n: '1', title: 'Forward calls to RingBooker', body: 'Set up call forwarding on your current salon number — for overflow, after-hours, or full-time.' },
+          { n: '2', title: 'Import your services and pricing', body: 'Paste your URL — RingBooker pulls your hours, services, and prices. Review, adjust, and the AI handles real callers immediately.' },
+          { n: '3', title: 'Intent captured, SMS sent, you review', body: 'Booking intent and call summaries land in your dashboard. Confirmations go to the client when configured.' },
         ]}
       />
 
@@ -1058,7 +1058,7 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
         heading={mkSectionTitle('How RingBooker works', 'on your current salon number')}
         steps={[
           { n: '1', title: 'Connect your salon number', body: 'Forward overflow or after-hours calls. Your existing number stays the same for all clients.' },
-          { n: '2', title: 'Load your services and stylists', body: 'Add your team, service list, and booking rules. RingBooker handles calls with that context immediately.' },
+          { n: '2', title: 'Import your services and stylists', body: 'Paste your URL — RingBooker pulls your team, service list, and prices. Review what it found and calls are handled with that context.' },
           { n: '3', title: 'Every call captured for follow-up', body: 'Booking summaries go to your dashboard. SMS confirmations can go to the client when the flow is configured.' },
         ]}
       />
@@ -1188,8 +1188,8 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('How RingBooker works', 'on your current spa number')}
         steps={[
-          { n: '1', title: 'Set your services and availability windows', body: 'Load your treatment menu, room types, and hours. RingBooker learns your spa\'s context.' },
-          { n: '2', title: 'Forward calls during busy or off hours', body: 'Route overflow while sessions are running, or go full-time for always-on coverage.' },
+          { n: '1', title: 'Forward calls during busy or off hours', body: 'Route overflow while sessions are running, or go full-time for always-on coverage.' },
+          { n: '2', title: 'Import your treatments and hours', body: 'Paste your URL — RingBooker pulls your services, pricing, and hours. Review, adjust, and calls are handled with your spa\'s context.' },
           { n: '3', title: 'Bookings and summaries in your dashboard', body: 'Captured bookings and booking intent are logged. SMS confirmation can go to the client when configured.' },
         ]}
       />
@@ -1325,8 +1325,8 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('How RingBooker handles', 'consultation calls', 'on your current number')}
         steps={[
-          { n: '1', title: 'Configure your services and providers', body: 'Add your treatment list, providers, and consultation flow. RingBooker handles calls with that context.' },
-          { n: '2', title: 'Forward overflow and after-hours calls', body: 'During treatments, busy windows, or full-time — calls get a professional response instead of a dead end.' },
+          { n: '1', title: 'Forward overflow and after-hours calls', body: 'During treatments, busy windows, or full-time — calls get a professional response instead of a dead end.' },
+          { n: '2', title: 'Import your treatments and schedule', body: 'Paste your URL — RingBooker pulls your treatments, pricing, and hours. Review, adjust, and calls are handled with that context.' },
           { n: '3', title: 'Leads captured with follow-up context', body: 'Every consultation intent is logged with call context so your team can follow up from a warmer starting point.' },
         ]}
       />
@@ -1467,8 +1467,8 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         heading={mkSectionTitle('How RingBooker works', 'on your current clinic number')}
         steps={[
-          { n: '1', title: 'Configure clinic services and providers', body: 'Load your treatment list, providers, and consultation flow. RingBooker reflects your clinic\'s standards.' },
-          { n: '2', title: 'Forward calls during treatments or after hours', body: 'Cover overflow during busy clinic hours or go full-time. Clients experience a seamless, professional response.' },
+          { n: '1', title: 'Forward calls during treatments or after hours', body: 'Cover overflow during busy clinic hours or go full-time.' },
+          { n: '2', title: 'Import your services and hours', body: 'Paste your URL — RingBooker pulls your treatments, pricing, and clinic hours. Review, adjust, and clients get a seamless response.' },
           { n: '3', title: 'Every inquiry logged for your team', body: 'Call summaries, intake details, and provider preferences are recorded for clinical follow-up.' },
         ]}
       />
