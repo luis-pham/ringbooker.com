@@ -28,8 +28,49 @@ export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
   text-align:center;
 }
 .cp-vertical .iph-shell .vc-content{padding:14px 14px 6px}
-.iph-shell .vc-label{
+.iph-shell .vc-label,
+.iph-shell .vc-call-status{
   margin-bottom:6px;
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.55);
+  line-height:1.4;
+}
+.iph-shell .vc-call-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.iph-shell .vc-call-status--active{
+  color:#34c759;
+}
+.iph-shell .vc-call-status-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#34c759;
+  flex-shrink:0;
+  animation:pca-pulse 1.4s ease-in-out infinite;
+}
+@keyframes pca-pulse{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:.45;transform:scale(1.2)}
+}
+.pca-audio{
+  position:absolute;
+  width:1px;
+  height:1px;
+  left:0;
+  top:0;
+  opacity:0;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+  pointer-events:none;
 }
 .iph-shell .vc-timer{
   margin-bottom:12px;
@@ -139,7 +180,8 @@ export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
 }
 @media (prefers-reduced-motion: reduce){
   .iph-shell .vc-wave span,
-  .iph-shell .vc-wave.vc-wave-active span{
+  .iph-shell .vc-wave.vc-wave-active span,
+  .iph-shell .vc-call-status-dot{
     animation:none !important;
   }
 }
@@ -182,7 +224,14 @@ function CallScreenBody({
       <div className="vc-glow" aria-hidden />
       <IphoneStatusBar />
       <div className="vc-content">
-        <div className="vc-label">Incoming Call</div>
+        {isPlaying ? (
+          <div className="vc-call-status vc-call-status--active">
+            <span className="vc-call-status-dot" aria-hidden />
+            Active Call
+          </div>
+        ) : (
+          <div className="vc-call-status">Sample Call</div>
+        )}
         <div className="vc-name">{businessName}</div>
         <div className="vc-timer">{timerLabel}</div>
         <div className={`vc-wave${waveActive ? ' vc-wave-active' : ''}`}>
@@ -257,6 +306,8 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     const audio = audioRef.current;
     if (!audio) return;
 
+    audio.volume = 1;
+
     const onTimeUpdate = () => {
       setTimerLabel(formatMmSs(audio.currentTime));
     };
@@ -271,9 +322,49 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     return () => {
       audio.removeEventListener('timeupdate', onTimeUpdate);
       audio.removeEventListener('ended', onEnded);
-      audio.pause();
     };
   }, [audioSrc, resetToIdle]);
+
+  const playAudio = useCallback(async (audio: HTMLAudioElement) => {
+    audio.volume = 1;
+
+    const attemptPlay = () => audio.play();
+
+    try {
+      await attemptPlay();
+      return;
+    } catch {
+      /* wait for buffer then retry once (helps cross-origin CDN on first tap) */
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        resolve();
+        return;
+      }
+      const timeout = window.setTimeout(() => {
+        cleanup();
+        reject(new Error('audio load timeout'));
+      }, 10000);
+      const onCanPlay = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error('audio load error'));
+      };
+      const cleanup = () => {
+        window.clearTimeout(timeout);
+        audio.removeEventListener('canplay', onCanPlay);
+        audio.removeEventListener('error', onError);
+      };
+      audio.addEventListener('canplay', onCanPlay);
+      audio.addEventListener('error', onError);
+    });
+
+    await attemptPlay();
+  }, []);
 
   const handlePlay = useCallback(async () => {
     const audio = audioRef.current;
@@ -283,12 +374,12 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     setTimerLabel(formatMmSs(audio.currentTime));
 
     try {
-      audio.load();
-      await audio.play();
+      await playAudio(audio);
+      setTimerLabel(formatMmSs(audio.currentTime));
     } catch {
       resetToIdle();
     }
-  }, [resetToIdle]);
+  }, [playAudio, resetToIdle]);
 
   const handlePause = useCallback(() => {
     const audio = audioRef.current;
@@ -317,10 +408,20 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
 
   const screen = (
     <>
-      <audio ref={audioRef} src={audioSrc} preload="metadata" className="sr-only" aria-hidden />
+      <audio
+        key={audioSrc}
+        ref={audioRef}
+        src={audioSrc}
+        preload="auto"
+        playsInline
+        className="pca-audio"
+        aria-hidden
+      />
       <CallScreenBody {...screenProps} />
     </>
   );
+
+  const mockupStyles = <style dangerouslySetInnerHTML={{ __html: PHONE_CALL_AUDIO_MOCKUP_CSS }} />;
 
   if (shell === 'vertical') {
     return (
@@ -328,6 +429,7 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
         <div className="cp-frame iph-shell">
           <div className="cp-screen iph-shell">{screen}</div>
         </div>
+        {mockupStyles}
       </>
     );
   }
@@ -339,7 +441,7 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
           <div className="phone-screen iph-shell">{screen}</div>
         </div>
       </div>
-      <style dangerouslySetInnerHTML={{ __html: PHONE_CALL_AUDIO_MOCKUP_CSS }} />
+      {mockupStyles}
     </>
   );
 }

@@ -22,6 +22,7 @@ const CONTENT_SECURITY_POLICY = [
   "font-src 'self' https://fonts.gstatic.com",
   [
     "connect-src 'self'",
+    MARKETING_DEMO_AUDIO_CDN,
     'https://*.supabase.co',
     'https://api.telnyx.com',
     'https://api.openai.com',
