@@ -5,7 +5,8 @@ import type { ReactNode } from 'react';
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
-import { CallPreviewPlayer, type CallLine } from '@/components/marketing/call-preview-player';
+import { CallPreviewPlayer } from '@/components/marketing/call-preview-player';
+import { VERTICAL_DEMO_AUDIO } from '@/components/marketing/phone-call-audio-mockup';
 import { VerticalHeroGrid } from '@/components/marketing/vertical-hero-grid';
 import { VerticalPainIcon, type VerticalPainIconId } from '@/components/marketing/vertical-pain-icons';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
@@ -165,56 +166,31 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
   },
 };
 
-const CALL_PREVIEWS: Record<MarketingVerticalKey, { lines: CallLine[]; businessName: string; accent: string }> = {
+const CALL_PREVIEWS: Record<MarketingVerticalKey, { businessName: string; accent: string; audioSrc: string }> = {
   'nail-salon': {
     businessName: 'Luxe Nail Studio',
     accent: '#7C3AED',
-    lines: [
-      { role: 'caller', text: 'I saw your Instagram — how much for a full set with gel?' },
-      { role: 'ai', text: 'Full set with gel is $45. I can book you in today — do you have a preference for morning or afternoon?' },
-      { role: 'caller', text: 'Morning, like around 10?' },
-      { role: 'ai', text: '10am works. Can I get your name to hold the spot?' },
-    ],
+    audioSrc: VERTICAL_DEMO_AUDIO['nail-salon'],
   },
   'hair-salon': {
-    businessName: 'Studio Luxe Hair',
+    businessName: 'Blü Hair Studio',
     accent: '#B45309',
-    lines: [
-      { role: 'caller', text: 'Can I get a balayage with Sarah on Saturday?' },
-      { role: 'ai', text: 'Sarah is fully booked Saturday. I have a 2pm with Jessica who also specializes in balayage — would that work?' },
-      { role: 'caller', text: 'Sure, 2pm is fine.' },
-      { role: 'ai', text: 'Booked. You\'ll get a confirmation text shortly.' },
-    ],
+    audioSrc: VERTICAL_DEMO_AUDIO['hair-salon'],
   },
   spa: {
     businessName: 'Serenity Day Spa',
     accent: '#0D9488',
-    lines: [
-      { role: 'caller', text: 'Do you have a couples massage this Saturday afternoon?' },
-      { role: 'ai', text: 'Yes — we have a couples suite at 2pm and 4pm Saturday, each 60 minutes. Which would you prefer?' },
-      { role: 'caller', text: '4pm sounds great.' },
-      { role: 'ai', text: 'Perfect. I\'ll hold that for you — name and number for confirmation?' },
-    ],
+    audioSrc: VERTICAL_DEMO_AUDIO.spa,
   },
   'med-spa': {
-    businessName: 'Revive Med Spa',
+    businessName: 'Radiance Med Spa',
     accent: '#4F46E5',
-    lines: [
-      { role: 'caller', text: 'I\'m interested in Botox and filler — what does a consultation look like?' },
-      { role: 'ai', text: 'Our consultations are complimentary and take about 30 minutes. A provider reviews your goals and creates a personalized plan. Can I schedule one for you?' },
-      { role: 'caller', text: 'Yes, next week if possible.' },
-      { role: 'ai', text: 'I have Tuesday at 11am or Thursday at 2pm — which works?' },
-    ],
+    audioSrc: VERTICAL_DEMO_AUDIO['med-spa'],
   },
   'beauty-clinic': {
-    businessName: 'Aura Beauty Clinic',
+    businessName: 'Lumina Beauty Clinic',
     accent: '#A21CAF',
-    lines: [
-      { role: 'caller', text: 'I had laser done last month and want to book my next session — do I need another consultation?' },
-      { role: 'ai', text: 'If your last session was within 90 days and there are no new concerns, we can book directly. Would you like to schedule with the same provider?' },
-      { role: 'caller', text: 'Yes, please.' },
-      { role: 'ai', text: 'Let me find the next available slot with your provider.' },
-    ],
+    audioSrc: VERTICAL_DEMO_AUDIO['beauty-clinic'],
   },
 };
 
@@ -672,12 +648,7 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
 const VI_NAIL_CALL_PREVIEW = {
   businessName: 'Tiệm Nail Việt',
   accent: '#7C3AED',
-  lines: [
-    { role: 'caller', text: 'Dạ tiệm còn chỗ làm full set chiều nay không?' },
-    { role: 'ai', text: 'Dạ còn. Chị muốn khoảng mấy giờ và làm full set gel hay acrylic ạ?' },
-    { role: 'caller', text: 'Khoảng 5 giờ, gel nhé.' },
-    { role: 'ai', text: 'Dạ em ghi nhận 5 giờ chiều full set gel. Cho em xin tên để tiệm giữ lịch ạ?' },
-  ] satisfies CallLine[],
+  audioSrc: VERTICAL_DEMO_AUDIO['nail-salon'],
 };
 
 const VI_NAIL_FAQ_ITEMS = [

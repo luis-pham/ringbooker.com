@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 
 import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { IPHONE_CALL_MOCKUP_CSS } from '@/components/marketing/iphone-call-mockup-css';
-import { IphoneStatusBar } from '@/components/marketing/iphone-status-bar';
+import { HomeHeroPhoneMockup } from '@/components/marketing/home-hero-phone-mockup';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
@@ -360,14 +360,25 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 
 /* waveform */
 .vc-wave{display:flex;align-items:center;justify-content:center;gap:2.5px;height:28px;margin-bottom:12px}
-.iph-shell .vc-wave span{width:3px;background:#34c759;border-radius:2px;animation:vc-wv .8s ease-in-out infinite}
-.vc-wave span{width:3px;background:#10B981;border-radius:2px;animation:vc-wv .8s ease-in-out infinite}
-.vc-wave span:nth-child(1){height:8px}.vc-wave span:nth-child(2){height:18px;animation-delay:.07s}.vc-wave span:nth-child(3){height:24px;animation-delay:.14s}.vc-wave span:nth-child(4){height:14px;animation-delay:.21s}.vc-wave span:nth-child(5){height:20px;animation-delay:.28s}.vc-wave span:nth-child(6){height:10px;animation-delay:.35s}.vc-wave span:nth-child(7){height:16px;animation-delay:.42s}.vc-wave span:nth-child(8){height:24px;animation-delay:.49s}.vc-wave span:nth-child(9){height:12px;animation-delay:.56s}
+.iph-shell .vc-wave span{width:3px;background:#34c759;border-radius:2px}
+.vc-wave span{width:3px;background:#10B981;border-radius:2px}
+.vc-wave span:nth-child(1){height:8px}.vc-wave span:nth-child(2){height:18px}.vc-wave span:nth-child(3){height:24px}.vc-wave span:nth-child(4){height:14px}.vc-wave span:nth-child(5){height:20px}.vc-wave span:nth-child(6){height:10px}.vc-wave span:nth-child(7){height:16px}.vc-wave span:nth-child(8){height:24px}.vc-wave span:nth-child(9){height:12px}
+.iph-shell .vc-wave.vc-wave-active span,.vc-wave.vc-wave-active span{animation:vc-wv .8s ease-in-out infinite}
+.iph-shell .vc-wave.vc-wave-active span:nth-child(2),.vc-wave.vc-wave-active span:nth-child(2){animation-delay:.07s}
+.iph-shell .vc-wave.vc-wave-active span:nth-child(3),.vc-wave.vc-wave-active span:nth-child(3){animation-delay:.14s}
+.iph-shell .vc-wave.vc-wave-active span:nth-child(4),.vc-wave.vc-wave-active span:nth-child(4){animation-delay:.21s}
+.iph-shell .vc-wave.vc-wave-active span:nth-child(5),.vc-wave.vc-wave-active span:nth-child(5){animation-delay:.28s}
+.iph-shell .vc-wave.vc-wave-active span:nth-child(6),.vc-wave.vc-wave-active span:nth-child(6){animation-delay:.35s}
+.iph-shell .vc-wave.vc-wave-active span:nth-child(7),.vc-wave.vc-wave-active span:nth-child(7){animation-delay:.42s}
+.iph-shell .vc-wave.vc-wave-active span:nth-child(8),.vc-wave.vc-wave-active span:nth-child(8){animation-delay:.49s}
+.iph-shell .vc-wave.vc-wave-active span:nth-child(9),.vc-wave.vc-wave-active span:nth-child(9){animation-delay:.56s}
 @keyframes vc-wv{0%,100%{transform:scaleY(.45);opacity:.5}50%{transform:scaleY(1);opacity:1}}
 
 /* call controls */
 .vc-controls{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:auto}
-.vc-ctrl{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:default}
+.vc-ctrl{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:default;border:none;padding:0;font:inherit}
+.vc-ctrl-play.cp-control-main{width:58px;height:58px;cursor:pointer}
+.iph-shell .vc-ctrl-play .cp-icon-play{width:18px;height:18px;fill:#fff;margin-left:2px}
 .vc-ctrl-mute{background:rgba(17,24,39,.08)}
 .vc-ctrl-mute svg{width:18px;height:18px;fill:#64748b}
 .vc-ctrl-end{width:54px;height:54px;background:#EF4444;box-shadow:0 4px 16px rgba(239,68,68,.4)}
@@ -990,7 +1001,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   footer,.hero,.leak-section,.compare-section,.features,.trusted,.pricing,.mfaq-section,.cta-outer,.deep-section,.deep-section-confirmation{padding-left:22px;padding-right:22px}
   .industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.user-image-corners::before,.user-image-corners::after{display:none}
-  .pulse-dot,.vc-wave span{animation:none}
+  .pulse-dot,.vc-wave span,.vc-wave.vc-wave-active span{animation:none}
   .hero-inner{grid-template-columns:1fr;gap:28px;text-align:left}
   .hero-copy{text-align:left}
   h1.hero-h,.hero-sub{text-align:left}
@@ -1321,35 +1332,7 @@ export function MarketingHomeTemplate() {
 	            </div>
 	              </div>
             <div className="hero-visual">
-              <div className="phone-wrap">
-                <div className="phone-frame iph-shell">
-                  <div className="phone-screen iph-shell">
-                    <div className="iph-bg" aria-hidden />
-                    <div className="vc-glow" aria-hidden />
-                    <IphoneStatusBar />
-                    <div className="vc-content">
-                      <div className="vc-label">Incoming Call</div>
-                      <div className="vc-name">Luxe Hair Studio</div>
-                      <div className="vc-timer" id="vc-timer">00:24</div>
-                      <div className="vc-wave">
-                        <span /><span /><span /><span /><span /><span /><span /><span /><span />
-                      </div>
-                      <div className="vc-controls">
-                        <div className="vc-ctrl vc-ctrl-mute">
-                          <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" /></svg>
-                        </div>
-                        <div className="vc-ctrl vc-ctrl-end">
-                          <svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" transform="rotate(135 12 12)" /></svg>
-                        </div>
-                        <div className="vc-ctrl vc-ctrl-spk">
-                          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="iph-home-bar" aria-hidden />
-                  </div>
-                </div>
-              </div>
+              <HomeHeroPhoneMockup />
             </div>
             <div className="hero-stats" aria-label="Key product facts">
               <div className="hero-stat">
