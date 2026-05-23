@@ -48,7 +48,7 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   letter-spacing:var(--mk-eyebrow-ls);
 }
 
-/* ── Primary demo CTA on pricing / how-it-works (black pill — matches marketing-home) ── */
+/* ── Primary demo CTA on pricing / how-it-works hero (black pill — matches marketing-home) ── */
 .pricing-page .btn-demo-live,
 .hiw-page .hiw-btn-dark{
   background:#0d0d0d !important;
@@ -64,7 +64,7 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   filter:none !important;
 }
 
-/* ── Hero trial CTA — black text + border (hero only, not bottom CTA bands) ── */
+/* Hero trial CTA — black text + border (hero only, not bottom CTA bands) */
 .hiw-page .hiw-hero .hiw-btn-outline,
 .pricing-page .pricing-hero-plans .btn-trial-soft,
 .pricing-page .hero-copy .btn-trial-soft{
@@ -82,27 +82,6 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   background:#f5f5f5;
   border-color:#0d0d0d;
   color:#0d0d0d;
-  transform:translateY(-1px);
-}
-
-/* Bottom CTA bands — ghost trial on gradient (pricing) */
-.pricing-page .cta-box .btn-trial-soft{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:11px 20px;
-  border-radius:var(--mk-radius-pill,999px);
-  font-size:var(--mk-btn-sm,14px);
-  font-weight:600;
-  background:rgba(255,255,255,.14) !important;
-  color:#fff !important;
-  border:1px solid rgba(255,255,255,.35) !important;
-  box-shadow:none !important;
-}
-.pricing-page .cta-box .btn-trial-soft:hover{
-  background:rgba(255,255,255,.22) !important;
-  border-color:rgba(255,255,255,.5) !important;
-  color:#fff !important;
   transform:translateY(-1px);
 }
 
@@ -233,6 +212,63 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   background:rgba(255,255,255,.22);
   border-color:rgba(255,255,255,.5);
   color:#fff;
+  transform:translateY(-1px);
+}
+
+/* ── Bottom CTA bands only — demo purple; trial black flat (no border/shadow) ── */
+.cta-banner .btn-hero-live,
+.vertical-final-cta-btns .btn-hero-live,
+.html-hub-page .hub-cta-banner .btn-hero-live,
+.html-hub-page .cta-band .btn-hero-live,
+.pricing-page .cta-box .btn-demo-live,
+.hiw-page .hiw-cta-box .hiw-cta-btn-white{
+  background:#7C3AED !important;
+  color:#fff !important;
+  border:none !important;
+  box-shadow:none !important;
+  filter:none !important;
+}
+.cta-banner .btn-hero-live:hover,
+.vertical-final-cta-btns .btn-hero-live:hover,
+.html-hub-page .hub-cta-banner .btn-hero-live:hover,
+.html-hub-page .cta-band .btn-hero-live:hover,
+.pricing-page .cta-box .btn-demo-live:hover,
+.hiw-page .hiw-cta-box .hiw-cta-btn-white:hover{
+  background:#6D28D9 !important;
+  color:#fff !important;
+  border:none !important;
+  box-shadow:none !important;
+  filter:none !important;
+  transform:translateY(-1px);
+}
+.hiw-page .hiw-cta-box .hiw-cta-btn-white-arrow{color:#fff !important}
+.cta-banner .btn-outline.btn-hero-trial,
+.vertical-final-cta-btns .btn-outline.btn-hero-trial,
+.html-hub-page .hub-cta-banner .btn-outline.btn-hero-trial,
+.html-hub-page .cta-band .btn-outline.btn-hero-trial,
+.pricing-page .cta-box .btn-trial-soft,
+.pricing-page .cta-box .btn-dark,
+.pricing-page .cta-box .btn-outline,
+.hiw-page .hiw-cta-box .hiw-cta-btn-ghost{
+  background:#0d0d0d !important;
+  color:#fff !important;
+  border:none !important;
+  box-shadow:none !important;
+  filter:none !important;
+}
+.cta-banner .btn-outline.btn-hero-trial:hover,
+.vertical-final-cta-btns .btn-outline.btn-hero-trial:hover,
+.html-hub-page .hub-cta-banner .btn-outline.btn-hero-trial:hover,
+.html-hub-page .cta-band .btn-outline.btn-hero-trial:hover,
+.pricing-page .cta-box .btn-trial-soft:hover,
+.pricing-page .cta-box .btn-dark:hover,
+.pricing-page .cta-box .btn-outline:hover,
+.hiw-page .hiw-cta-box .hiw-cta-btn-ghost:hover{
+  background:#1a1a1a !important;
+  color:#fff !important;
+  border:none !important;
+  box-shadow:none !important;
+  filter:none !important;
   transform:translateY(-1px);
 }
 

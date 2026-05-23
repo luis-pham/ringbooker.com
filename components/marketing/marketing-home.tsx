@@ -924,15 +924,14 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 }
 .cta-row{display:flex;align-items:center;justify-content:center;gap:20px 28px;flex-wrap:wrap;margin-bottom:18px}
 .cta-banner .btn-hero-live{
-	background:#0d0d0d;color:#fff;padding:15px 32px;border-radius:var(--r-pill);
+	background:#7C3AED;color:#fff;padding:15px 32px;border-radius:var(--r-pill);
 	font-size:var(--mk-btn-lg);font-weight:500;text-decoration:none;
 	display:inline-flex;align-items:center;justify-content:center;gap:10px;
-	box-shadow:0 8px 24px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.1);
-	border:none;transition:transform .15s,background .2s,box-shadow .2s;
+	border:none;box-shadow:none;
+	transition:transform .15s,background .2s;
 }
 .cta-banner .btn-hero-live:hover{
-	background:#1a1a1a;transform:translateY(-1px);
-	box-shadow:0 12px 32px rgba(0,0,0,.22),0 4px 12px rgba(0,0,0,.12);
+	background:#6D28D9;transform:translateY(-1px);box-shadow:none;
 }
 .cta-banner .btn-hero-live svg{width:16px;height:16px;flex-shrink:0}
 .cta-banner .btn-hero-live .btn-hero-live-phone{width:18px;height:18px}
@@ -942,16 +941,17 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 	display:inline-flex;align-items:center;justify-content:center;
 	padding:11px 20px;border-radius:var(--r-pill);
 	font-size:var(--mk-btn-sm);font-weight:600;
-	background:rgba(255,255,255,.14);
+	background:#0d0d0d;
 	color:#fff;
-	border:1px solid rgba(255,255,255,.35);
+	border:none;
+	box-shadow:none;
 	text-decoration:none;
 }
 .cta-banner .btn-outline.btn-hero-trial:hover{
-	background:rgba(255,255,255,.22);
-	border-color:rgba(255,255,255,.5);
+	background:#1a1a1a;
 	color:#fff;
 	transform:translateY(-1px);
+	box-shadow:none;
 }
 .cta-note{font-size:12px;color:rgba(255,255,255,.72);line-height:1.5;font-weight:400;margin:0}
 
