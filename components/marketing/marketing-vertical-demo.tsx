@@ -498,8 +498,8 @@ const styles: string[] = [
   .vd-error{font-size:13px;color:#B91C1C;background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:9px 12px}
 
   /* CTA */
-  .vd-cta{width:100%;border:none;border-radius:999px;background:var(--va);color:#fff;padding:16px;font-size:16px;font-weight:900;cursor:pointer;transition:.18s;box-shadow:0 10px 28px color-mix(in srgb,var(--va) 32%,transparent);-webkit-appearance:none}
-  .vd-cta:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 12px 32px color-mix(in srgb,var(--va) 38%,transparent)}
+  .vd-cta{width:100%;border:none;border-radius:999px;background:#0d0d0d;color:#fff;padding:15px 32px;font-size:16px;font-weight:500;cursor:pointer;transition:transform .15s,background .2s,box-shadow .2s;box-shadow:0 8px 24px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.1);-webkit-appearance:none}
+  .vd-cta:hover:not(:disabled){background:#1a1a1a;transform:translateY(-1px);box-shadow:0 12px 32px rgba(0,0,0,.22),0 4px 12px rgba(0,0,0,.12)}
   .vd-cta:disabled{opacity:.55;cursor:not-allowed}
   .vd-cta-note{font-size:12px;color:#9CA3AF;text-align:center;margin-top:8px;line-height:1.5}
   .vd-phone-demo-secondary{margin-top:22px;padding:16px;border-radius:18px;border:1px solid #E5E7EB;background:#F9FAFB}
