@@ -384,6 +384,7 @@ export function GoLiveForwardingPanel({
   const numberReady = goLive.status.provision.status === 'ready' && Boolean(goLive.status.provision.ringbookerNumber);
   const forwardingConfigured = goLive.status.forwarding.configured || goLive.status.forwarding.status === 'configured' || goLive.status.forwarding.status === 'verified';
   const forwardingVerified = goLive.status.forwarding.verified || goLive.status.forwarding.status === 'verified';
+  const emailVerified = goLive.emailVerified !== false && goLive.status.emailVerification?.verified !== false;
   const liveEnabled = goLive.status.liveAnswering.enabled;
 
   const steps = useMemo(() => {
@@ -392,9 +393,9 @@ export function GoLiveForwardingPanel({
       { step: 1 as StepId, title: 'Forward missed calls to RingBooker', meta: 'One code to dial · ~2 min', done: forwardingConfigured, locked: false },
       { step: 2 as StepId, title: 'Verify forwarding', meta: 'Call your business number', done: forwardingVerified, locked: !forwardingConfigured },
       { step: 3 as StepId, title: 'Add your card', meta: billingReady ? `Trial active${formatDate(goLive.status.billing.trialEndsAt) ? ` until ${formatDate(goLive.status.billing.trialEndsAt)}` : ''}` : 'Starts free 14-day trial', done: billingReady, locked: !forwardingConfigured },
-      { step: 4 as StepId, title: 'Switch it on', meta: 'Go live instantly', done: liveEnabled, locked: !billingReady || !forwardingVerified || !goLive.canGoLive },
+      { step: 4 as StepId, title: 'Switch it on', meta: emailVerified ? 'Go live instantly' : 'Confirm your email first', done: liveEnabled, locked: !billingReady || !forwardingVerified || !emailVerified || !goLive.canGoLive },
     ].map((item) => ({ ...item, state: item.done ? 'done' as StepState : item.locked ? 'locked' as StepState : item.step === active ? 'active' as StepState : 'active' as StepState }));
-  }, [billingReady, forwardingConfigured, forwardingVerified, liveEnabled, goLive.canGoLive, goLive.status.billing.trialEndsAt]);
+  }, [billingReady, emailVerified, forwardingConfigured, forwardingVerified, liveEnabled, goLive.canGoLive, goLive.status.billing.trialEndsAt]);
 
   useEffect(() => {
     const next: StepId = !forwardingConfigured ? 1 : !forwardingVerified ? 2 : !billingReady ? 3 : 4;
@@ -692,7 +693,7 @@ export function GoLiveForwardingPanel({
           </section>
         ) : <p className="gl-empty-note">Billing, forwarding, and verification must be complete before live answering can be enabled.</p>}
         <div className="gl-action-row">
-          {!liveEnabled ? <button type="button" className="btn user-save" title={!forwardingVerified ? 'Call forwarding must be verified to go live' : undefined} disabled={!goLive.canGoLive || !forwardingVerified || busyAction === 'enable'} onClick={() => run('enable', goLive.enableLive, 'Live answering is now active.')}>{busyAction === 'enable' ? 'Enabling...' : 'Switch on live answering'}</button> : null}
+          {!liveEnabled ? <button type="button" className="btn user-save" title={!forwardingVerified ? 'Call forwarding must be verified to go live' : !emailVerified ? 'Confirm your email before going live' : undefined} disabled={!goLive.canGoLive || !forwardingVerified || !emailVerified || busyAction === 'enable'} onClick={() => run('enable', goLive.enableLive, 'Live answering is now active.')}>{busyAction === 'enable' ? 'Enabling...' : 'Switch on live answering'}</button> : null}
           {liveEnabled ? <button type="button" className="btn" disabled={busyAction === 'disable'} onClick={() => { if (window.confirm('Callers will no longer be answered by RingBooker. Your forwarding setup stays intact.')) void run('disable', goLive.disableLive, 'Live answering is disabled.'); }}>{busyAction === 'disable' ? 'Disabling...' : 'Disable live answering'}</button> : null}
           <a className="btn" href="/user/calls">View call logs</a>
         </div>

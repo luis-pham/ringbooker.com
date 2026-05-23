@@ -258,6 +258,8 @@ export const RATE_LIMIT_POLICIES = {
     blockMs: 10 * 60_000,
   },
   auth_signup_user: { name: 'auth_signup_user', limit: 8, windowMs: 30 * 60_000, blockMs: 30 * 60_000 },
+  auth_verify_email: { name: 'auth_verify_email', limit: 10, windowMs: 15 * 60_000, blockMs: 15 * 60_000 },
+  auth_resend_verification: { name: 'auth_resend_verification', limit: 3, windowMs: 60 * 60_000, blockMs: 60 * 60_000 },
   auth_google_user: { name: 'auth_google_user', limit: 20, windowMs: 10 * 60_000, blockMs: 10 * 60_000 },
   auth_login_user: { name: 'auth_login_user', limit: 5, windowMs: 10 * 60_000, blockMs: 15 * 60_000 },
   auth_login_admin: { name: 'auth_login_admin', limit: 5, windowMs: 10 * 60_000, blockMs: 15 * 60_000 },

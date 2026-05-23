@@ -5,6 +5,7 @@ import type {
   AuthUserAdminListItem,
   AuthUserRecord,
   AuthUsersRepository,
+  EmailVerificationTokenRecord,
 } from '@/src/backend/ports/repositories';
 import { hashPassword } from '@/src/backend/security/password';
 
@@ -12,6 +13,10 @@ type ResetTokenRecord = {
   userId: string;
   expiresAt: Date;
   consumedAt?: Date;
+};
+
+type EmailVerificationTokenMemoryRecord = EmailVerificationTokenRecord & {
+  expiresAtDate: Date;
 };
 
 function normalizeEmail(email: string): string {
@@ -42,6 +47,7 @@ export class InMemoryAuthUsersRepository implements AuthUsersRepository {
   private readonly usersById = new Map<string, StoredAuthUser>();
   private readonly userIdByEmail = new Map<string, string>();
   private readonly resetTokens = new Map<string, ResetTokenRecord>();
+  private readonly emailVerificationTokens = new Map<string, EmailVerificationTokenMemoryRecord>();
 
   constructor() {
     const defaultUserEmail = process.env.USER_AUTH_EMAIL?.trim().toLowerCase() ?? 'user@ringbooker.local';
@@ -158,5 +164,54 @@ export class InMemoryAuthUsersRepository implements AuthUsersRepository {
     token.consumedAt = new Date();
     this.resetTokens.set(tokenHash, token);
     return { userId: token.userId };
+  }
+
+  async createEmailVerificationToken(params: { authUserId: string; tokenHash: string; expiresAt: Date }): Promise<void> {
+    const now = new Date().toISOString();
+    this.emailVerificationTokens.set(params.tokenHash, {
+      id: randomUUID(),
+      authUserId: params.authUserId,
+      tokenHash: params.tokenHash,
+      expiresAt: params.expiresAt.toISOString(),
+      expiresAtDate: params.expiresAt,
+      usedAt: null,
+      createdAt: now,
+    });
+  }
+
+  async findEmailVerificationToken(tokenHash: string): Promise<EmailVerificationTokenRecord | null> {
+    const token = this.emailVerificationTokens.get(tokenHash);
+    if (!token) return null;
+    const { expiresAtDate: _expiresAtDate, ...record } = token;
+    return record;
+  }
+
+  async markEmailVerificationTokenUsed(tokenId: string): Promise<void> {
+    for (const [hash, token] of this.emailVerificationTokens.entries()) {
+      if (token.id !== tokenId) continue;
+      this.emailVerificationTokens.set(hash, {
+        ...token,
+        usedAt: new Date().toISOString(),
+      });
+      return;
+    }
+  }
+
+  async invalidateUnusedEmailVerificationTokens(authUserId: string): Promise<void> {
+    const usedAt = new Date().toISOString();
+    for (const [hash, token] of this.emailVerificationTokens.entries()) {
+      if (token.authUserId !== authUserId || token.usedAt) continue;
+      this.emailVerificationTokens.set(hash, { ...token, usedAt });
+    }
+  }
+
+  async markEmailVerified(authUserId: string, verifiedAt = new Date()): Promise<void> {
+    const current = this.usersById.get(authUserId);
+    if (!current) return;
+    this.usersById.set(authUserId, {
+      ...current,
+      emailVerifiedAt: verifiedAt.toISOString(),
+      updatedAt: verifiedAt.toISOString(),
+    });
   }
 }

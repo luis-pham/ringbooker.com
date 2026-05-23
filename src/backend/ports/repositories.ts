@@ -902,7 +902,17 @@ export interface AuthUserRecord {
   passwordHash: string;
   active: boolean;
   mfaEnabled: boolean;
+  emailVerifiedAt?: string | null;
 }
+
+export type EmailVerificationTokenRecord = {
+  id: string;
+  authUserId: string;
+  tokenHash: string;
+  expiresAt: string;
+  usedAt?: string | null;
+  createdAt: string;
+};
 
 /** Safe row for admin user directory (no password hash). */
 export type AuthUserAdminListItem = {
@@ -941,6 +951,15 @@ export interface AuthUsersRepository {
     expiresAt: Date;
   }): Promise<void>;
   consumePasswordResetToken(tokenHash: string): Promise<{ userId: string } | null>;
+  createEmailVerificationToken(params: {
+    authUserId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void>;
+  findEmailVerificationToken(tokenHash: string): Promise<EmailVerificationTokenRecord | null>;
+  markEmailVerificationTokenUsed(tokenId: string): Promise<void>;
+  invalidateUnusedEmailVerificationTokens(authUserId: string): Promise<void>;
+  markEmailVerified(authUserId: string, verifiedAt?: Date): Promise<void>;
 }
 
 export interface BlogPostsRepository {

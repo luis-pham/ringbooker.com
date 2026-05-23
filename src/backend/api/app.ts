@@ -133,6 +133,7 @@ import {
 import { collectEmailLifecycleDiagnostics } from '@/src/backend/services/email/diagnostics';
 import { emailRecipientDomain } from '@/src/backend/services/email/recipient-domain';
 import { sendSignupWelcomeEmail } from '@/src/backend/services/email/signup-welcome';
+import { sendVerifyEmail } from '@/src/backend/services/email/verify-email';
 import { resolveEmailProviderMode } from '@/src/backend/services/email/startup';
 import { getEnv } from '@/src/backend/config/env';
 import { logger } from '@/src/backend/observability/logger';
@@ -149,6 +150,7 @@ import { securityAudit } from '@/src/backend/security/audit-log';
 import { signDemoPreviewToken, verifyDemoPreviewToken } from '@/src/backend/security/demo-preview';
 import { AccessToken } from 'livekit-server-sdk';
 import { toLiveKitBrowserWsUrl } from '@/src/backend/lib/livekit-browser-url';
+import { generateVerificationToken, hashEmailVerificationToken } from '@/src/backend/security/email-verification';
 import { hashPassword, verifyPassword } from '@/src/backend/security/password';
 import {
   consumeRateLimit,
@@ -536,6 +538,10 @@ const forgotPasswordSchema = z.object({
 const resetPasswordSchema = z.object({
   token: z.string().min(20),
   newPassword: z.string().min(8).max(128),
+});
+
+const verifyEmailSchema = z.object({
+  token: z.string().min(64).max(128),
 });
 
 const testCallForwardingSchema = z.object({});
@@ -1691,12 +1697,17 @@ function durationMetricAggregate(
   };
 }
 
-async function readSession(c: Context): Promise<{ role: SessionRole; email: string; shopId?: string } | null> {
+async function readSession(c: Context): Promise<{ role: SessionRole; email: string; shopId?: string; emailVerified?: boolean } | null> {
   const userToken = getCookie(c, USER_SESSION_COOKIE);
   if (userToken) {
     const verified = await verifySessionToken(userToken);
     if (verified?.role === 'user') {
-      return { role: 'user', email: verified.email, shopId: verified.shopId };
+      return {
+        role: 'user',
+        email: verified.email,
+        shopId: verified.shopId,
+        emailVerified: verified.emailVerified === true,
+      };
     }
   }
 
@@ -1714,7 +1725,7 @@ async function readSession(c: Context): Promise<{ role: SessionRole; email: stri
 async function requireSession(
   c: Context,
   role: SessionRole,
-): Promise<{ role: SessionRole; email: string; shopId?: string } | Response> {
+): Promise<{ role: SessionRole; email: string; shopId?: string; emailVerified?: boolean } | Response> {
   const session = await readSession(c);
   if (!session || session.role !== role) {
     securityAudit({
@@ -1937,6 +1948,35 @@ async function sendPasswordResetEmail(params: {
       'password_reset_email_failed',
     );
   }
+}
+
+async function createAndSendEmailVerification(params: {
+  authUsersRepository: AuthUsersRepository;
+  emailService?: EmailService;
+  authUserId: string;
+  email: string;
+  shopId: string;
+  shopName: string;
+  appBaseUrl: string;
+  idempotencyPrefix: string;
+}): Promise<{ rawToken: string }> {
+  const token = generateVerificationToken();
+  await params.authUsersRepository.createEmailVerificationToken({
+    authUserId: params.authUserId,
+    tokenHash: token.hashed,
+    expiresAt: token.expiresAt,
+  });
+  await sendVerifyEmail({
+    emailService: params.emailService,
+    email: params.email,
+    shopName: params.shopName,
+    shopId: params.shopId,
+    authUserId: params.authUserId,
+    rawToken: token.raw,
+    appBaseUrl: params.appBaseUrl,
+    idempotencyKey: `${params.idempotencyPrefix}:${params.authUserId}:${token.hashed}`,
+  });
+  return { rawToken: token.raw };
 }
 
 /**
@@ -4373,10 +4413,22 @@ export function createBackendApp(deps: {
       },
     );
 
+    const verification = await createAndSendEmailVerification({
+      authUsersRepository: deps.authUsersRepository,
+      emailService: deps.emailService,
+      authUserId: authUser.id,
+      email: authUser.email,
+      shopId: createdShop.id,
+      shopName: createdShop.name,
+      appBaseUrl: getAppBaseUrl(c.req),
+      idempotencyPrefix: 'email-verification',
+    });
+
     const token = await signSessionToken({
       role: 'user',
       email: authUser.email,
       shopId: authUser.shopId ?? undefined,
+      emailVerified: Boolean(authUser.emailVerifiedAt),
       ttlHours: parsed.data.remember ? 24 * 14 : 24,
     });
     setCookie(c, USER_SESSION_COOKIE, token, {
@@ -4431,6 +4483,7 @@ export function createBackendApp(deps: {
         ok: true,
         role: 'user',
         shopId: createdShop.id,
+        emailVerified: false,
         onboardingRequired: !isShopSetupWizardComplete(createdShop),
         postAuthRedirect,
         billing: {
@@ -4444,9 +4497,110 @@ export function createBackendApp(deps: {
           name: createdShop.name,
           phone_number: createdShop.phone_number,
         },
+        ...(process.env.NODE_ENV !== 'production' ? { verificationToken: verification.rawToken } : {}),
       },
       201,
     );
+  });
+
+  app.post(path('/auth/verify-email'), async (c) => {
+    const limited = await enforceRateLimit(c, RATE_LIMIT_POLICIES.auth_verify_email, 'auth_verify_email');
+    if (limited) return limited;
+    if (!deps.authUsersRepository) {
+      return c.json({ ok: false, error: 'auth_repository_unavailable' }, 500);
+    }
+    const body = await c.req.json().catch(() => null);
+    const parsed = verifyEmailSchema.safeParse(body);
+    if (!parsed.success) return c.json({ ok: false, error: 'invalid_payload' }, 400);
+
+    const tokenHash = hashEmailVerificationToken(parsed.data.token);
+    const token = await deps.authUsersRepository.findEmailVerificationToken(tokenHash);
+    if (!token) return c.json({ ok: false, error: 'verification_token_not_found' }, 404);
+
+    const authUser = await deps.authUsersRepository.findById(token.authUserId);
+    if (!authUser || authUser.role !== 'user' || !authUser.active) {
+      return c.json({ ok: false, error: 'verification_account_unavailable' }, 404);
+    }
+    if (token.usedAt) {
+      return c.json({
+        ok: false,
+        error: 'verification_token_used',
+        status: authUser.emailVerifiedAt ? 'already_verified' : 'used',
+      }, 409);
+    }
+    if (new Date(token.expiresAt).getTime() <= Date.now()) {
+      return c.json({ ok: false, error: 'verification_token_expired', status: 'expired' }, 410);
+    }
+
+    await deps.authUsersRepository.markEmailVerificationTokenUsed(token.id);
+    await deps.authUsersRepository.markEmailVerified(authUser.id);
+    const currentSession = await readSession(c);
+    if (currentSession?.role === 'user' && currentSession.email.toLowerCase() === authUser.email.toLowerCase()) {
+      const refreshedToken = await signSessionToken({
+        role: 'user',
+        email: authUser.email,
+        shopId: authUser.shopId ?? undefined,
+        emailVerified: true,
+        ttlHours: 24 * 14,
+      });
+      setCookie(c, USER_SESSION_COOKIE, refreshedToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV !== 'development',
+        sameSite: 'Lax',
+        path: '/',
+        maxAge: 24 * 14 * 3600,
+      });
+    }
+    securityAudit({
+      action: 'auth_email_verified',
+      actorType: 'user',
+      actorId: authUser.email,
+      ip: getClientIp({ get: (name: string) => c.req.header(name) ?? null }),
+      path: c.req.path,
+    });
+    return c.json({ ok: true, status: 'verified' });
+  });
+
+  app.post(path('/auth/resend-verification'), async (c) => {
+    const csrfBlocked = enforceSameOriginForCookieMutation(c);
+    if (csrfBlocked) return csrfBlocked;
+    const sessionResult = await requireSession(c, 'user');
+    if (sessionResult instanceof Response) return sessionResult;
+    if (!deps.authUsersRepository || !deps.shopsRepository) {
+      return c.json({ ok: false, error: 'auth_repository_unavailable' }, 500);
+    }
+    const authUser = await deps.authUsersRepository.findByEmail(sessionResult.email);
+    if (!authUser || authUser.role !== 'user' || !authUser.active) {
+      return c.json({ ok: false, error: 'account_unavailable' }, 404);
+    }
+    if (authUser.emailVerifiedAt) {
+      return c.json({ ok: false, error: 'email_already_verified', emailVerified: true }, 409);
+    }
+    const limited = await enforceRateLimitWithIdentity(
+      c,
+      RATE_LIMIT_POLICIES.auth_resend_verification,
+      `auth_resend_verification:${authUser.id}`,
+    );
+    if (limited) return limited;
+    const shop = authUser.shopId ? await deps.shopsRepository.findById(authUser.shopId) : null;
+    if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+
+    await deps.authUsersRepository.invalidateUnusedEmailVerificationTokens(authUser.id);
+    const verification = await createAndSendEmailVerification({
+      authUsersRepository: deps.authUsersRepository,
+      emailService: deps.emailService,
+      authUserId: authUser.id,
+      email: authUser.email,
+      shopId: shop.id,
+      shopName: shop.name,
+      appBaseUrl: getAppBaseUrl(c.req),
+      idempotencyPrefix: 'email-verification-resend',
+    });
+    return c.json({
+      ok: true,
+      sent: true,
+      ...(process.env.NODE_ENV !== 'production' ? { verificationToken: verification.rawToken } : {}),
+    });
   });
 
   app.get(path('/auth/user/google/start'), async (c) => {
@@ -4618,6 +4772,8 @@ export function createBackendApp(deps: {
         active: true,
         mfaEnabled: false,
       });
+      await deps.authUsersRepository.markEmailVerified(authUser.id);
+      authUser = { ...authUser, emailVerifiedAt: new Date().toISOString() };
       await createNoCardTrialForShop(
         {
           billingCustomersRepository: deps.billingCustomersRepository,
@@ -4632,13 +4788,18 @@ export function createBackendApp(deps: {
       );
       createdViaGoogleSignup = true;
     } else if (authUser.shopId) {
-      shop = await deps.shopsRepository.findById(authUser.shopId);
+      if (!authUser.emailVerifiedAt) {
+        await deps.authUsersRepository.markEmailVerified(authUser.id);
+        authUser = { ...authUser, emailVerifiedAt: new Date().toISOString() };
+      }
+      shop = await deps.shopsRepository.findById(authUser.shopId ?? '');
     }
 
     const token = await signSessionToken({
       role: 'user',
       email: authUser.email,
       shopId: authUser.shopId ?? undefined,
+      emailVerified: Boolean(authUser.emailVerifiedAt),
       ttlHours: 24 * 14,
     });
     setCookie(c, USER_SESSION_COOKIE, token, {
@@ -4727,6 +4888,7 @@ export function createBackendApp(deps: {
       role: 'user',
       email: authUser.email,
       shopId: authUser.shopId ?? undefined,
+      emailVerified: Boolean(authUser.emailVerifiedAt),
       ttlHours: parsed.data.remember ? 24 * 14 : 24,
     });
 
@@ -4950,9 +5112,15 @@ export function createBackendApp(deps: {
     if (limited) return limited;
     const session = await readSession(c);
     if (!session) return c.json({ ok: false, error: 'unauthorized' }, 401);
+    const authUser = session.role === 'user' && deps.authUsersRepository
+      ? await deps.authUsersRepository.findByEmail(session.email).catch(() => null)
+      : null;
     return c.json({
       ok: true,
-      session,
+      session: {
+        ...session,
+        emailVerified: session.role === 'user' ? Boolean(authUser?.emailVerifiedAt ?? session.emailVerified) : undefined,
+      },
     });
   });
 
@@ -4967,6 +5135,10 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const sessionAuthUser = deps.authUsersRepository
+      ? await deps.authUsersRepository.findByEmail(sessionResult.email).catch(() => null)
+      : null;
+    const sessionEmailVerified = Boolean(sessionAuthUser?.emailVerifiedAt ?? sessionResult.emailVerified);
     const [bookingCount, callCount, missedCalls, commercialAccount, recentCallRows] = await Promise.all([
       deps.bookingsRepository.countByShop(shop.id),
       deps.callLogsRepository.countByShop(shop.id, {}),
@@ -5008,6 +5180,7 @@ export function createBackendApp(deps: {
       paymentMethodValid: boolean;
       subscriptionActiveLike: boolean;
       billingTrialing: boolean;
+      emailVerified: boolean;
       blockReason: BillingBlockReason;
       commercialGoLiveApproved: boolean;
       commercialApprovalRequired: boolean;
@@ -5048,6 +5221,7 @@ export function createBackendApp(deps: {
         billingTrialing: Boolean(
           subscription?.status === 'trialing' && subscription && isBillingTrialStillValid(subscription, now),
         ),
+        emailVerified: sessionEmailVerified,
         blockReason: access.blockReason,
         commercialGoLiveApproved: access.commercialGoLiveApproved,
         commercialApprovalRequired,
@@ -5522,6 +5696,10 @@ export function createBackendApp(deps: {
 
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const sessionAuthUser = deps.authUsersRepository
+      ? await deps.authUsersRepository.findByEmail(sessionResult.email).catch(() => null)
+      : null;
+    const sessionEmailVerified = Boolean(sessionAuthUser?.emailVerifiedAt ?? sessionResult.emailVerified);
 
     const access = await getShopBillingAccess(
       {
@@ -5572,8 +5750,13 @@ export function createBackendApp(deps: {
       now,
     });
 
-    const blockReason = !knowledgeGatePassed && access.canGoLive ? 'knowledge_incomplete' : access.blockReason;
-    const canGoLive = access.canGoLive && knowledgeGatePassed;
+    const emailVerified = sessionEmailVerified;
+    const blockReason = !knowledgeGatePassed && access.canGoLive
+      ? 'knowledge_incomplete'
+      : !emailVerified && access.canGoLive
+        ? 'email_not_verified'
+        : access.blockReason;
+    const canGoLive = access.canGoLive && knowledgeGatePassed && emailVerified;
 
     return c.json({
       ok: true,
@@ -5602,6 +5785,7 @@ export function createBackendApp(deps: {
       testCallsRemaining: Math.max(0, (shop.test_call_limit ?? 3) - (shop.test_call_count ?? 0)),
       liveCallsEnabled: access.liveCallsEnabled,
       canGoLive,
+      emailVerified,
       primaryCta: access.blockReason === 'commercial_approval_required' ? null : primaryCta,
       blockReason,
       commercialGoLiveApproved: access.commercialGoLiveApproved,
@@ -5619,6 +5803,9 @@ export function createBackendApp(deps: {
           status: billingStatusForGoLive(subscription),
           trialEndsAt: subscription?.trialEndsAt ?? null,
           paymentMethodAdded: access.paymentMethodStatus === 'valid',
+        },
+        emailVerification: {
+          verified: emailVerified,
         },
         provision: {
           status: provisionStatusForGoLive(shop),
@@ -8534,6 +8721,10 @@ export function createBackendApp(deps: {
     }
     const shop = await deps.shopsRepository.findById(sessionResult.shopId ?? '');
     if (!shop) return c.json({ ok: false, error: 'shop_not_found' }, 404);
+    const sessionAuthUser = deps.authUsersRepository
+      ? await deps.authUsersRepository.findByEmail(sessionResult.email).catch(() => null)
+      : null;
+    const sessionEmailVerified = Boolean(sessionAuthUser?.emailVerifiedAt ?? sessionResult.emailVerified);
     const gate = evaluateKnowledgeGate(shop);
     if (!canProceedToGoLive(gate)) {
       return c.json(
@@ -8563,6 +8754,16 @@ export function createBackendApp(deps: {
           error: 'forwarding_not_verified',
           message:
             'Call forwarding must be verified before going live. Call your business number from another phone to verify.',
+        },
+        403,
+      );
+    }
+    if (!sessionEmailVerified) {
+      return c.json(
+        {
+          ok: false,
+          error: 'email_not_verified',
+          message: 'Confirm your email address before enabling live answering.',
         },
         403,
       );

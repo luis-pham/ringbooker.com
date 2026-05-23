@@ -1,5 +1,6 @@
 export type EmailCategory =
   | 'welcome_signup'
+  | 'email_verification'
   | 'password_reset'
   | 'booking_confirmation'
   | 'booking_reminder'

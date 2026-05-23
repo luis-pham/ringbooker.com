@@ -6,6 +6,7 @@ export type SessionPayload = JWTPayload & {
   role: SessionRole;
   email: string;
   shopId?: string;
+  emailVerified?: boolean;
 };
 
 function getSigningKey(): Uint8Array {
@@ -26,6 +27,7 @@ export async function signSessionToken(input: {
   role: SessionRole;
   email: string;
   shopId?: string;
+  emailVerified?: boolean;
   ttlHours?: number;
 }): Promise<string> {
   const ttlHours = input.ttlHours && input.ttlHours > 0 ? input.ttlHours : 24;
@@ -34,6 +36,7 @@ export async function signSessionToken(input: {
     role: input.role,
     email: input.email,
     ...(input.shopId ? { shopId: input.shopId } : {}),
+    ...(input.emailVerified !== undefined ? { emailVerified: input.emailVerified } : {}),
   })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setIssuedAt(now)

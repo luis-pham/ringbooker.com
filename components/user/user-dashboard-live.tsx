@@ -61,6 +61,7 @@ export type UserDashboardResponse = {
     hasForwardingNumber: boolean;
     paymentMethodValid: boolean;
     subscriptionActiveLike: boolean;
+    emailVerified?: boolean;
     blockReason?: string;
     commercialGoLiveApproved?: boolean;
     commercialApprovalRequired?: boolean;
@@ -291,12 +292,14 @@ function buildActivationChecklist(
     {
       id: 'live_answering',
       name: 'Switch it on',
-      desc: hasBilling && goLive.forwardingSetupVerified
+      desc: hasBilling && goLive.forwardingSetupVerified && goLive.emailVerified !== false
         ? 'RingBooker starts answering missed calls immediately'
-        : 'Locked until billing and call forwarding are verified',
+        : goLive.emailVerified === false
+          ? 'Confirm your email before switching on live answering'
+          : 'Locked until billing and call forwarding are verified',
       done: goLive.liveCallsEnabled,
       href: '/user/go-live#go-live-forwarding',
-      locked: !hasBilling || !goLive.forwardingSetupVerified,
+      locked: !hasBilling || !goLive.forwardingSetupVerified || goLive.emailVerified === false,
     },
   ];
 }
@@ -878,6 +881,12 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                                     <span className="cl-action-badge">
                                       <span className="cl-action-badge-dot" aria-hidden />
                                       Action needed
+                                    </span>
+                                  ) : null}
+                                  {item.id === 'live_answering' && data.goLive?.emailVerified === false ? (
+                                    <span className="cl-action-badge">
+                                      <span className="cl-action-badge-dot" aria-hidden />
+                                      Email required
                                     </span>
                                   ) : null}
                                 </div>

@@ -357,6 +357,18 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .portal-notif-item--warn:hover{background:rgba(245,158,11,.11);border-color:rgba(245,158,11,.18)}
 .portal-notif-item--info{background:rgba(100,116,139,.07)}
 .portal-notif-item--info:hover{background:rgba(100,116,139,.11);border-color:rgba(100,116,139,.16)}
+.email-verification-banner{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  padding:10px 16px;background:#fff7ed;border-bottom:1px solid #fed7aa;
+  color:#92400e;font-size:13px;font-weight:500;
+}
+.email-verification-banner button{
+  border:1px solid #f59e0b;background:#fff;color:#92400e;border-radius:999px;
+  padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;
+}
+.email-verification-banner button:disabled{opacity:.6;cursor:not-allowed}
+.email-verification-banner small{font-size:12px;color:#b45309}
 
 .grid{display:grid;gap:18px}
 .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}

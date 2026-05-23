@@ -29,6 +29,9 @@ export type GoLiveStatus = {
     trialEndsAt: string | null;
     paymentMethodAdded: boolean;
   };
+  emailVerification?: {
+    verified: boolean;
+  };
   provision: {
     status: GoLiveProvisionStatus;
     ringbookerNumber: string | null;
@@ -58,6 +61,7 @@ export type GoLiveStatusResponse = {
   status?: GoLiveStatus;
   gate?: KnowledgeGateItem[];
   canGoLive?: boolean;
+  emailVerified?: boolean;
   blockReason?: string | null;
   primaryCta?: string | null;
   forwarding?: {
@@ -273,6 +277,7 @@ export function useGoLive(initial?: GoLiveStatusResponse | null) {
       status,
       gate,
       canGoLive,
+      emailVerified: response?.emailVerified ?? response?.status?.emailVerification?.verified ?? true,
       businessPhone: response?.businessPhone ?? null,
       businessAddress: response?.businessAddress ?? null,
       forwardingTestStatus: response?.forwardingTestStatus ?? 'none',

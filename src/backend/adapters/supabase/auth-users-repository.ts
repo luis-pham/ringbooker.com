@@ -4,6 +4,7 @@ import type {
   AuthUserAdminListItem,
   AuthUserRecord,
   AuthUsersRepository,
+  EmailVerificationTokenRecord,
 } from '@/src/backend/ports/repositories';
 
 type AuthUsersRow = {
@@ -14,6 +15,16 @@ type AuthUsersRow = {
   password_hash: string;
   active: boolean | null;
   mfa_enabled: boolean | null;
+  email_verified_at: string | null;
+};
+
+type EmailVerificationTokenRow = {
+  id: string;
+  auth_user_id: string;
+  token_hash: string;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
 };
 
 type AuthUsersAdminRow = {
@@ -36,6 +47,18 @@ function toAuthUser(row: AuthUsersRow): AuthUserRecord {
     passwordHash: row.password_hash,
     active: row.active ?? true,
     mfaEnabled: row.mfa_enabled ?? false,
+    emailVerifiedAt: row.email_verified_at,
+  };
+}
+
+function toEmailVerificationToken(row: EmailVerificationTokenRow): EmailVerificationTokenRecord {
+  return {
+    id: row.id,
+    authUserId: row.auth_user_id,
+    tokenHash: row.token_hash,
+    expiresAt: row.expires_at,
+    usedAt: row.used_at,
+    createdAt: row.created_at,
   };
 }
 
@@ -58,7 +81,7 @@ export class SupabaseAuthUsersRepository implements AuthUsersRepository {
   async findByEmail(email: string): Promise<AuthUserRecord | null> {
     const { data, error } = await this.supabase
       .from('auth_users')
-      .select('id,email,role,shop_id,password_hash,active,mfa_enabled')
+      .select('id,email,role,shop_id,password_hash,active,mfa_enabled,email_verified_at')
       .eq('email', email.trim().toLowerCase())
       .maybeSingle<AuthUsersRow>();
 
@@ -69,7 +92,7 @@ export class SupabaseAuthUsersRepository implements AuthUsersRepository {
   async findById(id: string): Promise<AuthUserRecord | null> {
     const { data, error } = await this.supabase
       .from('auth_users')
-      .select('id,email,role,shop_id,password_hash,active,mfa_enabled')
+      .select('id,email,role,shop_id,password_hash,active,mfa_enabled,email_verified_at')
       .eq('id', id)
       .maybeSingle<AuthUsersRow>();
     if (error) throw new Error(`auth_users_find_by_id_failed:${error.message}`);
@@ -94,7 +117,7 @@ export class SupabaseAuthUsersRepository implements AuthUsersRepository {
         active: params.active ?? true,
         mfa_enabled: params.mfaEnabled ?? false,
       })
-      .select('id,email,role,shop_id,password_hash,active,mfa_enabled')
+      .select('id,email,role,shop_id,password_hash,active,mfa_enabled,email_verified_at')
       .single<AuthUsersRow>();
     if (error) throw new Error(`auth_users_create_failed:${error.message}`);
     return toAuthUser(data);
@@ -179,5 +202,57 @@ export class SupabaseAuthUsersRepository implements AuthUsersRepository {
     if (updateError) throw new Error(`auth_password_reset_tokens_consume_failed:${updateError.message}`);
 
     return { userId: data.user_id };
+  }
+
+  async createEmailVerificationToken(params: {
+    authUserId: string;
+    tokenHash: string;
+    expiresAt: Date;
+  }): Promise<void> {
+    const { error } = await this.supabase.from('email_verification_tokens').insert({
+      auth_user_id: params.authUserId,
+      token_hash: params.tokenHash,
+      expires_at: params.expiresAt.toISOString(),
+    });
+    if (error) throw new Error(`email_verification_tokens_create_failed:${error.message}`);
+  }
+
+  async findEmailVerificationToken(tokenHash: string): Promise<EmailVerificationTokenRecord | null> {
+    const { data, error } = await this.supabase
+      .from('email_verification_tokens')
+      .select('id,auth_user_id,token_hash,expires_at,used_at,created_at')
+      .eq('token_hash', tokenHash)
+      .maybeSingle<EmailVerificationTokenRow>();
+    if (error) throw new Error(`email_verification_tokens_find_failed:${error.message}`);
+    return data ? toEmailVerificationToken(data) : null;
+  }
+
+  async markEmailVerificationTokenUsed(tokenId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('email_verification_tokens')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', tokenId)
+      .is('used_at', null);
+    if (error) throw new Error(`email_verification_tokens_mark_used_failed:${error.message}`);
+  }
+
+  async invalidateUnusedEmailVerificationTokens(authUserId: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('email_verification_tokens')
+      .update({ used_at: new Date().toISOString() })
+      .eq('auth_user_id', authUserId)
+      .is('used_at', null);
+    if (error) throw new Error(`email_verification_tokens_invalidate_failed:${error.message}`);
+  }
+
+  async markEmailVerified(authUserId: string, verifiedAt = new Date()): Promise<void> {
+    const { error } = await this.supabase
+      .from('auth_users')
+      .update({
+        email_verified_at: verifiedAt.toISOString(),
+        updated_at: verifiedAt.toISOString(),
+      })
+      .eq('id', authUserId);
+    if (error) throw new Error(`auth_users_mark_email_verified_failed:${error.message}`);
   }
 }
