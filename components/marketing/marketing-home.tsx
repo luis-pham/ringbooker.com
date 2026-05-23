@@ -977,11 +977,11 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .industry-tag{backdrop-filter:none}
   .hero-blob,.vc-glow,.user-image-corners::before,.user-image-corners::after{display:none}
   .pulse-dot,.vc-wave span{animation:none}
-  .hero-inner{grid-template-columns:1fr;gap:28px;text-align:center}
-  .hero-copy{text-align:center}
-  h1.hero-h,.hero-sub{text-align:center}
-  .hero-sub{margin-left:auto;margin-right:auto}
-  .hero-btns{justify-content:center}
+  .hero-inner{grid-template-columns:1fr;gap:28px;text-align:left}
+  .hero-copy{text-align:left}
+  h1.hero-h,.hero-sub{text-align:left}
+  .hero-sub{margin-left:0;margin-right:0}
+  .hero-btns{justify-content:flex-start}
   .hero-stats{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:4px}
   .hero-stat{border-bottom:1px solid var(--border)}
   .hero-stat:nth-child(2n){border-right:none}
@@ -1008,7 +1008,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   .pricing .plan{box-shadow:0 1px 2px rgba(17,24,39,.04)}
   .pricing .plan:hover{transform:none;box-shadow:0 1px 2px rgba(17,24,39,.04)}
   .pricing .plan.star,.pricing .plan.star:hover{box-shadow:0 0 0 1px rgba(139,92,246,.08)}
-  h1.hero-h{font-size:clamp(26px,7.2vw,40px);letter-spacing:-1.5px;line-height:1.18}
+  h1.hero-h{font-size:clamp(36px,7.2vw,58px);letter-spacing:-2px;line-height:1.12}
   .hero-sub{margin-bottom:26px}
   .hero-btns{flex-direction:column;align-items:stretch;gap:10px}
   .hero-btns .btn-hero-live,
@@ -1420,7 +1420,7 @@ export function MarketingHomeTemplate() {
                 {[
                   { label: 'After-hours missed calls', range: '$720 – $1,080', width: '100%', barColor: '#F9E4E1' },
                   { label: 'Peak-hour overflow', range: '$360 – $540', width: '50%', barColor: '#E1ECE6' },
-                  { label: 'In-service missed calls', range: '$560 – $840', width: '78%', barColor: '#F2EEE6' },
+                  { label: 'In-service missed calls', range: '$560 – $840', width: '78%', barColor: '#C4B5FD' },
                 ].map(({ label, range, width, barColor }) => (
                   <div className="leak-revenue-row" key={label}>
                     <span className="leak-revenue-label">{label}</span>

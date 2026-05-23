@@ -709,6 +709,10 @@ const siteReadStyles: string = String.raw`
 /** Mobile-only (≤768px). Desktop uses existing rules from `styles` / `siteReadStyles`. */
 const verticalDemoMobileStyles = String.raw`
 @media (max-width:768px){
+  .vd-page-header{align-items:flex-start}
+  .vd-page-header .vd-hero-eyebrow{display:none}
+  .vd-hero-h1{text-align:left;margin-left:0;margin-right:0;max-width:100%}
+  .vd-hero-sub{text-align:left;margin-left:0;margin-right:0;max-width:100%}
   .vd-m-card{border:2px solid var(--va);border-radius:20px;background:#fff;padding:18px 16px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
   .vd-m-card-title{margin:0 0 6px;font-size:15px;font-weight:900;color:#111827;letter-spacing:-.02em}
   .vd-m-card-sub{margin:0 0 12px;font-size:13px;color:#64748B;line-height:1.5}

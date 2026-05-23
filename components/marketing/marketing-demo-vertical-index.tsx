@@ -185,7 +185,9 @@ const styles = [
       .demo-hub-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @media (max-width:640px){
-      .demo-hub-hero{padding-top:56px}
+      .demo-hub-hero{padding-top:56px;text-align:left}
+      .demo-hub-eyebrow{display:none}
+      .demo-hub-hero h1{margin-left:0;margin-right:0;max-width:100%;text-align:left}
       .demo-hub-grid{grid-template-columns:1fr}
       .demo-hub-card{min-height:0}
       .demo-hub-trust{gap:12px}

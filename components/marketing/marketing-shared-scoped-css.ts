@@ -269,4 +269,5 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   max-width:min(760px,100%);
   margin-bottom:42px;
 }
+
 `;
