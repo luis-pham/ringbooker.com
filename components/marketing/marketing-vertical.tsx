@@ -132,35 +132,35 @@ const INDUSTRY_THEME: Record<MarketingVerticalKey, IndustryLandingTheme> = {
   'nail-salon': {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ede9fe_0%,#fdf4ff_38%,#ffffff_62%)]',
-    finalCtaGradient: 'bg-[linear-gradient(125deg,#5b21b6_0%,#7c3aed_50%,#a78bfa_100%)]',
+    finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
     accentClass: 'text-violet-600',
   },
   'hair-salon': {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ffedd5_0%,#fffbeb_42%,#ffffff_68%)]',
-    finalCtaGradient: 'bg-[linear-gradient(125deg,#9a3412_0%,#d97706_48%,#f59e0b_100%)]',
+    finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
     accentClass: 'text-amber-600',
   },
   spa: {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#ccfbf1_0%,#f0fdfa_44%,#ffffff_70%)]',
-    finalCtaGradient: 'bg-[linear-gradient(125deg,#115e59_0%,#0d9488_50%,#14b8a6_100%)]',
+    finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
     accentClass: 'text-teal-600',
   },
   'med-spa': {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#e0e7ff_0%,#eef2ff_46%,#ffffff_72%)]',
-    finalCtaGradient: 'bg-[linear-gradient(125deg,#312e81_0%,#4f46e5_52%,#818cf8_100%)]',
+    finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
     accentClass: 'text-indigo-600',
   },
   'beauty-clinic': {
     pageShellBg:
       'bg-[radial-gradient(ellipse_76%_54%_at_50%_0%,#fae8ff_0%,#fdf4ff_46%,#ffffff_72%)]',
-    finalCtaGradient: 'bg-[linear-gradient(125deg,#86198f_0%,#c026d3_50%,#e879f9_100%)]',
+    finalCtaGradient: 'bg-[#0d0d0d]',
     heroEyebrowClass: VERTICAL_HERO_EYEBROW,
     accentClass: 'text-fuchsia-600',
   },

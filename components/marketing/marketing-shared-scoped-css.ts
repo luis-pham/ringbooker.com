@@ -207,6 +207,7 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   background:rgba(255,255,255,.14);
   color:#fff;
   border:1px solid rgba(255,255,255,.35);
+  box-shadow:none;
 }
 .vertical-final-cta-btns .btn-outline.btn-hero-trial:hover{
   background:rgba(255,255,255,.22);
@@ -215,7 +216,18 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   transform:translateY(-1px);
 }
 
-/* ── Bottom CTA bands only — demo purple; trial black flat (no border/shadow) ── */
+/* ── Bottom CTA band containers — black (no gradient/border/shadow on the strip) ── */
+.cta-banner,
+.html-hub-page .hub-cta-banner,
+.html-hub-page .cta-band,
+.hiw-page .hiw-cta-box,
+.pricing-page .cta-box{
+  background:#0d0d0d !important;
+  border:none !important;
+  box-shadow:none !important;
+}
+
+/* ── Bottom CTA bands only — demo purple; trial flat ghost (no border/shadow) ── */
 .cta-banner .btn-hero-live,
 .vertical-final-cta-btns .btn-hero-live,
 .html-hub-page .hub-cta-banner .btn-hero-live,
@@ -242,31 +254,26 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   transform:translateY(-1px);
 }
 .hiw-page .hiw-cta-box .hiw-cta-btn-white-arrow{color:#fff !important}
+/* Bottom trial CTA — ghost white (original style before flat-black experiment) */
 .cta-banner .btn-outline.btn-hero-trial,
-.vertical-final-cta-btns .btn-outline.btn-hero-trial,
 .html-hub-page .hub-cta-banner .btn-outline.btn-hero-trial,
 .html-hub-page .cta-band .btn-outline.btn-hero-trial,
 .pricing-page .cta-box .btn-trial-soft,
-.pricing-page .cta-box .btn-dark,
-.pricing-page .cta-box .btn-outline,
 .hiw-page .hiw-cta-box .hiw-cta-btn-ghost{
-  background:#0d0d0d !important;
+  background:rgba(255,255,255,.14) !important;
   color:#fff !important;
-  border:none !important;
+  border:1px solid rgba(255,255,255,.35) !important;
   box-shadow:none !important;
   filter:none !important;
 }
 .cta-banner .btn-outline.btn-hero-trial:hover,
-.vertical-final-cta-btns .btn-outline.btn-hero-trial:hover,
 .html-hub-page .hub-cta-banner .btn-outline.btn-hero-trial:hover,
 .html-hub-page .cta-band .btn-outline.btn-hero-trial:hover,
 .pricing-page .cta-box .btn-trial-soft:hover,
-.pricing-page .cta-box .btn-dark:hover,
-.pricing-page .cta-box .btn-outline:hover,
 .hiw-page .hiw-cta-box .hiw-cta-btn-ghost:hover{
-  background:#1a1a1a !important;
+  background:rgba(255,255,255,.22) !important;
+  border-color:rgba(255,255,255,.5) !important;
   color:#fff !important;
-  border:none !important;
   box-shadow:none !important;
   filter:none !important;
   transform:translateY(-1px);

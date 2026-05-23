@@ -1136,7 +1136,9 @@ const HTML_HUB_SCOPED_CSS_BASE = `
 .html-hub-page .hub-cta-inner{width:100%;max-width:1100px}
 .html-hub-page .hub-cta-banner{
   border-radius:var(--radius-lg);
-  background:linear-gradient(125deg,#6D28D9 0%,#8B5CF6 55%,#A78BFA 100%);
+  background:#0d0d0d;
+  border:none;
+  box-shadow:none;
   padding:52px 56px;
   display:grid;
   grid-template-columns:1fr auto;
@@ -1184,7 +1186,7 @@ const HTML_HUB_SCOPED_CSS_BASE = `
   z-index:2;
   min-width:0;
 }
-/* Trial on colored bottom band — ghost white (matches marketing-home .cta-banner) */
+/* Trial on bottom band — ghost white (matches marketing-home .cta-banner) */
 .html-hub-page .hub-cta-banner .btn-outline.btn-hero-trial,
 .html-hub-page .cta-band .btn-outline.btn-hero-trial{
   display:inline-flex;
@@ -1201,6 +1203,7 @@ const HTML_HUB_SCOPED_CSS_BASE = `
   font-family:inherit;
   box-sizing:border-box;
   cursor:pointer;
+  box-shadow:none;
   transition:background .2s,border-color .2s,color .2s,transform .15s;
 }
 .html-hub-page .hub-cta-banner .btn-outline.btn-hero-trial:hover,
