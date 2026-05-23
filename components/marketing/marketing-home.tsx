@@ -355,7 +355,7 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 .vc-mini-time{font-size:14px;font-weight:500;color:#111827}
 .vc-mini-icons{font-size:10px;color:#64748b}
 .vc-label{font-size:11px;font-weight:600;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
-.vc-name{font-size:18px;font-weight:500;color:#111827;margin-bottom:4px}
+.vc-name{font-size:19px;font-weight:500;color:#111827;margin-bottom:4px}
 .vc-timer{font-size:14px;color:#94a3b8;margin-bottom:20px;font-variant-numeric:tabular-nums}
 
 /* waveform */
@@ -1269,6 +1269,8 @@ setPriceSafe('monthly')
   const THRESHOLD = 0.2
   const style = document.createElement('style')
   style.textContent = [
+    '@keyframes v-anim-phone-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}',
+    '.v-anim-phone-float{animation:v-anim-phone-float 5s ease-in-out infinite;will-change:transform}',
     '.home-pain-pre{opacity:0;transform:translateY(24px);transition:opacity 600ms ease-out,transform 600ms ease-out}',
     '.home-pain-in{opacity:1;transform:translateY(0)}',
     '.home-call-pre{opacity:0;transform:translateY(12px);transition:opacity 400ms ease-out,transform 400ms ease-out}',
@@ -1277,6 +1279,9 @@ setPriceSafe('monthly')
     '.home-stat-fade-in{opacity:1}',
   ].join('')
   document.head.appendChild(style)
+
+  const homePhone = document.querySelector('[data-home-phone-float] .phone-frame')
+  if (homePhone) homePhone.classList.add('v-anim-phone-float')
 
   const easeOutExpo = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t))
   const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
@@ -1341,6 +1346,20 @@ setPriceSafe('monthly')
     })
   }
 
+  const industryMetrics = document.getElementById('by-the-numbers')
+  if (industryMetrics) {
+    const statNums = Array.from(industryMetrics.querySelectorAll('.metrics-value[data-count]'))
+    statNums.forEach((el) => {
+      const suffix = el.getAttribute('data-suffix') || ''
+      el.textContent = '0' + suffix
+    })
+    observeOnce(industryMetrics, () => {
+      statNums.forEach((el, index) => {
+        animateCounter(el, index * 120)
+      })
+    })
+  }
+
   const revenueCard = document.getElementById('home-leak-revenue-card')
   if (revenueCard) {
     const bars = Array.from(revenueCard.querySelectorAll('.leak-revenue-bar span[data-width]'))
@@ -1380,16 +1399,21 @@ setPriceSafe('monthly')
     })
   }
 
-  const callsPanel = document.getElementById('home-tonights-calls-panel')
-  if (callsPanel) {
-    const rows = Array.from(callsPanel.querySelectorAll('.coverage-call-row'))
+  const setupCallStagger = (panelId, rowSelector, delayForIndex) => {
+    const panel = document.getElementById(panelId)
+    if (!panel) return
+    const rows = Array.from(panel.querySelectorAll(rowSelector))
     rows.forEach((row) => row.classList.add('home-call-pre'))
-    observeOnce(callsPanel, () => {
+    observeOnce(panel, () => {
       rows.forEach((row, index) => {
-        window.setTimeout(() => row.classList.add('home-call-in'), index * 300)
+        window.setTimeout(() => row.classList.add('home-call-in'), delayForIndex(index))
       })
     })
   }
+
+  setupCallStagger('home-tonights-calls-panel', '.coverage-call-row', (index) => index * 300)
+  setupCallStagger('home-call-summary-panel', '.coverage-status-row', (index) => index * 300)
+  setupCallStagger('home-missed-call-recovery-panel', '.coverage-msg-row', (index) => index * 350)
 })()
 `,
 ];
@@ -1459,7 +1483,7 @@ export function MarketingHomeTemplate() {
               </a>
 	            </div>
 	              </div>
-            <div className="hero-visual">
+            <div className="hero-visual" data-home-phone-float>
               <HomeHeroPhoneMockup />
             </div>
             <div className="hero-stats" aria-label="Key product facts">
@@ -1627,7 +1651,7 @@ export function MarketingHomeTemplate() {
             </div>
               <div className="coverage-visual coverage-visual-sage" aria-hidden="true">
                 <span className="coverage-visual-num">02</span>
-                <div className="coverage-panel">
+                <div className="coverage-panel" id="home-call-summary-panel">
                   <p className="coverage-panel-title">Call summary</p>
                   <div className="coverage-status-row">
                     <span className="coverage-status-label">Caller intent</span>
@@ -1663,7 +1687,7 @@ export function MarketingHomeTemplate() {
               </div>
               <div className="coverage-visual coverage-visual-sand" aria-hidden="true">
                 <span className="coverage-visual-num">03</span>
-                <div className="coverage-panel">
+                <div className="coverage-panel" id="home-missed-call-recovery-panel">
                   <p className="coverage-panel-title">Missed call recovery</p>
                   <div className="coverage-msg-row">
                     <p className="coverage-msg-text">
@@ -1747,17 +1771,17 @@ export function MarketingHomeTemplate() {
               </div>
             <div className="metrics-grid reveal" id="by-the-numbers">
               <article className="metrics-cell">
-                <div className="metrics-value">500+</div>
+                <div className="metrics-value" data-count="500" data-suffix="+">500+</div>
                 <div className="metrics-label">Demo calls completed</div>
                 <p className="metrics-sublabel">Across all salon verticals</p>
               </article>
               <article className="metrics-cell">
-                <div className="metrics-value">200+</div>
+                <div className="metrics-value" data-count="200" data-suffix="+">200+</div>
                 <div className="metrics-label">Salon profiles built</div>
                 <p className="metrics-sublabel">From real salon websites</p>
               </article>
               <article className="metrics-cell">
-                <div className="metrics-value">5</div>
+                <div className="metrics-value" data-count="5">5</div>
                 <div className="metrics-label">Languages supported</div>
                 <p className="metrics-sublabel">EN · ES · KO · ZH · VI</p>
               </article>

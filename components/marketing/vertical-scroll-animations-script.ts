@@ -19,10 +19,6 @@ export const verticalScrollAnimationsScript = `
     '.v-anim-vs-in{opacity:1}',
     '.v-anim-hub-pre{opacity:0;transform:translateY(16px);transition:opacity 400ms ease-out,transform 400ms ease-out}',
     '.v-anim-hub-in{opacity:1;transform:translateY(0)}',
-    '@media(min-width:768px){',
-    '.v-anim-step-conn{display:block;position:absolute;top:42px;left:calc(50% + 18px);width:calc(50% + 20px);height:2px;background:#d1d5db;transform-origin:left center;transform:scaleX(0);transition:transform 500ms ease-out;pointer-events:none;z-index:0}',
-    '.v-anim-step-conn.is-drawn{transform:scaleX(1)}',
-    '}',
   ].join('')
   document.head.appendChild(style)
 
@@ -98,26 +94,10 @@ export const verticalScrollAnimationsScript = `
     const scroller = section.querySelector('[data-vertical-step-scroller]')
     if (!scroller) return
     const cards = Array.from(scroller.querySelectorAll('[data-vertical-step-card]'))
-    const connectors = []
-    if (window.matchMedia('(min-width: 768px)').matches) {
-      cards.forEach((card, index) => {
-        if (index >= cards.length - 1) return
-        const conn = document.createElement('span')
-        conn.className = 'v-anim-step-conn'
-        conn.setAttribute('data-vertical-step-connector', String(index))
-        conn.setAttribute('aria-hidden', 'true')
-        card.appendChild(conn)
-        connectors.push(conn)
-      })
-    }
     cards.forEach((card) => card.classList.add('v-anim-step-pre'))
     observeOnce(section, () => {
       cards.forEach((card, index) => {
-        const delay = index * 250
-        window.setTimeout(() => card.classList.add('v-anim-step-in'), delay)
-        if (connectors[index]) {
-          window.setTimeout(() => connectors[index].classList.add('is-drawn'), delay + 500)
-        }
+        window.setTimeout(() => card.classList.add('v-anim-step-in'), index * 250)
       })
     })
   })

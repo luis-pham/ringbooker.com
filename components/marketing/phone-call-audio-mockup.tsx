@@ -36,6 +36,10 @@ export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
 .iph-shell .vc-call-status--active{
   color:#34c759;
 }
+.iph-shell .vc-name{
+  font-size:19px;
+  font-weight:500;
+}
 .iph-shell .vc-call-status-dot{
   width:6px;
   height:6px;

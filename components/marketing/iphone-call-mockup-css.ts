@@ -138,8 +138,8 @@ export const IPHONE_CALL_MOCKUP_CSS = `
 }
 .iph-shell .vc-name,
 .iph-shell .cp-business-name{
-  font-size:clamp(22px,5vw,28px);
-  font-weight:600;
+  font-size:19px;
+  font-weight:500;
   color:#fff;
   letter-spacing:-.03em;
   text-align:center;
