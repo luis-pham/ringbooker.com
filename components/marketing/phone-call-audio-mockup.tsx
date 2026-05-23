@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { IphoneStatusBar } from '@/components/marketing/iphone-status-bar';
 import { marketingDemoAudioUrl } from '@/lib/marketing/demo-audio-cdn';
@@ -167,8 +167,6 @@ function CallScreenBody({
   waveActive,
   isPlaying,
   playbackState,
-  audioSrc,
-  audioRef,
   onCenterClick,
 }: {
   businessName: string;
@@ -176,13 +174,10 @@ function CallScreenBody({
   waveActive: boolean;
   isPlaying: boolean;
   playbackState: PlaybackState;
-  audioSrc: string;
-  audioRef: RefObject<HTMLAudioElement | null>;
   onCenterClick: () => void;
 }) {
   return (
     <>
-      <audio ref={audioRef} src={audioSrc} preload="metadata" className="sr-only" aria-hidden />
       <div className="iph-bg" aria-hidden />
       <div className="vc-glow" aria-hidden />
       <IphoneStatusBar />
@@ -241,7 +236,7 @@ function CallScreenBody({
 }
 
 export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }: PhoneCallAudioMockupProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [playbackState, setPlaybackState] = useState<PlaybackState>('idle');
   const [timerLabel, setTimerLabel] = useState('00:00');
 
@@ -317,18 +312,21 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     waveActive,
     isPlaying,
     playbackState,
-    audioSrc,
-    audioRef,
     onCenterClick: handleCenterClick,
   };
+
+  const screen = (
+    <>
+      <audio ref={audioRef} src={audioSrc} preload="metadata" className="sr-only" aria-hidden />
+      <CallScreenBody {...screenProps} />
+    </>
+  );
 
   if (shell === 'vertical') {
     return (
       <>
         <div className="cp-frame iph-shell">
-          <div className="cp-screen iph-shell">
-            <CallScreenBody {...screenProps} />
-          </div>
+          <div className="cp-screen iph-shell">{screen}</div>
         </div>
       </>
     );
@@ -338,9 +336,7 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     <>
       <div className="phone-wrap">
         <div className="phone-frame iph-shell">
-          <div className="phone-screen iph-shell">
-            <CallScreenBody {...screenProps} />
-          </div>
+          <div className="phone-screen iph-shell">{screen}</div>
         </div>
       </div>
       <style dangerouslySetInnerHTML={{ __html: PHONE_CALL_AUDIO_MOCKUP_CSS }} />
