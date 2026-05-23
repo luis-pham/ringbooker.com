@@ -7,6 +7,7 @@ import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-acco
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { CallPreviewPlayer, type CallLine } from '@/components/marketing/call-preview-player';
 import { VerticalHeroGrid } from '@/components/marketing/vertical-hero-grid';
+import { VerticalPainIcon, type VerticalPainIconId } from '@/components/marketing/vertical-pain-icons';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
 import { mkSectionTitle } from '@/lib/marketing/section-title';
@@ -357,6 +358,11 @@ function HowItWorks({
             data-vertical-step-card
             className={`relative w-[84%] shrink-0 snap-center rounded-3xl bg-white p-6 text-center max-md:cursor-pointer md:w-auto md:shrink md:snap-none ${VERTICAL_CARD_SURFACE}`}
           >
+            <div
+              className={`mb-4 mx-auto hidden h-9 w-9 items-center justify-center rounded-full md:flex ${accentBg} text-sm font-medium text-white`}
+            >
+              {s.n}
+            </div>
             <p className="text-[15px] font-medium text-slate-900">{s.title}</p>
             <p className="mt-2 text-[13.5px] leading-6 text-slate-500">{s.body}</p>
           </div>
@@ -366,27 +372,28 @@ function HowItWorks({
   );
 }
 
-type StatItem = { value: string; label: string; sub: string };
-function StatStrip({ stats, accent }: { stats: StatItem[]; accent: string }) {
+type StatItem = { eyebrow: string; value: string; desc: string; source: string };
+function StatStrip({ stats, accentClass }: { stats: StatItem[]; accentClass: string }) {
   return (
-    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
-      <div className="grid gap-4 md:grid-cols-3">
-        {stats.map((s) => (
-          <article
-            key={s.label}
-            className={`rounded-3xl bg-white p-6 text-center ${VERTICAL_CARD_SURFACE}`}
+    <section className="vertical-stat-strip-section mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
+      <div className="vertical-stat-strip">
+        {stats.map((s, index) => (
+          <div
+            key={s.eyebrow}
+            className={`vertical-stat-strip__col${index === stats.length - 1 ? ' vertical-stat-strip__col--last' : ''}`}
           >
-            <p className={`text-5xl font-medium tracking-tight ${accent}`}>{s.value}</p>
-            <p className="mt-2 text-base font-medium text-slate-900">{s.label}</p>
-            <p className="mt-1 text-[13.5px] leading-6 text-slate-500">{s.sub}</p>
-          </article>
+            <p className={`vertical-stat-strip__eyebrow ${accentClass}`}>{s.eyebrow}</p>
+            <p className="vertical-stat-strip__value">{s.value}</p>
+            <p className="vertical-stat-strip__desc">{s.desc}</p>
+            <p className="vertical-stat-strip__source">{s.source}</p>
+          </div>
         ))}
       </div>
     </section>
   );
 }
 
-type PainPoint = { icon?: string; title: string; body: string };
+type PainPoint = { icon: VerticalPainIconId; title: string; body: string };
 function PainPoints({
   points,
   heading,
@@ -399,20 +406,21 @@ function PainPoints({
   eyebrow?: string;
 }) {
   return (
-    <section className="mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
+    <section className="vertical-pain-section mx-auto mt-[88px] max-w-6xl px-6 md:pb-16">
       <div className="mk-section-head">
-        <div className={`mb-3 ${VERTICAL_SEC_EYEBROW} ${eyebrowClass}`}>{eyebrow}</div>
+        <p className={`vertical-pain-section__eyebrow ${eyebrowClass}`}>{eyebrow}</p>
         <h2 className={MK_SECTION_H2}>{heading}</h2>
       </div>
-      <div className="mt-8 grid gap-5 md:grid-cols-2">
+      <div className="vertical-pain-section__grid">
         {points.map((p) => (
-          <article
-            key={p.title}
-            className={`rounded-3xl bg-slate-50 p-6 hover:bg-white ${VERTICAL_CARD_SURFACE}`}
-          >
-            {p.icon && <div className="mb-3 text-2xl">{p.icon}</div>}
-            <p className="text-[15px] font-medium text-slate-900">{p.title}</p>
-            <p className="mt-2 text-[13.5px] leading-6 text-slate-600">{p.body}</p>
+          <article key={p.title} className="vertical-pain-card">
+            <div className="vertical-pain-card__header">
+              <span className="vertical-pain-card__icon">
+                <VerticalPainIcon id={p.icon} />
+              </span>
+              <p className="vertical-pain-card__title">{p.title}</p>
+            </div>
+            <p className="vertical-pain-card__desc">{p.body}</p>
           </article>
         ))}
       </div>
@@ -567,22 +575,25 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accent="text-violet-600"
+        accentClass="text-violet-600"
         stats={[
           {
+            eyebrow: 'Missed calls',
             value: '37%',
-            label: 'of nail salon calls are missed',
-            sub: 'Zenoti 2025: missed-call volume is already high before you factor in overflow spikes.',
+            desc: 'of nail salon calls are missed before overflow is factored in',
+            source: 'Zenoti 2025',
           },
           {
+            eyebrow: 'Timing',
             value: '82%',
-            label: 'happen during business hours',
-            sub: 'Zenoti 2025: most loss happens while you are open, when staff are busy with clients.',
+            desc: "of missed calls happen while you're open and staff are with clients",
+            source: 'Zenoti 2025',
           },
           {
+            eyebrow: 'Voicemail',
             value: '80%',
-            label: "of callers don't leave voicemail",
-            sub: 'Ambs Call Center 2025: silent hang-ups are common, so callbacks alone rarely recover demand.',
+            desc: 'of callers hang up silently — callbacks alone rarely recover them',
+            source: 'Ambs Call Center 2025',
           },
         ]}
       />
@@ -593,24 +604,24 @@ function NailPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         points={[
           {
-            icon: '💅',
+            icon: 'phone-off',
             title: 'Techs are with clients when the phone rings',
-            body: 'During busy hours, every technician has hands full. No one can stop mid-service to answer pricing questions or take a same-day walk-in call. The phone goes to voicemail — and voicemail doesn\'t convert.',
+            body: 'During busy hours every technician has hands full. No one can stop mid-service to answer pricing questions or take a same-day walk-in. The phone rings out.',
           },
           {
-            icon: '💰',
+            icon: 'currency-dollar',
             title: 'Callers want prices, not a callback',
-            body: 'The most common nail salon calls are "how much for a full set?" or "do you have availability today?" These are high-intent callers who will book — if someone answers. If not, they call the next salon.',
+            body: 'The most common calls are "how much for a full set?" — high-intent callers who will book if someone answers. If not, they call the next salon immediately.',
           },
           {
-            icon: '📅',
-            title: 'Walk-ins and same-day calls flood in on weekends',
-            body: 'Weekend and lunch-hour call volume spikes exactly when your team is most occupied. After-hours calls from clients checking hours or pricing also go unanswered. You can\'t grow if you\'re invisible outside open hours.',
+            icon: 'calendar-event',
+            title: 'Walk-ins flood in on weekends and lunch hours',
+            body: 'Volume spikes exactly when your team is most occupied. After-hours calls from clients checking hours or pricing also go unanswered.',
           },
           {
-            icon: '📵',
+            icon: 'message-off',
             title: 'Voicemail is a dead end for nail clients',
-            body: 'Almost no one leaves a voicemail for a nail salon. They just call the next place. Even customers who left messages before rarely do it again. The only way to capture these bookings is to answer live.',
+            body: 'Almost no one leaves a voicemail for a nail salon. Even repeat customers rarely try twice — the only way to capture them is to answer live.',
           },
         ]}
       />
@@ -775,22 +786,25 @@ export async function MarketingNailSalonVietnameseTemplate() {
         />
 
         <StatStrip
-          accent="text-violet-600"
+          accentClass="text-violet-600"
           stats={[
             {
+              eyebrow: 'Cuộc gọi nhỡ',
               value: '37%',
-              label: 'cuộc gọi tiệm nail bị bỏ lỡ',
-              sub: 'Zenoti 2025: 82% trong số đó xảy ra trong giờ làm việc — khi thợ đang làm dịch vụ và không thể nghe máy.',
+              desc: 'cuộc gọi tiệm nail bị bỏ lỡ trước khi tính thêm giờ quá tải',
+              source: 'Zenoti 2025',
             },
             {
+              eyebrow: 'Thời điểm',
+              value: '82%',
+              desc: 'cuộc gọi nhỡ xảy ra trong giờ mở cửa — khi thợ đang làm dịch vụ và không thể nghe máy',
+              source: 'Zenoti 2025',
+            },
+            {
+              eyebrow: 'Hộp thư thoại',
               value: '80%',
-              label: 'khách không để lại tin nhắn thoại',
-              sub: 'Khi gặp hộp thư thoại, 80% khách cúp máy và gọi cho tiệm khác (Moneypenny).',
-            },
-            {
-              value: '$38,000+',
-              label: 'doanh thu bị mất mỗi năm',
-              sub: 'Phân tích RingBooker: một tiệm nail trung bình mất hơn $38,000 mỗi năm vì bỏ lỡ cuộc gọi trong giờ cao điểm và ngoài giờ.',
+              desc: 'khách cúp máy im lặng — gọi lại một mình hiếm khi lấy lại được khách',
+              source: 'Ambs Call Center 2025',
             },
           ]}
         />
@@ -801,24 +815,24 @@ export async function MarketingNailSalonVietnameseTemplate() {
           eyebrowClass={theme.accentClass}
           points={[
             {
-              icon: '💸',
+              icon: 'currency-dollar',
               title: 'Bỏ lỡ cuộc gọi = mất khách',
               body: 'Mỗi cuộc gọi nhỡ là một khách tiềm năng có thể đang so sánh 2-3 tiệm cùng lúc. Tiệm nào bắt máy trước thường giữ được khách đó.',
             },
             {
-              icon: '😰',
+              icon: 'phone-off',
               title: 'Lễ tân bận — điện thoại không ai nghe',
               body: 'Trong giờ cao điểm, lễ tân phải cùng lúc check-in khách, tính tiền, và trả lời câu hỏi. Điện thoại thường bị bỏ qua.',
             },
             {
-              icon: '🌙',
+              icon: 'moon',
               title: 'Khách gọi ngoài giờ — tiệm đã đóng cửa',
               body: '30% lịch hẹn được đặt khi tiệm đã đóng cửa (Phorest). Khách gọi lúc 8 giờ tối không thể chờ đến sáng hôm sau.',
             },
             {
-              icon: '⚠️',
+              icon: 'phone-x',
               title: 'Khách Việt muốn nói tiếng Việt',
-              body: 'Nhiều khách người Việt thoải mái hơn khi giao tiếp bằng tiếng mẹ đẻ. Một lễ tân AI song ngữ giúp phục vụ tốt hơn cả hai nhóm khách.',
+              body: 'Nhiều khách người Việt thoải mái hơn khi giao tiếp bằng tiếng mẹ đẻ. Nếu không ai nghe hoặc trả lời được, họ gọi sang tiệm khác ngay.',
             },
           ]}
         />
@@ -971,22 +985,25 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accent="text-amber-600"
+        accentClass="text-amber-600"
         stats={[
           {
+            eyebrow: 'Missed calls',
             value: '37%',
-            label: 'of hair salon calls are missed — 82% during business hours',
-            sub: 'Zenoti 2025: most missed calls happen while stylists are mid-service, not after closing.',
+            desc: 'of hair salon calls are missed — 82% during business hours while stylists are mid-service',
+            source: 'Zenoti 2025',
           },
           {
+            eyebrow: 'Rescheduling',
             value: '77%',
-            label: 'of clients prefer calling to reschedule',
-            sub: 'Zenoti 2025: not the app, not a form — the phone is still the primary reschedule channel.',
+            desc: 'of clients prefer calling to reschedule — not the app, not a form',
+            source: 'Zenoti 2025',
           },
           {
+            eyebrow: 'Color revenue',
             value: '41%',
-            label: 'of US salon service revenue comes from color appointments',
-            sub: 'Kline via MUSE Data 2020: these longer services create the exact phone gaps where calls are missed.',
+            desc: 'of US salon service revenue comes from color appointments that tie up stylists on the phone',
+            source: 'Kline via MUSE Data 2020',
           },
         ]}
       />
@@ -997,24 +1014,24 @@ function HairPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         points={[
           {
-            icon: '✂️',
+            icon: 'phone-off',
             title: 'Stylists can\'t answer while in-service',
             body: 'Most missed calls happen Saturday mornings and weekday lunch rushes when every stylist is mid-service and the desk is managing walk-ins simultaneously. A colorist mid-application can\'t stop for a 5-minute call, and callers who hear ringing usually move on fast.',
           },
           {
-            icon: '👩‍🎨',
+            icon: 'calendar-event',
             title: 'Preferred stylist requests need careful handling',
             body: 'Hair clients are loyal to their stylist. When their usual person is unavailable, the booking is lost unless someone can quickly offer an alternative. That nuance is impossible to put in a voicemail.',
           },
           {
-            icon: '🎨',
+            icon: 'currency-dollar',
             title: 'Color and extension slots are high-value and complex',
             body: 'Balayage, keratin, and extensions need long slots. Getting the right length, the right stylist, and the right prep info requires a real conversation — which gets dropped if no one picks up.',
           },
           {
-            icon: '🔄',
+            icon: 'phone-x',
             title: 'Cancellations go unrecovered',
-            body: 'When a color appointment cancels with short notice, that slot is hard to fill unless someone can immediately reach the next caller. RingBooker can capture and route those recovery calls in real time.',
+            body: 'When a color appointment cancels with short notice, that slot is hard to fill unless someone can immediately reach the next caller. Voicemail rarely brings that slot back.',
           },
         ]}
       />
@@ -1090,22 +1107,25 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accent="text-teal-600"
+        accentClass="text-teal-600"
         stats={[
           {
+            eyebrow: 'Business hours',
             value: '82%',
-            label: 'of missed spa calls happen during business hours',
-            sub: "Therapists can't leave treatment rooms for calls, so demand is lost while your team is actively in service.",
+            desc: "of missed spa calls happen during business hours — therapists can't leave treatment rooms",
+            source: 'Industry benchmarks',
           },
           {
+            eyebrow: 'Hold time',
             value: '52%',
-            label: 'of spa callers hang up after 3 minutes on hold',
-            sub: 'Spa callers asking about packages or availability want resolution in one conversation — not a long hold or voicemail.',
+            desc: 'of spa callers hang up after 3 minutes on hold waiting for packages or availability',
+            source: 'Industry benchmarks',
           },
           {
+            eyebrow: 'After hours',
             value: '30%',
-            label: "of spa bookings happen when you're closed",
-            sub: 'Many people browse and call outside 9–5 — especially weekends — when your desk may be closed.',
+            desc: "of spa bookings happen when you're closed — especially evenings and weekends",
+            source: 'Industry benchmarks',
           },
         ]}
       />
@@ -1116,24 +1136,24 @@ function SpaPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         points={[
           {
-            icon: '🧖',
+            icon: 'phone-off',
             title: 'Therapists can\'t leave treatment rooms for calls',
             body: 'When every treatment room is occupied, no one is available to answer the front desk. Callers asking about services, availability, or packages get voicemail — and spa clients rarely leave messages.',
           },
           {
-            icon: '💑',
+            icon: 'calendar-event',
             title: 'Couples and group bookings require real conversation',
-            body: 'Booking two or more people at the same time, with matching therapist availability and room availability, is complex. RingBooker can capture the details and check availability when connected to your scheduling workflow.',
+            body: 'Booking two or more people at the same time, with matching therapist availability and room availability, is complex. Without a live answer, those inquiries usually move to another spa.',
           },
           {
-            icon: '🌙',
+            icon: 'moon',
             title: 'After-hours inquiry is high intent',
             body: 'Spa clients often research and decide to book during evenings and weekends — right when your team is off or winding down. Those callers have strong intent and no patience for voicemail.',
           },
           {
-            icon: '🔁',
+            icon: 'currency-dollar',
             title: 'Package and pricing questions repeat constantly',
-            body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "Do you offer prenatal massage?" RingBooker can answer from your approved service menu or route anything uncertain to your team.',
+            body: 'Your front desk fields the same calls dozens of times a week: "What\'s the difference between 60 and 90 minutes?" or "Do you offer prenatal massage?" — and they pile up when no one can pick up.',
           },
         ]}
       />
@@ -1229,22 +1249,25 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accent="text-indigo-600"
+        accentClass="text-indigo-600"
         stats={[
           {
+            eyebrow: 'Revenue risk',
             value: '$130,000+',
-            label: 'annual revenue at risk',
-            sub: '3 missed consultation calls per day costs $130,000+ annually at med spa ticket values. (Lani AI, March 2026)',
+            desc: 'annual revenue at risk when three consultation calls per day go unanswered',
+            source: 'Lani AI, 2026',
           },
           {
+            eyebrow: 'Consult volume',
             value: '10–15/month',
-            label: 'high-value consult requests missed',
-            sub: 'Med spas miss 10–15 consultation requests monthly — during treatment hours and after closing, when the desk cannot answer. (NoLo Automation, 2025)',
+            desc: 'high-value consultation requests missed during treatment hours and after closing',
+            source: 'NoLo Automation, 2025',
           },
           {
+            eyebrow: 'AI comfort',
             value: '71%',
-            label: 'with AI call handling',
-            sub: '71% of med spa clients are comfortable with AI answering their calls — the highest of any beauty vertical. (Zenoti, 2025)',
+            desc: 'of med spa clients are comfortable with AI answering their calls — highest in beauty',
+            source: 'Zenoti, 2025',
           },
         ]}
       />
@@ -1255,24 +1278,24 @@ function MedSpaPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         points={[
           {
-            icon: '💸',
+            icon: 'currency-dollar',
             title: 'Missed consultation calls can become lost demand',
-            body: 'At $600 average consultation value, 3 missed calls per day represents $130,000+ in annual lost revenue. (Lani AI, March 2026). If that first contact goes to voicemail, the caller may contact another provider.',
+            body: 'At $600 average consultation value, 3 missed calls per day represents $130,000+ in annual lost revenue. If that first contact goes to voicemail, the caller may contact another provider.',
           },
           {
-            icon: '😰',
+            icon: 'phone-x',
             title: 'Front desk overload weakens inbound conversion',
             body: 'Your front desk juggles check-ins, checkout, patient questions, and phones simultaneously. During treatment hours, high-intent consultation calls can be delayed, rushed, or missed.',
           },
           {
-            icon: '🌙',
+            icon: 'moon',
             title: 'After-hours research intent is your biggest opportunity',
-            body: '53% of med spas say paid social is their #1 discovery channel (AmSpa, 2025) — and those leads call after hours. An answering layer captures that intent before it cools off.',
+            body: '53% of med spas say paid social is their #1 discovery channel (AmSpa, 2025) — and those leads call after hours. Voicemail rarely converts that intent before it cools off.',
           },
           {
-            icon: '⚠️',
+            icon: 'calendar-event',
             title: 'No-shows and late cancels hurt high-ticket schedules',
-            body: 'A longer treatment slot that cancels same-day is hard to fill. Reminder workflows and clear handoff notes can help your team protect the schedule.',
+            body: 'A longer treatment slot that cancels same-day is hard to fill. Without someone answering overflow calls, that revenue often disappears for the day.',
           },
         ]}
       />
@@ -1367,22 +1390,25 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
 
       {/* Stats */}
       <StatStrip
-        accent="text-fuchsia-600"
+        accentClass="text-fuchsia-600"
         stats={[
           {
+            eyebrow: 'Unanswered',
             value: '1 in 3',
-            label: 'clinic calls go unanswered while staff are with clients',
-            sub: 'Estheticians, lash techs, and wax specialists cannot answer mid-service. Those callers rarely call back. Zenoti',
+            desc: 'clinic calls go unanswered while estheticians, lash techs, and wax specialists are mid-service',
+            source: 'Zenoti, 2025',
           },
           {
+            eyebrow: 'After hours',
             value: '46%',
-            label: 'of beauty bookings happen after hours',
-            sub: 'Consultation calls, lash fill inquiries, and wax requests arrive when your desk is closed (Boulevard, 2025).',
+            desc: 'of beauty bookings happen after hours when the desk is closed',
+            source: 'Boulevard, 2025',
           },
           {
+            eyebrow: 'Hold time',
             value: '52%',
-            label: 'hang up after 3 minutes on hold',
-            sub: 'A clinic-appropriate AI tone keeps callers engaged and converts inquiries into booked appointments (Zenoti, 2025).',
+            desc: 'of callers hang up after 3 minutes on hold before anyone can help',
+            source: 'Zenoti, 2025',
           },
         ]}
       />
@@ -1393,24 +1419,24 @@ function BeautyClinicPage({ theme }: { theme: IndustryLandingTheme }) {
         eyebrowClass={theme.accentClass}
         points={[
           {
-            icon: '👑',
+            icon: 'phone-off',
             title: 'Clients expect a "patient" experience, not a booking hotline',
-            body: 'Beauty and aesthetic clinic callers ask about treatment continuity, pre-care, post-care, and session counts. The global aesthetic medicine market reached $89.64B in 2024 (Grand View Research) — callers expect considered answers, not voicemail.',
+            body: 'Beauty and aesthetic clinic callers ask about treatment continuity, pre-care, post-care, and session counts. Callers expect considered answers — not voicemail or a long hold queue.',
           },
           {
-            icon: '🤝',
+            icon: 'calendar-event',
             title: 'Consultation-first calls require handling with care',
             body: 'A caller asking about laser, skin treatment, or waxing is often in discovery. How the call is handled — tone, clarity, follow-through — directly shapes whether they book a consultation.',
           },
           {
-            icon: '🔁',
+            icon: 'phone-x',
             title: 'Provider continuity is a real retention lever',
             body: 'Returning clients — for lash fills, wax series, or skin treatments — want the same provider. If no one can confirm and book continuity in-call, those clients start shopping again.',
           },
           {
-            icon: '📋',
+            icon: 'message-off',
             title: 'Pre-care and post-care questions consume front-desk time',
-            body: '"How long before a facial should I stop retinol?" "What to avoid after a wax?" An AI answering layer handles approved instructions or routes clinical questions to your team.',
+            body: '"How long before a facial should I stop retinol?" "What to avoid after a wax?" When staff are mid-service, those questions go unanswered and callers rarely leave voicemail.',
           },
         ]}
       />

@@ -305,4 +305,123 @@ export const MARKETING_SHARED_SCOPED_CSS = `
   margin-bottom:42px;
 }
 
+/* ── Vertical landing stat strip (unified 3-column row) ── */
+.vertical-stat-strip-section .vertical-stat-strip{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  background:#fff;
+  border:1px solid rgba(17,24,39,.12);
+  border-radius:12px;
+  box-shadow:none;
+  overflow:hidden;
+}
+.vertical-stat-strip__col{
+  padding:28px 32px;
+  border-right:1px solid rgba(17,24,39,.12);
+}
+.vertical-stat-strip__col--last{
+  border-right:none;
+}
+.vertical-stat-strip__eyebrow{
+  margin:0 0 8px;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  line-height:1.35;
+}
+.vertical-stat-strip__value{
+  margin:0 0 6px;
+  font-size:44px;
+  font-weight:500;
+  line-height:1;
+  color:var(--mk-text-strong,#111827);
+  font-variant-numeric:tabular-nums;
+}
+.vertical-stat-strip__desc{
+  margin:0 0 12px;
+  font-size:14px;
+  font-weight:400;
+  line-height:1.6;
+  color:var(--mk-text-muted,#64748b);
+}
+.vertical-stat-strip__source{
+  margin:0;
+  font-size:12px;
+  font-style:italic;
+  font-weight:400;
+  line-height:1.45;
+  color:var(--mk-text-soft,#94a3b8);
+}
+@media (max-width:639px){
+  .vertical-stat-strip-section .vertical-stat-strip{
+    grid-template-columns:1fr;
+  }
+  .vertical-stat-strip__col{
+    border-right:none;
+    border-bottom:1px solid rgba(17,24,39,.12);
+  }
+  .vertical-stat-strip__col--last{
+    border-bottom:none;
+  }
+}
+
+/* ── Vertical landing pain / "why calls get missed" ── */
+.vertical-pain-section .vertical-pain-section__eyebrow{
+  margin:0 0 12px;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  line-height:1.35;
+}
+.vertical-pain-section__grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:32px;
+}
+.vertical-pain-card{
+  background:#fef9f9;
+  border:1px solid rgba(192,57,43,.14);
+  border-radius:12px;
+  padding:20px;
+  box-shadow:none;
+}
+.vertical-pain-card__header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.vertical-pain-card__icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:32px;
+  height:32px;
+  flex-shrink:0;
+  border-radius:8px;
+  background:#fcebeb;
+}
+.vertical-pain-card__title{
+  margin:0;
+  font-size:14px;
+  font-weight:500;
+  line-height:1.35;
+  color:var(--mk-text-strong,#111827);
+}
+.vertical-pain-card__desc{
+  margin:0;
+  font-size:13px;
+  font-weight:400;
+  line-height:1.65;
+  color:var(--mk-text-muted,#64748b);
+}
+@media (max-width:639px){
+  .vertical-pain-section__grid{
+    grid-template-columns:1fr;
+  }
+}
+
 `;
