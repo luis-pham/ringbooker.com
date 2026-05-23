@@ -308,6 +308,14 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
 
     audio.volume = 1;
 
+    // Browsers may ignore preload="auto" for cross-origin or initially-hidden elements.
+    // Calling load() here explicitly starts buffering so readyState reaches
+    // HAVE_CURRENT_DATA before the user's first click — ensuring audio.play()
+    // succeeds within the user-gesture propagation window on the first attempt.
+    if (audio.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      audio.load();
+    }
+
     const onTimeUpdate = () => {
       setTimerLabel(formatMmSs(audio.currentTime));
     };
@@ -325,61 +333,27 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     };
   }, [audioSrc, resetToIdle]);
 
-  const playAudio = useCallback(async (audio: HTMLAudioElement) => {
-    audio.volume = 1;
-
-    const attemptPlay = () => audio.play();
-
-    try {
-      await attemptPlay();
-      return;
-    } catch {
-      /* wait for buffer then retry once (helps cross-origin CDN on first tap) */
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      if (audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        resolve();
-        return;
-      }
-      const timeout = window.setTimeout(() => {
-        cleanup();
-        reject(new Error('audio load timeout'));
-      }, 10000);
-      const onCanPlay = () => {
-        cleanup();
-        resolve();
-      };
-      const onError = () => {
-        cleanup();
-        reject(new Error('audio load error'));
-      };
-      const cleanup = () => {
-        window.clearTimeout(timeout);
-        audio.removeEventListener('canplay', onCanPlay);
-        audio.removeEventListener('error', onError);
-      };
-      audio.addEventListener('canplay', onCanPlay);
-      audio.addEventListener('error', onError);
-    });
-
-    await attemptPlay();
-  }, []);
-
   const handlePlay = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) return;
 
     setPlaybackState('playing');
     setTimerLabel(formatMmSs(audio.currentTime));
+    audio.volume = 1;
 
     try {
-      await playAudio(audio);
+      // Single attempt — must stay within the user-gesture propagation window.
+      // No async gap (no waiting for canplay) between click and play() call,
+      // because crossing a macrotask boundary (e.g. addEventListener 'canplay')
+      // invalidates the user-activation token on strict-autoplay browsers.
+      // The audio.load() call in useEffect ensures the buffer is warm before
+      // the user reaches the button so this first attempt reliably succeeds.
+      await audio.play();
       setTimerLabel(formatMmSs(audio.currentTime));
     } catch {
       resetToIdle();
     }
-  }, [playAudio, resetToIdle]);
+  }, [resetToIdle]);
 
   const handlePause = useCallback(() => {
     const audio = audioRef.current;

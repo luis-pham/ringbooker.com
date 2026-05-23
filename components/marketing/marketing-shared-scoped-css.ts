@@ -220,8 +220,7 @@ export const MARKETING_SHARED_SCOPED_CSS = `
 .cta-banner,
 .html-hub-page .hub-cta-banner,
 .html-hub-page .cta-band,
-.hiw-page .hiw-cta-box,
-.pricing-page .cta-box{
+.hiw-page .hiw-cta-box{
   background:#0d0d0d !important;
   border:none !important;
   box-shadow:none !important;
@@ -232,7 +231,6 @@ export const MARKETING_SHARED_SCOPED_CSS = `
 .vertical-final-cta-btns .btn-hero-live,
 .html-hub-page .hub-cta-banner .btn-hero-live,
 .html-hub-page .cta-band .btn-hero-live,
-.pricing-page .cta-box .btn-demo-live,
 .hiw-page .hiw-cta-box .hiw-cta-btn-white{
   background:#7C3AED !important;
   color:#fff !important;
@@ -244,7 +242,6 @@ export const MARKETING_SHARED_SCOPED_CSS = `
 .vertical-final-cta-btns .btn-hero-live:hover,
 .html-hub-page .hub-cta-banner .btn-hero-live:hover,
 .html-hub-page .cta-band .btn-hero-live:hover,
-.pricing-page .cta-box .btn-demo-live:hover,
 .hiw-page .hiw-cta-box .hiw-cta-btn-white:hover{
   background:#6D28D9 !important;
   color:#fff !important;
@@ -258,7 +255,6 @@ export const MARKETING_SHARED_SCOPED_CSS = `
 .cta-banner .btn-outline.btn-hero-trial,
 .html-hub-page .hub-cta-banner .btn-outline.btn-hero-trial,
 .html-hub-page .cta-band .btn-outline.btn-hero-trial,
-.pricing-page .cta-box .btn-trial-soft,
 .hiw-page .hiw-cta-box .hiw-cta-btn-ghost{
   background:rgba(255,255,255,.14) !important;
   color:#fff !important;
@@ -269,7 +265,6 @@ export const MARKETING_SHARED_SCOPED_CSS = `
 .cta-banner .btn-outline.btn-hero-trial:hover,
 .html-hub-page .hub-cta-banner .btn-outline.btn-hero-trial:hover,
 .html-hub-page .cta-band .btn-outline.btn-hero-trial:hover,
-.pricing-page .cta-box .btn-trial-soft:hover,
 .hiw-page .hiw-cta-box .hiw-cta-btn-ghost:hover{
   background:rgba(255,255,255,.22) !important;
   border-color:rgba(255,255,255,.5) !important;

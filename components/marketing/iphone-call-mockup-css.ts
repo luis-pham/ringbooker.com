@@ -114,7 +114,7 @@ export const IPHONE_CALL_MOCKUP_CSS = `
   position:relative;
   z-index:3;
   width:108px;
-  height:4px;
+  height:1px;
   border-radius:999px;
   background:rgba(255,255,255,.92);
   margin:8px auto 10px;

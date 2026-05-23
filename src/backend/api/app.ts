@@ -4226,14 +4226,16 @@ export function createBackendApp(deps: {
             {
               role: 'system',
               content:
-                'You are extracting structured data from a demo call transcript for a beauty salon AI receptionist. ' +
-                'Extract only information explicitly mentioned by the caller. ' +
-                'Do not infer or assume — if not mentioned, return null. ' +
+                'You are extracting structured data from a demo call transcript for a beauty salon AI receptionist.\n' +
+                'Only extract information that was explicitly stated by the caller. Do not infer, guess, or assume any information.\n' +
+                'If the caller did not mention their name, return null for callerName.\n' +
+                'If the caller did not mention a specific service, return null for serviceRequested.\n' +
+                'If the caller did not mention a specific date or time, return null for requestedTime.\n' +
                 'Return JSON only: { "callerIntent": "booking|pricing|info|reschedule|null", ' +
-                '"serviceRequested": "exact service name or null", ' +
-                '"requestedTime": "time mentioned or null", ' +
-                '"callerName": "name if mentioned or null", ' +
-                '"additionalNotes": "any other booking detail or null" }',
+                '"serviceRequested": "exact service name spoken by the caller, or null if not explicitly stated", ' +
+                '"requestedTime": "exact date or time spoken by the caller, or null if not explicitly stated", ' +
+                '"callerName": "exact name spoken by the caller, or null if not explicitly stated", ' +
+                '"additionalNotes": "any other detail explicitly stated by the caller, or null" }',
             },
             {
               role: 'user',

@@ -1,6 +1,5 @@
 import { Fragment } from 'react';
 
-import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { mkSectionTitle } from '@/lib/marketing/section-title';
 import { MarketingFaqAccordion, type MarketingFaqItem } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingLayout } from '@/components/marketing/marketing-layout';
@@ -171,18 +170,8 @@ a{text-decoration:none;color:inherit}
 .note-box ul{list-style:none;display:grid;gap:10px}
 .note-box li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--text-gray);line-height:1.6}
 .note-box li::before{content:"✓";color:var(--purple);font-weight:900}
-.cta-box{border-radius:34px;padding:42px;background:#0d0d0d;color:#fff;border:none;display:grid;grid-template-columns:1.15fr .85fr;gap:28px;align-items:center;box-shadow:none}
-.cta-box h2{font-size:clamp(30px,4vw,46px);font-weight:500;line-height:1.1;letter-spacing:-1.3px;margin-bottom:12px}
-.cta-box p{color:rgba(255,255,255,.78);line-height:1.75}
-.cta-actions{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap}
-.cta-box .btn-outline{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);color:#fff;box-shadow:none}
-.cta-box .btn-outline:hover{border-color:rgba(255,255,255,.45);color:#fff}
-.cta-box .btn-dark{background:#fff;color:#111827;border:none;box-shadow:none}
-.cta-box .btn-trial-soft{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.28);color:#fff;box-shadow:none}
-.cta-box .btn-trial-soft:hover{border-color:rgba(255,255,255,.45);color:#fff}
 .pricing-foot{margin-top:28px;font-size:13px;line-height:1.6;color:var(--mk-text-desc,#64748B);text-align:center;font-weight:400;max-width:760px;margin-left:auto;margin-right:auto}
 .compare-section{margin-top:0}
-.pricing-faq-cta .cta-box{margin-top:48px}
 .compare-wrap{margin:0 -8px;padding:0 8px}
 /* Frame clips rounded corners; inner scroll keeps horizontal swipe on mobile (overflow:hidden on frame alone kills outer scroll). */
 .pricing-compare-frame{border-radius:var(--r-lg);border:1px solid var(--border);background:#fff;box-shadow:none;overflow:hidden}
@@ -200,7 +189,7 @@ a{text-decoration:none;color:inherit}
 .compare-val{font-size:14px;line-height:1.45}
 @media(max-width:960px){
   .pricing-hero-plans,.section{padding-left:22px;padding-right:22px}
-  .plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band,.cta-box{grid-template-columns:1fr}
+  .plan-grid,.self-grid,.feature-grid,.upgrade-grid,.line-choice,.expect-band{grid-template-columns:1fr}
   /* Clear fixed .mk-nav (68px + 1px border) + breathing room */
   .pricing-hero-plans{padding-top:calc(69px + 28px + env(safe-area-inset-top,0px));padding-bottom:64px}
   .hero-copy{margin-bottom:22px}
@@ -209,21 +198,19 @@ a{text-decoration:none;color:inherit}
   .hero-actions{justify-content:flex-start}
   .pt-toggle{width:100%;max-width:380px}
   .pt-btn{flex:1}
-  .cta-actions{justify-content:flex-start}
 }
 @media(max-width:640px){
   .hero-copy{margin-bottom:18px}
   .pricing-plans-inner .sec-sub{margin-bottom:20px}
   .pricing-plans-inner .pt-toggle{margin-bottom:24px}
   .hero-actions{flex-direction:column;align-items:stretch}
-  .btn-demo-live,.btn-trial-soft,.btn-dark,.btn-outline{width:100%}
+  .btn-dark,.btn-outline{width:100%}
   .section{padding-top:var(--mk-space-section-y-mobile,56px);padding-bottom:64px}
   .sec-sub{margin-bottom:0}
   .plan{padding:22px 18px;box-shadow:0 1px 2px rgba(17,24,39,.04)}
   .plan:hover{transform:none;box-shadow:0 1px 2px rgba(17,24,39,.04)}
   .plan.star,.plan.star:hover{box-shadow:0 0 0 1px rgba(139,92,246,.08)}
   .pt-toggle{max-width:none}
-  .cta-box{padding:28px 22px;border-radius:var(--mk-radius-panel,28px)}
 }
 `,
 ];
@@ -543,19 +530,6 @@ export function MarketingPricingTemplate() {
                 title="Pricing questions, answered plainly."
                 subtitle={null}
               />
-              <div className="cta-box">
-                <div>
-                  <h2>Stop letting booking calls leak after hours or during busy windows.</h2>
-                  <p>Keep your current number, keep your booking tools, and add RingBooker as the phone layer that helps recover missed booking intent.</p>
-                </div>
-                <div className="cta-actions">
-                  <a className="btn-demo-live" href="/demo" data-demo-picker>
-                    <DemoCtaPhoneIcon width={18} height={18} />
-                    Try a Live Demo
-                  </a>
-                  <a className="btn-trial-soft" href="/user/signup?plan=starter">Start 14-Day Free Trial →</a>
-                </div>
-              </div>
             </div>
           </section>
         </main>

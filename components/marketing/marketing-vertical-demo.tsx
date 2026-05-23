@@ -699,6 +699,7 @@ const siteReadStyles: string = String.raw`
   .vd-pd-cap-v{color:#111827;font-weight:500;min-width:0}
   .vd-pd-cap-empty{font-size:13px;color:#64748B;line-height:1.5}
   .vd-pd-cap-empty-sub{font-size:12px;color:#9CA3AF;line-height:1.5;margin-top:4px}
+  .vd-pd-no-capture{font-size:13px;color:#64748B;line-height:1.6;margin:0 0 14px;padding:12px 14px;background:#F8FAFC;border-radius:12px;border:1px solid #E2E8F0}
   .vd-pd-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 14px;font-size:12px;font-weight:600;color:#64748B;margin-top:8px}
   .vd-pd-trust-check{color:#10B981;font-weight:900}
   .vd-pd-pay-wrap{display:flex;justify-content:center;margin-top:8px}
@@ -2648,53 +2649,58 @@ export function MarketingVerticalDemoTemplate({
 
                   {stage === 'completed' ? (
                     <>
-                      {/* Block 1 — Sample SMS to client */}
-                      <div className="vd-pd-sms-card">
-                        <div className="vd-pd-label">Sample SMS to client</div>
-                        <div className="vd-pd-sms-text">
-                          {buildPersonalizedSmsPreview(callExtracted, demoDisplayName)}
+                      {/* Block 1 — Sample SMS to client
+                          Only shown when both service and requested time were captured.
+                          Showing it with just a name (or nothing) would be misleading. */}
+                      {!callExtracting && callExtracted?.hasRealData && callExtracted.serviceRequested && callExtracted.requestedTime ? (
+                        <div className="vd-pd-sms-card">
+                          <div className="vd-pd-label">Sample SMS to client</div>
+                          <div className="vd-pd-sms-text">
+                            {buildPersonalizedSmsPreview(callExtracted, demoDisplayName)}
+                          </div>
                         </div>
-                      </div>
+                      ) : null}
 
-                      {/* Block 2 — AI captured from this call */}
-                      <div className="vd-pd-cap">
-                        <div className="vd-pd-label">AI captured from this call</div>
-                        {callExtracting ? (
+                      {/* Block 2 — AI captured from this call
+                          • Still extracting → show spinner row.
+                          • Extracted with at least service or time → show non-null rows.
+                          • Only name captured (or nothing at all) → hide both blocks and show
+                            the "didn't capture" message instead of misleading empty rows. */}
+                      {callExtracting ? (
+                        <div className="vd-pd-cap">
+                          <div className="vd-pd-label">AI captured from this call</div>
                           <div className="vd-pd-cap-empty">Capturing call details…</div>
-                        ) : callExtracted?.hasRealData &&
-                          (callExtracted.callerName || callExtracted.serviceRequested || callExtracted.requestedTime) ? (
-                          <>
-                            {callExtracted.callerName ? (
-                              <div className="vd-pd-cap-row">
-                                <span className="vd-pd-cap-ic" aria-hidden>👤</span>
-                                <span className="vd-pd-cap-k">Client</span>
-                                <span className="vd-pd-cap-v">{callExtracted.callerName}</span>
-                              </div>
-                            ) : null}
-                            {callExtracted.serviceRequested ? (
-                              <div className="vd-pd-cap-row">
-                                <span className="vd-pd-cap-ic" aria-hidden>✂️</span>
-                                <span className="vd-pd-cap-k">Service</span>
-                                <span className="vd-pd-cap-v">{callExtracted.serviceRequested}</span>
-                              </div>
-                            ) : null}
-                            {callExtracted.requestedTime ? (
-                              <div className="vd-pd-cap-row">
-                                <span className="vd-pd-cap-ic" aria-hidden>📅</span>
-                                <span className="vd-pd-cap-k">Requested</span>
-                                <span className="vd-pd-cap-v">{callExtracted.requestedTime}</span>
-                              </div>
-                            ) : null}
-                          </>
-                        ) : (
-                          <>
-                            <div className="vd-pd-cap-empty">No specific booking request was captured in this demo.</div>
-                            <div className="vd-pd-cap-empty-sub">
-                              In a real call, RingBooker captures client name, service, and requested time automatically.
+                        </div>
+                      ) : callExtracted?.hasRealData && (callExtracted.serviceRequested || callExtracted.requestedTime) ? (
+                        <div className="vd-pd-cap">
+                          <div className="vd-pd-label">AI captured from this call</div>
+                          {callExtracted.callerName ? (
+                            <div className="vd-pd-cap-row">
+                              <span className="vd-pd-cap-ic" aria-hidden>👤</span>
+                              <span className="vd-pd-cap-k">Client</span>
+                              <span className="vd-pd-cap-v">{callExtracted.callerName}</span>
                             </div>
-                          </>
-                        )}
-                      </div>
+                          ) : null}
+                          {callExtracted.serviceRequested ? (
+                            <div className="vd-pd-cap-row">
+                              <span className="vd-pd-cap-ic" aria-hidden>✂️</span>
+                              <span className="vd-pd-cap-k">Service</span>
+                              <span className="vd-pd-cap-v">{callExtracted.serviceRequested}</span>
+                            </div>
+                          ) : null}
+                          {callExtracted.requestedTime ? (
+                            <div className="vd-pd-cap-row">
+                              <span className="vd-pd-cap-ic" aria-hidden>📅</span>
+                              <span className="vd-pd-cap-k">Requested</span>
+                              <span className="vd-pd-cap-v">{callExtracted.requestedTime}</span>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <p className="vd-pd-no-capture">
+                          The AI answered but didn&apos;t capture booking details from this call. In a real call, the conversation continues until your team has what they need.
+                        </p>
+                      )}
 
                       {/* Block 3 — CTA */}
                       <div className="vd-complete-cta">
