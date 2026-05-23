@@ -464,7 +464,7 @@ html[data-user-theme="dark"] .nav-go-live-placeholder-bar{
 .usage-captured-warn--over{color:#b91c1c}
 .usage-captured-warn--near{color:#92400e}
 .checklist-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px}
-.overview-go-live-checklist{max-width:600px;width:100%}
+.overview-go-live-checklist{width:100%}
 .checklist-card .card-title{font-size:14px;font-weight:600;color:#111;margin-bottom:3px}
 .checklist-card .card-sub{font-size:12px;color:#6b7280;margin-bottom:16px}
 .overview-go-live-checklist .card-title{margin-bottom:8px}
