@@ -109,9 +109,10 @@ a{text-decoration:none;color:inherit}
 .pt-toggle{display:flex;align-items:center;justify-content:center;gap:8px;width:max-content;padding:6px;border:1px solid var(--border);border-radius:999px;background:#fff;box-shadow:var(--shadow)}
 .pt-btn{padding:10px 18px;border-radius:999px;border:none;background:transparent;font:inherit;font-size:var(--mk-btn-sm);font-weight:600;color:var(--text-gray);cursor:pointer;transition:all .2s}
 .pt-btn.on{background:var(--purple);color:#fff;box-shadow:0 6px 18px rgba(124,58,237,.28)}
-.pt-save-badge{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ecfdf5,#d1fae5);color:#047857;font-size:12px;font-weight:500;letter-spacing:normal;text-transform:none;padding:0;border-radius:999px;border:1px solid transparent;box-shadow:0 2px 10px rgba(16,185,129,.14);white-space:nowrap;max-width:0;opacity:0;transform:translateX(-8px);overflow:hidden;margin-left:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease,max-width .28s ease,margin-left .22s ease,padding .22s ease,border-color .22s ease}
-.pt-save-badge.is-visible{max-width:200px;opacity:1;transform:translateX(0);margin-left:6px;padding:3px 8px;border-color:rgba(16,185,129,.4);pointer-events:auto}
-@media(prefers-reduced-motion:reduce){.pt-save-badge{transition:none}.pt-save-badge:not(.is-visible){display:none}.pt-save-badge.is-visible{display:inline-flex}}
+.save-badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#16a34a;background:none;border:none;padding:0;white-space:nowrap;max-width:0;opacity:0;transform:translateX(-8px);overflow:hidden;margin-left:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease,max-width .28s ease,margin-left .22s ease}
+.save-badge.is-visible{max-width:200px;opacity:1;transform:translateX(0);margin-left:6px;pointer-events:auto}
+.save-dot{width:6px;height:6px;border-radius:50%;background:#16a34a;flex-shrink:0}
+@media(prefers-reduced-motion:reduce){.save-badge{transition:none}.save-badge:not(.is-visible){display:none}.save-badge.is-visible{display:inline-flex}}
 .plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
 .plan{background:#fff;border-radius:var(--r-lg);padding:24px 20px;border:1px solid var(--border);position:relative;display:flex;flex-direction:column;height:100%;box-shadow:var(--mk-card-shadow,var(--shadow));transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease}
 .plan:hover{transform:translateY(-1px);box-shadow:var(--mk-card-shadow-hover,var(--shadow));border-color:var(--mk-card-border-hover,rgba(167,139,250,.42))}
@@ -444,7 +445,10 @@ export function MarketingPricingTemplate() {
                 <div className="pt-toggle">
                   <button className="pt-btn on" id="pricing-tog-m" type="button">Monthly</button>
                   <button className="pt-btn" id="pricing-tog-a" type="button">Annual</button>
-                  <span className="pt-save-badge" id="pricing-pt-save-badge">Save up to $358/yr</span>
+                  <span className="save-badge" id="pricing-pt-save-badge">
+                    <span className="save-dot" aria-hidden />
+                    Save up to $358/yr
+                  </span>
                 </div>
 
                 <div className="plan-grid">

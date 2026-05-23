@@ -268,8 +268,15 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 	.leak-card{position:relative;background:#f2eee6;border:1px solid var(--border);border-radius:24px;padding:34px 28px 24px;box-shadow:var(--home-shadow-soft);transition:transform .2s,box-shadow .2s,border-color .2s}
 	.leak-card:hover{transform:translateY(-1px);box-shadow:var(--home-shadow-hover);border-color:var(--home-card-border-hover)}
 	.leak-divider{height:1px;background:#e5e7eb;margin:20px 0 16px}
-	.leak-point{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.5;font-weight:500;color:var(--text-desc);margin-top:2px}
-	.leak-point-dot{width:8px;height:8px;border-radius:50%;background:#10B981;flex-shrink:0;margin-top:7px}
+	.leak-item .pain-resolve{
+		margin-top:12px;
+		border-left:2px solid #7b5cf0;
+		padding:4px 0 4px 10px;
+		font-size:13px;
+		font-weight:400;
+		line-height:1.5;
+		color:var(--text-desc);
+	}
 	.leak-card.leak-revenue{background:#f2eee6;padding:32px 28px 28px;box-sizing:border-box;display:flex;flex-direction:column}
 	.leak-card.leak-revenue:hover{border-color:var(--border)}
 	.leak-revenue{align-self:start;flex:1;display:flex;flex-direction:column}
@@ -642,9 +649,10 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 .pt-btn{padding:10px 22px;border-radius:var(--r-pill);font-size:var(--mk-btn-sm);font-weight:600;border:none;cursor:pointer;transition:all .2s;font-family:inherit}
 .pt-btn.on{background:var(--purple);color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.25)}
 .pt-btn:not(.on){background:transparent;color:var(--text-desc)}
-.pt-save-badge{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(180deg,#ecfdf5,#d1fae5);color:#047857;font-size:12px;font-weight:500;letter-spacing:normal;text-transform:none;padding:0;border-radius:var(--r-pill);border:1px solid transparent;box-shadow:0 2px 10px rgba(16,185,129,.14);white-space:nowrap;max-width:0;opacity:0;transform:translateX(-8px);overflow:hidden;margin-left:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease,max-width .28s ease,margin-left .22s ease,padding .22s ease,border-color .22s ease}
-.pt-save-badge.is-visible{max-width:200px;opacity:1;transform:translateX(0);margin-left:6px;padding:3px 8px;border-color:rgba(16,185,129,.4);pointer-events:auto}
-@media(prefers-reduced-motion:reduce){.pt-save-badge{transition:none}.pt-save-badge:not(.is-visible){display:none}.pt-save-badge.is-visible{display:inline-flex}}
+.save-badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#16a34a;background:none;border:none;padding:0;white-space:nowrap;max-width:0;opacity:0;transform:translateX(-8px);overflow:hidden;margin-left:0;pointer-events:none;transition:opacity .22s ease,transform .22s ease,max-width .28s ease,margin-left .22s ease}
+.save-badge.is-visible{max-width:200px;opacity:1;transform:translateX(0);margin-left:6px;pointer-events:auto}
+.save-dot{width:6px;height:6px;border-radius:50%;background:#16a34a;flex-shrink:0}
+@media(prefers-reduced-motion:reduce){.save-badge{transition:none}.save-badge:not(.is-visible){display:none}.save-badge.is-visible{display:inline-flex}}
 .price-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;align-items:stretch}
 .plan{
 	background:#fff;border-radius:var(--r-lg);padding:28px 22px 24px;border:1px solid var(--border);
@@ -1041,7 +1049,7 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 .legacy-marketing .industries .metrics-sublabel,
 .legacy-marketing .plan-desc,
 .legacy-marketing .plan-feats li,
-.legacy-marketing .pt-save-badge,
+.legacy-marketing .save-badge,
 .legacy-marketing .industry-tag,
 .legacy-marketing .industry-sub,
 .legacy-marketing .industry-link,
@@ -1059,12 +1067,10 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
   font-size:14px !important;
 }
 @media(max-width:768px){
-  .legacy-marketing .pt-save-badge.is-visible{
-    font-size:12px !important;
-    padding:3px 8px !important;
+  .legacy-marketing .save-badge.is-visible{
+    font-size:13px !important;
     line-height:1.2;
     letter-spacing:normal;
-    box-shadow:0 1px 4px rgba(16,185,129,.1);
   }
 }
 `,
@@ -1408,10 +1414,7 @@ export function MarketingHomeTemplate() {
                     <div>
                   <h3>{title}</h3>
                   <p>{body}</p>
-                  <div className="leak-point">
-                    <span className="leak-point-dot" aria-hidden="true" />
-                    <span>{footer}</span>
-                      </div>
+                  <div className="pain-resolve">{footer}</div>
                   </div>
                 </article>
               ))}
@@ -1718,7 +1721,10 @@ export function MarketingHomeTemplate() {
             <div className="price-toggle">
               <button className="pt-btn on" id="tog-m" type="button">Monthly</button>
               <button className="pt-btn" id="tog-a" type="button">Annual</button>
-              <span className="pt-save-badge" id="home-pt-save-badge">Save up to $358/yr</span>
+              <span className="save-badge" id="home-pt-save-badge">
+                <span className="save-dot" aria-hidden />
+                Save up to $358/yr
+              </span>
             </div>
             <div className="home-carousel" id="pricingCarousel">
             <div className="price-grid home-carousel-track reveal">
