@@ -173,6 +173,23 @@ a{text-decoration:none;color:inherit}
   margin:0;
   text-align:left;
 }
+.hiw-grid-3.hiw-flow .hiw-step-marker{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  align-self:center;
+  flex-shrink:0;
+  width:36px;
+  height:36px;
+  margin:0 auto 18px;
+  border-radius:50%;
+  background:var(--purple);
+  color:#fff;
+  font-size:14px;
+  font-weight:500;
+  line-height:1;
+  box-shadow:0 8px 22px rgba(124,58,237,.22);
+}
 .hiw-steps-mobile-nav{display:none}
 .hiw-steps-mobile-nav a{display:inline-flex;align-items:center;justify-content:center;min-width:84px;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:#fff;color:var(--text-gray);font-size:12px;font-weight:500;white-space:nowrap;transition:all .2s ease}
 .hiw-steps-mobile-nav a.is-active{background:var(--purple);border-color:var(--purple);color:#fff}
@@ -330,6 +347,9 @@ a{text-decoration:none;color:inherit}
     min-width:78%;
     max-width:min(340px,92vw);
     scroll-snap-align:center;
+  }
+  .hiw-grid-3.hiw-flow .hiw-step-marker{
+    display:none;
   }
   .hiw-no-replace,.hiw-cta-box{padding:24px 20px}
 }
@@ -493,6 +513,9 @@ export function MarketingHowItWorksTemplate() {
               </div>
               <div className="hiw-grid-3 hiw-flow">
                 <article className="hiw-step" id="hiw-step-1">
+                  <span className="hiw-step-marker" aria-hidden>
+                    1
+                  </span>
                   <h3>Connect coverage</h3>
                   <p>
                     Forward your current business number{' '}
@@ -503,10 +526,16 @@ export function MarketingHowItWorksTemplate() {
                   </p>
                 </article>
                 <article className="hiw-step" id="hiw-step-2">
+                  <span className="hiw-step-marker" aria-hidden>
+                    2
+                  </span>
                   <h3>Add services, hours, and rules</h3>
                   <p>Tell RingBooker your services, business hours, staff or provider preferences, booking rules, escalation path, and what should be confirmed by SMS.</p>
                 </article>
                 <article className="hiw-step" id="hiw-step-3">
+                  <span className="hiw-step-marker" aria-hidden>
+                    3
+                  </span>
                   <h3>Recover calls and hand off context</h3>
                   <p>RingBooker answers, captures intent, helps with routine booking calls, texts confirmations or callbacks, and gives your team the context when a human should step in.</p>
                 </article>
