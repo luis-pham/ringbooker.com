@@ -679,7 +679,7 @@ const siteReadStyles: string = String.raw`
   .vd-retry-link:hover{color:#6B7280;text-decoration:none}
 
   /* ─── post-demo steps ───────────────────────────────────── */
-  .vd-post-steps{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:20px}
+  .vd-post-steps{display:flex;align-items:center;justify-content:center;gap:0;margin-top:28px;margin-bottom:20px}
   .vd-post-step{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
   .vd-post-step-dot{width:28px;height:28px;border-radius:50%;background:var(--va);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
   .vd-post-step-label{font-size:11px;font-weight:500;color:#6B7280;text-align:center;line-height:1.3}
