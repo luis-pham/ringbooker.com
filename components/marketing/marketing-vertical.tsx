@@ -6,11 +6,11 @@ import { DemoCtaPhoneIcon } from '@/components/marketing/demo-cta-phone-icon';
 import { MarketingFaqAccordion } from '@/components/marketing/marketing-faq-accordion';
 import { MarketingChromeStyles, MarketingFooter, MarketingHeader } from '@/components/marketing/marketing-chrome';
 import { CallPreviewPlayer } from '@/components/marketing/call-preview-player';
-import { VERTICAL_DEMO_AUDIO } from '@/components/marketing/phone-call-audio-mockup';
 import { VerticalHeroGrid } from '@/components/marketing/vertical-hero-grid';
 import { VerticalPainIcon, type VerticalPainIconId } from '@/components/marketing/vertical-pain-icons';
 import { getPublishedPostsByPathPrefix } from '@/lib/blog';
 import { postPublicPath } from '@/lib/blog/path-prefixes';
+import { VERTICAL_DEMO_AUDIO } from '@/lib/marketing/demo-audio-cdn';
 import { mkSectionTitle } from '@/lib/marketing/section-title';
 
 export type MarketingVerticalKey = 'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic';

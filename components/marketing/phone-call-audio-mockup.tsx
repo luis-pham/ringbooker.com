@@ -3,20 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { IphoneStatusBar } from '@/components/marketing/iphone-status-bar';
-import { marketingDemoAudioUrl } from '@/lib/marketing/demo-audio-cdn';
+import { VERTICAL_DEMO_AUDIO } from '@/lib/marketing/demo-audio-cdn';
 
-export { MARKETING_DEMO_AUDIO_CDN, marketingDemoAudioUrl } from '@/lib/marketing/demo-audio-cdn';
-
-export const VERTICAL_DEMO_AUDIO: Record<
-  'nail-salon' | 'hair-salon' | 'spa' | 'med-spa' | 'beauty-clinic',
-  string
-> = {
-  'nail-salon': marketingDemoAudioUrl('nail_sound_demo.mp3'),
-  'hair-salon': marketingDemoAudioUrl('hair_sound_demo.mp3'),
-  spa: marketingDemoAudioUrl('dayspa_sound_demo.mp3'),
-  'med-spa': marketingDemoAudioUrl('medspa_sound_demo.mp3'),
-  'beauty-clinic': marketingDemoAudioUrl('clinic_sound_demo.mp3'),
-};
+export { MARKETING_DEMO_AUDIO_CDN, marketingDemoAudioUrl, VERTICAL_DEMO_AUDIO } from '@/lib/marketing/demo-audio-cdn';
 
 export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
 .iph-shell .vc-content{

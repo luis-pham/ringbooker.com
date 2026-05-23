@@ -275,7 +275,7 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 		font-size:13px;
 		font-weight:400;
 		line-height:1.5;
-		color:var(--text-desc);
+		color:#7b5cf0;
 	}
 	.leak-card.leak-revenue{background:#f2eee6;padding:32px 28px 28px;box-sizing:border-box;display:flex;flex-direction:column}
 	.leak-card.leak-revenue:hover{border-color:var(--border)}
@@ -956,8 +956,6 @@ h1.hero-h{font-size:var(--mk-hero-title);font-weight:600;line-height:var(--mk-he
 	transform:translateY(-1px);
 	box-shadow:none;
 }
-.cta-note{font-size:12px;color:rgba(255,255,255,.72);line-height:1.5;font-weight:400;margin:0}
-
 /* ─── FOOTER ─── */
 footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px 48px 32px}
 .footer-inner{max-width:1100px;margin:0 auto}
@@ -1697,7 +1695,7 @@ export function MarketingHomeTemplate() {
                 <em>you need.</em>
               </h2>
               <p className="pricing-lead reveal">
-                No contracts. No card needed for the trial. Cancel before day 15, pay nothing.
+                14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime
               </p>
             </div>
             <div className="price-toggle">
@@ -1777,9 +1775,6 @@ export function MarketingHomeTemplate() {
                 <button type="button" id="pricingNext" className="home-carousel-nav-btn" aria-label="Next pricing plan">›</button>
               </div>
             </div>
-            <p className="pricing-foot reveal">
-              14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime
-            </p>
           </div>
         </section>
         <MarketingFaqAccordion items={HOME_FAQS} />
@@ -1806,9 +1801,6 @@ export function MarketingHomeTemplate() {
                     Start 14-Day Free Trial
                   </Link>
                 </div>
-                <p className="cta-note">
-                  No credit card required · Cancel before day 15, pay nothing
-                </p>
               </div>
             </div>
           </div>
