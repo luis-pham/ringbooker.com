@@ -8,7 +8,6 @@ import {
   IconPhoneOff,
   IconPhoneX,
 } from '@tabler/icons-react';
-import type { ComponentType } from 'react';
 
 export type VerticalPainIconId =
   | 'phone-off'
@@ -18,17 +17,14 @@ export type VerticalPainIconId =
   | 'moon'
   | 'phone-x';
 
-const ICON_MAP: Record<
-  VerticalPainIconId,
-  ComponentType<{ size?: number; stroke?: number; color?: string }>
-> = {
+const ICON_MAP = {
   'phone-off': IconPhoneOff,
   'currency-dollar': IconCurrencyDollar,
   'calendar-event': IconCalendarEvent,
   'message-off': IconMessageOff,
   moon: IconMoon,
   'phone-x': IconPhoneX,
-};
+} satisfies Record<VerticalPainIconId, typeof IconPhoneOff>;
 
 export function VerticalPainIcon({ id }: { id: VerticalPainIconId }) {
   const Icon = ICON_MAP[id];
