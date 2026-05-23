@@ -488,14 +488,15 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
         try {
           const data = JSON.parse(String(event.data)) as {
             error?: { message?: string; code?: string; type?: string };
+            // response.done nests status under data.response.status, not top-level
+            response?: { status?: string };
             type?: string;
-            status?: string;
             transcript?: string;
             name?: string;
             call_id?: string;
           };
           const evType = data.type;
-          if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) logDemoRealtime('oai_event', { type: evType });
+          if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) logDemoRealtime('oai_event', { type: evType, status: data.response?.status });
           if (data.type === 'session.created' || data.type === 'session.updated') {
             realtimeSessionReady = true;
             if (data.type === 'session.created') {
@@ -537,11 +538,11 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
           }
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
           if (data.type === 'response.done') {
-            // Only resume VAD after the greeting fully completes (not on cancel/truncation).
-            if (data.status === 'completed') {
-              setStatusText("You're connected — speak naturally or tap a prompt below.");
-              maybeResumeVadAfterWelcome('response.done');
-            }
+            // Always resume VAD regardless of status — backend interrupt_response:false prevents
+            // ambient-noise cancellations; calling here on cancel too ensures the user is never
+            // stuck in non-interactive mode if an edge-case cancellation slips through.
+            setStatusText("You're connected — speak naturally or tap a prompt below.");
+            maybeResumeVadAfterWelcome('response.done');
           }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
           // end_call tool: acknowledge then wait for audio to finish before closing UI.

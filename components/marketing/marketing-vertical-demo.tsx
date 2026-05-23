@@ -1616,13 +1616,14 @@ export function MarketingVerticalDemoTemplate({
         try {
           const data = JSON.parse(String(event.data)) as {
             error?: { message?: string; code?: string; type?: string };
+            // response.done nests status under data.response.status, not top-level
+            response?: { status?: string };
             type?: string;
-            status?: string;
             transcript?: string;
           };
           const evType = data.type;
           if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) {
-            logDemoRealtime('oai_event', { type: evType, status: data.status });
+            logDemoRealtime('oai_event', { type: evType, status: data.response?.status });
           }
           if (data.type === 'session.created' || data.type === 'session.updated') {
             // Caller-speech transcription is enabled at client-secret mint time
@@ -1647,18 +1648,15 @@ export function MarketingVerticalDemoTemplate({
           }
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
           if (data.type === 'response.done') {
-            // Only resume VAD (interrupt_response + create_response re-enabled) after the greeting
-            // completes successfully. If the response was cancelled (e.g. interrupted by ambient noise
-            // before the backend fix takes effect), skip — a fresh greeting will play via the retry path.
-            const responseCompleted = data.status === 'completed';
-            logDemoRealtime('response_done', { status: data.status, responseCompleted });
-            if (responseCompleted) {
-              setStatusText('You\'re connected — speak naturally or tap a prompt below.');
-              maybeResumeVadAfterWelcome('response.done');
-            }
+            // data.response.status is 'completed' | 'cancelled' | 'failed' | 'incomplete'.
+            // Always resume VAD after any response finishes — the backend interrupt_response:false
+            // prevents ambient-noise cancellations; calling here on cancel too ensures the user is
+            // never stuck in non-interactive mode if an edge-case cancellation still slips through.
+            const responseDoneStatus = data.response?.status;
+            logDemoRealtime('response_done', { status: responseDoneStatus });
+            setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+            maybeResumeVadAfterWelcome('response.done');
           }
-          // output_audio_buffer.stopped fires when the audio pipeline drains (including on cancel/truncation).
-          // Do NOT resume VAD here — only do so on a completed response.done above.
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
           if (data.type === 'error') {
             console.warn('OpenAI Realtime web demo event error', data);
