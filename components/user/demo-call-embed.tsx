@@ -489,6 +489,7 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
           const data = JSON.parse(String(event.data)) as {
             error?: { message?: string; code?: string; type?: string };
             type?: string;
+            status?: string;
             transcript?: string;
             name?: string;
             call_id?: string;
@@ -535,9 +536,12 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
             if (text) transcriptTurnsRef.current.push({ role: 'user', text: text.slice(0, 1000) });
           }
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
-          if (data.type === 'response.done' || data.type === 'output_audio_buffer.stopped') {
-            if (data.type === 'response.done') setStatusText("You're connected — speak naturally or tap a prompt below.");
-            maybeResumeVadAfterWelcome(data.type ?? 'unknown');
+          if (data.type === 'response.done') {
+            // Only resume VAD after the greeting fully completes (not on cancel/truncation).
+            if (data.status === 'completed') {
+              setStatusText("You're connected — speak naturally or tap a prompt below.");
+              maybeResumeVadAfterWelcome('response.done');
+            }
           }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
           // end_call tool: acknowledge then wait for audio to finish before closing UI.

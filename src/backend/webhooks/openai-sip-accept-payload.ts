@@ -111,7 +111,11 @@ export function buildDirectWebDemoClientSecretAudioInput(): {
   }
   const createResponse = parseBoolean(process.env.AGENT_OPENAI_CREATE_RESPONSE, true);
   return {
-    turnDetectionForSecret: { ...td, create_response: false },
+    // Disable both create_response AND interrupt_response during the greeting window:
+    // create_response:false  → VAD won't auto-start a stray response before the page sends its own response.create
+    // interrupt_response:false → ambient mic noise won't truncate the greeting mid-sentence
+    // Both are re-enabled via turnDetectionAfterWelcome once the greeting finishes.
+    turnDetectionForSecret: { ...td, create_response: false, interrupt_response: false },
     turnDetectionAfterWelcome: { ...td, create_response: createResponse },
   };
 }

@@ -1494,6 +1494,7 @@ export function MarketingVerticalDemoTemplate({
         setStatusText('You\'re connected — the receptionist will greet you first, then you can speak or tap a prompt below.');
       };
       pc.onconnectionstatechange = () => {
+        logDemoRealtime('connection_state_change', { state: pc.connectionState });
         if (pc.connectionState === 'connected') {
           connected = true;
           clearDirectConnectTimer();
@@ -1503,6 +1504,7 @@ export function MarketingVerticalDemoTemplate({
         }
         if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
           if (directPeerFailureMutedRef.current) return;
+          logDemoRealtime('webrtc_ice_failed', { state: pc.connectionState, connected });
           directPeerFailureMutedRef.current = true;
           clearDirectConnectTimer();
           cleanupDirectRealtime();
@@ -1615,11 +1617,12 @@ export function MarketingVerticalDemoTemplate({
           const data = JSON.parse(String(event.data)) as {
             error?: { message?: string; code?: string; type?: string };
             type?: string;
+            status?: string;
             transcript?: string;
           };
           const evType = data.type;
           if (evType && DEMO_REALTIME_LOG_EVENT_TYPES.has(evType)) {
-            logDemoRealtime('oai_event', { type: evType });
+            logDemoRealtime('oai_event', { type: evType, status: data.status });
           }
           if (data.type === 'session.created' || data.type === 'session.updated') {
             // Caller-speech transcription is enabled at client-secret mint time
@@ -1643,12 +1646,19 @@ export function MarketingVerticalDemoTemplate({
             if (text) transcriptTurnsRef.current.push({ role: 'user', text: text.slice(0, 1000) });
           }
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
-          if (data.type === 'response.done' || data.type === 'output_audio_buffer.stopped') {
-            if (data.type === 'response.done') {
+          if (data.type === 'response.done') {
+            // Only resume VAD (interrupt_response + create_response re-enabled) after the greeting
+            // completes successfully. If the response was cancelled (e.g. interrupted by ambient noise
+            // before the backend fix takes effect), skip — a fresh greeting will play via the retry path.
+            const responseCompleted = data.status === 'completed';
+            logDemoRealtime('response_done', { status: data.status, responseCompleted });
+            if (responseCompleted) {
               setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+              maybeResumeVadAfterWelcome('response.done');
             }
-            maybeResumeVadAfterWelcome(data.type ?? 'unknown');
           }
+          // output_audio_buffer.stopped fires when the audio pipeline drains (including on cancel/truncation).
+          // Do NOT resume VAD here — only do so on a completed response.done above.
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
           if (data.type === 'error') {
             console.warn('OpenAI Realtime web demo event error', data);
@@ -1665,6 +1675,7 @@ export function MarketingVerticalDemoTemplate({
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      logDemoRealtime('sdp_offer_created', { sdpLines: offer.sdp?.split('\n').length ?? 0 });
       const sdpResponse = await fetch(OPENAI_REALTIME_WEBRTC_URL, {
         method: 'POST',
         headers: {
@@ -1673,14 +1684,22 @@ export function MarketingVerticalDemoTemplate({
         },
         body: offer.sdp,
       });
+      logDemoRealtime('sdp_response', { status: sdpResponse.status, ok: sdpResponse.ok });
       if (!sdpResponse.ok) {
+        const errBody = await sdpResponse.text().catch(() => '');
+        logDemoRealtime('sdp_error_body', { status: sdpResponse.status, body: errBody.slice(0, 300) });
         throw new Error('webrtc_connect_failed');
       }
       await pc.setRemoteDescription({
         type: 'answer',
         sdp: await sdpResponse.text(),
       });
-    } catch {
+      logDemoRealtime('remote_desc_set', {});
+    } catch (err) {
+      logDemoRealtime('webrtc_connect_catch', {
+        errMessage: err instanceof Error ? err.message : String(err),
+        errName: err instanceof Error ? err.name : 'unknown',
+      });
       directPeerFailureMutedRef.current = true;
       cleanupDirectRealtime();
       resetTurnstile();
