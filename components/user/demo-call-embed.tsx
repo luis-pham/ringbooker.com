@@ -461,6 +461,7 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
       let initialGreetingRequested = false;
       let realtimeSessionReady = false;
       let vadResumeAfterWelcomeSent = false;
+      let awaitingInitialGreetingAudioStop = false;
       let pendingDemoEndCall = false;
       const maybeResumeVadAfterWelcome = (fromEvent: string) => {
         const td = sessionBody.turnDetectionAfterWelcome;
@@ -474,6 +475,7 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
       const requestInitialGreeting = () => {
         if (initialGreetingRequested || !realtimeSessionReady || dc.readyState !== 'open') return;
         initialGreetingRequested = true;
+        awaitingInitialGreetingAudioStop = true;
         setStatusText('The receptionist is greeting you…');
         try {
           const scripted = sessionBody.scriptedWelcomeLine?.trim();
@@ -482,7 +484,10 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
             : 'Speak first now. Say only the exact WELCOME MESSAGE from RUNTIME BUSINESS CONFIG, naturally and once, then stop and listen. Do not wait for the caller to speak.';
           dc.send(JSON.stringify({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'The call just connected. Please say the configured WELCOME MESSAGE before I say anything.' }] } }));
           dc.send(JSON.stringify({ type: 'response.create', response: { instructions: greetingInstructions } }));
-        } catch { initialGreetingRequested = false; }
+        } catch {
+          initialGreetingRequested = false;
+          awaitingInitialGreetingAudioStop = false;
+        }
       };
       dc.addEventListener('message', (event) => {
         try {
@@ -538,11 +543,9 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
           }
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
           if (data.type === 'response.done') {
-            // Always resume VAD regardless of status — backend interrupt_response:false prevents
-            // ambient-noise cancellations; calling here on cancel too ensures the user is never
-            // stuck in non-interactive mode if an edge-case cancellation slips through.
-            setStatusText("You're connected — speak naturally or tap a prompt below.");
-            maybeResumeVadAfterWelcome('response.done');
+            if (!awaitingInitialGreetingAudioStop) {
+              setStatusText("You're connected — speak naturally or tap a prompt below.");
+            }
           }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
           // end_call tool: acknowledge then wait for audio to finish before closing UI.
@@ -560,6 +563,11 @@ export function DemoCallEmbed({ vertical, device: _device, shopServices, busines
             setStatusText('Call ending…');
           }
           // Audio buffer done — if end_call was requested, close the demo session.
+          if (awaitingInitialGreetingAudioStop && data.type === 'output_audio_buffer.stopped') {
+            awaitingInitialGreetingAudioStop = false;
+            setStatusText("You're connected — speak naturally or tap a prompt below.");
+            maybeResumeVadAfterWelcome('output_audio_buffer.stopped');
+          }
           if (pendingDemoEndCall && data.type === 'output_audio_buffer.stopped') {
             pendingDemoEndCall = false;
             directPeerFailureMutedRef.current = true; // prevent closed-connection from showing error

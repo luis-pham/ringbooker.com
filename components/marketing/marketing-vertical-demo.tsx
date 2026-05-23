@@ -1530,6 +1530,7 @@ export function MarketingVerticalDemoTemplate({
       let initialGreetingRequested = false;
       let realtimeSessionReady = false;
       let vadResumeAfterWelcomeSent = false;
+      let awaitingInitialGreetingAudioStop = false;
 
       const maybeResumeVadAfterWelcome = (fromEvent: string) => {
         const td = sessionBody.turnDetectionAfterWelcome;
@@ -1575,6 +1576,7 @@ export function MarketingVerticalDemoTemplate({
         if (initialGreetingRequested || !realtimeSessionReady || dc.readyState !== 'open') return;
         // Set before sends: `session.created` / `session.updated` may arrive back-to-back; guard must flip before I/O.
         initialGreetingRequested = true;
+        awaitingInitialGreetingAudioStop = true;
         setStatusText('The receptionist is greeting you…');
         try {
           const scripted = sessionBody.scriptedWelcomeLine?.trim();
@@ -1610,6 +1612,7 @@ export function MarketingVerticalDemoTemplate({
           });
         } catch {
           initialGreetingRequested = false;
+          awaitingInitialGreetingAudioStop = false;
         }
       };
       dc.addEventListener('message', (event) => {
@@ -1649,13 +1652,16 @@ export function MarketingVerticalDemoTemplate({
           if (data.type === 'response.created') setStatusText('AI receptionist is responding…');
           if (data.type === 'response.done') {
             // data.response.status is 'completed' | 'cancelled' | 'failed' | 'incomplete'.
-            // Always resume VAD after any response finishes — the backend interrupt_response:false
-            // prevents ambient-noise cancellations; calling here on cancel too ensures the user is
-            // never stuck in non-interactive mode if an edge-case cancellation still slips through.
             const responseDoneStatus = data.response?.status;
             logDemoRealtime('response_done', { status: responseDoneStatus });
+            if (!awaitingInitialGreetingAudioStop) {
+              setStatusText('You\'re connected — speak naturally or tap a prompt below.');
+            }
+          }
+          if (awaitingInitialGreetingAudioStop && data.type === 'output_audio_buffer.stopped') {
+            awaitingInitialGreetingAudioStop = false;
             setStatusText('You\'re connected — speak naturally or tap a prompt below.');
-            maybeResumeVadAfterWelcome('response.done');
+            maybeResumeVadAfterWelcome('output_audio_buffer.stopped');
           }
           if (data.type === 'input_audio_buffer.speech_started') setStatusText('Listening…');
           if (data.type === 'error') {
