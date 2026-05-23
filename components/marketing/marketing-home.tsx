@@ -72,6 +72,8 @@ const HOME_INDUSTRY_CARDS = [
   { href: '/industries/beauty-clinic', icon: '🏥', title: 'Beauty Clinic', sub: 'Consults & follow-ups' },
 ] as const;
 
+const HOME_INDUSTRY_RV_CLASSES = ['rv', 'rv d1', 'rv d2', 'rv d3', 'rv d4'] as const;
+
 const homeFaqJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
@@ -974,6 +976,12 @@ footer{background:var(--bg-gray);border-top:1px solid var(--border);padding:60px
 .footer-bottom p{font-size:14px;color:var(--text-light)}
 
 /* ─── REVEAL ─── */
+.rv{opacity:0;transform:translateY(22px);transition:opacity .85s ease,transform .85s ease}
+.rv.show{opacity:1;transform:translateY(0)}
+.rv.d1{transition-delay:.1s}
+.rv.d2{transition-delay:.2s}
+.rv.d3{transition-delay:.3s}
+.rv.d4{transition-delay:.4s}
 .reveal{opacity:1;transform:none}
 .reveal.vis{opacity:1;transform:none}
 
@@ -1263,7 +1271,25 @@ setPriceSafe('monthly')
 `,
   String.raw`
 (() => {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const rvEls = Array.from(document.querySelectorAll('.rv'))
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (rvEls.length) {
+    if (reducedMotion || !('IntersectionObserver' in window)) {
+      rvEls.forEach((el) => el.classList.add('show'))
+    } else {
+      const rvObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return
+          entry.target.classList.add('show')
+          rvObserver.unobserve(entry.target)
+        })
+      }, { threshold: 0.2 })
+      rvEls.forEach((el) => rvObserver.observe(el))
+    }
+  }
+
+  if (reducedMotion) return
   if (!('IntersectionObserver' in window)) return
 
   const THRESHOLD = 0.2
@@ -1716,7 +1742,7 @@ export function MarketingHomeTemplate() {
         {/* HOW IT WORKS */}
         <section className="steps-section" id="how-it-works">
           <div className="steps-inner">
-            <div className="steps-intro">
+            <div className="steps-intro rv">
               <div className="sec-label sec-label-left">How it works</div>
               <h2 className="steps-title reveal">
                 Live in <em>15 minutes.</em>
@@ -1728,17 +1754,17 @@ export function MarketingHomeTemplate() {
             <div className="steps-shell reveal">
               <div className="steps-rail" aria-hidden="true" />
               <div className="steps-grid">
-                <article className="step-card">
+                <article className="step-card rv">
                   <div className="step-marker">1</div>
                   <h3>Forward your number</h3>
                   <p>Keep the number your clients know. RingBooker sits behind your line and catches every missed, busy, or after-hours call.</p>
                 </article>
-                <article className="step-card">
+                <article className="step-card rv d1">
                   <div className="step-marker">2</div>
                   <h3>Import your details</h3>
                   <p>Paste your URL — RingBooker pulls your hours, services, and pricing. Review, adjust, and connect your tools.</p>
                 </article>
-                <article className="step-card">
+                <article className="step-card rv d2">
                   <div className="step-marker">3</div>
                   <h3>Start recovering bookings</h3>
                   <p>Callers get help instantly. Your team gets the summary, booking details, and next action.</p>
@@ -1749,7 +1775,7 @@ export function MarketingHomeTemplate() {
         </section>
         <section className="industries" id="industries">
           <div className="industries-inner">
-            <div className="industries-intro">
+            <div className="industries-intro rv">
               <div className="sec-label sec-label-left">Industries</div>
               <h2 className="industries-title reveal">
                 Built for <em>beauty</em> appointment workflows.
@@ -1759,8 +1785,8 @@ export function MarketingHomeTemplate() {
               </p>
                   </div>
             <div className="industries-grid reveal">
-              {HOME_INDUSTRY_CARDS.map(({ href, icon, title, sub }) => (
-                <Link key={href} href={href} className="industry-card-lite">
+              {HOME_INDUSTRY_CARDS.map(({ href, icon, title, sub }, index) => (
+                <Link key={href} href={href} className={`industry-card-lite ${HOME_INDUSTRY_RV_CLASSES[index]}`}>
                   <span className="industry-card-icon" aria-hidden="true">
                     {icon}
                   </span>
@@ -1769,7 +1795,7 @@ export function MarketingHomeTemplate() {
                 </Link>
               ))}
               </div>
-            <div className="metrics-grid reveal" id="by-the-numbers">
+            <div className="metrics-grid reveal rv d1" id="by-the-numbers">
               <article className="metrics-cell">
                 <div className="metrics-value" data-count="500" data-suffix="+">500+</div>
                 <div className="metrics-label">Demo calls completed</div>
@@ -1790,7 +1816,7 @@ export function MarketingHomeTemplate() {
         </section>
         <section className="compare-section" id="ai-phone-agent-differences">
           <div className="compare-inner">
-            <div className="compare-intro">
+            <div className="compare-intro rv">
               <div className="sec-label sec-label-left">Why RingBooker</div>
               <h2 className="compare-title reveal">
                 Not another <em>generic</em> AI agent.
@@ -1800,7 +1826,7 @@ export function MarketingHomeTemplate() {
               </p>
             </div>
             <div className="compare-board reveal">
-              <div className="compare-col compare-col-bad">
+              <div className="compare-col compare-col-bad rv">
                 <p className="compare-col-label">Generic AI phone agent</p>
                 <ul className="compare-lines">
                   {HOME_COMPARE_ROWS.map(({ bad }) => (
@@ -1815,7 +1841,7 @@ export function MarketingHomeTemplate() {
                   ))}
                 </ul>
               </div>
-              <div className="compare-col compare-col-good">
+              <div className="compare-col compare-col-good rv d1">
                 <p className="compare-col-label">RingBooker</p>
                 <ul className="compare-lines">
                   {HOME_COMPARE_ROWS.map(({ good }) => (
@@ -1842,7 +1868,7 @@ export function MarketingHomeTemplate() {
         {/* PRICING */}
         <section className="pricing" id="pricing">
           <div className="pricing-inner">
-            <div className="pricing-intro">
+            <div className="pricing-intro rv">
               <div className="sec-label sec-label-center">Pricing</div>
               <h2 className="pricing-title reveal">
                 Start with the coverage
@@ -1863,7 +1889,7 @@ export function MarketingHomeTemplate() {
             </div>
             <div className="home-carousel" id="pricingCarousel">
             <div className="price-grid home-carousel-track reveal">
-              <div className="plan home-carousel-slide">
+              <div className="plan home-carousel-slide rv">
                 <div className="plan-name">Starter</div>
                 <div className="plan-desc">For smaller salons, spas, and clinics that need reliable after-hours and overflow call coverage.</div>
                 <div className="plan-price" id="ps">$79<span className="plan-price-period">/mo</span></div>
@@ -1882,7 +1908,7 @@ export function MarketingHomeTemplate() {
                   Start 14-Day Free Trial →
                 </a>
               </div>
-              <div className="plan star home-carousel-slide">
+              <div className="plan star home-carousel-slide rv d1">
                 <div className="plan-badge">Most popular</div>
                 <div className="plan-name">Professional</div>
                 <div className="plan-desc">For busier teams that need stronger follow-up, caller context, and provider preference capture.</div>
@@ -1904,7 +1930,7 @@ export function MarketingHomeTemplate() {
                   Start 14-Day Free Trial →
                 </a>
               </div>
-              <div className="plan home-carousel-slide">
+              <div className="plan home-carousel-slide rv d2">
                 <div className="plan-name">Custom</div>
                 <div className="plan-desc">Multi-location setup, custom routing, and higher call volume — built around your operation.</div>
                 <div className="plan-price plan-price-custom">Multi-location</div>
@@ -1930,6 +1956,9 @@ export function MarketingHomeTemplate() {
                 <button type="button" id="pricingNext" className="home-carousel-nav-btn" aria-label="Next pricing plan">›</button>
               </div>
             </div>
+            <p className="pricing-foot rv d2">
+              14-day free trial. No card to start — only required when you go live. No contracts · Cancel anytime
+            </p>
           </div>
         </section>
         <MarketingFaqAccordion items={HOME_FAQS} />
