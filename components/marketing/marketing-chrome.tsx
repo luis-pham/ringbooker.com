@@ -380,6 +380,7 @@ export function MarketingFooter({
             <Link href="/current-number/call-forwarding">Call Forwarding Guides</Link>
             <Link href="/faq">FAQ</Link>
             <Link href="/contact">Contact</Link>
+            <Link href="/about">About</Link>
           </div>
         </nav>
         <div className="mk-footer-bottom">

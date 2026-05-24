@@ -13,7 +13,8 @@ type MarketingLegalPageProps = {
   badge?: string;
   title: string;
   subtitle: string;
-  updatedAt: string;
+  intro?: ReactNode;
+  updatedAt?: string;
   sections: LegalSection[];
   /** Optional FAQ block + matching FAQPage JSON-LD (must mirror visible Q/A). */
   faqs?: readonly MarketingFaqItem[];
@@ -24,6 +25,7 @@ export function MarketingLegalPage({
   badge,
   title,
   subtitle,
+  intro,
   updatedAt,
   sections,
   faqs = [],
@@ -44,7 +46,8 @@ export function MarketingLegalPage({
           {badge ? <p className="hero-eyebrow">{badge}</p> : null}
           <h1>{title}</h1>
           <p>{subtitle}</p>
-          <div className="legal-updated">Last updated: {updatedAt}</div>
+          {intro ? <div className="legal-intro">{intro}</div> : null}
+          {updatedAt ? <div className="legal-updated">Last updated: {updatedAt}</div> : null}
         </section>
         <section className="legal-content">
           {sections.map((section) => (
@@ -71,6 +74,8 @@ export function MarketingLegalPage({
 .legal-hero .hero-eyebrow{margin-bottom:12px}
 .legal-hero h1{font-size:var(--mk-legal-h1);font-weight:600;line-height:1.06;letter-spacing:var(--mk-legal-h1-track);color:#111827;margin:0 0 10px}
 .legal-hero p{font-size:var(--mk-article-body);color:#4b5563;line-height:1.65;max-width:760px;margin:0 0 14px}
+.legal-intro{display:grid;gap:10px;max-width:760px;margin:0 0 14px}
+.legal-intro p{font-size:var(--mk-article-body);color:#4b5563;line-height:1.65;margin:0}
 .legal-updated{display:inline-flex;align-items:center;padding:7px 12px;border-radius:10px;background:#ffffff;border:1px solid #e5e7eb;font-size:var(--mk-meta);font-weight:600;color:#374151}
 .legal-content{max-width:900px;margin:0 auto;display:grid;gap:14px}
 .legal-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px 20px;box-shadow:0 8px 24px rgba(17,24,39,.05)}

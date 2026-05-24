@@ -35,6 +35,7 @@ const staticRoutes = [
   '/privacy',
   '/terms',
   '/refund',
+  '/about',
 ];
 
 function parseStaticSitemapLastModMap(): Map<string, Date> {
