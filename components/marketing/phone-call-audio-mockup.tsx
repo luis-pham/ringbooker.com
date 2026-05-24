@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { IphoneStatusBar } from '@/components/marketing/iphone-status-bar';
-import { PhoneMockupRippleRings, PHONE_MOCKUP_RIPPLE_CSS } from '@/components/marketing/phone-mockup-ripple';
 import { VERTICAL_DEMO_AUDIO } from '@/lib/marketing/demo-audio-cdn';
 
 export { MARKETING_DEMO_AUDIO_CDN, marketingDemoAudioUrl, VERTICAL_DEMO_AUDIO } from '@/lib/marketing/demo-audio-cdn';
@@ -389,20 +388,13 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
     </>
   );
 
-  const mockupStyles = (
-    <style
-      dangerouslySetInnerHTML={{ __html: `${PHONE_MOCKUP_RIPPLE_CSS}\n${PHONE_CALL_AUDIO_MOCKUP_CSS}` }}
-    />
-  );
+  const mockupStyles = <style dangerouslySetInnerHTML={{ __html: PHONE_CALL_AUDIO_MOCKUP_CSS }} />;
 
   if (shell === 'vertical') {
     return (
       <>
-        <div className="phone-mockup-ripple-wrap">
-          <PhoneMockupRippleRings />
-          <div className="cp-frame iph-shell">
-            <div className="cp-screen iph-shell">{screen}</div>
-          </div>
+        <div className="cp-frame iph-shell">
+          <div className="cp-screen iph-shell">{screen}</div>
         </div>
         {mockupStyles}
       </>
@@ -411,8 +403,7 @@ export function PhoneCallAudioMockup({ businessName, audioSrc, shell = 'home' }:
 
   return (
     <>
-      <div className="phone-wrap phone-mockup-ripple-wrap">
-        <PhoneMockupRippleRings />
+      <div className="phone-wrap">
         <div className="phone-frame iph-shell">
           <div className="phone-screen iph-shell">{screen}</div>
         </div>
