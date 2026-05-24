@@ -152,6 +152,15 @@ body.app-body{overflow-y:scroll}
 .admin-table-note-btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .admin-table-note-btn.has-note{border-color:var(--accent-border);color:var(--accent)}
 .admin-table-note-btn:disabled{opacity:.55;cursor:not-allowed}
+.admin-filter-bar{display:grid;grid-template-columns:minmax(140px,180px) minmax(140px,180px) minmax(200px,1fr) auto auto;gap:12px;align-items:end}
+.admin-filter-bar .field{margin:0;min-width:0}
+.admin-filter-bar .field label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.admin-filter-bar select,.admin-filter-bar input{width:100%}
+.admin-filter-bar .btn{white-space:nowrap}
+.admin-filter-bar--phone-demos{grid-template-columns:minmax(130px,150px) minmax(130px,150px) auto}
+.admin-filter-bar--web-demos{grid-template-columns:minmax(120px,160px) minmax(110px,140px) minmax(72px,96px) minmax(160px,1fr) minmax(130px,150px) minmax(130px,150px) auto}
+@media (max-width:960px){.admin-filter-bar{grid-template-columns:1fr 1fr}.admin-filter-bar .field--search{grid-column:1/-1}.admin-filter-bar .field--apply,.admin-filter-bar .field--clear{grid-column:span 1}.admin-filter-bar--web-demos .field--from,.admin-filter-bar--web-demos .field--to{grid-column:span 1}}
+@media (max-width:560px){.admin-filter-bar,.admin-filter-bar--phone-demos,.admin-filter-bar--web-demos{grid-template-columns:1fr}}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field label{font-size:12px;font-weight:600;color:var(--muted)}

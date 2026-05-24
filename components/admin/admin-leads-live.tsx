@@ -323,10 +323,14 @@ export function AdminLeadsLive() {
                 <p className="sub">Filter by lead status and search by business/name/email/phone.</p>
               </div>
             </div>
-            <form onSubmit={onSearchSubmit} className="form-grid">
-              <div className="field">
-                <label>Status</label>
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as LeadStatus | 'all')}>
+            <form onSubmit={onSearchSubmit} className="admin-filter-bar">
+              <div className="field field--status">
+                <label htmlFor="leads-filter-status">Status</label>
+                <select
+                  id="leads-filter-status"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as LeadStatus | 'all')}
+                >
                   {STATUS_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -334,9 +338,13 @@ export function AdminLeadsLive() {
                   ))}
                 </select>
               </div>
-              <div className="field">
-                <label>Intent</label>
-                <select value={intentFilter} onChange={(e) => setIntentFilter(e.target.value as LeadIntent | 'all')}>
+              <div className="field field--intent">
+                <label htmlFor="leads-filter-intent">Intent</label>
+                <select
+                  id="leads-filter-intent"
+                  value={intentFilter}
+                  onChange={(e) => setIntentFilter(e.target.value as LeadIntent | 'all')}
+                >
                   {INTENT_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -344,22 +352,23 @@ export function AdminLeadsLive() {
                   ))}
                 </select>
               </div>
-              <div className="field">
-                <label>Search</label>
+              <div className="field field--search">
+                <label htmlFor="leads-filter-search">Search</label>
                 <input
+                  id="leads-filter-search"
                   value={draftQuery}
                   onChange={(e) => setDraftQuery(e.target.value)}
                   placeholder="Business, contact name, email, phone..."
                 />
               </div>
-              <div className="field" style={{ alignSelf: 'end' }}>
+              <div className="field field--apply">
                 <button className="btn purple" type="submit">
                   Apply filters
                 </button>
               </div>
-              <div className="field" style={{ alignSelf: 'end' }}>
+              <div className="field field--clear">
                 <button
-                  className="btn ghost"
+                  className="btn"
                   type="button"
                   onClick={() => {
                     setStatusFilter('all');

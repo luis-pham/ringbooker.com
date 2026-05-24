@@ -410,10 +410,6 @@ export function AdminDemosLive() {
           <div className="topbar">
             <div className="page-title">
               <h1>Marketing demos</h1>
-              <p>
-                Phone tab: PSTN / SIP-backed demo call runs (excludes LiveKit browser rows). Web tab: browser LiveKit plus
-                direct OpenAI Realtime sessions — IP and country are admin-only operational signals.
-              </p>
             </div>
             <div className="top-actions">
               <a className="btn" href="/admin/calls">
@@ -452,96 +448,108 @@ export function AdminDemosLive() {
           <section className="card soft" style={{ marginBottom: 18 }}>
             <div className="panel-head">
               <div>
-                <h3>Date range (UTC)</h3>
+                <h3>Filters (UTC)</h3>
                 <p className="sub">
                   {activeTab === 'phone'
-                    ? 'Applies to when the demo call run was created.'
-                    : 'Applies to web session start time (direct) or demo call run creation (LiveKit web).'}
+                    ? 'Date range applies to demo call run creation time.'
+                    : 'Apply vertical, status, country, search, and date range together.'}
                 </p>
               </div>
-              <div className="top-actions" style={{ flexWrap: 'wrap' }}>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
-                  From
+            </div>
+            {activeTab === 'phone' ? (
+              <form
+                className="admin-filter-bar admin-filter-bar--phone-demos"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  applyFilters();
+                }}
+              >
+                <div className="field field--from">
+                  <label htmlFor="demos-phone-date-from">From</label>
                   <input
-                    className="btn ghost"
-                    style={{ padding: '10px 14px', cursor: 'pointer', minWidth: 140 }}
+                    id="demos-phone-date-from"
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
                   />
-                </label>
-                <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
-                  To
-                  <input
-                    className="btn ghost"
-                    style={{ padding: '10px 14px', cursor: 'pointer', minWidth: 140 }}
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                  />
-                </label>
-                <button type="button" className="btn purple" style={{ alignSelf: 'flex-end' }} onClick={applyFilters}>
-                  Apply
-                </button>
-              </div>
-            </div>
-            {activeTab === 'web' ? (
-              <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(148,163,184,.25)' }}>
-                <p className="sub" style={{ margin: '0 0 10px' }}>
-                  Optional filters (direct sessions only use DB filters; LiveKit rows are filtered after fetch — large ranges may be
-                  truncated).
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
-                    Vertical slug
-                    <input
-                      className="btn ghost"
-                      style={{ padding: '10px 14px', minWidth: 140 }}
-                      value={webVertical}
-                      onChange={(e) => setWebVertical(e.target.value)}
-                      placeholder="e.g. nail-salon"
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
-                    Status
-                    <select
-                      className="btn ghost"
-                      style={{ padding: '10px 14px', minWidth: 140, cursor: 'pointer' }}
-                      value={webStatus}
-                      onChange={(e) => setWebStatus(e.target.value)}
-                    >
-                      <option value="">All</option>
-                      <option value="started">started</option>
-                      <option value="connected">connected</option>
-                      <option value="completed">completed</option>
-                      <option value="failed">failed</option>
-                      <option value="timed_out">timed_out</option>
-                      <option value="rate_limited">rate_limited</option>
-                    </select>
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
-                    Country
-                    <input
-                      className="btn ghost"
-                      style={{ padding: '10px 14px', width: 90 }}
-                      value={webCountry}
-                      onChange={(e) => setWebCountry(e.target.value)}
-                      placeholder="US"
-                    />
-                  </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--muted)' }}>
-                    Search
-                    <input
-                      className="btn ghost"
-                      style={{ padding: '10px 14px', minWidth: 180 }}
-                      value={webSearch}
-                      onChange={(e) => setWebSearch(e.target.value)}
-                      placeholder="business or session id"
-                    />
-                  </label>
                 </div>
-              </div>
-            ) : null}
+                <div className="field field--to">
+                  <label htmlFor="demos-phone-date-to">To</label>
+                  <input id="demos-phone-date-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                </div>
+                <div className="field field--apply">
+                  <button type="submit" className="btn purple">
+                    Apply filters
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form
+                className="admin-filter-bar admin-filter-bar--web-demos"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  applyFilters();
+                }}
+              >
+                <div className="field field--vertical">
+                  <label htmlFor="demos-web-vertical">Vertical slug</label>
+                  <input
+                    id="demos-web-vertical"
+                    value={webVertical}
+                    onChange={(e) => setWebVertical(e.target.value)}
+                    placeholder="e.g. nail-salon"
+                  />
+                </div>
+                <div className="field field--status">
+                  <label htmlFor="demos-web-status">Status</label>
+                  <select id="demos-web-status" value={webStatus} onChange={(e) => setWebStatus(e.target.value)}>
+                    <option value="">All</option>
+                    <option value="started">started</option>
+                    <option value="connected">connected</option>
+                    <option value="completed">completed</option>
+                    <option value="failed">failed</option>
+                    <option value="timed_out">timed_out</option>
+                    <option value="rate_limited">rate_limited</option>
+                  </select>
+                </div>
+                <div className="field field--country">
+                  <label htmlFor="demos-web-country">Country</label>
+                  <input
+                    id="demos-web-country"
+                    value={webCountry}
+                    onChange={(e) => setWebCountry(e.target.value)}
+                    placeholder="US"
+                  />
+                </div>
+                <div className="field field--search">
+                  <label htmlFor="demos-web-search">Search</label>
+                  <input
+                    id="demos-web-search"
+                    value={webSearch}
+                    onChange={(e) => setWebSearch(e.target.value)}
+                    placeholder="business or session id"
+                  />
+                </div>
+                <div className="field field--from">
+                  <label htmlFor="demos-web-date-from">From</label>
+                  <input
+                    id="demos-web-date-from"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                  />
+                </div>
+                <div className="field field--to">
+                  <label htmlFor="demos-web-date-to">To</label>
+                  <input id="demos-web-date-to" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                </div>
+                <div className="field field--apply">
+                  <button type="submit" className="btn purple">
+                    Apply filters
+                  </button>
+                </div>
+              </form>
+            )}
           </section>
 
           {activeTab === 'phone' ? (
