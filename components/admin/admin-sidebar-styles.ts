@@ -4,6 +4,7 @@ export const adminSidebarAddonStyles: string[] = [
 .sidebar{border-right-color:var(--line)}
 .nav-label{color:var(--muted);font-weight:600;letter-spacing:.06em;padding:8px 10px 6px}
 .nav-groups{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.nav-flat{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--line)}
 .nav-group{border:none;background:transparent;border-radius:0}
 .nav-group.has-active{background:transparent}
 .nav-group-toggle{width:100%;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r-sm);border:none;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:500;letter-spacing:-.01em;text-align:left;cursor:pointer;transition:background .15s ease,color .15s ease}

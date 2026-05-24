@@ -339,10 +339,6 @@ export function AdminDashboardLive() {
           <div className="topbar">
             <div className="page-title">
               <h1>Admin overview</h1>
-              <p>
-                KPI snapshot plus four independent charts. Each chart loads its own period from the backend and counts
-                real database rows (UTC buckets) — no mock series.
-              </p>
             </div>
             <div className="top-actions">
               <a className="btn" href="/admin/calls">

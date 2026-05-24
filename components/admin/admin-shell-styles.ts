@@ -17,6 +17,8 @@ html.sidebar-collapsed .nav-group-title,
 html.sidebar-collapsed .nav-sub-label,
 html.sidebar-collapsed .sidebar-control-label,
 html.sidebar-collapsed .nav-group-chevron{display:none}
+html.sidebar-collapsed .nav-item span{display:none}
+html.sidebar-collapsed .nav-item{justify-content:center;padding:9px 8px}
 html.sidebar-collapsed .brand{justify-content:center}
 html.sidebar-collapsed .nav-group-toggle{justify-content:center;padding:9px 8px;gap:6px}
 html.sidebar-collapsed .nav-group-toggle .nav-icon--group{margin:0}

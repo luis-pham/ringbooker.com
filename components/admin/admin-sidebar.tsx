@@ -11,8 +11,6 @@ import {
   IconFolder,
   IconHealth,
   IconLeafCalls,
-  IconLeafOverview,
-  IconLeafShop,
   IconLeads,
   IconMegaphone,
   IconOverview,
@@ -26,13 +24,14 @@ type NavItem = { href: string; label: string };
 
 type NavGroup = { id: string; label: string; items: NavItem[] };
 
+type FlatNavItem = { href: string; label: string; icon: ComponentType };
+
+const FLAT_NAV: FlatNavItem[] = [
+  { href: '/admin', label: 'Overview', icon: IconOverview },
+  { href: '/admin/shops', label: 'Business Acc', icon: IconShop },
+];
+
 const GROUPS: NavGroup[] = [
-  { id: 'dashboard', label: 'Dashboard', items: [{ href: '/admin', label: 'Overview' }] },
-  {
-    id: 'shops',
-    label: 'Businesses & accounts',
-    items: [{ href: '/admin/shops', label: 'All businesses' }],
-  },
   {
     id: 'calls',
     label: 'Calls',
@@ -61,16 +60,12 @@ const GROUPS: NavGroup[] = [
 ];
 
 const GROUP_ICON: Record<string, ComponentType> = {
-  dashboard: IconOverview,
-  shops: IconShop,
   calls: IconPhone,
   marketing: IconMegaphone,
   system: IconSliders,
 };
 
 const ITEM_ICON: Record<string, ComponentType> = {
-  '/admin': IconLeafOverview,
-  '/admin/shops': IconLeafShop,
   '/admin/calls': IconLeafCalls,
   '/admin/demos': IconDemo,
   '/admin/leads': IconLeads,
@@ -91,9 +86,7 @@ function isActiveHref(href: string, pathname: string): boolean {
 function defaultOpenForPath(pathname: string): Record<string, boolean> {
   const p = pathname || '';
   const next: Record<string, boolean> = {};
-  if (p === '/admin' || p === '/admin/') next.dashboard = true;
-  else if (p.startsWith('/admin/shops')) next.shops = true;
-  else if (p.startsWith('/admin/calls') || p.startsWith('/admin/demos')) next.calls = true;
+  if (p.startsWith('/admin/calls') || p.startsWith('/admin/demos')) next.calls = true;
   else if (p.startsWith('/admin/leads') || p.startsWith('/admin/blog')) next.marketing = true;
   else if (
     p.startsWith('/admin/billing') ||
@@ -101,8 +94,6 @@ function defaultOpenForPath(pathname: string): Record<string, boolean> {
     p.startsWith('/admin/system-health')
   ) {
     next.system = true;
-  } else {
-    next.dashboard = true;
   }
   return next;
 }
@@ -152,6 +143,23 @@ export function AdminSidebar() {
       </div>
       <div className="nav-label">Backoffice</div>
       <div className="nav-groups">
+        <div className="nav-flat">
+          {FLAT_NAV.map((item) => {
+            const Icon = item.icon;
+            return (
+              <a
+                key={item.href}
+                href={item.href}
+                className={isActiveHref(item.href, pathname) ? 'nav-item active' : 'nav-item'}
+              >
+                <div className="nav-icon" aria-hidden>
+                  <Icon />
+                </div>
+                <span>{item.label}</span>
+              </a>
+            );
+          })}
+        </div>
         {GROUPS.map((group) => {
           const open = Boolean(openGroups[group.id]);
           const hasActive = group.items.some((item) => isActiveHref(item.href, pathname));
