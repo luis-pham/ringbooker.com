@@ -107,29 +107,16 @@ export function parseOpenAiProjectUserFromSipTo(sipToValue: string | null | unde
   return user;
 }
 
-function normalizeConfiguredOpenAiProjectId(raw: string | null | undefined): string | null {
-  const t = raw?.trim();
-  if (!t) return null;
-  return t.startsWith('proj_') ? t : `proj_${t}`;
-}
-
 export function resolveOpenAiSipDidContext(params: {
   map: Map<string, OpenAiSipDidContext>;
   sipToValue: string | null;
-  /** Must match `To` user when using TeXML → OpenAI SIP (see `parseOpenAiProjectUserFromSipTo`). */
+  /** Kept for backward-compatible call sites; demo routing now requires an actual DID match. */
   openAiRealtimeProjectId?: string | null;
 }): OpenAiSipDidContext | null {
   const e164 = params.sipToValue ? normalizeE164FromSipUri(params.sipToValue) : null;
   if (e164) {
     const byPhone = params.map.get(e164);
     if (byPhone) return byPhone;
-  }
-
-  const sipUser = parseOpenAiProjectUserFromSipTo(params.sipToValue);
-  const configured = normalizeConfiguredOpenAiProjectId(params.openAiRealtimeProjectId ?? undefined);
-  if (sipUser && configured && sipUser === configured && params.map.size > 0) {
-    const first = params.map.values().next().value;
-    return first ?? null;
   }
 
   return null;

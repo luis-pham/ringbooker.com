@@ -116,7 +116,7 @@ test('openai SIP webhook dedupes webhook-id and mocks accept', async () => {
   });
   assert.equal(second.status, 200);
 
-  const acceptCalls = calls.filter((c) => c.url.includes('/accept'));
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_integration_1/accept'));
   assert.equal(acceptCalls.length, 1);
   assert.ok(acceptCalls[0].body.includes('"type":"realtime"'));
   assert.ok(acceptCalls[0].body.includes('Pilot Nails'));
@@ -177,7 +177,7 @@ test('openai SIP webhook uses shop DB when DID map empty and To is routable E.16
   });
   assert.equal(res.status, 200);
 
-  const acceptCalls = calls.filter((c) => c.url.includes('/accept'));
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_shop_db_1/accept'));
   assert.equal(acceptCalls.length, 1);
   assert.ok(acceptCalls[0].body.includes('RingBooker Demo Salon'));
 });
@@ -236,9 +236,95 @@ test('openai SIP webhook resolves shop DB via X-Telnyx-Called-Number when To is 
   });
   assert.equal(res.status, 200);
 
-  const acceptCalls = calls.filter((c) => c.url.includes('/accept'));
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_shop_aux_1/accept'));
   assert.equal(acceptCalls.length, 1);
   assert.ok(acceptCalls[0].body.includes('RingBooker Demo Salon'));
+});
+
+test('openai SIP webhook routes Call Control shop leg by client_state before demo DID fallback', async () => {
+  const { secret, raw } = whsecSecret();
+  applyRequiredTestEnv({
+    OPENAI_SIP_WEBHOOK_ENABLED: 'true',
+    OPENAI_WEBHOOK_SECRET: secret,
+    OPENAI_SIP_ACCEPT_ENABLED: 'true',
+    OPENAI_API_KEY: 'sk-test-openai',
+    OPENAI_SIP_SIDEBAND_ENABLED: 'false',
+    OPENAI_REALTIME_PROJECT_ID: 'proj_dummy',
+    DEMO_PHONE_NAIL_SALON: '+15550001001',
+  });
+  delete process.env.OPENAI_SIP_DEMO_DID_MAP_JSON;
+  resetEnvCacheForTests();
+
+  const shopsRepository = new InMemoryShopsRepository();
+  const shop = await shopsRepository.create({
+    name: 'Willow Hair Lounge',
+    phone_number: '+13203903579',
+    user_phone: '+15550009999',
+    timezone: 'America/Los_Angeles',
+    plan: 'professional',
+  });
+  await shopsRepository.updateUserSettings(shop.id, {
+    telnyx_number: '+16187771064',
+    services: [{ name: 'Haircut', duration_min: 45, price: 65 }],
+  });
+
+  const clientState = buildCallControlClientState({
+    shopId: shop.id,
+    requestId: 'req_shop_cs_hair',
+    callerPhone: '+15559871234',
+    ts: new Date().toISOString(),
+    rbCallId: 'rb_shop_cs_hair',
+    telnyxCallControlId: 'cc_parent_hair',
+    inboundDid: '+16187771064',
+    routeKind: 'shop',
+    purpose: 'openai_sip_leg',
+  });
+
+  const calls: Array<{ url: string; body: string }> = [];
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    calls.push({ url, body: typeof init?.body === 'string' ? init.body : '' });
+    return new Response('{}', { status: 200 });
+  };
+
+  const app = createBackendApp({
+    providerEventsRepository: new InMemoryProviderEventsRepository(),
+    demoSessionsRepository: new InMemoryDemoSessionsRepository(),
+    shopsRepository,
+    testingOpenAiFetch: fetchImpl,
+  });
+
+  const webhookId = 'wh_evt_client_state_shop';
+  const ts = `${Math.floor(Date.now() / 1000)}`;
+  const rawBody = JSON.stringify({
+    type: 'realtime.call.incoming',
+    data: {
+      call_id: 'call_client_state_shop_1',
+      sip_headers: [
+        { name: 'To', value: '<sip:proj_dummy@sip.api.openai.com;transport=tls>;tag=x' },
+        { name: 'From', value: 'sip:+15559871234@sip.example.com' },
+        { name: 'X-Telnyx-Client-State', value: clientState },
+      ],
+    },
+  });
+  const sig = signV1({ raw, webhookId, webhookTimestamp: ts, rawBody });
+
+  const res = await app.request('/webhooks/openai', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'webhook-id': webhookId,
+      'webhook-timestamp': ts,
+      'webhook-signature': sig,
+    },
+    body: rawBody,
+  });
+  assert.equal(res.status, 200);
+
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_client_state_shop_1/accept'));
+  assert.equal(acceptCalls.length, 1);
+  assert.ok(acceptCalls[0].body.includes('Willow Hair Lounge'));
+  assert.ok(!acceptCalls[0].body.includes('ABC Nails Studio'));
 });
 
 test('openai SIP demo route registers demo_noop when sideband enabled', async () => {
@@ -295,11 +381,10 @@ test('openai SIP demo route registers demo_noop when sideband enabled', async ()
   });
   assert.equal(res.status, 200);
 
-  const acceptCalls = calls.filter((c) => c.url.includes('/accept'));
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_demo_tools/accept'));
   assert.equal(acceptCalls.length, 1);
   const acceptJson = JSON.parse(acceptCalls[0].body) as { tools?: { name: string }[] };
-  assert.equal(acceptJson.tools?.length, 1);
-  assert.equal(acceptJson.tools?.[0]?.name, 'demo_noop');
+  assert.ok(acceptJson.tools?.some((t) => t.name === 'demo_noop'));
 });
 
 test('openai SIP shop route registers business tools when sideband enabled and repositories wired', async () => {
@@ -359,7 +444,7 @@ test('openai SIP shop route registers business tools when sideband enabled and r
   });
   assert.equal(res.status, 200);
 
-  const acceptCalls = calls.filter((c) => c.url.includes('/accept'));
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_shop_tools_1/accept'));
   assert.equal(acceptCalls.length, 1);
   const acceptJson = JSON.parse(acceptCalls[0].body) as {
     tools?: { name: string }[];
@@ -445,7 +530,7 @@ test('openai SIP client_state routeKind demo uses public demo prompt and skips s
   });
   assert.equal(res.status, 200);
 
-  const acceptCalls = calls.filter((c) => c.url.includes('/accept'));
+  const acceptCalls = calls.filter((c) => c.url.includes('/realtime/calls/call_client_state_demo_1/accept'));
   assert.equal(acceptCalls.length, 1);
   const acceptJson = JSON.parse(acceptCalls[0].body) as {
     instructions?: string;

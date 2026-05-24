@@ -396,6 +396,24 @@ export async function handleOpenAiRealtimeSipWebhook(
       );
     }
   }
+  if (!route && ccDecoded?.shopId && ccDecoded.routeKind !== 'demo' && deps.shopsRepository) {
+    const shop = await deps.shopsRepository.findById(ccDecoded.shopId).catch((err) => {
+      logger.warn({ err, callId, shopId: ccDecoded.shopId }, 'openai_sip_client_state_shop_lookup_failed');
+      return null;
+    });
+    if (shop) {
+      route = { kind: 'shop', shop, matchedRaw: ccDecoded.inboundDid ?? sipTo ?? ccDecoded.shopId };
+      logger.info(
+        {
+          callId,
+          shopId: shop.id,
+          route_kind: 'shop',
+          inboundDid: ccDecoded.inboundDid ?? null,
+        },
+        'openai_sip_routed_via_call_control_client_state',
+      );
+    }
+  }
 
   /** TeXML pilots often set `OPENAI_SIP_URI` but omit `OPENAI_REALTIME_PROJECT_ID` — derive proj id from URI. */
   const openAiProjectIdForDid =

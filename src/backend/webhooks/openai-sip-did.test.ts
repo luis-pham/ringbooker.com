@@ -38,7 +38,7 @@ test('resolveOpenAiSipDidContext matches PSTN DID in To', () => {
   assert.equal(ctx?.defaultShopName, 'N');
 });
 
-test('resolveOpenAiSipDidContext matches TeXML OpenAI SIP To using first map entry', () => {
+test('resolveOpenAiSipDidContext does not guess demo route from OpenAI SIP project To', () => {
   const map = parseOpenAiSipDidMapJson(
     JSON.stringify([{ did: '+16265013960', vertical: 'hair-salon', defaultShopName: 'Pilot' }]),
   );
@@ -47,12 +47,10 @@ test('resolveOpenAiSipDidContext matches TeXML OpenAI SIP To using first map ent
     sipToValue: '<sip:proj_texml_test@sip.api.openai.com;transport=tls>;tag=a',
     openAiRealtimeProjectId: 'proj_texml_test',
   });
-  assert.ok(ctx);
-  assert.equal(ctx?.vertical, 'hair-salon');
-  assert.equal(ctx?.defaultShopName, 'Pilot');
+  assert.equal(ctx, null);
 });
 
-test('resolveOpenAiSipDidContext TeXML match when project id only comes from OPENAI_SIP_URI-style string', () => {
+test('resolveOpenAiSipDidContext requires a real DID even when project id comes from OPENAI_SIP_URI-style string', () => {
   const map = parseOpenAiSipDidMapJson(
     JSON.stringify([{ did: '+10000000000', vertical: 'day-spa', defaultShopName: 'Spa' }]),
   );
@@ -62,8 +60,7 @@ test('resolveOpenAiSipDidContext TeXML match when project id only comes from OPE
     sipToValue: `<sip:proj_from_uri_only@sip.api.openai.com;transport=tls>;tag=x`,
     openAiRealtimeProjectId: parseOpenAiProjectUserFromSipTo(sipUri),
   });
-  assert.ok(ctx);
-  assert.equal(ctx?.vertical, 'day-spa');
+  assert.equal(ctx, null);
 });
 
 test('resolveOpenAiSipDemoDidFromHeaders prefers X-Telnyx-Called-Number over TeXML OpenAI To', () => {
