@@ -66,10 +66,231 @@ import {
   parseTelnyxCallControlEnvelope,
   telnyxCallControlEnvelopeSchema,
 } from '@/src/backend/webhooks/telnyx-call-control';
+import {
+  cleanupBridgeGreetingSessionByCallControlId,
+  initializeBridgeGreetingSession,
+  markBridgeReadyForGreeting,
+} from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
 
 const CALL_CONTROL_EVENTS_PROVIDER = 'telnyx_call_control';
 /** Idempotency for parent↔OpenAI bridge (survives duplicate `call.answered` with new event ids). */
 const OPENAI_BRIDGE_COMMIT_PROVIDER = 'telnyx_cc_openai_bridge_commit';
+const PARALLEL_SESSION_TIMEOUT_MS = 8000;
+const SORRY_MESSAGE = "We're sorry, we're having trouble connecting your call. Please try again.";
+
+type ParallelLegState = 'pending' | 'answering' | 'dialing' | 'ready' | 'failed';
+type ParallelBridgeState = 'waiting' | 'bridging' | 'bridged' | 'failed';
+
+type ParallelCallSession = {
+  callId: string;
+  callerLegId: string | null;
+  callerLegState: ParallelLegState;
+  openaiLegId: string | null;
+  openaiLegState: ParallelLegState;
+  bridgeState: ParallelBridgeState;
+  greetingSent: boolean;
+  greetingPending: boolean;
+  pendingGreetingPayload: unknown | null;
+  cleanupInitiated: boolean;
+  createdAt: number;
+  timeout: ReturnType<typeof setTimeout> | null;
+  rbCallId?: string | null;
+  shopId?: string | null;
+  parentCallSessionId?: string | null;
+};
+
+const parallelCallSessionsByCallerLeg = new Map<string, ParallelCallSession>();
+const parallelCallSessionsByOpenAiLeg = new Map<string, ParallelCallSession>();
+
+function indexParallelCallSession(session: ParallelCallSession): void {
+  if (session.callerLegId) parallelCallSessionsByCallerLeg.set(session.callerLegId, session);
+  if (session.openaiLegId) parallelCallSessionsByOpenAiLeg.set(session.openaiLegId, session);
+}
+
+function unindexParallelCallSession(session: ParallelCallSession): void {
+  if (session.callerLegId) parallelCallSessionsByCallerLeg.delete(session.callerLegId);
+  if (session.openaiLegId) parallelCallSessionsByOpenAiLeg.delete(session.openaiLegId);
+}
+
+function findParallelCallSession(callControlId?: string | null): ParallelCallSession | null {
+  if (!callControlId) return null;
+  return parallelCallSessionsByCallerLeg.get(callControlId) ?? parallelCallSessionsByOpenAiLeg.get(callControlId) ?? null;
+}
+
+function setParallelOpenAiLegId(session: ParallelCallSession, openaiLegId: string | null | undefined): void {
+  if (!openaiLegId || session.openaiLegId === openaiLegId) return;
+  if (session.openaiLegId) parallelCallSessionsByOpenAiLeg.delete(session.openaiLegId);
+  session.openaiLegId = openaiLegId;
+  parallelCallSessionsByOpenAiLeg.set(openaiLegId, session);
+}
+
+function markParallelBridgeConfirmed(params: {
+  callControlId?: string | null;
+  peerCallControlId?: string | null;
+  log: ReturnType<typeof withLogContext>;
+}): ParallelCallSession | null {
+  const session = findParallelCallSession(params.callControlId) ?? findParallelCallSession(params.peerCallControlId);
+  if (!session) return null;
+  if (session.bridgeState !== 'bridged') {
+    session.bridgeState = 'bridged';
+    if (session.timeout) {
+      clearTimeout(session.timeout);
+      session.timeout = null;
+    }
+    clearSilentCallerRiskWatch(session.callerLegId ?? '');
+    params.log.info(
+      {
+        callId: session.callId,
+        rbCallId: session.rbCallId,
+        shopId: session.shopId,
+        callerLegId: session.callerLegId,
+        openaiLegId: session.openaiLegId,
+        callControlId: params.callControlId,
+        peerCallControlId: params.peerCallControlId,
+      },
+      'bridge_confirmed_both_legs_stable',
+    );
+  }
+  return session;
+}
+
+async function triggerParallelCallCleanup(
+  session: ParallelCallSession,
+  reason: string,
+  params: {
+    fetchDeps: { fetchImpl?: typeof fetch; apiKey?: string };
+    log: ReturnType<typeof withLogContext>;
+  },
+): Promise<void> {
+  if (session.cleanupInitiated) return;
+  session.cleanupInitiated = true;
+  if (session.timeout) {
+    clearTimeout(session.timeout);
+    session.timeout = null;
+  }
+  params.log.warn(
+    {
+      reason,
+      callId: session.callId,
+      rbCallId: session.rbCallId,
+      shopId: session.shopId,
+      callerLegId: session.callerLegId,
+      callerLegState: session.callerLegState,
+      openaiLegId: session.openaiLegId,
+      openaiLegState: session.openaiLegState,
+      bridgeState: session.bridgeState,
+    },
+    'parallel_call_cleanup_initiated',
+  );
+
+  if (session.openaiLegId && session.openaiLegState !== 'failed') {
+    const hr = await callControlHangup(session.openaiLegId, {}, params.fetchDeps).catch((err) => {
+      params.log.warn({ err, openaiLegId: session.openaiLegId, reason }, 'parallel_call_openai_hangup_failed');
+      return null;
+    });
+    if (hr && !hr.ok) {
+      params.log.warn(
+        { status: hr.status, body: hr.text, openaiLegId: session.openaiLegId, reason },
+        'parallel_call_openai_hangup_failed',
+      );
+    }
+  }
+
+  if (session.callerLegId && session.callerLegState !== 'failed') {
+    if (session.callerLegState === 'ready' || session.callerLegState === 'answering') {
+      const sr = await callControlSpeak(
+        session.callerLegId,
+        { payload: SORRY_MESSAGE, voice: 'Polly.Joanna', language: 'en-US' },
+        params.fetchDeps,
+      ).catch((err) => {
+        params.log.warn({ err, callerLegId: session.callerLegId, reason }, 'parallel_call_sorry_speak_failed');
+        return null;
+      });
+      if (sr?.ok) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } else if (sr) {
+        params.log.warn(
+          { status: sr.status, body: sr.text, callerLegId: session.callerLegId, reason },
+          'parallel_call_sorry_speak_failed',
+        );
+      }
+    }
+    const hr = await callControlHangup(session.callerLegId, {}, params.fetchDeps).catch((err) => {
+      params.log.warn({ err, callerLegId: session.callerLegId, reason }, 'parallel_call_caller_hangup_failed');
+      return null;
+    });
+    if (hr && !hr.ok) {
+      params.log.warn(
+        { status: hr.status, body: hr.text, callerLegId: session.callerLegId, reason },
+        'parallel_call_caller_hangup_failed',
+      );
+    }
+  }
+
+  unindexParallelCallSession(session);
+  clearSilentCallerRiskWatch(session.callerLegId ?? '');
+  cleanupBridgeGreetingSessionByCallControlId(session.callerLegId);
+  cleanupBridgeGreetingSessionByCallControlId(session.openaiLegId);
+}
+
+async function checkBridgeReady(
+  session: ParallelCallSession,
+  params: {
+    fetchDeps: { fetchImpl?: typeof fetch; apiKey?: string };
+    log: ReturnType<typeof withLogContext>;
+  },
+): Promise<void> {
+  if (session.cleanupInitiated) return;
+  if (session.bridgeState !== 'waiting') return;
+  if (session.callerLegState !== 'ready') return;
+  if (session.openaiLegState !== 'ready') return;
+  if (!session.callerLegId || !session.openaiLegId) return;
+
+  session.bridgeState = 'bridging';
+  params.log.info(
+    {
+      callId: session.callId,
+      rbCallId: session.rbCallId,
+      shopId: session.shopId,
+      callerLegId: session.callerLegId,
+      openaiLegId: session.openaiLegId,
+    },
+    'both_legs_ready_initiating_bridge',
+  );
+
+  const tBridge0 = Date.now();
+  const br = await callControlBridgeCalls(session.callerLegId, session.openaiLegId, params.fetchDeps);
+  if (!br.ok) {
+    session.bridgeState = 'failed';
+    params.log.warn(
+      {
+        status: br.status,
+        body: br.text,
+        callId: session.callId,
+        rbCallId: session.rbCallId,
+        shopId: session.shopId,
+        callerLegId: session.callerLegId,
+        openaiLegId: session.openaiLegId,
+        bridgeDurationMs: Date.now() - tBridge0,
+      },
+      'bridge_command_failed',
+    );
+    await triggerParallelCallCleanup(session, 'bridge_failed', params);
+    return;
+  }
+
+  params.log.info(
+    {
+      callId: session.callId,
+      rbCallId: session.rbCallId,
+      shopId: session.shopId,
+      callerLegId: session.callerLegId,
+      openaiLegId: session.openaiLegId,
+      bridgeDurationMs: Date.now() - tBridge0,
+    },
+    'bridge_command_sent',
+  );
+}
 
 /** Parent leg answered → OpenAI bridge not yet confirmed; used for silent-caller risk logging. */
 const parentOpenAiBridgeWatch = new Map<
@@ -605,41 +826,236 @@ async function processCallInitiated(
         if (!answerBody.max_duration_secs && getEnv().TELNYX_ANSWER_MAX_DURATION_ENABLED) {
           answerBody.max_duration_secs = getEnv().TELNYX_INBOUND_MAX_DURATION_SECS;
         }
-        const ar = await callControlAnswer(result.callControlId, answerBody, fetchDeps);
-        if (!ar.ok) {
-          log.warn({ status: ar.status, body: ar.text }, 'telnyx_call_control_answer_failed');
-        } else {
+        const connectMode = getTelnyxOpenAiConnectMode();
+        const sipUri = env.OPENAI_SIP_URI?.trim() ?? '';
+        const isProductionParallelShopCall =
+          result.routeKind !== 'demo' &&
+          !result.forwardingConnectivityTest &&
+          connectMode === 'create_and_bridge' &&
+          Boolean(env.TELNYX_CALL_CONTROL_BRIDGE_OPENAI_SIP) &&
+          /^sips?:/i.test(sipUri) &&
+          Boolean(result.shopId) &&
+          Boolean(result.internalRequestId) &&
+          Boolean(result.destinationPhone);
+        const resolvedConnForParallel = isProductionParallelShopCall ? resolveTelnyxOutboundCallsConnectionId(log) : null;
+        if (isProductionParallelShopCall && resolvedConnForParallel && result.shopId && result.internalRequestId) {
+          const parentCallSessionId = firstStringFromPayload(plInbound, ['call_session_id']);
+          const rbCallId = result.internalRequestId;
+          const shopId = result.shopId;
+          const session: ParallelCallSession = {
+            callId: rbCallId,
+            callerLegId: result.callControlId,
+            callerLegState: 'pending',
+            openaiLegId: null,
+            openaiLegState: 'pending',
+            bridgeState: 'waiting',
+            greetingSent: false,
+            greetingPending: false,
+            pendingGreetingPayload: null,
+            cleanupInitiated: false,
+            createdAt: Date.now(),
+            timeout: null,
+            rbCallId,
+            shopId,
+            parentCallSessionId,
+          };
+          indexParallelCallSession(session);
+          session.timeout = setTimeout(() => {
+            if (session.cleanupInitiated || session.bridgeState === 'bridged' || session.bridgeState === 'failed') return;
+            log.error(
+              {
+                callId: session.callId,
+                rbCallId,
+                shopId,
+                callerLegId: session.callerLegId,
+                callerLegState: session.callerLegState,
+                openaiLegId: session.openaiLegId,
+                openaiLegState: session.openaiLegState,
+                bridgeState: session.bridgeState,
+                elapsedMs: Date.now() - session.createdAt,
+              },
+              'parallel_call_session_timeout',
+            );
+            void triggerParallelCallCleanup(session, 'session_timeout', { fetchDeps, log });
+          }, PARALLEL_SESSION_TIMEOUT_MS);
+          (session.timeout as ReturnType<typeof setTimeout> & { unref?: () => void }).unref?.();
+
+          const openAiLegPayload: Record<string, unknown> = {
+            shopId,
+            requestId: rbCallId,
+            rbCallId,
+            callerPhone: result.callerPhone ?? null,
+            ts: new Date().toISOString(),
+            telnyxCallControlId: result.callControlId,
+            parentCallControlId: result.callControlId,
+            parentCallSessionId,
+            inboundDid: result.destinationPhone,
+            transport: 'openai_sip_direct',
+            handoffTransport: 'telnyx_call_control',
+            purpose: 'openai_sip_leg',
+          };
+          const openAiClientState = Buffer.from(JSON.stringify(openAiLegPayload), 'utf8').toString('base64');
+
+          const answerStartedAt = Date.now();
+          const answerPromise = callControlAnswer(result.callControlId, answerBody, fetchDeps);
+          const dialPromise = callControlCreateCall(
+            {
+              to: sipUri,
+              from: result.destinationPhone,
+              connection_id: resolvedConnForParallel.connectionId,
+              client_state: openAiClientState,
+              timeout_secs: getTelnyxOpenAiSipLegTimeoutSecs(),
+              sip_transport_protocol: 'TLS',
+            },
+            {
+              ...fetchDeps,
+              operation: 'call_control.create_openai_sip_leg',
+              correlation: { rbCallId, shopId },
+            },
+          );
+
+          const [answerResult, dialResult] = await Promise.allSettled([answerPromise, dialPromise]);
+          const answerOk = answerResult.status === 'fulfilled' && answerResult.value.ok;
+          const dialOk =
+            dialResult.status === 'fulfilled' &&
+            dialResult.value.ok &&
+            typeof dialResult.value.callControlId === 'string' &&
+            dialResult.value.callControlId.trim() !== '';
+
+          if (answerOk) {
+            session.callerLegState = 'answering';
+            scheduleSilentCallerRiskWatch({
+              parentCallControlId: result.callControlId,
+              rbCallId,
+              shopId,
+              telnyxEventId: event.id,
+              log,
+              answeredAtMs: answerStartedAt,
+            });
+            const ringbackUrl = env.TELNYX_RINGBACK_AUDIO_URL?.trim();
+            if (ringbackUrl) {
+              callControlPlaybackStart(result.callControlId, ringbackUrl, 'infinity', fetchDeps).catch((err) => {
+                log.warn({ err, rbCallId, callControlId: result.callControlId }, 'ringback_playback_start_failed');
+              });
+            }
+            if (deps.voiceCallLegsRepository) {
+              try {
+                await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+                  shopId,
+                  rbCallId,
+                  purpose: 'parent_caller_leg',
+                  callControlId: result.callControlId,
+                  callSessionId: parentCallSessionId ?? null,
+                  status: 'parent_leg_answer_sent',
+                });
+                log.info(
+                  { shopId, rbCallId, purpose: 'parent_caller_leg', parentCallControlId: result.callControlId },
+                  'voice_call_leg_persisted',
+                );
+              } catch (err) {
+                log.warn({ err, shopId, rbCallId }, 'voice_call_leg_persist_parent_failed');
+              }
+            }
+          } else {
+            session.callerLegState = 'failed';
+          }
+
+          if (dialOk && dialResult.status === 'fulfilled') {
+            const openaiLegCallControlId = dialResult.value.callControlId as string;
+            setParallelOpenAiLegId(session, openaiLegCallControlId);
+            session.openaiLegState = 'dialing';
+            initializeBridgeGreetingSession({
+              parentCallControlId: result.callControlId,
+              openaiLegCallControlId,
+              rbCallId,
+              shopId,
+            });
+            if (deps.voiceCallLegsRepository) {
+              try {
+                await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+                  shopId,
+                  rbCallId,
+                  purpose: 'openai_sip_leg',
+                  callControlId: openaiLegCallControlId,
+                  callLegId: dialResult.value.callLegId ?? null,
+                  parentCallControlId: result.callControlId,
+                  parentCallSessionId: parentCallSessionId ?? null,
+                  status: 'openai_leg_created',
+                });
+                log.info({ shopId, rbCallId, openaiLegCallControlId }, 'openai_leg_callcontrolid_stored');
+              } catch (err) {
+                log.warn({ err, shopId, rbCallId }, 'voice_call_leg_persist_openai_failed');
+              }
+            }
+          } else {
+            session.openaiLegState = 'failed';
+          }
+
           log.info(
             {
-              telnyxEventId: event.id,
-              shopId: result.shopId,
-              rbCallId: result.internalRequestId,
-              parentCallControlId: result.callControlId,
-              maxDurationOnAnswer: Boolean(getEnv().TELNYX_ANSWER_MAX_DURATION_ENABLED),
+              rbCallId,
+              shopId,
+              callerLegId: session.callerLegId,
+              callerLegState: session.callerLegState,
+              openaiLegId: session.openaiLegId,
+              openaiLegState: session.openaiLegState,
+              answerResult:
+                answerResult.status === 'fulfilled'
+                  ? { ok: answerResult.value.ok, status: answerResult.value.status }
+                  : { ok: false, error: answerResult.reason instanceof Error ? answerResult.reason.message : String(answerResult.reason) },
+              dialResult:
+                dialResult.status === 'fulfilled'
+                  ? { ok: dialResult.value.ok, status: dialResult.value.status, callControlId: dialResult.value.callControlId ?? null }
+                  : { ok: false, error: dialResult.reason instanceof Error ? dialResult.reason.message : String(dialResult.reason) },
             },
-            'telnyx_call_control_answer_succeeded',
+            'parallel_legs_initiated',
           );
-          if (deps.voiceCallLegsRepository && result.shopId && result.internalRequestId && !result.forwardingConnectivityTest) {
-            try {
-              await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+
+          if (!answerOk) {
+            await triggerParallelCallCleanup(session, 'caller_leg_answer_failed', { fetchDeps, log });
+          } else if (!dialOk) {
+            await triggerParallelCallCleanup(session, 'openai_leg_dial_failed', { fetchDeps, log });
+          }
+        } else {
+          const ar = await callControlAnswer(result.callControlId, answerBody, fetchDeps);
+          if (!ar.ok) {
+            log.warn({ status: ar.status, body: ar.text }, 'telnyx_call_control_answer_failed');
+          } else {
+            log.info(
+              {
+                telnyxEventId: event.id,
                 shopId: result.shopId,
                 rbCallId: result.internalRequestId,
-                purpose: 'parent_caller_leg',
-                callControlId: result.callControlId,
-                callSessionId: firstStringFromPayload(plInbound, ['call_session_id']) ?? null,
-                status: 'parent_leg_answered',
-              });
-              log.info(
-                {
+                parentCallControlId: result.callControlId,
+                maxDurationOnAnswer: Boolean(getEnv().TELNYX_ANSWER_MAX_DURATION_ENABLED),
+              },
+              'telnyx_call_control_answer_succeeded',
+            );
+            if (deps.voiceCallLegsRepository && result.shopId && result.internalRequestId && !result.forwardingConnectivityTest) {
+              try {
+                await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
                   shopId: result.shopId,
                   rbCallId: result.internalRequestId,
                   purpose: 'parent_caller_leg',
-                  parentCallControlId: result.callControlId,
-                },
-                'voice_call_leg_persisted',
-              );
-            } catch (err) {
-              log.warn({ err, shopId: result.shopId, rbCallId: result.internalRequestId }, 'voice_call_leg_persist_parent_failed');
+                  callControlId: result.callControlId,
+                  callSessionId: firstStringFromPayload(plInbound, ['call_session_id']) ?? null,
+                  status: 'parent_leg_answered',
+                });
+                log.info(
+                  {
+                    shopId: result.shopId,
+                    rbCallId: result.internalRequestId,
+                    purpose: 'parent_caller_leg',
+                    parentCallControlId: result.callControlId,
+                  },
+                  'voice_call_leg_persisted',
+                );
+              } catch (err) {
+                log.warn(
+                  { err, shopId: result.shopId, rbCallId: result.internalRequestId },
+                  'voice_call_leg_persist_parent_failed',
+                );
+              }
             }
           }
         }
@@ -786,6 +1202,46 @@ async function processCallAnswered(
     const dryRun = isTelnyxCallControlDryRunEnv();
     const fetchDeps = { fetchImpl: deps.testingTelnyxFetch, apiKey: env.TELNYX_API_KEY };
 
+    const parallelCallerSession =
+      callControlId && parallelCallSessionsByCallerLeg.get(callControlId)
+        ? parallelCallSessionsByCallerLeg.get(callControlId)
+        : null;
+    if (parallelCallerSession && callControlId) {
+      parallelCallerSession.callerLegState = 'ready';
+      log.info(
+        {
+          callId: parallelCallerSession.callId,
+          rbCallId: parallelCallerSession.rbCallId,
+          shopId: parallelCallerSession.shopId,
+          callerLegId: callControlId,
+          openaiLegId: parallelCallerSession.openaiLegId,
+          openaiLegState: parallelCallerSession.openaiLegState,
+        },
+        'caller_leg_ready',
+      );
+      if (deps.voiceCallLegsRepository && parallelCallerSession.shopId && parallelCallerSession.rbCallId) {
+        try {
+          await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
+            shopId: parallelCallerSession.shopId,
+            rbCallId: parallelCallerSession.rbCallId,
+            purpose: 'parent_caller_leg',
+            callControlId,
+            callSessionId: firstStringFromPayload(payload, ['call_session_id']) ?? parallelCallerSession.parentCallSessionId ?? null,
+            status: 'parent_leg_answered',
+          });
+        } catch (err) {
+          log.warn(
+            { err, shopId: parallelCallerSession.shopId, rbCallId: parallelCallerSession.rbCallId },
+            'voice_call_leg_persist_parent_failed',
+          );
+        }
+      }
+      await checkBridgeReady(parallelCallerSession, { fetchDeps, log });
+      await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+      incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+      return c.json({ ok: true, phase: 'answered', parallel: true, leg: 'caller' }, 200);
+    }
+
     let bridged = false;
     let bridgeReason: string | undefined;
     const connectMode = getTelnyxOpenAiConnectMode();
@@ -853,6 +1309,31 @@ async function processCallAnswered(
           } catch (err) {
             log.warn({ err, shopId: decodedClient.shopId, rbCallId: rbId }, 'openai_leg_webhook_upsert_failed');
           }
+        }
+        const parallelOpenAiSession = parallelCallSessionsByOpenAiLeg.get(openaiLegCallControlId);
+        if (parallelOpenAiSession) {
+          parallelOpenAiSession.openaiLegState = 'ready';
+          log.info(
+            {
+              callId: parallelOpenAiSession.callId,
+              rbCallId: parallelOpenAiSession.rbCallId,
+              shopId: parallelOpenAiSession.shopId,
+              callerLegId: parallelOpenAiSession.callerLegId,
+              callerLegState: parallelOpenAiSession.callerLegState,
+              openaiLegId: openaiLegCallControlId,
+            },
+            'openai_leg_ready',
+          );
+          const ringbackUrlForStop = env.TELNYX_RINGBACK_AUDIO_URL?.trim();
+          if (ringbackUrlForStop && parallelOpenAiSession.callerLegId) {
+            await callControlPlaybackStop(parallelOpenAiSession.callerLegId, fetchDeps).catch((err) => {
+              log.warn({ err, parentCallControlId: parallelOpenAiSession.callerLegId }, 'ringback_playback_stop_failed');
+            });
+          }
+          await checkBridgeReady(parallelOpenAiSession, { fetchDeps, log });
+          await deps.providerEventsRepository.clearProcessingError(CALL_CONTROL_EVENTS_PROVIDER, event.id);
+          incrementMetric('webhook_requests_total', { provider: 'telnyx_call_control', outcome: 'processed' });
+          return c.json({ ok: true, phase: 'answered', parallel: true, leg: 'openai' }, 200);
         }
         const commitKey = openAiBridgeCommitKey(parentCallControlId, openaiLegCallControlId);
         const bridgeCommit = await deps.providerEventsRepository.tryMarkProcessing({
@@ -1190,6 +1671,14 @@ async function processCallAnswered(
                 },
                 'telnyx_call_control_create_openai_leg_succeeded',
               );
+              if (cr.callControlId) {
+                initializeBridgeGreetingSession({
+                  parentCallControlId: callControlId,
+                  openaiLegCallControlId: cr.callControlId,
+                  rbCallId,
+                  shopId: decodedClient.shopId,
+                });
+              }
               if (deps.voiceCallLegsRepository) {
                 try {
                   await deps.voiceCallLegsRepository.createOrUpdateCallLeg({
@@ -1466,13 +1955,30 @@ async function processCallBridged(
 
     const payload = event.payload;
     const selfCc = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
+    const selfCallLegId = firstStringFromPayload(payload, ['call_leg_id']);
     const peerCc = bridgedPeerCallControlIdFromPayload(payload);
     const clientStateRaw = firstStringFromPayload(payload, ['client_state']);
     const decoded = decodeCallControlClientState(clientStateRaw);
 
+    log.info(
+      {
+        call_control_id: selfCc,
+        call_leg_id: selfCallLegId,
+        peerCallControlId: peerCc ?? undefined,
+      },
+      'telnyx_call_bridged_received',
+    );
+
     if (decoded?.purpose === 'openai_sip_leg') {
       const parentCallControlId = decoded.parentCallControlId ?? decoded.telnyxCallControlId;
       const openaiLegCallControlId = selfCc;
+      const greetingStatus = markBridgeReadyForGreeting({
+        parentCallControlId,
+        openaiLegCallControlId,
+        callControlId: selfCc,
+        peerCallControlId: peerCc,
+      });
+      const parallelSession = markParallelBridgeConfirmed({ callControlId: selfCc, peerCallControlId: peerCc, log });
       log.info(
         {
           rbCallId: decoded.rbCallId ?? decoded.requestId,
@@ -1480,6 +1986,8 @@ async function processCallBridged(
           parentCallControlId,
           openaiLegCallControlId,
           peerCallControlId: peerCc ?? undefined,
+          greetingStatus,
+          parallelBridgeState: parallelSession?.bridgeState ?? null,
           bridgePurpose: 'openai',
           event_type: event.event_type,
         },
@@ -1492,10 +2000,17 @@ async function processCallBridged(
         (await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, k1)) ||
         (await deps.providerEventsRepository.hasProcessed(OPENAI_BRIDGE_COMMIT_PROVIDER, k2));
       if (confirmed) {
+        const greetingStatus = markBridgeReadyForGreeting({
+          callControlId: selfCc,
+          peerCallControlId: peerCc,
+        });
+        const parallelSession = markParallelBridgeConfirmed({ callControlId: selfCc, peerCallControlId: peerCc, log });
         log.info(
           {
             callControlId: selfCc,
             peerCallControlId: peerCc,
+            greetingStatus,
+            parallelBridgeState: parallelSession?.bridgeState ?? null,
             event_type: event.event_type,
           },
           'telnyx_call_control_openai_bridge_confirmed',
@@ -1604,6 +2119,24 @@ async function processCallHangup(
     const decoded = decodeCallControlClientState(clientStateRaw);
 
     const callControlLegId = firstStringFromPayload(payload, ['call_control_id', 'call_leg_id']);
+    const parallelSession = findParallelCallSession(callControlLegId);
+    if (parallelSession) {
+      if (parallelSession.bridgeState !== 'bridged' && !parallelSession.cleanupInitiated) {
+        const fetchDeps = { fetchImpl: deps.testingTelnyxFetch, apiKey: getEnv().TELNYX_API_KEY };
+        const isOpenAiLeg = callControlLegId === parallelSession.openaiLegId;
+        const isCallerLeg = callControlLegId === parallelSession.callerLegId;
+        if (isOpenAiLeg) parallelSession.openaiLegState = 'failed';
+        if (isCallerLeg) parallelSession.callerLegState = 'failed';
+        await triggerParallelCallCleanup(
+          parallelSession,
+          isOpenAiLeg ? 'openai_leg_dropped_before_bridge' : 'caller_leg_dropped_before_bridge',
+          { fetchDeps, log },
+        );
+      } else if (parallelSession.bridgeState === 'bridged') {
+        unindexParallelCallSession(parallelSession);
+      }
+    }
+    cleanupBridgeGreetingSessionByCallControlId(callControlLegId);
     if (deps.voiceCallLegsRepository && decoded?.purpose === 'openai_sip_leg' && callControlLegId) {
       const hangCause = (
         firstStringFromPayload(payload, ['hangup_cause', 'sip_disconnect_cause', 'termination_reason']) ?? ''

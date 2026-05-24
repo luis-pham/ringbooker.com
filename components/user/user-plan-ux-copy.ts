@@ -3,21 +3,21 @@ import type { ShopPlanCapabilities } from '@/src/backend/domain/shop-plan-capabi
 
 export const BILLING_PLAN_CARD_FEATURES: Record<ShopPlan, string[]> = {
   starter: [
-    'Up to 100 captured callers/month',
+    'Up to 100 captured calls per billing period',
     'Forwarded call answering',
     'Booking request capture',
     'Optional missed-call text back where enabled',
     'Basic call logs and summaries',
   ],
   professional: [
-    'Up to 300 captured callers/month',
+    'Up to 300 captured calls per billing period',
     'Reminder and review SMS where configured',
     'Returning caller notes',
     'Bilingual answering where configured',
     'Owner transfer',
   ],
   enterprise: [
-    'Custom captured caller volume',
+    'Custom captured call volume',
     'Managed routing and integrations',
     'Multi-location support',
     'Implementation support',

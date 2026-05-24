@@ -1374,7 +1374,7 @@ export function AdminShopDetailLive() {
                       <div className="field"><label>Setup fee cents</label><input name="setupFeeCents" type="number" defaultValue={commercialAccount?.setupFeeCents ?? ''} /></div>
                       <div className="field"><label>Included locations</label><input name="includedLocations" type="number" defaultValue={commercialAccount?.includedLocations ?? ''} /></div>
                       <div className="field"><label>Included minutes</label><input name="includedMinutes" type="number" defaultValue={commercialAccount?.includedMinutes ?? ''} /></div>
-                      <div className="field"><label>Included captured callers</label><input name="includedCapturedCallers" type="number" defaultValue={commercialAccount?.includedCapturedCallers ?? ''} /></div>
+                      <div className="field"><label>Included captured calls</label><input name="includedCapturedCallers" type="number" defaultValue={commercialAccount?.includedCapturedCallers ?? ''} /></div>
                       <div className="field"><label>Max concurrent live calls</label><input name="maxConcurrentLiveCalls" type="number" defaultValue={commercialAccount?.maxConcurrentLiveCalls ?? ''} /></div>
                       <div className="field"><label>Max call duration seconds</label><input name="maxCallDurationSeconds" type="number" defaultValue={commercialAccount?.maxCallDurationSeconds ?? ''} /></div>
                       <div className="field"><label>Overage rate cents</label><input name="overageRateCents" type="number" defaultValue={commercialAccount?.overageRateCents ?? ''} /></div>

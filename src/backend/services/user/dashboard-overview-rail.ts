@@ -274,11 +274,11 @@ export function buildDashboardOverviewRail(params: {
   if (usage?.overCapturedCallerLimit || usage?.nearCapturedCallerLimit) {
     health.push({
       id: 'usage',
-      label: 'Monthly allowance',
+      label: 'Billing period allowance',
       state: usage.overCapturedCallerLimit ? 'warn' : 'neutral',
       detail: usage.overCapturedCallerLimit
-        ? 'Captured caller overage applies at $0.25/caller'
-        : 'Close to your captured caller limit',
+        ? 'Captured call overage applies at $0.25/call'
+        : 'Close to your captured call limit',
       href: '/user/billing',
     });
   }

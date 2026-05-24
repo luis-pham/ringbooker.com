@@ -40,8 +40,8 @@ const PRICING_FAQ_ITEMS: MarketingFaqItem[] = [
     ),
   },
   {
-    q: 'What is a captured caller?',
-    a: 'A captured caller is a caller where RingBooker captures useful information for your business, such as their name, phone number, service request, preferred time, or callback request. Demo calls and test calls do not count.',
+    q: 'What is a captured call?',
+    a: 'A captured call is a call where RingBooker captures useful information for your business, such as the caller name, phone number, service request, preferred time, or callback request. Demo calls and test calls do not count.',
   },
   {
     q: 'What happens when a caller needs a real person?',
@@ -275,7 +275,7 @@ const plans = [
     href: '/user/signup?plan=starter',
     featured: false,
     benefits: [
-      'Up to 100 captured callers/month',
+      'Up to 100 captured calls per billing period',
       'Works with your current business number',
       'After-hours and overflow call answering',
       'Booking request capture — via your booking link',
@@ -298,7 +298,7 @@ const plans = [
     href: '/user/signup?plan=professional',
     featured: true,
     benefits: [
-      'Up to 300 captured callers/month',
+      'Up to 300 captured calls per billing period',
       'Everything in Starter',
       'Reminder SMS and stronger follow-up',
       'Booking platform sync — Square, Mindbody, and more coming soon',
@@ -306,7 +306,7 @@ const plans = [
       'Preferred stylist or provider context',
       'Owner call transfer with caller context',
       'Bilingual workflows where configured',
-      'Advanced call recovery insights',
+      'Call recovery insights',
       'Priority support',
     ],
   },
@@ -327,7 +327,7 @@ const plans = [
       'Custom call flows, routing, and escalation rules',
       'Custom multilingual routing and workflows',
       'Custom integration planning',
-      'Custom captured caller volume',
+      'Custom captured call volume',
       'Concierge onboarding',
       'Priority implementation support',
     ],

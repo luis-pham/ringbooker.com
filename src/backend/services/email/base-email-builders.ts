@@ -500,7 +500,7 @@ export function buildLiveAnsweringEnabledEmailPayload(params: {
     heroTitle: 'Live answering is active',
     heroSubtitleHtml: `<p style="margin:0">RingBooker can now answer forwarded calls for <strong>${escapeHtmlText(params.shopName)}</strong>.</p>`,
     bodyHtml:
-      '<p style="margin:0">RingBooker is ready to answer forwarded missed, busy, after-hours, or overflow calls. You can view call logs, summaries, and captured caller details from your dashboard.</p>',
+      '<p style="margin:0">RingBooker is ready to answer forwarded missed, busy, after-hours, or overflow calls. You can view call logs, summaries, and captured call details from your dashboard.</p>',
     ctaLabel: 'View call logs',
     ctaUrl: callsUrl,
     signatureHtml: '<p style="margin:0">RingBooker Notifications</p>',
@@ -554,7 +554,7 @@ export function buildLiveAnsweringBillingRestoredEmailPayload(params: {
     heroTitle: 'Live answering is restored',
     heroSubtitleHtml: `<p style="margin:0">Billing for <strong>${escapeHtmlText(params.shopName)}</strong> has been resolved. Live answering is active again.</p>`,
     bodyHtml:
-      '<p style="margin:0">RingBooker is ready to answer forwarded calls. Your call logs and captured caller details are available from your dashboard.</p>',
+      '<p style="margin:0">RingBooker is ready to answer forwarded calls. Your call logs and captured call details are available from your dashboard.</p>',
     ctaLabel: 'View call logs',
     ctaUrl: callsUrl,
     signatureHtml: '<p style="margin:0">RingBooker Billing</p>',

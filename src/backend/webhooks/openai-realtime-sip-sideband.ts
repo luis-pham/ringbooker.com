@@ -5,6 +5,10 @@ import { getEnv } from '@/src/backend/config/env';
 import { incrementMetric, observeDurationMs } from '@/src/backend/observability/metrics';
 import { logger } from '@/src/backend/observability/logger';
 import { buildDirectWebDemoClientSecretAudioInput } from '@/src/backend/webhooks/openai-sip-accept-payload';
+import {
+  BRIDGE_READY_FALLBACK_MS,
+  queueGreetingUntilBridgeReady,
+} from '@/src/backend/webhooks/openai-sip-bridge-greeting-coordinator';
 
 function compactToolOutput(output: string): string {
   return output.length > 8000 ? `${output.slice(0, 8000)}…` : output;
@@ -38,6 +42,17 @@ export type OpenAiRealtimeSipSidebandParams =
       executeBusinessTool: (toolName: string, argsJson: string) => Promise<string>;
       /** One short greeting instruction for first `response.create` (shop welcome or default). */
       initialResponseInstructions?: string | null;
+      /**
+       * Production Call Control path: delay first greeting until Telnyx confirms parent ↔ OpenAI bridge readiness.
+       * Demo/TeXML calls do not set this gate.
+       */
+      initialResponseBridgeGate?: {
+        parentCallControlId: string;
+        openaiLegCallControlId: string;
+        rbCallId?: string | null;
+        shopId?: string | null;
+        fallbackMs?: number;
+      };
       /** When set, used for `openai_accepted_to_initial_response_ms` after first greeting send. */
       acceptedAtMs?: number;
       /** Called for each completed transcript segment (AI speech or caller speech). Fire-and-forget. */
@@ -161,6 +176,21 @@ export function startOpenAiRealtimeSipSideband(
     }
   }
 
+  function queueOrSendInitialResponse(): void {
+    if (params.variant !== 'shop' || !params.initialResponseBridgeGate) {
+      trySendInitialResponse();
+      return;
+    }
+
+    const instructions = params.initialResponseInstructions?.trim();
+    queueGreetingUntilBridgeReady({
+      ...params.initialResponseBridgeGate,
+      pendingGreetingPayload: { instructions: instructions ?? null },
+      fallbackMs: params.initialResponseBridgeGate.fallbackMs ?? BRIDGE_READY_FALLBACK_MS,
+      sendGreeting: trySendInitialResponse,
+    });
+  }
+
   function maybeResumeDemoVadAfterWelcome(fromEvent: string): void {
     if (!needsDemoVadResumeAfterWelcome || !initialResponseSent || vadResumeAfterWelcomeSent) return;
     if (ws.readyState !== WebSocket.OPEN) return;
@@ -265,7 +295,7 @@ export function startOpenAiRealtimeSipSideband(
 
     initialTimer = setTimeout(() => {
       initialTimer = null;
-      trySendInitialResponse();
+      queueOrSendInitialResponse();
     }, greetingDelayMs);
   });
 
@@ -277,7 +307,12 @@ export function startOpenAiRealtimeSipSideband(
       return;
     }
 
-    if (params.variant === 'shop' && evt.type === 'input_audio_buffer.speech_started' && !initialResponseSent) {
+    if (
+      params.variant === 'shop' &&
+      !params.initialResponseBridgeGate &&
+      evt.type === 'input_audio_buffer.speech_started' &&
+      !initialResponseSent
+    ) {
       sawUserSpeechBeforeInitial = true;
       cancelInitialTimer();
       logger.info({ callId: params.callId }, 'openai_sip_initial_response_skipped_user_speaking');

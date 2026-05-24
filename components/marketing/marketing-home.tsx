@@ -1932,7 +1932,7 @@ export function MarketingHomeTemplate() {
                 <div className="plan-price" id="ps">$79<span className="plan-price-period">/mo</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
-                  <li>Up to 100 captured callers/month</li>
+                  <li>Up to 100 captured calls per billing period</li>
                   <li>Works with your current business number</li>
                   <li>After-hours and overflow call answering</li>
                   <li>Booking request capture — via your booking link</li>
@@ -1952,7 +1952,7 @@ export function MarketingHomeTemplate() {
                 <div className="plan-price" id="pp">$149<span className="plan-price-period">/mo</span></div>
                 <div className="plan-div" />
                 <ul className="plan-feats">
-                  <li>Up to 300 captured callers/month</li>
+                  <li>Up to 300 captured calls per billing period</li>
                   <li>Everything in Starter</li>
                   <li>Reminder SMS and stronger follow-up</li>
                   <li>Booking platform sync — Square, Mindbody, and more coming soon</li>
@@ -1961,7 +1961,6 @@ export function MarketingHomeTemplate() {
                   <li>Owner call transfer with caller context</li>
                   <li>Bilingual workflows where configured</li>
                   <li>Call recovery insights</li>
-                  <li>Advanced call insights</li>
                   <li>Priority support</li>
                 </ul>
                 <a className="plan-btn pb-dark" href="/user/signup?plan=professional">
@@ -1978,7 +1977,7 @@ export function MarketingHomeTemplate() {
                   <li>Custom call flows, routing, and escalation rules</li>
                   <li>Custom multilingual routing and workflows</li>
                   <li>Custom integration planning</li>
-                  <li>Custom captured caller volume</li>
+                  <li>Custom captured call volume</li>
                   <li>Concierge onboarding</li>
                   <li>Priority implementation support</li>
                 </ul>

@@ -116,14 +116,14 @@ Owners keep their public business number; only forwarding rules change.
 
 Full page: https://ringbooker.com/pricing
 
-| Plan | Monthly | Annual (billed yearly) | Captured callers / month | Best for |
+| Plan | Monthly | Annual (billed yearly) | Captured calls per billing period | Best for |
 |------|---------|------------------------|-------------------------|----------|
 | **Starter** | $79 | ~$63/mo ($758/yr) | Up to 100 | After-hours, overflow, missed-call recovery, booking capture, basic reschedule/cancel, missed-call text back, call summaries |
-| **Professional** | $149 | ~$119/mo ($1,428/yr) | Up to 300 | Everything in Starter plus reminder SMS, returning caller context, provider preference, **owner call transfer**, bilingual workflows (one extra language), advanced recovery insights, priority support |
+| **Professional** | $149 | ~$119/mo ($1,428/yr) | Up to 300 | Everything in Starter plus reminder SMS, returning caller context, provider preference, **owner call transfer**, bilingual workflows (one extra language), call recovery insights, priority support |
 | **Custom** | Contact sales | Custom | Custom volume | Multi-location, custom routing/escalation, custom multilingual workflows, custom integration planning, concierge onboarding |
 
 - **14-day free trial** — no credit card required to sign up, complete setup, and run test calls
-- **Captured caller** — a caller where RingBooker records useful business information (name, phone, service request, time preference, callback need). Demo and test calls do not count toward limits
+- **Captured call** — a call where RingBooker records useful business information (name, phone, service request, time preference, callback need). Demo and test calls do not count toward limits
 - **Human escalation** — Starter captures callback requests and summaries; Professional+ can transfer live to the owner with context when configured
 - Homepage trust line: no long-term contract; keep your current number; cancel before day 15 of trial and pay nothing (see Terms for billing details)
 

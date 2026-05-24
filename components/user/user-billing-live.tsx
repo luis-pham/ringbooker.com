@@ -182,7 +182,7 @@ const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
     annualPrice: 63,
     description: 'Answer calls and capture bookings.',
     features: [
-      { text: '100 captured callers/mo', included: true },
+      { text: '100 captured calls per billing period', included: true },
       { text: 'Forwarded call answering', included: true },
       { text: 'Booking request capture', included: true },
       { text: 'Missed-call text back', included: true },
@@ -201,7 +201,7 @@ const BILLING_PLANS_CATALOG: BillingPlansCatalogEntry[] = [
     description: 'Adds SMS, caller memory, bilingual & owner transfer.',
     badge: 'Popular',
     features: [
-      { text: '300 captured callers/mo', included: true },
+      { text: '300 captured calls per billing period', included: true },
       { text: 'Everything in Starter', included: true },
       { text: 'Reminder & review SMS', included: true },
       { text: 'Returning caller notes', included: true },
@@ -1256,11 +1256,11 @@ export function UserBillingLive({
                         >
                           <div className="panel-head">
                             <div>
-                              <h3>Captured callers this period</h3>
+                              <h3>Captured calls this billing period</h3>
                               <p className="sub">
                                 {usage.capturedCallersLimit == null
-                                  ? `${usage.capturedCallersUsed} captured callers · Custom allowance`
-                                  : `${usage.capturedCallersUsed} / ${usage.capturedCallersLimit} callers this period`}
+                                  ? `${usage.capturedCallersUsed} captured calls · Custom allowance`
+                                  : `${usage.capturedCallersUsed} / ${usage.capturedCallersLimit} calls this billing period`}
                               </p>
                             </div>
                             <span
@@ -1287,12 +1287,12 @@ export function UserBillingLive({
                             >
                               {usage.overCapturedCallerLimit
                                 ? `You have ${Math.max(0, usage.capturedCallersUsed - (usage.capturedCallersLimit ?? usage.capturedCallersUsed))} overage callers this period - estimated charge: ${formatMoneyCents(Math.max(0, usage.capturedCallersUsed - (usage.capturedCallersLimit ?? usage.capturedCallersUsed)) * 25)}.`
-                                : 'You are close to your monthly captured caller limit.'}
+                                : 'You are close to your captured call limit for this billing period.'}
                             </p>
                           ) : null}
                           {usage.capturedCallersLimit != null ? (
                             <p className="sub" style={{ marginTop: 8 }}>
-                              Additional callers billed at $0.25 each at end of billing period.
+                              Additional captured calls billed at $0.25 each at end of billing period.
                             </p>
                           ) : null}
                           <p className="sub" style={{ marginTop: 8 }}>
@@ -1573,7 +1573,7 @@ export function UserBillingLive({
                         <div className="panel-head">
                           <div>
                             <h3>Overage charges</h3>
-                            <p className="sub">Captured callers above your plan allowance.</p>
+                            <p className="sub">Captured calls above your plan allowance.</p>
                           </div>
                         </div>
                         {overageChargesState.loading ? (

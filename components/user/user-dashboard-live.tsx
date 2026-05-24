@@ -949,7 +949,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                   </div>
                   <div className="stat-label">Bookings</div>
                   <div className="stat-value">{data?.metrics?.bookingCount ?? 0}</div>
-                  <div className="stat-meta">Captured this month</div>
+                  <div className="stat-meta">Captured this billing period</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-top">
@@ -989,7 +989,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                 style={{ marginTop: 18 }}
               >
                 <div className="usage-captured-head">
-                  <h3 className="usage-captured-title">Captured callers this month</h3>
+                  <h3 className="usage-captured-title">Captured calls this billing period</h3>
                   <span className="usage-captured-summary">
                     {data.usage.capturedCallersLimit == null
                       ? `${data.usage.capturedCallersUsed} · Custom`
@@ -1019,7 +1019,7 @@ export function UserDashboardLive({ initialData = null }: { initialData?: UserDa
                         : usageOverLimitMode === 'payment_failed'
                           ? 'Payment failed - calls paused.'
                           : 'Over limit - overage at $0.25/caller.'
-                      : 'You are close to your monthly captured caller limit.'}
+                      : 'You are close to your captured call limit for this billing period.'}
                     {data.usage.overCapturedCallerLimit ? (
                       <>
                         {' '}

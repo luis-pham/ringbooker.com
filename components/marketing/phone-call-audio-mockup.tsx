@@ -155,6 +155,40 @@ export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
   width:52px;
   height:52px;
 }
+.iph-shell .vc-ctrl-play-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  width:58px;
+  height:58px;
+}
+.cp-vertical .iph-shell .vc-ctrl-play-wrap{
+  width:52px;
+  height:52px;
+}
+.iph-shell .vc-ctrl-play-wrap .vc-ctrl-play{
+  position:relative;
+  z-index:1;
+}
+.iph-shell .vc-ctrl-play-pulse{
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  border:2px solid #34c759;
+  box-sizing:border-box;
+  pointer-events:none;
+  z-index:0;
+  animation:pca-play-ring 2s ease-out infinite;
+}
+.iph-shell .vc-ctrl-play-pulse--2{
+  animation-delay:.6s;
+}
+@keyframes pca-play-ring{
+  0%{transform:scale(1);opacity:.6}
+  100%{transform:scale(1.8);opacity:0}
+}
 .iph-shell .vc-ctrl-play .cp-icon-play{
   width:18px;
   height:18px;
@@ -174,8 +208,12 @@ export const PHONE_CALL_AUDIO_MOCKUP_CSS = `
 @media (prefers-reduced-motion: reduce){
   .iph-shell .vc-wave span,
   .iph-shell .vc-wave.vc-wave-active span,
-  .iph-shell .vc-call-status-dot{
+  .iph-shell .vc-call-status-dot,
+  .iph-shell .vc-ctrl-play-pulse{
     animation:none !important;
+  }
+  .iph-shell .vc-ctrl-play-pulse{
+    display:none;
   }
 }
 `;
@@ -254,16 +292,20 @@ function CallScreenBody({
               </svg>
             </button>
           ) : (
-            <button
-              type="button"
-              className="vc-ctrl vc-ctrl-play cp-control cp-control-main"
-              onClick={onCenterClick}
-              aria-label={playbackState === 'paused' ? 'Resume demo call' : 'Play demo call'}
-            >
-              <svg viewBox="0 0 24 24" className="cp-icon-play" aria-hidden>
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </button>
+            <div className="vc-ctrl-play-wrap">
+              <span className="vc-ctrl-play-pulse" aria-hidden />
+              <span className="vc-ctrl-play-pulse vc-ctrl-play-pulse--2" aria-hidden />
+              <button
+                type="button"
+                className="vc-ctrl vc-ctrl-play cp-control cp-control-main"
+                onClick={onCenterClick}
+                aria-label={playbackState === 'paused' ? 'Resume demo call' : 'Play demo call'}
+              >
+                <svg viewBox="0 0 24 24" className="cp-icon-play" aria-hidden>
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </button>
+            </div>
           )}
           <div className="vc-ctrl vc-ctrl-spk">
             <svg viewBox="0 0 24 24" aria-hidden>

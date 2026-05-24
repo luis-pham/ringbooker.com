@@ -185,11 +185,11 @@ export function buildUserPortalNotifications(params: {
     push({
       id: 'usage_captured_near',
       severity: 'warn',
-      title: 'Approaching captured caller limit',
+      title: 'Approaching captured call limit',
       body:
         usage.capturedCallersLimit != null
-          ? `${usage.capturedCallersUsed} / ${usage.capturedCallersLimit} captured callers this period.`
-          : `${usage.capturedCallersUsed} captured callers this period.`,
+          ? `${usage.capturedCallersUsed} / ${usage.capturedCallersLimit} captured calls this billing period.`
+          : `${usage.capturedCallersUsed} captured calls this billing period.`,
       href: '/user/billing',
     });
   }

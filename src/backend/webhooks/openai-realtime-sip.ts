@@ -895,6 +895,15 @@ export async function handleOpenAiRealtimeSipWebhook(
             apiKey: apiKey!,
             acceptedAtMs,
             initialResponseInstructions: effectiveRuntimeConfig.aiWelcomeMessage,
+            initialResponseBridgeGate:
+              parentCcId && sidebandCtx.openAiLegCallControlId
+                ? {
+                    parentCallControlId: parentCcId,
+                    openaiLegCallControlId: sidebandCtx.openAiLegCallControlId,
+                    rbCallId: sidebandCtx.rbCallId,
+                    shopId: shop.id,
+                  }
+                : undefined,
             executeBusinessTool: (name: string, argsJson: string) => {
               let parsed: unknown = {};
               try {

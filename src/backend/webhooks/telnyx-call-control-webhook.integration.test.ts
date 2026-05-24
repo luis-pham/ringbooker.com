@@ -190,10 +190,14 @@ test('telnyx call-control webhook invokes answer when dry-run off', async () => 
     TELNYX_CALL_CONTROL_DRY_RUN: 'false',
   });
 
-  let answerUrl = '';
+  const urls: string[] = [];
   const testingTelnyxFetch: typeof fetch = async (input, init) => {
-    answerUrl = String(input);
+    const url = String(input);
+    urls.push(url);
     assert.equal(init?.method, 'POST');
+    if (/\/v2\/calls$/.test(url)) {
+      return new Response(JSON.stringify({ data: { call_control_id: 'cc_openai_parallel' } }), { status: 200 });
+    }
     return new Response(JSON.stringify({ data: {} }), { status: 200 });
   };
 
@@ -232,7 +236,8 @@ test('telnyx call-control webhook invokes answer when dry-run off', async () => 
   assert.equal(json.ok, true);
   assert.equal(json.phase, 'initiated');
   assert.equal(json.decision, 'answer');
-  assert.match(answerUrl, /\/v2\/calls\/cc_answer\/actions\/answer$/);
+  assert.ok(urls.some((url) => /\/v2\/calls\/cc_answer\/actions\/answer$/.test(url)));
+  assert.ok(urls.some((url) => /\/v2\/calls$/.test(url)));
 });
 
 test('telnyx call-control live inbound allows active and trialing billing before answer', async () => {
@@ -250,7 +255,13 @@ test('telnyx call-control live inbound allows active and trialing billing before
 
     const urls: string[] = [];
     const testingTelnyxFetch: typeof fetch = async (input) => {
-      urls.push(String(input));
+      const url = String(input);
+      urls.push(url);
+      if (/\/v2\/calls$/.test(url)) {
+        return new Response(JSON.stringify({ data: { call_control_id: `cc_openai_${entry.status}` } }), {
+          status: 200,
+        });
+      }
       return new Response(JSON.stringify({ data: {} }), { status: 200 });
     };
 

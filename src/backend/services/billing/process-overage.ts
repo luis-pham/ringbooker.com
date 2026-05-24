@@ -91,7 +91,7 @@ export async function processOverageForPeriod(
   if (overageCallers === 0) return;
 
   try {
-    const description = `Captured caller overage - ${overageCallers} callers x $0.25`;
+    const description = `Captured call overage - ${overageCallers} calls x $0.25`;
     const { providerTransactionId } = await deps.billingProvider.chargeOverage({
       providerSubscriptionId: subscription.providerSubscriptionId,
       amountCents,

@@ -36,7 +36,7 @@ export async function checkLiveCallUsageGate(
     shopTimezone: params.shop.timezone,
   });
   const usage = await getShopUsageForPeriod(deps, { ...params, now, period });
-  // Voice minutes are intentionally unlimited. Captured callers can accrue paid overage
+  // Voice minutes are intentionally unlimited. Captured calls can accrue paid overage
   // for active paid subscriptions, but trial and failed-payment shops still hard block.
   if (usage.overCapturedCallerLimit) {
     const subscription = deps.billingSubscriptionsRepository
