@@ -130,7 +130,7 @@ const incomingEventSchema = z.object({
     .optional(),
 });
 
-function asVoiceVertical(slug: string): VoicePromptVertical | undefined {
+function asVoiceVertical(slug: string | null | undefined): VoicePromptVertical | undefined {
   const allowed: VoicePromptVertical[] = ['nail-salon', 'hair-salon', 'day-spa', 'med-spa', 'beauty-clinic'];
   return allowed.includes(slug as VoicePromptVertical) ? (slug as VoicePromptVertical) : undefined;
 }
