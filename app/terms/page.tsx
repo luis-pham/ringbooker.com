@@ -37,7 +37,7 @@ export default function TermsPage() {
       breadcrumbLabel="Terms of Service"
       badge="Terms of Service"
       title="Terms of Service"
-      subtitle="These terms govern your use of RingBooker services, including website access, AI phone agent features, and paid subscription plans."
+      subtitle='These Terms of Service ("Terms") are entered into between you and RINGBOOKER LLC, a Wyoming limited liability company ("RingBooker," "we," or "us"), and govern your use of RingBooker services, including website access, AI phone agent features, and paid subscription plans.'
       updatedAt="May 11, 2026"
       sections={[
         {
